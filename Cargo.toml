@@ -1,0 +1,43 @@
+[package]
+name = "kuromoji"
+version = "0.1.0"
+authors = ["Minoru Osuka <minoru.osuka@gmail.com>"]
+edition = "2018"
+description = "A Japanese Morphological Analyzer written in Rust."
+homepage = "https://github.com/bayard-search/kuromoji-rs"
+repository = "https://github.com/bayard-search/kuromoji-rs"
+readme = "README.md"
+keywords = ["tokenizer", "japanese", "morphological", "analyzer"]
+categories = ["text-processing"]
+license = "MIT"
+
+[dependencies]
+tantivy-fst = "0.1"
+byteorder = "1.2"
+encoding = "0.2"
+serde = {version="1.0", features = ["derive"] }
+bincode = "1.1"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[profile.release]
+debug = true
+lto = true
+
+[[bin]]
+name = "build-fst"
+path = "bin/build_fst.rs"
+
+[[bin]]
+name = "flamegraph"
+path = "bin/flamegraph.rs"
+
+[[bin]]
+name = "tester"
+path = "bin/tester.rs"
+
+[[bench]]
+name = "bench"
+harness = false
+

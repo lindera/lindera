@@ -1,0 +1,5 @@
+flamegraph*
+.idea
+target
+Cargo.lock
+perf.data*
