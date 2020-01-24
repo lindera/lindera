@@ -75,7 +75,7 @@ pub struct CSVRow<'a> {
 impl<'a> CSVRow<'a> {
     fn from_line(line: &'a String) -> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
-        let word_cost = i32::from_str(&fields[3]).expect("failed to parse wordost");
+        let _word_cost = i32::from_str(&fields[3]).expect("failed to parse wordost");
         CSVRow {
             surface_form: fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
@@ -304,7 +304,7 @@ impl CharacterDefinitionsBuilder {
     }
 
     fn build_lookup_table(&self) -> LookupTable<CategoryId> {
-        let mut boundaries_set: BTreeSet<u32> = self
+        let boundaries_set: BTreeSet<u32> = self
             .char_ranges
             .iter()
             .flat_map(|(low, high, _)| vec![*low, *high + 1u32])

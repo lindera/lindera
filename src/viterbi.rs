@@ -2,8 +2,8 @@ use crate::character_definition::CategoryId;
 use crate::connection::ConnectionCostMatrix;
 use crate::prefix_dict::PrefixDict;
 use crate::unknown_dictionary::UnknownDictionary;
-use crate::word_entry::WordDictionary;
-use crate::{CharacterDefinitions, Mode, WordDetail, WordEntry, WordId};
+//use crate::word_entry::WordDictionary;
+use crate::{CharacterDefinitions, Mode, WordEntry, WordId};
 use std::u32;
 
 const EOS_NODE: EdgeId = EdgeId(1u32);
@@ -173,7 +173,7 @@ impl Lattice {
             unknown_word_num_chars = 1;
             if category_data.group {
                 for c in suffix.chars().skip(1) {
-                    let mut categories = char_definitions.lookup_categories(c);
+                    let categories = char_definitions.lookup_categories(c);
                     if categories.len() > category_ord && categories[category_ord] == category {
                         unknown_word_num_chars += 1;
                     } else {
@@ -256,7 +256,7 @@ impl Lattice {
     pub fn tokens_offset(&self, offsets: &mut Vec<(usize, WordId)>) {
         offsets.clear();
         let mut edge_id = EOS_NODE;
-        let edge = self.edge(EOS_NODE);
+        let _edge = self.edge(EOS_NODE);
         loop {
             let edge = self.edge(edge_id);
             if let Some(left_edge_id) = edge.left_edge {
