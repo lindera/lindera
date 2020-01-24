@@ -1,4 +1,4 @@
-# kuromoji-rs
+# mokuzu
 
 A Japanese Morphological Analyzer written in Rust. This project fork from fulmicoton's project.
 
