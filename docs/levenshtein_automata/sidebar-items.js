@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["SINK_STATE","Sink state. See DFA"]],"enum":[["Distance","Levenshtein Distance computed by a Levenshtein Automaton."]],"struct":[["DFA","Implementation of a Deterministic Finite Automaton for a Levenshtein Automaton targeting UTF-8 encoded strings."],["LevenshteinAutomatonBuilder","Builder for Levenshtein Automata."]]});

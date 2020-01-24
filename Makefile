@@ -18,6 +18,7 @@ test:
 	cargo test
 
 doc:
-	cargo doc
+	cargo doc --no-deps
+	rm -rf ./docs
 	cp -pr ./target/doc ./docs
 
