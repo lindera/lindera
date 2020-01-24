@@ -19,3 +19,5 @@ test:
 
 doc:
 	cargo doc
+	cp -pr ./target/doc ./docs
+
