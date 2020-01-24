@@ -1,4 +1,4 @@
-use kuromoji::Tokenizer;
+use mokuzu::Tokenizer;
 use std::env;
 use std::fs::File;
 use std::io;

@@ -1,11 +1,11 @@
 [package]
-name = "kuromoji"
+name = "mokuzu"
 version = "0.1.0"
 authors = ["Minoru Osuka <minoru.osuka@gmail.com>"]
 edition = "2018"
 description = "A Japanese Morphological Analyzer written in Rust."
-homepage = "https://github.com/bayard-search/kuromoji-rs"
-repository = "https://github.com/bayard-search/kuromoji-rs"
+homepage = "https://github.com/bayard-search/mokuzu"
+repository = "https://github.com/bayard-search/mokuzu"
 readme = "README.md"
 keywords = ["tokenizer", "japanese", "morphological", "analyzer"]
 categories = ["text-processing"]
