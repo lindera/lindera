@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Fix typo #9 @ikawaha
 - Fix unused imports and variables #6 @mosuka
 - Restore the missing file #5 @mosuka
 - Formatting Rust code #4 @mosuka
