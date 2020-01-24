@@ -3,7 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
-- Add `mokuzu` command @mosuka
+- Add docs #11 @mosuka
+- Add mokuzu command #10 @mosuka
 - Fix typo #9 @ikawaha
 - Fix unused imports and variables #6 @mosuka
 - Restore the missing file #5 @mosuka
