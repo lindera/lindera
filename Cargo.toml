@@ -12,11 +12,12 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-tantivy-fst = "0.1"
+bincode = "1.1"
 byteorder = "1.2"
+clap = "2.33.0"
 encoding = "0.2"
 serde = {version="1.0", features = ["derive"] }
-bincode = "1.1"
+tantivy-fst = "0.1"
 
 [dev-dependencies]
 criterion = "0.2"
@@ -28,6 +29,10 @@ lto = true
 [[bin]]
 name = "build-fst"
 path = "bin/build_fst.rs"
+
+[[bin]]
+name = "mokuzu"
+path = "src/main.rs"
 
 [[bin]]
 name = "flamegraph"
