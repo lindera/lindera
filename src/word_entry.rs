@@ -1,8 +1,8 @@
+use crate::WordId;
 use byteorder::WriteBytesExt;
 use byteorder::{ByteOrder, LittleEndian};
 use serde::{Deserialize, Serialize};
 use std::io;
-use crate::WordId;
 
 const WORDS_DATA: &'static [u8] = include_bytes!("../dict/dict.words");
 const WORDS_IDX_DATA: &'static [u8] = include_bytes!("../dict/dict.wordsidx");
@@ -68,8 +68,8 @@ impl WordEntry {
 #[cfg(test)]
 mod tests {
     use super::WordDictionary;
-    use crate::{WordDetail, WordId};
     use crate::WordEntry;
+    use crate::{WordDetail, WordId};
 
     #[test]
     fn test_word_entry() {

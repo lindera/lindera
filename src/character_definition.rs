@@ -16,17 +16,16 @@ pub struct CategoryId(pub usize);
 pub struct CharacterDefinitions {
     pub category_definitions: Vec<CategoryData>,
     pub category_names: Vec<String>,
-    pub mapping: LookupTable<CategoryId>
+    pub mapping: LookupTable<CategoryId>,
 }
-
 
 #[derive(Serialize, Deserialize)]
-pub struct LookupTable<T: Copy+Clone> {
+pub struct LookupTable<T: Copy + Clone> {
     boundaries: Vec<u32>,
-    values: Vec<Vec<T>>
+    values: Vec<Vec<T>>,
 }
 
-impl<T: Copy+Clone> LookupTable<T> {
+impl<T: Copy + Clone> LookupTable<T> {
     pub fn from_fn(mut boundaries: Vec<u32>, funct: &dyn Fn(u32, &mut Vec<T>)) -> LookupTable<T> {
         if !boundaries.contains(&0) {
             boundaries.push(0);
@@ -38,14 +37,13 @@ impl<T: Copy+Clone> LookupTable<T> {
             funct(boundary, &mut output);
             values.push(output);
         }
-        LookupTable {
-            boundaries,
-            values
-        }
+        LookupTable { boundaries, values }
     }
 
     pub fn eval(&self, target: u32) -> &[T] {
-        let idx = self.boundaries.binary_search(&target)
+        let idx = self
+            .boundaries
+            .binary_search(&target)
             .unwrap_or_else(|val| val - 1);
         &self.values[idx][..]
     }
@@ -97,7 +95,8 @@ mod tests {
     #[test]
     fn test_bisa() {
         let char_definitions = CharacterDefinitions::load();
-        let category_ids: Vec<&str> = char_definitions.lookup_categories('々')
+        let category_ids: Vec<&str> = char_definitions
+            .lookup_categories('々')
             .iter()
             .map(|&category_id| char_definitions.category_name(category_id))
             .collect();
@@ -135,5 +134,4 @@ mod tests {
             assert_eq!(char_definitions.category_name(v[1]), "KANJINUMERIC");
         }
     }
-
 }
