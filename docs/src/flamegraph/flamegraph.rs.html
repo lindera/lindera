@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `bin/flamegraph.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>flamegraph.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="shortcut icon" href="../../favicon.ico"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><a href='../../flamegraph/index.html'><div class='logo-container'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+</pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">mokuzu</span>::<span class="ident">Tokenizer</span>;
+
+<span class="kw">const</span> <span class="ident">TEXT</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;与えられた検索式に従って、ウェブページ等を検索するサーバ、システムのこと。検索式は、最も単純な場合はキーワードとなる文字列のみであるが、複数のキーワードにAND（「かつ」、論理積）やOR（「または」、論理和）等の論理条件を組み合わせて指定することができるものが多い。
+ロボット型検索エンジンの大きな特徴の一つとして、クローラ（ロボット・スパイダー）を用いることが挙げられる。このことにより、WWW上にある多数の情報を効率よく収集（日本の著作権法では複製）することができる。大規模な検索エンジンでは、80億ページ以上のページから検索が可能になっている。
+収集したページの情報は、前もって解析し、索引情報（インデックス）を作成する（日本の著作権法では編集）。日本語などの言語では、自然言語処理機能が生成される索引の質に影響する。このため、多言語対応した検索エンジンの方が精度の高い検索が可能となる。
+検索結果の表示順は、検索エンジンの質が最も問われる部分である。ユーザーが期待したページを検索結果の上位に表示することができなければ、ユーザーが離れてしまうからである。そのため、多くの検索エンジンが、表示順を決定するアルゴリズムを非公開にし、その性能を競っている。検索エンジン最適化業者の存在も、アルゴリズムを公開しない要因になっている。Googleは、そのアルゴリズムの一部であるPageRankを公開しているが、やはり、多くの部分が非公開になっている。Googleの場合、創設初期におけるアルゴリズムについては、創設者自身がウェブ上で公表している論文でその一端を知ることができる。 参照 英語原文[1]日本語の解説[2]
+ウェブページの更新時刻の情報を用いて、新しい情報に限定して検索できるものや、検索結果をカテゴリ化して表示するものなど、特長のある機能を搭載したり、検索結果をユーザーへ最適化していく動きもある。
+従来のウェブページを検索するだけの検索エンジンにとどまらず、最近ではインターネットショッピング専用の検索エンジンなど、特定の分野に特化した検索エンジンの開発も散見される。商品検索では、価格比較サービス日本最大手の価格.comや、ベンチャー企業が開発するQOOPIEなどある。また、職業検索エンジンとしてはCraigslistなどがある。 Google、Yahoo!、インフォシーク、テクノラティ、MARSFLAG、Altavista、ムーター、AlltheWeb、Teoma、WiseNut、Inktomi、SAGOOL、Yahoo! JAPAN (2005.10〜) など。
+ディレクトリ型検索エンジン
+人手で構築したウェブディレクトリ内を検索するサーバ、システムのこと。
+人手で構築しているため、質の高いウェブサイトを検索可能。概要を人手で記入しているため、検索結果の一覧から目的のサイトを探しやすい、サイトのカテゴリ分けがされていることから、特定分野や地区などに限定したサイトを探しやすいという特長がある。
+しかし、検索対象となるサイトは人手で入力するため、検索対象となるサイト数が多くできないという欠点がある。
+インターネットが一般に使われるようになった初期（1990年代）のころには、ディレクトリ型が主体であったが、WWWの爆発的な拡大によって、あらゆるウェブサイトを即時にディレクトリに反映させることが事実上不可能になり、現在では主流ではなくなっている。 このため、ディレクトリ型検索エンジンでは、検索にヒットするサイトが無かった場合、ロボット型検索エンジンを用いて結果を表示するような、併用型のものが多い。
+日立国際ビジネスのHole-in-One（〜2004年11月）、Yahoo!JAPANのYahoo!カテゴリ（〜2018年3月）、LookSmart Japan（〜2006年6月）、goo、Open Directory ProjectことDMOZ（～2017年3月）など。
+分散型検索エンジン
+P2P通信によってウェブコンテンツのインデックスを多数のピアに分散させ、P2Pネットワーク全体で各ピアの持つインデックスを共有する検索システムのこと。
+ウェブのクロールは各ピアが独自に行い、インデクサーはRWI(Reverse Word Index)を作成する。作成されたインデックスの一部はDHT(分散ハッシュテーブル、Distributed Hash Table)として他のピアに分配される。
+検索は自分のピアの端末からP2Pネットワーク上にある他のピアにリクエストを送信することにより行うことができる。
+分散型検索エンジンの例としてはYaCyがある。YaCyは「人民による人民のためのウェブ検索」を標榜し、分散型であることにより検閲を防ぐことができるとしている。[3]
+メタ検索エンジン
+ひとつの検索ワードを複数の検索エンジンで検索することをメタ検索という（横断検索エンジンと呼ぶこともある）。 詳細は「メタ検索エンジン」を参照のこと。&quot;#</span>;
+
+<span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tokenizer</span> <span class="op">=</span> <span class="ident">Tokenizer</span>::<span class="ident">for_search</span>();
+    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10_000</span> {
+        <span class="ident">tokenizer</span>.<span class="ident">tokenize</span>(<span class="ident">TEXT</span>);
+    }
+}
+</pre></div>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g., <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g., <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g., <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "flamegraph";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
