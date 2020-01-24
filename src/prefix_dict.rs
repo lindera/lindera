@@ -94,7 +94,6 @@ mod tests {
         assert_eq!(count_prefix, 1);
     }
 
-
     #[test]
     fn test_fst_prefix_asterisk_symbol() {
         let prefix_dict = PrefixDict::default();

@@ -41,5 +41,4 @@ mod tests {
     fn test_parse_unknown_dictionary() {
         let _unknown_dict = UnknownDictionary::load();
     }
-
 }

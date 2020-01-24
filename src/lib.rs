@@ -14,13 +14,13 @@ use crate::word_entry::WordDictionary;
 pub use crate::word_entry::{WordDetail, WordEntry};
 use encoding::DecoderTrap;
 use encoding::Encoding;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::num::ParseIntError;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WordId(pub u32);
@@ -61,7 +61,6 @@ impl From<ParseIntError> for ParsingError {
         ParsingError::from_error(parse_err)
     }
 }
-
 
 #[derive(Clone, Debug)]
 pub struct Penalty {
@@ -269,14 +268,12 @@ mod tests {
         assert_eq!(tokens, &[]);
     }
 
-
     #[test]
     fn test_space() {
         let mut tokenizer = Tokenizer::for_search();
         let tokens = tokenizer.tokenize_offsets(" ");
         assert_eq!(tokens, &[(0, WordId(4294967295))]);
     }
-
 
     #[test]
     fn test_boku_ha() {
@@ -285,48 +282,48 @@ mod tests {
         assert_eq!(tokens, &[(0, WordId(132629)), (3, WordId(57065))]);
     }
     /*
-        #[test]
-        fn test_tokenize() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens = tokenizer.tokenize_offsets("俺はまだ本気出してないだけ。");
-            assert_eq!(tokens, &[0, 3, 6, 12, 18, 24, 27, 33, 39]);
-        }
+    #[test]
+    fn test_tokenize() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens = tokenizer.tokenize_offsets("俺はまだ本気出してないだけ。");
+        assert_eq!(tokens, &[0, 3, 6, 12, 18, 24, 27, 33, 39]);
+    }
 
-        #[test]
-        fn test_tokenize2() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens: Vec<&str> = tokenizer.tokenize_str("私の名前はマズレル野恵美です。");
-            assert_eq!(tokens, vec!["私", "の", "名前", "は", "マズレル", "野", "恵美", "です", "。"]);
-        }
+    #[test]
+    fn test_tokenize2() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens: Vec<&str> = tokenizer.tokenize_str("私の名前はマズレル野恵美です。");
+        assert_eq!(tokens, vec!["私", "の", "名前", "は", "マズレル", "野", "恵美", "です", "。"]);
+    }
 
-        #[test]
-        fn test_tokenize_junk() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens: Vec<&str> = tokenizer.tokenize_str("関西国werwerママママ空港");
-            assert_eq!(tokens, vec!["関西", "国", "werwer", "ママ", "ママ", "空港"]);
-        }
+    #[test]
+    fn test_tokenize_junk() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens: Vec<&str> = tokenizer.tokenize_str("関西国werwerママママ空港");
+        assert_eq!(tokens, vec!["関西", "国", "werwer", "ママ", "ママ", "空港"]);
+    }
 
-        #[test]
-        fn test_tokenize_search_mode() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens: Vec<&str> = tokenizer.tokenize_str("関西国際空港");
-            assert_eq!(tokens, vec!["関西", "国際", "空港"]);
-        }
+    #[test]
+    fn test_tokenize_search_mode() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens: Vec<&str> = tokenizer.tokenize_str("関西国際空港");
+        assert_eq!(tokens, vec!["関西", "国際", "空港"]);
+    }
 
-        #[test]
-        fn test_tokenize_sumomomomo() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち");
-            assert_eq!(tokens, vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]);
-        }
+    #[test]
+    fn test_tokenize_sumomomomo() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち");
+        assert_eq!(tokens, vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]);
+    }
 
-        #[test]
-        fn test_mukigen_search() {
-            let mut tokenizer = Tokenizer::for_search();
-            let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?");
-            assert_eq!(tokens, vec!["無", "期限", "に", "—", "でも", "どの", "種", "を", "?"]);
-        }
-        */
+    #[test]
+    fn test_mukigen_search() {
+        let mut tokenizer = Tokenizer::for_search();
+        let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?");
+        assert_eq!(tokens, vec!["無", "期限", "に", "—", "でも", "どの", "種", "を", "?"]);
+    }
+    */
 
     #[test]
     fn test_gyoi() {
@@ -460,17 +457,22 @@ mod tests {
     #[test]
     fn test_tokenize_short() {
         let mut tokenizer = Tokenizer::normal();
-        let tokens: Vec<&str> = tokenizer.tokenize(
-            "日本住").into_iter().map(|token| token.text).collect();
+        let tokens: Vec<&str> = tokenizer
+            .tokenize("日本住")
+            .into_iter()
+            .map(|token| token.text)
+            .collect();
         assert_eq!(tokens, vec!["日本", "住"]);
     }
 
     #[test]
     fn test_tokenize_short2() {
         let mut tokenizer = Tokenizer::normal();
-        let tokens: Vec<&str> = tokenizer.tokenize(
-            "ここでは").into_iter().map(|token| token.text).collect();
+        let tokens: Vec<&str> = tokenizer
+            .tokenize("ここでは")
+            .into_iter()
+            .map(|token| token.text)
+            .collect();
         assert_eq!(tokens, vec!["ここ", "で", "は"]);
     }
-
 }
