@@ -32,7 +32,7 @@ path = "bin/build_fst.rs"
 
 [[bin]]
 name = "lindera"
-path = "src/main.rs"
+path = "bin/lindera.rs"
 
 [[bin]]
 name = "flamegraph"

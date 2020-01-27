@@ -3,10 +3,12 @@ use byteorder::ByteOrder;
 use byteorder::{LittleEndian, WriteBytesExt};
 use encoding::all::UTF_16LE;
 use encoding::{DecoderTrap, Encoding};
-use lindera::character_definition::{CategoryData, CategoryId, LookupTable};
-use lindera::unknown_dictionary::UnknownDictionary;
-use lindera::{CharacterDefinitions, WordId};
-use lindera::{WordDetail, WordEntry};
+use lindera::core::character_definition::{
+    CategoryData, CategoryId, CharacterDefinitions, LookupTable,
+};
+use lindera::core::tokenizer::WordId;
+use lindera::core::unknown_dictionary::UnknownDictionary;
+use lindera::core::word_entry::{WordDetail, WordEntry};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::fs::File;
@@ -77,21 +79,21 @@ impl<'a> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
         let _word_cost = i32::from_str(&fields[3]).expect("failed to parse wordost");
         CSVRow {
-            surface_form: fields[0],
+            surface_form: &fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
             right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
             word_cost: i32::from_str(&fields[3]).expect("failed to parse wordost"),
-            pos_level1: fields[4],
-            pos_level2: fields[5],
-            pos_level3: fields[6],
-            pos_level4: fields[7],
+            pos_level1: &fields[4],
+            pos_level2: &fields[5],
+            pos_level3: &fields[6],
+            pos_level4: &fields[7],
 
-            conjugation_type: fields[8],
-            conjugate_form: fields[9],
+            conjugation_type: &fields[8],
+            conjugate_form: &fields[9],
 
-            base_form: fields[10],
-            reading: fields[11],
-            pronunciation: fields[12],
+            base_form: &fields[10],
+            reading: &fields[11],
+            pronunciation: &fields[12],
         }
     }
 }
@@ -495,7 +497,7 @@ fn build_chardef() -> Result<CharacterDefinitions, ParsingError> {
 
 fn build_unk(chardef: &CharacterDefinitions) -> Result<(), ParsingError> {
     println!("BUILD UNK");
-    let unk_data = crate::read_mecab_file("unk.def")?;
+    let unk_data = read_mecab_file("unk.def")?;
     let unknown_dictionary = parse_unk(&chardef.categories(), &unk_data)?;
     let mut wtr_unk = io::BufWriter::new(File::create("dict/unk.bin")?);
     bincode::serialize_into(&mut wtr_unk, &unknown_dictionary).map_err(ParsingError::from_error)?;
