@@ -1,11 +1,11 @@
 [package]
-name = "mokuzu"
+name = "lindera"
 version = "0.1.0"
 authors = ["Minoru Osuka <minoru.osuka@gmail.com>"]
 edition = "2018"
 description = "A Japanese Morphological Analyzer written in Rust."
-homepage = "https://github.com/bayard-search/mokuzu"
-repository = "https://github.com/bayard-search/mokuzu"
+homepage = "https://github.com/bayard-search/lindera"
+repository = "https://github.com/bayard-search/lindera"
 readme = "README.md"
 keywords = ["tokenizer", "japanese", "morphological", "analyzer"]
 categories = ["text-processing"]
@@ -31,16 +31,12 @@ name = "build-fst"
 path = "bin/build_fst.rs"
 
 [[bin]]
-name = "mokuzu"
+name = "lindera"
 path = "src/main.rs"
 
 [[bin]]
 name = "flamegraph"
 path = "bin/flamegraph.rs"
-
-[[bin]]
-name = "tester"
-path = "bin/tester.rs"
 
 [[bench]]
 name = "bench"

@@ -1,21 +1,20 @@
-# mokuzu
+# Lindera
 
-[![Join the chat at https://gitter.im/bayard-search/mokuzu](https://badges.gitter.im/bayard-search/mokuzu.svg)](https://gitter.im/bayard-search/mokuzu?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Japanese Morphological Analyzer written in Rust. This project fork from fulmicoton's project.
+A Japanese Morphological Analyzer written in Rust. This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 
-## Building mokuzu
+## Building Lindera
 
-## Requirements
+### Requirements
 
 The following products are required to build Bayrad:
 
 - Rust >= 1.39.0
 - make >= 3.81
 
-## Build
+### Build
 
 Build Bayard with the following command:
 
