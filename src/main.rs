@@ -4,7 +4,7 @@ extern crate clap;
 use clap::{App, AppSettings};
 use std::io;
 
-use mokuzu::Tokenizer;
+use lindera::Tokenizer;
 
 fn main() {
     let app = App::new(crate_name!())

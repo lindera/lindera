@@ -2,7 +2,7 @@ BIN_DIR ?= $(CURDIR)/bin
 VERSION ?=
 
 ifeq ($(VERSION),)
-  VERSION = $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="mokuzu") | .version')
+  VERSION = $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 endif
 
 clean:
@@ -17,8 +17,8 @@ build:
 test:
 	cargo test
 
-doc:
+.PHONY: docs
+docs:
 	cargo doc --no-deps
 	rm -rf ./docs
 	cp -pr ./target/doc ./docs
-
