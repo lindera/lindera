@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ParsingError",""]],"struct":[["CSVRow",""],["CharacterDefinitionsBuilder",""],["DictionaryEntry",""]]});
