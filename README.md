@@ -22,5 +22,20 @@ Build Bayard with the following command:
 $ make build
 ```
 
+## Usage
+
+```
+$ lindera
+すもももももももものうち
+すもも  スモモ
+も      モ
+もも    モモ
+も      モ
+もも    モモ
+の      ノ
+うち    ウチ
+EOS
+```
+
 test test_tokenize ... bench:       7,666 ns/iter (+/- 25,545)  
 test test_tokenize ... bench:       5,507 ns/iter (+/- 755)
