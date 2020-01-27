@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Mode",""],["ParsingError",""]],"fn":[["read_mecab_file",""]],"mod":[["character_definition",""],["unknown_dictionary",""]],"struct":[["Penalty",""],["Token",""],["Tokenizer",""],["WordDetail",""],["WordEntry",""],["WordId",""]]});
+initSidebarItems({"mod":[["core",""]]});
