@@ -44,9 +44,10 @@
 <span id="44">44</span>
 <span id="45">45</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::<span class="ident">CategoryId</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::<span class="ident">WordEntry</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">const</span> <span class="ident">CHAR_DEFINITION_DATA</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>] <span class="op">=</span> <span class="macro">include_bytes</span><span class="macro">!</span>(<span class="string">&quot;../../dict/unk.bin&quot;</span>);
 
@@ -82,7 +83,6 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_parse_unknown_dictionary</span>() {

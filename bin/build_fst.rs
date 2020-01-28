@@ -1,14 +1,3 @@
-use bincode;
-use byteorder::ByteOrder;
-use byteorder::{LittleEndian, WriteBytesExt};
-use encoding::all::UTF_16LE;
-use encoding::{DecoderTrap, Encoding};
-use lindera::core::character_definition::{
-    CategoryData, CategoryId, CharacterDefinitions, LookupTable,
-};
-use lindera::core::tokenizer::WordId;
-use lindera::core::unknown_dictionary::UnknownDictionary;
-use lindera::core::word_entry::{WordDetail, WordEntry};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::fs::File;
@@ -17,7 +6,20 @@ use std::num::ParseIntError;
 use std::path::Path;
 use std::str::FromStr;
 use std::u32;
+
+use bincode;
+use byteorder::ByteOrder;
+use byteorder::{LittleEndian, WriteBytesExt};
+use encoding::all::UTF_16LE;
+use encoding::{DecoderTrap, Encoding};
 use tantivy_fst::MapBuilder;
+
+use lindera::core::character_definition::{
+    CategoryData, CategoryId, CharacterDefinitions, LookupTable,
+};
+use lindera::core::tokenizer::WordId;
+use lindera::core::unknown_dictionary::UnknownDictionary;
+use lindera::core::word_entry::{WordDetail, WordEntry};
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
     let path = Path::new("mecab-ipadic").join(Path::new(filename));
@@ -83,6 +85,7 @@ impl<'a> CSVRow<'a> {
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
             right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
             word_cost: i32::from_str(&fields[3]).expect("failed to parse wordost"),
+
             pos_level1: &fields[4],
             pos_level2: &fields[5],
             pos_level3: &fields[6],
@@ -186,7 +189,15 @@ fn build_dict() -> Result<(), ParsingError> {
     let mut words_buffer = Vec::new();
     for row in rows.iter() {
         let word = WordDetail {
+            pos_level1: row.pos_level1.to_string(),
+            pos_level2: row.pos_level2.to_string(),
+            pos_level3: row.pos_level3.to_string(),
+            pos_level4: row.pos_level4.to_string(),
+            conjugation_type: row.conjugation_type.to_string(),
+            conjugate_form: row.conjugate_form.to_string(),
+            base_form: row.base_form.to_string(),
             reading: row.reading.to_string(),
+            pronunciation: row.pronunciation.to_string(),
         };
         let offset = words_buffer.len();
         wtr_words_idx.write_u32::<LittleEndian>(offset as u32)?;

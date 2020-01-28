@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use crate::core::character_definition::CategoryId;
 use crate::core::word_entry::WordEntry;
-use serde::{Deserialize, Serialize};
 
 const CHAR_DEFINITION_DATA: &'static [u8] = include_bytes!("../../dict/unk.bin");
 
@@ -36,7 +37,6 @@ impl UnknownDictionary {
 #[cfg(test)]
 mod tests {
     use crate::core::unknown_dictionary::UnknownDictionary;
-    use crate::unknown_dictionary::UnknownDictionary;
 
     #[test]
     fn test_parse_unknown_dictionary() {

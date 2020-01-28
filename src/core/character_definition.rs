@@ -73,7 +73,7 @@ impl CharacterDefinitions {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::core::character_definition::{CharacterDefinitions, LookupTable};
 
     #[test]
     fn test_lookup_table() {
