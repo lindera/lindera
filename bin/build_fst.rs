@@ -20,7 +20,7 @@ use std::u32;
 use tantivy_fst::MapBuilder;
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
-    let path = Path::new("mecab-ipadic2").join(Path::new(filename));
+    let path = Path::new("mecab-ipadic").join(Path::new(filename));
     let mut input_read = File::open(path)?;
     let mut buffer = Vec::new();
     input_read.read_to_end(&mut buffer)?;
