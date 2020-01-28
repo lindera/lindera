@@ -27,11 +27,11 @@ $ make build
 Normal mode:
 ```
 $ lindera --mode=normal
-  関西国際空港限定トートバッグ
-  関西国際空港    カンサイコクサイクウコウ
-  限定    ゲンテイ
-  トートバッグ    UNK
-  EOS
+関西国際空港限定トートバッグ
+関西国際空港    カンサイコクサイクウコウ
+限定    ゲンテイ
+トートバッグ    UNK
+EOS
 ```
 
 Search mode:
