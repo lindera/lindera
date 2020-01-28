@@ -24,16 +24,25 @@ $ make build
 
 ## Usage
 
+Normal mode:
 ```
-$ lindera
-すもももももももものうち
-すもも  スモモ
-も      モ
-もも    モモ
-も      モ
-もも    モモ
-の      ノ
-うち    ウチ
+$ lindera --mode=normal
+  関西国際空港限定トートバッグ
+  関西国際空港    カンサイコクサイクウコウ
+  限定    ゲンテイ
+  トートバッグ    UNK
+  EOS
+```
+
+Search mode:
+```
+$ lindera --mode=search
+関西国際空港限定トートバッグ
+関西    カンサイ
+国際    コクサイ
+空港    クウコウ
+限定    ゲンテイ
+トートバッグ    UNK
 EOS
 ```
 

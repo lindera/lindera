@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate clap;
 
-use clap::{App, AppSettings};
 use std::io;
+
+use clap::{App, AppSettings, Arg};
 
 use lindera::core::tokenizer::Tokenizer;
 
@@ -14,11 +15,34 @@ fn main() {
         .about(crate_description!())
         .help_message("Prints help information.")
         .version_message("Prints version information.")
-        .version_short("v");
+        .version_short("v")
+        .arg(
+            Arg::with_name("MODE")
+                .help("Tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
+                .short("m")
+                .long("mode")
+                .value_name("MODE")
+                .default_value("normal")
+                .takes_value(true),
+        );
 
-    let _matches = app.get_matches();
+    let matches = app.get_matches();
 
-    let mut tokenizer = Tokenizer::normal();
+    let mode = matches.value_of("MODE").unwrap();
+
+    let mut tokenizer;
+    match mode {
+        "normal" => {
+            tokenizer = Tokenizer::normal();
+        }
+        "search" => {
+            tokenizer = Tokenizer::for_search();
+        }
+        _ => {
+            panic!("unsupported mode: {}", mode);
+        }
+    }
+
     loop {
         let mut text = String::new();
         io::stdin()
