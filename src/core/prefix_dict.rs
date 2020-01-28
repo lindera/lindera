@@ -1,7 +1,9 @@
-use crate::core::word_entry::WordEntry;
 use std::ops::Deref;
+
 use tantivy_fst;
 use tantivy_fst::raw::Output;
+
+use crate::core::word_entry::WordEntry;
 
 const IPAD_DATA: &'static [u8] = include_bytes!("../../dict/dict.fst");
 const IPAD_VALS: &'static [u8] = include_bytes!("../../dict/dict.vals");
@@ -68,7 +70,7 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
 
 #[cfg(test)]
 mod tests {
-    use super::PrefixDict;
+    use crate::core::prefix_dict::PrefixDict;
 
     #[test]
     fn test_fst_prefix_2() {

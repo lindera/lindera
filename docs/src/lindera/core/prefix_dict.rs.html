@@ -101,11 +101,15 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::<span class="ident">WordEntry</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
+
 <span class="kw">use</span> <span class="ident">tantivy_fst</span>;
 <span class="kw">use</span> <span class="ident">tantivy_fst</span>::<span class="ident">raw</span>::<span class="ident">Output</span>;
+
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::<span class="ident">WordEntry</span>;
 
 <span class="kw">const</span> <span class="ident">IPAD_DATA</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>] <span class="op">=</span> <span class="macro">include_bytes</span><span class="macro">!</span>(<span class="string">&quot;../../dict/dict.fst&quot;</span>);
 <span class="kw">const</span> <span class="ident">IPAD_VALS</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>] <span class="op">=</span> <span class="macro">include_bytes</span><span class="macro">!</span>(<span class="string">&quot;../../dict/dict.vals&quot;</span>);
@@ -131,8 +135,8 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">Deref</span><span class="op">&lt;</span><span class="ident">Target</span> <span class="op">=</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">PrefixDict</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prefix</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">usize</span>, <span class="ident">WordEntry</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">Deref</span><span class="op">&lt;</span><span class="ident">Target</span><span class="op">=</span>[<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">PrefixDict</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prefix</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span>(<span class="ident">usize</span>, <span class="ident">WordEntry</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
         <span class="ident">s</span>.<span class="ident">as_bytes</span>()
             .<span class="ident">iter</span>()
             .<span class="ident">scan</span>(
@@ -172,7 +176,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">PrefixDict</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">prefix_dict</span>::<span class="ident">PrefixDict</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_fst_prefix_2</span>() {

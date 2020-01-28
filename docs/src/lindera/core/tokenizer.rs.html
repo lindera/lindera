@@ -468,23 +468,24 @@
 <span id="468">468</span>
 <span id="469">469</span>
 <span id="470">470</span>
-<span id="471">471</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::<span class="ident">CharacterDefinitions</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">connection</span>::<span class="ident">ConnectionCostMatrix</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">prefix_dict</span>::<span class="ident">PrefixDict</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">viterbi</span>::{<span class="ident">Edge</span>, <span class="ident">Lattice</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordDictionary</span>};
-<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">DecoderTrap</span>;
-<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">Encoding</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Read</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">num</span>::<span class="ident">ParseIntError</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">Path</span>;
+
+<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">DecoderTrap</span>;
+<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">Encoding</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::<span class="ident">CharacterDefinitions</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">connection</span>::<span class="ident">ConnectionCostMatrix</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">prefix_dict</span>::<span class="ident">PrefixDict</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">viterbi</span>::{<span class="ident">Edge</span>, <span class="ident">Lattice</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordDictionary</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WordId</span>(<span class="kw">pub</span> <span class="ident">u32</span>);
@@ -721,10 +722,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">Tokenizer</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">tokenizer</span>::<span class="ident">WordId</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">WordId</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">tokenizer</span>::{<span class="ident">Tokenizer</span>, <span class="ident">WordId</span>};
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_empty</span>() {

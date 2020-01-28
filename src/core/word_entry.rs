@@ -1,8 +1,10 @@
-use crate::core::tokenizer::WordId;
+use std::io;
+
 use byteorder::WriteBytesExt;
 use byteorder::{ByteOrder, LittleEndian};
 use serde::{Deserialize, Serialize};
-use std::io;
+
+use crate::core::tokenizer::WordId;
 
 const WORDS_DATA: &'static [u8] = include_bytes!("../../dict/dict.words");
 const WORDS_IDX_DATA: &'static [u8] = include_bytes!("../../dict/dict.wordsidx");
@@ -13,7 +15,15 @@ impl WordDictionary {
     pub fn load_word_id(word_id: WordId) -> WordDetail {
         if word_id.is_unknown() {
             return WordDetail {
-                reading: "UNK".to_string(),
+                pos_level1: "UNK".to_string(),
+                pos_level2: "*".to_string(),
+                pos_level3: "*".to_string(),
+                pos_level4: "*".to_string(),
+                conjugation_type: "*".to_string(),
+                conjugate_form: "*".to_string(),
+                base_form: "*".to_string(),
+                reading: "*".to_string(),
+                pronunciation: "*".to_string(),
             };
         }
         let idx = LittleEndian::read_u32(&WORDS_IDX_DATA[4 * word_id.0 as usize..][..4]);
@@ -25,7 +35,15 @@ impl WordDictionary {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WordDetail {
+    pub pos_level1: String,
+    pub pos_level2: String,
+    pub pos_level3: String,
+    pub pos_level4: String,
+    pub conjugation_type: String,
+    pub conjugate_form: String,
+    pub base_form: String,
     pub reading: String,
+    pub pronunciation: String,
 }
 
 #[derive(Default, Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -67,9 +85,8 @@ impl WordEntry {
 
 #[cfg(test)]
 mod tests {
-    use super::WordDictionary;
-    use crate::WordEntry;
-    use crate::{WordDetail, WordId};
+    use crate::core::tokenizer::WordId;
+    use crate::core::word_entry::{WordDictionary, WordEntry};
 
     #[test]
     fn test_word_entry() {

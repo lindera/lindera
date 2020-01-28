@@ -1,18 +1,20 @@
-use crate::core::character_definition::CharacterDefinitions;
-use crate::core::connection::ConnectionCostMatrix;
-use crate::core::prefix_dict::PrefixDict;
-use crate::core::unknown_dictionary::UnknownDictionary;
-use crate::core::viterbi::{Edge, Lattice};
-use crate::core::word_entry::{WordDetail, WordDictionary};
-use encoding::DecoderTrap;
-use encoding::Encoding;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::fs::File;
 use std::io;
 use std::io::Read;
 use std::num::ParseIntError;
 use std::path::Path;
+
+use encoding::DecoderTrap;
+use encoding::Encoding;
+use serde::{Deserialize, Serialize};
+
+use crate::core::character_definition::CharacterDefinitions;
+use crate::core::connection::ConnectionCostMatrix;
+use crate::core::prefix_dict::PrefixDict;
+use crate::core::unknown_dictionary::UnknownDictionary;
+use crate::core::viterbi::{Edge, Lattice};
+use crate::core::word_entry::{WordDetail, WordDictionary};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WordId(pub u32);
@@ -249,10 +251,7 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
-
-    use super::Tokenizer;
-    use crate::core::tokenizer::WordId;
-    use crate::WordId;
+    use crate::core::tokenizer::{Tokenizer, WordId};
 
     #[test]
     fn test_empty() {

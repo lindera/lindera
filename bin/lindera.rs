@@ -51,7 +51,19 @@ fn main() {
         text = text.trim().to_string();
 
         for token in tokenizer.tokenize(&text) {
-            println!("{}\t{}", token.text, token.detail.reading);
+            println!(
+                "{}\t{},{},{},{},{},{},{},{},{}",
+                token.text,
+                token.detail.pos_level1,
+                token.detail.pos_level2,
+                token.detail.pos_level3,
+                token.detail.pos_level4,
+                token.detail.conjugation_type,
+                token.detail.conjugate_form,
+                token.detail.base_form,
+                token.detail.reading,
+                token.detail.pronunciation
+            );
         }
         println!("EOS")
     }

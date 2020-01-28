@@ -512,18 +512,18 @@
 <span id="512">512</span>
 <span id="513">513</span>
 <span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">bincode</span>;
-<span class="kw">use</span> <span class="ident">byteorder</span>::<span class="ident">ByteOrder</span>;
-<span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">LittleEndian</span>, <span class="ident">WriteBytesExt</span>};
-<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">all</span>::<span class="ident">UTF_16LE</span>;
-<span class="kw">use</span> <span class="ident">encoding</span>::{<span class="ident">DecoderTrap</span>, <span class="ident">Encoding</span>};
-<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::{
-    <span class="ident">CategoryData</span>, <span class="ident">CategoryId</span>, <span class="ident">CharacterDefinitions</span>, <span class="ident">LookupTable</span>,
-};
-<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">tokenizer</span>::<span class="ident">WordId</span>;
-<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
-<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordEntry</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>, <span class="ident">HashMap</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
@@ -532,7 +532,20 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">Path</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">str</span>::<span class="ident">FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">u32</span>;
+
+<span class="kw">use</span> <span class="ident">bincode</span>;
+<span class="kw">use</span> <span class="ident">byteorder</span>::<span class="ident">ByteOrder</span>;
+<span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">LittleEndian</span>, <span class="ident">WriteBytesExt</span>};
+<span class="kw">use</span> <span class="ident">encoding</span>::<span class="ident">all</span>::<span class="ident">UTF_16LE</span>;
+<span class="kw">use</span> <span class="ident">encoding</span>::{<span class="ident">DecoderTrap</span>, <span class="ident">Encoding</span>};
 <span class="kw">use</span> <span class="ident">tantivy_fst</span>::<span class="ident">MapBuilder</span>;
+
+<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::{
+    <span class="ident">CategoryData</span>, <span class="ident">CategoryId</span>, <span class="ident">CharacterDefinitions</span>, <span class="ident">LookupTable</span>,
+};
+<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">tokenizer</span>::<span class="ident">WordId</span>;
+<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
+<span class="kw">use</span> <span class="ident">lindera</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordEntry</span>};
 
 <span class="kw">fn</span> <span class="ident">read_mecab_file</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ParsingError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">new</span>(<span class="string">&quot;mecab-ipadic&quot;</span>).<span class="ident">join</span>(<span class="ident">Path</span>::<span class="ident">new</span>(<span class="ident">filename</span>));
@@ -598,6 +611,7 @@
             <span class="ident">left_id</span>: <span class="ident">u32</span>::<span class="ident">from_str</span>(<span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">1</span>]).<span class="ident">expect</span>(<span class="string">&quot;failed to parse left_id&quot;</span>),
             <span class="ident">right_id</span>: <span class="ident">u32</span>::<span class="ident">from_str</span>(<span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">2</span>]).<span class="ident">expect</span>(<span class="string">&quot;failed to parse right_id&quot;</span>),
             <span class="ident">word_cost</span>: <span class="ident">i32</span>::<span class="ident">from_str</span>(<span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">3</span>]).<span class="ident">expect</span>(<span class="string">&quot;failed to parse wordost&quot;</span>),
+
             <span class="ident">pos_level1</span>: <span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">4</span>],
             <span class="ident">pos_level2</span>: <span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">5</span>],
             <span class="ident">pos_level3</span>: <span class="kw-2">&amp;</span><span class="ident">fields</span>[<span class="number">6</span>],
@@ -701,7 +715,15 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">words_buffer</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="ident">rows</span>.<span class="ident">iter</span>() {
         <span class="kw">let</span> <span class="ident">word</span> <span class="op">=</span> <span class="ident">WordDetail</span> {
+            <span class="ident">pos_level1</span>: <span class="ident">row</span>.<span class="ident">pos_level1</span>.<span class="ident">to_string</span>(),
+            <span class="ident">pos_level2</span>: <span class="ident">row</span>.<span class="ident">pos_level2</span>.<span class="ident">to_string</span>(),
+            <span class="ident">pos_level3</span>: <span class="ident">row</span>.<span class="ident">pos_level3</span>.<span class="ident">to_string</span>(),
+            <span class="ident">pos_level4</span>: <span class="ident">row</span>.<span class="ident">pos_level4</span>.<span class="ident">to_string</span>(),
+            <span class="ident">conjugation_type</span>: <span class="ident">row</span>.<span class="ident">conjugation_type</span>.<span class="ident">to_string</span>(),
+            <span class="ident">conjugate_form</span>: <span class="ident">row</span>.<span class="ident">conjugate_form</span>.<span class="ident">to_string</span>(),
+            <span class="ident">base_form</span>: <span class="ident">row</span>.<span class="ident">base_form</span>.<span class="ident">to_string</span>(),
             <span class="ident">reading</span>: <span class="ident">row</span>.<span class="ident">reading</span>.<span class="ident">to_string</span>(),
+            <span class="ident">pronunciation</span>: <span class="ident">row</span>.<span class="ident">pronunciation</span>.<span class="ident">to_string</span>(),
         };
         <span class="kw">let</span> <span class="ident">offset</span> <span class="op">=</span> <span class="ident">words_buffer</span>.<span class="ident">len</span>();
         <span class="ident">wtr_words_idx</span>.<span class="ident">write_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>(<span class="ident">offset</span> <span class="kw">as</span> <span class="ident">u32</span>)<span class="question-mark">?</span>;
