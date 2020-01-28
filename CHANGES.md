@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Support tokenization mode (normal and search) with Lindera CLI #22 @mosuka
 - Fix build_fst #18 @mosuka
 - Refactoring #16 @mosuka
 - Rename project #14 @mosuka
