@@ -2,7 +2,44 @@ use std::io;
 
 use clap::ArgMatches;
 
-use crate::core::tokenizer::Tokenizer;
+use crate::core::tokenizer::{Token, Tokenizer};
+
+fn format_mecab(tokens: Vec<Token>) -> String {
+    let mut lines = Vec::new();
+    for token in tokens {
+        let line = format!(
+            "{}\t{},{},{},{},{},{},{},{},{}",
+            token.text,
+            token.detail.pos_level1,
+            token.detail.pos_level2,
+            token.detail.pos_level3,
+            token.detail.pos_level4,
+            token.detail.conjugation_type,
+            token.detail.conjugate_form,
+            token.detail.base_form,
+            token.detail.reading,
+            token.detail.pronunciation
+        );
+        lines.push(line);
+    }
+    lines.push(String::from("EOS"));
+
+    lines.join("\n")
+}
+
+fn format_wakati(tokens: Vec<Token>) -> String {
+    let mut lines = Vec::new();
+    for token in tokens {
+        let line = token.text.to_string();
+        lines.push(line);
+    }
+
+    lines.join(" ")
+}
+
+fn format_json(tokens: Vec<Token>) -> String {
+    serde_json::to_string_pretty(&tokens).unwrap()
+}
 
 pub fn run_tokenize_cli(matches: &ArgMatches) -> Result<(), String> {
     // create tokenizer
@@ -19,6 +56,9 @@ pub fn run_tokenize_cli(matches: &ArgMatches) -> Result<(), String> {
             return Err(format!("unsupported mode: {}", mode));
         }
     }
+
+    // output format
+    let output_format = matches.value_of("OUTPUT").unwrap();
 
     loop {
         // read the text to be tokenized from stdin
@@ -37,23 +77,24 @@ pub fn run_tokenize_cli(matches: &ArgMatches) -> Result<(), String> {
             }
         }
 
+        // tokenize
+        let tokens = tokenizer.tokenize(&text);
+
         // output result
-        for token in tokenizer.tokenize(&text) {
-            println!(
-                "{}\t{},{},{},{},{},{},{},{},{}",
-                token.text,
-                token.detail.pos_level1,
-                token.detail.pos_level2,
-                token.detail.pos_level3,
-                token.detail.pos_level4,
-                token.detail.conjugation_type,
-                token.detail.conjugate_form,
-                token.detail.base_form,
-                token.detail.reading,
-                token.detail.pronunciation
-            );
+        match output_format {
+            "mecab" => {
+                println!("{}", format_mecab(tokens));
+            }
+            "wakati" => {
+                println!("{}", format_wakati(tokens));
+            }
+            "json" => {
+                println!("{}", format_json(tokens));
+            }
+            _ => {
+                return Err(format!("unsupported output format: {}", mode));
+            }
         }
-        println!("EOS")
     }
 
     Ok(())

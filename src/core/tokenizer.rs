@@ -124,6 +124,7 @@ pub fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
         .map_err(|_| ParsingError::Encoding)
 }
 
+#[derive(Serialize)]
 pub struct Token<'a> {
     pub text: &'a str,
     pub detail: WordDetail,

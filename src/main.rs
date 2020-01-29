@@ -30,11 +30,20 @@ fn main() {
                 .version_short("v")
                 .arg(
                     Arg::with_name("MODE")
-                        .help("Tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
+                        .help("The tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
                         .short("m")
                         .long("mode")
                         .value_name("MODE")
                         .default_value("normal")
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("OUTPUT")
+                        .help("The output format. `mecab`, `wakati` or `json` can be specified. If not specified, use the default output format.")
+                        .short("o")
+                        .long("output")
+                        .value_name("OUTPUT")
+                        .default_value("mecab")
                         .takes_value(true),
                 )
         )
