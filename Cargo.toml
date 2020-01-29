@@ -17,6 +17,7 @@ byteorder = "1.2"
 clap = "2.33.0"
 encoding = "0.2"
 serde = {version="1.0", features = ["derive"] }
+serde_json = "1.0.44"
 tantivy-fst = "0.1"
 
 [dev-dependencies]
