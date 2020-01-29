@@ -27,16 +27,8 @@ debug = true
 lto = true
 
 [[bin]]
-name = "build-fst"
-path = "bin/build_fst.rs"
-
-[[bin]]
 name = "lindera"
-path = "bin/lindera.rs"
-
-[[bin]]
-name = "flamegraph"
-path = "bin/flamegraph.rs"
+path = "src/main.rs"
 
 [[bench]]
 name = "bench"
