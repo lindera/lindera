@@ -8,11 +8,11 @@ use std::str::FromStr;
 use std::u32;
 
 use bincode;
-use byteorder::{LittleEndian, WriteBytesExt};
 use byteorder::ByteOrder;
+use byteorder::{LittleEndian, WriteBytesExt};
 use clap::ArgMatches;
-use encoding::{DecoderTrap, Encoding};
 use encoding::all::UTF_16LE;
+use encoding::{DecoderTrap, Encoding};
 use tantivy_fst::MapBuilder;
 
 use crate::core::character_definition::{
