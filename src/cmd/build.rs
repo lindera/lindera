@@ -8,18 +8,19 @@ use std::str::FromStr;
 use std::u32;
 
 use bincode;
-use byteorder::ByteOrder;
 use byteorder::{LittleEndian, WriteBytesExt};
-use encoding::all::UTF_16LE;
+use byteorder::ByteOrder;
+use clap::ArgMatches;
 use encoding::{DecoderTrap, Encoding};
+use encoding::all::UTF_16LE;
 use tantivy_fst::MapBuilder;
 
-use lindera::core::character_definition::{
+use crate::core::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
-use lindera::core::tokenizer::WordId;
-use lindera::core::unknown_dictionary::UnknownDictionary;
-use lindera::core::word_entry::{WordDetail, WordEntry};
+use crate::core::tokenizer::WordId;
+use crate::core::unknown_dictionary::UnknownDictionary;
+use crate::core::word_entry::{WordDetail, WordEntry};
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
     let path = Path::new("mecab-ipadic").join(Path::new(filename));
@@ -516,10 +517,11 @@ fn build_unk(chardef: &CharacterDefinitions) -> Result<(), ParsingError> {
     Ok(())
 }
 
-fn main() -> Result<(), ParsingError> {
-    let chardef = build_chardef()?;
-    build_unk(&chardef)?;
-    build_dict()?;
-    build_cost_matrix()?;
+pub fn run_build_cli(_matches: &ArgMatches) -> Result<(), String> {
+    let chardef = build_chardef().unwrap();
+    build_unk(&chardef).unwrap();
+    build_dict().unwrap();
+    build_cost_matrix().unwrap();
+
     Ok(())
 }
