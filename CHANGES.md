@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Update docs #30 @mosuka
 - Split the module #29 @mosuka
 - Enrich word detail #28 @mosuka
 - Support output in JSON format #26 @mosuka
