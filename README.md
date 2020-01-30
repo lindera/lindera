@@ -73,6 +73,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "お待ち",
     "detail": {
+      "left_id": 1283,
+      "right_id": 1283,
+      "word_cost": 6376,
       "pos_level1": "名詞",
       "pos_level2": "サ変接続",
       "pos_level3": "*",
@@ -87,6 +90,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "し",
     "detail": {
+      "left_id": 610,
+      "right_id": 610,
+      "word_cost": 8718,
       "pos_level1": "動詞",
       "pos_level2": "自立",
       "pos_level3": "*",
@@ -101,6 +107,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "て",
     "detail": {
+      "left_id": 307,
+      "right_id": 307,
+      "word_cost": 5170,
       "pos_level1": "助詞",
       "pos_level2": "接続助詞",
       "pos_level3": "*",
@@ -115,6 +124,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "おり",
     "detail": {
+      "left_id": 1197,
+      "right_id": 1197,
+      "word_cost": 8773,
       "pos_level1": "動詞",
       "pos_level2": "非自立",
       "pos_level3": "*",
@@ -129,6 +141,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "ます",
     "detail": {
+      "left_id": 491,
+      "right_id": 491,
+      "word_cost": 5537,
       "pos_level1": "助動詞",
       "pos_level2": "*",
       "pos_level3": "*",
@@ -143,6 +158,9 @@ $ echo "お待ちしております。" | ./bin/lindera tokenize --output=json
   {
     "text": "。",
     "detail": {
+      "left_id": 8,
+      "right_id": 8,
+      "word_cost": 215,
       "pos_level1": "記号",
       "pos_level2": "句点",
       "pos_level3": "*",

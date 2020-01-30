@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["DictionaryEntry",""],["UnknownDictionary",""]]});
+initSidebarItems({"struct":[["UnknownDictionary",""]]});

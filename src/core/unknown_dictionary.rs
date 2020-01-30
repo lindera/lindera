@@ -12,14 +12,6 @@ pub struct UnknownDictionary {
     pub costs: Vec<WordEntry>,
 }
 
-#[derive(Debug)]
-pub struct DictionaryEntry {
-    surface: String,
-    left_id: u32,
-    right_id: u32,
-    word_cost: i32,
-}
-
 impl UnknownDictionary {
     pub fn word_entry(&self, word_id: u32) -> WordEntry {
         self.costs[word_id as usize]

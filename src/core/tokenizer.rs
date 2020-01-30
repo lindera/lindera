@@ -1,12 +1,7 @@
 use std::fmt::Debug;
-use std::fs::File;
 use std::io;
-use std::io::Read;
 use std::num::ParseIntError;
-use std::path::Path;
 
-use encoding::DecoderTrap;
-use encoding::Encoding;
 use serde::{Deserialize, Serialize};
 
 use crate::core::character_definition::CharacterDefinitions;
@@ -112,16 +107,6 @@ impl Mode {
             Mode::Search(penalty) => penalty.penalty(edge),
         }
     }
-}
-
-pub fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
-    let path = Path::new("mecab-ipadic").join(Path::new(filename));
-    let mut input_read = File::open(path)?;
-    let mut buffer = Vec::new();
-    input_read.read_to_end(&mut buffer)?;
-    encoding::all::EUC_JP
-        .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|_| ParsingError::Encoding)
 }
 
 #[derive(Serialize)]
@@ -272,7 +257,7 @@ mod tests {
     fn test_boku_ha() {
         let mut tokenizer = Tokenizer::for_search();
         let tokens = tokenizer.tokenize_offsets("僕は");
-        assert_eq!(tokens, &[(0, WordId(132629)), (3, WordId(57065))]);
+        assert_eq!(tokens, &[(0, WordId(132630)), (3, WordId(57063))]);
     }
     /*
     #[test]
