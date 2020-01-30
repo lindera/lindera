@@ -15,12 +15,11 @@ use encoding::all::UTF_16LE;
 use encoding::{DecoderTrap, Encoding};
 use tantivy_fst::MapBuilder;
 
-use crate::core::character_definition::{
+use crate::dict::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
-use crate::core::tokenizer::WordId;
-use crate::core::unknown_dictionary::UnknownDictionary;
-use crate::core::word_entry::{WordDetail, WordEntry};
+use crate::dict::unknown_dictionary::UnknownDictionary;
+use crate::dict::word_entry::{WordDetail, WordEntry, WordId};
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
     let path = Path::new("mecab-ipadic").join(Path::new(filename));

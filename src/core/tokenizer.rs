@@ -2,29 +2,14 @@ use std::fmt::Debug;
 use std::io;
 use std::num::ParseIntError;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::core::character_definition::CharacterDefinitions;
-use crate::core::connection::ConnectionCostMatrix;
-use crate::core::prefix_dict::PrefixDict;
-use crate::core::unknown_dictionary::UnknownDictionary;
-use crate::core::viterbi::{Edge, Lattice};
-use crate::core::word_entry::{WordDetail, WordDictionary};
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WordId(pub u32);
-
-impl WordId {
-    pub fn is_unknown(&self) -> bool {
-        self.0 == std::u32::MAX
-    }
-}
-
-impl Default for WordId {
-    fn default() -> Self {
-        WordId(std::u32::MAX)
-    }
-}
+use crate::dict::character_definition::CharacterDefinitions;
+use crate::dict::connection::ConnectionCostMatrix;
+use crate::dict::prefix_dict::PrefixDict;
+use crate::dict::unknown_dictionary::UnknownDictionary;
+use crate::dict::viterbi::{Lattice, Mode, Penalty};
+use crate::dict::word_entry::{WordDetail, WordDictionary, WordId};
 
 #[derive(Debug)]
 pub enum ParsingError {
@@ -48,64 +33,6 @@ impl From<io::Error> for ParsingError {
 impl From<ParseIntError> for ParsingError {
     fn from(parse_err: ParseIntError) -> Self {
         ParsingError::from_error(parse_err)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Penalty {
-    kanji_penalty_length_threshold: usize,
-    kanji_penalty_length_penalty: i32,
-    other_penalty_length_threshold: usize,
-    other_penalty_length_penalty: i32,
-}
-
-impl Default for Penalty {
-    fn default() -> Self {
-        Penalty {
-            kanji_penalty_length_threshold: 2,
-            kanji_penalty_length_penalty: 3000,
-            other_penalty_length_threshold: 7,
-            other_penalty_length_penalty: 1700,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Mode {
-    Normal,
-    Search(Penalty),
-}
-
-impl Penalty {
-    pub fn penalty(&self, edge: &Edge) -> i32 {
-        let num_chars = edge.num_chars();
-        if num_chars <= self.kanji_penalty_length_threshold {
-            return 0;
-        }
-        if edge.kanji_only {
-            ((num_chars - self.kanji_penalty_length_threshold) as i32)
-                * self.kanji_penalty_length_penalty
-        } else if num_chars > self.other_penalty_length_threshold {
-            ((num_chars - self.other_penalty_length_threshold) as i32)
-                * self.other_penalty_length_penalty
-        } else {
-            0
-        }
-    }
-}
-
-impl Mode {
-    pub fn is_search(&self) -> bool {
-        match self {
-            Mode::Normal => false,
-            Mode::Search(_penalty) => true,
-        }
-    }
-    pub fn penalty_cost(&self, edge: &Edge) -> i32 {
-        match self {
-            Mode::Normal => 0i32,
-            Mode::Search(penalty) => penalty.penalty(edge),
-        }
     }
 }
 
@@ -237,7 +164,8 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::tokenizer::{Tokenizer, WordId};
+    use crate::core::tokenizer::Tokenizer;
+    use crate::dict::word_entry::WordId;
 
     #[test]
     fn test_empty() {
