@@ -1,13 +1,26 @@
 use std::io;
 
-use byteorder::WriteBytesExt;
 use byteorder::{ByteOrder, LittleEndian};
+use byteorder::WriteBytesExt;
 use serde::{Deserialize, Serialize};
-
-use crate::core::tokenizer::WordId;
 
 const WORDS_DATA: &'static [u8] = include_bytes!("../../dict/dict.words");
 const WORDS_IDX_DATA: &'static [u8] = include_bytes!("../../dict/dict.wordsidx");
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WordId(pub u32);
+
+impl WordId {
+    pub fn is_unknown(&self) -> bool {
+        self.0 == std::u32::MAX
+    }
+}
+
+impl Default for WordId {
+    fn default() -> Self {
+        WordId(std::u32::MAX)
+    }
+}
 
 pub struct WordDictionary;
 
@@ -91,8 +104,7 @@ impl WordEntry {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::tokenizer::WordId;
-    use crate::core::word_entry::{WordDictionary, WordEntry};
+    use crate::dict::word_entry::{WordDictionary, WordEntry, WordId};
 
     #[test]
     fn test_word_entry() {

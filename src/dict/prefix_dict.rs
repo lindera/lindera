@@ -3,7 +3,7 @@ use std::ops::Deref;
 use tantivy_fst;
 use tantivy_fst::raw::Output;
 
-use crate::core::word_entry::WordEntry;
+use crate::dict::word_entry::WordEntry;
 
 const IPAD_DATA: &'static [u8] = include_bytes!("../../dict/dict.fst");
 const IPAD_VALS: &'static [u8] = include_bytes!("../../dict/dict.vals");
@@ -29,8 +29,8 @@ impl PrefixDict<&'static [u8]> {
     }
 }
 
-impl<D: Deref<Target = [u8]>> PrefixDict<D> {
-    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
+impl<D: Deref<Target=[u8]>> PrefixDict<D> {
+    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item=(usize, WordEntry)> + 'a {
         s.as_bytes()
             .iter()
             .scan(
@@ -70,7 +70,7 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::prefix_dict::PrefixDict;
+    use crate::dict::prefix_dict::PrefixDict;
 
     #[test]
     fn test_fst_prefix_2() {
