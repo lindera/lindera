@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Mode",""],["ParsingError",""]],"struct":[["Penalty",""],["Token",""],["Tokenizer",""],["WordId",""]]});
+initSidebarItems({"enum":[["ParsingError",""]],"struct":[["Token",""],["Tokenizer",""]]});

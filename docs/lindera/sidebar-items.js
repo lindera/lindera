@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["cmd",""],["core",""]]});
+initSidebarItems({"mod":[["cmd",""],["core",""],["dict",""]]});

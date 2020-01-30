@@ -527,7 +527,6 @@
 <span id="527">527</span>
 <span id="528">528</span>
 <span id="529">529</span>
-<span id="530">530</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>, <span class="ident">HashMap</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
@@ -546,12 +545,11 @@
 <span class="kw">use</span> <span class="ident">encoding</span>::{<span class="ident">DecoderTrap</span>, <span class="ident">Encoding</span>};
 <span class="kw">use</span> <span class="ident">tantivy_fst</span>::<span class="ident">MapBuilder</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">character_definition</span>::{
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dict</span>::<span class="ident">character_definition</span>::{
     <span class="ident">CategoryData</span>, <span class="ident">CategoryId</span>, <span class="ident">CharacterDefinitions</span>, <span class="ident">LookupTable</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">tokenizer</span>::<span class="ident">WordId</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">core</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordEntry</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dict</span>::<span class="ident">unknown_dictionary</span>::<span class="ident">UnknownDictionary</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">dict</span>::<span class="ident">word_entry</span>::{<span class="ident">WordDetail</span>, <span class="ident">WordEntry</span>, <span class="ident">WordId</span>};
 
 <span class="kw">fn</span> <span class="ident">read_mecab_file</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ParsingError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">new</span>(<span class="string">&quot;mecab-ipadic&quot;</span>).<span class="ident">join</span>(<span class="ident">Path</span>::<span class="ident">new</span>(<span class="ident">filename</span>));
