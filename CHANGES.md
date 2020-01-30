@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 - Enrich word detail #28 @mosuka
+- Support output in JSON format #26 @mosuka
 - Make single command #25 @mosuka
 - Enrich word details #23 @mosuka
 - Support tokenization mode (normal and search) with Lindera CLI #22 @mosuka
