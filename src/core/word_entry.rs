@@ -15,6 +15,9 @@ impl WordDictionary {
     pub fn load_word_id(word_id: WordId) -> WordDetail {
         if word_id.is_unknown() {
             return WordDetail {
+                left_id: 0,
+                right_id: 0,
+                word_cost: 0,
                 pos_level1: "UNK".to_string(),
                 pos_level2: "*".to_string(),
                 pos_level3: "*".to_string(),
@@ -28,13 +31,16 @@ impl WordDictionary {
         }
         let idx = LittleEndian::read_u32(&WORDS_IDX_DATA[4 * word_id.0 as usize..][..4]);
         let data = &WORDS_DATA[idx as usize..];
-        let word_entry = bincode::deserialize_from(data).unwrap();
-        word_entry
+        let word_detail = bincode::deserialize_from(data).unwrap();
+        word_detail
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WordDetail {
+    pub left_id: u32,
+    pub right_id: u32,
+    pub word_cost: i32,
     pub pos_level1: String,
     pub pos_level2: String,
     pub pos_level3: String,

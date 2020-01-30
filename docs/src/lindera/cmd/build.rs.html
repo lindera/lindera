@@ -525,6 +525,9 @@
 <span id="525">525</span>
 <span id="526">526</span>
 <span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">BTreeMap</span>, <span class="ident">BTreeSet</span>, <span class="ident">HashMap</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span>;
@@ -632,31 +635,31 @@
 
 <span class="kw">const</span> <span class="ident">FILENAMES</span>: [<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>; <span class="number">26</span>] <span class="op">=</span> [
     <span class="string">&quot;Adj.csv&quot;</span>,
-    <span class="string">&quot;Noun.demonst.csv&quot;</span>,
-    <span class="string">&quot;Noun.others.csv&quot;</span>,
-    <span class="string">&quot;Postp-col.csv&quot;</span>,
-    <span class="string">&quot;Filler.csv&quot;</span>,
-    <span class="string">&quot;Verb.csv&quot;</span>,
     <span class="string">&quot;Adnominal.csv&quot;</span>,
-    <span class="string">&quot;Interjection.csv&quot;</span>,
-    <span class="string">&quot;Noun.nai.csv&quot;</span>,
-    <span class="string">&quot;Noun.place.csv&quot;</span>,
-    <span class="string">&quot;Postp.csv&quot;</span>,
     <span class="string">&quot;Adverb.csv&quot;</span>,
-    <span class="string">&quot;Noun.adjv.csv&quot;</span>,
-    <span class="string">&quot;Noun.name.csv&quot;</span>,
-    <span class="string">&quot;Noun.proper.csv&quot;</span>,
-    <span class="string">&quot;Prefix.csv&quot;</span>,
     <span class="string">&quot;Auxil.csv&quot;</span>,
-    <span class="string">&quot;Noun.adverbal.csv&quot;</span>,
-    <span class="string">&quot;Noun.number.csv&quot;</span>,
-    <span class="string">&quot;Noun.verbal.csv&quot;</span>,
-    <span class="string">&quot;Suffix.csv&quot;</span>,
     <span class="string">&quot;Conjunction.csv&quot;</span>,
+    <span class="string">&quot;Filler.csv&quot;</span>,
+    <span class="string">&quot;Interjection.csv&quot;</span>,
+    <span class="string">&quot;Noun.adjv.csv&quot;</span>,
+    <span class="string">&quot;Noun.adverbal.csv&quot;</span>,
     <span class="string">&quot;Noun.csv&quot;</span>,
+    <span class="string">&quot;Noun.demonst.csv&quot;</span>,
+    <span class="string">&quot;Noun.nai.csv&quot;</span>,
+    <span class="string">&quot;Noun.name.csv&quot;</span>,
+    <span class="string">&quot;Noun.number.csv&quot;</span>,
     <span class="string">&quot;Noun.org.csv&quot;</span>,
+    <span class="string">&quot;Noun.others.csv&quot;</span>,
+    <span class="string">&quot;Noun.place.csv&quot;</span>,
+    <span class="string">&quot;Noun.proper.csv&quot;</span>,
+    <span class="string">&quot;Noun.verbal.csv&quot;</span>,
     <span class="string">&quot;Others.csv&quot;</span>,
+    <span class="string">&quot;Postp-col.csv&quot;</span>,
+    <span class="string">&quot;Postp.csv&quot;</span>,
+    <span class="string">&quot;Prefix.csv&quot;</span>,
+    <span class="string">&quot;Suffix.csv&quot;</span>,
     <span class="string">&quot;Symbol.csv&quot;</span>,
+    <span class="string">&quot;Verb.csv&quot;</span>,
 ];
 
 <span class="kw">fn</span> <span class="ident">build_dict</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ParsingError</span><span class="op">&gt;</span> {
@@ -718,6 +721,9 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">words_buffer</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="ident">rows</span>.<span class="ident">iter</span>() {
         <span class="kw">let</span> <span class="ident">word</span> <span class="op">=</span> <span class="ident">WordDetail</span> {
+            <span class="ident">left_id</span>: <span class="ident">row</span>.<span class="ident">left_id</span>,
+            <span class="ident">right_id</span>: <span class="ident">row</span>.<span class="ident">right_id</span>,
+            <span class="ident">word_cost</span>: <span class="ident">row</span>.<span class="ident">word_cost</span>,
             <span class="ident">pos_level1</span>: <span class="ident">row</span>.<span class="ident">pos_level1</span>.<span class="ident">to_string</span>(),
             <span class="ident">pos_level2</span>: <span class="ident">row</span>.<span class="ident">pos_level2</span>.<span class="ident">to_string</span>(),
             <span class="ident">pos_level3</span>: <span class="ident">row</span>.<span class="ident">pos_level3</span>.<span class="ident">to_string</span>(),

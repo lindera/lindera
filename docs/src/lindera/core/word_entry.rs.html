@@ -110,6 +110,12 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
 
@@ -128,6 +134,9 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_word_id</span>(<span class="ident">word_id</span>: <span class="ident">WordId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WordDetail</span> {
         <span class="kw">if</span> <span class="ident">word_id</span>.<span class="ident">is_unknown</span>() {
             <span class="kw">return</span> <span class="ident">WordDetail</span> {
+                <span class="ident">left_id</span>: <span class="number">0</span>,
+                <span class="ident">right_id</span>: <span class="number">0</span>,
+                <span class="ident">word_cost</span>: <span class="number">0</span>,
                 <span class="ident">pos_level1</span>: <span class="string">&quot;UNK&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">pos_level2</span>: <span class="string">&quot;*&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">pos_level3</span>: <span class="string">&quot;*&quot;</span>.<span class="ident">to_string</span>(),
@@ -141,13 +150,16 @@
         }
         <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">LittleEndian</span>::<span class="ident">read_u32</span>(<span class="kw-2">&amp;</span><span class="ident">WORDS_IDX_DATA</span>[<span class="number">4</span> <span class="op">*</span> <span class="ident">word_id</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>..][..<span class="number">4</span>]);
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">WORDS_DATA</span>[<span class="ident">idx</span> <span class="kw">as</span> <span class="ident">usize</span>..];
-        <span class="kw">let</span> <span class="ident">word_entry</span> <span class="op">=</span> <span class="ident">bincode</span>::<span class="ident">deserialize_from</span>(<span class="ident">data</span>).<span class="ident">unwrap</span>();
-        <span class="ident">word_entry</span>
+        <span class="kw">let</span> <span class="ident">word_detail</span> <span class="op">=</span> <span class="ident">bincode</span>::<span class="ident">deserialize_from</span>(<span class="ident">data</span>).<span class="ident">unwrap</span>();
+        <span class="ident">word_detail</span>
     }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WordDetail</span> {
+    <span class="kw">pub</span> <span class="ident">left_id</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">right_id</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">word_cost</span>: <span class="ident">i32</span>,
     <span class="kw">pub</span> <span class="ident">pos_level1</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">pos_level2</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">pos_level3</span>: <span class="ident">String</span>,
