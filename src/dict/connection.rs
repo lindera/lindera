@@ -3,8 +3,8 @@ use byteorder::{ByteOrder, LittleEndian};
 static CONNECTION_DATA: &'static [u8] = include_bytes!("../../dict/matrix.mtx");
 
 pub struct ConnectionCostMatrix {
-    costs_data: &'static [u8],
-    backward_size: u32,
+    pub costs_data: &'static [u8],
+    pub backward_size: u32,
 }
 
 impl ConnectionCostMatrix {
