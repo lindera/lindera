@@ -1,19 +1,22 @@
-use fst;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read};
-use std::str::FromStr;
-use std::u32;
+use tantivy_fst;
 
 const DICTIONARY_DATA: &'static [u8] = include_bytes!("../../dict/dict.fst");
 
-pub struct Dict {
-    pub fst: fst::Map,
+pub struct SystemDict<Data = &'static [u8]> {
+    pub fst: tantivy_fst::raw::Fst<Data>
 }
 
-impl Dict {
-    pub fn load_default() -> Dict {
-        Dict {
-            fst: fst::raw::from_static_slice(DICTIONARY_DATA),
-        }
+impl Default for SystemDict<&'static [u8]> {
+    fn default() -> SystemDict<&'static [u8]> {
+        SystemDict::from_static_slice(DICTIONARY_DATA).unwrap()
+    }
+}
+
+impl SystemDict<&'static [u8]> {
+    pub fn from_static_slice(
+        fst_data: &'static [u8],
+    ) -> tantivy_fst::Result<SystemDict> {
+        let fst = tantivy_fst::raw::Fst::new(fst_data)?;
+        Ok(SystemDict { fst })
     }
 }
