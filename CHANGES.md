@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Refactoring #32 @mosuka
 - Fix typo #31 @mosuka
 - Update docs #30 @mosuka
 - Split the module #29 @mosuka
