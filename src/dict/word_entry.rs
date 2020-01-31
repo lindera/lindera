@@ -1,7 +1,7 @@
 use std::io;
 
-use byteorder::{ByteOrder, LittleEndian};
 use byteorder::WriteBytesExt;
+use byteorder::{ByteOrder, LittleEndian};
 use serde::{Deserialize, Serialize};
 
 const WORDS_DATA: &'static [u8] = include_bytes!("../../dict/dict.words");

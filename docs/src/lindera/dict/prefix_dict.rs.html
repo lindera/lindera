@@ -116,7 +116,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrefixDict</span><span class="op">&lt;</span><span class="ident">Data</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">fst</span>: <span class="ident">tantivy_fst</span>::<span class="ident">raw</span>::<span class="ident">Fst</span><span class="op">&lt;</span><span class="ident">Data</span><span class="op">&gt;</span>,
-    <span class="ident">vals_data</span>: <span class="ident">Data</span>,
+    <span class="kw">pub</span> <span class="ident">vals_data</span>: <span class="ident">Data</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">PrefixDict</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>]<span class="op">&gt;</span> {

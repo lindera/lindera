@@ -27,8 +27,8 @@
 <span class="kw">static</span> <span class="ident">CONNECTION_DATA</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>] <span class="op">=</span> <span class="macro">include_bytes</span><span class="macro">!</span>(<span class="string">&quot;../../dict/matrix.mtx&quot;</span>);
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConnectionCostMatrix</span> {
-    <span class="ident">costs_data</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>],
-    <span class="ident">backward_size</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">costs_data</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> [<span class="ident">u8</span>],
+    <span class="kw">pub</span> <span class="ident">backward_size</span>: <span class="ident">u32</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ConnectionCostMatrix</span> {

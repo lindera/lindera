@@ -10,7 +10,7 @@ const IPADIC_VALS: &'static [u8] = include_bytes!("../../dict/dict.vals");
 
 pub struct PrefixDict<Data = &'static [u8]> {
     pub fst: tantivy_fst::raw::Fst<Data>,
-    vals_data: Data,
+    pub vals_data: Data,
 }
 
 impl Default for PrefixDict<&'static [u8]> {
@@ -29,8 +29,8 @@ impl PrefixDict<&'static [u8]> {
     }
 }
 
-impl<D: Deref<Target=[u8]>> PrefixDict<D> {
-    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item=(usize, WordEntry)> + 'a {
+impl<D: Deref<Target = [u8]>> PrefixDict<D> {
+    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
         s.as_bytes()
             .iter()
             .scan(
