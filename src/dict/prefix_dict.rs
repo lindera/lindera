@@ -5,8 +5,8 @@ use tantivy_fst::raw::Output;
 
 use crate::dict::word_entry::WordEntry;
 
-const IPAD_DATA: &'static [u8] = include_bytes!("../../dict/dict.fst");
-const IPAD_VALS: &'static [u8] = include_bytes!("../../dict/dict.vals");
+const IPADIC_DATA: &'static [u8] = include_bytes!("../../dict/dict.fst");
+const IPADIC_VALS: &'static [u8] = include_bytes!("../../dict/dict.vals");
 
 pub struct PrefixDict<Data = &'static [u8]> {
     pub fst: tantivy_fst::raw::Fst<Data>,
@@ -15,7 +15,7 @@ pub struct PrefixDict<Data = &'static [u8]> {
 
 impl Default for PrefixDict<&'static [u8]> {
     fn default() -> PrefixDict<&'static [u8]> {
-        PrefixDict::from_static_slice(IPAD_DATA, IPAD_VALS).unwrap()
+        PrefixDict::from_static_slice(IPADIC_DATA, IPADIC_VALS).unwrap()
     }
 }
 

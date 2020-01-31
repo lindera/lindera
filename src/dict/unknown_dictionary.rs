@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::dict::character_definition::CategoryId;
 use crate::dict::word_entry::WordEntry;
 
-const CHAR_DEFINITION_DATA: &'static [u8] = include_bytes!("../../dict/unk.bin");
+const UNKNOWN_DATA: &'static [u8] = include_bytes!("../../dict/unk.bin");
 
 //TODO optimize
 #[derive(Serialize, Deserialize)]
@@ -22,7 +22,7 @@ impl UnknownDictionary {
     }
 
     pub fn load() -> UnknownDictionary {
-        bincode::deserialize(CHAR_DEFINITION_DATA).unwrap()
+        bincode::deserialize(UNKNOWN_DATA).unwrap()
     }
 }
 
