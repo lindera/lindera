@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = ["tokenizer", "japanese", "morphological", "analyzer"]
 categories = ["text-processing"]
 license = "MIT"
-exclude = ["mecab-ipadic/**/*"]
+exclude = ["docs", "dict", "mecab-ipadic/**/*"]
 
 [dependencies]
 bincode = "1.2.1"
@@ -20,6 +20,7 @@ encoding = "0.2.33"
 serde = {version="1.0.104", features = ["derive"] }
 serde_json = "1.0.45"
 tantivy-fst = "0.2.1"
+lindera-core = { version = "0.1.0", path = "../lindera-core" }
 
 [dev-dependencies]
 criterion = "0.3.1"
