@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["EdgeType",""],["Mode",""]],"struct":[["Edge",""],["EdgeId",""],["Lattice",""],["Penalty",""]]});

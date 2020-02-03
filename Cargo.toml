@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Minoru Osuka <minoru.osuka@gmail.com>"]
 edition = "2018"
 description = "A Japanese Morphological Analysis Library written in Rust."
@@ -10,7 +10,6 @@ readme = "README.md"
 keywords = ["tokenizer", "japanese", "morphological", "analyzer"]
 categories = ["text-processing"]
 license = "MIT"
-exclude = ["dict", "mecab-ipadic/**/*"]
 
 [dependencies]
 bincode = "1.2.1"

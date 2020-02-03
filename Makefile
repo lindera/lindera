@@ -1,5 +1,4 @@
 clean:
-	rm -rf $(BIN_DIR)
 	cargo clean
 
 format:
@@ -10,12 +9,3 @@ build:
 
 test:
 	cargo test
-
-package:
-	cargo package
-
-.PHONY: docs
-docs:
-	cargo doc --no-deps
-	rm -rf ./docs
-	cp -pr ./target/doc ./docs
