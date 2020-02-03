@@ -4,9 +4,8 @@ extern crate clap;
 use std::io::Write;
 
 use clap::{App, AppSettings, Arg, SubCommand};
-
-use lindera::cmd::build::run_build_cli;
-use lindera::cmd::tokenize::run_tokenize_cli;
+use lindera_cli::cmd::build::run_build_cli;
+use lindera_cli::cmd::tokenize::run_tokenize_cli;
 
 fn main() {
     let app = App::new(crate_name!())

@@ -13,11 +13,11 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use clap::ArgMatches;
 use encoding::all::UTF_16LE;
 use encoding::{DecoderTrap, Encoding};
-use lindera_core::dictionary::character_definition::{
+use lindera::dictionary::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
-use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
-use lindera_core::dictionary::word_entry::{WordDetail, WordEntry, WordId};
+use lindera::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera::dictionary::word_entry::{WordDetail, WordEntry, WordId};
 use tantivy_fst::MapBuilder;
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {

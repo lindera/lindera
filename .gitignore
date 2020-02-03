@@ -3,7 +3,6 @@
 .DS_Store
 
 target
-Cargo.lock
 perf.data*
 
 /bin

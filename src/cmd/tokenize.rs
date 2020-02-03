@@ -1,7 +1,7 @@
 use std::io;
 
 use clap::ArgMatches;
-use lindera_core::tokenizer::tokenizer::{Token, Tokenizer};
+use lindera::tokenizer::tokenizer::{Token, Tokenizer};
 
 fn format_mecab(tokens: Vec<Token>) -> String {
     let mut lines = Vec::new();
