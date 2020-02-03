@@ -1,1 +1,2 @@
-pub mod cmd;
+pub mod dictionary;
+pub mod tokenizer;

@@ -1,4 +1,3 @@
 var N = null;var sourcesIndex = {};
-sourcesIndex["lindera"] = {"name":"","files":["main.rs"]};
-sourcesIndex["lindera_cli"] = {"name":"","dirs":[{"name":"cmd","files":["build.rs","tokenize.rs"]}],"files":["cmd.rs","lib.rs"]};
+sourcesIndex["lindera"] = {"name":"","dirs":[{"name":"dictionary","files":["character_definition.rs","connection.rs","prefix_dict.rs","system_dict.rs","unknown_dictionary.rs","viterbi.rs","word_entry.rs"]},{"name":"tokenizer","files":["tokenizer.rs"]}],"files":["dictionary.rs","lib.rs","tokenizer.rs"]};
 createSourceSidebar();
