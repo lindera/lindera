@@ -13,13 +13,12 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use clap::ArgMatches;
 use encoding::all::UTF_16LE;
 use encoding::{DecoderTrap, Encoding};
-use tantivy_fst::MapBuilder;
-
-use crate::dict::character_definition::{
+use lindera_core::dictionary::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
-use crate::dict::unknown_dictionary::UnknownDictionary;
-use crate::dict::word_entry::{WordDetail, WordEntry, WordId};
+use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_core::dictionary::word_entry::{WordDetail, WordEntry, WordId};
+use tantivy_fst::MapBuilder;
 
 fn read_mecab_file(filename: &'static str) -> Result<String, ParsingError> {
     let path = Path::new("mecab-ipadic").join(Path::new(filename));
@@ -189,9 +188,9 @@ fn build_dict() -> Result<(), ParsingError> {
     let mut words_buffer = Vec::new();
     for row in rows.iter() {
         let word = WordDetail {
-            left_id: row.left_id,
-            right_id: row.right_id,
-            word_cost: row.word_cost,
+            //left_id: row.left_id,
+            //right_id: row.right_id,
+            //word_cost: row.word_cost,
             pos_level1: row.pos_level1.to_string(),
             pos_level2: row.pos_level2.to_string(),
             pos_level3: row.pos_level3.to_string(),
