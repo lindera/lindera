@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.1.3 (2020-02-03)
+- Split the package #35 @mosuka
+- Splir the package #34 @mosuka
 - Fix bugs #33 @mosuka
 - Refactoring #32 @mosuka
 - Fix typo #31 @mosuka
