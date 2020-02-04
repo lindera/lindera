@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.1.4 (unreleased)
+- Delete unnecessary dependencies #38 @mosuka
+
 ## 0.1.3 (2020-02-03)
 - Split the package #35 @mosuka
 - Splir the package #34 @mosuka
