@@ -102,7 +102,7 @@ impl WordEntry {
 
 #[cfg(test)]
 mod tests {
-    use crate::dictionary::word_entry::{WordDictionary, WordEntry, WordId};
+    use crate::ipadic::word_entry::{WordDictionary, WordEntry, WordId};
 
     #[test]
     fn test_word_entry() {

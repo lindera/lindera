@@ -4,12 +4,12 @@ use std::num::ParseIntError;
 
 use serde::Serialize;
 
-use crate::dictionary::character_definition::CharacterDefinitions;
-use crate::dictionary::connection::ConnectionCostMatrix;
-use crate::dictionary::prefix_dict::PrefixDict;
-use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::dictionary::viterbi::{Lattice, Mode, Penalty};
-use crate::dictionary::word_entry::{WordDetail, WordDictionary, WordId};
+use crate::ipadic::character_definition::CharacterDefinitions;
+use crate::ipadic::connection::ConnectionCostMatrix;
+use crate::ipadic::prefix_dict::PrefixDict;
+use crate::ipadic::unknown_dictionary::UnknownDictionary;
+use crate::ipadic::viterbi::{Lattice, Mode, Penalty};
+use crate::ipadic::word_entry::{WordDetail, WordDictionary, WordId};
 
 #[derive(Debug)]
 pub enum ParsingError {
@@ -164,8 +164,8 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::dictionary::word_entry::WordId;
-    use crate::tokenizer::tokenizer::Tokenizer;
+    use crate::ipadic::tokenizer::Tokenizer;
+    use crate::ipadic::word_entry::WordId;
 
     #[test]
     fn test_empty() {
