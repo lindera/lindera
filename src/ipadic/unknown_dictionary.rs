@@ -1,8 +1,8 @@
+use lindera_ipadic::unknown_dict;
 use serde::{Deserialize, Serialize};
 
-use crate::dictionary::character_definition::CategoryId;
-use crate::dictionary::word_entry::WordEntry;
-use lindera_ipadic::unknown_dict;
+use crate::ipadic::character_definition::CategoryId;
+use crate::ipadic::word_entry::WordEntry;
 
 //TODO optimize
 #[derive(Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl UnknownDictionary {
 
 #[cfg(test)]
 mod tests {
-    use crate::dictionary::unknown_dictionary::UnknownDictionary;
+    use crate::ipadic::unknown_dictionary::UnknownDictionary;
 
     #[test]
     fn test_parse_unknown_dictionary() {

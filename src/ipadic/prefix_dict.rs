@@ -4,7 +4,7 @@ use lindera_ipadic::{ipadic_data, ipadic_vals};
 use tantivy_fst;
 use tantivy_fst::raw::Output;
 
-use crate::dictionary::word_entry::WordEntry;
+use crate::ipadic::word_entry::WordEntry;
 
 pub struct PrefixDict<Data = &'static [u8]> {
     pub fst: tantivy_fst::raw::Fst<Data>,
@@ -68,7 +68,7 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
 
 #[cfg(test)]
 mod tests {
-    use crate::dictionary::prefix_dict::PrefixDict;
+    use crate::ipadic::prefix_dict::PrefixDict;
 
     #[test]
     fn test_fst_prefix_2() {

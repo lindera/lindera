@@ -1,10 +1,10 @@
 use std::u32;
 
-use crate::dictionary::character_definition::{CategoryId, CharacterDefinitions};
-use crate::dictionary::connection::ConnectionCostMatrix;
-use crate::dictionary::prefix_dict::PrefixDict;
-use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::dictionary::word_entry::{WordEntry, WordId};
+use crate::ipadic::character_definition::{CategoryId, CharacterDefinitions};
+use crate::ipadic::connection::ConnectionCostMatrix;
+use crate::ipadic::prefix_dict::PrefixDict;
+use crate::ipadic::unknown_dictionary::UnknownDictionary;
+use crate::ipadic::word_entry::{WordEntry, WordId};
 
 #[derive(Clone, Debug)]
 pub struct Penalty {
