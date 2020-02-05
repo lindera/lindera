@@ -15,7 +15,7 @@ lindera-ipadic:
 	curl -L https://github.com/bayard-search/lindera-ipadic/releases/download/v$(LINDERA_IPADIC_VERSION)/lindera-ipadic-$(LINDERA_IPADIC_VERSION).tar.bz2 > ./lindera-ipadic-$(LINDERA_IPADIC_VERSION).tar.bz2
 	tar -xvjf ./lindera-ipadic-$(LINDERA_IPADIC_VERSION).tar.bz2
 
-build:
+build: lindera-ipadic
 	cargo build --release
 
 test:
