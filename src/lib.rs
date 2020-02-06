@@ -1,1 +1,1 @@
-pub mod ipadic;
+pub mod core;
