@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## unreleased
+- Delete SystemDict #43 @mosuka
+
 ## 0.1.5 (2020-02-06)
 - Add dictionary #40 @mosuka
 
