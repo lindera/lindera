@@ -1,7 +1,3 @@
-use std::fmt::Debug;
-use std::io;
-use std::num::ParseIntError;
-
 use serde::Serialize;
 
 use lindera_core::core::character_definition::CharacterDefinitions;
@@ -11,31 +7,6 @@ use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use lindera_core::core::viterbi::{Lattice, Mode, Penalty};
 use lindera_core::core::word_entry::{WordDetail, WordId};
 use lindera_ipadic::{char_def, connection, prefix_dict, unknown_dict, word_detail};
-
-#[derive(Debug)]
-pub enum ParsingError {
-    Encoding,
-    IoError(io::Error),
-    ContentError(String),
-}
-
-impl ParsingError {
-    fn from_error<D: Debug>(error: D) -> ParsingError {
-        ParsingError::ContentError(format!("{:?}", error))
-    }
-}
-
-impl From<io::Error> for ParsingError {
-    fn from(io_err: io::Error) -> Self {
-        ParsingError::IoError(io_err)
-    }
-}
-
-impl From<ParseIntError> for ParsingError {
-    fn from(parse_err: ParseIntError) -> Self {
-        ParsingError::from_error(parse_err)
-    }
-}
 
 #[derive(Serialize)]
 pub struct Token<'a> {
