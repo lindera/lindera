@@ -1,7 +1,7 @@
 [package]
 name = "lindera"
-version = "0.1.6"
-authors = ["Minoru Osuka <minoru.osuka@gmail.com>"]
+version = "0.2.0"
+authors = ["See AUTHORS file"]
 edition = "2018"
 description = "A Japanese Morphological Analysis Library."
 homepage = "https://github.com/bayard-search/lindera"
@@ -15,8 +15,9 @@ license = "MIT"
 bincode = "1.2.1"
 byteorder = "1.3.2"
 encoding = "0.2.33"
-lindera-core = "0.1.1"
-lindera-ipadic = "0.1.6"
+lindera-core = "0.2.0"
+lindera-ipadic = "0.2.0"
+lindera-dictionary = "0.2.0"
 serde = {version="1.0.104", features = ["derive"] }
 tantivy-fst = "0.2.1"
 
