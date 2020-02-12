@@ -2,10 +2,24 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Join the chat at https://gitter.im/bayard-search/lindera](https://badges.gitter.im/bayard-search/lindera.svg)](https://gitter.im/bayard-search/lindera?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Lindera is a Japanese Morphological Analysis Library in Rust. This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).  
+A Japanese morphological analysis library in Rust. This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
+
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
 
-## Basic example
+## Build
+
+The following products are required to build:
+
+- Rust >= 1.39.0
+- make >= 3.81
+
+```text
+% make build
+```
+
+## Usage
+
+### Basic example
 
 This example covers the basic usage of Lindera.
 
@@ -15,7 +29,7 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::tokenizer::tokenizer::Tokenizer;
+use lindera::tokenizer::Tokenizer;
 
 fn main() -> std::io::Result<()> {
     // create tokenizer
@@ -48,15 +62,16 @@ You can see the result as follows:
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera" target="_blank">Lindera</a>
+- <a href="https://docs.rs/lindera" target="_blank">lindera</a>
 
 ## Project links
 
 lindera consists of several projects. The list is following:
-- [Lindera](https://github.com/bayard-search/lindera): library
-- [Lindera Core](https://github.com/bayard-search/lindera-core): Core library
-- [Lindera Dictionary](https://github.com/bayard-search/lindera-dictionary): Compiled Japanese dictionary loader
-- [Lindera IPADIC](https://github.com/bayard-search/lindera-ipadic): Compiled Japanese dictionary based on IPADIC
-- [lindera IPADIC Builder](https://github.com/bayard-search/lindera-ipadic-builder): Dictionary builder for IPADIC
-- [lindera UniDic Builder](https://github.com/bayard-search/lindera-unidic-builder): Dictionary builder for UniDic
-- [Lindera CLI](https://github.com/bayard-search/lindera-cli): Command-line interface
+
+- [Lindera](https://github.com/bayard-search/lindera)
+- [Lindera Core](https://github.com/bayard-search/lindera-core)
+- [Lindera Dictionary](https://github.com/bayard-search/lindera-dictionary)
+- [Lindera IPADIC](https://github.com/bayard-search/lindera-ipadic)
+- [lindera IPADIC Builder](https://github.com/bayard-search/lindera-ipadic-builder)
+- [lindera UniDic Builder](https://github.com/bayard-search/lindera-unidic-builder)
+- [Lindera CLI](https://github.com/bayard-search/lindera-cli)
