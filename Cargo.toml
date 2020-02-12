@@ -4,6 +4,7 @@ version = "0.2.0"
 authors = ["See AUTHORS file"]
 edition = "2018"
 description = "A Japanese Morphological Analysis Library."
+documentation = "https://docs.rs/lindera"
 homepage = "https://github.com/bayard-search/lindera"
 repository = "https://github.com/bayard-search/lindera"
 readme = "README.md"
