@@ -1,4 +1,4 @@
-use lindera::tokenizer::tokenizer::Tokenizer;
+use lindera::tokenizer::Tokenizer;
 
 fn main() -> std::io::Result<()> {
     // create tokenizer
