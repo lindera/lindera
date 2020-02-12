@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["See AUTHORS file"]
 edition = "2018"
 description = "A Japanese Morphological Analysis Library."
