@@ -1,7 +1,12 @@
 [package]
 name = "lindera"
 version = "0.2.1"
-authors = ["See AUTHORS file"]
+authors = [
+    "Paul Masurel <paul.masurel@gmail.com>",
+    "Minoru Osuka <minoru.osuka@gmail.com>",
+    "Jun Ohtani <johtani@gmail.com>",
+    "ikawaha"
+    ]
 edition = "2018"
 description = "A Japanese Morphological Analysis Library."
 documentation = "https://docs.rs/lindera"
