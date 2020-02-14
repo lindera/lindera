@@ -1,4 +1,8 @@
+.vscode
 .idea
+.DS_Store
+
 target
-Cargo.lock
 perf.data*
+
+Cargo.lock
