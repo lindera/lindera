@@ -2,6 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
 ## 0.2.1 (2020-02-12)
 - Bump up version #49 @mosuka
 - Add formatter #48 @mosuka

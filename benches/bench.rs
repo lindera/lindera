@@ -1,7 +1,7 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
-use lindera::tokenizer::tokenizer::Tokenizer;
+use lindera::tokenizer::Tokenizer;
 
 fn bench_tokenize(c: &mut Criterion) {
     c.bench_function("bench-wiki", |b| {
