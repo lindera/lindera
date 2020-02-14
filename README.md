@@ -68,10 +68,11 @@ The API reference is available. Please see following URL:
 
 lindera consists of several projects. The list is following:
 
-- [Lindera](https://github.com/bayard-search/lindera)
-- [Lindera Core](https://github.com/bayard-search/lindera-core)
-- [Lindera Dictionary](https://github.com/bayard-search/lindera-dictionary)
-- [Lindera IPADIC](https://github.com/bayard-search/lindera-ipadic)
-- [lindera IPADIC Builder](https://github.com/bayard-search/lindera-ipadic-builder)
-- [lindera UniDic Builder](https://github.com/bayard-search/lindera-unidic-builder)
-- [Lindera CLI](https://github.com/bayard-search/lindera-cli)
+- [Lindera](https://github.com/lindera-morphology/lindera)
+- [Lindera Core](https://github.com/lindera-morphology/lindera-core)
+- [Lindera Dictionary](https://github.com/lindera-morphology/lindera-dictionary)
+- [Lindera IPADIC](https://github.com/lindera-morphology/lindera-ipadic)
+- [lindera IPADIC Builder](https://github.com/lindera-morphology/lindera-ipadic-builder)
+- [lindera IPADIC NEologd Builder](https://github.com/lindera-morphology/lindera-ipadic-neologd-builder)
+- [lindera UniDic Builder](https://github.com/lindera-morphology/lindera-unidic-builder)
+- [Lindera CLI](https://github.com/lindera-morphology/lindera-cli)

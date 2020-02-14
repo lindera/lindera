@@ -6,5 +6,3 @@ target
 perf.data*
 
 Cargo.lock
-
-lindera-ipadic-*.tar.bz2
