@@ -8,10 +8,10 @@ authors = [
     "ikawaha"
     ]
 edition = "2018"
-description = "A Japanese Morphological Analysis Library."
+description = "A Japanese morphological analysis library."
 documentation = "https://docs.rs/lindera"
-homepage = "https://github.com/bayard-search/lindera"
-repository = "https://github.com/bayard-search/lindera"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
 keywords = ["japanese", "morphological", "analyzer", "tokenizer", "library"]
 categories = ["text-processing"]
