@@ -32,12 +32,13 @@ pub fn word_detail(word_id: WordId, words_idx_data: &[u8], words_data: &[u8]) ->
     word_detail
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Token<'a> {
     pub text: &'a str,
     pub detail: WordDetail,
 }
 
+#[derive(Clone)]
 pub struct Tokenizer {
     dict: PrefixDict<Vec<u8>>,
     cost_matrix: ConnectionCostMatrix,
