@@ -7,23 +7,13 @@ use lindera_core::core::connection::ConnectionCostMatrix;
 use lindera_core::core::prefix_dict::PrefixDict;
 use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use lindera_core::core::viterbi::{Lattice, Mode, Penalty};
-use lindera_core::core::word_entry::{WordDetail, WordId};
+use lindera_core::core::word_entry::WordId;
 use lindera_dictionary;
 use lindera_ipadic;
 
-pub fn word_detail(word_id: WordId, words_idx_data: &[u8], words_data: &[u8]) -> WordDetail {
+pub fn word_detail(word_id: WordId, words_idx_data: &[u8], words_data: &[u8]) -> Vec<String> {
     if word_id.is_unknown() {
-        return WordDetail {
-            pos_level1: "UNK".to_string(),
-            pos_level2: "*".to_string(),
-            pos_level3: "*".to_string(),
-            pos_level4: "*".to_string(),
-            conjugation_type: "*".to_string(),
-            conjugate_form: "*".to_string(),
-            base_form: "*".to_string(),
-            reading: "*".to_string(),
-            pronunciation: "*".to_string(),
-        };
+        return vec!["UNK".to_string()];
     }
 
     let idx = LittleEndian::read_u32(&words_idx_data[4 * word_id.0 as usize..][..4]);
@@ -35,7 +25,7 @@ pub fn word_detail(word_id: WordId, words_idx_data: &[u8], words_data: &[u8]) ->
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {
     pub text: &'a str,
-    pub detail: WordDetail,
+    pub detail: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -238,14 +228,19 @@ mod tests {
         let tokens: Vec<&str> = tokenizer.tokenize_str("関西国際空港");
         assert_eq!(tokens, vec!["関西", "国際", "空港"]);
     }
+    */
 
     #[test]
     fn test_tokenize_sumomomomo() {
-        let mut tokenizer = Tokenizer::for_search();
+        let mut tokenizer = Tokenizer::default_normal();
         let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち");
-        assert_eq!(tokens, vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]);
+        assert_eq!(
+            tokens,
+            vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]
+        );
     }
 
+    /*
     #[test]
     fn test_mukigen_search() {
         let mut tokenizer = Tokenizer::for_search();
