@@ -3,19 +3,7 @@ use crate::tokenizer::Token;
 pub fn format_mecab(tokens: Vec<Token>) -> String {
     let mut lines = Vec::new();
     for token in tokens {
-        let line = format!(
-            "{}\t{},{},{},{},{},{},{},{},{}",
-            token.text,
-            token.detail.pos_level1,
-            token.detail.pos_level2,
-            token.detail.pos_level3,
-            token.detail.pos_level4,
-            token.detail.conjugation_type,
-            token.detail.conjugate_form,
-            token.detail.base_form,
-            token.detail.reading,
-            token.detail.pronunciation
-        );
+        let line = format!("{}\t{}", token.text, token.detail.join(","));
         lines.push(line);
     }
     lines.push(String::from("EOS"));
