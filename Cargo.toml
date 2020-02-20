@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.3.1"
+version = "0.3.2"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
