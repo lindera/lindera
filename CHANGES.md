@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.3.2 (2020-02-20)
+- Change word details to vec from strust #53 @mosuka
+
 ## 0.3.1 (2020-02-17)
 - Update dependencies #52 @mosuka
 
