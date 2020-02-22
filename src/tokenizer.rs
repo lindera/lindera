@@ -150,7 +150,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn tokenize<'a>(&'a mut self, mut text: &'a str) -> Vec<Token> {
+    pub fn tokenize<'a>(&mut self, mut text: &'a str) -> Vec<Token<'a>> {
         let mut tokens = Vec::new();
         while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
             self.tokenize_without_split(&text[..split_idx + 3], &mut tokens);
@@ -162,7 +162,7 @@ impl Tokenizer {
         tokens
     }
 
-    pub fn tokenize_str<'a>(&'a mut self, mut text: &'a str) -> Vec<&'a str> {
+    pub fn tokenize_str<'a>(&mut self, mut text: &'a str) -> Vec<&'a str> {
         let mut tokens = Vec::new();
         while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
             self.tokenize_without_split_str(&text[..split_idx + 3], &mut tokens);
