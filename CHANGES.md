@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.3.4 (2020-02-25)
+- Change tokenizer constructor #55 @mosuka
+
 ## 0.3.3 (2020-02-25)
 - Remove lifetime #54 @mosuka
 
