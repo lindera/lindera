@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.3.3 (2020-02-25)
 - Remove lifetime #54 @mosuka
 
 ## 0.3.2 (2020-02-20)
