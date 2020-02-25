@@ -42,48 +42,46 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn default(mode: Mode) -> Tokenizer {
-        Tokenizer {
-            dict: lindera_ipadic::prefix_dict(),
-            cost_matrix: lindera_ipadic::connection(),
-            lattice: Lattice::default(),
-            char_definitions: lindera_ipadic::char_def(),
-            unknown_dictionary: lindera_ipadic::unknown_dict(),
-            words_idx_data: lindera_ipadic::words_idx_data(),
-            words_data: lindera_ipadic::words_data(),
-            mode,
-            offsets: Vec::new(),
+    pub fn new(mode: &str, dict: &str) -> Tokenizer {
+        let m = match mode {
+            "normal" => {
+                Mode::Normal
+            }
+            "decompose" => {
+                Mode::Decompose(Penalty::default())
+            }
+            _ => {
+                // return error message
+                println!("unsupported mode: {}", mode);
+                Mode::Normal
+            }
+        };
+
+        if dict.len() > 0 {
+            Tokenizer {
+                dict: lindera_dictionary::prefix_dict(dict),
+                cost_matrix: lindera_dictionary::connection(dict),
+                lattice: Lattice::default(),
+                char_definitions: lindera_dictionary::char_def(dict),
+                unknown_dictionary: lindera_dictionary::unknown_dict(dict),
+                words_idx_data: lindera_dictionary::words_idx_data(dict),
+                words_data: lindera_dictionary::words_data(dict),
+                mode: m,
+                offsets: Vec::new(),
+            }
+        } else {
+            Tokenizer {
+                dict: lindera_ipadic::prefix_dict(),
+                cost_matrix: lindera_ipadic::connection(),
+                lattice: Lattice::default(),
+                char_definitions: lindera_ipadic::char_def(),
+                unknown_dictionary: lindera_ipadic::unknown_dict(),
+                words_idx_data: lindera_ipadic::words_idx_data(),
+                words_data: lindera_ipadic::words_data(),
+                mode: m,
+                offsets: Vec::new(),
+            }
         }
-    }
-
-    pub fn external(dir: &str, mode: Mode) -> Tokenizer {
-        Tokenizer {
-            dict: lindera_dictionary::prefix_dict(dir),
-            cost_matrix: lindera_dictionary::connection(dir),
-            lattice: Lattice::default(),
-            char_definitions: lindera_dictionary::char_def(dir),
-            unknown_dictionary: lindera_dictionary::unknown_dict(dir),
-            words_idx_data: lindera_dictionary::words_idx_data(dir),
-            words_data: lindera_dictionary::words_data(dir),
-            mode,
-            offsets: Vec::new(),
-        }
-    }
-
-    pub fn default_normal() -> Tokenizer {
-        Self::default(Mode::Normal)
-    }
-
-    pub fn default_decompose() -> Tokenizer {
-        Self::default(Mode::Decompose(Penalty::default()))
-    }
-
-    pub fn external_normal(dir: &str) -> Tokenizer {
-        Self::external(dir, Mode::Normal)
-    }
-
-    pub fn external_decompose(dir: &str) -> Tokenizer {
-        Self::external(dir, Mode::Decompose(Penalty::default()))
     }
 
     /// Returns an array of offsets that mark the beginning of each tokens,
