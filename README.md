@@ -33,7 +33,7 @@ use lindera::tokenizer::Tokenizer;
 
 fn main() -> std::io::Result<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::default_normal();
+    let mut tokenizer = Tokenizer::new("normal", "");
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
