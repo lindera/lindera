@@ -44,12 +44,8 @@ pub struct Tokenizer {
 impl Tokenizer {
     pub fn new(mode: &str, dict: &str) -> Tokenizer {
         let m = match mode {
-            "normal" => {
-                Mode::Normal
-            }
-            "decompose" => {
-                Mode::Decompose(Penalty::default())
-            }
+            "normal" => Mode::Normal,
+            "decompose" => Mode::Decompose(Penalty::default()),
             _ => {
                 // return error message
                 println!("unsupported mode: {}", mode);
@@ -180,21 +176,21 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        let mut tokenizer = Tokenizer::default_decompose();
+        let mut tokenizer = Tokenizer::new("decompose", "");
         let tokens = tokenizer.tokenize_offsets("");
         assert_eq!(tokens, &[]);
     }
 
     #[test]
     fn test_space() {
-        let mut tokenizer = Tokenizer::default_decompose();
+        let mut tokenizer = Tokenizer::new("decompose", "");
         let tokens = tokenizer.tokenize_offsets(" ");
         assert_eq!(tokens, &[(0, WordId(4294967295))]);
     }
 
     #[test]
     fn test_boku_ha() {
-        let mut tokenizer = Tokenizer::default_decompose();
+        let mut tokenizer = Tokenizer::new("decompose", "");
         let tokens = tokenizer.tokenize_offsets("僕は");
         assert_eq!(tokens, &[(0, WordId(132630)), (3, WordId(57063))]);
     }
@@ -230,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_sumomomomo() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち");
         assert_eq!(
             tokens,
@@ -249,42 +245,42 @@ mod tests {
 
     #[test]
     fn test_gyoi() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("御意。 御意〜。");
         assert_eq!(tokens, vec!["御意", "。", " ", "御意", "〜", "。"]);
     }
 
     #[test]
     fn test_demoyorokobi() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("〜でも喜び");
         assert_eq!(tokens, vec!["〜", "でも", "喜び"]);
     }
 
     #[test]
     fn test_mukigen_normal2() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("—でも");
         assert_eq!(tokens, vec!["—", "でも"]);
     }
 
     #[test]
     fn test_atodedenwa() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("後で");
         assert_eq!(tokens, vec!["後で"]);
     }
 
     #[test]
     fn test_ikkagetsu() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ーヶ月");
         assert_eq!(tokens, vec!["ーヶ", "月"]);
     }
 
     #[test]
     fn test_mukigen_normal() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?");
         assert_eq!(
             tokens,
@@ -294,28 +290,28 @@ mod tests {
 
     #[test]
     fn test_demo() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("――!!?");
         assert_eq!(tokens, vec!["――!!?"]);
     }
 
     #[test]
     fn test_kaikeishi() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ジム・コガン");
         assert_eq!(tokens, vec!["ジム・コガン"]);
     }
 
     #[test]
     fn test_bruce() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ブルース・モラン");
         assert_eq!(tokens, vec!["ブルース・モラン"]);
     }
 
     #[test]
     fn test_tokenize_real() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str(
             "本項で解説する地方病とは、山梨県における日本住血吸虫症の呼称であり、\
              長い間その原因が明らかにならず住民を苦しめた感染症である。",
@@ -371,14 +367,14 @@ mod tests {
 
     #[test]
     fn test_hitobito() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("満々!");
         assert_eq!(tokens, &["満々", "!"]);
     }
 
     #[test]
     fn test_tokenize_short() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer
             .tokenize("日本住")
             .into_iter()
@@ -389,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_short2() {
-        let mut tokenizer = Tokenizer::default_normal();
+        let mut tokenizer = Tokenizer::new("normal", "");
         let tokens: Vec<&str> = tokenizer
             .tokenize("ここでは")
             .into_iter()
