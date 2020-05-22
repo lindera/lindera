@@ -54,12 +54,16 @@ ifeq ($(shell cargo show --json lindera-cli | jq -r '.versions[].num' | grep $(L
 endif
 
 docker-build:
-	docker build -t linderamorphology/lindera-cli:latest .
+ifeq ($(shell curl 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
+	docker build --tag=linderamorphology/lindera-cli:latest --build-arg="LINDERA_CLI_VERSION=$(LINDERA_CLI_VERSION)" .
 	docker tag linderamorphology/lindera-cli:latest linderamorphology/lindera-cli:$(LINDERA_CLI_VERSION)
+endif
 
 docker-push:
+ifeq ($(shell curl 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
 	docker push linderamorphology/lindera-cli:latest
 	docker push linderamorphology/lindera-cli:$(LINDERA_CLI_VERSION)
+endif
 
 docker-clean:
 ifneq ($(shell docker ps -f 'status=exited' -q),)

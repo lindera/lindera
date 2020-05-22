@@ -1,6 +1,6 @@
 FROM rust:1.43.0-slim-stretch AS builder
 
-ARG LINDERA_VERSION
+ARG LINDERA_CLI_VERSION
 
 WORKDIR /repo
 
@@ -16,7 +16,7 @@ RUN set -ex \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cargo install lindera-cli --root=./ --vers=${LINDERA_VERSION}
+RUN cargo install lindera-cli --root=./ --vers=${LINDERA_CLI_VERSION}
 
 
 FROM debian:stretch-slim
