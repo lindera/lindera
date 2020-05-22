@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Migrate to workspaces #57 @mosuka
+
 ## 0.3.5 (2020-04-30)
 - Update dependencies #56 @mosuka
 
