@@ -28,24 +28,44 @@ tag:
 	git tag v$(LINDERA_VERSION)
 	git push origin v$(LINDERA_VERSION)
 
-publish:
+package:
 ifeq ($(shell cargo show --json lindera-core | jq -r '.versions[].num' | grep $(LINDERA_CORE_VERSION)),)
-	(cd lindera-core && cargo package && cargo publish)
+	(cd lindera-core && cargo package)
 endif
 ifeq ($(shell cargo show --json lindera-ipadic-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_BUILDER_VERSION)),)
-	cargo package && cargo publish
+	(cd lindera-ipadic-builder && cargo package)
 endif
 ifeq ($(shell cargo show --json lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
-	cargo package && cargo publish
+	(cd lindera-ipadic && cargo package)
 endif
 ifeq ($(shell cargo show --json lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
-	(cd lindera-dictionary && cargo package && cargo publish)
+	(cd lindera-dictionary && cargo package)
 endif
 ifeq ($(shell cargo show --json lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
-	(cd lindera && cargo package && cargo publish)
+	(cd lindera && cargo package)
 endif
 ifeq ($(shell cargo show --json lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
-	(cd lindera-cli && cargo package && cargo publish)
+	(cd lindera-cli && cargo package)
+endif
+
+publish:
+ifeq ($(shell cargo show --json lindera-core | jq -r '.versions[].num' | grep $(LINDERA_CORE_VERSION)),)
+	(cd lindera-core && cargo publish)
+endif
+ifeq ($(shell cargo show --json lindera-ipadic-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_BUILDER_VERSION)),)
+	(cd lindera-iapdic-builder && cargo publish)
+endif
+ifeq ($(shell cargo show --json lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
+	(cd lindera-iapdic && cargo publish)
+endif
+ifeq ($(shell cargo show --json lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
+	(cd lindera-dictionary && cargo publish)
+endif
+ifeq ($(shell cargo show --json lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
+	(cd lindera && cargo publish)
+endif
+ifeq ($(shell cargo show --json lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
+	(cd lindera-cli && cargo publish)
 endif
 
 docker-build:
