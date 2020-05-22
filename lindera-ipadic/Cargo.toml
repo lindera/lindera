@@ -1,0 +1,30 @@
+[package]
+name = "lindera-ipadic"
+version = "0.4.0"
+authors = [
+    "Paul Masurel <paul.masurel@gmail.com>",
+    "Minoru Osuka <minoru.osuka@gmail.com>"
+    ]
+edition = "2018"
+description = "A Japanese morphological dictionary loader for IPADIC."
+documentation = "https://docs.rs/lindera-ipadic"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera/lindera-ipadic"
+readme = "README.md"
+keywords = ["japanese", "morphological", "dictionary", "loader", "ipadic"]
+categories = ["text-processing"]
+license = "MIT"
+
+[dependencies]
+bincode = "1.2.1"
+byteorder = "1.3.4"
+
+lindera-core = { version = "0.4.0", path = "../lindera-core" }
+
+[build-dependencies]
+flate2 = "1.0.14"
+reqwest = "0.10.4"
+tar = "0.4.27"
+tokio = { version = "0.2.21", features = ["full"] }
+
+lindera-ipadic-builder = { version = "0.4.0", path = "../lindera-ipadic-builder" }

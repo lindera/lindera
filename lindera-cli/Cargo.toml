@@ -1,0 +1,27 @@
+[package]
+name = "lindera-cli"
+version = "0.4.0"
+authors = [
+    "Paul Masurel <paul.masurel@gmail.com>",
+    "Minoru Osuka <minoru.osuka@gmail.com>",
+    "Jun Ohtani <johtani@gmail.com>"
+    ]
+edition = "2018"
+description = "A morphological analysis command-line interface."
+documentation = "https://docs.rs/lindera-cli"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera/lindera-cli"
+readme = "README.md"
+keywords = ["morphological", "analysis", "cli"]
+categories = ["text-processing"]
+license = "MIT"
+
+[dependencies]
+clap = "2.33.0"
+stringreader = "0.1.1"
+
+lindera = { version = "0.4.0", path = "../lindera" }
+
+[[bin]]
+name = "lindera"
+path = "src/main.rs"
