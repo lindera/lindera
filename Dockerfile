@@ -16,7 +16,7 @@ RUN set -ex \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cargo install lindera --root=./ --vers=${LINDERA_VERSION}
+RUN cargo install lindera-cli --root=./ --vers=${LINDERA_VERSION}
 
 
 FROM debian:stretch-slim
