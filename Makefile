@@ -31,18 +31,23 @@ tag:
 package:
 ifeq ($(shell cargo show --json lindera-core | jq -r '.versions[].num' | grep $(LINDERA_CORE_VERSION)),)
 	(cd lindera-core && cargo package)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-ipadic-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_BUILDER_VERSION)),)
 	(cd lindera-ipadic-builder && cargo package)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
 	(cd lindera-ipadic && cargo package)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
 	(cd lindera-dictionary && cargo package)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
 	(cd lindera && cargo package)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
 	(cd lindera-cli && cargo package)
@@ -51,18 +56,23 @@ endif
 publish:
 ifeq ($(shell cargo show --json lindera-core | jq -r '.versions[].num' | grep $(LINDERA_CORE_VERSION)),)
 	(cd lindera-core && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-ipadic-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_BUILDER_VERSION)),)
 	(cd lindera-iapdic-builder && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
 	(cd lindera-iapdic && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
 	(cd lindera-dictionary && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
 	(cd lindera && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell cargo show --json lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
 	(cd lindera-cli && cargo publish)
