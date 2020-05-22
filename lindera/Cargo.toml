@@ -1,0 +1,36 @@
+[package]
+name = "lindera"
+version = "0.4.0"
+authors = [
+    "Paul Masurel <paul.masurel@gmail.com>",
+    "Minoru Osuka <minoru.osuka@gmail.com>",
+    "Jun Ohtani <johtani@gmail.com>",
+    "ikawaha"
+    ]
+edition = "2018"
+description = "A morphological analysis library."
+documentation = "https://docs.rs/lindera"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera/lindera"
+readme = "README.md"
+keywords = ["morphological", "analysis", "library"]
+categories = ["text-processing"]
+license = "MIT"
+
+[dependencies]
+bincode = "1.2.1"
+byteorder = "1.3.4"
+encoding = "0.2.33"
+serde = {version="1.0.106", features = ["derive"] }
+serde_json = "1.0.52"
+
+lindera-core = { version = "0.4.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.4.0", path = "../lindera-dictionary" }
+lindera-ipadic = { version = "0.4.0", path = "../lindera-ipadic" }
+
+[dev-dependencies]
+criterion = "0.3.1"
+
+[[bench]]
+name = "bench"
+harness = false

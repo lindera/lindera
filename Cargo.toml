@@ -1,40 +1,12 @@
-[package]
-name = "lindera"
-version = "0.3.5"
-authors = [
-    "Paul Masurel <paul.masurel@gmail.com>",
-    "Minoru Osuka <minoru.osuka@gmail.com>",
-    "Jun Ohtani <johtani@gmail.com>",
-    "ikawaha"
-    ]
-edition = "2018"
-description = "A Japanese morphological analysis library."
-documentation = "https://docs.rs/lindera"
-homepage = "https://github.com/lindera-morphology/lindera"
-repository = "https://github.com/lindera-morphology/lindera"
-readme = "README.md"
-keywords = ["japanese", "morphological", "analyzer", "tokenizer", "library"]
-categories = ["text-processing"]
-license = "MIT"
-
-[dependencies]
-bincode = "1.2.1"
-byteorder = "1.3.4"
-encoding = "0.2.33"
-serde = {version="1.0.106", features = ["derive"] }
-serde_json = "1.0.52"
-
-lindera-core = "0.3.3"
-lindera-dictionary = "0.3.3"
-lindera-fst = "0.1.0"
-lindera-ipadic = "0.3.3"
-
-[dev-dependencies]
-criterion = "0.3.1"
+[workspace]
+members = [
+    "lindera-core",
+    "lindera-ipadic-builder",
+    "lindera-dictionary",
+    "lindera-ipadic",
+    "lindera",
+    "lindera-cli",
+]
 
 [profile.release]
 lto = true
-
-[[bench]]
-name = "bench"
-harness = false
