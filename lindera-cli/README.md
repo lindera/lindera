@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Join the chat at https://gitter.im/lindera-morphology/lindera](https://badges.gitter.im/lindera-morphology/lindera.svg)](https://gitter.im/lindera-morphology/lindera?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-A Japanese morphological analysis command-line interface for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
+A morphological analysis command-line interface for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 ## Install
 
@@ -45,12 +45,11 @@ It is also possible to switch to the pre-built dictionary data instead of the de
 
 #### IPADIC
 
-The following example uses the pre-built IPADIC to tokenize:
+Please refer to the following repository for building an IPADIC dictionary:
 
-```shell script
-% curl -L -O "https://github.com/lindera-morphology/lindera-ipadic-builder/releases/download/v0.3.2/lindera-ipadic-2.7.0-20070801.tar.bz2"
-% tar -xjvf ./lindera-ipadic-2.7.0-20070801.tar.bz2
-```
+- <a href="https://github.com/lindera-morphology/lindera/lindera-ipadic-builder" target="_blank">Lindera IPADIC Builder</a>
+
+The following example uses the pre-built IPADIC to tokenize:
 
 ```shell script
 % echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-ipadic-2.7.0-20070801
@@ -65,12 +64,11 @@ EOS
 
 #### IPADIC NEologd
 
-The following example uses the pre-built IPADIC-NEologd to tokenize:
+Please refer to the following repository for building an IPADIC NEologd dictionary:
 
-```shell script
-% curl -L -O "https://github.com/lindera-morphology/lindera-ipadic-neologd-builder/releases/download/v0.1.2/lindera-ipadic-2.7.0-20070801-neologd-20200130.tar.bz2"
-% tar -xjvf ./lindera-ipadic-2.7.0-20070801-neologd-20200130.tar.bz2
-```
+- <a href="https://github.com/lindera-morphology/lindera-ipadic-neologd-builder" target="_blank">Lindera IPDIC NEologd Builder</a>
+
+The following example uses the pre-built IPADIC-NEologd to tokenize:
 
 ```shell script
 % echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-ipadic-2.7.0-20070801-neologd-20200130
@@ -85,12 +83,11 @@ EOS
 
 #### UniDic
 
-The following example uses the pre-built UniDic to tokenize:
+Please refer to the following repository for building a UniDic dictionary:
 
-```shell script
-% curl -L -O "https://github.com/lindera-morphology/lindera-unidic-builder/releases/download/v0.3.2/lindera-unidic-2.1.2.tar.bz2"
-% tar -xjvf ./lindera-unidic-2.1.2.tar.bz2
-```
+- <a href="https://github.com/lindera-morphology/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
+
+The following example uses the pre-built UniDic to tokenize:
 
 ```shell script
 % echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-unidic-2.1.2
@@ -108,12 +105,11 @@ EOS
 
 #### ko-dic
 
-The following example uses the pre-built ko-dic to tokenize:
+Please refer to the following repository for building a ko-dic dictionary:
 
-```shell script
-% curl -L -O "https://github.com/lindera-morphology/lindera-ko-dic-builder/releases/download/v0.1.0/lindera-ko-dic-2.1.1-20180720.tar.bz2"
-% tar -xjvf ./lindera-ko-dic-2.1.1-20180720.tar.bz2
-```
+- <a href="https://github.com/lindera-morphology/lindera-ko-dic-builder" target="_blank">Lindera ko-dic Builder</a>
+
+The following example uses the pre-built ko-dic to tokenize:
 
 ```shell script
 % echo "하네다공항한정토트백" | lindera -d ./lindera-ko-dic-2.1.1-20180720
@@ -126,13 +122,6 @@ The following example uses the pre-built ko-dic to tokenize:
 토트백	NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
 EOS
 ```
-
-Please refer to the following repository for building a dictionary:
-
-- <a href="https://github.com/lindera-morphology/lindera-ipadic-builder" target="_blank">Lindera IPADIC Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera-ipadic-neologd-builder" target="_blank">Lindera IPDIC NEologd Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera-ko-dic-builder" target="_blank">Lindera ko-dic Builder</a>
 
 ### Tokenize mode
 
@@ -319,44 +308,9 @@ Running a Lindera CLI on Docker like so:
 $ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera-cli:latest
 ```
 
-You can specify IPADIC dictionary in docker container as follows:
-
-```shell script
-$ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera-cli:latest -d /usr/local/lib/lindera/dic/lindera-ipadic-2.7.0-20070801
-```
-
 ```text
 羽田空港        名詞,固有名詞,一般,*,*,*,羽田空港,ハネダクウコウ,ハネダクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    UNK
-EOS
-```
-
-And you can specify UNIDIC dictionary in docker container as follows:
-
-```shell script
-$ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera-cli:latest -d /usr/local/lib/lindera/dic/lindera-unidic-2.1.2
-```
-
-```text
-羽田    名詞,固有名詞,人名,姓,*,*,ハタ,ハタ,羽田,ハタ,羽田,ハタ,固,*,*,*,*
-空港    名詞,普通名詞,一般,*,*,*,クウコウ,空港,空港,クーコー,空港,クーコー,漢,*,*,*,*
-限定    名詞,普通名詞,サ変可能,*,*,*,ゲンテイ,限定,限定,ゲンテー,限定,ゲンテー,漢,*,*,*,*
-トート  名詞,普通名詞,一般,*,*,*,トート,トート,トート,トート,トート,トート,外,*,*,*,*
-バッグ  名詞,普通名詞,一般,*,*,*,バッグ,バッグ-bag,バッグ,バッグ,バッグ,バッグ,外,*,*,*,*
-EOS
-```
-
-In addition, when executing morphological analysis of Korean (specifying ko-dic dictionary), it is run as follows:
-
-```shell script
-$ echo "하네다공항한정토트백" | docker run --rm -i --name lindera linderamorphology/lindera-cli:latest -d /usr/local/lib/lindera/dic/lindera-ko-dic-2.1.1-20180720
-```
-
-```text
-하네다  NNP,인명,F,하네다,*,*,*,*
-공항    NNG,장소,T,공항,*,*,*,*
-한정    NNG,*,T,한정,*,*,*,*
-토트백  NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
 EOS
 ```
