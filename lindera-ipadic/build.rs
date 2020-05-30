@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Download a tarball
     let download_url = format!(
-        "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/{}/{}",
+        "https://osdn.net/frs/g_redir.php?m=osdn&f=mecab%2Fmecab-ipadic%2F{}%2F{}",
         ipadic_ver, file_name
     );
     let mut resp = reqwest::get(&download_url).await.unwrap();
