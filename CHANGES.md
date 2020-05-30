@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.4.1 (2020-05-30)
+- Bump up version #61 @mosuka
 - Change download URL #60 @mosuka
 
 ## 0.4.0 (2020-05-22)
