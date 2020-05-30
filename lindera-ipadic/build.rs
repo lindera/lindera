@@ -23,11 +23,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let file_name = format!("mecab-ipadic-{}.tar.gz", ipadic_ver);
 
     // Download a tarball
-    let download_url = format!(
-        "https://osdn.net/frs/g_redir.php?m=osdn&f=mecab%2Fmecab-ipadic%2F{}%2F{}",
-        ipadic_ver, file_name
-    );
-    let mut resp = reqwest::get(&download_url).await.unwrap();
+    let download_url = "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
+    let mut resp = reqwest::get(download_url).await.unwrap();
 
     // Save a ttarball
     let dest_path = Path::new(&out_dir).join(file_name);
