@@ -54,13 +54,13 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r 
 endif
 
 docker-build:
-ifeq ($(shell curl 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
+ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
 	docker build --tag=linderamorphology/lindera-cli:latest --build-arg="LINDERA_CLI_VERSION=$(LINDERA_CLI_VERSION)" .
 	docker tag linderamorphology/lindera-cli:latest linderamorphology/lindera-cli:$(LINDERA_CLI_VERSION)
 endif
 
 docker-push:
-ifeq ($(shell curl 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
+ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera-cli/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_CLI_VERSION)),)
 	docker push linderamorphology/lindera-cli:latest
 	docker push linderamorphology/lindera-cli:$(LINDERA_CLI_VERSION)
 endif
