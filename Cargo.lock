@@ -452,12 +452,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "glob"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
-
-[[package]]
 name = "h2"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -632,7 +626,7 @@ checksum = "3baa92041a6fec78c687fa0cc2b3fae8884f743d672cf551bed1d6dac6988d0f"
 
 [[package]]
 name = "lindera"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bincode",
  "byteorder",
@@ -647,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "clap",
  "lindera",
@@ -656,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-core"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bincode",
  "byteorder",
@@ -667,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bincode",
  "byteorder",
@@ -688,29 +682,15 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bincode",
  "byteorder",
  "flate2",
  "lindera-core",
- "lindera-ipadic-builder",
  "reqwest",
  "tar",
  "tokio",
-]
-
-[[package]]
-name = "lindera-ipadic-builder"
-version = "0.4.1"
-dependencies = [
- "bincode",
- "byteorder",
- "clap",
- "encoding",
- "glob",
- "lindera-core",
- "lindera-fst",
 ]
 
 [[package]]

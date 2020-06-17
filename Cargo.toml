@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "lindera-core",
-    "lindera-ipadic-builder",
     "lindera-dictionary",
     "lindera-ipadic",
     "lindera",

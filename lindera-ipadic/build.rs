@@ -4,7 +4,6 @@ use std::fs::File;
 use std::path::Path;
 
 use flate2::read::GzDecoder;
-use lindera_ipadic_builder::build;
 use reqwest;
 use tar::Archive;
 use tokio;
@@ -19,15 +18,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=lindera-ipadic");
 
+    let lindera_ipadic_builder_ver = "0.4.1";
     let ipadic_ver = "2.7.0-20070801";
-    let file_name = format!("mecab-ipadic-{}.tar.gz", ipadic_ver);
+    let lindera_ipadic_archive_file_name = format!("lindera-ipadic-{}.tar.gz", ipadic_ver);
+    let download_url = format!("https://github.com/lindera-morphology/lindera-ipadic-builder/releases/download/v{}/{}", lindera_ipadic_builder_ver, lindera_ipadic_archive_file_name);
 
     // Download a tarball
-    let download_url = "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
-    let mut resp = reqwest::get(download_url).await.unwrap();
+    let mut resp = reqwest::get(&download_url).await.unwrap();
 
-    // Save a ttarball
-    let dest_path = Path::new(&out_dir).join(file_name);
+    // Save a tarball
+    let dest_path = Path::new(&out_dir).join(lindera_ipadic_archive_file_name);
     let mut dest = TokioFile::create(&dest_path).await.unwrap();
     while let Some(chunk) = resp.chunk().await.unwrap() {
         dest.write_all(&chunk).await?;
@@ -38,11 +38,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let gzdecoder = GzDecoder::new(tar_gz);
     let mut archive = Archive::new(gzdecoder);
     archive.unpack(&out_dir).unwrap();
-
-    // Build dictionary
-    let input_dir = Path::new(&out_dir).join(format!("mecab-ipadic-{}", ipadic_ver));
-    let output_dir = "./lindera-ipadic";
-    build(&input_dir.to_str().unwrap(), output_dir).unwrap();
 
     Ok(())
 }
