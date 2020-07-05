@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.5.0 (2020-07-05)
 - Support user dictionary. #64 @mocobeta
 
 ## 0.4.1 (2020-05-30)

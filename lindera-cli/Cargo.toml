@@ -1,10 +1,11 @@
 [package]
 name = "lindera-cli"
-version = "0.4.1"
+version = "0.5.0"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
-    "Jun Ohtani <johtani@gmail.com>"
+    "Jun Ohtani <johtani@gmail.com>",
+    "Tomoko Uchida <tomoko.uchida.1111@gmail.com>"
     ]
 edition = "2018"
 description = "A morphological analysis command-line interface."
@@ -20,7 +21,7 @@ license = "MIT"
 clap = "2.33.0"
 stringreader = "0.1.1"
 
-lindera = { version = "0.4.1", path = "../lindera" }
+lindera = { version = "0.5.0", path = "../lindera" }
 
 [[bin]]
 name = "lindera"
