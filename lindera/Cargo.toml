@@ -27,6 +27,7 @@ serde_json = "1.0.52"
 lindera-core = { version = "0.4.1", path = "../lindera-core" }
 lindera-dictionary = { version = "0.4.1", path = "../lindera-dictionary" }
 lindera-ipadic = { version = "0.4.1", path = "../lindera-ipadic" }
+lindera-ipadic-builder = { version = "0.4.1", path = "../lindera-ipadic-builder" }
 
 [dev-dependencies]
 criterion = "0.3.1"

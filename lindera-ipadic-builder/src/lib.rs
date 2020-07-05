@@ -16,6 +16,7 @@ use glob::glob;
 use lindera_core::core::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
+use lindera_core::core::prefix_dict::PrefixDict;
 use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use lindera_core::core::word_entry::{WordEntry, WordId};
 use lindera_fst::MapBuilder;
@@ -88,6 +89,28 @@ impl<'a> CSVRow<'a> {
             pronunciation: &fields[12],
         }
     }
+
+    fn from_line_user_dict(line: &'a String) -> CSVRow<'a> {
+        let fields: Vec<_> = line.split(",").collect();
+        CSVRow {
+            surface_form: &fields[0],
+            left_id: 0,
+            right_id: 0,
+            word_cost: -10000,
+
+            pos_level1: &fields[1],
+            pos_level2: "*",
+            pos_level3: "*",
+            pos_level4: "*",
+
+            conjugation_type: "*",
+            conjugate_form: "*",
+
+            base_form: &fields[0],
+            reading: &fields[2],
+            pronunciation: "*",
+        }
+    }
 }
 
 fn read_mecab_file(dir: &str, filename: &str) -> Result<String, ParsingError> {
@@ -96,6 +119,16 @@ fn read_mecab_file(dir: &str, filename: &str) -> Result<String, ParsingError> {
     let mut buffer = Vec::new();
     input_read.read_to_end(&mut buffer)?;
     encoding::all::EUC_JP
+        .decode(&buffer, DecoderTrap::Strict)
+        .map_err(|_| ParsingError::Encoding)
+}
+
+fn read_utf8_file(filename: &str) -> Result<String, ParsingError> {
+    let path = Path::new(filename);
+    let mut input_read = File::open(path)?;
+    let mut buffer = Vec::new();
+    input_read.read_to_end(&mut buffer)?;
+    encoding::all::UTF_8
         .decode(&buffer, DecoderTrap::Strict)
         .map_err(|_| ParsingError::Encoding)
 }
@@ -165,7 +198,7 @@ fn build_dict(input_dir: &str, output_dir: &str) -> Result<(), ParsingError> {
             .entry(row.surface_form.to_string())
             .or_insert_with(Vec::new)
             .push(WordEntry {
-                word_id: WordId(row_id as u32),
+                word_id: WordId(row_id as u32, true),
                 word_cost: row.word_cost as i16,
                 cost_id: row.left_id as u16,
             });
@@ -224,6 +257,89 @@ fn build_dict(input_dir: &str, output_dir: &str) -> Result<(), ParsingError> {
     wtr_vals.flush().unwrap();
 
     Ok(())
+}
+
+pub fn build_user_dict(
+    input_file: &str,
+) -> Result<(PrefixDict<Vec<u8>>, Vec<u8>, Vec<u8>), ParsingError> {
+    let data: String = read_utf8_file(input_file)?;
+
+    let lines: Vec<String> = data.lines().map(|line| line.to_string()).collect();
+    let mut rows: Vec<CSVRow> = lines.iter().map(CSVRow::from_line_user_dict).collect();
+
+    // sorting entries
+    rows.sort_by_key(|row| row.surface_form.clone());
+
+    let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+
+    for (row_id, row) in rows.iter().enumerate() {
+        if row.word_cost == 3978 {
+            println!(
+                "{} -> {}",
+                row.surface_form,
+                row.surface_form.chars().next().unwrap() as u32
+            );
+        }
+        word_entry_map
+            .entry(row.surface_form.to_string())
+            .or_insert_with(Vec::new)
+            .push(WordEntry {
+                word_id: WordId(row_id as u32, false),
+                word_cost: row.word_cost as i16,
+                cost_id: row.left_id as u16,
+            });
+    }
+
+    let mut words_data = Vec::<u8>::new();
+    let mut words_idx_data = Vec::<u8>::new();
+    for row in rows.iter() {
+        let word = vec![
+            row.pos_level1.to_string(),
+            row.pos_level2.to_string(),
+            row.pos_level3.to_string(),
+            row.pos_level4.to_string(),
+            row.conjugation_type.to_string(),
+            row.conjugate_form.to_string(),
+            row.base_form.to_string(),
+            row.reading.to_string(),
+            row.pronunciation.to_string(),
+        ];
+        let offset = words_data.len();
+        words_idx_data.write_u32::<LittleEndian>(offset as u32)?;
+        bincode::serialize_into(&mut words_data, &word).unwrap();
+    }
+
+    let mut id = 0u64;
+
+    // building fst
+    let mut fst_build = MapBuilder::<Vec<u8>>::memory();
+    for (key, word_entries) in &word_entry_map {
+        let len = word_entries.len() as u64;
+        assert!(
+            len < (1 << 5),
+            format!("{} is {} length. Too long. [{}]", key, len, (1 << 5))
+        );
+        let val = (id << 5) | len;
+        fst_build.insert(&key, val).unwrap();
+        id += len;
+    }
+    let fst_bytes = fst_build.into_inner().unwrap();
+
+    // building values
+    let mut vals_data = Vec::<u8>::new();
+    for word_entries in word_entry_map.values() {
+        for word_entry in word_entries {
+            word_entry.serialize(&mut vals_data)?;
+        }
+    }
+
+    let dict = PrefixDict {
+        fst: lindera_fst::raw::Fst::new(fst_bytes).unwrap(),
+        vals_data: vals_data,
+        is_system: false,
+    };
+
+    Ok((dict, words_idx_data, words_data))
 }
 
 fn build_cost_matrix(input_dir: &str, output_dir: &str) -> Result<(), ParsingError> {
@@ -442,7 +558,7 @@ fn make_costs_array(entries: &[DictionaryEntry]) -> Vec<WordEntry> {
         .map(|e| {
             assert_eq!(e.left_id, e.right_id);
             WordEntry {
-                word_id: WordId(std::u32::MAX),
+                word_id: WordId(std::u32::MAX, true),
                 cost_id: e.left_id as u16,
                 word_cost: e.word_cost as i16,
             }

@@ -9,6 +9,7 @@ use crate::core::word_entry::WordEntry;
 pub struct PrefixDict<Data = Vec<u8>> {
     pub fst: lindera_fst::raw::Fst<Data>,
     pub vals_data: Data,
+    pub is_system: bool,
 }
 
 impl PrefixDict<&[u8]> {
@@ -17,6 +18,7 @@ impl PrefixDict<&[u8]> {
         Ok(PrefixDict {
             fst,
             vals_data: vals_data.to_vec(),
+            is_system: true,
         })
     }
 }
@@ -53,7 +55,10 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
                 (0..len as usize).map(move |i| {
                     (
                         prefix_len,
-                        WordEntry::deserialize(&data[WordEntry::SERIALIZED_LEN * i..]),
+                        WordEntry::deserialize(
+                            &data[WordEntry::SERIALIZED_LEN * i..],
+                            self.is_system,
+                        ),
                     )
                 })
             })
