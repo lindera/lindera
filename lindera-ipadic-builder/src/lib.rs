@@ -284,7 +284,7 @@ pub fn build_user_dict(
             .entry(row.surface_form.to_string())
             .or_insert_with(Vec::new)
             .push(WordEntry {
-                word_id: WordId(row_id as u32, true),
+                word_id: WordId(row_id as u32, false),
                 word_cost: row.word_cost as i16,
                 cost_id: row.left_id as u16,
             });
