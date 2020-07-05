@@ -146,6 +146,7 @@ impl Lattice {
     pub fn set_text(
         &mut self,
         dict: &PrefixDict,
+        user_dict: &Option<PrefixDict>,
         char_definitions: &CharacterDefinitions,
         unknown_dictionary: &UnknownDictionary,
         text: &str,
@@ -174,6 +175,24 @@ impl Lattice {
             let suffix = &text[start..];
 
             let mut found: bool = false;
+
+            // lookup user dictionary
+            if user_dict.is_some() {
+                let dict = user_dict.as_ref().unwrap();
+                for (prefix_len, word_entry) in dict.prefix(suffix) {
+                    let edge = Edge {
+                        edge_type: EdgeType::KNOWN,
+                        word_entry,
+                        left_edge: None,
+                        start_index: start as u32,
+                        stop_index: (start + prefix_len) as u32,
+                        path_cost: i32::max_value(),
+                        kanji_only: is_kanji_only(&suffix[..prefix_len]),
+                    };
+                    self.add_edge_in_lattice(edge);
+                    found = true;
+                }
+            }
 
             // we check all word starting at start, using the fst, like we would use
             // a prefix trie, and populate the lattice with as many edges
@@ -311,8 +330,8 @@ impl Lattice {
         }
     }
 
-    pub fn tokens_offset(&self, offsets: &mut Vec<(usize, WordId)>) {
-        offsets.clear();
+    pub fn tokens_offset(&self) -> Vec<(usize, WordId)> {
+        let mut offsets = Vec::new();
         let mut edge_id = EOS_NODE;
         let _edge = self.edge(EOS_NODE);
         loop {
@@ -326,5 +345,6 @@ impl Lattice {
         }
         offsets.reverse();
         offsets.pop();
+        offsets
     }
 }

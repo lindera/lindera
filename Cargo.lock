@@ -641,6 +641,7 @@ dependencies = [
  "lindera-core",
  "lindera-dictionary",
  "lindera-ipadic",
+ "lindera-ipadic-builder",
  "serde",
  "serde_json",
 ]

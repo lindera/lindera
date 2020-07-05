@@ -10,17 +10,7 @@ use lindera_core::core::viterbi::{Lattice, Mode, Penalty};
 use lindera_core::core::word_entry::WordId;
 use lindera_dictionary;
 use lindera_ipadic;
-
-pub fn word_detail(word_id: WordId, words_idx_data: &[u8], words_data: &[u8]) -> Vec<String> {
-    if word_id.is_unknown() {
-        return vec!["UNK".to_string()];
-    }
-
-    let idx = LittleEndian::read_u32(&words_idx_data[4 * word_id.0 as usize..][..4]);
-    let data = &words_data[idx as usize..];
-    let word_detail = bincode::deserialize_from(data).unwrap();
-    word_detail
-}
+use lindera_ipadic_builder;
 
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {
@@ -37,12 +27,24 @@ pub struct Tokenizer {
     unknown_dictionary: UnknownDictionary,
     words_idx_data: Vec<u8>,
     words_data: Vec<u8>,
+    user_dict: Option<PrefixDict<Vec<u8>>>,
+    user_dict_words_idx_data: Option<Vec<u8>>,
+    user_dict_words_data: Option<Vec<u8>>,
     mode: Mode,
-    offsets: Vec<(usize, WordId)>,
 }
 
 impl Tokenizer {
     pub fn new(mode: &str, dict: &str) -> Tokenizer {
+        Tokenizer::new_with_userdic(mode, dict, "")
+    }
+
+    /// Creates a Tokenizer instance with user dictionary (CSV).
+    /// User dictionary file format:
+    /// <pre>
+    /// <surface_form>,<part_of_speech>,<reading>
+    /// </pre>
+    /// Currently works only with default ipadic system dictionary; if `dict` is not empty, `user_dict` is ignored.
+    pub fn new_with_userdic(mode: &str, dict: &str, user_dict: &str) -> Tokenizer {
         let m = match mode {
             "normal" => Mode::Normal,
             "decompose" => Mode::Decompose(Penalty::default()),
@@ -62,10 +64,21 @@ impl Tokenizer {
                 unknown_dictionary: lindera_dictionary::unknown_dict(dict),
                 words_idx_data: lindera_dictionary::words_idx_data(dict),
                 words_data: lindera_dictionary::words_data(dict),
+                user_dict: None,
+                user_dict_words_idx_data: None,
+                user_dict_words_data: None,
                 mode: m,
-                offsets: Vec::new(),
             }
         } else {
+            let (user_dict, user_dict_words_idx_data, user_dict_words_data) = if user_dict.len() > 0
+            {
+                let (dict, words_idx_data, words_data) =
+                    lindera_ipadic_builder::build_user_dict(user_dict).unwrap();
+                (Some(dict), Some(words_idx_data), Some(words_data))
+            } else {
+                (None, None, None)
+            };
+
             Tokenizer {
                 dict: lindera_ipadic::prefix_dict(),
                 cost_matrix: lindera_ipadic::connection(),
@@ -74,8 +87,10 @@ impl Tokenizer {
                 unknown_dictionary: lindera_ipadic::unknown_dict(),
                 words_idx_data: lindera_ipadic::words_idx_data(),
                 words_data: lindera_ipadic::words_data(),
+                user_dict: user_dict,
+                user_dict_words_idx_data: user_dict_words_idx_data,
+                user_dict_words_data: user_dict_words_data,
                 mode: m,
-                offsets: Vec::new(),
             }
         }
     }
@@ -92,12 +107,13 @@ impl Tokenizer {
     /// in which case an empty array is returned.
     ///
     /// Whitespaces also count as tokens.
-    pub(crate) fn tokenize_offsets(&mut self, text: &str) -> &[(usize, WordId)] {
+    pub(crate) fn tokenize_offsets(&mut self, text: &str) -> Vec<(usize, WordId)> {
         if text.is_empty() {
-            return &[];
+            return Vec::new();
         }
         self.lattice.set_text(
             &self.dict,
+            &self.user_dict,
             &self.char_definitions,
             &self.unknown_dictionary,
             text,
@@ -105,14 +121,10 @@ impl Tokenizer {
         );
         self.lattice
             .calculate_path_costs(&self.cost_matrix, &self.mode);
-        self.lattice.tokens_offset(&mut self.offsets);
-        &self.offsets[..]
+        self.lattice.tokens_offset()
     }
 
     fn tokenize_without_split<'a>(&mut self, text: &'a str, tokens: &mut Vec<Token<'a>>) {
-        let words_idx_data = self.words_idx_data.clone();
-        let words_data = self.words_data.clone();
-
         let offsets = self.tokenize_offsets(text);
 
         for i in 0..offsets.len() {
@@ -125,9 +137,28 @@ impl Tokenizer {
             };
             tokens.push(Token {
                 text: &text[token_start..token_stop],
-                detail: word_detail(word_id, words_idx_data.as_slice(), words_data.as_slice()),
+                detail: self.word_detail(word_id),
             })
         }
+    }
+
+    fn word_detail(&self, word_id: WordId) -> Vec<String> {
+        if word_id.is_unknown() {
+            return vec!["UNK".to_string()];
+        }
+
+        let (words_idx_data, words_data) = if word_id.is_system() {
+            (self.words_idx_data.as_slice(), self.words_data.as_slice())
+        } else {
+            (
+                self.user_dict_words_idx_data.as_ref().unwrap().as_slice(),
+                self.user_dict_words_data.as_ref().unwrap().as_slice(),
+            )
+        };
+        let idx = LittleEndian::read_u32(&words_idx_data[4 * word_id.0 as usize..][..4]);
+        let data = &words_data[idx as usize..];
+        let word_detail = bincode::deserialize_from(data).unwrap();
+        word_detail
     }
 
     fn tokenize_without_split_str<'a>(&mut self, text: &'a str, tokens: &mut Vec<&'a str>) {
@@ -171,7 +202,7 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::tokenizer::Tokenizer;
+    use crate::tokenizer::{Token, Tokenizer};
     use lindera_core::core::word_entry::WordId;
 
     #[test]
@@ -185,15 +216,19 @@ mod tests {
     fn test_space() {
         let mut tokenizer = Tokenizer::new("decompose", "");
         let tokens = tokenizer.tokenize_offsets(" ");
-        assert_eq!(tokens, &[(0, WordId(4294967295))]);
+        assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
     }
 
     #[test]
     fn test_boku_ha() {
         let mut tokenizer = Tokenizer::new("decompose", "");
         let tokens = tokenizer.tokenize_offsets("僕は");
-        assert_eq!(tokens, &[(0, WordId(132630)), (3, WordId(57063))]);
+        assert_eq!(
+            tokens,
+            &[(0, WordId(132630, true)), (3, WordId(57063, true))]
+        );
     }
+
     /*
     #[test]
     fn test_tokenize() {
@@ -201,7 +236,6 @@ mod tests {
         let tokens = tokenizer.tokenize_offsets("俺はまだ本気出してないだけ。");
         assert_eq!(tokens, &[0, 3, 6, 12, 18, 24, 27, 33, 39]);
     }
-
     #[test]
     fn test_tokenize2() {
         let mut tokenizer = Tokenizer::for_search();
@@ -392,5 +426,42 @@ mod tests {
             .map(|token| token.text)
             .collect();
         assert_eq!(tokens, vec!["ここ", "で", "は"]);
+    }
+
+    #[test]
+    fn test_user_dict() {
+        let mut tokenizer = Tokenizer::new_with_userdic("normal", "", "resources/userdic.csv");
+        assert!(tokenizer.user_dict.is_some());
+        assert!(tokenizer.user_dict_words_idx_data.is_some());
+        assert!(tokenizer.user_dict_words_data.is_some());
+        let tokens: Vec<Token> =
+            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
+        assert_eq!("東京スカイツリー", tokens[0].text);
+        assert_eq!(
+            vec![
+                "カスタム名詞",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "東京スカイツリー",
+                "トウキョウスカイツリー",
+                "*"
+            ],
+            tokens[0].detail
+        );
+        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
+        assert_eq!(
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です"
+            ],
+            token_texts
+        );
     }
 }
