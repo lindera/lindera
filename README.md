@@ -95,6 +95,7 @@ fn main() -> std::io::Result<()> {
 
 The above example can be by `cargo run --example`:
 ```shell
+% cd lindera/lindera
 % cargo run --example userdic_example
 東京スカイツリー
 の
