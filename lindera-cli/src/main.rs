@@ -27,6 +27,14 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("USER_DICTIONARY")
+            .help("(Optional) The user dictionary file path.")
+            .short("u")
+            .long("userdic")
+            .value_name("USER_DICTIONARY")
+            .takes_value(true),
+        )
+        .arg(
             Arg::with_name("MODE")
                 .help("The tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
                 .short("m")
@@ -59,11 +67,21 @@ fn main() {
         dict_dir = _dict_dir;
     }
 
+    // user dictionary
+    let mut user_dict = "";
+    if let Some(_user_dict) = matches.value_of("USER_DICTIONARY") {
+        user_dict = _user_dict;
+    }
+
     // mode
     let mode_name = matches.value_of("MODE").unwrap();
 
     // create tokenizer
-    let mut tokenizer = Tokenizer::new(mode_name, dict_dir);
+    let mut tokenizer = if user_dict.len() > 0 {
+        Tokenizer::new_with_userdic(mode_name, dict_dir, user_dict)
+    } else {
+        Tokenizer::new(mode_name, dict_dir)
+    };
 
     // output format
     let output_format = matches.value_of("OUTPUT").unwrap();
