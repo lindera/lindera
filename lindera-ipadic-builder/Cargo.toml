@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic-builder"
-version = "0.5.0"
+version = "0.5.1"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
@@ -25,7 +25,7 @@ glob = "0.3.0"
 
 lindera-fst = "0.1.0"
 
-lindera-core = { version = "0.5.0", path = "../lindera-core" }
+lindera-core = { version = "0.5.1", path = "../lindera-core" }
 
 [[bin]]
 name = "lindera-ipadic"
