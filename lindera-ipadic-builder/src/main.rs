@@ -1,7 +1,4 @@
-#[macro_use]
-extern crate clap;
-
-use clap::{App, AppSettings, Arg};
+use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
 
 use lindera_ipadic_builder::build;
 
