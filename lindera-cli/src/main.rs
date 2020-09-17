@@ -1,10 +1,8 @@
-#[macro_use]
-extern crate clap;
-
 use std::io::{BufRead, BufReader};
 use std::{fs, io};
 
-use clap::{App, AppSettings, Arg};
+use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
+
 use lindera::formatter::format;
 use lindera::tokenizer::Tokenizer;
 use stringreader::StringReader;
