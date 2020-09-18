@@ -12,6 +12,7 @@ The following products are required to build:
 
 - Rust >= 1.39.0
 - make >= 3.81
+- jq
 
 ```text
 % make build
