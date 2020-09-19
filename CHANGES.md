@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add long-text benchmark #74 @johtani
 - Update modules to 2018 #73 @johtani
 - Use new method instead of default_normal #72 @johtani
 
