@@ -18,7 +18,6 @@ pub struct Token<'a> {
     pub detail: Vec<String>,
 }
 
-#[derive(Clone)]
 pub struct Tokenizer {
     dict: PrefixDict<Vec<u8>>,
     cost_matrix: ConnectionCostMatrix,

@@ -664,6 +664,7 @@ dependencies = [
  "encoding",
  "lindera-fst",
  "serde",
+ "yada",
 ]
 
 [[package]]
@@ -712,6 +713,7 @@ dependencies = [
  "glob",
  "lindera-core",
  "lindera-fst",
+ "yada",
 ]
 
 [[package]]
@@ -1704,3 +1706,9 @@ checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "yada"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81bf5aa26ebe5cef3ecb39a2ead14ea6e8b18159d23a4f9643797879eb1209f6"
