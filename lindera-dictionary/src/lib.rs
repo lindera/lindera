@@ -29,7 +29,7 @@ pub fn connection(dir: &str) -> ConnectionCostMatrix {
 }
 
 pub fn prefix_dict(dir: &str) -> PrefixDict {
-    let unidic_data_path = Path::new(dir).join("dict.fst");
+    let unidic_data_path = Path::new(dir).join("dict.da");
     let unidic_data = read_file(unidic_data_path.to_str().unwrap());
 
     let unidic_vals_path = Path::new(dir).join("dict.vals");

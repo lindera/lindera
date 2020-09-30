@@ -11,8 +11,6 @@ pub struct PrefixDict<Data = Vec<u8>> {
 
 impl PrefixDict<&[u8]> {
     pub fn from_static_slice(da_data: &[u8], vals_data: &[u8]) -> Result<PrefixDict, String> {
-        //let fst = lindera_fst::raw::Fst::new(fst_data.to_vec())?;
-        //TODO
         let da = DoubleArray::new(da_data.to_vec());
         Ok(PrefixDict {
             da,
@@ -45,37 +43,4 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
 }
 
 #[cfg(test)]
-mod tests {
-    //    use crate::core::prefix_dict::PrefixDict;
-    //
-    //    #[test]
-    //    fn test_fst_prefix_2() {
-    //        let prefix_dict = PrefixDict::default();
-    //        let count_prefix = prefix_dict.prefix("—でも").count();
-    //        assert_eq!(count_prefix, 1);
-    //    }
-    //
-    //    #[test]
-    //    fn test_fst_prefix_tilde() {
-    //        let prefix_dict = PrefixDict::default();
-    //        let count_prefix = prefix_dict.prefix("〜").count();
-    //        assert_eq!(count_prefix, 2);
-    //    }
-    //
-    //    #[test]
-    //    fn test_fst_ikkagetsu() {
-    //        let prefix_dict = PrefixDict::default();
-    //        let count_prefix = prefix_dict.prefix("ー").count();
-    //        assert_eq!(count_prefix, 0);
-    //
-    //        let count_prefix = prefix_dict.prefix("ヶ月").count();
-    //        assert_eq!(count_prefix, 1);
-    //    }
-    //
-    //    #[test]
-    //    fn test_fst_prefix_asterisk_symbol() {
-    //        let prefix_dict = PrefixDict::default();
-    //        let count_prefix = prefix_dict.prefix("※").count();
-    //        assert_eq!(count_prefix, 1);
-    //    }
-}
+mod tests {}
