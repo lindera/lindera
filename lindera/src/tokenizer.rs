@@ -203,6 +203,8 @@ impl Tokenizer {
 mod tests {
     use crate::tokenizer::{Token, Tokenizer};
     use lindera_core::core::word_entry::WordId;
+    use std::fs::File;
+    use std::io::{BufReader, Read};
 
     #[test]
     fn test_empty() {
@@ -462,5 +464,15 @@ mod tests {
             ],
             token_texts
         );
+    }
+
+    #[test]
+    fn test_long_text() {
+        let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
+        let mut large_text = String::new();
+        let _size = large_file.read_to_string(&mut large_text).unwrap();
+        let mut tokenizer = Tokenizer::new("normal", "");
+        let tokens = tokenizer.tokenize(large_text.as_str());
+        assert!(!tokens.is_empty());
     }
 }
