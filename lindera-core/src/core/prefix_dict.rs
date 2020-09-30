@@ -3,6 +3,7 @@ use std::ops::Deref;
 use crate::core::word_entry::WordEntry;
 use yada::DoubleArray;
 
+#[derive(Clone)]
 pub struct PrefixDict<Data = Vec<u8>> {
     pub da: DoubleArray<Vec<u8>>,
     pub vals_data: Data,
