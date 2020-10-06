@@ -8,7 +8,7 @@ A morphological dictionary loader for [Lindera](https://github.com/lindera-morph
 
 The following products are required to build:
 
-- Rust >= 1.39.0
+- Rust >= 1.46.0
 - make >= 3.81
 
 ```shell script

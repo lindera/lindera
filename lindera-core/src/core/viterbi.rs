@@ -194,7 +194,7 @@ impl Lattice {
                 }
             }
 
-            // we check all word starting at start, using the fst, like we would use
+            // we check all word starting at start, using the double array, like we would use
             // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
                 let edge = Edge {

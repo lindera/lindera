@@ -10,7 +10,7 @@ This package contains dictionary structures and the viterbi algorithm.
 
 The following products are required to build:
 
-- Rust >= 1.39.0
+- Rust >= 1.46.0
 - make >= 3.81
 
 ```text

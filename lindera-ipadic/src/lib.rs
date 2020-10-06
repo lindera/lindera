@@ -5,7 +5,7 @@ use lindera_core::core::unknown_dictionary::UnknownDictionary;
 
 const CHAR_DEFINITION_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/char_def.bin");
 const CONNECTION_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/matrix.mtx");
-const IPADIC_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/dict.fst");
+const IPADIC_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/dict.da");
 const IPADIC_VALS: &'static [u8] = include_bytes!("../lindera-ipadic/dict.vals");
 const UNKNOWN_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/unk.bin");
 const WORDS_IDX_DATA: &'static [u8] = include_bytes!("../lindera-ipadic/dict.wordsidx");
