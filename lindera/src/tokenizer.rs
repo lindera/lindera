@@ -6,7 +6,7 @@ use lindera_core::core::character_definition::CharacterDefinitions;
 use lindera_core::core::connection::ConnectionCostMatrix;
 use lindera_core::core::prefix_dict::PrefixDict;
 use lindera_core::core::unknown_dictionary::UnknownDictionary;
-use lindera_core::core::viterbi::{Lattice, Mode, Penalty};
+use lindera_core::core::viterbi::{Lattice, Mode};
 use lindera_core::core::word_entry::WordId;
 use lindera_dictionary;
 use lindera_ipadic;
@@ -34,7 +34,7 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn new(mode: &str, dict: &str) -> Tokenizer {
+    pub fn new(mode: Mode, dict: &str) -> Tokenizer {
         Tokenizer::new_with_userdic(mode, dict, "")
     }
 
@@ -44,17 +44,7 @@ impl Tokenizer {
     /// <surface_form>,<part_of_speech>,<reading>
     /// </pre>
     /// Currently works only with default ipadic system dictionary; if `dict` is not empty, `user_dict` is ignored.
-    pub fn new_with_userdic(mode: &str, dict: &str, user_dict: &str) -> Tokenizer {
-        let m = match mode {
-            "normal" => Mode::Normal,
-            "decompose" => Mode::Decompose(Penalty::default()),
-            _ => {
-                // return error message
-                println!("unsupported mode: {}", mode);
-                Mode::Normal
-            }
-        };
-
+    pub fn new_with_userdic(mode: Mode, dict: &str, user_dict: &str) -> Tokenizer {
         if dict.len() > 0 {
             Tokenizer {
                 dict: lindera_dictionary::prefix_dict(dict),
@@ -67,7 +57,7 @@ impl Tokenizer {
                 user_dict: None,
                 user_dict_words_idx_data: None,
                 user_dict_words_data: None,
-                mode: m,
+                mode,
             }
         } else {
             let (user_dict, user_dict_words_idx_data, user_dict_words_data) = if user_dict.len() > 0
@@ -87,10 +77,10 @@ impl Tokenizer {
                 unknown_dictionary: lindera_ipadic::unknown_dict(),
                 words_idx_data: lindera_ipadic::words_idx_data(),
                 words_data: lindera_ipadic::words_data(),
-                user_dict: user_dict,
-                user_dict_words_idx_data: user_dict_words_idx_data,
-                user_dict_words_data: user_dict_words_data,
-                mode: m,
+                user_dict,
+                user_dict_words_idx_data,
+                user_dict_words_data,
+                mode,
             }
         }
     }
@@ -202,28 +192,31 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    use crate::tokenizer::{Token, Tokenizer};
-    use lindera_core::core::word_entry::WordId;
     use std::fs::File;
     use std::io::{BufReader, Read};
 
+    use lindera_core::core::viterbi::{Mode, Penalty};
+    use lindera_core::core::word_entry::WordId;
+
+    use crate::tokenizer::{Token, Tokenizer};
+
     #[test]
     fn test_empty() {
-        let mut tokenizer = Tokenizer::new("decompose", "");
+        let mut tokenizer = Tokenizer::new(Mode::Decompose(Penalty::default()), "");
         let tokens = tokenizer.tokenize_offsets("");
         assert_eq!(tokens, &[]);
     }
 
     #[test]
     fn test_space() {
-        let mut tokenizer = Tokenizer::new("decompose", "");
+        let mut tokenizer = Tokenizer::new(Mode::Decompose(Penalty::default()), "");
         let tokens = tokenizer.tokenize_offsets(" ");
         assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
     }
 
     #[test]
     fn test_boku_ha() {
-        let mut tokenizer = Tokenizer::new("decompose", "");
+        let mut tokenizer = Tokenizer::new(Mode::Decompose(Penalty::default()), "");
         let tokens = tokenizer.tokenize_offsets("僕は");
         assert_eq!(
             tokens,
@@ -262,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_sumomomomo() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち");
         assert_eq!(
             tokens,
@@ -281,42 +274,42 @@ mod tests {
 
     #[test]
     fn test_gyoi() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("御意。 御意〜。");
         assert_eq!(tokens, vec!["御意", "。", " ", "御意", "〜", "。"]);
     }
 
     #[test]
     fn test_demoyorokobi() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("〜でも喜び");
         assert_eq!(tokens, vec!["〜", "でも", "喜び"]);
     }
 
     #[test]
     fn test_mukigen_normal2() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("—でも");
         assert_eq!(tokens, vec!["—", "でも"]);
     }
 
     #[test]
     fn test_atodedenwa() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("後で");
         assert_eq!(tokens, vec!["後で"]);
     }
 
     #[test]
     fn test_ikkagetsu() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ーヶ月");
         assert_eq!(tokens, vec!["ーヶ", "月"]);
     }
 
     #[test]
     fn test_mukigen_normal() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?");
         assert_eq!(
             tokens,
@@ -326,28 +319,28 @@ mod tests {
 
     #[test]
     fn test_demo() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("――!!?");
         assert_eq!(tokens, vec!["――!!?"]);
     }
 
     #[test]
     fn test_kaikeishi() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ジム・コガン");
         assert_eq!(tokens, vec!["ジム・コガン"]);
     }
 
     #[test]
     fn test_bruce() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("ブルース・モラン");
         assert_eq!(tokens, vec!["ブルース・モラン"]);
     }
 
     #[test]
     fn test_tokenize_real() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str(
             "本項で解説する地方病とは、山梨県における日本住血吸虫症の呼称であり、\
              長い間その原因が明らかにならず住民を苦しめた感染症である。",
@@ -403,14 +396,14 @@ mod tests {
 
     #[test]
     fn test_hitobito() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer.tokenize_str("満々!");
         assert_eq!(tokens, &["満々", "!"]);
     }
 
     #[test]
     fn test_tokenize_short() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer
             .tokenize("日本住")
             .into_iter()
@@ -421,7 +414,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_short2() {
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens: Vec<&str> = tokenizer
             .tokenize("ここでは")
             .into_iter()
@@ -432,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_user_dict() {
-        let mut tokenizer = Tokenizer::new_with_userdic("normal", "", "resources/userdic.csv");
+        let mut tokenizer = Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic.csv");
         assert!(tokenizer.user_dict.is_some());
         assert!(tokenizer.user_dict_words_idx_data.is_some());
         assert!(tokenizer.user_dict_words_data.is_some());
@@ -472,7 +465,7 @@ mod tests {
         let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
         let mut large_text = String::new();
         let _size = large_file.read_to_string(&mut large_text).unwrap();
-        let mut tokenizer = Tokenizer::new("normal", "");
+        let mut tokenizer = Tokenizer::new(Mode::Normal, "");
         let tokens = tokenizer.tokenize(large_text.as_str());
         assert!(!tokens.is_empty());
     }

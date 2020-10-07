@@ -13,14 +13,15 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use encoding::all::UTF_16LE;
 use encoding::{DecoderTrap, Encoding};
 use glob::glob;
+use yada::builder::DoubleArrayBuilder;
+use yada::DoubleArray;
+
 use lindera_core::core::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
 use lindera_core::core::prefix_dict::PrefixDict;
 use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use lindera_core::core::word_entry::{WordEntry, WordId};
-use yada::builder::DoubleArrayBuilder;
-use yada::DoubleArray;
 
 #[derive(Debug)]
 pub enum ParsingError {

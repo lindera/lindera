@@ -1,4 +1,4 @@
-FROM rust:1.43.0-slim-stretch AS builder
+FROM rust:1.46.0-slim-buster AS builder
 
 ARG LINDERA_CLI_VERSION
 
@@ -19,7 +19,7 @@ RUN set -ex \
 RUN cargo install lindera-cli --root=./ --vers=${LINDERA_CLI_VERSION}
 
 
-FROM debian:stretch-slim
+FROM debian:buster-slim
 
 WORKDIR /
 

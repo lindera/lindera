@@ -1,31 +1,33 @@
+use std::fs::File;
+use std::io::{BufReader, Read};
+
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
 use lindera::tokenizer::Tokenizer;
-use std::fs::File;
-use std::io::{BufReader, Read};
+use lindera_core::core::viterbi::Mode;
 
 fn bench_constructor(c: &mut Criterion) {
     c.bench_function("bench-constructor", |b| {
-        b.iter(|| Tokenizer::new("normal", ""))
+        b.iter(|| Tokenizer::new(Mode::Normal, ""))
     });
 }
 
 fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
-        b.iter(|| Tokenizer::new_with_userdic("normal", "", "resources/userdic.csv"))
+        b.iter(|| Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic.csv"))
     });
 }
 
 fn bench_tokenize(c: &mut Criterion) {
-    let mut tokenizer = Tokenizer::new("normal", "");
+    let mut tokenizer = Tokenizer::new(Mode::Normal, "");
     c.bench_function("bench-tokenize-wiki", |b| {
         b.iter(|| tokenizer.tokenize("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。"))
     });
 }
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
-    let mut tokenizer = Tokenizer::new_with_userdic("normal", "", "resources/userdic.csv");
+    let mut tokenizer = Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic.csv");
     c.bench_function("bench-tokenize-custom-dict", |b| {
         b.iter(|| tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です"))
     });
@@ -35,7 +37,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
     let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
     let mut large_text = String::new();
     let _size = large_file.read_to_string(&mut large_text).unwrap();
-    let mut tokenizer = Tokenizer::new("normal", "");
+    let mut tokenizer = Tokenizer::new(Mode::Normal, "");
     // Using benchmark_group for changing sample_size
     let mut group = c.benchmark_group("Long text");
     group.sample_size(20);

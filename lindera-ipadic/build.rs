@@ -4,12 +4,13 @@ use std::fs::File;
 use std::path::Path;
 
 use flate2::read::GzDecoder;
-use lindera_ipadic_builder::build;
 use reqwest;
 use tar::Archive;
 use tokio;
 use tokio::fs::File as TokioFile;
 use tokio::prelude::*;
+
+use lindera_ipadic_builder::build;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -17,13 +18,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
-    println!("cargo:rerun-if-changed=lindera-ipadic");
 
     let ipadic_ver = "2.7.0-20070801";
     let file_name = format!("mecab-ipadic-{}.tar.gz", ipadic_ver);
 
     // Download a tarball
-    let download_url = "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
+    let download_url =
+        "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
     let mut resp = reqwest::get(download_url).await.unwrap();
 
     // Save a ttarball
@@ -41,8 +42,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Build dictionary
     let input_dir = Path::new(&out_dir).join(format!("mecab-ipadic-{}", ipadic_ver));
-    let output_dir = "./lindera-ipadic";
-    build(&input_dir.to_str().unwrap(), output_dir).unwrap();
+    let output_dir = Path::new(&out_dir).join("lindera-ipadic");
+    build(input_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
 
     Ok(())
 }

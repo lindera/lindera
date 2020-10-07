@@ -4,7 +4,8 @@ version = "0.5.1"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
-    "Tomoko Uchida <tomoko.uchida.1111@gmail.com>"
+    "Tomoko Uchida <tomoko.uchida.1111@gmail.com>",
+    "Jun Ohtani <johtani@gmail.com>"
     ]
 edition = "2018"
 description = "A Japanese morphological dictionary loader for IPADIC."
