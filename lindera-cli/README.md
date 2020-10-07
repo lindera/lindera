@@ -15,7 +15,6 @@ A morphological analysis command-line interface for [Lindera](https://github.com
 The following products are required to build:
 
 - Rust >= 1.46.0
-- make >= 3.81
 
 ```shell script
 % cargo build --release

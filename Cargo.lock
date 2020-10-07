@@ -626,7 +626,7 @@ checksum = "3baa92041a6fec78c687fa0cc2b3fae8884f743d672cf551bed1d6dac6988d0f"
 
 [[package]]
 name = "lindera"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -642,7 +642,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "clap",
  "lindera",
@@ -652,7 +652,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-core"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -663,7 +663,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -672,7 +672,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-builder"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "bincode",
  "byteorder",
