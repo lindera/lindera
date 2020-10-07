@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add GitHub Actions integration and some refactoring #80 @mosuka
 - Switch FST to Double Array #76 @johtani
 - Add long-text benchmark #74 @johtani
 - Update modules to 2018 #73 @johtani
