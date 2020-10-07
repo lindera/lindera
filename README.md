@@ -11,8 +11,6 @@ Lindera aims to build a library which is easy to install and provides concise AP
 The following products are required to build:
 
 - Rust >= 1.46.0
-- make >= 3.81
-- jq
 
 ```text
 % make build

@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.6.0 (2020-10-07)
+- Bump up version to 0.6.0 #82 @mosuka
+- Update dependencies #81 @mosuka
 - Add GitHub Actions integration and some refactoring #80 @mosuka
 - Switch FST to Double Array #76 @johtani
 - Add long-text benchmark #74 @johtani
