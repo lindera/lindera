@@ -31,10 +31,11 @@ It will:
 
 ```rust
 use lindera::tokenizer::Tokenizer;
+use lindera_core::core::viterbi::Mode;
 
 fn main() -> std::io::Result<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new("normal", "");
+    let mut tokenizer = Tokenizer::new(Mode::Normal, "");
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -78,9 +79,12 @@ For example:
 
 With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
+use lindera::tokenizer::Tokenizer;
+use lindera_core::core::viterbi::Mode;
+
 fn main() -> std::io::Result<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new_with_userdic("normal", "", "userdic.csv");
+    let mut tokenizer = Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic.csv");
 
     // tokenize the text
     let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
