@@ -1,5 +1,12 @@
 use crate::tokenizer::Token;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Format {
+    MeCab,
+    Wakati,
+    JSON,
+}
+
 pub fn format_mecab(tokens: Vec<Token>) -> String {
     let mut lines = Vec::new();
     for token in tokens {
@@ -25,11 +32,10 @@ pub fn format_json(tokens: Vec<Token>) -> String {
     serde_json::to_string_pretty(&tokens).unwrap()
 }
 
-pub fn format(tokens: Vec<Token>, output_format: &str) -> Result<String, String> {
+pub fn format(tokens: Vec<Token>, output_format: Format) -> Result<String, String> {
     return match output_format {
-        "mecab" => Ok(format_mecab(tokens)),
-        "wakati" => Ok(format_wakati(tokens)),
-        "json" => Ok(format_json(tokens)),
-        _ => Err(format!("unsupported output format: {}", output_format)),
+        Format::MeCab => Ok(format_mecab(tokens)),
+        Format::Wakati => Ok(format_wakati(tokens)),
+        Format::JSON => Ok(format_json(tokens)),
     };
 }

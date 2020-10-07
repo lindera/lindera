@@ -2,10 +2,11 @@ use std::io::{BufRead, BufReader};
 use std::{fs, io};
 
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
-
-use lindera::formatter::format;
-use lindera::tokenizer::Tokenizer;
 use stringreader::StringReader;
+
+use lindera::formatter::{format, Format};
+use lindera::tokenizer::Tokenizer;
+use lindera_core::core::viterbi::{Mode, Penalty};
 
 fn main() {
     let app = App::new(crate_name!())
@@ -73,16 +74,35 @@ fn main() {
 
     // mode
     let mode_name = matches.value_of("MODE").unwrap();
+    let mode = match mode_name {
+        "normal" => Mode::Normal,
+        "decompose" => Mode::Decompose(Penalty::default()),
+        _ => {
+            // show error message
+            println!("unsupported mode: {}", mode_name);
+            return;
+        }
+    };
 
     // create tokenizer
     let mut tokenizer = if user_dict.len() > 0 {
-        Tokenizer::new_with_userdic(mode_name, dict_dir, user_dict)
+        Tokenizer::new_with_userdic(mode, dict_dir, user_dict)
     } else {
-        Tokenizer::new(mode_name, dict_dir)
+        Tokenizer::new(mode, dict_dir)
     };
 
     // output format
     let output_format = matches.value_of("OUTPUT").unwrap();
+    let f = match output_format {
+        "mecab" => Format::MeCab,
+        "wakati" => Format::Wakati,
+        "json" => Format::JSON,
+        _ => {
+            // show error message
+            println!("unsupported format: {}", output_format);
+            return;
+        }
+    };
 
     if matches.is_present("INPUT_FILE") {
         let mut input_text = String::new();
@@ -124,7 +144,7 @@ fn main() {
             let tokens = tokenizer.tokenize(&text);
 
             // output result
-            match format(tokens, output_format) {
+            match format(tokens, f) {
                 Ok(output) => println!("{}", output),
                 Err(msg) => println!("{}", msg),
             };
@@ -152,7 +172,7 @@ fn main() {
             let tokens = tokenizer.tokenize(&text);
 
             // output result
-            match format(tokens, output_format) {
+            match format(tokens, f) {
                 Ok(output) => println!("{}", output),
                 Err(msg) => println!("{}", msg),
             };

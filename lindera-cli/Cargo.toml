@@ -22,6 +22,7 @@ clap = "2.33.0"
 stringreader = "0.1.1"
 
 lindera = { version = "0.5.1", path = "../lindera" }
+lindera-core = { version = "0.5.1", path = "../lindera-core" }
 
 [[bin]]
 name = "lindera"

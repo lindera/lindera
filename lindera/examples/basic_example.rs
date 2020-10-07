@@ -1,8 +1,9 @@
 use lindera::tokenizer::Tokenizer;
+use lindera_core::core::viterbi::Mode;
 
 fn main() -> std::io::Result<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new("normal", "");
+    let mut tokenizer = Tokenizer::new(Mode::Normal, "");
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
