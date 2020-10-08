@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 - Update CI.yml #86 @mosuka
+- Fix documentation bug. FST to DA #85 @johtani
 
 ## 0.6.0 (2020-10-07)
 - Bump up version to 0.6.0 #82 @mosuka
