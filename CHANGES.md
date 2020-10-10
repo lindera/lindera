@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Fix backward_size reading #89 @johtani
 - Update CI.yml #86 @mosuka
 - Fix documentation bug. FST to DA #85 @johtani
 
