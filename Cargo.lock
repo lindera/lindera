@@ -1678,6 +1678,6 @@ dependencies = [
 
 [[package]]
 name = "yada"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c880e66d4b603199c3aaf47c2234948bbc3580babe23f6296d8aa6704b7e0a16"
+checksum = "2bd411f1634003c5ec3ebd98534a3c8b98b1dc8939cdeb63208ba338f20f2cfb"
