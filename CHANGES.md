@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.6.1 (2020-10-12)
 - Move CLI to lindera-cli repository #92 @mosuka
 - Upgrade Yada 0.4.0 #91 @johtani
 - Fix backward_size reading #89 @johtani
