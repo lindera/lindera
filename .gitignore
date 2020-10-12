@@ -5,4 +5,4 @@
 target
 perf.data*
 
-bin
+Cargo.lock
