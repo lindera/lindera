@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Automate release tasks #96 @mosuka
+
 ## 0.7.0 (2020-10-12)
 - Bump up version to 0.7.0 #94 @mosuka
 - Move CLI to lindera-cli repository #92 @mosuka
