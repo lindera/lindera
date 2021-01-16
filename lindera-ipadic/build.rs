@@ -1,6 +1,6 @@
 use std::env;
 use std::error::Error;
-use std::fs::File;
+use std::fs::{rename, File};
 use std::path::Path;
 
 use flate2::read::GzDecoder;
@@ -22,16 +22,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let ipadic_ver = "2.7.0-20070801";
     let file_name = format!("mecab-ipadic-{}.tar.gz", ipadic_ver);
 
-    // Download a tarball
-    let download_url =
-        "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
-    let mut resp = reqwest::get(download_url).await.unwrap();
+    let dest_path = Path::new(&out_dir).join(&file_name);
+    if !dest_path.exists() {
+        let tmp_path = Path::new(&out_dir).join(file_name + ".download");
 
-    // Save a ttarball
-    let dest_path = Path::new(&out_dir).join(file_name);
-    let mut dest = TokioFile::create(&dest_path).await.unwrap();
-    while let Some(chunk) = resp.chunk().await.unwrap() {
-        dest.write_all(&chunk).await?;
+        // Download a tarball
+        let download_url =
+            "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
+        let mut resp = reqwest::get(download_url).await.unwrap();
+
+        // Save a ttarball
+        let mut dest = TokioFile::create(&tmp_path).await.unwrap();
+        while let Some(chunk) = resp.chunk().await.unwrap() {
+            dest.write_all(&chunk).await?;
+        }
+        rename(tmp_path, &dest_path).expect("Failed to rename temporary file");
     }
 
     // Decompress a tarball
