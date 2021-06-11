@@ -242,7 +242,10 @@ fn build_dict(input_dir: &str, output_dir: &str) -> Result<(), ParsingError> {
         let len = word_entries.len() as u32;
         assert!(
             len < (1 << 5),
-            format!("{} is {} length. Too long. [{}]", key, len, (1 << 5))
+            "{} is {} length. Too long. [{}]",
+            key,
+            len,
+            (1 << 5)
         );
         let val = (id << 5) | len;
         keyset.push((key.as_bytes(), val));
@@ -324,7 +327,10 @@ pub fn build_user_dict(
         let len = word_entries.len() as u32;
         assert!(
             len < (1 << 5),
-            format!("{} is {} length. Too long. [{}]", key, len, (1 << 5))
+            "{} is {} length. Too long. [{}]",
+            key,
+            len,
+            (1 << 5)
         );
         let val = (id << 5) | len;
         keyset.push((key.as_bytes(), val));
