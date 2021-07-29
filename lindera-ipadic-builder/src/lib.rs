@@ -93,6 +93,9 @@ impl<'a> CSVRow<'a> {
 
     fn from_line_user_dict(line: &'a String) -> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
+        if fields.len() >= 13 {
+            return CSVRow::from_line(line);
+        }
         CSVRow {
             surface_form: &fields[0],
             left_id: 0,
