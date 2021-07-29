@@ -71,7 +71,6 @@ pub struct CSVRow<'a> {
 impl<'a> CSVRow<'a> {
     fn from_line(line: &'a String) -> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
-        let _word_cost = i32::from_str(&fields[3]).expect("failed to parse wordost");
         CSVRow {
             surface_form: &fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
