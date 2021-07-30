@@ -75,7 +75,7 @@ impl<'a> CSVRow<'a> {
             surface_form: &fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
             right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
-            word_cost: i32::from_str(&fields[3]).expect("failed to parse wordost"),
+            word_cost: i32::from_str(&fields[3]).expect("failed to parse word_cost"),
 
             pos_level1: &fields[4],
             pos_level2: &fields[5],
@@ -93,6 +93,13 @@ impl<'a> CSVRow<'a> {
 
     fn from_line_user_dict(line: &'a String) -> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
+        let fields_len = fields.len();
+        if fields_len == 13 {
+            return CSVRow::from_line(line);
+        }
+        if fields_len != 3 {
+            panic!("user dictionary should be a CSV with 3 or 13 fields")
+        }
         CSVRow {
             surface_form: &fields[0],
             left_id: 0,

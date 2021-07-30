@@ -61,6 +61,8 @@ You can see the result as follows:
 
 ### User dictionary example
 
+#### Simple user dictionary
+
 You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.
 
 ```
@@ -75,7 +77,20 @@ For example:
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
 ```
 
-With an user dictionary, `Tokenizer` will be created as follows:
+#### Detailed user dictionary
+
+You can also give user dictionary the same format as the IPA dictionary.
+
+For example:
+```shell
+% cat userdic_with_cost.csv
+東京スカイツリー,1288,1288,-1000,名詞,固有名詞,一般,カスタム名詞,*,*,東京スカイツリー,トウキョウスカイツリー,トウキョウスカイツリー
+東武スカイツリーライン,1288,1288,-1000,名詞,固有名詞,一般,カスタム名詞,*,*,東武スカイツリーライン,トウブスカイツリーライン,トウブスカイツリーライン
+とうきょうスカイツリー駅,1288,1288,-1000,名詞,固有名詞,一般,カスタム名詞,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,トウキョウスカイツリーエキ
+```
+
+#### With an user dictionary, `Tokenizer` will be created as follows
+
 ```rust
 use lindera::tokenizer::Tokenizer;
 use lindera_core::core::viterbi::Mode;
@@ -96,7 +111,8 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-The above example can be by `cargo run --example`:
+#### The above example can be by `cargo run --example`
+
 ```shell
 % cd lindera/lindera
 % cargo run --example userdic_example
@@ -107,7 +123,6 @@ The above example can be by `cargo run --example`:
 とうきょうスカイツリー駅
 です
 ```
-
 
 ## API reference
 

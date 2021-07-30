@@ -424,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn test_user_dict() {
+    fn test_simple_user_dict() {
         let mut tokenizer = Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic.csv");
         assert!(tokenizer.user_dict.is_some());
         assert!(tokenizer.user_dict_words_idx_data.is_some());
@@ -457,6 +457,119 @@ mod tests {
                 "です"
             ],
             token_texts
+        );
+    }
+
+    #[test]
+    fn test_detailed_user_dict() {
+        let mut tokenizer =
+            Tokenizer::new_with_userdic(Mode::Normal, "", "resources/detailed_userdic.csv");
+        assert!(tokenizer.user_dict.is_some());
+        assert!(tokenizer.user_dict_words_idx_data.is_some());
+        assert!(tokenizer.user_dict_words_data.is_some());
+        let tokens: Vec<Token> =
+            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
+        assert_eq!("東京スカイツリー", tokens[0].text);
+        assert_eq!(
+            vec![
+                "名詞",
+                "固有名詞",
+                "一般",
+                "カスタム名詞",
+                "*",
+                "*",
+                "東京スカイツリー",
+                "トウキョウスカイツリー",
+                "トウキョウスカイツリー"
+            ],
+            tokens[0].detail
+        );
+        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
+        assert_eq!(
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です"
+            ],
+            token_texts
+        );
+    }
+
+    #[test]
+    fn test_mixed_user_dict() {
+        let mut tokenizer =
+            Tokenizer::new_with_userdic(Mode::Normal, "", "resources/mixed_userdic.csv");
+        assert!(tokenizer.user_dict.is_some());
+        assert!(tokenizer.user_dict_words_idx_data.is_some());
+        assert!(tokenizer.user_dict_words_data.is_some());
+
+        let tokens: Vec<Token> =
+            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
+        assert_eq!("東京スカイツリー", tokens[0].text);
+        assert_eq!(
+            vec![
+                "名詞",
+                "固有名詞",
+                "一般",
+                "カスタム名詞",
+                "*",
+                "*",
+                "東京スカイツリー",
+                "トウキョウスカイツリー",
+                "トウキョウスカイツリー"
+            ],
+            tokens[0].detail
+        );
+        assert_eq!("とうきょうスカイツリー駅", tokens[4].text);
+        assert_eq!(
+            vec![
+                "カスタム名詞",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "とうきょうスカイツリー駅",
+                "トウキョウスカイツリーエキ",
+                "*"
+            ],
+            tokens[4].detail
+        );
+
+        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
+        assert_eq!(
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です"
+            ],
+            token_texts
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "failed to parse word_cost")]
+    fn test_user_dict_invalid_word_cost() {
+        Tokenizer::new_with_userdic(
+            Mode::Normal,
+            "",
+            "test/fixtures/userdic_invalid_word_cost.csv",
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
+    fn test_user_dict_number_of_fields_is_11() {
+        Tokenizer::new_with_userdic(
+            Mode::Normal,
+            "",
+            "test/fixtures/userdic_insufficient_number_of_fields.csv",
         );
     }
 
