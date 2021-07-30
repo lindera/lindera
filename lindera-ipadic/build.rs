@@ -1,14 +1,13 @@
 use std::env;
 use std::error::Error;
-use std::fs::{rename, File};
+use std::fs::rename;
+use std::io::Cursor;
 use std::path::Path;
 
 use flate2::read::GzDecoder;
-use reqwest;
 use tar::Archive;
-use tokio;
-use tokio::fs::File as TokioFile;
-use tokio::prelude::*;
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use lindera_ipadic_builder::build;
 
@@ -29,26 +28,29 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // Download a tarball
         let download_url =
             "https://drive.google.com/uc?export=download&id=0B4y35FiV1wh7MWVlSDBCSXZMTXM";
-        let mut resp = reqwest::get(download_url).await.unwrap();
+        let mut resp = reqwest::get(download_url).await?;
 
         // Save a ttarball
-        let mut dest = TokioFile::create(&tmp_path).await.unwrap();
-        while let Some(chunk) = resp.chunk().await.unwrap() {
+        let mut dest = File::create(&tmp_path).await?;
+        while let Some(chunk) = resp.chunk().await? {
             dest.write_all(&chunk).await?;
         }
         rename(tmp_path, &dest_path).expect("Failed to rename temporary file");
     }
 
     // Decompress a tarball
-    let tar_gz = File::open(&dest_path).unwrap();
-    let gzdecoder = GzDecoder::new(tar_gz);
+    let mut tar_gz = File::open(&dest_path).await?;
+    let mut buffer = Vec::new();
+    tar_gz.read_to_end(&mut buffer).await?;
+    let cursor = Cursor::new(buffer);
+    let gzdecoder = GzDecoder::new(cursor);
     let mut archive = Archive::new(gzdecoder);
-    archive.unpack(&out_dir).unwrap();
+    archive.unpack(&out_dir)?;
 
     // Build dictionary
     let input_dir = Path::new(&out_dir).join(format!("mecab-ipadic-{}", ipadic_ver));
     let output_dir = Path::new(&out_dir).join("lindera-ipadic");
-    build(input_dir.to_str().unwrap(), output_dir.to_str().unwrap()).unwrap();
+    build(input_dir.to_str().unwrap(), output_dir.to_str().unwrap())?;
 
     Ok(())
 }

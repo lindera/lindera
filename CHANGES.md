@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- feat: implement a user dictionary to set costs #103 @abetomo
+- chore: remove unnecessary variable assignments #102 @abetomo
+- test: fix test warnings #101 @abetomo
+- Download ipadic only when it doen't exist #99 @KitaitiMakoto
+
 ## 0.7.1 (2020-10-15)
 - Bump up version to 0.7.1 #97 @mosuka
 - Automate release tasks #96 @mosuka
