@@ -461,6 +461,44 @@ mod tests {
     }
 
     #[test]
+    fn test_user_dict_with_cost() {
+        let mut tokenizer =
+            Tokenizer::new_with_userdic(Mode::Normal, "", "resources/userdic_with_cost.csv");
+        assert!(tokenizer.user_dict.is_some());
+        assert!(tokenizer.user_dict_words_idx_data.is_some());
+        assert!(tokenizer.user_dict_words_data.is_some());
+        let tokens: Vec<Token> =
+            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
+        assert_eq!("東京スカイツリー", tokens[0].text);
+        assert_eq!(
+            vec![
+                "名詞",
+                "固有名詞",
+                "一般",
+                "カスタム名詞",
+                "*",
+                "*",
+                "東京スカイツリー",
+                "トウキョウスカイツリー",
+                "トウキョウスカイツリー"
+            ],
+            tokens[0].detail
+        );
+        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
+        assert_eq!(
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です"
+            ],
+            token_texts
+        );
+    }
+
+    #[test]
     fn test_long_text() {
         let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
         let mut large_text = String::new();
