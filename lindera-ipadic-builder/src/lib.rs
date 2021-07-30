@@ -93,8 +93,12 @@ impl<'a> CSVRow<'a> {
 
     fn from_line_user_dict(line: &'a String) -> CSVRow<'a> {
         let fields: Vec<_> = line.split(",").collect();
-        if fields.len() >= 13 {
+        let fields_len = fields.len();
+        if fields_len == 13 {
             return CSVRow::from_line(line);
+        }
+        if fields_len != 3 {
+            panic!("user dictionary should be a CSV with 3 or 13 fields")
         }
         CSVRow {
             surface_form: &fields[0],

@@ -554,6 +554,26 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "failed to parse word_cost")]
+    fn test_user_dict_invalid_word_cost() {
+        Tokenizer::new_with_userdic(
+            Mode::Normal,
+            "",
+            "test/fixtures/userdic_invalid_word_cost.csv",
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
+    fn test_user_dict_number_of_fields_is_11() {
+        Tokenizer::new_with_userdic(
+            Mode::Normal,
+            "",
+            "test/fixtures/userdic_insufficient_number_of_fields.csv",
+        );
+    }
+
+    #[test]
     fn test_long_text() {
         let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
         let mut large_text = String::new();
