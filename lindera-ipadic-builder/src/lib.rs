@@ -75,7 +75,7 @@ impl<'a> CSVRow<'a> {
             surface_form: &fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
             right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
-            word_cost: i32::from_str(&fields[3]).expect("failed to parse wordost"),
+            word_cost: i32::from_str(&fields[3]).expect("failed to parse word_cost"),
 
             pos_level1: &fields[4],
             pos_level2: &fields[5],
