@@ -27,6 +27,7 @@ lindera-core = { version = "0.7", path = "../lindera-core" }
 flate2 = "1.0"
 reqwest = "0.11"
 tar = "0.4"
+encoding = "0.2"
 tokio = { version = "1.9", features = ["full"] }
 
 lindera-ipadic-builder = { version = "0.7", path = "../lindera-ipadic-builder" }
