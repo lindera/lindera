@@ -63,7 +63,7 @@ impl Tokenizer {
             let (user_dict, user_dict_words_idx_data, user_dict_words_data) = if user_dict.len() > 0
             {
                 let (dict, words_idx_data, words_data) =
-                    lindera_ipadic_builder::build_user_dict(user_dict).unwrap();
+                    lindera_ipadic_builder::builder::build_user_dict(user_dict).unwrap();
                 (Some(dict), Some(words_idx_data), Some(words_data))
             } else {
                 (None, None, None)

@@ -12,7 +12,7 @@ use tar::Archive;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use lindera_ipadic_builder::build;
+use lindera_ipadic_builder::builder::build;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
