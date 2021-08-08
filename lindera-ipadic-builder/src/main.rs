@@ -1,8 +1,9 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
 
-use lindera_ipadic_builder::build;
+use lindera_ipadic_builder::builder::build;
+use lindera_ipadic_builder::error::BuildDictionaryResult;
 
-fn main() {
+fn main() -> BuildDictionaryResult<()> {
     let app = App::new(crate_name!())
         .setting(AppSettings::DeriveDisplayOrder)
         .version(crate_version!())
@@ -35,4 +36,6 @@ fn main() {
         Ok(()) => println!("{}", "done"),
         Err(msg) => println!("{}", msg),
     }
+
+    Ok(())
 }

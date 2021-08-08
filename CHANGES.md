@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add error struct #107 @mosuka
 - do not download dictionary files when building 'docs.rs' #106 @abetomo
 - Update dependencies. #104 @mosuka
 - feat: implement a user dictionary to set costs #103 @abetomo
