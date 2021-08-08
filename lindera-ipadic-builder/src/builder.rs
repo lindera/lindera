@@ -22,7 +22,7 @@ use lindera_core::core::prefix_dict::PrefixDict;
 use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use lindera_core::core::word_entry::{WordEntry, WordId};
 
-use crate::error::{BuildErrorKind, BuildResult};
+use crate::error::{BuildDictionaryErrorKind, BuildDictionaryResult};
 
 #[derive(Debug)]
 pub struct CSVRow<'a> {
@@ -99,35 +99,35 @@ impl<'a> CSVRow<'a> {
     }
 }
 
-fn read_mecab_file(dir: &str, filename: &str) -> BuildResult<String> {
+fn read_mecab_file(dir: &str, filename: &str) -> BuildDictionaryResult<String> {
     let path = Path::new(dir).join(Path::new(filename));
-    let mut input_read =
-        File::open(path).map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut input_read = File::open(path)
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let mut buffer = Vec::new();
     input_read
         .read_to_end(&mut buffer)
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     encoding::all::EUC_JP
         .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| BuildErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))
 }
 
-fn read_utf8_file(filename: &str) -> BuildResult<String> {
+fn read_utf8_file(filename: &str) -> BuildDictionaryResult<String> {
     let path = Path::new(filename);
-    let mut input_read =
-        File::open(path).map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut input_read = File::open(path)
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let mut buffer = Vec::new();
     input_read
         .read_to_end(&mut buffer)
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     encoding::all::UTF_8
         .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| BuildErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))
 }
 
-fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
+fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
     println!("BUILD DICT");
 
     let mut filenames: Vec<String> = Vec::new();
@@ -137,14 +137,16 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
             Ok(path) => {
                 filenames.push(path.file_name().unwrap().to_str().unwrap().to_string());
             }
-            Err(err) => return Err(BuildErrorKind::Content.with_error(anyhow::anyhow!(err))),
+            Err(err) => {
+                return Err(BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(err)))
+            }
         }
     }
 
     let files_data: Vec<String> = filenames
         .iter()
         .map(|filename| read_mecab_file(input_dir, filename))
-        .collect::<BuildResult<Vec<String>>>()?;
+        .collect::<BuildDictionaryResult<Vec<String>>>()?;
 
     let lines: Vec<String> = files_data
         .iter()
@@ -169,14 +171,14 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
     println!("creating {:?}", wtr_da_path);
     let mut wtr_da = io::BufWriter::new(
         File::create(wtr_da_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let wtr_vals_path = Path::new(output_dir).join(Path::new("dict.vals"));
     println!("creating {:?}", wtr_vals_path);
     let mut wtr_vals = io::BufWriter::new(
         File::create(wtr_vals_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
@@ -196,14 +198,14 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
     println!("creating {:?}", wtr_words_path);
     let mut wtr_words = io::BufWriter::new(
         File::create(wtr_words_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let wtr_words_idx_path = Path::new(output_dir).join(Path::new("dict.wordsidx"));
     println!("creating {:?}", wtr_words_idx_path);
     let mut wtr_words_idx = io::BufWriter::new(
         File::create(wtr_words_idx_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let mut words_buffer = Vec::new();
@@ -222,20 +224,20 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
         let offset = words_buffer.len();
         wtr_words_idx
             .write_u32::<LittleEndian>(offset as u32)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         bincode::serialize_into(&mut words_buffer, &word)
-            .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     }
 
     wtr_words
         .write_all(&words_buffer[..])
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     wtr_words
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     wtr_words_idx
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     let mut id = 0u32;
 
@@ -254,28 +256,31 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildResult<()> {
         id += len;
     }
 
-    let da_bytes = DoubleArrayBuilder::build(&keyset)
-        .ok_or(BuildErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error.")));
+    let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
+        BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error.")),
+    );
 
     wtr_da
         .write_all(&da_bytes.unwrap()[..])
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     for word_entries in word_entry_map.values() {
         for word_entry in word_entries {
-            word_entry
-                .serialize(&mut wtr_vals)
-                .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            word_entry.serialize(&mut wtr_vals).map_err(|err| {
+                BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err))
+            })?;
         }
     }
     wtr_vals
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
 
-pub fn build_user_dict(input_file: &str) -> BuildResult<(PrefixDict<Vec<u8>>, Vec<u8>, Vec<u8>)> {
+pub fn build_user_dict(
+    input_file: &str,
+) -> BuildDictionaryResult<(PrefixDict<Vec<u8>>, Vec<u8>, Vec<u8>)> {
     let data: String = read_utf8_file(input_file)?;
 
     let lines: Vec<String> = data.lines().map(|line| line.to_string()).collect();
@@ -314,9 +319,9 @@ pub fn build_user_dict(input_file: &str) -> BuildResult<(PrefixDict<Vec<u8>>, Ve
         let offset = words_data.len();
         words_idx_data
             .write_u32::<LittleEndian>(offset as u32)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         bincode::serialize_into(&mut words_data, &word)
-            .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     }
 
     let mut id = 0u32;
@@ -338,16 +343,17 @@ pub fn build_user_dict(input_file: &str) -> BuildResult<(PrefixDict<Vec<u8>>, Ve
     }
 
     let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
-        BuildErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error for user dict.")),
+        BuildDictionaryErrorKind::Io
+            .with_error(anyhow::anyhow!("DoubleArray build error for user dict.")),
     );
 
     // building values
     let mut vals_data = Vec::<u8>::new();
     for word_entries in word_entry_map.values() {
         for word_entry in word_entries {
-            word_entry
-                .serialize(&mut vals_data)
-                .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            word_entry.serialize(&mut vals_data).map_err(|err| {
+                BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err))
+            })?;
         }
     }
 
@@ -360,7 +366,7 @@ pub fn build_user_dict(input_file: &str) -> BuildResult<(PrefixDict<Vec<u8>>, Ve
     Ok((dict, words_idx_data, words_data))
 }
 
-fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildResult<()> {
+fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
     println!("BUILD COST MATRIX");
     let matrix_data = read_mecab_file(input_dir, "matrix.def")?;
     let mut lines = Vec::new();
@@ -392,16 +398,16 @@ fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildResult<()> {
     println!("creating {:?}", wtr_matrix_mtx_path);
     let mut wtr_matrix_mtx = io::BufWriter::new(
         File::create(wtr_matrix_mtx_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     for cost in costs {
         wtr_matrix_mtx
             .write_i16::<LittleEndian>(cost)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     }
     wtr_matrix_mtx
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
@@ -415,24 +421,26 @@ pub struct CharacterDefinitionsBuilder {
     char_ranges: Vec<(u32, u32, Vec<CategoryId>)>,
 }
 
-fn ucs2_to_unicode(ucs2_codepoint: u16) -> BuildResult<u32> {
+fn ucs2_to_unicode(ucs2_codepoint: u16) -> BuildDictionaryResult<u32> {
     let mut buf = [0u8; 2];
     LittleEndian::write_u16(&mut buf[..], ucs2_codepoint);
     let s: String = UTF_16LE
         .decode(&buf[..], DecoderTrap::Strict)
-        .map_err(|err| BuildErrorKind::Decode.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))?;
     let chrs: Vec<char> = s.chars().collect();
 
     match chrs.len() {
         1 => Ok(chrs[0] as u32),
-        _ => Err(BuildErrorKind::Parse.with_error(anyhow::anyhow!("unusual char length"))),
+        _ => {
+            Err(BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!("unusual char length")))
+        }
     }
 }
 
-fn parse_hex_codepoint(s: &str) -> BuildResult<u32> {
+fn parse_hex_codepoint(s: &str) -> BuildDictionaryResult<u32> {
     let removed_0x = s.trim_start_matches("0x");
     let ucs2_codepoint = u16::from_str_radix(removed_0x, 16)
-        .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     ucs2_to_unicode(ucs2_codepoint)
 }
@@ -473,7 +481,7 @@ impl CharacterDefinitionsBuilder {
         LookupTable::from_fn(boundaries, &|c, buff| self.lookup_categories(c, buff))
     }
 
-    pub fn parse(&mut self, content: &String) -> BuildResult<()> {
+    pub fn parse(&mut self, content: &String) -> BuildDictionaryResult<()> {
         for line in content.lines() {
             let line_str = line.split('#').next().unwrap().trim();
             if line_str.is_empty() {
@@ -488,7 +496,7 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    fn parse_range(&mut self, line: &str) -> BuildResult<()> {
+    fn parse_range(&mut self, line: &str) -> BuildDictionaryResult<()> {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let range_bounds: Vec<&str> = fields[0].split("..").collect();
         let lower_bound: u32;
@@ -504,9 +512,8 @@ impl CharacterDefinitionsBuilder {
                 higher_bound = parse_hex_codepoint(range_bounds[1])?;
             }
             _ => {
-                return Err(
-                    BuildErrorKind::Content.with_error(anyhow::anyhow!("Invalid line: {}", line))
-                );
+                return Err(BuildDictionaryErrorKind::Content
+                    .with_error(anyhow::anyhow!("Invalid line: {}", line)));
             }
         }
         let category_ids: Vec<CategoryId> = fields[1..]
@@ -520,26 +527,28 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    fn parse_category(&mut self, line: &str) -> BuildResult<()> {
+    fn parse_category(&mut self, line: &str) -> BuildDictionaryResult<()> {
         let fields = line.split_ascii_whitespace().collect::<Vec<&str>>();
         if fields.len() != 4 {
-            return Err(BuildErrorKind::Content.with_error(anyhow::anyhow!(
-                "Expected 4 fields. Got {} in {}",
-                fields.len(),
-                line
-            )));
+            return Err(
+                BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
+                    "Expected 4 fields. Got {} in {}",
+                    fields.len(),
+                    line
+                )),
+            );
         }
         let invoke = fields[1]
             .parse::<u32>()
-            .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
+            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
             == 1;
         let group = fields[2]
             .parse::<u32>()
-            .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
+            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
             == 1;
         let length = fields[3]
             .parse::<u32>()
-            .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
         let category_data = CategoryData {
             invoke,
             group,
@@ -576,20 +585,22 @@ pub struct DictionaryEntry {
     word_cost: i32,
 }
 
-fn parse_dictionary_entry(fields: &[&str]) -> BuildResult<DictionaryEntry> {
+fn parse_dictionary_entry(fields: &[&str]) -> BuildDictionaryResult<DictionaryEntry> {
     if fields.len() != 11 {
-        return Err(BuildErrorKind::Content.with_error(anyhow::anyhow!(
-            "Invalid number of fields. Expect 11, got {}",
-            fields.len()
-        )));
+        return Err(
+            BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
+                "Invalid number of fields. Expect 11, got {}",
+                fields.len()
+            )),
+        );
     }
     let surface = fields[0];
     let left_id = u32::from_str(fields[1])
-        .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     let right_id = u32::from_str(fields[2])
-        .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     let word_cost = i32::from_str(fields[3])
-        .map_err(|err| BuildErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     Ok(DictionaryEntry {
         surface: surface.to_string(),
@@ -634,7 +645,10 @@ fn make_category_references(categories: &[String], entries: &[DictionaryEntry]) 
         .collect()
 }
 
-fn parse_unk(categories: &[String], file_content: &String) -> BuildResult<UnknownDictionary> {
+fn parse_unk(
+    categories: &[String],
+    file_content: &String,
+) -> BuildDictionaryResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     for line in file_content.lines() {
         let fields: Vec<&str> = line.split(",").collect::<Vec<&str>>();
@@ -650,7 +664,7 @@ fn parse_unk(categories: &[String], file_content: &String) -> BuildResult<Unknow
     })
 }
 
-fn build_chardef(input_dir: &str, output_dir: &str) -> BuildResult<CharacterDefinitions> {
+fn build_chardef(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<CharacterDefinitions> {
     println!("BUILD CHARDEF");
     let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
     let char_def = read_mecab_file(input_dir, "char.def")?;
@@ -661,18 +675,22 @@ fn build_chardef(input_dir: &str, output_dir: &str) -> BuildResult<CharacterDefi
     println!("creating {:?}", wtr_chardef_path);
     let mut wtr_chardef = io::BufWriter::new(
         File::create(wtr_chardef_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     bincode::serialize_into(&mut wtr_chardef, &char_definitions)
-        .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     wtr_chardef
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(char_definitions)
 }
 
-fn build_unk(input_dir: &str, chardef: &CharacterDefinitions, output_dir: &str) -> BuildResult<()> {
+fn build_unk(
+    input_dir: &str,
+    chardef: &CharacterDefinitions,
+    output_dir: &str,
+) -> BuildDictionaryResult<()> {
     println!("BUILD UNK");
     let unk_data = read_mecab_file(input_dir, "unk.def")?;
     let unknown_dictionary = parse_unk(&chardef.categories(), &unk_data)?;
@@ -681,20 +699,20 @@ fn build_unk(input_dir: &str, chardef: &CharacterDefinitions, output_dir: &str) 
     println!("creating {:?}", wtr_unk_path);
     let mut wtr_unk = io::BufWriter::new(
         File::create(wtr_unk_path)
-            .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     bincode::serialize_into(&mut wtr_unk, &unknown_dictionary)
-        .map_err(|err| BuildErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     wtr_unk
         .flush()
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
 
-pub fn build(input_dir: &str, output_dir: &str) -> BuildResult<()> {
+pub fn build(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
     fs::create_dir_all(&output_dir)
-        .map_err(|err| BuildErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     let chardef = build_chardef(input_dir, output_dir)?;
     build_unk(input_dir, &chardef, output_dir)?;

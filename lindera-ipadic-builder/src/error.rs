@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub enum BuildErrorKind {
+pub enum BuildDictionaryErrorKind {
     Content,
     Decode,
     Io,
@@ -11,12 +11,12 @@ pub enum BuildErrorKind {
     Serialize,
 }
 
-impl BuildErrorKind {
-    pub fn with_error<E>(self, source: E) -> BuildError
+impl BuildDictionaryErrorKind {
+    pub fn with_error<E>(self, source: E) -> BuildDictionaryError
     where
         anyhow::Error: From<E>,
     {
-        BuildError {
+        BuildDictionaryError {
             kind: self,
             source: From::from(source),
         }
@@ -25,26 +25,26 @@ impl BuildErrorKind {
 
 #[derive(thiserror::Error, Debug)]
 #[error("BuildError(kind={kind:?}, source={source})")]
-pub struct BuildError {
-    pub kind: BuildErrorKind,
+pub struct BuildDictionaryError {
+    pub kind: BuildDictionaryErrorKind,
     #[source]
     source: anyhow::Error,
 }
 
-impl BuildError {
+impl BuildDictionaryError {
     pub fn add_context<C>(self, ctx: C) -> Self
     where
         C: fmt::Display + Send + Sync + 'static,
     {
-        BuildError {
+        BuildDictionaryError {
             kind: self.kind,
             source: self.source.context(ctx),
         }
     }
 
-    pub fn kind(&self) -> BuildErrorKind {
+    pub fn kind(&self) -> BuildDictionaryErrorKind {
         self.kind
     }
 }
 
-pub type BuildResult<T> = Result<T, BuildError>;
+pub type BuildDictionaryResult<T> = Result<T, BuildDictionaryError>;
