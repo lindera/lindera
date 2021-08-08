@@ -45,10 +45,10 @@ pub struct CSVRow<'a> {
 }
 
 impl<'a> CSVRow<'a> {
-    fn from_line(line: &'a String) -> CSVRow<'a> {
+    fn from_line(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
         let fields: Vec<_> = line.split(",").collect();
 
-        CSVRow {
+        Ok(CSVRow {
             surface_form: &fields[0],
             left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
             right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
@@ -65,36 +65,37 @@ impl<'a> CSVRow<'a> {
             base_form: &fields[10],
             reading: &fields[11],
             pronunciation: &fields[12],
-        }
+        })
     }
 
-    fn from_line_user_dict(line: &'a String) -> CSVRow<'a> {
+    fn from_line_user_dict(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
         let fields: Vec<_> = line.split(",").collect();
-        let fields_len = fields.len();
-        if fields_len == 13 {
-            return CSVRow::from_line(line);
-        }
-        if fields_len != 3 {
-            panic!("user dictionary should be a CSV with 3 or 13 fields")
-        }
 
-        CSVRow {
-            surface_form: &fields[0],
-            left_id: 0,
-            right_id: 0,
-            word_cost: -10000,
+        match fields.len() {
+            3 => Ok(CSVRow {
+                surface_form: &fields[0],
+                left_id: 0,
+                right_id: 0,
+                word_cost: -10000,
 
-            pos_level1: &fields[1],
-            pos_level2: "*",
-            pos_level3: "*",
-            pos_level4: "*",
+                pos_level1: &fields[1],
+                pos_level2: "*",
+                pos_level3: "*",
+                pos_level4: "*",
 
-            conjugation_type: "*",
-            conjugate_form: "*",
+                conjugation_type: "*",
+                conjugate_form: "*",
 
-            base_form: &fields[0],
-            reading: &fields[2],
-            pronunciation: "*",
+                base_form: &fields[0],
+                reading: &fields[2],
+                pronunciation: "*",
+            }),
+            13 => CSVRow::from_line(line),
+            _ => Err(
+                BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
+                    "user dictionary should be a CSV with 3 or 13 fields"
+                )),
+            ),
         }
     }
 }
@@ -131,11 +132,22 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
     println!("BUILD DICT");
 
     let mut filenames: Vec<String> = Vec::new();
-    for entry in glob(format!("{}/*.csv", input_dir).as_str()).expect("Failed to read glob pattern")
+    for entry in glob(format!("{}/*.csv", input_dir).as_str())
+        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?
     {
         match entry {
             Ok(path) => {
-                filenames.push(path.file_name().unwrap().to_str().unwrap().to_string());
+                if let Some(filename) = path.file_name() {
+                    if let Some(filename_str) = filename.to_str() {
+                        filenames.push(filename_str.to_string());
+                    } else {
+                        return Err(BuildDictionaryErrorKind::Io
+                            .with_error(anyhow::anyhow!("failed to get filename")));
+                    }
+                } else {
+                    return Err(BuildDictionaryErrorKind::Io
+                        .with_error(anyhow::anyhow!("failed to get filename")));
+                }
             }
             Err(err) => {
                 return Err(BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(err)))
@@ -164,7 +176,11 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
         })
         .collect();
 
-    let mut rows: Vec<CSVRow> = lines.iter().map(CSVRow::from_line).collect();
+    let mut rows: Vec<CSVRow> = lines
+        .iter()
+        .map(CSVRow::from_line)
+        .collect::<Result<_, _>>()
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     rows.sort_by_key(|row| row.surface_form.clone());
 
     let wtr_da_path = Path::new(output_dir).join(Path::new("dict.da"));
@@ -258,10 +274,10 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
 
     let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
         BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error.")),
-    );
+    )?;
 
     wtr_da
-        .write_all(&da_bytes.unwrap()[..])
+        .write_all(&da_bytes[..])
         .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     for word_entries in word_entry_map.values() {
@@ -284,7 +300,11 @@ pub fn build_user_dict(
     let data: String = read_utf8_file(input_file)?;
 
     let lines: Vec<String> = data.lines().map(|line| line.to_string()).collect();
-    let mut rows: Vec<CSVRow> = lines.iter().map(CSVRow::from_line_user_dict).collect();
+    let mut rows: Vec<CSVRow> = lines
+        .iter()
+        .map(CSVRow::from_line_user_dict)
+        .collect::<Result<_, _>>()
+        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     // sorting entries
     rows.sort_by_key(|row| row.surface_form.clone());
@@ -345,7 +365,7 @@ pub fn build_user_dict(
     let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
         BuildDictionaryErrorKind::Io
             .with_error(anyhow::anyhow!("DoubleArray build error for user dict.")),
-    );
+    )?;
 
     // building values
     let mut vals_data = Vec::<u8>::new();
@@ -358,7 +378,7 @@ pub fn build_user_dict(
     }
 
     let dict = PrefixDict {
-        da: DoubleArray::new(da_bytes.unwrap()),
+        da: DoubleArray::new(da_bytes),
         vals_data: vals_data,
         is_system: false,
     };
@@ -371,16 +391,17 @@ fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult
     let matrix_data = read_mecab_file(input_dir, "matrix.def")?;
     let mut lines = Vec::new();
     for line in matrix_data.lines() {
-        // TODO: avoid using unwrap().
         let fields: Vec<i32> = line
             .split_whitespace()
             .map(i32::from_str)
             .collect::<Result<_, _>>()
-            .unwrap();
+            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
         lines.push(fields);
     }
     let mut lines_it = lines.into_iter();
-    let header = lines_it.next().unwrap();
+    let header = lines_it
+        .next()
+        .ok_or(BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!("unknown error")))?;
     let forward_size = header[0] as u32;
     let backward_size = header[1] as u32;
     let len = 2 + (forward_size * backward_size) as usize;
@@ -466,8 +487,9 @@ impl CharacterDefinitionsBuilder {
             }
         }
         if categories_buffer.is_empty() {
-            let default_category = self.category_index.get(DEFAULT_CATEGORY_NAME).unwrap();
-            categories_buffer.push(*default_category);
+            if let Some(default_category) = self.category_index.get(DEFAULT_CATEGORY_NAME) {
+                categories_buffer.push(*default_category);
+            }
         }
     }
 
@@ -483,7 +505,14 @@ impl CharacterDefinitionsBuilder {
 
     pub fn parse(&mut self, content: &String) -> BuildDictionaryResult<()> {
         for line in content.lines() {
-            let line_str = line.split('#').next().unwrap().trim();
+            let line_str = line
+                .split('#')
+                .next()
+                .ok_or(
+                    BuildDictionaryErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse line")),
+                )?
+                .trim();
             if line_str.is_empty() {
                 continue;
             }
