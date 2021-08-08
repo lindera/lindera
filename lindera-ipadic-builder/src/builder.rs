@@ -46,39 +46,48 @@ pub struct CSVRow<'a> {
 
 impl<'a> CSVRow<'a> {
     fn from_line(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
-        let fields: Vec<_> = line.split(",").collect();
+        let fields: Vec<_> = line.split(',').collect();
 
         Ok(CSVRow {
-            surface_form: &fields[0],
-            left_id: u32::from_str(&fields[1]).expect("failed to parse left_id"),
-            right_id: u32::from_str(&fields[2]).expect("failed to parse right_id"),
-            word_cost: i32::from_str(&fields[3]).expect("failed to parse word_cost"),
+            surface_form: fields[0],
+            left_id: u32::from_str(fields[1]).map_err(|_err| {
+                BuildDictionaryErrorKind::Parse
+                    .with_error(anyhow::anyhow!("failed to parse left_id"))
+            })?,
+            right_id: u32::from_str(fields[2]).map_err(|_err| {
+                BuildDictionaryErrorKind::Parse
+                    .with_error(anyhow::anyhow!("failed to parse right_id"))
+            })?,
+            word_cost: i32::from_str(fields[3]).map_err(|_err| {
+                BuildDictionaryErrorKind::Parse
+                    .with_error(anyhow::anyhow!("failed to parse word_cost"))
+            })?,
 
-            pos_level1: &fields[4],
-            pos_level2: &fields[5],
-            pos_level3: &fields[6],
-            pos_level4: &fields[7],
+            pos_level1: fields[4],
+            pos_level2: fields[5],
+            pos_level3: fields[6],
+            pos_level4: fields[7],
 
-            conjugation_type: &fields[8],
-            conjugate_form: &fields[9],
+            conjugation_type: fields[8],
+            conjugate_form: fields[9],
 
-            base_form: &fields[10],
-            reading: &fields[11],
-            pronunciation: &fields[12],
+            base_form: fields[10],
+            reading: fields[11],
+            pronunciation: fields[12],
         })
     }
 
     fn from_line_user_dict(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
-        let fields: Vec<_> = line.split(",").collect();
+        let fields: Vec<_> = line.split(',').collect();
 
         match fields.len() {
             3 => Ok(CSVRow {
-                surface_form: &fields[0],
+                surface_form: fields[0],
                 left_id: 0,
                 right_id: 0,
                 word_cost: -10000,
 
-                pos_level1: &fields[1],
+                pos_level1: fields[1],
                 pos_level2: "*",
                 pos_level3: "*",
                 pos_level4: "*",
@@ -86,8 +95,8 @@ impl<'a> CSVRow<'a> {
                 conjugation_type: "*",
                 conjugate_form: "*",
 
-                base_form: &fields[0],
-                reading: &fields[2],
+                base_form: fields[0],
+                reading: fields[2],
                 pronunciation: "*",
             }),
             13 => CSVRow::from_line(line),
@@ -272,9 +281,9 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
         id += len;
     }
 
-    let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
-        BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error.")),
-    )?;
+    let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
+        BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+    })?;
 
     wtr_da
         .write_all(&da_bytes[..])
@@ -362,10 +371,10 @@ pub fn build_user_dict(
         id += len;
     }
 
-    let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or(
+    let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
         BuildDictionaryErrorKind::Io
-            .with_error(anyhow::anyhow!("DoubleArray build error for user dict.")),
-    )?;
+            .with_error(anyhow::anyhow!("DoubleArray build error for user dict."))
+    })?;
 
     // building values
     let mut vals_data = Vec::<u8>::new();
@@ -379,7 +388,7 @@ pub fn build_user_dict(
 
     let dict = PrefixDict {
         da: DoubleArray::new(da_bytes),
-        vals_data: vals_data,
+        vals_data,
         is_system: false,
     };
 
@@ -399,9 +408,9 @@ fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult
         lines.push(fields);
     }
     let mut lines_it = lines.into_iter();
-    let header = lines_it
-        .next()
-        .ok_or(BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!("unknown error")))?;
+    let header = lines_it.next().ok_or_else(|| {
+        BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
+    })?;
     let forward_size = header[0] as u32;
     let backward_size = header[1] as u32;
     let len = 2 + (forward_size * backward_size) as usize;
@@ -433,7 +442,7 @@ fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult
     Ok(())
 }
 
-const DEFAULT_CATEGORY_NAME: &'static str = "DEFAULT";
+const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
 
 #[derive(Default)]
 pub struct CharacterDefinitionsBuilder {
@@ -503,15 +512,15 @@ impl CharacterDefinitionsBuilder {
         LookupTable::from_fn(boundaries, &|c, buff| self.lookup_categories(c, buff))
     }
 
-    pub fn parse(&mut self, content: &String) -> BuildDictionaryResult<()> {
+    pub fn parse(&mut self, content: &str) -> BuildDictionaryResult<()> {
         for line in content.lines() {
             let line_str = line
                 .split('#')
                 .next()
-                .ok_or(
+                .ok_or_else(|| {
                     BuildDictionaryErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse line")),
-                )?
+                        .with_error(anyhow::anyhow!("failed to parse line"))
+                })?
                 .trim();
             if line_str.is_empty() {
                 continue;
@@ -658,7 +667,7 @@ fn get_entry_id_matching_surface(entries: &[DictionaryEntry], target_surface: &s
         .iter()
         .enumerate()
         .filter_map(|(entry_id, entry)| {
-            if entry.surface == target_surface.to_string() {
+            if entry.surface == *target_surface {
                 Some(entry_id as u32)
             } else {
                 None
@@ -676,11 +685,11 @@ fn make_category_references(categories: &[String], entries: &[DictionaryEntry]) 
 
 fn parse_unk(
     categories: &[String],
-    file_content: &String,
+    file_content: &str,
 ) -> BuildDictionaryResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     for line in file_content.lines() {
-        let fields: Vec<&str> = line.split(",").collect::<Vec<&str>>();
+        let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
         let entry = parse_dictionary_entry(&fields[..])?;
         unknown_dict_entries.push(entry);
     }
@@ -695,8 +704,8 @@ fn parse_unk(
 
 fn build_chardef(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<CharacterDefinitions> {
     println!("BUILD CHARDEF");
-    let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
     let char_def = read_mecab_file(input_dir, "char.def")?;
+    let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
     char_definitions_builder.parse(&char_def)?;
     let char_definitions = char_definitions_builder.build();
 
@@ -722,7 +731,7 @@ fn build_unk(
 ) -> BuildDictionaryResult<()> {
     println!("BUILD UNK");
     let unk_data = read_mecab_file(input_dir, "unk.def")?;
-    let unknown_dictionary = parse_unk(&chardef.categories(), &unk_data)?;
+    let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
 
     let wtr_unk_path = Path::new(output_dir).join(Path::new("unk.bin"));
     println!("creating {:?}", wtr_unk_path);
