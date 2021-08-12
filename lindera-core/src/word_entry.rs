@@ -61,7 +61,7 @@ impl WordEntry {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::word_entry::{WordEntry, WordId};
+    use crate::word_entry::{WordEntry, WordId};
 
     #[test]
     fn test_word_entry() {

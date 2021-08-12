@@ -78,7 +78,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Build dictionary
     let output_dir = Path::new(&out_dir).join("lindera-ipadic");
-    build(input_dir.to_str().unwrap(), output_dir.to_str().unwrap())?;
+    build(&input_dir, &output_dir)?;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::io::{self, Read, Write};
 use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fs, u32};
 
@@ -15,14 +16,14 @@ use glob::glob;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use lindera_core::core::character_definition::{
+use lindera_core::character_definition::{
     CategoryData, CategoryId, CharacterDefinitions, LookupTable,
 };
-use lindera_core::core::prefix_dict::PrefixDict;
-use lindera_core::core::unknown_dictionary::UnknownDictionary;
-use lindera_core::core::word_entry::{WordEntry, WordId};
-
-use crate::error::{BuildDictionaryErrorKind, BuildDictionaryResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::prefix_dict::PrefixDict;
+use lindera_core::unknown_dictionary::UnknownDictionary;
+use lindera_core::word_entry::{WordEntry, WordId};
+use lindera_core::LinderaResult;
 
 #[derive(Debug)]
 pub struct CSVRow<'a> {
@@ -45,22 +46,19 @@ pub struct CSVRow<'a> {
 }
 
 impl<'a> CSVRow<'a> {
-    fn from_line(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
+    fn from_line(line: &'a str) -> LinderaResult<CSVRow<'a>> {
         let fields: Vec<_> = line.split(',').collect();
 
         Ok(CSVRow {
             surface_form: fields[0],
             left_id: u32::from_str(fields[1]).map_err(|_err| {
-                BuildDictionaryErrorKind::Parse
-                    .with_error(anyhow::anyhow!("failed to parse left_id"))
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse left_id"))
             })?,
             right_id: u32::from_str(fields[2]).map_err(|_err| {
-                BuildDictionaryErrorKind::Parse
-                    .with_error(anyhow::anyhow!("failed to parse right_id"))
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse right_id"))
             })?,
             word_cost: i32::from_str(fields[3]).map_err(|_err| {
-                BuildDictionaryErrorKind::Parse
-                    .with_error(anyhow::anyhow!("failed to parse word_cost"))
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word_cost"))
             })?,
 
             pos_level1: fields[4],
@@ -77,7 +75,7 @@ impl<'a> CSVRow<'a> {
         })
     }
 
-    fn from_line_user_dict(line: &'a String) -> BuildDictionaryResult<CSVRow<'a>> {
+    fn from_line_user_dict(line: &'a str) -> LinderaResult<CSVRow<'a>> {
         let fields: Vec<_> = line.split(',').collect();
 
         match fields.len() {
@@ -100,74 +98,78 @@ impl<'a> CSVRow<'a> {
                 pronunciation: "*",
             }),
             13 => CSVRow::from_line(line),
-            _ => Err(
-                BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
-                    "user dictionary should be a CSV with 3 or 13 fields"
-                )),
-            ),
+            _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "user dictionary should be a CSV with 3 or 13 fields"
+            ))),
         }
     }
 }
 
-fn read_mecab_file(dir: &str, filename: &str) -> BuildDictionaryResult<String> {
-    let path = Path::new(dir).join(Path::new(filename));
-    let mut input_read = File::open(path)
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+pub struct UserDict {
+    pub dict: PrefixDict<Vec<u8>>,
+    pub words_idx_data: Vec<u8>,
+    pub words_data: Vec<u8>,
+}
+
+fn read_mecab_file(filename: &Path) -> LinderaResult<String> {
+    let mut input_read = File::open(filename)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let mut buffer = Vec::new();
     input_read
         .read_to_end(&mut buffer)
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     encoding::all::EUC_JP
         .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))
 }
 
-fn read_utf8_file(filename: &str) -> BuildDictionaryResult<String> {
-    let path = Path::new(filename);
-    let mut input_read = File::open(path)
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+fn read_utf8_file(filename: &Path) -> LinderaResult<String> {
+    let mut input_read = File::open(filename)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let mut buffer = Vec::new();
     input_read
         .read_to_end(&mut buffer)
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     encoding::all::UTF_8
         .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))
 }
 
-fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
+fn build_dict(input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
     println!("BUILD DICT");
 
-    let mut filenames: Vec<String> = Vec::new();
-    for entry in glob(format!("{}/*.csv", input_dir).as_str())
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?
+    let pattern = if let Some(path) = input_dir.to_str() {
+        format!("{}/*.csv", path)
+    } else {
+        return Err(
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!("Failed to convert path to &str."))
+        );
+    };
+
+    let mut filenames: Vec<PathBuf> = Vec::new();
+    for entry in
+        glob(&pattern).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?
     {
         match entry {
             Ok(path) => {
                 if let Some(filename) = path.file_name() {
-                    if let Some(filename_str) = filename.to_str() {
-                        filenames.push(filename_str.to_string());
-                    } else {
-                        return Err(BuildDictionaryErrorKind::Io
-                            .with_error(anyhow::anyhow!("failed to get filename")));
-                    }
+                    filenames.push(Path::new(input_dir).join(filename));
                 } else {
-                    return Err(BuildDictionaryErrorKind::Io
-                        .with_error(anyhow::anyhow!("failed to get filename")));
+                    return Err(
+                        LinderaErrorKind::Io.with_error(anyhow::anyhow!("failed to get filename"))
+                    );
                 }
             }
-            Err(err) => {
-                return Err(BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(err)))
-            }
+            Err(err) => return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(err))),
         }
     }
 
     let files_data: Vec<String> = filenames
         .iter()
-        .map(|filename| read_mecab_file(input_dir, filename))
-        .collect::<BuildDictionaryResult<Vec<String>>>()?;
+        .map(|filename| read_mecab_file(filename))
+        .collect::<LinderaResult<Vec<String>>>()?;
 
     let lines: Vec<String> = files_data
         .iter()
@@ -187,23 +189,23 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
 
     let mut rows: Vec<CSVRow> = lines
         .iter()
-        .map(CSVRow::from_line)
+        .map(|line| CSVRow::from_line(line))
         .collect::<Result<_, _>>()
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     rows.sort_by_key(|row| row.surface_form.clone());
 
-    let wtr_da_path = Path::new(output_dir).join(Path::new("dict.da"));
+    let wtr_da_path = output_dir.join(Path::new("dict.da"));
     println!("creating {:?}", wtr_da_path);
     let mut wtr_da = io::BufWriter::new(
         File::create(wtr_da_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
-    let wtr_vals_path = Path::new(output_dir).join(Path::new("dict.vals"));
+    let wtr_vals_path = output_dir.join(Path::new("dict.vals"));
     println!("creating {:?}", wtr_vals_path);
     let mut wtr_vals = io::BufWriter::new(
         File::create(wtr_vals_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
@@ -219,18 +221,18 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
             });
     }
 
-    let wtr_words_path = Path::new(output_dir).join(Path::new("dict.words"));
+    let wtr_words_path = output_dir.join(Path::new("dict.words"));
     println!("creating {:?}", wtr_words_path);
     let mut wtr_words = io::BufWriter::new(
         File::create(wtr_words_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
-    let wtr_words_idx_path = Path::new(output_dir).join(Path::new("dict.wordsidx"));
+    let wtr_words_idx_path = output_dir.join(Path::new("dict.wordsidx"));
     println!("creating {:?}", wtr_words_idx_path);
     let mut wtr_words_idx = io::BufWriter::new(
         File::create(wtr_words_idx_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
 
     let mut words_buffer = Vec::new();
@@ -249,20 +251,20 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
         let offset = words_buffer.len();
         wtr_words_idx
             .write_u32::<LittleEndian>(offset as u32)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         bincode::serialize_into(&mut words_buffer, &word)
-            .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     }
 
     wtr_words
         .write_all(&words_buffer[..])
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     wtr_words
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     wtr_words_idx
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     let mut id = 0u32;
 
@@ -282,38 +284,36 @@ fn build_dict(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
     }
 
     let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-        BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
     })?;
 
     wtr_da
         .write_all(&da_bytes[..])
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     for word_entries in word_entry_map.values() {
         for word_entry in word_entries {
-            word_entry.serialize(&mut wtr_vals).map_err(|err| {
-                BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err))
-            })?;
+            word_entry
+                .serialize(&mut wtr_vals)
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
     }
     wtr_vals
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
 
-pub fn build_user_dict(
-    input_file: &str,
-) -> BuildDictionaryResult<(PrefixDict<Vec<u8>>, Vec<u8>, Vec<u8>)> {
+pub fn build_user_dict(input_file: &Path) -> LinderaResult<UserDict> {
     let data: String = read_utf8_file(input_file)?;
 
-    let lines: Vec<String> = data.lines().map(|line| line.to_string()).collect();
+    let lines: Vec<&str> = data.lines().collect();
     let mut rows: Vec<CSVRow> = lines
         .iter()
-        .map(CSVRow::from_line_user_dict)
+        .map(|line| CSVRow::from_line_user_dict(line))
         .collect::<Result<_, _>>()
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     // sorting entries
     rows.sort_by_key(|row| row.surface_form.clone());
@@ -348,9 +348,9 @@ pub fn build_user_dict(
         let offset = words_data.len();
         words_idx_data
             .write_u32::<LittleEndian>(offset as u32)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         bincode::serialize_into(&mut words_data, &word)
-            .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     }
 
     let mut id = 0u32;
@@ -372,17 +372,16 @@ pub fn build_user_dict(
     }
 
     let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-        BuildDictionaryErrorKind::Io
-            .with_error(anyhow::anyhow!("DoubleArray build error for user dict."))
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error for user dict."))
     })?;
 
     // building values
     let mut vals_data = Vec::<u8>::new();
     for word_entries in word_entry_map.values() {
         for word_entry in word_entries {
-            word_entry.serialize(&mut vals_data).map_err(|err| {
-                BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err))
-            })?;
+            word_entry
+                .serialize(&mut vals_data)
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
     }
 
@@ -392,25 +391,30 @@ pub fn build_user_dict(
         is_system: false,
     };
 
-    Ok((dict, words_idx_data, words_data))
+    Ok(UserDict {
+        dict,
+        words_idx_data,
+        words_data,
+    })
 }
 
-fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
+fn build_cost_matrix(input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
     println!("BUILD COST MATRIX");
-    let matrix_data = read_mecab_file(input_dir, "matrix.def")?;
+    let matrix_data_path = input_dir.join("matrix.def");
+    let matrix_data = read_mecab_file(&matrix_data_path)?;
     let mut lines = Vec::new();
     for line in matrix_data.lines() {
         let fields: Vec<i32> = line
             .split_whitespace()
             .map(i32::from_str)
             .collect::<Result<_, _>>()
-            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
         lines.push(fields);
     }
     let mut lines_it = lines.into_iter();
-    let header = lines_it.next().ok_or_else(|| {
-        BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
-    })?;
+    let header = lines_it
+        .next()
+        .ok_or_else(|| LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error")))?;
     let forward_size = header[0] as u32;
     let backward_size = header[1] as u32;
     let len = 2 + (forward_size * backward_size) as usize;
@@ -424,20 +428,20 @@ fn build_cost_matrix(input_dir: &str, output_dir: &str) -> BuildDictionaryResult
         costs[2 + (backward_id + forward_id * backward_size) as usize] = cost as i16;
     }
 
-    let wtr_matrix_mtx_path = Path::new(output_dir).join(Path::new("matrix.mtx"));
+    let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));
     println!("creating {:?}", wtr_matrix_mtx_path);
     let mut wtr_matrix_mtx = io::BufWriter::new(
         File::create(wtr_matrix_mtx_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     for cost in costs {
         wtr_matrix_mtx
             .write_i16::<LittleEndian>(cost)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     }
     wtr_matrix_mtx
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
@@ -451,26 +455,24 @@ pub struct CharacterDefinitionsBuilder {
     char_ranges: Vec<(u32, u32, Vec<CategoryId>)>,
 }
 
-fn ucs2_to_unicode(ucs2_codepoint: u16) -> BuildDictionaryResult<u32> {
+fn ucs2_to_unicode(ucs2_codepoint: u16) -> LinderaResult<u32> {
     let mut buf = [0u8; 2];
     LittleEndian::write_u16(&mut buf[..], ucs2_codepoint);
     let s: String = UTF_16LE
         .decode(&buf[..], DecoderTrap::Strict)
-        .map_err(|err| BuildDictionaryErrorKind::Decode.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))?;
     let chrs: Vec<char> = s.chars().collect();
 
     match chrs.len() {
         1 => Ok(chrs[0] as u32),
-        _ => {
-            Err(BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!("unusual char length")))
-        }
+        _ => Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!("unusual char length"))),
     }
 }
 
-fn parse_hex_codepoint(s: &str) -> BuildDictionaryResult<u32> {
+fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
     let removed_0x = s.trim_start_matches("0x");
     let ucs2_codepoint = u16::from_str_radix(removed_0x, 16)
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     ucs2_to_unicode(ucs2_codepoint)
 }
@@ -512,14 +514,13 @@ impl CharacterDefinitionsBuilder {
         LookupTable::from_fn(boundaries, &|c, buff| self.lookup_categories(c, buff))
     }
 
-    pub fn parse(&mut self, content: &str) -> BuildDictionaryResult<()> {
+    pub fn parse(&mut self, content: &str) -> LinderaResult<()> {
         for line in content.lines() {
             let line_str = line
                 .split('#')
                 .next()
                 .ok_or_else(|| {
-                    BuildDictionaryErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse line"))
+                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse line"))
                 })?
                 .trim();
             if line_str.is_empty() {
@@ -534,7 +535,7 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    fn parse_range(&mut self, line: &str) -> BuildDictionaryResult<()> {
+    fn parse_range(&mut self, line: &str) -> LinderaResult<()> {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let range_bounds: Vec<&str> = fields[0].split("..").collect();
         let lower_bound: u32;
@@ -550,8 +551,9 @@ impl CharacterDefinitionsBuilder {
                 higher_bound = parse_hex_codepoint(range_bounds[1])?;
             }
             _ => {
-                return Err(BuildDictionaryErrorKind::Content
-                    .with_error(anyhow::anyhow!("Invalid line: {}", line)));
+                return Err(
+                    LinderaErrorKind::Content.with_error(anyhow::anyhow!("Invalid line: {}", line))
+                );
             }
         }
         let category_ids: Vec<CategoryId> = fields[1..]
@@ -565,28 +567,26 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    fn parse_category(&mut self, line: &str) -> BuildDictionaryResult<()> {
+    fn parse_category(&mut self, line: &str) -> LinderaResult<()> {
         let fields = line.split_ascii_whitespace().collect::<Vec<&str>>();
         if fields.len() != 4 {
-            return Err(
-                BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
-                    "Expected 4 fields. Got {} in {}",
-                    fields.len(),
-                    line
-                )),
-            );
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "Expected 4 fields. Got {} in {}",
+                fields.len(),
+                line
+            )));
         }
         let invoke = fields[1]
             .parse::<u32>()
-            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
+            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
             == 1;
         let group = fields[2]
             .parse::<u32>()
-            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
+            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
             == 1;
         let length = fields[3]
             .parse::<u32>()
-            .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
         let category_data = CategoryData {
             invoke,
             group,
@@ -623,22 +623,20 @@ pub struct DictionaryEntry {
     word_cost: i32,
 }
 
-fn parse_dictionary_entry(fields: &[&str]) -> BuildDictionaryResult<DictionaryEntry> {
+fn parse_dictionary_entry(fields: &[&str]) -> LinderaResult<DictionaryEntry> {
     if fields.len() != 11 {
-        return Err(
-            BuildDictionaryErrorKind::Content.with_error(anyhow::anyhow!(
-                "Invalid number of fields. Expect 11, got {}",
-                fields.len()
-            )),
-        );
+        return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+            "Invalid number of fields. Expect 11, got {}",
+            fields.len()
+        )));
     }
     let surface = fields[0];
     let left_id = u32::from_str(fields[1])
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     let right_id = u32::from_str(fields[2])
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
     let word_cost = i32::from_str(fields[3])
-        .map_err(|err| BuildDictionaryErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
     Ok(DictionaryEntry {
         surface: surface.to_string(),
@@ -683,10 +681,7 @@ fn make_category_references(categories: &[String], entries: &[DictionaryEntry]) 
         .collect()
 }
 
-fn parse_unk(
-    categories: &[String],
-    file_content: &str,
-) -> BuildDictionaryResult<UnknownDictionary> {
+fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     for line in file_content.lines() {
         let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
@@ -702,55 +697,57 @@ fn parse_unk(
     })
 }
 
-fn build_chardef(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<CharacterDefinitions> {
+fn build_chardef(input_dir: &Path, output_dir: &Path) -> LinderaResult<CharacterDefinitions> {
     println!("BUILD CHARDEF");
-    let char_def = read_mecab_file(input_dir, "char.def")?;
+    let char_def_path = input_dir.join("char.def");
+    let char_def = read_mecab_file(&char_def_path)?;
     let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
     char_definitions_builder.parse(&char_def)?;
     let char_definitions = char_definitions_builder.build();
 
-    let wtr_chardef_path = Path::new(output_dir).join(Path::new("char_def.bin"));
+    let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
     println!("creating {:?}", wtr_chardef_path);
     let mut wtr_chardef = io::BufWriter::new(
         File::create(wtr_chardef_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     bincode::serialize_into(&mut wtr_chardef, &char_definitions)
-        .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     wtr_chardef
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(char_definitions)
 }
 
 fn build_unk(
-    input_dir: &str,
+    input_dir: &Path,
     chardef: &CharacterDefinitions,
-    output_dir: &str,
-) -> BuildDictionaryResult<()> {
+    output_dir: &Path,
+) -> LinderaResult<()> {
     println!("BUILD UNK");
-    let unk_data = read_mecab_file(input_dir, "unk.def")?;
+    let unk_data_path = input_dir.join("unk.def");
+    let unk_data = read_mecab_file(&unk_data_path)?;
     let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
 
-    let wtr_unk_path = Path::new(output_dir).join(Path::new("unk.bin"));
+    let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
     println!("creating {:?}", wtr_unk_path);
     let mut wtr_unk = io::BufWriter::new(
         File::create(wtr_unk_path)
-            .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
     bincode::serialize_into(&mut wtr_unk, &unknown_dictionary)
-        .map_err(|err| BuildDictionaryErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     wtr_unk
         .flush()
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
 }
 
-pub fn build(input_dir: &str, output_dir: &str) -> BuildDictionaryResult<()> {
+pub fn build(input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
     fs::create_dir_all(&output_dir)
-        .map_err(|err| BuildDictionaryErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     let chardef = build_chardef(input_dir, output_dir)?;
     build_unk(input_dir, &chardef, output_dir)?;

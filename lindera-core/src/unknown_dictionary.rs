@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::core::character_definition::CategoryId;
-use crate::core::word_entry::WordEntry;
+use crate::character_definition::CategoryId;
+use crate::error::LinderaErrorKind;
+use crate::word_entry::WordEntry;
+use crate::LinderaResult;
 
 //TODO optimize
 #[derive(Serialize, Deserialize, Clone)]
@@ -11,8 +13,9 @@ pub struct UnknownDictionary {
 }
 
 impl UnknownDictionary {
-    pub fn load(unknown_data: &[u8]) -> UnknownDictionary {
-        bincode::deserialize(unknown_data).unwrap()
+    pub fn load(unknown_data: &[u8]) -> LinderaResult<UnknownDictionary> {
+        bincode::deserialize(unknown_data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 
     pub fn word_entry(&self, word_id: u32) -> WordEntry {

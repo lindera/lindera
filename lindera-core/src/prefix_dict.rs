@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use yada::DoubleArray;
 
-use crate::core::word_entry::WordEntry;
+use crate::word_entry::WordEntry;
 
 #[derive(Clone)]
 pub struct PrefixDict<Data = Vec<u8>> {
@@ -12,13 +12,14 @@ pub struct PrefixDict<Data = Vec<u8>> {
 }
 
 impl PrefixDict<&[u8]> {
-    pub fn from_static_slice(da_data: &[u8], vals_data: &[u8]) -> Result<PrefixDict, String> {
+    pub fn from_static_slice(da_data: &[u8], vals_data: &[u8]) -> PrefixDict {
         let da = DoubleArray::new(da_data.to_vec());
-        Ok(PrefixDict {
+
+        PrefixDict {
             da,
             vals_data: vals_data.to_vec(),
             is_system: true,
-        })
+        }
     }
 }
 

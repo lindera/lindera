@@ -3,6 +3,7 @@ LINDERA_IPADIC_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-vers
 LINDERA_IPADIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
 LINDERA_DICTIONARY_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
 LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
+LINDERA_CLI_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
 
 .DEFAULT_GOAL := build
 
@@ -41,4 +42,7 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary |
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
 	(cd lindera && cargo package && cargo publish)
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
+	(cd lindera-cli && cargo package && cargo publish)
 endif

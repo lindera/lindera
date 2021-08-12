@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use crate::error::LinderaErrorKind;
+use crate::LinderaResult;
+
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct CategoryData {
     pub invoke: bool,
@@ -52,8 +55,9 @@ impl CharacterDefinitions {
         &self.category_names[..]
     }
 
-    pub fn load(char_def_data: &[u8]) -> CharacterDefinitions {
-        bincode::deserialize(char_def_data).expect("Failed to deserialize char definition data")
+    pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinitions> {
+        bincode::deserialize(char_def_data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 
     pub fn lookup_definition(&self, category_id: CategoryId) -> &CategoryData {
@@ -71,7 +75,7 @@ impl CharacterDefinitions {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::character_definition::LookupTable;
+    use crate::character_definition::LookupTable;
 
     #[test]
     fn test_lookup_table() {
