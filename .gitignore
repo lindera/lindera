@@ -6,3 +6,6 @@ target
 perf.data*
 
 Cargo.lock
+
+lindera-ipadic-*-*
+mecab-ipadic-*-*

@@ -1,13 +1,16 @@
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
+
 use crate::tokenizer::Token;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Format {
-    MeCab,
+    Mecab,
     Wakati,
-    JSON,
+    Json,
 }
 
-pub fn format_mecab(tokens: Vec<Token>) -> String {
+pub fn format_mecab(tokens: Vec<Token>) -> LinderaResult<String> {
     let mut lines = Vec::new();
     for token in tokens {
         let line = format!("{}\t{}", token.text, token.detail.join(","));
@@ -15,27 +18,28 @@ pub fn format_mecab(tokens: Vec<Token>) -> String {
     }
     lines.push(String::from("EOS"));
 
-    lines.join("\n")
+    Ok(lines.join("\n"))
 }
 
-pub fn format_wakati(tokens: Vec<Token>) -> String {
+pub fn format_wakati(tokens: Vec<Token>) -> LinderaResult<String> {
     let mut lines = Vec::new();
     for token in tokens {
         let line = token.text.to_string();
         lines.push(line);
     }
 
-    lines.join(" ")
+    Ok(lines.join(" "))
 }
 
-pub fn format_json(tokens: Vec<Token>) -> String {
-    serde_json::to_string_pretty(&tokens).unwrap()
+pub fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
+    serde_json::to_string_pretty(&tokens)
+        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))
 }
 
-pub fn format(tokens: Vec<Token>, output_format: Format) -> Result<String, String> {
+pub fn format(tokens: Vec<Token>, output_format: Format) -> LinderaResult<String> {
     return match output_format {
-        Format::MeCab => Ok(format_mecab(tokens)),
-        Format::Wakati => Ok(format_wakati(tokens)),
-        Format::JSON => Ok(format_json(tokens)),
+        Format::Mecab => format_mecab(tokens),
+        Format::Wakati => format_wakati(tokens),
+        Format::Json => format_json(tokens),
     };
 }

@@ -1,60 +1,63 @@
-use lindera_core::core::character_definition::CharacterDefinitions;
-use lindera_core::core::connection::ConnectionCostMatrix;
-use lindera_core::core::prefix_dict::PrefixDict;
-use lindera_core::core::unknown_dictionary::UnknownDictionary;
 use std::fs;
 use std::path::Path;
 
-fn read_file(file: &str) -> Vec<u8> {
-    let mut data = Vec::new();
-    match fs::read(file) {
-        Ok(_data) => data = _data,
-        Err(e) => println!("{}", e.to_string()),
-    }
-    data
+use lindera_core::character_definition::CharacterDefinitions;
+use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::prefix_dict::PrefixDict;
+use lindera_core::unknown_dictionary::UnknownDictionary;
+use lindera_core::LinderaResult;
+
+fn read_file(path: &Path) -> LinderaResult<Vec<u8>> {
+    fs::read(path).map_err(|err| {
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+            "Failed to read {:?}, error: {:?}",
+            path,
+            err
+        ))
+    })
 }
 
-pub fn char_def(dir: &str) -> CharacterDefinitions {
-    let path = Path::new(dir).join("char_def.bin");
-    let data = read_file(path.to_str().unwrap());
+pub fn char_def(dir: &Path) -> LinderaResult<CharacterDefinitions> {
+    let path = dir.join("char_def.bin");
+    let data = read_file(&path)?;
 
     CharacterDefinitions::load(data.as_slice())
 }
 
-pub fn connection(dir: &str) -> ConnectionCostMatrix {
-    let path = Path::new(dir).join("matrix.mtx");
-    let data = read_file(path.to_str().unwrap());
+pub fn connection(dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
+    let path = dir.join("matrix.mtx");
+    let data = read_file(&path)?;
 
-    ConnectionCostMatrix::load(data.as_slice())
+    Ok(ConnectionCostMatrix::load(data.as_slice()))
 }
 
-pub fn prefix_dict(dir: &str) -> PrefixDict {
-    let unidic_data_path = Path::new(dir).join("dict.da");
-    let unidic_data = read_file(unidic_data_path.to_str().unwrap());
+pub fn prefix_dict(dir: &Path) -> LinderaResult<PrefixDict> {
+    let unidic_data_path = dir.join("dict.da");
+    let unidic_data = read_file(&unidic_data_path)?;
 
-    let unidic_vals_path = Path::new(dir).join("dict.vals");
-    let unidic_vals = read_file(unidic_vals_path.to_str().unwrap());
+    let unidic_vals_path = dir.join("dict.vals");
+    let unidic_vals = read_file(&unidic_vals_path)?;
 
-    PrefixDict::from_static_slice(unidic_data.as_slice(), unidic_vals.as_slice()).unwrap()
+    Ok(PrefixDict::from_static_slice(
+        unidic_data.as_slice(),
+        unidic_vals.as_slice(),
+    ))
 }
 
-pub fn unknown_dict(dir: &str) -> UnknownDictionary {
-    let path = Path::new(dir).join("unk.bin");
-    let data = read_file(path.to_str().unwrap());
+pub fn unknown_dict(dir: &Path) -> LinderaResult<UnknownDictionary> {
+    let path = dir.join("unk.bin");
+    let data = read_file(&path)?;
 
     UnknownDictionary::load(data.as_slice())
 }
 
-pub fn words_idx_data(dir: &str) -> Vec<u8> {
-    let path = Path::new(dir).join("dict.wordsidx");
-    let data = read_file(path.to_str().unwrap());
-
-    data
+pub fn words_idx_data(dir: &Path) -> LinderaResult<Vec<u8>> {
+    let path = dir.join("dict.wordsidx");
+    read_file(&path)
 }
 
-pub fn words_data(dir: &str) -> Vec<u8> {
-    let path = Path::new(dir).join("dict.words");
-    let data = read_file(path.to_str().unwrap());
-
-    data
+pub fn words_data(dir: &Path) -> LinderaResult<Vec<u8>> {
+    let path = dir.join("dict.words");
+    read_file(&path)
 }

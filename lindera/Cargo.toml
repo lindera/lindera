@@ -19,6 +19,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
+anyhow = "1.0"
 bincode = "1.3"
 byteorder = "1.4"
 encoding = "0.2"

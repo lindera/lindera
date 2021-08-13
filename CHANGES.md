@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Merge lindera-cli package. #108 @mosuka
 - Add error struct #107 @mosuka
 - do not download dictionary files when building 'docs.rs' #106 @abetomo
 - Update dependencies. #104 @mosuka

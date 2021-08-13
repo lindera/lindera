@@ -29,14 +29,14 @@ It will:
 
 ```rust
 use lindera::tokenizer::Tokenizer;
-use lindera_core::core::viterbi::Mode;
+use lindera_core::LinderaResult;
 
-fn main() -> std::io::Result<()> {
+fn main() -> LinderaResult<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new(Mode::Normal, "");
+    let mut tokenizer = Tokenizer::new()?;
 
     // tokenize the text
-    let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
+    let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")?;
 
     // output the tokens
     for token in tokens {
@@ -77,15 +77,23 @@ For example:
 
 With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
-use lindera::tokenizer::Tokenizer;
-use lindera_core::core::viterbi::Mode;
+use std::path::Path;
 
-fn main() -> std::io::Result<()> {
+use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera_core::viterbi::Mode;
+use lindera_core::LinderaResult;
+
+fn main() -> LinderaResult<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new_with_userdic(Mode::Normal, "", "userdic.csv");
+    let config = TokenizerConfig {
+        dict_path: None,
+        user_dict_path: Some(&Path::new("resources/userdic.csv")),
+        mode: Mode::Normal,
+    };
+    let mut tokenizer = Tokenizer::with_config(config)?;
 
     // tokenize the text
-    let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です");
+    let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
 
     // output the tokens
     for token in tokens {

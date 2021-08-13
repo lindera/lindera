@@ -4,7 +4,8 @@ members = [
     "lindera-ipadic-builder",
     "lindera-dictionary",
     "lindera-ipadic",
-    "lindera"
+    "lindera",
+    "lindera-cli"
 ]
 
 [profile.release]

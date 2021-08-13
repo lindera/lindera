@@ -25,11 +25,10 @@ clap = "2.33"
 encoding = "0.2"
 glob = "0.3"
 serde = "1.0"
-thiserror = "1.0"
 yada = "0.4"
 
 lindera-core = { version = "0.7", path = "../lindera-core" }
 
 [[bin]]
-name = "lindera-ipadic"
+name = "lindera-ipadic-builder"
 path = "src/main.rs"

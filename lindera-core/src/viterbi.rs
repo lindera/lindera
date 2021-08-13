@@ -1,10 +1,10 @@
 use std::u32;
 
-use crate::core::character_definition::{CategoryId, CharacterDefinitions};
-use crate::core::connection::ConnectionCostMatrix;
-use crate::core::prefix_dict::PrefixDict;
-use crate::core::unknown_dictionary::UnknownDictionary;
-use crate::core::word_entry::{WordEntry, WordId};
+use crate::character_definition::{CategoryId, CharacterDefinitions};
+use crate::connection::ConnectionCostMatrix;
+use crate::prefix_dict::PrefixDict;
+use crate::unknown_dictionary::UnknownDictionary;
+use crate::word_entry::{WordEntry, WordId};
 
 #[derive(Clone, Debug)]
 pub struct Penalty {
@@ -114,7 +114,7 @@ pub struct Lattice {
 
 fn is_kanji(c: char) -> bool {
     let c = c as u32;
-    c >= 19968 && c <= 40879
+    (19968..=40879).contains(&c)
 }
 
 fn is_kanji_only(s: &str) -> bool {
