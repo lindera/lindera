@@ -92,7 +92,7 @@ fn main() -> LinderaResult<()> {
     // output format
     let output_format = matches.value_of("OUTPUT_FORMAT").unwrap();
     let f = match output_format {
-        "mecab" => Format::MeCab,
+        "mecab" => Format::Mecab,
         "wakati" => Format::Wakati,
         "json" => Format::Json,
         _ => {
