@@ -5,7 +5,7 @@ use crate::tokenizer::Token;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Format {
-    MeCab,
+    Mecab,
     Wakati,
     Json,
 }
@@ -38,7 +38,7 @@ pub fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
 
 pub fn format(tokens: Vec<Token>, output_format: Format) -> LinderaResult<String> {
     return match output_format {
-        Format::MeCab => format_mecab(tokens),
+        Format::Mecab => format_mecab(tokens),
         Format::Wakati => format_wakati(tokens),
         Format::Json => format_json(tokens),
     };
