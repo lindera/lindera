@@ -12,7 +12,8 @@ use tar::Archive;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use lindera_ipadic_builder::builder::build;
+use lindera_core::dictionary_builder::DictionaryBuilder;
+use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -78,7 +79,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Build dictionary
     let output_dir = Path::new(&out_dir).join("lindera-ipadic");
-    build(&input_dir, &output_dir)?;
+
+    let builder = IpadicBuilder::new();
+    builder.build_dictionary(&input_dir, &output_dir)?;
 
     Ok(())
 }

@@ -6,12 +6,14 @@ use serde::Serialize;
 
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::viterbi::{Lattice, Mode};
 use lindera_core::word_entry::WordId;
 use lindera_core::LinderaResult;
+use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {
@@ -95,7 +97,8 @@ impl Tokenizer {
 
         let (user_dict, user_dict_words_idx_data, user_dict_words_data) =
             if let Some(path) = config.user_dict_path {
-                let user_dict = lindera_ipadic_builder::builder::build_user_dict(path)?;
+                let builder = IpadicBuilder::new();
+                let user_dict = builder.build_user_dict(path)?;
                 (
                     Some(user_dict.dict),
                     Some(user_dict.words_idx_data),
