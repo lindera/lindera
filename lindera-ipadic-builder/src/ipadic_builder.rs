@@ -15,15 +15,15 @@ use yada::DoubleArray;
 use lindera_core::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
+use lindera_core::file_util::{read_euc_file, read_utf8_file};
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::parse_unk;
 use lindera_core::user_dictionary::UserDictionary;
-use lindera_core::util::{read_euc_file, read_utf8_file};
 use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 
 #[derive(Debug)]
-pub struct CSVRow<'a> {
+pub struct CsvRow<'a> {
     surface_form: &'a str,
     left_id: u32,
     right_id: u32,
@@ -42,11 +42,11 @@ pub struct CSVRow<'a> {
     pronunciation: &'a str,
 }
 
-impl<'a> CSVRow<'a> {
-    fn from_line(line: &'a str) -> LinderaResult<CSVRow<'a>> {
+impl<'a> CsvRow<'a> {
+    fn from_line(line: &'a str) -> LinderaResult<CsvRow<'a>> {
         let fields: Vec<_> = line.split(',').collect();
 
-        Ok(CSVRow {
+        Ok(CsvRow {
             surface_form: fields[0],
             left_id: u32::from_str(fields[1]).map_err(|_err| {
                 LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse left_id"))
@@ -72,11 +72,11 @@ impl<'a> CSVRow<'a> {
         })
     }
 
-    fn from_line_user_dict(line: &'a str) -> LinderaResult<CSVRow<'a>> {
+    fn from_line_user_dict(line: &'a str) -> LinderaResult<CsvRow<'a>> {
         let fields: Vec<_> = line.split(',').collect();
 
         match fields.len() {
-            3 => Ok(CSVRow {
+            3 => Ok(CsvRow {
                 surface_form: fields[0],
                 left_id: 0,
                 right_id: 0,
@@ -94,7 +94,7 @@ impl<'a> CSVRow<'a> {
                 reading: fields[2],
                 pronunciation: "*",
             }),
-            13 => CSVRow::from_line(line),
+            13 => CsvRow::from_line(line),
             _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
                 "user dictionary should be a CSV with 3 or 13 fields"
             ))),
@@ -225,9 +225,9 @@ impl DictionaryBuilder for IpadicBuilder {
             })
             .collect();
 
-        let mut rows: Vec<CSVRow> = lines
+        let mut rows: Vec<CsvRow> = lines
             .iter()
-            .map(|line| CSVRow::from_line(line))
+            .map(|line| CsvRow::from_line(line))
             .collect::<Result<_, _>>()
             .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
         rows.sort_by_key(|row| row.surface_form.clone());
@@ -395,9 +395,9 @@ impl DictionaryBuilder for IpadicBuilder {
         let data: String = read_utf8_file(input_file)?;
 
         let lines: Vec<&str> = data.lines().collect();
-        let mut rows: Vec<CSVRow> = lines
+        let mut rows: Vec<CsvRow> = lines
             .iter()
-            .map(|line| CSVRow::from_line_user_dict(line))
+            .map(|line| CsvRow::from_line_user_dict(line))
             .collect::<Result<_, _>>()
             .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
