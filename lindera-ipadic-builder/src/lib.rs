@@ -1,1 +1,1 @@
-pub mod builder;
+pub mod ipadic_builder;
