@@ -38,7 +38,7 @@ fn main() -> LinderaResult<()> {
     let builder = IpadicBuilder::new();
 
     match builder.build_dictionary(&input_dir, &output_dir) {
-        Ok(()) => println!("{}", "done"),
+        Ok(()) => println!("done"),
         Err(msg) => println!("{}", msg),
     }
 
