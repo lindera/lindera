@@ -32,3 +32,7 @@ lindera-core = { version = "0.8.0", path = "../lindera-core" }
 [[bin]]
 name = "lindera-ipadic-builder"
 path = "src/main.rs"
+
+[[bin]]
+name = "lindera-userdic-builder"
+path = "src/bin/lindera-userdic-builder/main.rs"
