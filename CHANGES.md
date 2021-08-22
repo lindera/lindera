@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.8.0 (2021-08-22)
 - Fix workflow. #112 @mosuka
 - Bump up version to 0.8.0. #111 @mosuka
 - Add DictionaryBuilder trait and some refactoring. #110 @mosuka
