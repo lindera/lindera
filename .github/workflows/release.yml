@@ -7,6 +7,63 @@ on:
       - "v*.*.*"
 
 jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+        toolchain: [stable]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - uses: actions-rs/cargo@v1.0.1
+        with:
+          command: build
+          args: --release --target=${{ matrix.target }}
+          use-cross: true
+      - name: Build for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe
+      - name: Build for OSX
+        if: matrix.os == 'macos-latest'
+        run: |
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
+      - uses: actions/upload-artifact@v1
+        with:
+          name: build-${{ matrix.target }}
+          path: lindera-${{ matrix.target }}.zip
+
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
@@ -20,6 +77,41 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+      - run: |
+          echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
+      - uses: actions/upload-artifact@v1
+        with:
+          name: create-release
+          path: release_upload_url.txt
+
+  upload-release:
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
+    name: Upload Release
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v1
+        with:
+          name: create-release
+      - id: upload-url
+        run: |
+          echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+      - uses: actions/download-artifact@v1
+        with:
+          name: build-${{ matrix.target }}
+      - uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.upload-url.outputs.url }}
+          asset_path: ./build-${{ matrix.target }}/lindera-${{ matrix.target }}.zip
+          asset_name: lindera-${{ matrix.target }}.zip
+          asset_content_type: application/zip
 
   publish-crates:
     name: Publish crate
@@ -83,6 +175,16 @@ jobs:
             echo "lindera ${LINDERA_VERSION} has already published"
           else
             pushd lindera
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_CLI_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
+          LINDERA_CLI_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num')
+          if echo ${LINDERA_CLI_VERSIONS} | grep ${LINDERA_CLI_VERSION} >/dev/null; then
+            echo "lindera-cli ${LINDERA_CLI_VERSION} has already published"
+          else
+            pushd lindera-cli
             cargo publish --token ${{ secrets.CRATES_TOKEN }}
             popd
           fi

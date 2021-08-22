@@ -42,6 +42,7 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary |
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
 	(cd lindera && cargo package && cargo publish)
+	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
 	(cd lindera-cli && cargo package && cargo publish)
