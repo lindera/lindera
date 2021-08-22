@@ -109,8 +109,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.upload-url.outputs.url }}
-          asset_path: ./build-${{ matrix.target }}/lindera-cli-${{ matrix.target }}.zip
-          asset_name: lindera-cli-${{ matrix.target }}.zip
+          asset_path: ./build-${{ matrix.target }}/lindera-${{ matrix.target }}.zip
+          asset_name: lindera-${{ matrix.target }}.zip
           asset_content_type: application/zip
 
   publish-crates:
