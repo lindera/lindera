@@ -18,9 +18,9 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
         b.iter(|| {
             let config = TokenizerConfig {
-                dict_path: None,
                 user_dict_path: Some(&Path::new("resources/userdic.csv")),
                 mode: Mode::Normal,
+                ..TokenizerConfig::default()
             };
             Tokenizer::with_config(config).unwrap()
         })
@@ -36,9 +36,9 @@ fn bench_tokenize(c: &mut Criterion) {
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let config = TokenizerConfig {
-        dict_path: None,
         user_dict_path: Some(&Path::new("resources/userdic.csv")),
         mode: Mode::Normal,
+        ..TokenizerConfig::default()
     };
     let mut tokenizer = Tokenizer::with_config(config).unwrap();
     c.bench_function("bench-tokenize-custom-dict", |b| {

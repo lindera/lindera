@@ -8,8 +8,10 @@ use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
+use lindera_core::file_util::read_file;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
+use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::viterbi::{Lattice, Mode};
 use lindera_core::word_entry::WordId;
 use lindera_core::LinderaResult;
@@ -24,6 +26,7 @@ pub struct Token<'a> {
 pub struct TokenizerConfig<'a> {
     pub dict_path: Option<&'a Path>,
     pub user_dict_path: Option<&'a Path>,
+    pub user_dict_bin_path: Option<&'a Path>,
     pub mode: Mode,
 }
 
@@ -32,6 +35,7 @@ impl Default for TokenizerConfig<'_> {
         Self {
             dict_path: None,
             user_dict_path: None,
+            user_dict_bin_path: None,
             mode: Mode::Normal,
         }
     }
@@ -99,6 +103,14 @@ impl Tokenizer {
             if let Some(path) = config.user_dict_path {
                 let builder = IpadicBuilder::new();
                 let user_dict = builder.build_user_dict(path)?;
+                (
+                    Some(user_dict.dict),
+                    Some(user_dict.words_idx_data),
+                    Some(user_dict.words_data),
+                )
+            } else if let Some(path) = config.user_dict_bin_path {
+                let user_dict_bin_data = read_file(path)?;
+                let user_dict = UserDictionary::load(&user_dict_bin_data)?;
                 (
                     Some(user_dict.dict),
                     Some(user_dict.words_idx_data),
@@ -247,9 +259,8 @@ mod tests {
     #[test]
     fn test_empty() {
         let config = TokenizerConfig {
-            dict_path: None,
-            user_dict_path: None,
             mode: Mode::Decompose(Penalty::default()),
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize_offsets("");
@@ -259,9 +270,8 @@ mod tests {
     #[test]
     fn test_space() {
         let config = TokenizerConfig {
-            dict_path: None,
-            user_dict_path: None,
             mode: Mode::Decompose(Penalty::default()),
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize_offsets(" ");
@@ -271,9 +281,8 @@ mod tests {
     #[test]
     fn test_boku_ha() {
         let config = TokenizerConfig {
-            dict_path: None,
-            user_dict_path: None,
             mode: Mode::Decompose(Penalty::default()),
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize_offsets("僕は");
@@ -441,9 +450,9 @@ mod tests {
     #[test]
     fn test_simple_user_dict() {
         let config = TokenizerConfig {
-            dict_path: None,
             user_dict_path: Some(&Path::new("resources/userdic.csv")),
             mode: Mode::Normal,
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         assert!(tokenizer.user_dict.is_some());
@@ -484,9 +493,9 @@ mod tests {
     #[test]
     fn test_detailed_user_dict() {
         let config = TokenizerConfig {
-            dict_path: None,
             user_dict_path: Some(&Path::new("resources/detailed_userdic.csv")),
             mode: Mode::Normal,
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         assert!(tokenizer.user_dict.is_some());
@@ -527,9 +536,9 @@ mod tests {
     #[test]
     fn test_mixed_user_dict() {
         let config = TokenizerConfig {
-            dict_path: None,
             user_dict_path: Some(&Path::new("resources/mixed_userdic.csv")),
             mode: Mode::Normal,
+            ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
         assert!(tokenizer.user_dict.is_some());
@@ -588,9 +597,9 @@ mod tests {
     #[should_panic(expected = "failed to parse word_cost")]
     fn test_user_dict_invalid_word_cost() {
         let config = TokenizerConfig {
-            dict_path: None,
             user_dict_path: Some(&Path::new("test/fixtures/userdic_invalid_word_cost.csv")),
             mode: Mode::Normal,
+            ..TokenizerConfig::default()
         };
         Tokenizer::with_config(config).unwrap();
     }
@@ -599,11 +608,11 @@ mod tests {
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
     fn test_user_dict_number_of_fields_is_11() {
         let config = TokenizerConfig {
-            dict_path: None,
             user_dict_path: Some(&Path::new(
                 "test/fixtures/userdic_insufficient_number_of_fields.csv",
             )),
             mode: Mode::Normal,
+            ..TokenizerConfig::default()
         };
         Tokenizer::with_config(config).unwrap();
     }

@@ -1,12 +1,21 @@
 use std::ops::Deref;
 
+use serde::{Deserialize, Serialize};
 use yada::DoubleArray;
 
 use crate::word_entry::WordEntry;
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "DoubleArray")]
+struct DoubleArrayDef<T>(pub T)
+where
+    T: Deref<Target = [u8]>;
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PrefixDict<Data = Vec<u8>> {
+    #[serde(with = "DoubleArrayDef")]
     pub da: DoubleArray<Vec<u8>>,
+
     pub vals_data: Data,
     pub is_system: bool,
 }
