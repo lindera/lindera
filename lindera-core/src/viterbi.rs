@@ -233,6 +233,7 @@ impl Lattice {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_unknown_word(
         &mut self,
         char_definitions: &CharacterDefinitions,

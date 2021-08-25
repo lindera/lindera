@@ -3,7 +3,7 @@ use std::io;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
+use clap::{crate_authors, crate_description, crate_version, App, AppSettings, Arg};
 
 use lindera::formatter::{format, Format};
 use lindera::tokenizer::{Tokenizer, TokenizerConfig};
@@ -12,7 +12,7 @@ use lindera_core::viterbi::{Mode, Penalty};
 use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let app = App::new(crate_name!())
+    let app = App::new("lindera")
         .setting(AppSettings::DeriveDisplayOrder)
         .version(crate_version!())
         .author(crate_authors!())

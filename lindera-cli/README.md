@@ -300,7 +300,7 @@ $ make docker-build
 You can also use the Docker container image already registered in docker.io like so:
 
 ```shell script
-$ docker pull linderamorphology/lindera-cli:latest
+$ docker pull linderamorphology/lindera:latest
 ```
 
 See https://hub.docker.com/r/linderamorphology/lindera-cli/tags
@@ -310,7 +310,7 @@ See https://hub.docker.com/r/linderamorphology/lindera-cli/tags
 Running a Lindera CLI on Docker like so:
 
 ```shell script
-$ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera-cli:latest
+$ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera:latest
 ```
 
 ```text

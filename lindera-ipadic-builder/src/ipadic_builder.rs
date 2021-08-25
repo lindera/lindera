@@ -110,6 +110,12 @@ impl IpadicBuilder {
     }
 }
 
+impl Default for IpadicBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DictionaryBuilder for IpadicBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         fs::create_dir_all(&output_dir)
@@ -402,7 +408,7 @@ impl DictionaryBuilder for IpadicBuilder {
             .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
 
         // sorting entries
-        rows.sort_by_key(|row| row.surface_form.clone());
+        rows.sort_by_key(|row| row.surface_form);
 
         let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
 
