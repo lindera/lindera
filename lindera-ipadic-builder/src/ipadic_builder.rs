@@ -236,7 +236,7 @@ impl DictionaryBuilder for IpadicBuilder {
             .map(|line| CsvRow::from_line(line))
             .collect::<Result<_, _>>()
             .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
-        rows.sort_by_key(|row| row.surface_form.clone());
+        rows.sort_by_key(|row| row.surface_form);
 
         let wtr_da_path = output_dir.join(Path::new("dict.da"));
         println!("creating {:?}", wtr_da_path);

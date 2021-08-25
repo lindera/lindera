@@ -37,6 +37,14 @@ fn main() -> LinderaResult<()> {
             .takes_value(true),
         )
         .arg(
+            Arg::with_name("USER_DICTIONARY_BINARY")
+            .help("(Optional) The user dictionary binary file path.")
+            .short("b")
+            .long("user-dictionary-binary")
+            .value_name("USER_DICTIONARY_BINARY")
+            .takes_value(true),
+        )
+        .arg(
             Arg::with_name("MODE")
                 .help("The tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
                 .short("m")
@@ -69,9 +77,14 @@ fn main() -> LinderaResult<()> {
         config.dict_path = Some(Path::new(dict_dir));
     }
 
-    // user dictionary
+    // user dictionary csv path
     if let Some(user_dict) = matches.value_of("USER_DICTIONARY") {
         config.user_dict_path = Some(Path::new(user_dict));
+    }
+
+    // user dictionary binary file path
+    if let Some(user_dict_bin) = matches.value_of("USER_DICTIONARY_BINARY") {
+        config.user_dict_bin_path = Some(Path::new(user_dict_bin));
     }
 
     // mode

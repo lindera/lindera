@@ -128,6 +128,47 @@ The following example uses the pre-built ko-dic to tokenize:
 EOS
 ```
 
+### User dictionary
+
+Lindera supports two types of user dictionaries, one in CSV format and the other in binary format.
+
+#### CSV format
+
+This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
+
+```shell script
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -u userdic.csv
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
+#### Binary format
+
+This will read the given pre-built user dictionary file and perform text tokenization.
+Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
+
+```shell script
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -b userdic.bin
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
 ### Tokenize mode
 
 Lindera provides two tokenization modes: `normal` and `decompose`.

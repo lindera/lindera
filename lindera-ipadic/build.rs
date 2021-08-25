@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let ipadic_ver = "2.7.0-20070801";
     let input_dir = Path::new(&out_dir).join(format!("mecab-ipadic-{}", ipadic_ver));
 
-    if let Ok(_) = std::env::var("DOCS_RS") {
+    if std::env::var("DOCS_RS").is_ok() {
         // Use dummy data in docs.rs.
         create_dir(&input_dir)?;
 

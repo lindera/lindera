@@ -26,12 +26,20 @@ This repository contains [mecab-ipadic-2.7.0-20070801](http://jaist.dl.sourcefor
 
 ## Building a dictionary
 
-Building a dictionary with `lindera-ipadic` command:
+Building a dictionary with `lindera-ipadic-builder` command:
 
 ```shell script
 % curl -L -O "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
 % tar zxvf ./mecab-ipadic-2.7.0-20070801.tar.gz
 % lindera-ipadic-builder ./mecab-ipadic-2.7.0-20070801 ./lindera-ipadic-2.7.0-20070801
+```
+
+## Building a user dictionary
+
+Building a dictionary with `lindera-userdic-builder` command:
+
+```shell script
+% lindera-userdic-builder ./userdic.csv ./userdic.bin
 ```
 
 ## Dictionary format
@@ -62,6 +70,24 @@ You can tokenize text using produced dictionary with `lindera` command:
 羽田空港        名詞,固有名詞,一般,*,*,*,羽田空港,ハネダクウコウ,ハネダクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+```
+
+## Tokenizing text using default dictionary and produced binary user dictionary
+
+You can tokenize text using produced dictionary with `lindera` command:
+
+```shell script
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -b userdic.bin
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 EOS
 ```
 
