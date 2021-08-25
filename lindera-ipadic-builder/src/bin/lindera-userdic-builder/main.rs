@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
+use clap::{crate_authors, crate_description, crate_version, App, AppSettings, Arg};
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
@@ -24,7 +24,7 @@ fn write_binary_data(file_path: &Path, user_dict: &UserDictionary) -> LinderaRes
 }
 
 fn main() -> LinderaResult<()> {
-    let app = App::new(crate_name!())
+    let app = App::new("lindera-userdict-builder")
         .setting(AppSettings::DeriveDisplayOrder)
         .version(crate_version!())
         .author(crate_authors!())
