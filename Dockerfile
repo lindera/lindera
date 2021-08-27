@@ -22,13 +22,6 @@ RUN cargo build --release
 
 FROM debian:buster-slim
 
-WORKDIR /
-
-RUN set -ex \
-    && apt-get update \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY --from=builder /repo/target/release/lindera /usr/local/bin
 COPY --from=builder /repo/target/release/lindera-ipadic-builder /usr/local/bin
 
