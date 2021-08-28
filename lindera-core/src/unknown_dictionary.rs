@@ -38,7 +38,10 @@ pub struct UnknownDictionaryEntry {
     pub word_cost: i32,
 }
 
-fn parse_dictionary_entry(fields: &[&str], expected_fields_len: usize) -> LinderaResult<UnknownDictionaryEntry> {
+fn parse_dictionary_entry(
+    fields: &[&str],
+    expected_fields_len: usize,
+) -> LinderaResult<UnknownDictionaryEntry> {
     if fields.len() != expected_fields_len {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
             "Invalid number of fields. Expect {}, got {}",
@@ -103,7 +106,11 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
         .collect()
 }
 
-pub fn parse_unk(categories: &[String], file_content: &str, expected_fields_len: usize) -> LinderaResult<UnknownDictionary> {
+pub fn parse_unk(
+    categories: &[String],
+    file_content: &str,
+    expected_fields_len: usize,
+) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     for line in file_content.lines() {
         let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
