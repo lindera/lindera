@@ -165,7 +165,7 @@ impl DictionaryBuilder for IpadicBuilder {
         println!("BUILD UNK");
         let unk_data_path = input_dir.join("unk.def");
         let unk_data = read_euc_file(&unk_data_path)?;
-        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
+        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, 11)?;
 
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
         println!("creating {:?}", wtr_unk_path);

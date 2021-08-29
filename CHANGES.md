@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add parameter to build_unk for variation of dictionaries #117 @jothani 
 - Support binary user dictionary on CLI. #115 @mosuka
 - Add Dockerfile. #113 @mosuka
 - implement binary data reading and writing for user dictionary #114 @abetomo
