@@ -38,7 +38,7 @@ pub fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
 }
 
 /// Format Token list to String by `output_format`
-///
+///4
 /// # Arguments
 ///
 /// * `tokens`: the list of Token
