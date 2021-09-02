@@ -4,6 +4,7 @@ use lindera_core::LinderaResult;
 use crate::tokenizer::Token;
 
 #[derive(Debug, Clone, Copy)]
+/// Formatter type
 pub enum Format {
     Mecab,
     Wakati,
@@ -36,6 +37,18 @@ pub fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
         .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))
 }
 
+/// Format Token list to String by `output_format`
+///
+/// # Arguments
+///
+/// * `tokens`: the list of Token
+/// * `output_format`: the mode of `Format`
+///
+/// returns: Result<String, LinderaError>
+///
+/// * String: formatted tokens
+/// * LinderaError: the error occurred during formatting
+///
 pub fn format(tokens: Vec<Token>, output_format: Format) -> LinderaResult<String> {
     return match output_format {
         Format::Mecab => format_mecab(tokens),
