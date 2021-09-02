@@ -18,19 +18,27 @@ use lindera_core::LinderaResult;
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
 #[derive(Serialize, Clone)]
+/// Token Object
 pub struct Token<'a> {
     pub text: &'a str,
     pub detail: Vec<String>,
 }
 
+/// Tokenizer config
 pub struct TokenizerConfig<'a> {
+    /// the path of System Dictionary
     pub dict_path: Option<&'a Path>,
+    /// the path of User Dictionary (CSV)
     pub user_dict_path: Option<&'a Path>,
+    /// the path of User Dictionary (Binary)
     pub user_dict_bin_path: Option<&'a Path>,
+    /// Tokenize mode
     pub mode: Mode,
 }
 
 impl Default for TokenizerConfig<'_> {
+    /// Return default Tokenizer config
+    /// default mode is Mode::Normal
     fn default() -> Self {
         Self {
             dict_path: None,
@@ -42,6 +50,7 @@ impl Default for TokenizerConfig<'_> {
 }
 
 #[derive(Clone)]
+/// Tokenizer
 pub struct Tokenizer {
     dict: PrefixDict<Vec<u8>>,
     cost_matrix: ConnectionCostMatrix,
@@ -57,11 +66,20 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
+    /// Creates a new instance with default TokenizerConfig
     pub fn new() -> LinderaResult<Tokenizer> {
         let config = TokenizerConfig::default();
         Tokenizer::with_config(config)
     }
 
+    /// Creates a new instance with the config
+    ///
+    /// # Arguments
+    ///
+    /// * `config`: settings of Tokenizer
+    ///
+    /// returns: Result<Tokenizer, LinderaError>
+    ///
     pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
         let dict = if let Some(ref path) = config.dict_path {
             lindera_dictionary::prefix_dict(path)?
@@ -221,6 +239,17 @@ impl Tokenizer {
         Ok(word_detail)
     }
 
+    /// Tokenize the text
+    ///
+    /// # Arguments
+    ///
+    /// * `text`: Japanese text
+    ///
+    /// returns: Result<Vec<Token>, LinderaError>
+    ///
+    /// * Vec<Token> : the list of `Token` if succeeded
+    /// * LinderaError : Error message with LinderaErrorKind
+    ///
     pub fn tokenize<'a>(&mut self, mut text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens = Vec::new();
         while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
@@ -234,6 +263,17 @@ impl Tokenizer {
         Ok(tokens)
     }
 
+    /// Tokenize the text
+    ///
+    /// # Arguments
+    ///
+    /// * `text`: Japanese text
+    ///
+    /// returns: Result<Vec<&str>, LinderaError>
+    ///
+    /// * Vec<Token> : the list of `words` if succeeded
+    /// * LinderaError : Error message with LinderaErrorKind
+    ///
     pub fn tokenize_str<'a>(&mut self, text: &'a str) -> LinderaResult<Vec<&'a str>> {
         let tokens = self
             .tokenize(text)?
