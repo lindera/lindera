@@ -11,7 +11,7 @@ pub enum Format {
     Json,
 }
 
-pub fn format_mecab(tokens: Vec<Token>) -> LinderaResult<String> {
+fn format_mecab(tokens: Vec<Token>) -> LinderaResult<String> {
     let mut lines = Vec::new();
     for token in tokens {
         let line = format!("{}\t{}", token.text, token.detail.join(","));
@@ -22,7 +22,7 @@ pub fn format_mecab(tokens: Vec<Token>) -> LinderaResult<String> {
     Ok(lines.join("\n"))
 }
 
-pub fn format_wakati(tokens: Vec<Token>) -> LinderaResult<String> {
+fn format_wakati(tokens: Vec<Token>) -> LinderaResult<String> {
     let mut lines = Vec::new();
     for token in tokens {
         let line = token.text.to_string();
@@ -32,7 +32,7 @@ pub fn format_wakati(tokens: Vec<Token>) -> LinderaResult<String> {
     Ok(lines.join(" "))
 }
 
-pub fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
+fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
     serde_json::to_string_pretty(&tokens)
         .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))
 }
