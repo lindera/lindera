@@ -43,6 +43,9 @@ pub struct CsvRow<'a> {
 }
 
 impl<'a> CsvRow<'a> {
+    const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
+    const DETAILED_USERDIC_FIELDS_NUM: usize = 13;
+
     fn from_line(line: &'a str) -> LinderaResult<CsvRow<'a>> {
         let fields: Vec<_> = line.split(',').collect();
 
@@ -76,7 +79,7 @@ impl<'a> CsvRow<'a> {
         let fields: Vec<_> = line.split(',').collect();
 
         match fields.len() {
-            3 => Ok(CsvRow {
+            Self::SIMPLE_USERDIC_FIELDS_NUM => Ok(CsvRow {
                 surface_form: fields[0],
                 left_id: 0,
                 right_id: 0,
@@ -94,9 +97,11 @@ impl<'a> CsvRow<'a> {
                 reading: fields[2],
                 pronunciation: "*",
             }),
-            13 => CsvRow::from_line(line),
+            Self::DETAILED_USERDIC_FIELDS_NUM => CsvRow::from_line(line),
             _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                "user dictionary should be a CSV with 3 or 13 fields"
+                "user dictionary should be a CSV with {} or {} fields",
+                Self::SIMPLE_USERDIC_FIELDS_NUM,
+                Self::DETAILED_USERDIC_FIELDS_NUM
             ))),
         }
     }
@@ -105,6 +110,8 @@ impl<'a> CsvRow<'a> {
 pub struct IpadicBuilder {}
 
 impl IpadicBuilder {
+    const UNK_FIELDS_NUM: usize = 11;
+
     pub fn new() -> Self {
         IpadicBuilder {}
     }
@@ -165,7 +172,7 @@ impl DictionaryBuilder for IpadicBuilder {
         println!("BUILD UNK");
         let unk_data_path = input_dir.join("unk.def");
         let unk_data = read_euc_file(&unk_data_path)?;
-        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, 11)?;
+        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
 
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
         println!("creating {:?}", wtr_unk_path);
