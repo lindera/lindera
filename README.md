@@ -101,9 +101,9 @@ use lindera_core::LinderaResult;
 fn main() -> LinderaResult<()> {
     // create tokenizer
     let config = TokenizerConfig {
-        dict_path: None,
         user_dict_path: Some(&Path::new("resources/userdic.csv")),
         mode: Mode::Normal,
+        ..TokenizerConfig::default()
     };
     let mut tokenizer = Tokenizer::with_config(config)?;
 
