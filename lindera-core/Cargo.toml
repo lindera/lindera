@@ -24,4 +24,4 @@ byteorder = "1.4"
 encoding = "0.2"
 serde = {version="1.0", features = ["derive"] }
 thiserror = "1.0"
-yada = "0.4"
+yada = "0.5"

@@ -25,7 +25,7 @@ clap = "2.33"
 encoding = "0.2"
 glob = "0.3"
 serde = "1.0"
-yada = "0.4"
+yada = "0.5"
 
 lindera-core = { version = "0.8.0", path = "../lindera-core" }
 
