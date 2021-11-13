@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.8.1 (2021-11-13)
 - Update yada requirement from 0.4 to 0.5 #124
 - docs(readme): update the code example in readme #123 @abetomo
 - chore: set the number of fields as a constant #122 @abetomo
