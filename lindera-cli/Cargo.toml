@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.8.0"
+version = "0.8.1"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
@@ -22,8 +22,8 @@ anyhow = "1.0"
 clap = "2.33"
 stringreader = "0.1"
 
-lindera = { version = "0.8.0", path = "../lindera" }
-lindera-core = { version = "0.8.0", path = "../lindera-core" }
+lindera = { version = "0.8.1", path = "../lindera" }
+lindera-core = { version = "0.8.1", path = "../lindera-core" }
 
 [[bin]]
 name = "lindera"

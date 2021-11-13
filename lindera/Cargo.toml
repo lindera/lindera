@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.8.0"
+version = "0.8.1"
 authors = [
     "Paul Masurel <paul.masurel@gmail.com>",
     "Minoru Osuka <minoru.osuka@gmail.com>",
@@ -26,10 +26,10 @@ encoding = "0.2"
 serde = {version="1.0", features = ["derive"] }
 serde_json = "1.0"
 
-lindera-core = { version = "0.8.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.8.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.8.0", path = "../lindera-ipadic" }
-lindera-ipadic-builder = { version = "0.8.0", path = "../lindera-ipadic-builder" }
+lindera-core = { version = "0.8.1", path = "../lindera-core" }
+lindera-dictionary = { version = "0.8.1", path = "../lindera-dictionary" }
+lindera-ipadic = { version = "0.8.1", path = "../lindera-ipadic" }
+lindera-ipadic-builder = { version = "0.8.1", path = "../lindera-ipadic-builder" }
 
 [dev-dependencies]
 criterion = "0.3"
