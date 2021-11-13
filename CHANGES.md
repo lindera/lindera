@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Update yada requirement from 0.4 to 0.5 #124
+- docs(readme): update the code example in readme #123 @abetomo
+- chore: set the number of fields as a constant #122 @abetomo
+- Make 3 methods to private methods #121 @johtani
+- Add api comments #119 @johtani
 - Add parameter to build_unk for variation of dictionaries #117 @jothani 
 - Support binary user dictionary on CLI. #115 @mosuka
 - Add Dockerfile. #113 @mosuka
