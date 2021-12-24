@@ -28,6 +28,7 @@ serde = "1.0"
 yada = "0.5"
 
 lindera-core = { version = "0.8.1", path = "../lindera-core" }
+lindera-compress = { path = "../lindera-compress"  }
 
 [[bin]]
 name = "lindera-ipadic-builder"

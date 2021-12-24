@@ -9,6 +9,7 @@ use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use glob::glob;
+use lindera_compress::{compress, Algorithm};
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
@@ -148,14 +149,22 @@ impl DictionaryBuilder for IpadicBuilder {
         char_definitions_builder.parse(&char_def)?;
         let char_definitions = char_definitions_builder.build();
 
+        let mut chardef_buffer = Vec::new();
+        bincode::serialize_into(&mut chardef_buffer, &char_definitions)
+            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+
         let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
         println!("creating {:?}", wtr_chardef_path);
         let mut wtr_chardef = io::BufWriter::new(
             File::create(wtr_chardef_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-        bincode::serialize_into(&mut wtr_chardef, &char_definitions)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        compress_write(
+            &chardef_buffer,
+            Algorithm::LZMA { preset: 9 },
+            &mut wtr_chardef,
+        )?;
+
         wtr_chardef
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -174,14 +183,17 @@ impl DictionaryBuilder for IpadicBuilder {
         let unk_data = read_euc_file(&unk_data_path)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
 
+        let mut unk_buffer = Vec::new();
+        bincode::serialize_into(&mut unk_buffer, &unknown_dictionary)
+            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
         println!("creating {:?}", wtr_unk_path);
         let mut wtr_unk = io::BufWriter::new(
             File::create(wtr_unk_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-        bincode::serialize_into(&mut wtr_unk, &unknown_dictionary)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        compress_write(&unk_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_unk)?;
         wtr_unk
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -287,6 +299,8 @@ impl DictionaryBuilder for IpadicBuilder {
         );
 
         let mut words_buffer = Vec::new();
+        let mut words_idx_buffer = Vec::new();
+        println!("rows.len = {}", rows.len());
         for row in rows.iter() {
             let word = vec![
                 row.pos_level1.to_string(),
@@ -300,16 +314,20 @@ impl DictionaryBuilder for IpadicBuilder {
                 row.pronunciation.to_string(),
             ];
             let offset = words_buffer.len();
-            wtr_words_idx
+            words_idx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
             bincode::serialize_into(&mut words_buffer, &word)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
-        wtr_words
-            .write_all(&words_buffer[..])
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        compress_write(&words_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_words)?;
+        compress_write(
+            &words_idx_buffer,
+            Algorithm::LZMA { preset: 9 },
+            &mut wtr_words_idx,
+        )?;
+
         wtr_words
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -338,17 +356,17 @@ impl DictionaryBuilder for IpadicBuilder {
             LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
         })?;
 
-        wtr_da
-            .write_all(&da_bytes[..])
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        compress_write(&da_bytes, Algorithm::LZMA { preset: 9 }, &mut wtr_da)?;
 
+        let mut vals_buffer = Vec::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
                 word_entry
-                    .serialize(&mut wtr_vals)
+                    .serialize(&mut vals_buffer)
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
+        compress_write(&vals_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_vals)?;
         wtr_vals
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -376,7 +394,7 @@ impl DictionaryBuilder for IpadicBuilder {
         let forward_size = header[0] as u32;
         let backward_size = header[1] as u32;
         let len = 2 + (forward_size * backward_size) as usize;
-        let mut costs = vec![i16::max_value(); len];
+        let mut costs = vec![i16::MAX; len];
         costs[0] = forward_size as i16;
         costs[1] = backward_size as i16;
         for fields in lines_it {
@@ -392,11 +410,18 @@ impl DictionaryBuilder for IpadicBuilder {
             File::create(wtr_matrix_mtx_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
+        let mut matrix_mtx_buffer = Vec::new();
         for cost in costs {
-            wtr_matrix_mtx
+            matrix_mtx_buffer
                 .write_i16::<LittleEndian>(cost)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         }
+        compress_write(
+            &matrix_mtx_buffer,
+            Algorithm::LZMA { preset: 9 },
+            &mut wtr_matrix_mtx,
+        )?;
+
         wtr_matrix_mtx
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -497,4 +522,16 @@ impl DictionaryBuilder for IpadicBuilder {
             words_data,
         })
     }
+}
+
+fn compress_write<W: Write>(
+    buffer: &[u8],
+    algorithm: Algorithm,
+    writer: &mut W,
+) -> LinderaResult<()> {
+    let compressed = compress(buffer, algorithm)
+        .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
+    bincode::serialize_into(writer, &compressed)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    Ok(())
 }
