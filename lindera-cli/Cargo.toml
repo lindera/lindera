@@ -18,7 +18,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-smallbinary = []
+smallbinary = ["lindera/smallbinary"]
 
 [dependencies]
 anyhow = "1.0"

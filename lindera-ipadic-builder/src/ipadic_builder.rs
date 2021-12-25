@@ -25,8 +25,6 @@ use lindera_core::LinderaResult;
 
 #[cfg(feature = "smallbinary")]
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
-#[cfg(not(feature = "smallbinary"))]
-const COMPRESS_ALGORITHM: Algorithm = Algorithm::Raw;
 
 #[derive(Debug)]
 pub struct CsvRow<'a> {
@@ -523,9 +521,16 @@ fn compress_write<W: Write>(
     algorithm: Algorithm,
     writer: &mut W,
 ) -> LinderaResult<()> {
-    let compressed = compress(buffer, algorithm)
-        .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
-    bincode::serialize_into(writer, &compressed)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    if cfg!(feature = "smallbinary") {
+        let compressed = compress(buffer, algorithm)
+            .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
+        bincode::serialize_into(writer, &compressed)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    } else {
+        writer
+            .write_all(buffer)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    }
+
     Ok(())
 }

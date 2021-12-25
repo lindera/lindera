@@ -7,62 +7,54 @@ use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::LinderaResult;
 
+macro_rules! decompress_or_raw {
+    ($name: ident, $bytes: expr, $filename: literal) => {
+        #[cfg(feature = "smallbinary")]
+        const $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
+            let compressed_data = bincode::deserialize_from(&$bytes[..])
+                .expect(concat!("invalid file format ", $filename));
+            decompress(compressed_data).expect("invalid file format $filename")
+        });
+        #[cfg(not(feature = "smallbinary"))]
+        const $name: &'static [u8] = $bytes;
+    };
+}
 
-const CHAR_DEFINITION_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/char_def.bin"))[..],
-    )
-    .expect("invalid file format char_def.bin");
-    decompress(compressed_data).expect("invalid file format char_def.bin")
-});
-
-const CONNECTION_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/matrix.mtx"))[..],
-    )
-    .expect("invalid file format matrix.mtx");
-    decompress(compressed_data).expect("invalid file format matrix.mtx")
-});
-
-const IPADIC_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.da"))[..],
-    )
-    .expect("invalid file format dict.da");
-    decompress(compressed_data).expect("invalid file format dict.da")
-});
-
-const IPADIC_VALS: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.vals"))[..],
-    )
-    .expect("invalid file format dict.vals");
-    decompress(compressed_data).expect("invalid file format dict.vals")
-});
-
-const UNKNOWN_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/unk.bin"))[..],
-    )
-    .expect("invalid file format unk.bin");
-    decompress(compressed_data).expect("invalid file format unk.bin")
-});
-
-const WORDS_IDX_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.wordsidx"))[..],
-    )
-    .expect("invalid file format unk.bin");
-    decompress(compressed_data).expect("invalid file format unk.bin")
-});
-
-const WORDS_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-    let compressed_data = bincode::deserialize_from(
-        &include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.words"))[..],
-    )
-    .expect("invalid file format unk.bin");
-    decompress(compressed_data).expect("invalid file format unk.bin")
-});
+decompress_or_raw!(
+    CHAR_DEFINITION_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/char_def.bin")),
+    "char_def.bin"
+);
+decompress_or_raw!(
+    CONNECTION_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/matrix.mtx")),
+    "matrix.mtx"
+);
+decompress_or_raw!(
+    IPADIC_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.da")),
+    "dict.da"
+);
+decompress_or_raw!(
+    IPADIC_VALS,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.vals")),
+    "dict.vals"
+);
+decompress_or_raw!(
+    UNKNOWN_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/unk.bin")),
+    "unk.bin"
+);
+decompress_or_raw!(
+    WORDS_IDX_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.wordsidx")),
+    "dict.wordsidx"
+);
+decompress_or_raw!(
+    WORDS_DATA,
+    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.words")),
+    "dict.words"
+);
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
     CharacterDefinitions::load(&CHAR_DEFINITION_DATA)

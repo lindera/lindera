@@ -17,7 +17,8 @@ keywords = ["japanese", "morphological", "dictionary", "loader", "ipadic"]
 categories = ["text-processing"]
 license = "MIT"
 
-
+[features]
+smallbinary = ["lindera-ipadic-builder/smallbinary"]
 
 [dependencies]
 bincode = "1.3"
