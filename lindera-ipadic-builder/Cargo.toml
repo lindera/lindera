@@ -17,6 +17,9 @@ keywords = ["japanese", "morphological", "dictionary", "builder", "ipadic"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+smallbinary = []
+
 [dependencies]
 anyhow = "1.0"
 bincode = "1.3"

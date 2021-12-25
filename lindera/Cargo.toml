@@ -18,6 +18,9 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+smallbinary = ["lindera-ipadic-builder/smallbinary"]
+
 [dependencies]
 anyhow = "1.0"
 bincode = "1.3"

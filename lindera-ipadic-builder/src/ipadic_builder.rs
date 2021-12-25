@@ -23,6 +23,11 @@ use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 
+#[cfg(feature = "smallbinary")]
+const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
+#[cfg(not(feature = "smallbinary"))]
+const COMPRESS_ALGORITHM: Algorithm = Algorithm::Raw;
+
 #[derive(Debug)]
 pub struct CsvRow<'a> {
     surface_form: &'a str,
@@ -159,11 +164,7 @@ impl DictionaryBuilder for IpadicBuilder {
             File::create(wtr_chardef_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-        compress_write(
-            &chardef_buffer,
-            Algorithm::LZMA { preset: 9 },
-            &mut wtr_chardef,
-        )?;
+        compress_write(&chardef_buffer, COMPRESS_ALGORITHM, &mut wtr_chardef)?;
 
         wtr_chardef
             .flush()
@@ -193,7 +194,7 @@ impl DictionaryBuilder for IpadicBuilder {
             File::create(wtr_unk_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-        compress_write(&unk_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_unk)?;
+        compress_write(&unk_buffer, COMPRESS_ALGORITHM, &mut wtr_unk)?;
         wtr_unk
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -321,12 +322,8 @@ impl DictionaryBuilder for IpadicBuilder {
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
-        compress_write(&words_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_words)?;
-        compress_write(
-            &words_idx_buffer,
-            Algorithm::LZMA { preset: 9 },
-            &mut wtr_words_idx,
-        )?;
+        compress_write(&words_buffer, COMPRESS_ALGORITHM, &mut wtr_words)?;
+        compress_write(&words_idx_buffer, COMPRESS_ALGORITHM, &mut wtr_words_idx)?;
 
         wtr_words
             .flush()
@@ -356,7 +353,7 @@ impl DictionaryBuilder for IpadicBuilder {
             LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
         })?;
 
-        compress_write(&da_bytes, Algorithm::LZMA { preset: 9 }, &mut wtr_da)?;
+        compress_write(&da_bytes, COMPRESS_ALGORITHM, &mut wtr_da)?;
 
         let mut vals_buffer = Vec::new();
         for word_entries in word_entry_map.values() {
@@ -366,7 +363,7 @@ impl DictionaryBuilder for IpadicBuilder {
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
-        compress_write(&vals_buffer, Algorithm::LZMA { preset: 9 }, &mut wtr_vals)?;
+        compress_write(&vals_buffer, COMPRESS_ALGORITHM, &mut wtr_vals)?;
         wtr_vals
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -416,11 +413,7 @@ impl DictionaryBuilder for IpadicBuilder {
                 .write_i16::<LittleEndian>(cost)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         }
-        compress_write(
-            &matrix_mtx_buffer,
-            Algorithm::LZMA { preset: 9 },
-            &mut wtr_matrix_mtx,
-        )?;
+        compress_write(&matrix_mtx_buffer, COMPRESS_ALGORITHM, &mut wtr_matrix_mtx)?;
 
         wtr_matrix_mtx
             .flush()
