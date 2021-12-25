@@ -32,6 +32,7 @@ const COMPRESS_ALGORITHM: Algorithm = Algorithm::Raw;
 pub struct CsvRow<'a> {
     surface_form: &'a str,
     left_id: u32,
+    #[allow(dead_code)]
     right_id: u32,
     word_cost: i32,
 

@@ -14,6 +14,7 @@ pub struct CompressedData {
     data: Vec<u8>,
 }
 
+#[allow(dead_code)]
 fn algorithm_compression_ratio_estimation() -> f64 {
     unimplemented!()
 }

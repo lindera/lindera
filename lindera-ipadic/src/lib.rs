@@ -6,7 +6,7 @@ use lindera_core::connection::ConnectionCostMatrix;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::LinderaResult;
-use once_cell::sync::Lazy;
+
 
 const CHAR_DEFINITION_DATA: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
     let compressed_data = bincode::deserialize_from(
