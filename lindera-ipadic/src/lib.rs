@@ -1,5 +1,6 @@
 use std::env;
 
+#[cfg(feature = "smallbinary")]
 use lindera_compress::decompress;
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;

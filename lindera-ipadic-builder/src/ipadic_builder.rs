@@ -23,7 +23,6 @@ use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 
-#[cfg(feature = "smallbinary")]
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
 #[derive(Debug)]
