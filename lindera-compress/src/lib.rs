@@ -1,6 +1,8 @@
 pub use lindera_decompress::{Algorithm, CompressedData};
 #[cfg(windows)]
-use lzma_rs::xz_decompress;
+use lzma_rs::xz_compress;
+#[cfg(windows)]
+use std::io::BufReader;
 
 #[allow(dead_code)]
 fn algorithm_compression_ratio_estimation() -> f64 {
@@ -29,7 +31,7 @@ pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedD
             let mut buf_reader = BufReader::new(data);
             let mut output_data = Vec::new();
             xz_compress(&mut buf_reader, &mut output_data)?;
-            Ok(output_data)
+            Ok(CompressedData::new(algorithm, output_data))
         }
         Algorithm::Raw => Ok(CompressedData::new(algorithm, data.to_vec())),
         _ => {
