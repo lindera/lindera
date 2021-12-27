@@ -1,18 +1,5 @@
-use serde::{Deserialize, Serialize};
+pub use lindera_decompress::{Algorithm, CompressedData};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum Algorithm {
-    Bzip,
-    LZ77,
-    LZMA { preset: u32 },
-    Raw,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompressedData {
-    algorithm: Algorithm,
-    data: Vec<u8>,
-}
 
 #[allow(dead_code)]
 fn algorithm_compression_ratio_estimation() -> f64 {
@@ -21,25 +8,17 @@ fn algorithm_compression_ratio_estimation() -> f64 {
 
 pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedData> {
     match algorithm {
-        Algorithm::LZMA { preset } => Ok(CompressedData {
-            // TODO: バッファのサイズを意識する
-            data: lzma::compress(data, preset)?,
-            algorithm,
-        }),
-        Algorithm::Raw => Ok(CompressedData {
-            data: data.to_vec(),
-            algorithm,
-        }),
-        _ => {
-            unimplemented!()
-        }
-    }
-}
+        Algorithm::LZMA { preset } => {
+            /*
+            let mut buf_reader = BufReader::new(data);
+            let mut output_data = Vec::new();
+            lzma_compress(&mut buf_reader, &mut output_data)?;
+             */
+            let output_data = lzma::compress(data, preset)?;
 
-pub fn decompress(data: CompressedData) -> anyhow::Result<Vec<u8>> {
-    match data.algorithm {
-        Algorithm::LZMA { preset: _ } => Ok(lzma::decompress(&data.data)?), // TODO: バッファのサイズを意識する
-        Algorithm::Raw => Ok(data.data),
+            Ok(CompressedData::new(algorithm, output_data))
+        }
+        Algorithm::Raw => Ok(CompressedData::new(algorithm, data.to_vec())),
         _ => {
             unimplemented!()
         }
@@ -49,6 +28,7 @@ pub fn decompress(data: CompressedData) -> anyhow::Result<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lindera_decompress::decompress;
     use rand::prelude::*;
 
     #[test]
@@ -59,8 +39,13 @@ mod tests {
         for _i in 0..10000 {
             buf.push(rng.gen())
         }
+        for _i in 0..10000 {
+            buf.push(0)
+        }
 
+        //dbg!(buf.len());
         let compress_data = compress(&buf, Algorithm::LZMA { preset: 9 }).unwrap();
+        //dbg!(compress_data.data.len());
 
         let data = decompress(compress_data).unwrap();
 

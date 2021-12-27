@@ -7,7 +7,9 @@ members = [
     "lindera",
     "lindera-cli",
     "lindera-compress",
+    "lindera-decompress",
 ]
+resolver = "2"
 
 [profile.release]
 lto = true

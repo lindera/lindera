@@ -18,7 +18,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-smallbinary = []
+compress = ["lindera-compress"]
 
 [dependencies]
 anyhow = "1.0"
@@ -31,7 +31,8 @@ serde = "1.0"
 yada = "0.5"
 
 lindera-core = { version = "0.8.1", path = "../lindera-core" }
-lindera-compress = { path = "../lindera-compress"  }
+lindera-decompress = { path = "../lindera-decompress" }
+lindera-compress = { path = "../lindera-compress", optional = true }
 
 [[bin]]
 name = "lindera-ipadic-builder"
