@@ -115,6 +115,24 @@ The above example can be by `cargo run --example`:
 です
 ```
 
+
+### Small binary example
+
+You can reduce the size of the binary containing the lindera by using the "smallbinary" feature flag.  
+Instead, you will be penalized for the execution time of the program.
+
+This repo example is this.
+
+```sh
+% cargo build --release --features smallbinary
+```
+
+Depends other cargo project.
+
+```toml
+lindera = { version = "0.8.2 or later", features = ["smallbinary"] }
+```
+
 ## API reference
 
 The API reference is available. Please see following URL:

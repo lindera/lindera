@@ -11,6 +11,7 @@ pub enum LinderaErrorKind {
     Io,
     Parse,
     Serialize,
+    Compress,
 }
 
 impl LinderaErrorKind {

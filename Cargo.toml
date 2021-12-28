@@ -5,8 +5,11 @@ members = [
     "lindera-dictionary",
     "lindera-ipadic",
     "lindera",
-    "lindera-cli"
+    "lindera-cli",
+    "lindera-compress",
+    "lindera-decompress",
 ]
+resolver = "2"
 
 [profile.release]
 lto = true

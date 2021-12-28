@@ -17,6 +17,9 @@ keywords = ["morphological", "analysis", "cli"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+smallbinary = ["lindera/smallbinary"]
+
 [dependencies]
 anyhow = "1.0"
 clap = "2.33"

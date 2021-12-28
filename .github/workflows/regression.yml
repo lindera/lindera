@@ -32,6 +32,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
         toolchain: [stable]
+        features: ["", "smallbinary"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v1
@@ -43,6 +44,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --features "${{ matrix.features }}"
 
   fmt:
     name: Format

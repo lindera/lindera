@@ -18,6 +18,9 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+smallbinary = ["lindera-ipadic/smallbinary"]
+
 [dependencies]
 anyhow = "1.0"
 bincode = "1.3"
@@ -30,6 +33,7 @@ lindera-core = { version = "0.8.1", path = "../lindera-core" }
 lindera-dictionary = { version = "0.8.1", path = "../lindera-dictionary" }
 lindera-ipadic = { version = "0.8.1", path = "../lindera-ipadic" }
 lindera-ipadic-builder = { version = "0.8.1", path = "../lindera-ipadic-builder" }
+
 
 [dev-dependencies]
 criterion = "0.3"
