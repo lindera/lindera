@@ -3,9 +3,9 @@ use std::path::Path;
 use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg};
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
+use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
-use lindera_core::error::LinderaErrorKind;
 
 fn main() -> LinderaResult<()> {
     let app = App::new(crate_name!())
@@ -60,10 +60,12 @@ fn main() -> LinderaResult<()> {
                 Ok(()) => (),
                 Err(msg) => {
                     return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(msg)));
-                },
+                }
             }
         } else {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("--dict-dest is required")));
+            return Err(
+                LinderaErrorKind::Args.with_error(anyhow::anyhow!("--dict-dest is required"))
+            );
         }
     }
 
@@ -77,10 +79,12 @@ fn main() -> LinderaResult<()> {
                 Ok(()) => (),
                 Err(msg) => {
                     return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(msg)));
-                },
+                }
             }
         } else {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("--user-dict-dest is required")));
+            return Err(
+                LinderaErrorKind::Args.with_error(anyhow::anyhow!("--user-dict-dest is required"))
+            );
         }
     }
 
