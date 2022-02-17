@@ -59,7 +59,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2.3.1
         with:
           name: build-${{ matrix.target }}
           path: lindera-${{ matrix.target }}.zip
@@ -80,7 +80,7 @@ jobs:
           prerelease: false
       - run: |
           echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2.3.1
         with:
           name: create-release
           path: release_upload_url.txt
