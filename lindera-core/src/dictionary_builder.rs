@@ -6,6 +6,7 @@ use crate::LinderaResult;
 
 pub trait DictionaryBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
+    fn build_user_dictionary(&self, input_path: &Path, output_path: &Path) -> LinderaResult<()>;
     fn build_chardef(
         &self,
         input_dir: &Path,

@@ -37,7 +37,3 @@ lindera-compress = { path = "../lindera-compress", optional = true }
 [[bin]]
 name = "lindera-ipadic-builder"
 path = "src/main.rs"
-
-[[bin]]
-name = "lindera-userdic-builder"
-path = "src/bin/lindera-userdic-builder/main.rs"

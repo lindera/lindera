@@ -142,6 +142,32 @@ impl DictionaryBuilder for IpadicBuilder {
         Ok(())
     }
 
+    fn build_user_dictionary(&self, input_file: &Path, output_file: &Path) -> LinderaResult<()> {
+        let parent_dir = match output_file.parent() {
+            Some(parent_dir) => parent_dir,
+            None => {
+                return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                    "failed to get parent directory of output file"
+                )))
+            }
+        };
+        fs::create_dir_all(parent_dir)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        let user_dict = self.build_user_dict(input_file)?;
+
+        let mut wtr = io::BufWriter::new(
+            File::create(output_file)
+                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+        );
+        bincode::serialize_into(&mut wtr, &user_dict)
+            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        wtr.flush()
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        Ok(())
+    }
+
     fn build_chardef(
         &self,
         input_dir: &Path,
