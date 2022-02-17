@@ -4,11 +4,13 @@
 
 IPADIC dictionary builder for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from fulmicoton's [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
+
 ## Install
 
 ```shell script
 % cargo install lindera-ipadic-builder
 ```
+
 
 ## Build
 
@@ -20,9 +22,11 @@ The following products are required to build:
 % cargo build --release
 ```
 
+
 ## Dictionary version
 
 This repository contains [mecab-ipadic-2.7.0-20070801](http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/).
+
 
 ## Building a dictionary
 
@@ -31,8 +35,9 @@ Building a dictionary with `lindera-ipadic-builder` command:
 ```shell script
 % curl -L -O "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
 % tar zxvf ./mecab-ipadic-2.7.0-20070801.tar.gz
-% lindera-ipadic-builder ./mecab-ipadic-2.7.0-20070801 ./lindera-ipadic-2.7.0-20070801
+% lindera-ipadic-builder -s ./mecab-ipadic-2.7.0-20070801 -d ./lindera-ipadic-2.7.0-20070801
 ```
+
 
 ## Building a user dictionary
 
@@ -42,21 +47,54 @@ Building a dictionary with `lindera-userdic-builder` command:
 % lindera-userdic-builder ./userdic.csv ./userdic.bin
 ```
 
+
 ## Dictionary format
 
 Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manual-en.pdf/en/1/ipadic-2.7.0-manual-en.pdf.pdf) for details on the IPADIC dictionary format and part-of-speech tags.
 
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 品詞 | part-of-speech | |
-| 1 | 品詞細分類1 | sub POS 1 | |
-| 2 | 品詞細分類2 | sub POS 2 | |
-| 3 | 品詞細分類3 | sub POS 3 | |
-| 4 | 活用形 | conjugation type | |
-| 5 | 活用型 | conjugation form | |
-| 6 | 原形 | base form | |
-| 7 | 読み | reading | |
-| 8 | 発音 | pronunciation | |
+| 0 | 表層形 | surface | |
+| 1 | 左文脈ID | left-context-id | |
+| 2 | 右文脈ID | right-context-id | |
+| 3 | コスト | cost | |
+| 4 | 品詞 | part-of-speech | |
+| 5 | 品詞細分類1 | sub POS 1 | |
+| 6 | 品詞細分類2 | sub POS 2 | |
+| 7 | 品詞細分類3 | sub POS 3 | |
+| 8 | 活用形 | conjugation type | |
+| 9 | 活用型 | conjugation form | |
+| 10 | 原形 | base form | |
+| 11 | 読み | reading | |
+| 12 | 発音 | pronunciation | |
+
+
+## User dictionary format (CSV)
+
+Simple version
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表層形 | surface | |
+| 1 | 品詞 | part-of-speech | |
+| 2 | 読み | reading | |
+
+Detailed version
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表層形 | surface | |
+| 1 | 左文脈ID | left-context-id | |
+| 2 | 右文脈ID | right-context-id | |
+| 3 | コスト | cost | |
+| 4 | 品詞 | part-of-speech | |
+| 5 | 品詞細分類1 | sub POS 1 | |
+| 6 | 品詞細分類2 | sub POS 2 | |
+| 7 | 品詞細分類3 | sub POS 3 | |
+| 8 | 活用形 | conjugation type | |
+| 9 | 活用型 | conjugation form | |
+| 10 | 原形 | base form | |
+| 11 | 読み | reading | |
+| 12 | 発音 | pronunciation | |
+
 
 ## Tokenizing text using produced dictionary
 
@@ -72,6 +110,7 @@ You can tokenize text using produced dictionary with `lindera` command:
 トートバッグ    UNK,*,*,*,*,*,*,*,*
 EOS
 ```
+
 
 ## Tokenizing text using default dictionary and produced binary user dictionary
 

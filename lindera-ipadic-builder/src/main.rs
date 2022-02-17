@@ -16,30 +16,60 @@ fn main() -> LinderaResult<()> {
         .version_message("Prints version information.")
         .version_short("v")
         .arg(
-            Arg::with_name("INPUT_DIR")
-                .help("The directory where the IPADIC source containing.")
-                .value_name("INPUT_DIR")
-                .required(true)
+            Arg::with_name("DICT_SRC")
+                .help("The dictionary source path.")
+                .short("s")
+                .long("dict-src")
+                .value_name("DICT_SRC")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("OUTPUT_DIR")
-                .help("The directory where the IPADIC binary for Lindera is output.")
-                .value_name("OUTPUT_DIR")
-                .required(true)
+            Arg::with_name("DICT_DEST")
+                .help("The dictionary destination path.")
+                .short("d")
+                .long("dict-dest")
+                .value_name("DICT_DEST")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("USER_DICT_SRC")
+                .help("The user dictionary source path.")
+                .short("S")
+                .long("user-dict-src")
+                .value_name("USER_DICT_SRC")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("USER_DICT_DEST")
+                .help("The user dictionary destination path.")
+                .short("D")
+                .long("user-dict-dest")
+                .value_name("USER_DICT_DEST")
                 .takes_value(true),
         );
 
     let matches = app.get_matches();
 
-    let input_dir = Path::new(matches.value_of("INPUT_DIR").unwrap()).to_path_buf();
-    let output_dir = Path::new(matches.value_of("OUTPUT_DIR").unwrap()).to_path_buf();
+    let dict_builder = IpadicBuilder::new();
 
-    let builder = IpadicBuilder::new();
+    if matches.is_present("DICT_SRC") && matches.is_present("DICT_DEST") {
+        let dict_src = matches.value_of("DICT_SRC").unwrap();
+        let dict_dest = matches.value_of("DICT_DEST").unwrap();
+        match dict_builder.build_dictionary(Path::new(dict_src), Path::new(dict_dest)) {
+            Ok(()) => println!("done"),
+            Err(msg) => println!("{}", msg),
+        }
+    }
 
-    match builder.build_dictionary(&input_dir, &output_dir) {
-        Ok(()) => println!("done"),
-        Err(msg) => println!("{}", msg),
+    if matches.is_present("USER_DICT_SRC") && matches.is_present("USER_DICT_DEST") {
+        let user_dict_src = matches.value_of("USER_DICT_SRC").unwrap();
+        let user_dict_dest = matches.value_of("USER_DICT_DEST").unwrap();
+        match dict_builder
+            .build_user_dictionary(Path::new(user_dict_src), Path::new(user_dict_dest))
+        {
+            Ok(()) => println!("done"),
+            Err(msg) => println!("{}", msg),
+        }
     }
 
     Ok(())
