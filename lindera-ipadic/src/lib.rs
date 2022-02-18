@@ -58,19 +58,19 @@ decompress_or_raw!(
 );
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
-    CharacterDefinitions::load(&CHAR_DEFINITION_DATA)
+    CharacterDefinitions::load(CHAR_DEFINITION_DATA)
 }
 
 pub fn connection() -> ConnectionCostMatrix {
-    ConnectionCostMatrix::load(&CONNECTION_DATA)
+    ConnectionCostMatrix::load(CONNECTION_DATA)
 }
 
 pub fn prefix_dict() -> PrefixDict {
-    PrefixDict::from_static_slice(&IPADIC_DATA, &IPADIC_VALS)
+    PrefixDict::from_static_slice(IPADIC_DATA, IPADIC_VALS)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
-    UnknownDictionary::load(&UNKNOWN_DATA)
+    UnknownDictionary::load(UNKNOWN_DATA)
 }
 
 pub fn words_idx_data() -> Vec<u8> {

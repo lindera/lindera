@@ -50,9 +50,9 @@ fn format_json(tokens: Vec<Token>) -> LinderaResult<String> {
 /// * LinderaError: the error occurred during formatting
 ///
 pub fn format(tokens: Vec<Token>, output_format: Format) -> LinderaResult<String> {
-    return match output_format {
+    match output_format {
         Format::Mecab => format_mecab(tokens),
         Format::Wakati => format_wakati(tokens),
         Format::Json => format_json(tokens),
-    };
+    }
 }

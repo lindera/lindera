@@ -137,7 +137,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -u userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D user_dict.csv
 ```
 
 ```text
@@ -145,7 +145,11 @@ This will parse the given CSV file at runtime, build a dictionary, and then run 
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
 は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+とう    副詞,助詞類接続,*,*,*,*,とう,トウ,トウ
+きょう  名詞,副詞可能,*,*,*,*,きょう,キョウ,キョー
+スカイ  名詞,一般,*,*,*,*,スカイ,スカイ,スカイ
+ツリー  名詞,一般,*,*,*,*,ツリー,ツリー,ツリー
+駅      名詞,接尾,地域,*,*,*,駅,エキ,エキ
 です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 EOS
 ```
@@ -156,7 +160,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -b userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D userdic.bin -t bin
 ```
 
 ```text
@@ -164,7 +168,11 @@ Please check the repository of each dictionary builder for the configuration of 
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
 は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+とう    副詞,助詞類接続,*,*,*,*,とう,トウ,トウ
+きょう  名詞,副詞可能,*,*,*,*,きょう,キョウ,キョー
+スカイ  名詞,一般,*,*,*,*,スカイ,スカイ,スカイ
+ツリー  名詞,一般,*,*,*,*,ツリー,ツリー,ツリー
+駅      名詞,接尾,地域,*,*,*,駅,エキ,エキ
 です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 EOS
 ```
@@ -208,7 +216,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=mecab
+% echo "お待ちしております。" | lindera --output-format=mecab
 ```
 
 ```text
@@ -224,7 +232,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=wakati
+% echo "お待ちしております。" | lindera --output-format=wakati
 ```
 
 ```text
@@ -234,7 +242,7 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=json
+% echo "お待ちしております。" | lindera --output-format=json
 ```
 
 ```json

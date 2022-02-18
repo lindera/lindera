@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 
 use byteorder::ByteOrder;
 use byteorder::LittleEndian;
@@ -17,6 +17,12 @@ use lindera_core::word_entry::WordId;
 use lindera_core::LinderaResult;
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
+#[derive(Debug, Clone)]
+pub enum UserDictionaryType {
+    CSV,
+    Binary,
+}
+
 #[derive(Serialize, Clone)]
 /// Token Object
 pub struct Token<'a> {
@@ -25,25 +31,25 @@ pub struct Token<'a> {
 }
 
 /// Tokenizer config
-pub struct TokenizerConfig<'a> {
+pub struct TokenizerConfig {
     /// the path of System Dictionary
-    pub dict_path: Option<&'a Path>,
-    /// the path of User Dictionary (CSV)
-    pub user_dict_path: Option<&'a Path>,
-    /// the path of User Dictionary (Binary)
-    pub user_dict_bin_path: Option<&'a Path>,
+    pub dict_path: Option<PathBuf>,
+    /// the path of User Dictionary
+    pub user_dict_path: Option<PathBuf>,
+    /// the type of User Dictionary (CSV or Binary)
+    pub user_dict_type: UserDictionaryType,
     /// Tokenize mode
     pub mode: Mode,
 }
 
-impl Default for TokenizerConfig<'_> {
+impl Default for TokenizerConfig {
     /// Return default Tokenizer config
     /// default mode is Mode::Normal
     fn default() -> Self {
         Self {
             dict_path: None,
             user_dict_path: None,
-            user_dict_bin_path: None,
+            user_dict_type: UserDictionaryType::CSV,
             mode: Mode::Normal,
         }
     }
@@ -81,37 +87,37 @@ impl Tokenizer {
     /// returns: Result<Tokenizer, LinderaError>
     ///
     pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
-        let dict = if let Some(ref path) = config.dict_path {
+        let dict = if let Some(path) = config.dict_path.clone() {
             lindera_dictionary::prefix_dict(path)?
         } else {
             lindera_ipadic::prefix_dict()
         };
 
-        let cost_matrix = if let Some(path) = config.dict_path {
+        let cost_matrix = if let Some(path) = config.dict_path.clone() {
             lindera_dictionary::connection(path)?
         } else {
             lindera_ipadic::connection()
         };
 
-        let char_definitions = if let Some(path) = config.dict_path {
-            lindera_dictionary::char_def(&path)?
+        let char_definitions = if let Some(path) = config.dict_path.clone() {
+            lindera_dictionary::char_def(path)?
         } else {
             lindera_ipadic::char_def()?
         };
 
-        let unknown_dictionary = if let Some(path) = config.dict_path {
+        let unknown_dictionary = if let Some(path) = config.dict_path.clone() {
             lindera_dictionary::unknown_dict(path)?
         } else {
             lindera_ipadic::unknown_dict()?
         };
 
-        let words_idx_data = if let Some(path) = config.dict_path {
+        let words_idx_data = if let Some(path) = config.dict_path.clone() {
             lindera_dictionary::words_idx_data(path)?
         } else {
             lindera_ipadic::words_idx_data()
         };
 
-        let words_data = if let Some(path) = config.dict_path {
+        let words_data = if let Some(path) = config.dict_path.clone() {
             lindera_dictionary::words_data(path)?
         } else {
             lindera_ipadic::words_data()
@@ -119,21 +125,26 @@ impl Tokenizer {
 
         let (user_dict, user_dict_words_idx_data, user_dict_words_data) =
             if let Some(path) = config.user_dict_path {
-                let builder = IpadicBuilder::new();
-                let user_dict = builder.build_user_dict(path)?;
-                (
-                    Some(user_dict.dict),
-                    Some(user_dict.words_idx_data),
-                    Some(user_dict.words_data),
-                )
-            } else if let Some(path) = config.user_dict_bin_path {
-                let user_dict_bin_data = read_file(path)?;
-                let user_dict = UserDictionary::load(&user_dict_bin_data)?;
-                (
-                    Some(user_dict.dict),
-                    Some(user_dict.words_idx_data),
-                    Some(user_dict.words_data),
-                )
+                match config.user_dict_type {
+                    UserDictionaryType::CSV => {
+                        let builder = IpadicBuilder::new();
+                        let user_dict = builder.build_user_dict(&path)?;
+                        (
+                            Some(user_dict.dict),
+                            Some(user_dict.words_idx_data),
+                            Some(user_dict.words_data),
+                        )
+                    }
+                    UserDictionaryType::Binary => {
+                        let user_dict_bin_data = read_file(&path)?;
+                        let user_dict = UserDictionary::load(&user_dict_bin_data)?;
+                        (
+                            Some(user_dict.dict),
+                            Some(user_dict.words_idx_data),
+                            Some(user_dict.words_data),
+                        )
+                    }
+                }
             } else {
                 (None, None, None)
             };
@@ -257,7 +268,7 @@ impl Tokenizer {
             text = &text[split_idx + 3..];
         }
         if !text.is_empty() {
-            self.tokenize_without_split(&text, &mut tokens)?;
+            self.tokenize_without_split(text, &mut tokens)?;
         }
 
         Ok(tokens)
@@ -289,7 +300,7 @@ impl Tokenizer {
 mod tests {
     use std::fs::File;
     use std::io::{BufReader, Read};
-    use std::path::Path;
+    use std::path::PathBuf;
 
     use lindera_core::viterbi::{Mode, Penalty};
     use lindera_core::word_entry::WordId;
@@ -490,7 +501,7 @@ mod tests {
     #[test]
     fn test_simple_user_dict() {
         let config = TokenizerConfig {
-            user_dict_path: Some(&Path::new("resources/userdic.csv")),
+            user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -533,7 +544,7 @@ mod tests {
     #[test]
     fn test_detailed_user_dict() {
         let config = TokenizerConfig {
-            user_dict_path: Some(&Path::new("resources/detailed_userdic.csv")),
+            user_dict_path: Some(PathBuf::from("resources/detailed_userdic.csv")),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -576,7 +587,7 @@ mod tests {
     #[test]
     fn test_mixed_user_dict() {
         let config = TokenizerConfig {
-            user_dict_path: Some(&Path::new("resources/mixed_userdic.csv")),
+            user_dict_path: Some(PathBuf::from("resources/mixed_userdic.csv")),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -637,7 +648,7 @@ mod tests {
     #[should_panic(expected = "failed to parse word_cost")]
     fn test_user_dict_invalid_word_cost() {
         let config = TokenizerConfig {
-            user_dict_path: Some(&Path::new("test/fixtures/userdic_invalid_word_cost.csv")),
+            user_dict_path: Some(PathBuf::from("test/fixtures/userdic_invalid_word_cost.csv")),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -648,7 +659,7 @@ mod tests {
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
     fn test_user_dict_number_of_fields_is_11() {
         let config = TokenizerConfig {
-            user_dict_path: Some(&Path::new(
+            user_dict_path: Some(PathBuf::from(
                 "test/fixtures/userdic_insufficient_number_of_fields.csv",
             )),
             mode: Mode::Normal,

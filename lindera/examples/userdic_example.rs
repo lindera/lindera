@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 
 use lindera::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera_core::viterbi::Mode;
@@ -7,7 +7,7 @@ use lindera_core::LinderaResult;
 fn main() -> LinderaResult<()> {
     // create tokenizer
     let config = TokenizerConfig {
-        user_dict_path: Some(&Path::new("resources/userdic.csv")),
+        user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };

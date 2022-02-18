@@ -44,7 +44,7 @@ Building a dictionary with `lindera-ipadic-builder` command:
 Building a dictionary with `lindera-userdic-builder` command:
 
 ```shell script
-% lindera-userdic-builder ./userdic.csv ./userdic.bin
+% lindera-ipadic-builder -S ./userdic.csv -D ./userdic.bin
 ```
 
 
@@ -125,7 +125,11 @@ You can tokenize text using produced dictionary with `lindera` command:
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
 は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+とう    副詞,助詞類接続,*,*,*,*,とう,トウ,トウ
+きょう  名詞,副詞可能,*,*,*,*,きょう,キョウ,キョー
+スカイ  名詞,一般,*,*,*,*,スカイ,スカイ,スカイ
+ツリー  名詞,一般,*,*,*,*,ツリー,ツリー,ツリー
+駅      名詞,接尾,地域,*,*,*,駅,エキ,エキ
 です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 EOS
 ```
