@@ -305,7 +305,7 @@ mod tests {
     use lindera_core::viterbi::{Mode, Penalty};
     use lindera_core::word_entry::WordId;
 
-    use crate::tokenizer::{Token, Tokenizer, TokenizerConfig};
+    use crate::tokenizer::{Token, Tokenizer, TokenizerConfig, UserDictionaryType};
 
     #[test]
     fn test_empty() {
@@ -500,8 +500,12 @@ mod tests {
 
     #[test]
     fn test_simple_user_dict() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("userdic.csv");
+
         let config = TokenizerConfig {
-            user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+            user_dict_path: Some(userdic_file),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -543,8 +547,13 @@ mod tests {
 
     #[test]
     fn test_detailed_user_dict() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("detailed_userdic.csv");
+
         let config = TokenizerConfig {
-            user_dict_path: Some(PathBuf::from("resources/detailed_userdic.csv")),
+            user_dict_path: Some(userdic_file),
+            user_dict_type: UserDictionaryType::CSV,
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -586,8 +595,12 @@ mod tests {
 
     #[test]
     fn test_mixed_user_dict() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("mixed_userdic.csv");
+
         let config = TokenizerConfig {
-            user_dict_path: Some(PathBuf::from("resources/mixed_userdic.csv")),
+            user_dict_path: Some(userdic_file),
             mode: Mode::Normal,
             ..TokenizerConfig::default()
         };
@@ -670,7 +683,14 @@ mod tests {
 
     #[test]
     fn test_long_text() {
-        let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
+        let mut large_file = BufReader::new(
+            File::open(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../resources")
+                    .join("bocchan.txt"),
+            )
+            .unwrap(),
+        );
         let mut large_text = String::new();
         let _size = large_file.read_to_string(&mut large_text).unwrap();
         let mut tokenizer = Tokenizer::new().unwrap();
