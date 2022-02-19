@@ -360,3 +360,9 @@ $ echo "羽田空港限定トートバッグ" | docker run --rm -i --name linder
 トートバッグ    UNK
 EOS
 ```
+
+
+## API reference
+
+The API reference is available. Please see following URL:
+- <a href="https://docs.rs/lindera-cli" target="_blank">lindera-cli</a>

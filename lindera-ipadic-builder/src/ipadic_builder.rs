@@ -9,7 +9,6 @@ use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use glob::glob;
-#[cfg(feature = "compress")]
 use lindera_compress::compress;
 use lindera_decompress::Algorithm;
 use yada::builder::DoubleArrayBuilder;
@@ -543,7 +542,6 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 }
 
-#[cfg(feature = "compress")]
 fn compress_write<W: Write>(
     buffer: &[u8],
     algorithm: Algorithm,
@@ -552,19 +550,6 @@ fn compress_write<W: Write>(
     let compressed = compress(buffer, algorithm)
         .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
     bincode::serialize_into(writer, &compressed)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-    Ok(())
-}
-
-#[cfg(not(feature = "compress"))]
-fn compress_write<W: Write>(
-    buffer: &[u8],
-    _algorithm: Algorithm,
-    writer: &mut W,
-) -> LinderaResult<()> {
-    writer
-        .write_all(buffer)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())

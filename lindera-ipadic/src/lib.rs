@@ -5,53 +5,49 @@ use lindera_core::connection::ConnectionCostMatrix;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::LinderaResult;
-#[cfg(feature = "smallbinary")]
 use lindera_decompress::decompress;
 
-macro_rules! decompress_or_raw {
+macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
-        #[cfg(feature = "smallbinary")]
         const $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             let compressed_data = bincode::deserialize_from(&$bytes[..])
                 .expect(concat!("invalid file format ", $filename));
             decompress(compressed_data).expect(concat!("invalid file format ", $filename))
         });
-        #[cfg(not(feature = "smallbinary"))]
-        const $name: &'static [u8] = $bytes;
     };
 }
 
-decompress_or_raw!(
+decompress_data!(
     CHAR_DEFINITION_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/char_def.bin")),
     "char_def.bin"
 );
-decompress_or_raw!(
+decompress_data!(
     CONNECTION_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/matrix.mtx")),
     "matrix.mtx"
 );
-decompress_or_raw!(
+decompress_data!(
     IPADIC_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.da")),
     "dict.da"
 );
-decompress_or_raw!(
+decompress_data!(
     IPADIC_VALS,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.vals")),
     "dict.vals"
 );
-decompress_or_raw!(
+decompress_data!(
     UNKNOWN_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/unk.bin")),
     "unk.bin"
 );
-decompress_or_raw!(
+decompress_data!(
     WORDS_IDX_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.wordsidx")),
     "dict.wordsidx"
 );
-decompress_or_raw!(
+decompress_data!(
     WORDS_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.words")),
     "dict.words"
