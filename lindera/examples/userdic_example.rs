@@ -7,7 +7,7 @@ use lindera_core::LinderaResult;
 fn main() -> LinderaResult<()> {
     // create tokenizer
     let config = TokenizerConfig {
-        user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+        user_dict_path: Some(PathBuf::from("./resources/userdic.csv")),
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };

@@ -9,5 +9,3 @@ Cargo.lock
 
 lindera-ipadic-*-*
 mecab-ipadic-*-*
-
-*.bin
