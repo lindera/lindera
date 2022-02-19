@@ -44,7 +44,7 @@ Building a dictionary with `lindera-ipadic-builder` command:
 Building a dictionary with `lindera-userdic-builder` command:
 
 ```shell script
-% lindera-userdic-builder ./userdic.csv ./userdic.bin
+% lindera-ipadic-builder -S ./resources/userdic.csv -D ./resources/userdic.bin
 ```
 
 
@@ -117,7 +117,7 @@ EOS
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -b userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.bin -t bin
 ```
 
 ```text

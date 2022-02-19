@@ -1,90 +1,69 @@
-use std::path::Path;
+use std::path::PathBuf;
 
-use clap::{crate_description, crate_name, crate_version, App, AppSettings, Arg};
+use clap::{AppSettings, Parser};
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
-fn main() -> LinderaResult<()> {
-    let app = App::new(crate_name!())
-        .setting(AppSettings::DeriveDisplayOrder)
-        .version(crate_version!())
-        .about(crate_description!())
-        .help_message("Prints help information.")
-        .version_message("Prints version information.")
-        .version_short("v")
-        .arg(
-            Arg::with_name("DICT_SRC")
-                .help("The dictionary source path.")
-                .short("s")
-                .long("dict-src")
-                .value_name("DICT_SRC")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("DICT_DEST")
-                .help("The dictionary destination path.")
-                .short("d")
-                .long("dict-dest")
-                .value_name("DICT_DEST")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("USER_DICT_SRC")
-                .help("The user dictionary source path.")
-                .short("S")
-                .long("user-dict-src")
-                .value_name("USER_DICT_SRC")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("USER_DICT_DEST")
-                .help("The user dictionary destination path.")
-                .short("D")
-                .long("user-dict-dest")
-                .value_name("USER_DICT_DEST")
-                .takes_value(true),
-        );
+/// Lindera IPADIC builder CLI
+#[derive(Parser, Debug)]
+#[clap(version, about, long_about = None, setting = AppSettings::DeriveDisplayOrder)]
+struct Args {
+    /// The dictionary source directory.
+    #[clap(short = 's', long = "dict-src", value_name = "DICT_SRC")]
+    dict_src: Option<PathBuf>,
 
-    let matches = app.get_matches();
+    /// The dictionary destination directory.
+    #[clap(short = 'd', long = "dict-dest", value_name = "DICT_DEST")]
+    dict_dest: Option<PathBuf>,
+
+    /// The user dictionary source file.
+    #[clap(short = 'S', long = "user-dict-src", value_name = "USER_DICT_SRC")]
+    user_dict_src: Option<PathBuf>,
+
+    /// The user dictionary destination file.
+    #[clap(short = 'D', long = "user-dict-dest", value_name = "USER_DICT_DEST")]
+    user_dict_dest: Option<PathBuf>,
+}
+
+fn main() -> LinderaResult<()> {
+    let args = Args::parse();
 
     let dict_builder = IpadicBuilder::new();
 
-    if matches.is_present("DICT_SRC") {
-        if matches.is_present("DICT_DEST") {
-            let dict_src = matches.value_of("DICT_SRC").unwrap();
-            let dict_dest = matches.value_of("DICT_DEST").unwrap();
-            match dict_builder.build_dictionary(Path::new(dict_src), Path::new(dict_dest)) {
+    if args.dict_src.is_some() {
+        if args.dict_dest.is_some() {
+            let dict_src = args.dict_src.unwrap();
+            let dict_dest = args.dict_dest.unwrap();
+            match dict_builder.build_dictionary(&dict_src, &dict_dest) {
                 Ok(()) => (),
                 Err(msg) => {
                     return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(msg)));
                 }
             }
         } else {
-            return Err(
-                LinderaErrorKind::Args.with_error(anyhow::anyhow!("--dict-dest is required"))
-            );
+            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                "`--dict-dest` is required when `--dict-src` is specified"
+            )));
         }
     }
 
-    if matches.is_present("USER_DICT_SRC") {
-        if matches.is_present("USER_DICT_DEST") {
-            let user_dict_src = matches.value_of("USER_DICT_SRC").unwrap();
-            let user_dict_dest = matches.value_of("USER_DICT_DEST").unwrap();
-            match dict_builder
-                .build_user_dictionary(Path::new(user_dict_src), Path::new(user_dict_dest))
-            {
+    if args.user_dict_src.is_some() {
+        if args.user_dict_dest.is_some() {
+            let user_dict_src = args.user_dict_src.unwrap();
+            let user_dict_dest = args.user_dict_dest.unwrap();
+            match dict_builder.build_user_dictionary(&user_dict_src, &user_dict_dest) {
                 Ok(()) => (),
                 Err(msg) => {
                     return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(msg)));
                 }
             }
         } else {
-            return Err(
-                LinderaErrorKind::Args.with_error(anyhow::anyhow!("--user-dict-dest is required"))
-            );
+            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                "`--user-dict-dest` is required when `--user-dict-src` is specified"
+            )));
         }
     }
 

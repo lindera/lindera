@@ -1,11 +1,11 @@
 use std::fs::File;
 use std::io::{BufReader, Read};
-use std::path::Path;
+use std::path::PathBuf;
 
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
-use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera::tokenizer::{Tokenizer, TokenizerConfig, UserDictionaryType};
 use lindera_core::viterbi::Mode;
 
 fn bench_constructor(c: &mut Criterion) {
@@ -18,7 +18,8 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
         b.iter(|| {
             let config = TokenizerConfig {
-                user_dict_path: Some(&Path::new("resources/userdic.csv")),
+                user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+                user_dict_type: UserDictionaryType::CSV,
                 mode: Mode::Normal,
                 ..TokenizerConfig::default()
             };
@@ -36,7 +37,8 @@ fn bench_tokenize(c: &mut Criterion) {
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let config = TokenizerConfig {
-        user_dict_path: Some(&Path::new("resources/userdic.csv")),
+        user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+        user_dict_type: UserDictionaryType::CSV,
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };

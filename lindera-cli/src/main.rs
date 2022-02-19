@@ -1,121 +1,108 @@
 use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::PathBuf;
 
-use clap::{crate_authors, crate_description, crate_version, App, AppSettings, Arg};
+use clap::{AppSettings, Parser};
 
-use lindera::formatter::{format, Format};
-use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera::formatter::format;
+use lindera::formatter::Format;
+use lindera::tokenizer::{Tokenizer, TokenizerConfig, UserDictionaryType};
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::viterbi::{Mode, Penalty};
 use lindera_core::LinderaResult;
 
+/// Lindera CLI
+#[derive(Parser, Debug)]
+#[clap(version, about, long_about = None, setting = AppSettings::DeriveDisplayOrder)]
+struct Args {
+    /// The dictionary direcory. If not specified, use the default dictionary.
+    #[clap(short = 'd', long = "dict", value_name = "DICT")]
+    dict: Option<PathBuf>,
+
+    /// The user dictionary file path.
+    #[clap(short = 'D', long = "user-dict", value_name = "USER_DICT")]
+    user_dict: Option<PathBuf>,
+
+    /// The user dictionary type. csv or bin
+    #[clap(short = 't', long = "user-dict-type", value_name = "USER_DICT_TYPE")]
+    user_dict_type: Option<String>,
+
+    /// The tokenization mode. normal or search can be specified. If not specified, use the default mode.
+    #[clap(short = 'm', long = "mode", value_name = "MODE")]
+    mode: Option<String>,
+
+    /// The output format. mecab, wakati or json can be specified. If not specified, use the default output format.
+    #[clap(short = 'O', long = "output-format", value_name = "OUTPUT_FORMAT")]
+    output_format: Option<String>,
+
+    /// The input file path that contains the text for morphological analysis.
+    #[clap(value_name = "INPUT_FILE")]
+    input_file: Option<String>,
+}
+
 fn main() -> LinderaResult<()> {
-    let app = App::new("lindera")
-        .setting(AppSettings::DeriveDisplayOrder)
-        .version(crate_version!())
-        .author(crate_authors!())
-        .about(crate_description!())
-        .help_message("Prints help information.")
-        .version_message("Prints version information.")
-        .version_short("v")
-        .arg(
-            Arg::with_name("DICTIONARY")
-                .help("The dictionary direcory. If not specified, use the default dictionary.")
-                .short("d")
-                .long("dictionary")
-                .value_name("DICTIONARY")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("USER_DICTIONARY")
-            .help("(Optional) The user dictionary file path.")
-            .short("u")
-            .long("user-dictionary")
-            .value_name("USER_DICTIONARY")
-            .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("USER_DICTIONARY_BINARY")
-            .help("(Optional) The user dictionary binary file path.")
-            .short("b")
-            .long("user-dictionary-binary")
-            .value_name("USER_DICTIONARY_BINARY")
-            .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("MODE")
-                .help("The tokenization mode. `normal` or` search` can be specified. If not specified, use the default mode.")
-                .short("m")
-                .long("mode")
-                .value_name("MODE")
-                .default_value("normal")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("OUTPUT_FORMAT")
-                .help("The output format. `mecab`, `wakati` or `json` can be specified. If not specified, use the default output format.")
-                .short("O")
-                .long("output-format")
-                .value_name("OUTPUT_FORMAT")
-                .default_value("mecab")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("INPUT_FILE")
-                .help("The input file path that contains the text for morphological analysis.")
-                .value_name("INPUT_FILE")
-                .takes_value(true),
-        );
+    let args = Args::parse();
 
-    let matches = app.get_matches();
+    // let mut config = TokenizerConfig::default();
+    let mut config = TokenizerConfig {
+        dict_path: args.dict,
+        user_dict_path: args.user_dict,
+        user_dict_type: UserDictionaryType::CSV,
+        mode: Mode::Normal,
+    };
 
-    let mut config = TokenizerConfig::default();
-    // dictionary directory
-    if let Some(dict_dir) = matches.value_of("DICTIONARY") {
-        config.dict_path = Some(Path::new(dict_dir));
-    }
-
-    // user dictionary csv path
-    if let Some(user_dict) = matches.value_of("USER_DICTIONARY") {
-        config.user_dict_path = Some(Path::new(user_dict));
-    }
-
-    // user dictionary binary file path
-    if let Some(user_dict_bin) = matches.value_of("USER_DICTIONARY_BINARY") {
-        config.user_dict_bin_path = Some(Path::new(user_dict_bin));
+    // user dictionary type
+    match args.user_dict_type {
+        Some(ref user_dict_type) => {
+            if user_dict_type == "csv" {
+                config.user_dict_type = UserDictionaryType::CSV;
+            } else if user_dict_type == "bin" {
+                config.user_dict_type = UserDictionaryType::Binary;
+            } else {
+                return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                    "Invalid user dictionary type: {}",
+                    user_dict_type
+                )));
+            }
+        }
+        None => {
+            config.user_dict_type = UserDictionaryType::CSV;
+        }
     }
 
     // mode
-    let mode_name = matches.value_of("MODE").unwrap();
-    match mode_name {
-        "normal" => config.mode = Mode::Normal,
-        "decompose" => config.mode = Mode::Decompose(Penalty::default()),
-        _ => {
-            // show error message
-            return Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("unsupported mode: {}", mode_name)));
-        }
+    match args.mode {
+        Some(mode) => match mode.as_str() {
+            "normal" => config.mode = Mode::Normal,
+            "search" => config.mode = Mode::Decompose(Penalty::default()),
+            "decompose" => config.mode = Mode::Decompose(Penalty::default()),
+            _ => {
+                return Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("unsupported mode: {}", mode)))
+            }
+        },
+        None => config.mode = Mode::Normal,
     }
 
     // create tokenizer
     let mut tokenizer = Tokenizer::with_config(config)?;
 
     // output format
-    let output_format = matches.value_of("OUTPUT_FORMAT").unwrap();
-    let f = match output_format {
-        "mecab" => Format::Mecab,
-        "wakati" => Format::Wakati,
-        "json" => Format::Json,
-        _ => {
-            // show error message
-            return Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("unsupported format: {}", output_format)));
-        }
+    let output_format = match args.output_format {
+        Some(format) => match format.as_str() {
+            "mecab" => Format::Mecab,
+            "wakati" => Format::Wakati,
+            "json" => Format::Json,
+            _ => {
+                return Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("unsupported format: {}", format)))
+            }
+        },
+        None => Format::Mecab,
     };
 
-    let mut reader: Box<dyn BufRead> = if let Some(input_file) = matches.value_of("INPUT_FILE") {
+    let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
         Box::new(BufReader::new(fs::File::open(input_file).map_err(
             |err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)),
         )?))
@@ -139,7 +126,7 @@ fn main() -> LinderaResult<()> {
         let tokens = tokenizer.tokenize(&text)?;
 
         // output result
-        match format(tokens, f) {
+        match format(tokens, output_format) {
             Ok(output) => println!("{}", output),
             Err(msg) => println!("{}", msg),
         };

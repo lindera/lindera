@@ -137,7 +137,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -u userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.csv
 ```
 
 ```text
@@ -156,7 +156,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -b userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.bin -t bin
 ```
 
 ```text
@@ -208,7 +208,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=mecab
+% echo "お待ちしております。" | lindera --output-format=mecab
 ```
 
 ```text
@@ -224,7 +224,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=wakati
+% echo "お待ちしております。" | lindera --output-format=wakati
 ```
 
 ```text
@@ -234,7 +234,7 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output=json
+% echo "お待ちしております。" | lindera --output-format=json
 ```
 
 ```json
