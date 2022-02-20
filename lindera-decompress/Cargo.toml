@@ -1,12 +1,18 @@
 [package]
 name = "lindera-decompress"
-version = "0.1.0"
+version = "0.9.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A morphological analysis library."
+documentation = "https://docs.rs/lindera-decompress"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera"
+readme = "README.md"
+keywords = ["morphological", "analysis", "library"]
+categories = ["text-processing"]
+license = "MIT"
 
 [dependencies]
+anyhow = "1.0"
+bincode = "1.3"
 lzma-rs = "0.2"
 serde = { version = "1.0", features = ["derive"]}
-bincode = "1.3"
-anyhow = "1.0"

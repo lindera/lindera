@@ -1,17 +1,11 @@
 [package]
 name = "lindera-dictionary"
-version = "0.8.1"
-authors = [
-    "Paul Masurel <paul.masurel@gmail.com>",
-    "Minoru Osuka <minoru.osuka@gmail.com>",
-    "Jun Ohtani <johtani@gmail.com>",
-    "Tomoko Uchida <tomoko.uchida.1111@gmail.com>"
-    ]
-edition = "2018"
-description = "A morphological dictionary loader."
+version = "0.9.0"
+edition = "2021"
+description = "A Japanese morphological dictionary."
 documentation = "https://docs.rs/lindera-dictionary"
 homepage = "https://github.com/lindera-morphology/lindera"
-repository = "https://github.com/lindera-morphology/lindera/lindera-dictionary"
+repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
 keywords = ["morphological", "dictionary", "directory", "loader"]
 categories = ["text-processing"]
@@ -22,4 +16,4 @@ anyhow = "1.0"
 bincode = "1.3"
 byteorder = "1.4"
 
-lindera-core = { version = "0.8.1", path = "../lindera-core" }
+lindera-core = { version = "0.9.0", path = "../lindera-core" }
