@@ -29,7 +29,7 @@ jobs:
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
-          sudo apt install -qq -y musl-tools pkg-config --no-install-recommends
+          sudo apt install -qq -y linux-musl-dev liblzma-dev --no-install-recommends
       - uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
