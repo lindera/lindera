@@ -1,8 +1,8 @@
 [package]
 name = "lindera-ipadic"
-version = "0.8.1"
-edition = "2018"
-description = "A Japanese morphological dictionary loader for IPADIC."
+version = "0.9.0"
+edition = "2021"
+description = "A Japanese morphological dictionary for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
@@ -16,8 +16,8 @@ bincode = "1.3"
 byteorder = "1.4"
 once_cell = "1"
 
-lindera-core = { version = "0.8.1", path = "../lindera-core" }
-lindera-decompress = { path = "../lindera-decompress" }
+lindera-core = { version = "0.9.0", path = "../lindera-core" }
+lindera-decompress = { version = "0.9.0", path = "../lindera-decompress" }
 
 [build-dependencies]
 encoding = "0.2"
@@ -26,5 +26,5 @@ reqwest = "0.11"
 tar = "0.4"
 tokio = { version = "1.9", features = ["full"] }
 
-lindera-core = { version = "0.8.1", path = "../lindera-core" }
-lindera-ipadic-builder = { version = "0.8.1", path = "../lindera-ipadic-builder"}
+lindera-core = { version = "0.9.0", path = "../lindera-core" }
+lindera-ipadic-builder = { version = "0.9.0", path = "../lindera-ipadic-builder"}

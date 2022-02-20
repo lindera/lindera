@@ -1,7 +1,7 @@
 [package]
 name = "lindera-cli"
-version = "0.8.1"
-edition = "2018"
+version = "0.9.0"
+edition = "2021"
 description = "A command-line interface for Lindera."
 documentation = "https://docs.rs/lindera-cli"
 homepage = "https://github.com/lindera-morphology/lindera"
@@ -16,8 +16,8 @@ anyhow = "1.0"
 clap = { version = "3.1", features = ["derive"] }
 stringreader = "0.1"
 
-lindera = { version = "0.8.1", path = "../lindera" }
-lindera-core = { version = "0.8.1", path = "../lindera-core" }
+lindera = { version = "0.9.0", path = "../lindera" }
+lindera-core = { version = "0.9.0", path = "../lindera-core" }
 
 [[bin]]
 name = "lindera"
