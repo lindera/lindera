@@ -144,6 +144,26 @@ jobs:
             popd
           fi
           sleep 20
+          LINDERA_DECOMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-decompress") | .version')
+          LINDERA_DECOMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress | jq -r '.versions[].num')
+          if echo ${LINDERA_DECOMPRESS_VERSIONS} | grep ${LINDERA_DECOMPRESS_VERSION} >/dev/null; then
+            echo "lindera-decompress ${LINDERA_DECOMPRESS_VERSION} has already published"
+          else
+            pushd lindera-decompress
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_COMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-compress") | .version')
+          LINDERA_COMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-compress | jq -r '.versions[].num')
+          if echo ${LINDERA_COMPRESS_VERSIONS} | grep ${LINDERA_COMPRESS_VERSION} >/dev/null; then
+            echo "lindera-compress ${LINDERA_COMPRESS_VERSION} has already published"
+          else
+            pushd lindera-compress
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
           LINDERA_IPADIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')
           LINDERA_IPADIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-builder | jq -r '.versions[].num')
           if echo ${LINDERA_IPADIC_BUILDER_VERSIONS} | grep ${LINDERA_IPADIC_BUILDER_VERSION} >/dev/null; then
