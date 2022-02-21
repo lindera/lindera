@@ -135,7 +135,7 @@ jobs:
           override: true
       - run: |
           LINDERA_CORE_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-core") | .version')
-          LINDERA_CORE_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-core | jq -r '.versions[].num')
+          LINDERA_CORE_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-core | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CORE_VERSIONS} | grep ${LINDERA_CORE_VERSION} >/dev/null; then
             echo "lindera-core ${LINDERA_CORE_VERSION} has already published"
           else
@@ -145,7 +145,7 @@ jobs:
           fi
           sleep 20
           LINDERA_DECOMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-decompress") | .version')
-          LINDERA_DECOMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress | jq -r '.versions[].num')
+          LINDERA_DECOMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_DECOMPRESS_VERSIONS} | grep ${LINDERA_DECOMPRESS_VERSION} >/dev/null; then
             echo "lindera-decompress ${LINDERA_DECOMPRESS_VERSION} has already published"
           else
@@ -155,7 +155,7 @@ jobs:
           fi
           sleep 20
           LINDERA_COMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-compress") | .version')
-          LINDERA_COMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-compress | jq -r '.versions[].num')
+          LINDERA_COMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-compress | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_COMPRESS_VERSIONS} | grep ${LINDERA_COMPRESS_VERSION} >/dev/null; then
             echo "lindera-compress ${LINDERA_COMPRESS_VERSION} has already published"
           else
@@ -165,7 +165,7 @@ jobs:
           fi
           sleep 20
           LINDERA_IPADIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')
-          LINDERA_IPADIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-builder | jq -r '.versions[].num')
+          LINDERA_IPADIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_BUILDER_VERSIONS} | grep ${LINDERA_IPADIC_BUILDER_VERSION} >/dev/null; then
             echo "lindera-ipadic-builder ${LINDERA_IPADIC_BUILDER_VERSION} has already published"
           else
@@ -175,7 +175,7 @@ jobs:
           fi
           sleep 20
           LINDERA_IPADIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
-          LINDERA_IPADIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num')
+          LINDERA_IPADIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_VERSIONS} | grep ${LINDERA_IPADIC_VERSION} >/dev/null; then
             echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already published"
           else
@@ -185,7 +185,7 @@ jobs:
           fi
           sleep 20
           LINDERA_DICTIONARY_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
-          LINDERA_DICTIONARY_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num')
+          LINDERA_DICTIONARY_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_DICTIONARY_VERSIONS} | grep ${LINDERA_DICTIONARY_VERSION} >/dev/null; then
             echo "lindera-dictionary ${LINDERA_DICTIONARY_VERSION} has already published"
           else
@@ -195,7 +195,7 @@ jobs:
           fi
           sleep 20
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
-          LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num')
+          LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_VERSIONS} | grep ${LINDERA_VERSION} >/dev/null; then
             echo "lindera ${LINDERA_VERSION} has already published"
           else
@@ -205,7 +205,7 @@ jobs:
           fi
           sleep 20
           LINDERA_CLI_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
-          LINDERA_CLI_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num')
+          LINDERA_CLI_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CLI_VERSIONS} | grep ${LINDERA_CLI_VERSION} >/dev/null; then
             echo "lindera-cli ${LINDERA_CLI_VERSION} has already published"
           else
