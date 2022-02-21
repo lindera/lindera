@@ -12,11 +12,11 @@ jobs:
     strategy:
       matrix:
         target:
-          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
         include:
-          - target: x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
@@ -26,10 +26,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: Install packages for Linux
-        if : matrix.target == 'x86_64-unknown-linux-gnu'
-        run: |
-          sudo apt install -y liblzma-dev
+      # - name: Install packages for Linux
+      #   if : matrix.target == 'x86_64-unknown-linux-musl'
+      #   run: |
+      #     sudo apt install -y liblzma-dev
       - uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
@@ -50,7 +50,7 @@ jobs:
         with:
           command: build
           args: --release --target=${{ matrix.target }}
-          use-cross: true
+          use-cross: false
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -93,7 +93,7 @@ jobs:
     strategy:
       matrix:
         target:
-          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
     name: Upload Release
