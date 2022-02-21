@@ -99,13 +99,17 @@ jobs:
     name: Upload Release
     needs: [create-release]
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.upload-url.outputs.upload_url }}
     steps:
       - uses: actions/download-artifact@v2.1.0
         with:
           name: create-release
       - id: upload-url
+        # run: |
+        #   echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
         run: |
-          echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+          echo "::set-output name=upload_url::$(cat create-release/release_upload_url.txt)"
       - uses: actions/download-artifact@v2.1.0
         with:
           name: build-${{ matrix.target }}
@@ -113,7 +117,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.upload-url.outputs.url }}
+          # upload_url: ${{ steps.upload-url.outputs.url }}
+          upload_url: ${{ needs.upload-release.outputs.upload_url }}
           asset_path: ./build-${{ matrix.target }}/lindera-${{ matrix.target }}.zip
           asset_name: lindera-${{ matrix.target }}.zip
           asset_content_type: application/zip
