@@ -60,7 +60,6 @@ impl Default for TokenizerConfig {
 pub struct Tokenizer {
     dict: PrefixDict<Vec<u8>>,
     cost_matrix: ConnectionCostMatrix,
-    lattice: Lattice,
     char_definitions: CharacterDefinitions,
     unknown_dictionary: UnknownDictionary,
     words_idx_data: Vec<u8>,
@@ -152,7 +151,6 @@ impl Tokenizer {
         let tokenizer = Tokenizer {
             dict,
             cost_matrix,
-            lattice: Lattice::default(),
             char_definitions,
             unknown_dictionary,
             words_idx_data,
@@ -178,11 +176,15 @@ impl Tokenizer {
     /// in which case an empty array is returned.
     ///
     /// Whitespaces also count as tokens.
-    pub(crate) fn tokenize_offsets(&mut self, text: &str) -> Vec<(usize, WordId)> {
+    pub(crate) fn tokenize_offsets(
+        &self,
+        text: &str,
+        lattice: &mut Lattice,
+    ) -> Vec<(usize, WordId)> {
         if text.is_empty() {
             return Vec::new();
         }
-        self.lattice.set_text(
+        lattice.set_text(
             &self.dict,
             &self.user_dict,
             &self.char_definitions,
@@ -190,17 +192,17 @@ impl Tokenizer {
             text,
             &self.mode,
         );
-        self.lattice
-            .calculate_path_costs(&self.cost_matrix, &self.mode);
-        self.lattice.tokens_offset()
+        lattice.calculate_path_costs(&self.cost_matrix, &self.mode);
+        lattice.tokens_offset()
     }
 
     fn tokenize_without_split<'a>(
-        &mut self,
+        &self,
         text: &'a str,
         tokens: &mut Vec<Token<'a>>,
+        lattice: &mut Lattice,
     ) -> LinderaResult<()> {
-        let offsets = self.tokenize_offsets(text);
+        let offsets = self.tokenize_offsets(text, lattice);
 
         for i in 0..offsets.len() {
             let (token_start, word_id) = offsets[i];
@@ -261,14 +263,15 @@ impl Tokenizer {
     /// * Vec<Token> : the list of `Token` if succeeded
     /// * LinderaError : Error message with LinderaErrorKind
     ///
-    pub fn tokenize<'a>(&mut self, mut text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
+    pub fn tokenize<'a>(&self, mut text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
+        let mut lattice = Lattice::default();
         let mut tokens = Vec::new();
         while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
-            self.tokenize_without_split(&text[..split_idx + 3], &mut tokens)?;
+            self.tokenize_without_split(&text[..split_idx + 3], &mut tokens, &mut lattice)?;
             text = &text[split_idx + 3..];
         }
         if !text.is_empty() {
-            self.tokenize_without_split(text, &mut tokens)?;
+            self.tokenize_without_split(text, &mut tokens, &mut lattice)?;
         }
 
         Ok(tokens)
@@ -298,6 +301,7 @@ impl Tokenizer {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::fs::File;
     use std::io::{BufReader, Read};
     use std::path::PathBuf;
@@ -314,7 +318,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("");
+        let tokens = tokenizer.tokenize_offsets("", &mut Lattice::default());
         assert_eq!(tokens, &[]);
     }
 
@@ -325,7 +329,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets(" ");
+        let tokens = tokenizer.tokenize_offsets(" ", &mut Lattice::default());
         assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
     }
 
@@ -336,7 +340,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let mut tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("僕は");
+        let tokens = tokenizer.tokenize_offsets("僕は", &mut Lattice::default());
         assert_eq!(
             tokens,
             &[(0, WordId(132630, true)), (3, WordId(57063, true))]
