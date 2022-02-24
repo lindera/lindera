@@ -27,7 +27,7 @@ pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedD
 #[cfg(windows)]
 pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedData> {
     match algorithm {
-        Algorithm::LZMA { preset } => {
+        Algorithm::LZMA { preset: _ } => {
             let mut buf_reader = BufReader::new(data);
             let mut output_data = Vec::new();
             xz_compress(&mut buf_reader, &mut output_data)?;
