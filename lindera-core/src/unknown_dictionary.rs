@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::u32;
 
 use serde::{Deserialize, Serialize};
+use log::warn;
 
 use crate::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
@@ -98,9 +99,8 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
         .map(|e| {
             // Do not perform strict checks on left context id and right context id in unk.def.
             // Just output a warning.
-            //assert_eq!(e.left_id, e.right_id);
             if e.left_id != e.right_id {
-                println!("Warning: left id and right id are not same: {:?}", e);
+                warn!("left id and right id are not same: {:?}", e);
             }
             WordEntry {
                 word_id: WordId(std::u32::MAX, true),

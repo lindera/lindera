@@ -9,6 +9,7 @@ use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use glob::glob;
+use log::info;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
@@ -173,8 +174,9 @@ impl DictionaryBuilder for IpadicBuilder {
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinitions> {
-        println!("BUILD CHARDEF");
         let char_def_path = input_dir.join("char.def");
+        info!("reading {:?}", char_def_path);
+
         let char_def = read_euc_file(&char_def_path)?;
         let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
         char_definitions_builder.parse(&char_def)?;
@@ -185,11 +187,11 @@ impl DictionaryBuilder for IpadicBuilder {
             .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
         let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
-        println!("creating {:?}", wtr_chardef_path);
         let mut wtr_chardef = io::BufWriter::new(
             File::create(wtr_chardef_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
+
         compress_write(&chardef_buffer, COMPRESS_ALGORITHM, &mut wtr_chardef)?;
 
         wtr_chardef
@@ -205,8 +207,9 @@ impl DictionaryBuilder for IpadicBuilder {
         chardef: &CharacterDefinitions,
         output_dir: &Path,
     ) -> LinderaResult<()> {
-        println!("BUILD UNK");
         let unk_data_path = input_dir.join("unk.def");
+        info!("reading {:?}", unk_data_path);
+
         let unk_data = read_euc_file(&unk_data_path)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
 
@@ -215,7 +218,6 @@ impl DictionaryBuilder for IpadicBuilder {
             .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
-        println!("creating {:?}", wtr_unk_path);
         let mut wtr_unk = io::BufWriter::new(
             File::create(wtr_unk_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
@@ -229,8 +231,6 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        println!("BUILD DICT");
-
         let pattern = if let Some(path) = input_dir.to_str() {
             format!("{}/*.csv", path)
         } else {
@@ -258,7 +258,10 @@ impl DictionaryBuilder for IpadicBuilder {
 
         let files_data: Vec<String> = filenames
             .iter()
-            .map(|filename| read_euc_file(filename))
+            .map(|filename| {
+                info!("reading {:?}", filename);
+                read_euc_file(filename)
+            })
             .collect::<LinderaResult<Vec<String>>>()?;
 
         let lines: Vec<String> = files_data
@@ -285,14 +288,12 @@ impl DictionaryBuilder for IpadicBuilder {
         rows.sort_by_key(|row| row.surface_form);
 
         let wtr_da_path = output_dir.join(Path::new("dict.da"));
-        println!("creating {:?}", wtr_da_path);
         let mut wtr_da = io::BufWriter::new(
             File::create(wtr_da_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
         let wtr_vals_path = output_dir.join(Path::new("dict.vals"));
-        println!("creating {:?}", wtr_vals_path);
         let mut wtr_vals = io::BufWriter::new(
             File::create(wtr_vals_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
@@ -312,14 +313,12 @@ impl DictionaryBuilder for IpadicBuilder {
         }
 
         let wtr_words_path = output_dir.join(Path::new("dict.words"));
-        println!("creating {:?}", wtr_words_path);
         let mut wtr_words = io::BufWriter::new(
             File::create(wtr_words_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
         let wtr_words_idx_path = output_dir.join(Path::new("dict.wordsidx"));
-        println!("creating {:?}", wtr_words_idx_path);
         let mut wtr_words_idx = io::BufWriter::new(
             File::create(wtr_words_idx_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
@@ -327,7 +326,6 @@ impl DictionaryBuilder for IpadicBuilder {
 
         let mut words_buffer = Vec::new();
         let mut words_idx_buffer = Vec::new();
-        println!("rows.len = {}", rows.len());
         for row in rows.iter() {
             let word = vec![
                 row.pos_level1.to_string(),
@@ -398,8 +396,9 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        println!("BUILD COST MATRIX");
         let matrix_data_path = input_dir.join("matrix.def");
+        info!("reading {:?}", matrix_data_path);
+
         let matrix_data = read_euc_file(&matrix_data_path)?;
         let mut lines = Vec::new();
         for line in matrix_data.lines() {
@@ -428,7 +427,6 @@ impl DictionaryBuilder for IpadicBuilder {
         }
 
         let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));
-        println!("creating {:?}", wtr_matrix_mtx_path);
         let mut wtr_matrix_mtx = io::BufWriter::new(
             File::create(wtr_matrix_mtx_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
@@ -449,6 +447,7 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
+        info!("reading {:?}", input_file);
         let data: String = read_utf8_file(input_file)?;
 
         let lines: Vec<&str> = data.lines().collect();
