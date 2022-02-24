@@ -32,7 +32,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
         toolchain: [stable]
-        features: [""]
+        features: ["", "smallbinary"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2.4.0
