@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.9.1 (2022-02-24)
+- Add feature flag for compressing dictionary #142 @mosuka
+
 ## 0.9.0 (2022-02-20)
 - Compressing dictionaries by default #139 @mosuka
 - Add version monitoring for github-action #130 @ikawaha
