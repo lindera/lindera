@@ -1,8 +1,8 @@
 use std::str::FromStr;
 use std::u32;
 
-use serde::{Deserialize, Serialize};
 use log::warn;
+use serde::{Deserialize, Serialize};
 
 use crate::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
