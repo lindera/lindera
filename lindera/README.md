@@ -16,6 +16,23 @@ The following products are required to build:
 % cargo build --release
 ```
 
+### Build small binary
+
+You can reduce the size of the binary containing the lindera by using the "smallbinary" feature flag.  
+Instead, you will be penalized for the execution time of the program.
+
+This repo example is this.
+
+```sh
+% cargo build --release --features smallbinary
+```
+
+It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
+
+```text
+% sudo apt install liblzma-dev
+```
+
 ## Usage
 
 ### Basic example
@@ -114,7 +131,6 @@ The above example can be by `cargo run --example`:
 とうきょうスカイツリー駅
 です
 ```
-
 
 ## API reference
 

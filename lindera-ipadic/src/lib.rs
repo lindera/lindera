@@ -5,15 +5,19 @@ use lindera_core::connection::ConnectionCostMatrix;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::LinderaResult;
+#[cfg(feature = "smallbinary")]
 use lindera_decompress::decompress;
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
+        #[cfg(feature = "smallbinary")]
         const $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             let compressed_data = bincode::deserialize_from(&$bytes[..])
                 .expect(concat!("invalid file format ", $filename));
             decompress(compressed_data).expect(concat!("invalid file format ", $filename))
         });
+        #[cfg(not(feature = "smallbinary"))]
+        const $name: &'static [u8] = $bytes;
     };
 }
 

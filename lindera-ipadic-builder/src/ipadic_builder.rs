@@ -9,11 +9,11 @@ use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use glob::glob;
-use lindera_compress::compress;
-use lindera_decompress::Algorithm;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
+#[cfg(feature = "compress")]
+use lindera_compress::compress;
 use lindera_core::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
@@ -23,6 +23,7 @@ use lindera_core::unknown_dictionary::parse_unk;
 use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
+use lindera_decompress::Algorithm;
 
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
@@ -542,6 +543,7 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 }
 
+#[cfg(feature = "compress")]
 fn compress_write<W: Write>(
     buffer: &[u8],
     algorithm: Algorithm,
@@ -550,6 +552,19 @@ fn compress_write<W: Write>(
     let compressed = compress(buffer, algorithm)
         .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
     bincode::serialize_into(writer, &compressed)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    Ok(())
+}
+
+#[cfg(not(feature = "compress"))]
+fn compress_write<W: Write>(
+    buffer: &[u8],
+    _algorithm: Algorithm,
+    writer: &mut W,
+) -> LinderaResult<()> {
+    writer
+        .write_all(buffer)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())
