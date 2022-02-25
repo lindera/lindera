@@ -11,7 +11,7 @@ fn main() -> LinderaResult<()> {
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };
-    let mut tokenizer = Tokenizer::with_config(config)?;
+    let tokenizer = Tokenizer::with_config(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;

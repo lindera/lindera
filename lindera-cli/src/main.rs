@@ -86,7 +86,7 @@ fn main() -> LinderaResult<()> {
     }
 
     // create tokenizer
-    let mut tokenizer = Tokenizer::with_config(config)?;
+    let tokenizer = Tokenizer::with_config(config)?;
 
     // output format
     let output_format = match args.output_format {
