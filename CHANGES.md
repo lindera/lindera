@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.10.0 (2022-02-25)
+- Bump up version to 0.10.0 #145 @mosuka
+- Do not perform strict checks on left context id and right context id in unk.def #144 @mosuka
+- Make tokenize method immutable #143 @ManyTheFish
+
 ## 0.9.1 (2022-02-24)
 - Add feature flag for compressing dictionary #142 @mosuka
 
