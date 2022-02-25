@@ -18,7 +18,7 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
         b.iter(|| {
             let config = TokenizerConfig {
-                user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+                user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
                 user_dict_type: UserDictionaryType::CSV,
                 mode: Mode::Normal,
                 ..TokenizerConfig::default()
@@ -37,7 +37,7 @@ fn bench_tokenize(c: &mut Criterion) {
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let config = TokenizerConfig {
-        user_dict_path: Some(PathBuf::from("resources/userdic.csv")),
+        user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
         user_dict_type: UserDictionaryType::CSV,
         mode: Mode::Normal,
         ..TokenizerConfig::default()
@@ -49,7 +49,7 @@ fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
 }
 
 fn bench_tokenize_long_text(c: &mut Criterion) {
-    let mut large_file = BufReader::new(File::open("resources/bocchan.txt").unwrap());
+    let mut large_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
     let mut large_text = String::new();
     let _size = large_file.read_to_string(&mut large_text).unwrap();
     let tokenizer = Tokenizer::new().unwrap();
