@@ -25,7 +25,7 @@ jobs:
         toolchain: [stable]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
       # - name: Install packages for Linux
       #   if : matrix.target == 'x86_64-unknown-linux-gnu'
       #   run: |
@@ -127,7 +127,7 @@ jobs:
     needs: [upload-release]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -223,7 +223,7 @@ jobs:
     needs: [publish-crates]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
