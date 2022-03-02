@@ -33,8 +33,7 @@ This repository contains [mecab-ipadic-2.7.0-20070801](http://jaist.dl.sourcefor
 Building a dictionary with `lindera-ipadic-builder` command:
 
 ```shell script
-% curl -L -O "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
-% tar zxvf ./mecab-ipadic-2.7.0-20070801.tar.gz
+% tar zxvf ./resources/ipadic/mecab-ipadic-2.7.0-20070801.tar.gz
 % lindera-ipadic-builder -s ./mecab-ipadic-2.7.0-20070801 -d ./lindera-ipadic-2.7.0-20070801
 ```
 

@@ -25,7 +25,7 @@ lindera-decompress = { version = "0.10.0", path = "../lindera-decompress", optio
 [build-dependencies]
 encoding = "0.2"
 flate2 = "1.0"
-reqwest = "0.11"
+# reqwest = "0.11"
 tar = "0.4"
 tokio = { version = "1.9", features = ["full"] }
 

@@ -9,3 +9,5 @@ Cargo.lock
 
 lindera-ipadic-*-*
 mecab-ipadic-*-*
+
+!mecab-ipadic-*-*.tar.gz
