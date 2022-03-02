@@ -61,9 +61,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let mut dummy_matrix_def = File::create(input_dir.join("matrix.def")).await?;
         dummy_matrix_def.write_all(b"0 1 0\n").await?;
     } else {
-        // Destination file path
+        // Source file path for build package
         let source_path_for_build = Path::new(&build_dir).join(&file_name);
 
+        // Copy source file to build directory
         if !source_path_for_build.exists() {
             copy(&source_path, &source_path_for_build)?;
         }
