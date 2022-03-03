@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 description = "A Japanese morphological dictionary for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic"
@@ -25,7 +25,6 @@ lindera-decompress = { version = "0.10.0", path = "../lindera-decompress", optio
 [build-dependencies]
 encoding = "0.2"
 flate2 = "1.0"
-reqwest = "0.11"
 tar = "0.4"
 tokio = { version = "1.9", features = ["full"] }
 
