@@ -10,6 +10,7 @@ jobs:
   build:
     name: Build
     strategy:
+      max-parallel: 2
       matrix:
         target:
           - x86_64-unknown-linux-gnu
@@ -23,6 +24,7 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
         toolchain: [stable]
+        features: ["", "ipadic", "unidic"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -49,20 +51,20 @@ jobs:
       - uses: actions-rs/cargo@v1.0.1
         with:
           command: build
-          args: --release --target=${{ matrix.target }}
+          args: --release --features "${{ matrix.features }}" --target=${{ matrix.target }}
           use-cross: false
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.target }}/release/lindera-unidic-builder
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe
+          7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.target }}/release/lindera-unidic-builder.exe
       - name: Build for OSX
         if: matrix.os == 'macos-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.target }}/release/lindera-unidic-builder
       - uses: actions/upload-artifact@v2.3.1
         with:
           name: build-${{ matrix.target }}

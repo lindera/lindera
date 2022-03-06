@@ -8,6 +8,7 @@ jobs:
   test:
     name: Test
     strategy:
+      max-parallel: 1
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
         toolchain: [stable, beta, nightly]
