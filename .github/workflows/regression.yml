@@ -29,9 +29,10 @@ jobs:
   test:
     name: Test
     strategy:
-      max-parallel: 1
+      # max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        # os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-latest, macOS-latest]
         toolchain: [stable]
         features: ["", "ipadic", "unidic", "compress"]
     runs-on: ${{ matrix.os }}

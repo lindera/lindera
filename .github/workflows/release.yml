@@ -10,17 +10,17 @@ jobs:
   build:
     name: Build
     strategy:
-      max-parallel: 1
+      # max-parallel: 1
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
+          # - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
           - target: x86_64-apple-darwin
             os: macos-latest
         toolchain: [stable]
@@ -57,10 +57,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.target }}/release/lindera-unidic-builder
-      - name: Build for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.target }}/release/lindera-unidic-builder.exe
+      # - name: Build for Windows
+      #   if: matrix.os == 'windows-latest'
+      #   run: |
+      #     7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.target }}/release/lindera-unidic-builder.exe
       - name: Build for OSX
         if: matrix.os == 'macos-latest'
         run: |
@@ -96,7 +96,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
+          # - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
     name: Upload Release
     needs: [create-release]
