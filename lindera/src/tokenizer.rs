@@ -19,10 +19,10 @@ use lindera_core::word_entry::WordId;
 use lindera_core::LinderaResult;
 #[cfg(feature = "ipadic")]
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
-#[cfg(feature = "unidic")]
-use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 #[cfg(feature = "ko-dic")]
 use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
+#[cfg(feature = "unidic")]
+use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
 #[derive(Debug, Clone)]
 pub enum DictionaryType {
