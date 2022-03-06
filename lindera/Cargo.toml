@@ -12,7 +12,11 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-smallbinary = ["lindera-ipadic/smallbinary"]
+default = []
+full = ["ipadic", "unidic"]
+ipadic = ["lindera-ipadic", "lindera-ipadic-builder"]
+unidic = ["lindera-unidic", "lindera-unidic-builder"]
+compress = ["lindera-ipadic/compress", "lindera-unidic/compress"]
 
 [dependencies]
 anyhow = "1.0"
@@ -24,9 +28,10 @@ serde_json = "1.0"
 
 lindera-core = { version = "0.10.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.10.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.10.0", path = "../lindera-ipadic" }
-lindera-ipadic-builder = { version = "0.10.0", path = "../lindera-ipadic-builder" }
-
+lindera-ipadic = { version = "0.10.0", path = "../lindera-ipadic", optional = true }
+lindera-ipadic-builder = { version = "0.10.0", path = "../lindera-ipadic-builder", optional = true }
+lindera-unidic = { version = "0.10.0", path = "../lindera-unidic", optional = true }
+lindera-unidic-builder = { version = "0.10.0", path = "../lindera-unidic-builder", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"

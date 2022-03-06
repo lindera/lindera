@@ -1,6 +1,6 @@
 use std::env;
 use std::error::Error;
-use std::fs::{copy, create_dir};
+use std::fs::{create_dir, rename};
 use std::io::Cursor;
 use std::path::Path;
 
@@ -16,27 +16,21 @@ use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=Cargo.toml");
+    println!("cargo:rustc-cfg=feature=\"ipadic\"");
+
     // Directory path for build package
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
 
-    // Resources directory path
-    let resources_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("ipadic");
-
     // Dictionary file name
     let file_name = "mecab-ipadic-2.7.0-20070801.tar.gz";
-    // Source file path
-    let source_path = Path::new(&resources_dir).join(file_name);
 
     // MeCab IPADIC directory
     let input_dir = Path::new(&build_dir).join("mecab-ipadic-2.7.0-20070801");
 
     // Lindera IPADIC directory
     let output_dir = Path::new(&build_dir).join("lindera-ipadic");
-
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=Cargo.toml");
 
     if std::env::var("DOCS_RS").is_ok() {
         // Use dummy data in docs.rs.
@@ -64,9 +58,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
         // Source file path for build package
         let source_path_for_build = Path::new(&build_dir).join(&file_name);
 
-        // Copy source file to build directory
+        // Download source file to build directory
         if !source_path_for_build.exists() {
-            copy(&source_path, &source_path_for_build)?;
+            // copy(&source_path, &source_path_for_build)?;
+            let tmp_path = Path::new(&build_dir).join(file_name.to_owned() + ".download");
+
+            // Download a tarball
+            let download_url =
+                "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz";
+            let mut resp = reqwest::get(download_url).await?;
+
+            // Save a ttarball
+            let mut dest = File::create(&tmp_path).await?;
+            while let Some(chunk) = resp.chunk().await? {
+                dest.write_all(&chunk).await?;
+            }
+            rename(tmp_path, &source_path_for_build).expect("Failed to rename temporary file");
         }
 
         // Decompress a tarball

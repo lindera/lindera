@@ -8,6 +8,8 @@ members = [
     "lindera-cli",
     "lindera-compress",
     "lindera-decompress",
+    "lindera-unidic-builder",
+    "lindera-unidic",
 ]
 resolver = "2"
 

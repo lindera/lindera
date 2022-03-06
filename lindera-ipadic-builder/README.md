@@ -33,8 +33,9 @@ This repository contains [mecab-ipadic-2.7.0-20070801](http://jaist.dl.sourcefor
 Building a dictionary with `lindera-ipadic-builder` command:
 
 ```shell script
-% tar zxvf ./resources/ipadic/mecab-ipadic-2.7.0-20070801.tar.gz
-% lindera-ipadic-builder -s ./mecab-ipadic-2.7.0-20070801 -d ./lindera-ipadic-2.7.0-20070801
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
+% lindera-ipadic-builder -s /tmp/mecab-ipadic-2.7.0-20070801 -d /tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 
@@ -100,7 +101,7 @@ Detailed version
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "羽田空港限定トートバッグ" | lindera -d ./lindera-ipadic-2.7.0-20070801
+% echo "羽田空港限定トートバッグ" | lindera -d /tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text

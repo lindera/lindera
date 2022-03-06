@@ -26,9 +26,65 @@ The following products are required to build:
 % cargo build --release
 ```
 
+### Build with IPADIC
+
+The "ipadic" feature flag allows Lindera to include IPADIC. 
+
+```shell script
+% cargo build --release --features=ipadic
+```
+
+### Build with UniDic
+
+The "unidic" feature flag allows Lindera to include UniDic. 
+
+```shell script
+% cargo build --release --features=unidic
+```
+
+### Build small binary
+
+You can reduce the size of the binary containing the lindera by using the "compress" feature flag.  
+Instead, you will be penalized for the execution time of the program.
+
+```shell script
+% cargo build --release --features=compress
+```
+
+It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
+
+```shell script
+% sudo apt install liblzma-dev
+```
+
+
 ## Usage
 
-### Basic usage
+### Prepare the dictionary
+
+If you have not built binaries with built-in dictionaries, you will need to prepare the dictionaries.
+For more information on preparing dictionaries, see the following link:
+
+- <a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder" target="_blank">Lindera IPADIC Builder</a>
+- <a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
+- <a href="https://github.com/lindera-morphology/lindera-ko-dic-builder" target="_blank">Lindera ko-dic Builder</a>
+- <a href="https://github.com/lindera-morphology/lindera-cc-cedict-builder" target="_blank">Lindera cc-cedict Builder</a>
+
+
+#### External dictionary
+
+For example, text can be tokenized using a prepared dictionary as follows:
+
+```shell script
+% echo "羽田空港限定トートバッグ" | lindera -t local -d /tmp/lindera-ipadic-2.7.0-20070801
+```
+
+```text
+羽田空港        名詞,固有名詞,一般,*,*,*,羽田空港,ハネダクウコウ,ハネダクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+```
 
 The CLI already includes IPADIC as the default Japanese dictionary.  
 You can easily tokenize the text and see the results as follows:
@@ -44,20 +100,16 @@ You can easily tokenize the text and see the results as follows:
 EOS
 ```
 
-### Switching dictionary
+### Self-contained dictionary
 
-It is also possible to switch to the pre-built dictionary data instead of the default dictionary and tokenize.
+If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
 
 #### IPADIC
 
-Please refer to the following repository for building an IPADIC dictionary:
-
-- <a href="https://github.com/lindera-morphology/lindera/tree/master/lindera-ipadic-builder" target="_blank">Lindera IPADIC Builder</a>
-
-The following example uses the pre-built IPADIC to tokenize:
+The following example uses the self-contained IPADIC to tokenize:
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-ipadic-2.7.0-20070801
+% echo "関西国際空港限定トートバッグ" | lindera -t ipadic
 ```
 
 ```text
@@ -67,35 +119,12 @@ The following example uses the pre-built IPADIC to tokenize:
 EOS
 ```
 
-#### IPADIC NEologd
-
-Please refer to the following repository for building an IPADIC NEologd dictionary:
-
-- <a href="https://github.com/lindera-morphology/lindera-ipadic-neologd-builder" target="_blank">Lindera IPDIC NEologd Builder</a>
-
-The following example uses the pre-built IPADIC-NEologd to tokenize:
-
-```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-ipadic-2.7.0-20070801-neologd-20200130
-```
-
-```text
-関西国際空港	名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
-限定	名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ	名詞,固有名詞,一般,*,*,*,トートバッグ,トートバッグ,トートバッグ
-EOS
-```
-
 #### UniDic
 
-Please refer to the following repository for building a UniDic dictionary:
-
-- <a href="https://github.com/lindera-morphology/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
-
-The following example uses the pre-built UniDic to tokenize:
+If UniDic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -d ./lindera-unidic-2.1.2
+% echo "関西国際空港限定トートバッグ" | lindera -t unidic
 ```
 
 ```text
@@ -108,26 +137,6 @@ The following example uses the pre-built UniDic to tokenize:
 EOS
 ```
 
-#### ko-dic
-
-Please refer to the following repository for building a ko-dic dictionary:
-
-- <a href="https://github.com/lindera-morphology/lindera-ko-dic-builder" target="_blank">Lindera ko-dic Builder</a>
-
-The following example uses the pre-built ko-dic to tokenize:
-
-```shell script
-% echo "하네다공항한정토트백" | lindera -d ./lindera-ko-dic-2.1.1-20180720
-```
-
-```text
-하네다	NNP,인명,F,하네다,*,*,*,*
-공항	NNG,장소,T,공항,*,*,*,*
-한정	NNG,*,T,한정,*,*,*,*
-토트백	NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
-EOS
-```
-
 ### User dictionary
 
 Lindera supports two types of user dictionaries, one in CSV format and the other in binary format.
@@ -137,7 +146,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -t ipadic -D ./resources/userdic.csv
 ```
 
 ```text
@@ -156,7 +165,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.bin -t bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -t ipadic -D ./resources/userdic.bin -t bin
 ```
 
 ```text
@@ -176,7 +185,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 `normal` mode tokenizes faithfully based on words registered in the dictionary. (Default):
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera --mode=normal
+% echo "関西国際空港限定トートバッグ" | lindera -t ipadic -m normal
 ```
 
 ```text
@@ -189,7 +198,7 @@ EOS
 `decopose` mode tokenizes a compound noun words additionally:
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera --mode=decompose
+% echo "関西国際空港限定トートバッグ" | lindera -t ipadic -m decompose
 ```
 
 ```text
@@ -208,7 +217,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output-format=mecab
+% echo "お待ちしております。" | lindera -t ipadic -O mecab
 ```
 
 ```text
@@ -224,7 +233,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output-format=wakati
+% echo "お待ちしております。" | lindera -t ipadic -O wakati
 ```
 
 ```text
@@ -234,7 +243,7 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell script
-% echo "お待ちしております。" | lindera --output-format=json
+% echo "お待ちしております。" | lindera -t ipadic -O json
 ```
 
 ```json

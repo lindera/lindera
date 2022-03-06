@@ -184,6 +184,26 @@ jobs:
             popd
           fi
           sleep 20
+          LINDERA_UNIDIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic-builder") | .version')
+          LINDERA_UNIDIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_UNIDIC_BUILDER_VERSIONS} | grep ${LINDERA_UNIDIC_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-unidic-builder ${LINDERA_UNIDIC_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-unidic-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
+          LINDERA_UNIDIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_UNIDIC_VERSIONS} | grep ${LINDERA_UNIDIC_VERSION} >/dev/null; then
+            echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
+          else
+            pushd lindera-unidic
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
           LINDERA_DICTIONARY_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
           LINDERA_DICTIONARY_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_DICTIONARY_VERSIONS} | grep ${LINDERA_DICTIONARY_VERSION} >/dev/null; then
