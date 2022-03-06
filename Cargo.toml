@@ -10,6 +10,8 @@ members = [
     "lindera-decompress",
     "lindera-unidic-builder",
     "lindera-unidic",
+    "lindera-ko-dic-builder",
+    # "lindera-ko-dic",
 ]
 resolver = "2"
 

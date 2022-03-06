@@ -13,7 +13,7 @@ jobs:
         # os: [ubuntu-latest, macOS-latest, windows-latest]
         os: [ubuntu-latest, macOS-latest]
         toolchain: [stable, beta, nightly]
-        features: ["", "ipadic", "unidic", "compress"]
+        features: ["", "ipadic", "unidic", "ko-dic", "compress"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3

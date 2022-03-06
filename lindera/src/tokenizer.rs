@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
-#[cfg(any(feature = "ipadic", feature = "unidic"))]
+#[cfg(any(feature = "ipadic", feature = "unidic", feature = "ko-dic"))]
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::file_util::read_file;
@@ -21,6 +21,8 @@ use lindera_core::LinderaResult;
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 #[cfg(feature = "unidic")]
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
+#[cfg(feature = "ko-dic")]
+use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
 
 #[derive(Debug, Clone)]
 pub enum DictionaryType {
@@ -28,6 +30,8 @@ pub enum DictionaryType {
     Ipadic,
     #[cfg(feature = "unidic")]
     Unidic,
+    #[cfg(feature = "ko-dic")]
+    Kodic,
     LocalDictionary,
 }
 
@@ -39,6 +43,8 @@ impl FromStr for DictionaryType {
             "ipadic" => Ok(DictionaryType::Ipadic),
             #[cfg(feature = "unidic")]
             "unidic" => Ok(DictionaryType::Unidic),
+            #[cfg(feature = "ko-dic")]
+            "ko-dic" => Ok(DictionaryType::Kodic),
             "local" => Ok(DictionaryType::LocalDictionary),
             _ => Err(()),
         }
@@ -67,6 +73,8 @@ pub const SUPPORTED_DICTIONARY_TYPE: &[&str] = &[
     "ipadic",
     #[cfg(feature = "unidic")]
     "unidic",
+    #[cfg(feature = "ko-dic")]
+    "ko-dic",
     "local",
 ];
 
@@ -122,6 +130,11 @@ fn build_user_dict(
             #[cfg(feature = "unidic")]
             DictionaryType::Unidic => {
                 let builder = UnidicBuilder::new();
+                builder.build_user_dict(&path)
+            }
+            #[cfg(feature = "ko-dic")]
+            DictionaryType::Kodic => {
+                let builder = KodicBuilder::new();
                 builder.build_user_dict(&path)
             }
             _ => {
@@ -205,6 +218,15 @@ impl Tokenizer {
                 unknown_dictionary = lindera_unidic::unknown_dict()?;
                 words_idx_data = lindera_unidic::words_idx_data();
                 words_data = lindera_unidic::words_data();
+            }
+            #[cfg(feature = "ko-dic")]
+            DictionaryType::Kodic => {
+                dict = lindera_ko_dic::prefix_dict();
+                cost_matrix = lindera_ko_dic::connection();
+                char_definitions = lindera_ko_dic::char_def()?;
+                unknown_dictionary = lindera_ko_dic::unknown_dict()?;
+                words_idx_data = lindera_ko_dic::words_idx_data();
+                words_data = lindera_ko_dic::words_data();
             }
         }
 

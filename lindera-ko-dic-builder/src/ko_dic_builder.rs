@@ -25,31 +25,31 @@ use lindera_decompress::Algorithm;
 
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
-pub struct UnidicBuilder {}
+pub struct KodicBuilder {}
 
-impl UnidicBuilder {
-    const UNK_FIELDS_NUM: usize = 10;
+impl KodicBuilder {
+    const UNK_FIELDS_NUM: usize = 12;
 
     pub fn new() -> Self {
-        UnidicBuilder {}
+        KodicBuilder {}
     }
 }
 
-impl Default for UnidicBuilder {
+impl Default for KodicBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DictionaryBuilder for UnidicBuilder {
+impl DictionaryBuilder for KodicBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         fs::create_dir_all(&output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-        let chardef = self.build_chardef(input_dir, output_dir)?;
-        self.build_unk(input_dir, &chardef, output_dir)?;
-        self.build_dict(input_dir, output_dir)?;
-        self.build_cost_matrix(input_dir, output_dir)?;
+        let chardef = self.build_chardef(input_dir, output_dir).unwrap();
+        self.build_unk(input_dir, &chardef, output_dir).unwrap();
+        self.build_dict(input_dir, output_dir).unwrap();
+        self.build_cost_matrix(input_dir, output_dir).unwrap();
 
         Ok(())
     }
@@ -169,7 +169,7 @@ impl DictionaryBuilder for UnidicBuilder {
             }
         }
 
-        let mut rows: Vec<StringRecord> = vec![];
+        let mut rows: Vec<StringRecord> = Vec::new();
         for filename in filenames {
             info!("reading {:?}", filename);
 
@@ -242,15 +242,6 @@ impl DictionaryBuilder for UnidicBuilder {
                 row[9].to_string(),
                 row[10].to_string(),
                 row[11].to_string(),
-                row[12].to_string(),
-                row[13].to_string(),
-                row[14].to_string(),
-                row[15].to_string(),
-                row[16].to_string(),
-                row[17].to_string(),
-                row[18].to_string(),
-                row[19].to_string(),
-                row[20].to_string(),
             ];
             let offset = words_buffer.len();
             words_idx_buffer
@@ -275,6 +266,13 @@ impl DictionaryBuilder for UnidicBuilder {
         let mut keyset: Vec<(&[u8], u32)> = vec![];
         for (key, word_entries) in &word_entry_map {
             let len = word_entries.len() as u32;
+            // assert!(
+            //     len < (1 << 5),
+            //     "{} is {} length. Too long. [{}]",
+            //     key,
+            //     len,
+            //     (1 << 5)
+            // );
             let val = (id << 5) | len;
             keyset.push((key.as_bytes(), val));
             id += len;
@@ -294,9 +292,7 @@ impl DictionaryBuilder for UnidicBuilder {
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
-
         compress_write(&vals_buffer, COMPRESS_ALGORITHM, &mut wtr_vals)?;
-
         wtr_vals
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -346,7 +342,6 @@ impl DictionaryBuilder for UnidicBuilder {
                 .write_i16::<LittleEndian>(cost)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         }
-
         compress_write(&matrix_mtx_buffer, COMPRESS_ALGORITHM, &mut wtr_matrix_mtx)?;
 
         wtr_matrix_mtx

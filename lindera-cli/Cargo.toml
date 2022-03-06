@@ -13,9 +13,10 @@ license = "MIT"
 
 [features]
 default = []
-full = ["ipadic", "unidic"]
+full = ["ipadic", "unidic", "ko-dic"]
 ipadic = ["lindera/ipadic"]
 unidic = ["lindera/unidic"]
+ko-dic = ["lindera/ko-dic"]
 compress = ["lindera/compress"]
 
 [dependencies]

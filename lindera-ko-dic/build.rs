@@ -4,7 +4,7 @@ use std::fs::{create_dir, rename};
 use std::io::Cursor;
 use std::path::Path;
 
-use encoding::all::EUC_JP;
+use encoding::all::UTF_8;
 use encoding::{EncoderTrap, Encoding};
 use flate2::read::GzDecoder;
 use tar::Archive;
@@ -12,7 +12,7 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
+use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -23,13 +23,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
 
     // Dictionary file name
-    let file_name = "mecab-ipadic-2.7.0-20070801.tar.gz";
+    let file_name = "mecab-ko-dic-2.1.1-20180720.tar.gz";
 
-    // MeCab IPADIC directory
-    let input_dir = Path::new(&build_dir).join("mecab-ipadic-2.7.0-20070801");
+    // UniDic MeCab directory
+    let input_dir = Path::new(&build_dir).join("mecab-ko-dic-2.1.1-20180720");
 
     // Lindera IPADIC directory
-    let output_dir = Path::new(&build_dir).join("lindera-ipadic");
+    let output_dir = Path::new(&build_dir).join("lindera-ko-dic");
 
     if std::env::var("DOCS_RS").is_ok() {
         // Use dummy data in docs.rs.
@@ -41,9 +41,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let mut dummy_dict_csv = File::create(input_dir.join("dummy_dict.csv")).await?;
         dummy_dict_csv
             .write_all(
-                &EUC_JP
+                &UTF_8
                     .encode(
-                        "テスト,1288,1288,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n",
+                        "테스트,1785,3543,4721,NNG,행위,F,테스트,*,*,*,*\n",
                         EncoderTrap::Ignore,
                     )
                     .unwrap(),
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             // Download a tarball
             let download_url =
-                "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz";
+                "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz";
             let mut resp = reqwest::get(download_url).await?;
 
             // Save a ttarball
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Build a dictionary
-    let builder = IpadicBuilder::new();
+    let builder = KodicBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
     Ok(())

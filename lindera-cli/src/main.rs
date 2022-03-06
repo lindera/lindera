@@ -76,6 +76,10 @@ fn main() -> LinderaResult<()> {
         "unidic" => {
             config.dict_type = DictionaryType::Unidic;
         }
+        #[cfg(feature = "ko-dic")]
+        "ko-dic" => {
+            config.dict_type = DictionaryType::Kodic;
+        }
         "local" => {
             config.dict_type = DictionaryType::LocalDictionary;
             config.dict_path = args.dict;

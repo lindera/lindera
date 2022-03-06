@@ -26,7 +26,7 @@ The following products are required to build:
 % cargo build --release
 ```
 
-### Build with IPADIC
+### Build with IPADIC(Japanese dictionary)
 
 The "ipadic" feature flag allows Lindera to include IPADIC. 
 
@@ -34,12 +34,20 @@ The "ipadic" feature flag allows Lindera to include IPADIC.
 % cargo build --release --features=ipadic
 ```
 
-### Build with UniDic
+### Build with UniDic(Japanese dictionary)
 
 The "unidic" feature flag allows Lindera to include UniDic. 
 
 ```shell script
 % cargo build --release --features=unidic
+```
+
+### Build with ko-dic(Korean dictionary)
+
+The "unidic" feature flag allows Lindera to include UniDic. 
+
+```shell script
+% cargo build --release --features=ko-dic
 ```
 
 ### Build small binary
@@ -134,6 +142,22 @@ If UniDic were built in, it could also be tokenized by switching to a self-conta
 限定	名詞,普通名詞,サ変可能,*,*,*,ゲンテイ,限定,限定,ゲンテー,限定,ゲンテー,漢,*,*,*,*
 トート	名詞,普通名詞,一般,*,*,*,トート,トート,トート,トート,トート,トート,外,*,*,*,*
 バッグ	名詞,普通名詞,一般,*,*,*,バッグ,バッグ-bag,バッグ,バッグ,バッグ,バッグ,外,*,*,*,*
+EOS
+```
+
+#### ko-dic
+
+If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
+
+```shell script
+% echo "하네다공항한정토트백" | lindera -t ko-dic
+```
+
+```text
+하네다  NNP,인명,F,하네다,*,*,*,*
+공항    NNG,장소,T,공항,*,*,*,*
+한정    NNG,*,T,한정,*,*,*,*
+토트백  NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
 EOS
 ```
 

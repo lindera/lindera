@@ -18,7 +18,6 @@ use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 async fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
-    println!("cargo:rustc-cfg=feature=\"unidic\"");
 
     // Directory path for build package
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
