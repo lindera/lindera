@@ -29,6 +29,7 @@ jobs:
   test:
     name: Test
     strategy:
+      max-parallel: 2
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
         toolchain: [stable]
