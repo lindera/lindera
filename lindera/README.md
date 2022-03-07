@@ -13,7 +13,7 @@ The following products are required to build:
 
 ## Usage
 
-Make sure you activated the full features of the tokio crate on Cargo.toml:
+Make sure you activated the full features of the lindera crate on Cargo.toml:
 
 ```
 [dependencies]
