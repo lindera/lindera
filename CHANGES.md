@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.0 (2022-03-07)
+- Add feature flag for dictionaries #153 @mosuka
+- Add dictionary to resources #149 @mosuka
+- Update ci's Including branches setting #148 @abetomo
+- Fix resources path #146 @mosuka
+
 ## 0.10.0 (2022-02-25)
 - Bump up version to 0.10.0 #145 @mosuka
 - Do not perform strict checks on left context id and right context id in unk.def #144 @mosuka
