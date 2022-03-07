@@ -6,48 +6,10 @@ A morphological analysis library in Rust. This project fork from fulmicoton's [k
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
 
-## Build
-
 The following products are required to build:
 
 - Rust >= 1.46.0
 
-```text
-% cargo build --release
-```
-
-### Build with IPADIC
-
-The "ipadic" feature flag allows Lindera to include IPADIC. 
-
-```shell script
-% cargo build --release --features=ipadic
-```
-
-### Build with UniDic
-
-The "unidic" feature flag allows Lindera to include UniDic. 
-
-```shell script
-% cargo build --release --features=unidic
-```
-
-### Build small binary
-
-You can reduce the size of the binary containing the lindera by using the "compress" feature flag.  
-Instead, you will be penalized for the execution time of the program.
-
-This repo example is this.
-
-```sh
-% cargo build --release --features compress
-```
-
-It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
-
-```text
-% sudo apt install liblzma-dev
-```
 
 ## Usage
 
