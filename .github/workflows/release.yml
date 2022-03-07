@@ -24,7 +24,7 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
         toolchain: [stable]
-        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict", "full"]
+        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
