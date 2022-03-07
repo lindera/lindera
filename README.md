@@ -13,6 +13,13 @@ The following products are required to build:
 
 ## Usage
 
+Make sure you activated the full features of the tokio crate on Cargo.toml:
+
+```
+[dependencies]
+lindera = { version = "0.11.0", features = ["full"] }
+```
+
 ### Basic example
 
 This example covers the basic usage of Lindera.
