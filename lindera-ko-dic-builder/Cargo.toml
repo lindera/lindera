@@ -28,7 +28,7 @@ yada = "0.5"
 
 lindera-core = { version = "0.10.0", path = "../lindera-core" }
 lindera-decompress = { version = "0.10.0", path = "../lindera-decompress" }
-lindera-compress = { version = "0.10.0", optional = true }
+lindera-compress = { version = "0.10.0", path = "../lindera-compress", optional = true }
 
 [[bin]]
 name = "lindera-ko-dic-builder"
