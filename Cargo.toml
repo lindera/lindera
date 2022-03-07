@@ -11,7 +11,9 @@ members = [
     "lindera-unidic-builder",
     "lindera-unidic",
     "lindera-ko-dic-builder",
-    # "lindera-ko-dic",
+    "lindera-ko-dic",
+    "lindera-cc-cedict-builder",
+    "lindera-cc-cedict",
 ]
 resolver = "2"
 

@@ -13,10 +13,11 @@ license = "MIT"
 
 [features]
 default = []
-full = ["ipadic", "unidic", "ko-dic"]
+full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
 ipadic = ["lindera-ipadic", "lindera-ipadic-builder"]
 unidic = ["lindera-unidic", "lindera-unidic-builder"]
 ko-dic = ["lindera-ko-dic", "lindera-ko-dic-builder"]
+cc-cedict = ["lindera-cc-cedict", "lindera-cc-cedict-builder"]
 compress = ["lindera-ipadic/compress", "lindera-unidic/compress"]
 
 [dependencies]
@@ -35,6 +36,8 @@ lindera-unidic = { version = "0.10.0", path = "../lindera-unidic", optional = tr
 lindera-unidic-builder = { version = "0.10.0", path = "../lindera-unidic-builder", optional = true }
 lindera-ko-dic = { version = "0.10.0", path = "../lindera-ko-dic", optional = true }
 lindera-ko-dic-builder = { version = "0.10.0", path = "../lindera-ko-dic-builder", optional = true }
+lindera-cc-cedict = { version = "0.10.0", path = "../lindera-cc-cedict", optional = true }
+lindera-cc-cedict-builder = { version = "0.10.0", path = "../lindera-cc-cedict-builder", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"

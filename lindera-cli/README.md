@@ -44,10 +44,18 @@ The "unidic" feature flag allows Lindera to include UniDic.
 
 ### Build with ko-dic(Korean dictionary)
 
-The "unidic" feature flag allows Lindera to include UniDic. 
+The "ko-dic" feature flag allows Lindera to include ko-dic. 
 
 ```shell script
 % cargo build --release --features=ko-dic
+```
+
+### Build with CC-CEDICT(Chinese dictionary)
+
+The "cc-cedict" feature flag allows Lindera to include CC-CEDICT. 
+
+```shell script
+% cargo build --release --features=cc-cedict
 ```
 
 ### Build small binary
@@ -160,6 +168,28 @@ If ko-dic were built in, it could also be tokenized by switching to a self-conta
 토트백  NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
 EOS
 ```
+
+#### CC-CEDICT
+
+If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
+
+```shell script
+% echo "它可以进行日语和汉语的语态分析" | lindera -t cc-cedict
+```
+
+```text
+它      *,*,*,*,ta1,它,它,it/
+可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+日语    *,*,*,*,Ri4 yu3,日語,日语,Japanese language/
+和      *,*,*,*,he2,龢,和,old variant of 和[he2]/harmonious/
+汉语    *,*,*,*,Han4 yu3,漢語,汉语,Chinese language/CL:門|门[men2]/
+的      *,*,*,*,di4,的,的,aim/clear/
+语态    *,*,*,*,yu3 tai4,語態,语态,voice (grammar)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+EOS
+```
+
 
 ### User dictionary
 

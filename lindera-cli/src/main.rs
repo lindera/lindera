@@ -80,6 +80,10 @@ fn main() -> LinderaResult<()> {
         "ko-dic" => {
             config.dict_type = DictionaryType::Kodic;
         }
+        #[cfg(feature = "cc-cedict")]
+        "cc-cedict" => {
+            config.dict_type = DictionaryType::Cedict;
+        }
         "local" => {
             config.dict_type = DictionaryType::LocalDictionary;
             config.dict_path = args.dict;

@@ -5,9 +5,16 @@ use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use serde::Serialize;
 
+#[cfg(feature = "cc-cedict")]
+use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
-#[cfg(any(feature = "ipadic", feature = "unidic", feature = "ko-dic"))]
+#[cfg(any(
+    feature = "ipadic",
+    feature = "unidic",
+    feature = "ko-dic",
+    feature = "cc-cedict"
+))]
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::file_util::read_file;
@@ -32,6 +39,8 @@ pub enum DictionaryType {
     Unidic,
     #[cfg(feature = "ko-dic")]
     Kodic,
+    #[cfg(feature = "cc-cedict")]
+    Cedict,
     LocalDictionary,
 }
 
@@ -45,6 +54,8 @@ impl FromStr for DictionaryType {
             "unidic" => Ok(DictionaryType::Unidic),
             #[cfg(feature = "ko-dic")]
             "ko-dic" => Ok(DictionaryType::Kodic),
+            #[cfg(feature = "cc-cedict")]
+            "cc-cedict" => Ok(DictionaryType::Cedict),
             "local" => Ok(DictionaryType::LocalDictionary),
             _ => Err(()),
         }
@@ -75,6 +86,8 @@ pub const SUPPORTED_DICTIONARY_TYPE: &[&str] = &[
     "unidic",
     #[cfg(feature = "ko-dic")]
     "ko-dic",
+    #[cfg(feature = "cc-cedict")]
+    "cc-cedict",
     "local",
 ];
 
@@ -135,6 +148,11 @@ fn build_user_dict(
             #[cfg(feature = "ko-dic")]
             DictionaryType::Kodic => {
                 let builder = KodicBuilder::new();
+                builder.build_user_dict(&path)
+            }
+            #[cfg(feature = "cc-cedict")]
+            DictionaryType::Cedict => {
+                let builder = CedictBuilder::new();
                 builder.build_user_dict(&path)
             }
             _ => {
@@ -227,6 +245,15 @@ impl Tokenizer {
                 unknown_dictionary = lindera_ko_dic::unknown_dict()?;
                 words_idx_data = lindera_ko_dic::words_idx_data();
                 words_data = lindera_ko_dic::words_data();
+            }
+            #[cfg(feature = "cc-cedict")]
+            DictionaryType::Cedict => {
+                dict = lindera_cc_cedict::prefix_dict();
+                cost_matrix = lindera_cc_cedict::connection();
+                char_definitions = lindera_cc_cedict::char_def()?;
+                unknown_dictionary = lindera_cc_cedict::unknown_dict()?;
+                words_idx_data = lindera_cc_cedict::words_idx_data();
+                words_data = lindera_cc_cedict::words_data();
             }
         }
 
