@@ -1,4 +1,4 @@
-FROM rust:1.58.0-slim-bullseye AS builder
+FROM rust:1.59.0-slim-bullseye AS builder
 
 ARG LINDERA_VERSION
 
@@ -17,9 +17,9 @@ RUN set -ex \
 
 COPY . .
 
-RUN rustup component add rustfmt --toolchain 1.58.0-x86_64-unknown-linux-gnu
+RUN rustup component add rustfmt --toolchain 1.59.0-x86_64-unknown-linux-gnu
 
-RUN cargo build --release
+RUN cargo build --release --features="full"
 
 FROM debian:bullseye-slim
 
