@@ -19,7 +19,7 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
         b.iter(|| {
             let config = TokenizerConfig {
                 user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
-                user_dict_type: UserDictionaryType::CSV,
+                user_dict_type: UserDictionaryType::Csv,
                 mode: Mode::Normal,
                 ..TokenizerConfig::default()
             };
@@ -38,7 +38,7 @@ fn bench_tokenize(c: &mut Criterion) {
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let config = TokenizerConfig {
         user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
-        user_dict_type: UserDictionaryType::CSV,
+        user_dict_type: UserDictionaryType::Csv,
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };

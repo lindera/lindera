@@ -29,10 +29,13 @@ jobs:
   test:
     name: Test
     strategy:
+      # max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        # os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-latest, macOS-latest]
         toolchain: [stable]
-        features: ["", "smallbinary"]
+        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict", "compress"]
+        # features: ["", "ipadic", "ko-dic", "cc-cedict", "compress"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3

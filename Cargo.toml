@@ -8,6 +8,12 @@ members = [
     "lindera-cli",
     "lindera-compress",
     "lindera-decompress",
+    "lindera-unidic-builder",
+    "lindera-unidic",
+    "lindera-ko-dic-builder",
+    "lindera-ko-dic",
+    "lindera-cc-cedict-builder",
+    "lindera-cc-cedict",
 ]
 resolver = "2"
 

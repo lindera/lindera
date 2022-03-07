@@ -10,19 +10,21 @@ jobs:
   build:
     name: Build
     strategy:
+      # max-parallel: 1
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
+          # - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
           - target: x86_64-apple-darwin
             os: macos-latest
         toolchain: [stable]
+        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict", "full"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -49,20 +51,20 @@ jobs:
       - uses: actions-rs/cargo@v1.0.1
         with:
           command: build
-          args: --release --target=${{ matrix.target }}
+          args: --release --features "${{ matrix.features }}" --target=${{ matrix.target }}
           use-cross: false
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
-      - name: Build for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.target }}/release/lindera-cc-cedict-builder
+      # - name: Build for Windows
+      #   if: matrix.os == 'windows-latest'
+      #   run: |
+      #     7z a lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera.exe target/${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.target }}/release/lindera-unidic-builder.exe target/${{ matrix.target }}/release/lindera-ko-dic-builder.exe target/${{ matrix.target }}/release/lindera-cc-cedict-builder.exe
       - name: Build for OSX
         if: matrix.os == 'macos-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder
+          zip --junk-paths lindera-${{ matrix.target }}.zip target/${{ matrix.target }}/release/lindera target/${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.target }}/release/lindera-cc-cedict-builder
       - uses: actions/upload-artifact@v2.3.1
         with:
           name: build-${{ matrix.target }}
@@ -94,7 +96,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
+          # - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
     name: Upload Release
     needs: [create-release]
@@ -180,6 +182,66 @@ jobs:
             echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already published"
           else
             pushd lindera-ipadic
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_UNIDIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic-builder") | .version')
+          LINDERA_UNIDIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_UNIDIC_BUILDER_VERSIONS} | grep ${LINDERA_UNIDIC_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-unidic-builder ${LINDERA_UNIDIC_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-unidic-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
+          LINDERA_UNIDIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_UNIDIC_VERSIONS} | grep ${LINDERA_UNIDIC_VERSION} >/dev/null; then
+            echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
+          else
+            pushd lindera-unidic
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_KO_DIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic-builder") | .version')
+          LINDERA_KO_DIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ko-dic-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_KO_DIC_BUILDER_VERSIONS} | grep ${LINDERA_KO_DIC_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-ko-dic-builder ${LINDERA_KO_DIC_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-ko-dic-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_KO_DIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version')
+          LINDERA_KO_DIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ko-dic | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_KO_DIC_VERSIONS} | grep ${LINDERA_KO_DIC_VERSION} >/dev/null; then
+            echo "lindera-ko-dic ${LINDERA_KO_DIC_VERSION} has already published"
+          else
+            pushd lindera-ko-dic
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_CC_CEDICT_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict-builder") | .version')
+          LINDERA_CC_CEDICT_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_CC_CEDICT_BUILDER_VERSIONS} | grep ${LINDERA_CC_CEDICT_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-cc-cedict-builder ${LINDERA_CC_CEDICT_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-cc-cedict-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_CC_CEDICT_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version')
+          LINDERA_CC_CEDICT_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_CC_CEDICT_VERSIONS} | grep ${LINDERA_CC_CEDICT_VERSION} >/dev/null; then
+            echo "lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION} has already published"
+          else
+            pushd lindera-cc-cedict
             cargo publish --token ${{ secrets.CRATES_TOKEN }}
             popd
           fi

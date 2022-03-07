@@ -2,7 +2,7 @@
 name = "lindera-cli"
 version = "0.10.0"
 edition = "2021"
-description = "A command-line interface for Lindera."
+description = "A morphological analysis tool."
 documentation = "https://docs.rs/lindera-cli"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
@@ -12,11 +12,17 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-smallbinary = ["lindera/smallbinary"]
+default = []
+full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
+ipadic = ["lindera/ipadic"]
+unidic = ["lindera/unidic"]
+ko-dic = ["lindera/ko-dic"]
+cc-cedict = ["lindera/cc-cedict"]
+compress = ["lindera/compress"]
 
 [dependencies]
 anyhow = "1.0"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "3.1", features = ["derive", "cargo"] }
 stringreader = "0.1"
 
 lindera = { version = "0.10.0", path = "../lindera" }

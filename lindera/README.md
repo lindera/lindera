@@ -16,15 +16,31 @@ The following products are required to build:
 % cargo build --release
 ```
 
+### Build with IPADIC
+
+The "ipadic" feature flag allows Lindera to include IPADIC. 
+
+```shell script
+% cargo build --release --features=ipadic
+```
+
+### Build with UniDic
+
+The "unidic" feature flag allows Lindera to include UniDic. 
+
+```shell script
+% cargo build --release --features=unidic
+```
+
 ### Build small binary
 
-You can reduce the size of the binary containing the lindera by using the "smallbinary" feature flag.  
+You can reduce the size of the binary containing the lindera by using the "compress" feature flag.  
 Instead, you will be penalized for the execution time of the program.
 
 This repo example is this.
 
 ```sh
-% cargo build --release --features smallbinary
+% cargo build --release --features compress
 ```
 
 It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
@@ -50,7 +66,7 @@ use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     // create tokenizer
-    let mut tokenizer = Tokenizer::new()?;
+    let tokenizer = Tokenizer::new()?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")?;
@@ -65,8 +81,9 @@ fn main() -> LinderaResult<()> {
 ```
 
 The above example can be run as follows:
+
 ```shell script
-% cargo run --example basic_example
+% cargo run --features=ipadic --example=basic_example
 ```
 
 You can see the result as follows:
@@ -94,7 +111,7 @@ For example:
 
 With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
-use std::path::Path;
+use std::path::PathBuf;
 
 use lindera::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera_core::viterbi::Mode;
@@ -103,11 +120,11 @@ use lindera_core::LinderaResult;
 fn main() -> LinderaResult<()> {
     // create tokenizer
     let config = TokenizerConfig {
-        user_dict_path: Some(&Path::new("resources/userdic.csv")),
+        user_dict_path: Some(PathBuf::from("./resources/userdic.csv")),
         mode: Mode::Normal,
         ..TokenizerConfig::default()
     };
-    let mut tokenizer = Tokenizer::with_config(config)?;
+    let tokenizer = Tokenizer::with_config(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
@@ -123,7 +140,7 @@ fn main() -> LinderaResult<()> {
 
 The above example can be by `cargo run --example`:
 ```shell
-% cargo run --example userdic_example
+% cargo run --features=ipadic --example=userdic_example
 東京スカイツリー
 の
 最寄り駅
