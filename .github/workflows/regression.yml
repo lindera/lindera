@@ -34,7 +34,7 @@ jobs:
         # os: [ubuntu-latest, macOS-latest, windows-latest]
         os: [ubuntu-latest, macOS-latest]
         toolchain: [stable]
-        features: ["", "ipadic", "unidic", "ko-dic", "compress"]
+        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict", "compress"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
