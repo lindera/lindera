@@ -1,21 +1,23 @@
-use std::env;
 use std::error::Error;
-use std::fs::{create_dir, rename};
-use std::io::Cursor;
-use std::path::Path;
 
-use encoding::all::UTF_8;
-use encoding::{EncoderTrap, Encoding};
-use flate2::read::GzDecoder;
-use tar::Archive;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
-
+#[cfg(feature = "ko-dic")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    use std::env;
+    use std::fs::{create_dir, rename};
+    use std::io::Cursor;
+    use std::path::Path;
+
+    use encoding::all::UTF_8;
+    use encoding::{EncoderTrap, Encoding};
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+    use tokio::fs::File;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    use lindera_core::dictionary_builder::DictionaryBuilder;
+    use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
+
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
 
@@ -89,5 +91,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let builder = KodicBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
+    Ok(())
+}
+
+#[cfg(not(feature = "ko-dic"))]
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }

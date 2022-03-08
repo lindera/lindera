@@ -1,21 +1,23 @@
-use std::env;
 use std::error::Error;
-use std::fs::{create_dir, rename};
-use std::io::Cursor;
-use std::path::Path;
 
-use encoding::all::EUC_JP;
-use encoding::{EncoderTrap, Encoding};
-use flate2::read::GzDecoder;
-use tar::Archive;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
-
+#[cfg(feature = "ipadic")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    use std::env;
+    use std::fs::{create_dir, rename};
+    use std::io::Cursor;
+    use std::path::Path;
+
+    use encoding::all::EUC_JP;
+    use encoding::{EncoderTrap, Encoding};
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+    use tokio::fs::File;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    use lindera_core::dictionary_builder::DictionaryBuilder;
+    use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
+
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
 
@@ -89,5 +91,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let builder = IpadicBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
+    Ok(())
+}
+
+#[cfg(not(feature = "ipadic"))]
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }

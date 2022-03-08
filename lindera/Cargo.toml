@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -14,10 +14,10 @@ license = "MIT"
 [features]
 default = []
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
-ipadic = ["lindera-ipadic", "lindera-ipadic-builder"]
-unidic = ["lindera-unidic", "lindera-unidic-builder"]
-ko-dic = ["lindera-ko-dic", "lindera-ko-dic-builder"]
-cc-cedict = ["lindera-cc-cedict", "lindera-cc-cedict-builder"]
+ipadic = ["lindera-ipadic/ipadic"]
+unidic = ["lindera-unidic/unidic"]
+ko-dic = ["lindera-ko-dic/ko-dic"]
+cc-cedict = ["lindera-cc-cedict/cc-cedict"]
 compress = ["lindera-ipadic/compress", "lindera-unidic/compress"]
 
 [dependencies]
@@ -28,16 +28,16 @@ encoding = "0.2"
 serde = {version="1.0", features = ["derive"] }
 serde_json = "1.0"
 
-lindera-core = { version = "0.11.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.11.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.11.0", path = "../lindera-ipadic", optional = true }
-lindera-ipadic-builder = { version = "0.11.0", path = "../lindera-ipadic-builder", optional = true }
-lindera-unidic = { version = "0.11.0", path = "../lindera-unidic", optional = true }
-lindera-unidic-builder = { version = "0.11.0", path = "../lindera-unidic-builder", optional = true }
-lindera-ko-dic = { version = "0.11.0", path = "../lindera-ko-dic", optional = true }
-lindera-ko-dic-builder = { version = "0.11.0", path = "../lindera-ko-dic-builder", optional = true }
-lindera-cc-cedict = { version = "0.11.0", path = "../lindera-cc-cedict", optional = true }
-lindera-cc-cedict-builder = { version = "0.11.0", path = "../lindera-cc-cedict-builder", optional = true }
+lindera-core = { version = "0.11.1", path = "../lindera-core" }
+lindera-dictionary = { version = "0.11.1", path = "../lindera-dictionary" }
+lindera-ipadic = { version = "0.11.1", path = "../lindera-ipadic", optional = true }
+lindera-ipadic-builder = { version = "0.11.1", path = "../lindera-ipadic-builder" }
+lindera-unidic = { version = "0.11.1", path = "../lindera-unidic", optional = true }
+lindera-unidic-builder = { version = "0.11.1", path = "../lindera-unidic-builder" }
+lindera-ko-dic = { version = "0.11.1", path = "../lindera-ko-dic", optional = true }
+lindera-ko-dic-builder = { version = "0.11.1", path = "../lindera-ko-dic-builder" }
+lindera-cc-cedict = { version = "0.11.1", path = "../lindera-cc-cedict", optional = true }
+lindera-cc-cedict-builder = { version = "0.11.1", path = "../lindera-cc-cedict-builder" }
 
 [dev-dependencies]
 criterion = "0.3"
