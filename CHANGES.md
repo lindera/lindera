@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.11.0 (2022-03-08)
+- Avoid building dictionaries not specified in features #156 @mosuka
+
 ## 0.11.0 (2022-03-07)
 - Add feature flag for dictionaries #153 @mosuka
 - Add dictionary to resources #149 @mosuka
