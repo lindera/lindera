@@ -1,3 +1,4 @@
+#[cfg(feature = "unidic")]
 use std::env;
 
 use lindera_core::character_definition::CharacterDefinitions;
@@ -21,41 +22,68 @@ macro_rules! decompress_data {
     };
 }
 
+#[cfg(feature = "unidic")]
 decompress_data!(
     CHAR_DEFINITION_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/char_def.bin")),
     "char_def.bin"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     CONNECTION_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/matrix.mtx")),
     "matrix.mtx"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     UNIDIC_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/dict.da")),
     "dict.da"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(UNIDIC_DATA, &[], "dict.da");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     UNIDIC_VALS,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/dict.vals")),
     "dict.vals"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(UNIDIC_VALS, &[], "dict.vals");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     UNKNOWN_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/unk.bin")),
     "unk.bin"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     WORDS_IDX_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/dict.wordsidx")),
     "dict.wordsidx"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
+
+#[cfg(feature = "unidic")]
 decompress_data!(
     WORDS_DATA,
     include_bytes!(concat!(env!("OUT_DIR"), "/lindera-unidic/dict.words")),
     "dict.words"
 );
+#[cfg(not(feature = "unidic"))]
+decompress_data!(WORDS_DATA, &[], "dict.words");
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
     CharacterDefinitions::load(&CHAR_DEFINITION_DATA)

@@ -1,21 +1,23 @@
-use std::env;
 use std::error::Error;
-use std::fs;
-use std::fs::File;
-use std::fs::{create_dir, rename};
-use std::io;
-use std::io::Write;
-use std::path::Path;
 
-use encoding::all::UTF_8;
-use encoding::{EncoderTrap, Encoding};
-use zip::ZipArchive;
-
-use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
-use lindera_core::dictionary_builder::DictionaryBuilder;
-
+#[cfg(feature = "cc-cedict")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    use std::env;
+    use std::fs;
+    use std::fs::File;
+    use std::fs::{create_dir, rename};
+    use std::io;
+    use std::io::Write;
+    use std::path::Path;
+
+    use encoding::all::UTF_8;
+    use encoding::{EncoderTrap, Encoding};
+    use zip::ZipArchive;
+
+    use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
+    use lindera_core::dictionary_builder::DictionaryBuilder;
+
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
 
@@ -123,5 +125,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let builder = CedictBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
+    Ok(())
+}
+
+#[cfg(not(feature = "cc-cedict"))]
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
