@@ -27,45 +27,52 @@ jobs:
         feature: ["default", "ipadic", "ko-dic", "cc-cedict"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
       # - name: Install packages for Linux
       #   if : matrix.target == 'x86_64-unknown-linux-gnu'
       #   run: |
       #     sudo apt install -y liblzma-dev
-      - uses: actions/cache@v2.1.7
+      - name: Cache ~/.cargo/registry
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2.1.7
+      - name: Cache ~/.cargo/git
+        uses: actions/cache@v2.1.7
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/cache@v2.1.7
+      - name: Cache target
+        uses: actions/cache@v2.1.7
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           override: true
-      - uses: actions-rs/cargo@v1.0.1
+      - name: Build
+        uses: actions-rs/cargo@v1.0.1
         with:
           command: build
           args: --release --features "${{ matrix.feature }}" --target=${{ matrix.target }}
           use-cross: false
-      - name: Build for Linux
+      - name: Create artifact for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder
-      - name: Build for Windows
+      - name: Create artifact for Windows
         if: matrix.os == 'windows-latest'
         run: |
           7z a lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder.exe
-      - name: Build for OSX
+      - name: Create artifact for OSX
         if: matrix.os == 'macos-latest'
         run: |
           zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder
-      - uses: actions/upload-artifact@v2.3.1
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2.3.1
         with:
           name: build-${{ matrix.feature }}-${{ matrix.target }}
           path: lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
@@ -75,8 +82,9 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - id: create-release
+      - name: Create release
         uses: actions/create-release@v1.1.4
+        id: create-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -84,9 +92,11 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-      - run: |
+      - name: Create release_upload_url.txt
+        run: |
           echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
-      - uses: actions/upload-artifact@v2.3.1
+      - name: Upload release_upload_url.txt
+        uses: actions/upload-artifact@v2.3.1
         with:
           name: create-release
           path: release_upload_url.txt
@@ -103,16 +113,19 @@ jobs:
     needs: [create-release]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v1
+      - name: Download release_upload_url.txt
+        uses: actions/download-artifact@v1
         with:
           name: create-release
       - id: upload-url
         run: |
           echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
-      - uses: actions/download-artifact@v1
+      - name: Download artifact
+        uses: actions/download-artifact@v1
         with:
           name: build-${{ matrix.feature }}-${{ matrix.target }}
-      - uses: actions/upload-release-asset@v1.0.2
+      - name: Upload release assets
+        uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -130,13 +143,16 @@ jobs:
     needs: [upload-release]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           override: true
-      - run: |
+      - name: Publish crate
+        run: |
           LINDERA_CORE_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-core") | .version')
           LINDERA_CORE_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-core | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CORE_VERSIONS} | grep ${LINDERA_CORE_VERSION} >/dev/null; then
@@ -286,22 +302,29 @@ jobs:
     needs: [publish-crates]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           override: true
-      - run: |
+      - name: Fetch latest version
+        run: |
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
           echo "LINDERA_VERSION=${LINDERA_VERSION}" >> $GITHUB_ENV
-      - uses: docker/setup-qemu-action@v1
-      - uses: docker/setup-buildx-action@v1
-      - uses: docker/login-action@v1
+      - name: Setup QUME
+        uses: docker/setup-qemu-action@v1
+      - name: Setup Docker build environment
+        uses: docker/setup-buildx-action@v1
+      - name: Docker login
+        uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v2
+      - name: Build Docker image
+        uses: docker/build-push-action@v2
         with:
           push: true
           build-args: |
