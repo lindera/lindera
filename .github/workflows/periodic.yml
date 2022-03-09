@@ -10,10 +10,10 @@ jobs:
     strategy:
       # max-parallel: 1
       matrix:
-        # os: [ubuntu-latest, macOS-latest, windows-latest]
-        os: [ubuntu-latest, macOS-latest]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        # os: [ubuntu-latest, macOS-latest]
         toolchain: [stable, beta, nightly]
-        features: ["", "ipadic", "unidic", "ko-dic", "cc-cedict", "compress"]
+        features: ["default", "ipadic", "unidic", "ko-dic", "cc-cedict", "compress"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
