@@ -32,7 +32,6 @@ jobs:
       # max-parallel: 1
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        os: [ubuntu-latest, macOS-latest]
         toolchain: [stable]
         features: ["defualt", "ipadic", "unidic", "ko-dic", "cc-cedict", "compress"]
     runs-on: ${{ matrix.os }}
