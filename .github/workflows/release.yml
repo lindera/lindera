@@ -67,8 +67,8 @@ jobs:
           zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder
       - uses: actions/upload-artifact@v2.3.1
         with:
-          name: build-${{ matrix.target }}
-          path: lindera-${{ matrix.target }}.zip
+          name: build-${{ matrix.feature }}-${{ matrix.target }}
+          path: lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
 
   create-release:
     name: Create Release
