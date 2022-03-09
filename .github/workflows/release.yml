@@ -57,20 +57,35 @@ jobs:
         uses: actions-rs/cargo@v1.0.1
         with:
           command: build
-          args: --release --features "${{ matrix.feature }}" --target=${{ matrix.target }}
+          args: --release --features "${{ matrix.feature }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
           use-cross: false
       - name: Create artifact for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder
+          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ipadic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-unidic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ko-dic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-cc-cedict-builder
       - name: Create artifact for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          7z a lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder.exe target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder.exe
+          7z a lindera-${{ matrix.feature }}-${{ matrix.target }}.zip \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera.exe \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ipadic-builder.exe \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-unidic-builder.exe \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ko-dic-builder.exe \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-cc-cedict-builder.exe
       - name: Create artifact for OSX
         if: matrix.os == 'macos-latest'
         run: |
-          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ipadic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-unidic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-ko-dic-builder target/${{ matrix.feature }}-${{ matrix.target }}/release/lindera-cc-cedict-builder
+          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ipadic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-unidic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-ko-dic-builder \
+            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera-cc-cedict-builder
       - name: Upload artifact
         uses: actions/upload-artifact@v2.3.1
         with:
