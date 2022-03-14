@@ -453,9 +453,9 @@ mod tests {
     use std::io::{BufReader, Read};
     use std::path::PathBuf;
 
-    use lindera_core::viterbi::{Mode, Penalty};
     use lindera_core::word_entry::WordId;
 
+    use crate::mode::{Mode, Penalty};
     use crate::tokenizer::{Token, Tokenizer, TokenizerConfig, UserDictionaryType};
 
     #[test]
