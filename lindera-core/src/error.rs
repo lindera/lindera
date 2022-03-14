@@ -13,6 +13,8 @@ pub enum LinderaErrorKind {
     Serialize,
     Compress,
     DictionaryNotFound,
+    DictionaryLoadError,
+    DictionaryBuildError,
 }
 
 impl LinderaErrorKind {

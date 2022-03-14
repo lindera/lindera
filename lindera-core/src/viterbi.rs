@@ -8,10 +8,10 @@ use crate::word_entry::{WordEntry, WordId};
 
 #[derive(Clone, Debug)]
 pub struct Penalty {
-    kanji_penalty_length_threshold: usize,
-    kanji_penalty_length_penalty: i32,
-    other_penalty_length_threshold: usize,
-    other_penalty_length_penalty: i32,
+    pub kanji_penalty_length_threshold: usize,
+    pub kanji_penalty_length_penalty: i32,
+    pub other_penalty_length_threshold: usize,
+    pub other_penalty_length_penalty: i32,
 }
 
 impl Default for Penalty {
@@ -146,7 +146,7 @@ impl Lattice {
     pub fn set_text(
         &mut self,
         dict: &PrefixDict,
-        user_dict: &Option<PrefixDict>,
+        user_dict: &Option<&PrefixDict>,
         char_definitions: &CharacterDefinitions,
         unknown_dictionary: &UnknownDictionary,
         text: &str,

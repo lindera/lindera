@@ -4,7 +4,7 @@ use crate::error::LinderaErrorKind;
 use crate::prefix_dict::PrefixDict;
 use crate::LinderaResult;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct UserDictionary {
     pub dict: PrefixDict<Vec<u8>>,
     pub words_idx_data: Vec<u8>,

@@ -1,5 +1,6 @@
 pub mod character_definition;
 pub mod connection;
+pub mod dictionary;
 pub mod dictionary_builder;
 pub mod error;
 pub mod file_util;

@@ -1,5 +1,5 @@
 use lindera::tokenizer::Tokenizer;
-use lindera_core::LinderaResult;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     // create tokenizer

@@ -5,13 +5,13 @@ use std::path::PathBuf;
 
 use clap::{AppSettings, Parser};
 
+use lindera::error::LinderaErrorKind;
 use lindera::formatter::format;
 use lindera::formatter::Format;
+use lindera::mode::{Mode, Penalty};
 use lindera::tokenizer::{DictionaryType, Tokenizer, TokenizerConfig, UserDictionaryType};
 use lindera::tokenizer::{DEFAULT_DICTIONARY_TYPE, SUPPORTED_DICTIONARY_TYPE};
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::viterbi::{Mode, Penalty};
-use lindera_core::LinderaResult;
+use lindera::LinderaResult;
 
 /// Lindera CLI
 #[derive(Parser, Debug)]
@@ -95,6 +95,9 @@ fn main() -> LinderaResult<()> {
             ))));
         }
     }
+
+    // user dictionary path
+    config.user_dict_path = args.user_dict;
 
     // user dictionary type
     match args.user_dict_type {

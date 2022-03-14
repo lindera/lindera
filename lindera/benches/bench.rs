@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
+use lindera::mode::Mode;
 use lindera::tokenizer::{Tokenizer, TokenizerConfig, UserDictionaryType};
-use lindera_core::viterbi::Mode;
 
 fn bench_constructor(c: &mut Criterion) {
     c.bench_function("bench-constructor", |b| {
