@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
-use byteorder::LittleEndian;
+use byteorder::{ByteOrder, LittleEndian};
 use serde::Serialize;
 
 #[cfg(feature = "cc-cedict")]
 use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
-use lindera_core::character_definition::CharacterDefinitions;
-use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::dictionary::Dictionary;
 #[cfg(any(
     feature = "ipadic",
     feature = "unidic",
@@ -17,8 +15,6 @@ use lindera_core::connection::ConnectionCostMatrix;
 ))]
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::file_util::read_file;
-use lindera_core::prefix_dict::PrefixDict;
-use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::viterbi::{Lattice, Mode as LinderaCoreMode};
 use lindera_core::word_entry::WordId;
@@ -183,12 +179,7 @@ fn build_user_dict(
 #[derive(Clone)]
 /// Tokenizer
 pub struct Tokenizer {
-    dict: PrefixDict<Vec<u8>>,
-    cost_matrix: ConnectionCostMatrix,
-    char_definitions: CharacterDefinitions,
-    unknown_dictionary: UnknownDictionary,
-    words_idx_data: Vec<u8>,
-    words_data: Vec<u8>,
+    dictionary: Dictionary,
     user_dictionary: Option<UserDictionary>,
     mode: Mode,
 }
@@ -209,78 +200,28 @@ impl Tokenizer {
     /// returns: Result<Tokenizer, LinderaError>
     ///
     pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
-        let dict;
-        let cost_matrix;
-        let char_definitions;
-        let unknown_dictionary;
-        let words_idx_data;
-        let words_data;
-        match config.dict_type {
+        let dictionary = match config.dict_type {
             DictionaryType::LocalDictionary => match config.dict_path.clone() {
-                Some(path) => {
-                    dict = lindera_dictionary::prefix_dict(path.clone())
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                    cost_matrix = lindera_dictionary::connection(path.clone())
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                    char_definitions = lindera_dictionary::char_def(path.clone())
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                    unknown_dictionary = lindera_dictionary::unknown_dict(path.clone())
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                    words_idx_data = lindera_dictionary::words_idx_data(path.clone())
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                    words_data = lindera_dictionary::words_data(path)
-                        .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                }
+                Some(path) => lindera_dictionary::load_dictionary(path)
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
                 None => {
                     return Err(LinderaErrorKind::DictionaryNotFound
                         .with_error(anyhow::anyhow!("dictionary path is not set.")));
                 }
             },
             #[cfg(feature = "ipadic")]
-            DictionaryType::Ipadic => {
-                dict = lindera_ipadic::prefix_dict();
-                cost_matrix = lindera_ipadic::connection();
-                char_definitions = lindera_ipadic::char_def()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                unknown_dictionary = lindera_ipadic::unknown_dict()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                words_idx_data = lindera_ipadic::words_idx_data();
-                words_data = lindera_ipadic::words_data();
-            }
+            DictionaryType::Ipadic => lindera_ipadic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "unidic")]
-            DictionaryType::Unidic => {
-                dict = lindera_unidic::prefix_dict();
-                cost_matrix = lindera_unidic::connection();
-                char_definitions = lindera_unidic::char_def()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                unknown_dictionary = lindera_unidic::unknown_dict()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                words_idx_data = lindera_unidic::words_idx_data();
-                words_data = lindera_unidic::words_data();
-            }
+            DictionaryType::Unidic => lindera_unidic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "ko-dic")]
-            DictionaryType::Kodic => {
-                dict = lindera_ko_dic::prefix_dict();
-                cost_matrix = lindera_ko_dic::connection();
-                char_definitions = lindera_ko_dic::char_def()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                unknown_dictionary = lindera_ko_dic::unknown_dict()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                words_idx_data = lindera_ko_dic::words_idx_data();
-                words_data = lindera_ko_dic::words_data();
-            }
+            DictionaryType::Kodic => lindera_ko_dic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "cc-cedict")]
-            DictionaryType::Cedict => {
-                dict = lindera_cc_cedict::prefix_dict();
-                cost_matrix = lindera_cc_cedict::connection();
-                char_definitions = lindera_cc_cedict::char_def()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                unknown_dictionary = lindera_cc_cedict::unknown_dict()
-                    .map_err(|err| LinderaErrorKind::DictionaryLoadError.with_error(err))?;
-                words_idx_data = lindera_cc_cedict::words_idx_data();
-                words_data = lindera_cc_cedict::words_data();
-            }
-        }
+            DictionaryType::Cedict => lindera_cc_cedict::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+        };
 
         let user_dictionary = match config.user_dict_path {
             Some(path) => Some(build_user_dict(
@@ -292,14 +233,9 @@ impl Tokenizer {
         };
 
         let tokenizer = Tokenizer {
-            dict,
-            cost_matrix,
-            char_definitions,
-            unknown_dictionary,
-            words_idx_data,
-            words_data,
-            mode: config.mode,
+            dictionary,
             user_dictionary,
+            mode: config.mode,
         };
 
         Ok(tokenizer)
@@ -329,14 +265,14 @@ impl Tokenizer {
         let mode = LinderaCoreMode::from(self.mode.clone());
 
         lattice.set_text(
-            &self.dict,
+            &self.dictionary.dict,
             &self.user_dictionary.as_ref().map(|d| &d.dict),
-            &self.char_definitions,
-            &self.unknown_dictionary,
+            &self.dictionary.char_definitions,
+            &self.dictionary.unknown_dictionary,
             text,
             &mode,
         );
-        lattice.calculate_path_costs(&self.cost_matrix, &mode);
+        lattice.calculate_path_costs(&self.dictionary.cost_matrix, &mode);
         lattice.tokens_offset()
     }
 
@@ -371,7 +307,10 @@ impl Tokenizer {
         }
 
         let (words_idx_data, words_data) = if word_id.is_system() {
-            (self.words_idx_data.as_slice(), self.words_data.as_slice())
+            (
+                self.dictionary.words_idx_data.as_slice(),
+                self.dictionary.words_data.as_slice(),
+            )
         } else {
             (
                 self.user_dictionary

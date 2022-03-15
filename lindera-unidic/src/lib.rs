@@ -3,6 +3,7 @@ use std::env;
 
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::dictionary::Dictionary;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::LinderaResult;
@@ -84,6 +85,17 @@ decompress_data!(
 );
 #[cfg(not(feature = "unidic"))]
 decompress_data!(WORDS_DATA, &[], "dict.words");
+
+pub fn load_dictionary() -> LinderaResult<Dictionary> {
+    Ok(Dictionary {
+        dict: prefix_dict(),
+        cost_matrix: connection(),
+        char_definitions: char_def()?,
+        unknown_dictionary: unknown_dict()?,
+        words_idx_data: words_idx_data(),
+        words_data: words_data(),
+    })
+}
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
     CharacterDefinitions::load(&CHAR_DEFINITION_DATA)

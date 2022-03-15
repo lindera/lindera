@@ -5,7 +5,7 @@ use crate::connection::ConnectionCostMatrix;
 use crate::prefix_dict::PrefixDict;
 use crate::unknown_dictionary::UnknownDictionary;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {
     pub dict: PrefixDict<Vec<u8>>,
     pub cost_matrix: ConnectionCostMatrix,

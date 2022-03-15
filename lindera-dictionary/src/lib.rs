@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::dictionary::Dictionary;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::UnknownDictionary;
@@ -10,6 +11,17 @@ use lindera_core::LinderaResult;
 
 fn read_file(path: PathBuf) -> LinderaResult<Vec<u8>> {
     fs::read(path).map_err(|e| LinderaErrorKind::Io.with_error(e))
+}
+
+pub fn load_dictionary(path: PathBuf) -> LinderaResult<Dictionary> {
+    Ok(Dictionary {
+        dict: prefix_dict(path.clone())?,
+        cost_matrix: connection(path.clone())?,
+        char_definitions: char_def(path.clone())?,
+        unknown_dictionary: unknown_dict(path.clone())?,
+        words_idx_data: words_idx_data(path.clone())?,
+        words_data: words_data(path)?,
+    })
 }
 
 pub fn char_def(dir: PathBuf) -> LinderaResult<CharacterDefinitions> {
