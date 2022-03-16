@@ -2,7 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.11.0 (2022-03-08)
+## 0.12.0 (2022-03-16)
+- Encapsulate lindera-core package behind the lindera package #157 @mosuka
+
+## 0.11.1 (2022-03-08)
 - Avoid building dictionaries not specified in features #156 @mosuka
 
 ## 0.11.0 (2022-03-07)
