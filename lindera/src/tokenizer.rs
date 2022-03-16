@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use byteorder::ByteOrder;
-use byteorder::LittleEndian;
+use byteorder::{ByteOrder, LittleEndian};
 use serde::Serialize;
 
 #[cfg(feature = "cc-cedict")]
 use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
-use lindera_core::character_definition::CharacterDefinitions;
-use lindera_core::connection::ConnectionCostMatrix;
+use lindera_core::dictionary::Dictionary;
 #[cfg(any(
     feature = "ipadic",
     feature = "unidic",
@@ -16,20 +14,20 @@ use lindera_core::connection::ConnectionCostMatrix;
     feature = "cc-cedict"
 ))]
 use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_core::error::LinderaErrorKind;
 use lindera_core::file_util::read_file;
-use lindera_core::prefix_dict::PrefixDict;
-use lindera_core::unknown_dictionary::UnknownDictionary;
 use lindera_core::user_dictionary::UserDictionary;
-use lindera_core::viterbi::{Lattice, Mode};
+use lindera_core::viterbi::{Lattice, Mode as LinderaCoreMode};
 use lindera_core::word_entry::WordId;
-use lindera_core::LinderaResult;
 #[cfg(feature = "ipadic")]
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 #[cfg(feature = "ko-dic")]
 use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
 #[cfg(feature = "unidic")]
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
+
+use crate::error::LinderaErrorKind;
+use crate::mode::Mode;
+use crate::LinderaResult;
 
 #[derive(Debug, Clone)]
 pub enum DictionaryType {
@@ -138,22 +136,30 @@ fn build_user_dict(
             #[cfg(feature = "ipadic")]
             DictionaryType::Ipadic => {
                 let builder = IpadicBuilder::new();
-                builder.build_user_dict(&path)
+                builder
+                    .build_user_dict(&path)
+                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             #[cfg(feature = "unidic")]
             DictionaryType::Unidic => {
                 let builder = UnidicBuilder::new();
-                builder.build_user_dict(&path)
+                builder
+                    .build_user_dict(&path)
+                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             #[cfg(feature = "ko-dic")]
             DictionaryType::Kodic => {
                 let builder = KodicBuilder::new();
-                builder.build_user_dict(&path)
+                builder
+                    .build_user_dict(&path)
+                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             #[cfg(feature = "cc-cedict")]
             DictionaryType::Cedict => {
                 let builder = CedictBuilder::new();
-                builder.build_user_dict(&path)
+                builder
+                    .build_user_dict(&path)
+                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             _ => {
                 return Err(LinderaErrorKind::DictionaryNotFound
@@ -161,8 +167,11 @@ fn build_user_dict(
             }
         },
         UserDictionaryType::Binary => {
-            let user_dict_bin_data = read_file(&path)?;
+            let user_dict_bin_data =
+                read_file(&path).map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?;
+
             UserDictionary::load(&user_dict_bin_data)
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))
         }
     }
 }
@@ -170,15 +179,8 @@ fn build_user_dict(
 #[derive(Clone)]
 /// Tokenizer
 pub struct Tokenizer {
-    dict: PrefixDict<Vec<u8>>,
-    cost_matrix: ConnectionCostMatrix,
-    char_definitions: CharacterDefinitions,
-    unknown_dictionary: UnknownDictionary,
-    words_idx_data: Vec<u8>,
-    words_data: Vec<u8>,
-    user_dict: Option<PrefixDict<Vec<u8>>>,
-    user_dict_words_idx_data: Option<Vec<u8>>,
-    user_dict_words_data: Option<Vec<u8>>,
+    dictionary: Dictionary,
+    user_dictionary: Option<UserDictionary>,
     mode: Mode,
 }
 
@@ -198,92 +200,41 @@ impl Tokenizer {
     /// returns: Result<Tokenizer, LinderaError>
     ///
     pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
-        let dict;
-        let cost_matrix;
-        let char_definitions;
-        let unknown_dictionary;
-        let words_idx_data;
-        let words_data;
-        match config.dict_type {
+        let dictionary = match config.dict_type {
             DictionaryType::LocalDictionary => match config.dict_path.clone() {
-                Some(path) => {
-                    dict = lindera_dictionary::prefix_dict(path.clone())?;
-                    cost_matrix = lindera_dictionary::connection(path.clone())?;
-                    char_definitions = lindera_dictionary::char_def(path.clone())?;
-                    unknown_dictionary = lindera_dictionary::unknown_dict(path.clone())?;
-                    words_idx_data = lindera_dictionary::words_idx_data(path.clone())?;
-                    words_data = lindera_dictionary::words_data(path)?;
-                }
+                Some(path) => lindera_dictionary::load_dictionary(path)
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
                 None => {
                     return Err(LinderaErrorKind::DictionaryNotFound
                         .with_error(anyhow::anyhow!("dictionary path is not set.")));
                 }
             },
             #[cfg(feature = "ipadic")]
-            DictionaryType::Ipadic => {
-                dict = lindera_ipadic::prefix_dict();
-                cost_matrix = lindera_ipadic::connection();
-                char_definitions = lindera_ipadic::char_def()?;
-                unknown_dictionary = lindera_ipadic::unknown_dict()?;
-                words_idx_data = lindera_ipadic::words_idx_data();
-                words_data = lindera_ipadic::words_data();
-            }
+            DictionaryType::Ipadic => lindera_ipadic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "unidic")]
-            DictionaryType::Unidic => {
-                dict = lindera_unidic::prefix_dict();
-                cost_matrix = lindera_unidic::connection();
-                char_definitions = lindera_unidic::char_def()?;
-                unknown_dictionary = lindera_unidic::unknown_dict()?;
-                words_idx_data = lindera_unidic::words_idx_data();
-                words_data = lindera_unidic::words_data();
-            }
+            DictionaryType::Unidic => lindera_unidic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "ko-dic")]
-            DictionaryType::Kodic => {
-                dict = lindera_ko_dic::prefix_dict();
-                cost_matrix = lindera_ko_dic::connection();
-                char_definitions = lindera_ko_dic::char_def()?;
-                unknown_dictionary = lindera_ko_dic::unknown_dict()?;
-                words_idx_data = lindera_ko_dic::words_idx_data();
-                words_data = lindera_ko_dic::words_data();
-            }
+            DictionaryType::Kodic => lindera_ko_dic::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "cc-cedict")]
-            DictionaryType::Cedict => {
-                dict = lindera_cc_cedict::prefix_dict();
-                cost_matrix = lindera_cc_cedict::connection();
-                char_definitions = lindera_cc_cedict::char_def()?;
-                unknown_dictionary = lindera_cc_cedict::unknown_dict()?;
-                words_idx_data = lindera_cc_cedict::words_idx_data();
-                words_data = lindera_cc_cedict::words_data();
-            }
-        }
+            DictionaryType::Cedict => lindera_cc_cedict::load_dictionary()
+                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+        };
 
-        let user_dict;
-        let user_dict_words_idx_data;
-        let user_dict_words_data;
-        match config.user_dict_path {
-            Some(path) => {
-                let tmp_user_dict = build_user_dict(config.dict_type, path, config.user_dict_type)?;
-                user_dict = Some(tmp_user_dict.dict);
-                user_dict_words_idx_data = Some(tmp_user_dict.words_idx_data);
-                user_dict_words_data = Some(tmp_user_dict.words_data);
-            }
-            None => {
-                user_dict = None;
-                user_dict_words_idx_data = None;
-                user_dict_words_data = None;
-            }
-        }
+        let user_dictionary = match config.user_dict_path {
+            Some(path) => Some(build_user_dict(
+                config.dict_type,
+                path,
+                config.user_dict_type,
+            )?),
+            None => None,
+        };
 
         let tokenizer = Tokenizer {
-            dict,
-            cost_matrix,
-            char_definitions,
-            unknown_dictionary,
-            words_idx_data,
-            words_data,
-            user_dict,
-            user_dict_words_idx_data,
-            user_dict_words_data,
+            dictionary,
+            user_dictionary,
             mode: config.mode,
         };
 
@@ -310,15 +261,18 @@ impl Tokenizer {
         if text.is_empty() {
             return Vec::new();
         }
+
+        let mode = LinderaCoreMode::from(self.mode.clone());
+
         lattice.set_text(
-            &self.dict,
-            &self.user_dict,
-            &self.char_definitions,
-            &self.unknown_dictionary,
+            &self.dictionary.dict,
+            &self.user_dictionary.as_ref().map(|d| &d.dict),
+            &self.dictionary.char_definitions,
+            &self.dictionary.unknown_dictionary,
             text,
-            &self.mode,
+            &mode,
         );
-        lattice.calculate_path_costs(&self.cost_matrix, &self.mode);
+        lattice.calculate_path_costs(&self.dictionary.cost_matrix, &mode);
         lattice.tokens_offset()
     }
 
@@ -353,20 +307,25 @@ impl Tokenizer {
         }
 
         let (words_idx_data, words_data) = if word_id.is_system() {
-            (self.words_idx_data.as_slice(), self.words_data.as_slice())
+            (
+                self.dictionary.words_idx_data.as_slice(),
+                self.dictionary.words_data.as_slice(),
+            )
         } else {
             (
-                self.user_dict_words_idx_data
+                self.user_dictionary
                     .as_ref()
                     .ok_or_else(|| {
                         LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
                     })?
+                    .words_idx_data
                     .as_slice(),
-                self.user_dict_words_data
+                self.user_dictionary
                     .as_ref()
                     .ok_or_else(|| {
                         LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
                     })?
+                    .words_data
                     .as_slice(),
             )
         };
@@ -433,9 +392,9 @@ mod tests {
     use std::io::{BufReader, Read};
     use std::path::PathBuf;
 
-    use lindera_core::viterbi::{Mode, Penalty};
     use lindera_core::word_entry::WordId;
 
+    use crate::mode::{Mode, Penalty};
     use crate::tokenizer::{Token, Tokenizer, TokenizerConfig, UserDictionaryType};
 
     #[test]
@@ -641,9 +600,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        assert!(tokenizer.user_dict.is_some());
-        assert!(tokenizer.user_dict_words_idx_data.is_some());
-        assert!(tokenizer.user_dict_words_data.is_some());
+        assert!(tokenizer.user_dictionary.is_some());
         let tokens: Vec<Token> = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
             .unwrap();
@@ -689,9 +646,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        assert!(tokenizer.user_dict.is_some());
-        assert!(tokenizer.user_dict_words_idx_data.is_some());
-        assert!(tokenizer.user_dict_words_data.is_some());
+        assert!(tokenizer.user_dictionary.is_some());
         let tokens: Vec<Token> = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
             .unwrap();
@@ -736,9 +691,7 @@ mod tests {
             ..TokenizerConfig::default()
         };
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        assert!(tokenizer.user_dict.is_some());
-        assert!(tokenizer.user_dict_words_idx_data.is_some());
-        assert!(tokenizer.user_dict_words_data.is_some());
+        assert!(tokenizer.user_dictionary.is_some());
 
         let tokens: Vec<Token> = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")

@@ -1,7 +1,6 @@
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
+use crate::error::LinderaErrorKind;
 use crate::tokenizer::Token;
+use crate::LinderaResult;
 
 #[derive(Debug, Clone, Copy)]
 /// Formatter type

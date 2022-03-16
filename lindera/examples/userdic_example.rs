@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
+use lindera::mode::Mode;
 use lindera::tokenizer::{Tokenizer, TokenizerConfig};
-use lindera_core::viterbi::Mode;
-use lindera_core::LinderaResult;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     // create tokenizer

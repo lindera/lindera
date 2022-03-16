@@ -226,8 +226,8 @@ impl DictionaryBuilder for CedictBuilder {
                 .or_insert_with(Vec::new)
                 .push(WordEntry {
                     word_id: WordId(row_id as u32, true),
-                    word_cost: word_cost,
-                    cost_id: cost_id,
+                    word_cost,
+                    cost_id,
                 });
         }
 

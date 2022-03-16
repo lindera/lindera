@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, LittleEndian};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ConnectionCostMatrix {
     pub costs_data: Vec<u8>,
     pub backward_size: u32,

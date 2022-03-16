@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::{self, Write};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::u32;
 

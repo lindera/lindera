@@ -82,7 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             let output_file_path = match file.enclosed_name() {
-                Some(path) => Path::new(&build_dir).join(path.to_owned()),
+                Some(path) => Path::new(&build_dir).join(path),
                 None => continue,
             };
             {
