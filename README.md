@@ -17,7 +17,7 @@ Make sure you activated the full features of the lindera crate on Cargo.toml:
 
 ```
 [dependencies]
-lindera = { version = "0.11.0", features = ["full"] }
+lindera = { version = "0.12.0", features = ["full"] }
 ```
 
 ### Basic example
