@@ -25,9 +25,8 @@ lindera-decompress = { version = "0.12.0", path = "../lindera-decompress", optio
 
 [build-dependencies]
 encoding = "0.2"
-reqwest = "0.11"
+ureq = { version = "2.4.0", default-features = false, features = ["tls"] }
 zip = "0.6"
-tokio = { version = "1.9", features = ["full"] }
 
 lindera-core = { version = "0.12.0", path = "../lindera-core" }
 lindera-cc-cedict-builder = { version = "0.12.0", path = "../lindera-cc-cedict-builder"}
