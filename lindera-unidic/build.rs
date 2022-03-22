@@ -1,14 +1,10 @@
 use std::error::Error;
 
 #[cfg(feature = "unidic")]
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     use std::env;
-    use std::fs;
-    use std::fs::File;
-    use std::fs::{create_dir, rename};
-    use std::io;
-    use std::io::Write;
+    use std::fs::{self, create_dir, rename, File};
+    use std::io::{self, Write};
     use std::path::Path;
 
     use encoding::all::UTF_8;
@@ -66,13 +62,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             // Download a tarball
             let download_url =
                 "https://ccd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip";
-            let mut resp = reqwest::get(download_url).await?;
-
-            // Save a ttarball
+            let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
-            while let Some(chunk) = resp.chunk().await? {
-                dest.write_all(&chunk)?;
-            }
+
+            io::copy(&mut resp.into_reader(), &mut dest)?;
+            dest.flush()?;
+
             rename(tmp_path, &source_path_for_build).expect("Failed to rename temporary file");
         }
 
@@ -129,7 +124,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 #[cfg(not(feature = "unidic"))]
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
