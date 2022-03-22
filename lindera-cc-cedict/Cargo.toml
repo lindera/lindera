@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-cc-cedict = []
+cc-cedict = ["encoding", "ureq", "zip"]
 compress = ["lindera-cc-cedict-builder/compress", "lindera-decompress"]
 
 [dependencies]
@@ -24,9 +24,9 @@ lindera-core = { version = "0.12.0", path = "../lindera-core" }
 lindera-decompress = { version = "0.12.0", path = "../lindera-decompress", optional = true }
 
 [build-dependencies]
-encoding = "0.2"
-ureq = { version = "2.4.0", default-features = false, features = ["tls"] }
-zip = "0.6"
+encoding = { version = "0.2", optional = true }
+ureq = { version = "2.4.0", default-features = false, features = ["tls"], optional = true }
+zip = { version = "0.6", optional = true }
 
 lindera-core = { version = "0.12.0", path = "../lindera-core" }
 lindera-cc-cedict-builder = { version = "0.12.0", path = "../lindera-cc-cedict-builder"}

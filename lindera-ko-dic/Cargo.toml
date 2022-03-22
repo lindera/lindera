@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ko-dic = []
+ko-dic = ["encoding", "flate2", "tar", "ureq"]
 compress = ["lindera-ko-dic-builder/compress", "lindera-decompress"]
 
 [dependencies]
@@ -24,10 +24,10 @@ lindera-core = { version = "0.12.0", path = "../lindera-core" }
 lindera-decompress = { version = "0.12.0", path = "../lindera-decompress", optional = true }
 
 [build-dependencies]
-encoding = "0.2"
-flate2 = "1.0"
-tar = "0.4"
-ureq = { version = "2.4.0", default-features = false, features = ["tls"] }
+encoding = { version = "0.2", optional = true }
+flate2 = { version = "1.0", optional = true }
+tar = { version = "0.4", optional = true }
+ureq = { version = "2.4.0", default-features = false, features = ["tls"], optional = true }
 
 lindera-core = { version = "0.12.0", path = "../lindera-core" }
 lindera-ko-dic-builder = { version = "0.12.0", path = "../lindera-ko-dic-builder"}
