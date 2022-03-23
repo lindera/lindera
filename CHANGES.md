@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.2 (2022-03-23)
+- Remove unused dependencies #166 @Kerollmops
+
 ## 0.12.1 (2022-03-22)
 - Bump up to 0.12.1 #165 @mosuka
 - Remove the Tokio dependency #164 @Kerollmops
