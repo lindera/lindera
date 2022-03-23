@@ -23,8 +23,6 @@ compress = ["lindera/compress"]
 [dependencies]
 anyhow = "1.0"
 clap = { version = "3.1", features = ["derive", "cargo"] }
-stringreader = "0.1"
-
 lindera = { version = "0.12.1", path = "../lindera" }
 
 [[bin]]
