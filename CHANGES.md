@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.12.2 (2022-03-23)
+- Bump to 0.12.2 #167 @mosuka
 - Remove unused dependencies #166 @Kerollmops
 
 ## 0.12.1 (2022-03-22)
