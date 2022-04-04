@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Download a tarball
             let download_url =
-                "https://ccd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip";
+                "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip";
             let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
 
