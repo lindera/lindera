@@ -15,6 +15,7 @@ pub enum LinderaErrorKind {
     DictionaryNotFound,
     DictionaryLoadError,
     DictionaryBuildError,
+    DictionaryTypeError,
 }
 
 impl LinderaErrorKind {

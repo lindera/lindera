@@ -25,7 +25,7 @@ use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
 #[cfg(feature = "unidic")]
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
-use crate::error::LinderaErrorKind;
+use crate::error::{LinderaError, LinderaErrorKind};
 use crate::mode::Mode;
 use crate::LinderaResult;
 
@@ -43,7 +43,7 @@ pub enum DictionaryType {
 }
 
 impl FromStr for DictionaryType {
-    type Err = ();
+    type Err = LinderaError;
     fn from_str(input: &str) -> Result<DictionaryType, Self::Err> {
         match input {
             #[cfg(feature = "ipadic")]
@@ -55,7 +55,8 @@ impl FromStr for DictionaryType {
             #[cfg(feature = "cc-cedict")]
             "cc-cedict" => Ok(DictionaryType::Cedict),
             "local" => Ok(DictionaryType::LocalDictionary),
-            _ => Err(()),
+            _ => Err(LinderaErrorKind::DictionaryTypeError
+                .with_error(anyhow::anyhow!("Invalid dictionary type: {}", input))),
         }
     }
 }
