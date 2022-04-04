@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Add DictionaryTypeError #170 @mosuka
+
 ## 0.12.2 (2022-03-23)
 - Bump to 0.12.2 #167 @mosuka
 - Remove unused dependencies #166 @Kerollmops
