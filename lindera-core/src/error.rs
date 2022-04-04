@@ -17,6 +17,7 @@ pub enum LinderaErrorKind {
     DictionaryBuildError,
     DictionaryTypeError,
     UserDictionaryTypeError,
+    ModeError,
 }
 
 impl LinderaErrorKind {
