@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.4 (2022-04-04)
+- Change UniDic download URL #172 @mosuka
+
 ## 0.12.3 (2022-04-04)
 - Add UserDictionaryTypeError #171 @mosuka
 - Add DictionaryTypeError #170 @mosuka
