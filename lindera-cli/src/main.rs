@@ -2,15 +2,16 @@ use std::fs;
 use std::io;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use clap::{AppSettings, Parser};
 
 use lindera::error::LinderaErrorKind;
 use lindera::formatter::format;
 use lindera::formatter::Format;
-use lindera::mode::{Mode, Penalty};
+use lindera::mode::Mode;
+use lindera::tokenizer::DEFAULT_DICTIONARY_TYPE;
 use lindera::tokenizer::{DictionaryType, Tokenizer, TokenizerConfig, UserDictionaryType};
-use lindera::tokenizer::{DEFAULT_DICTIONARY_TYPE, SUPPORTED_DICTIONARY_TYPE};
 use lindera::LinderaResult;
 
 /// Lindera CLI
@@ -67,81 +68,29 @@ fn main() -> LinderaResult<()> {
     let mut config = TokenizerConfig::default();
 
     // dictionary type
-    match args.dict_type.as_str() {
-        #[cfg(feature = "ipadic")]
-        "ipadic" => {
-            config.dict_type = DictionaryType::Ipadic;
-        }
-        #[cfg(feature = "unidic")]
-        "unidic" => {
-            config.dict_type = DictionaryType::Unidic;
-        }
-        #[cfg(feature = "ko-dic")]
-        "ko-dic" => {
-            config.dict_type = DictionaryType::Kodic;
-        }
-        #[cfg(feature = "cc-cedict")]
-        "cc-cedict" => {
-            config.dict_type = DictionaryType::Cedict;
-        }
-        "local" => {
-            config.dict_type = DictionaryType::LocalDictionary;
-            config.dict_path = args.dict;
-        }
-        _ => {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(format!(
-                "{:?} are available for --dict-type",
-                SUPPORTED_DICTIONARY_TYPE
-            ))));
-        }
-    }
+    config.dict_type = DictionaryType::from_str(args.dict_type.as_str())?;
 
     // user dictionary path
     config.user_dict_path = args.user_dict;
 
     // user dictionary type
     match args.user_dict_type {
-        Some(ref user_dict_type) => match user_dict_type.as_str() {
-            "csv" => config.user_dict_type = UserDictionaryType::Csv,
-            "bin" => config.user_dict_type = UserDictionaryType::Binary,
-            _ => {
-                return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                    "invalid user dictionary type: {}",
-                    user_dict_type
-                )))
-            }
-        },
+        Some(ref user_dict_type) => {
+            config.user_dict_type = UserDictionaryType::from_str(user_dict_type)?;
+        }
         None => {
             config.user_dict_type = UserDictionaryType::Csv;
         }
     }
 
     // mode
-    match args.mode.as_str() {
-        "normal" => config.mode = Mode::Normal,
-        "search" => config.mode = Mode::Decompose(Penalty::default()),
-        "decompose" => config.mode = Mode::Decompose(Penalty::default()),
-        _ => {
-            return Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("unsupported mode: {}", args.mode)));
-        }
-    }
+    config.mode = Mode::from_str(args.mode.as_str())?;
 
     // create tokenizer
     let tokenizer = Tokenizer::with_config(config)?;
 
     // output format
-    let output_format = match args.output_format.as_str() {
-        "mecab" => Format::Mecab,
-        "wakati" => Format::Wakati,
-        "json" => Format::Json,
-        _ => {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                "unsupported format: {}",
-                args.output_format
-            )));
-        }
-    };
+    let output_format = Format::from_str(args.output_format.as_str())?;
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {

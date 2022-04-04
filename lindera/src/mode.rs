@@ -1,4 +1,8 @@
+use std::str::FromStr;
+
 use lindera_core::viterbi::{Edge, Mode as LinderaCoreMode, Penalty as LinderaCorePenalty};
+
+use crate::error::{LinderaError, LinderaErrorKind};
 
 #[derive(Clone, Debug)]
 pub struct Penalty {
@@ -54,15 +58,6 @@ pub enum Mode {
     Decompose(Penalty),
 }
 
-impl From<Mode> for LinderaCoreMode {
-    fn from(mode: Mode) -> Self {
-        match mode {
-            Mode::Normal => LinderaCoreMode::Normal,
-            Mode::Decompose(penalty) => LinderaCoreMode::Decompose(penalty.into()),
-        }
-    }
-}
-
 impl Mode {
     pub fn is_search(&self) -> bool {
         match self {
@@ -74,6 +69,29 @@ impl Mode {
         match self {
             Mode::Normal => 0i32,
             Mode::Decompose(penalty) => penalty.penalty(edge),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = LinderaError;
+    fn from_str(mode: &str) -> Result<Mode, Self::Err> {
+        match mode {
+            "normal" => Ok(Mode::Normal),
+            "decompose" => Ok(Mode::Decompose(Penalty::default())),
+            _ => {
+                Err(LinderaErrorKind::ModeError
+                    .with_error(anyhow::anyhow!("Invalid mode: {}", mode)))
+            }
+        }
+    }
+}
+
+impl From<Mode> for LinderaCoreMode {
+    fn from(mode: Mode) -> Self {
+        match mode {
+            Mode::Normal => LinderaCoreMode::Normal,
+            Mode::Decompose(penalty) => LinderaCoreMode::Decompose(penalty.into()),
         }
     }
 }
