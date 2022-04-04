@@ -20,6 +20,7 @@ pub enum LinderaErrorKind {
     DictionaryLoadError,
     DictionaryBuildError,
     DictionaryTypeError,
+    UserDictionaryTypeError,
 }
 
 impl From<LinderaCoreError> for LinderaErrorKind {
@@ -37,6 +38,9 @@ impl From<LinderaCoreError> for LinderaErrorKind {
             LinderaCoreErrorKind::DictionaryLoadError => LinderaErrorKind::DictionaryLoadError,
             LinderaCoreErrorKind::DictionaryBuildError => LinderaErrorKind::DictionaryBuildError,
             LinderaCoreErrorKind::DictionaryTypeError => LinderaErrorKind::DictionaryTypeError,
+            LinderaCoreErrorKind::UserDictionaryTypeError => {
+                LinderaErrorKind::UserDictionaryTypeError
+            }
         }
     }
 }
