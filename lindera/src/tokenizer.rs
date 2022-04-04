@@ -68,12 +68,13 @@ pub enum UserDictionaryType {
 }
 
 impl FromStr for UserDictionaryType {
-    type Err = ();
+    type Err = LinderaError;
     fn from_str(input: &str) -> Result<UserDictionaryType, Self::Err> {
         match input {
             "csv" => Ok(UserDictionaryType::Csv),
             "bin" => Ok(UserDictionaryType::Binary),
-            _ => Err(()),
+            _ => Err(LinderaErrorKind::UserDictionaryTypeError
+                .with_error(anyhow::anyhow!("Invalid user dictionary type: {}", input))),
         }
     }
 }
