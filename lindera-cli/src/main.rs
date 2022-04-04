@@ -90,17 +90,7 @@ fn main() -> LinderaResult<()> {
     let tokenizer = Tokenizer::with_config(config)?;
 
     // output format
-    let output_format = match args.output_format.as_str() {
-        "mecab" => Format::Mecab,
-        "wakati" => Format::Wakati,
-        "json" => Format::Json,
-        _ => {
-            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                "unsupported format: {}",
-                args.output_format
-            )));
-        }
-    };
+    let output_format = Format::from_str(args.output_format.as_str())?;
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {

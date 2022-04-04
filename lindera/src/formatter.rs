@@ -1,4 +1,6 @@
-use crate::error::LinderaErrorKind;
+use std::str::FromStr;
+
+use crate::error::{LinderaError, LinderaErrorKind};
 use crate::tokenizer::Token;
 use crate::LinderaResult;
 
@@ -8,6 +10,19 @@ pub enum Format {
     Mecab,
     Wakati,
     Json,
+}
+
+impl FromStr for Format {
+    type Err = LinderaError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mecab" => Ok(Format::Mecab),
+            "wakati" => Ok(Format::Wakati),
+            "json" => Ok(Format::Json),
+            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid format: {}", s))),
+        }
+    }
 }
 
 fn format_mecab(tokens: Vec<Token>) -> LinderaResult<String> {
