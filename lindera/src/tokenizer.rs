@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use byteorder::{ByteOrder, LittleEndian};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "cc-cedict")]
 use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
@@ -29,7 +29,7 @@ use crate::error::{LinderaError, LinderaErrorKind};
 use crate::mode::Mode;
 use crate::LinderaResult;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum DictionaryType {
     #[cfg(feature = "ipadic")]
     Ipadic,
@@ -61,7 +61,7 @@ impl FromStr for DictionaryType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum UserDictionaryType {
     Csv,
     Binary,
