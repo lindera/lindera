@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{LinderaError, LinderaErrorKind};
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Penalty {
     kanji_penalty_length_threshold: usize,
     kanji_penalty_length_penalty: i32,
@@ -53,7 +53,7 @@ impl Penalty {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum Mode {
     Normal,
     Decompose(Penalty),

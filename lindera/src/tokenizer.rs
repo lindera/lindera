@@ -29,7 +29,7 @@ use crate::error::{LinderaError, LinderaErrorKind};
 use crate::mode::Mode;
 use crate::LinderaResult;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum DictionaryType {
     #[cfg(feature = "ipadic")]
     Ipadic,
@@ -61,7 +61,7 @@ impl FromStr for DictionaryType {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum UserDictionaryType {
     Csv,
     Binary,
