@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
 use lindera_core::viterbi::{Edge, Mode as LinderaCoreMode, Penalty as LinderaCorePenalty};
+use serde::{Deserialize, Serialize};
 
 use crate::error::{LinderaError, LinderaErrorKind};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Penalty {
     kanji_penalty_length_threshold: usize,
     kanji_penalty_length_penalty: i32,
@@ -52,7 +53,7 @@ impl Penalty {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Mode {
     Normal,
     Decompose(Penalty),
