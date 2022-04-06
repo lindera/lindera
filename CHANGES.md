@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.12.6 (2022-04-06)
+- Add derive #174 @mosuka
+
+## 0.12.5 (2022-04-04)
+- Add from_str function to Mode #173 @mosuka
+
 ## 0.12.4 (2022-04-04)
 - Change UniDic download URL #172 @mosuka
 
