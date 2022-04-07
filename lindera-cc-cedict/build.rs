@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     use encoding::{EncoderTrap, Encoding};
     use zip::ZipArchive;
 
-    use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
+    use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
     use lindera_core::dictionary_builder::DictionaryBuilder;
 
     println!("cargo:rerun-if-changed=build.rs");
@@ -117,7 +117,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Build a dictionary
-    let builder = CedictBuilder::new();
+    let builder = CcCedictBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
     Ok(())

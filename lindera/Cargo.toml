@@ -12,12 +12,12 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []
+default = []  # no dictionary
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
-ipadic = ["lindera-ipadic/ipadic"]
-unidic = ["lindera-unidic/unidic"]
-ko-dic = ["lindera-ko-dic/ko-dic"]
-cc-cedict = ["lindera-cc-cedict/cc-cedict"]
+ipadic = ["lindera-ipadic/ipadic"]  # Japanese dictionary
+unidic = ["lindera-unidic/unidic"]  # Japanese dictionary
+ko-dic = ["lindera-ko-dic/ko-dic"]  # Korean dictionary
+cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Chinese dictionary
 compress = ["lindera-ipadic/compress", "lindera-unidic/compress"]
 
 [dependencies]

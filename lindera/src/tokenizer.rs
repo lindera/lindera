@@ -1,11 +1,13 @@
+use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use byteorder::{ByteOrder, LittleEndian};
-use serde::{Deserialize, Serialize};
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[cfg(feature = "cc-cedict")]
-use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
+use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::dictionary::Dictionary;
 #[cfg(any(
     feature = "ipadic",
@@ -21,7 +23,7 @@ use lindera_core::word_entry::WordId;
 #[cfg(feature = "ipadic")]
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 #[cfg(feature = "ko-dic")]
-use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
+use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 #[cfg(feature = "unidic")]
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
@@ -32,13 +34,17 @@ use crate::LinderaResult;
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum DictionaryType {
     #[cfg(feature = "ipadic")]
+    #[serde(rename = "ipadic")]
     Ipadic,
     #[cfg(feature = "unidic")]
+    #[serde(rename = "unidic")]
     Unidic,
     #[cfg(feature = "ko-dic")]
-    Kodic,
+    #[serde(rename = "ko-dic")]
+    KoDic,
     #[cfg(feature = "cc-cedict")]
-    Cedict,
+    #[serde(rename = "cc-cedict")]
+    CcCedict,
     LocalDictionary,
 }
 
@@ -51,9 +57,9 @@ impl FromStr for DictionaryType {
             #[cfg(feature = "unidic")]
             "unidic" => Ok(DictionaryType::Unidic),
             #[cfg(feature = "ko-dic")]
-            "ko-dic" => Ok(DictionaryType::Kodic),
+            "ko-dic" => Ok(DictionaryType::KoDic),
             #[cfg(feature = "cc-cedict")]
-            "cc-cedict" => Ok(DictionaryType::Cedict),
+            "cc-cedict" => Ok(DictionaryType::CcCedict),
             "local" => Ok(DictionaryType::LocalDictionary),
             _ => Err(LinderaErrorKind::DictionaryTypeError
                 .with_error(anyhow::anyhow!("Invalid dictionary type: {}", input))),
@@ -63,7 +69,9 @@ impl FromStr for DictionaryType {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum UserDictionaryType {
+    #[serde(rename = "csv")]
     Csv,
+    #[serde(rename = "binary")]
     Binary,
 }
 
@@ -128,6 +136,158 @@ impl Default for TokenizerConfig {
     }
 }
 
+impl<'de> Deserialize<'de> for TokenizerConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            DictType,
+            DictPath,
+            UserDictPath,
+            UserDictType,
+            Mode,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`dict_type`, `dict_path`, `user_dict_path`, `user_dict_type` or `mode`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "dict_type" => Ok(Field::DictType),
+                            "dict_path" => Ok(Field::DictPath),
+                            "user_dict_path" => Ok(Field::UserDictPath),
+                            "user_dict_type" => Ok(Field::UserDictType),
+                            "mode" => Ok(Field::Mode),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct DurationVisitor;
+
+        impl<'de> Visitor<'de> for DurationVisitor {
+            type Value = TokenizerConfig;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct TokenizerConfig")
+            }
+
+            fn visit_seq<V>(self, mut seq: V) -> Result<TokenizerConfig, V::Error>
+            where
+                V: SeqAccess<'de>,
+            {
+                let dict_type = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let dict_path = seq.next_element()?.unwrap_or_else(|| None);
+                let user_dict_path = seq.next_element()?.unwrap_or_else(|| None);
+                let user_dict_type = seq
+                    .next_element()?
+                    .unwrap_or_else(|| UserDictionaryType::Csv);
+                let mode = seq.next_element()?.unwrap_or_else(|| Mode::Normal);
+
+                Ok(TokenizerConfig {
+                    dict_type,
+                    dict_path,
+                    user_dict_path,
+                    user_dict_type,
+                    mode,
+                })
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<TokenizerConfig, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                println!("***** visit_map");
+
+                let mut dict_type = None;
+                let mut dict_path = None;
+                let mut user_dict_path = None;
+                let mut user_dict_type = None;
+                let mut mode = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::DictType => {
+                            if dict_type.is_some() {
+                                return Err(de::Error::duplicate_field("dict_type"));
+                            }
+                            dict_type = Some(map.next_value()?);
+                        }
+                        Field::DictPath => {
+                            if dict_path.is_some() {
+                                return Err(de::Error::duplicate_field("dict_path"));
+                            }
+                            dict_path = Some(map.next_value()?);
+                        }
+                        Field::UserDictPath => {
+                            if user_dict_path.is_some() {
+                                return Err(de::Error::duplicate_field("user_dict_path"));
+                            }
+                            user_dict_path = Some(map.next_value()?);
+                        }
+                        Field::UserDictType => {
+                            if user_dict_type.is_some() {
+                                return Err(de::Error::duplicate_field("user_dict_type"));
+                            }
+                            user_dict_type = Some(map.next_value()?);
+                        }
+                        Field::Mode => {
+                            if mode.is_some() {
+                                return Err(de::Error::duplicate_field("mode"));
+                            }
+                            println!("0. {:?}", mode);
+                            mode = Some(map.next_value()?);
+                            println!("1. {:?}", mode);
+                        }
+                    }
+                }
+                let dict_type = dict_type.ok_or_else(|| de::Error::missing_field("dict_type"))?;
+                let dict_path = dict_path.unwrap_or_else(|| None);
+                let user_dict_path = user_dict_path.unwrap_or_else(|| None);
+                let user_dict_type = user_dict_type.unwrap_or_else(|| UserDictionaryType::Csv);
+                let mode = mode.unwrap_or_else(|| Mode::Normal);
+                println!("2. {:?}", mode);
+                Ok(TokenizerConfig {
+                    dict_type,
+                    dict_path,
+                    user_dict_path,
+                    user_dict_type,
+                    mode,
+                })
+            }
+        }
+
+        const FIELDS: &'static [&'static str] = &[
+            "dict_type",
+            "dict_path",
+            "user_dict_path",
+            "user_dict_type",
+            "mode",
+        ];
+        deserializer.deserialize_struct("TokenizerConfig", FIELDS, DurationVisitor)
+    }
+}
+
 fn build_user_dict(
     dict_type: DictionaryType,
     path: PathBuf,
@@ -150,15 +310,15 @@ fn build_user_dict(
                     .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             #[cfg(feature = "ko-dic")]
-            DictionaryType::Kodic => {
-                let builder = KodicBuilder::new();
+            DictionaryType::KoDic => {
+                let builder = KoDicBuilder::new();
                 builder
                     .build_user_dict(&path)
                     .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
             }
             #[cfg(feature = "cc-cedict")]
-            DictionaryType::Cedict => {
-                let builder = CedictBuilder::new();
+            DictionaryType::CcCedict => {
+                let builder = CcCedictBuilder::new();
                 builder
                     .build_user_dict(&path)
                     .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))
@@ -218,10 +378,10 @@ impl Tokenizer {
             DictionaryType::Unidic => lindera_unidic::load_dictionary()
                 .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "ko-dic")]
-            DictionaryType::Kodic => lindera_ko_dic::load_dictionary()
+            DictionaryType::KoDic => lindera_ko_dic::load_dictionary()
                 .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
             #[cfg(feature = "cc-cedict")]
-            DictionaryType::Cedict => lindera_cc_cedict::load_dictionary()
+            DictionaryType::CcCedict => lindera_cc_cedict::load_dictionary()
                 .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
         };
 
@@ -400,6 +560,52 @@ mod tests {
     use crate::tokenizer::{Token, Tokenizer, TokenizerConfig, UserDictionaryType};
 
     #[test]
+    fn test_from_bytes_normal() {
+        let json_str = r#"
+        {
+            "dict_type": "ipadic",
+            "mode": "normal"
+        }
+        "#;
+        let json = json_str.as_bytes();
+
+        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
+        assert_eq!(args.dict_type, DictionaryType::Ipadic);
+        assert_eq!(args.mode, Mode::Normal);
+    }
+
+    #[test]
+    fn test_from_bytes_decompose() {
+        let json_str = r#"
+        {
+            "dict_type": "ipadic",
+            "dict_path": null,
+            "user_dict_type": "csv",
+            "user_dict_path": "./resources/user_dict.csv",
+            "mode": {
+                "decompose": {
+                    "kanji_penalty_length_threshold": 2,
+                    "kanji_penalty_length_penalty": 3000,
+                    "other_penalty_length_threshold": 7,
+                    "other_penalty_length_penalty": 1700
+                }
+            }
+        }
+        "#;
+        let json = json_str.as_bytes();
+
+        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
+        assert_eq!(args.dict_type, DictionaryType::Ipadic);
+        assert_eq!(args.dict_path, None);
+        assert_eq!(args.user_dict_type, UserDictionaryType::Csv);
+        assert_eq!(
+            args.user_dict_path,
+            Some(PathBuf::from("./resources/user_dict.csv"))
+        );
+        assert_eq!(args.mode, Mode::Decompose(Penalty::default()));
+    }
+
+    #[test]
     fn test_empty() {
         let config = TokenizerConfig {
             mode: Mode::Decompose(Penalty::default()),
@@ -436,6 +642,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_tokenize_sumomomomo() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち").unwrap();
@@ -446,6 +653,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_gyoi() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("御意。 御意〜。").unwrap();
@@ -453,6 +661,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_demoyorokobi() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("〜でも喜び").unwrap();
@@ -460,6 +669,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_mukigen_normal2() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("—でも").unwrap();
@@ -467,6 +677,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_atodedenwa() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("後で").unwrap();
@@ -474,6 +685,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_ikkagetsu() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("ーヶ月").unwrap();
@@ -481,6 +693,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_mukigen_normal() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?").unwrap();
@@ -491,6 +704,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_demo() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("――!!?").unwrap();
@@ -498,6 +712,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_kaikeishi() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("ジム・コガン").unwrap();
@@ -505,6 +720,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_bruce() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("ブルース・モラン").unwrap();
@@ -512,6 +728,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_tokenize_real() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer
@@ -570,6 +787,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_hitobito() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("満々!").unwrap();
@@ -577,6 +795,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_tokenize_short() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("日本住").unwrap();
@@ -584,6 +803,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_tokenize_short2() {
         let tokenizer = Tokenizer::new().unwrap();
         let tokens: Vec<&str> = tokenizer.tokenize_str("ここでは").unwrap();
@@ -591,6 +811,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_simple_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
@@ -636,6 +857,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_detailed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
@@ -682,6 +904,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_mixed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
@@ -744,6 +967,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     #[should_panic(expected = "failed to parse word_cost")]
     fn test_user_dict_invalid_word_cost() {
         let config = TokenizerConfig {
@@ -755,6 +979,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
     fn test_user_dict_number_of_fields_is_11() {
         let config = TokenizerConfig {
@@ -768,6 +993,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_long_text() {
         let mut large_file = BufReader::new(
             File::open(

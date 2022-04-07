@@ -25,23 +25,23 @@ use lindera_decompress::Algorithm;
 
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
-pub struct CedictBuilder {}
+pub struct CcCedictBuilder {}
 
-impl CedictBuilder {
+impl CcCedictBuilder {
     const UNK_FIELDS_NUM: usize = 10;
 
     pub fn new() -> Self {
-        CedictBuilder {}
+        CcCedictBuilder {}
     }
 }
 
-impl Default for CedictBuilder {
+impl Default for CcCedictBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DictionaryBuilder for CedictBuilder {
+impl DictionaryBuilder for CcCedictBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         fs::create_dir_all(&output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
