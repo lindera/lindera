@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic-builder"
-version = "0.12.6"
+version = "0.13.0"
 edition = "2021"
 description = "A Japanese morphological dictionary builder for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic-builder"
@@ -26,9 +26,9 @@ log = "0.4"
 serde = "1.0"
 yada = "0.5"
 
-lindera-core = { version = "0.12.6", path = "../lindera-core" }
-lindera-decompress = { version = "0.12.6", path = "../lindera-decompress" }
-lindera-compress = { version = "0.12.6", path = "../lindera-compress", optional = true }
+lindera-core = { version = "0.13.0", path = "../lindera-core" }
+lindera-decompress = { version = "0.13.0", path = "../lindera-decompress" }
+lindera-compress = { version = "0.13.0", path = "../lindera-compress", optional = true }
 
 [[bin]]
 name = "lindera-ipadic-builder"

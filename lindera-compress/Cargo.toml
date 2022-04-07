@@ -1,6 +1,6 @@
 [package]
 name = "lindera-compress"
-version = "0.12.6"
+version = "0.13.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera-compress"
@@ -14,7 +14,7 @@ license = "MIT"
 [dependencies]
 anyhow = "1.0"
 
-lindera-decompress = { version = "0.12.6", path = "../lindera-decompress" }
+lindera-decompress = { version = "0.13.0", path = "../lindera-decompress" }
 
 [target.'cfg(windows)'.dependencies]
 lzma-rs = "0.2"
