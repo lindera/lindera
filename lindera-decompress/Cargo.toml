@@ -1,6 +1,6 @@
 [package]
 name = "lindera-decompress"
-version = "0.13.0"
+version = "0.13.1"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera-decompress"
