@@ -55,7 +55,9 @@ impl Penalty {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum Mode {
+    #[serde(rename = "normal")]
     Normal,
+    #[serde(rename = "decompose")]
     Decompose(Penalty),
 }
 

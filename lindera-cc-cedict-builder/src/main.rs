@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{AppSettings, Parser};
 
-use lindera_cc_cedict_builder::cc_cedict_builder::CedictBuilder;
+use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
@@ -25,7 +25,7 @@ fn main() -> LinderaResult<()> {
 
     let args = Args::parse();
 
-    let dict_builder = CedictBuilder::new();
+    let dict_builder = CcCedictBuilder::new();
 
     if args.dict_src.is_some() {
         if args.dict_dest.is_some() {

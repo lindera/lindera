@@ -25,23 +25,23 @@ use lindera_decompress::Algorithm;
 
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
-pub struct KodicBuilder {}
+pub struct KoDicBuilder {}
 
-impl KodicBuilder {
+impl KoDicBuilder {
     const UNK_FIELDS_NUM: usize = 12;
 
     pub fn new() -> Self {
-        KodicBuilder {}
+        KoDicBuilder {}
     }
 }
 
-impl Default for KodicBuilder {
+impl Default for KoDicBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl DictionaryBuilder for KodicBuilder {
+impl DictionaryBuilder for KoDicBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         fs::create_dir_all(&output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;

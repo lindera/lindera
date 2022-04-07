@@ -5,7 +5,7 @@ use clap::{AppSettings, Parser};
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
-use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
+use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 
 /// Lindera ko-dic builder CLI
 #[derive(Parser, Debug)]
@@ -25,7 +25,7 @@ fn main() -> LinderaResult<()> {
 
     let args = Args::parse();
 
-    let dict_builder = KodicBuilder::new();
+    let dict_builder = KoDicBuilder::new();
 
     if args.dict_src.is_some() {
         if args.dict_dest.is_some() {

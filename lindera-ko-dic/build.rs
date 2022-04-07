@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     use tar::Archive;
 
     use lindera_core::dictionary_builder::DictionaryBuilder;
-    use lindera_ko_dic_builder::ko_dic_builder::KodicBuilder;
+    use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
@@ -82,7 +82,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     // Build a dictionary
-    let builder = KodicBuilder::new();
+    let builder = KoDicBuilder::new();
     builder.build_dictionary(&input_dir, &output_dir)?;
 
     Ok(())
