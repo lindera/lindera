@@ -2,8 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.13.1 (2022-04-07)
+- Refactoring #176 @mosuka
+
 ## 0.13.0 (2022-04-07)
-- Refactoring #175 @mosuka
+- Some API has changed #175 @mosuka
 
 ## 0.12.6 (2022-04-06)
 - Add derive #174 @mosuka
