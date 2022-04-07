@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []  # no default features
+default = []  # no dictionary
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
 ipadic = ["lindera/ipadic"]  # Japanese dictionary
 unidic = ["lindera/unidic"]  # Japanese dictionary
