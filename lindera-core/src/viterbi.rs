@@ -1,12 +1,16 @@
+use std::str::FromStr;
 use std::u32;
+
+use serde::{Deserialize, Serialize};
 
 use crate::character_definition::{CategoryId, CharacterDefinitions};
 use crate::connection::ConnectionCostMatrix;
+use crate::error::{LinderaError, LinderaErrorKind};
 use crate::prefix_dict::PrefixDict;
 use crate::unknown_dictionary::UnknownDictionary;
 use crate::word_entry::{WordEntry, WordId};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Penalty {
     pub kanji_penalty_length_threshold: usize,
     pub kanji_penalty_length_penalty: i32,
@@ -43,9 +47,11 @@ impl Penalty {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum Mode {
+    #[serde(rename = "normal")]
     Normal,
+    #[serde(rename = "decompose")]
     Decompose(Penalty),
 }
 
@@ -60,6 +66,20 @@ impl Mode {
         match self {
             Mode::Normal => 0i32,
             Mode::Decompose(penalty) => penalty.penalty(edge),
+        }
+    }
+}
+
+impl FromStr for Mode {
+    type Err = LinderaError;
+    fn from_str(mode: &str) -> Result<Mode, Self::Err> {
+        match mode {
+            "normal" => Ok(Mode::Normal),
+            "decompose" => Ok(Mode::Decompose(Penalty::default())),
+            _ => {
+                Err(LinderaErrorKind::ModeError
+                    .with_error(anyhow::anyhow!("Invalid mode: {}", mode)))
+            }
         }
     }
 }
