@@ -218,8 +218,6 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
             where
                 V: MapAccess<'de>,
             {
-                println!("***** visit_map");
-
                 let mut dict_type = None;
                 let mut dict_path = None;
                 let mut user_dict_path = None;
@@ -255,9 +253,7 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                             if mode.is_some() {
                                 return Err(de::Error::duplicate_field("mode"));
                             }
-                            println!("0. {:?}", mode);
                             mode = Some(map.next_value()?);
-                            println!("1. {:?}", mode);
                         }
                     }
                 }
@@ -266,7 +262,6 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                 let user_dict_path = user_dict_path.unwrap_or_else(|| None);
                 let user_dict_type = user_dict_type.unwrap_or_else(|| UserDictionaryType::Csv);
                 let mode = mode.unwrap_or_else(|| Mode::Normal);
-                println!("2. {:?}", mode);
                 Ok(TokenizerConfig {
                     dict_type,
                     dict_path,
