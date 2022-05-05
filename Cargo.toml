@@ -21,7 +21,7 @@ resolver = "2"
 lto = true
 
 # Make sure that the build scripts and proc-macros are compiled with
-# all the optimizations. It speeds up the zip crate that we use in the build.rs.
+# all the optimizations. It speeds up the flate2 crate that we use in our build scripts.
 [profile.dev.build-override]
 opt-level = 3
 [profile.release.build-override]
