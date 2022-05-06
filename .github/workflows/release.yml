@@ -325,7 +325,7 @@ jobs:
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
           echo "LINDERA_VERSION=${LINDERA_VERSION}" >> $GITHUB_ENV
       - name: Setup QUME
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Setup Docker build environment
         uses: docker/setup-buildx-action@v1
       - name: Docker login
