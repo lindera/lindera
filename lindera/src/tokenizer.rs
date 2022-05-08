@@ -18,7 +18,7 @@ use lindera_core::dictionary::Dictionary;
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::file_util::read_file;
 use lindera_core::user_dictionary::UserDictionary;
-use lindera_core::viterbi::{Lattice, Mode as LinderaCoreMode};
+use lindera_core::viterbi::Lattice;
 use lindera_core::word_entry::WordId;
 #[cfg(feature = "ipadic")]
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
@@ -198,12 +198,10 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                 let dict_type = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let dict_path = seq.next_element()?.unwrap_or_else(|| None);
-                let user_dict_path = seq.next_element()?.unwrap_or_else(|| None);
-                let user_dict_type = seq
-                    .next_element()?
-                    .unwrap_or_else(|| UserDictionaryType::Csv);
-                let mode = seq.next_element()?.unwrap_or_else(|| Mode::Normal);
+                let dict_path = seq.next_element()?.unwrap_or(None);
+                let user_dict_path = seq.next_element()?.unwrap_or(None);
+                let user_dict_type = seq.next_element()?.unwrap_or(UserDictionaryType::Csv);
+                let mode = seq.next_element()?.unwrap_or(Mode::Normal);
 
                 Ok(TokenizerConfig {
                     dict_type,
@@ -258,10 +256,10 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                     }
                 }
                 let dict_type = dict_type.ok_or_else(|| de::Error::missing_field("dict_type"))?;
-                let dict_path = dict_path.unwrap_or_else(|| None);
-                let user_dict_path = user_dict_path.unwrap_or_else(|| None);
-                let user_dict_type = user_dict_type.unwrap_or_else(|| UserDictionaryType::Csv);
-                let mode = mode.unwrap_or_else(|| Mode::Normal);
+                let dict_path = dict_path.unwrap_or(None);
+                let user_dict_path = user_dict_path.unwrap_or(None);
+                let user_dict_type = user_dict_type.unwrap_or(UserDictionaryType::Csv);
+                let mode = mode.unwrap_or(Mode::Normal);
                 Ok(TokenizerConfig {
                     dict_type,
                     dict_path,
@@ -272,7 +270,7 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             "dict_type",
             "dict_path",
             "user_dict_path",
@@ -419,7 +417,7 @@ impl Tokenizer {
             return Vec::new();
         }
 
-        let mode = LinderaCoreMode::from(self.mode.clone());
+        let mode = self.mode.clone();
 
         lattice.set_text(
             &self.dictionary.dict,
