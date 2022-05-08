@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cc-cedict-builder"
-version = "0.13.2"
+version = "0.13.3"
 edition = "2021"
 description = "A Chinese morphological dictionary builder for CC-CEDICT."
 documentation = "https://docs.rs/lindera-cc-cedict-builder"
@@ -26,9 +26,9 @@ glob = "0.3"
 log = "0.4"
 yada = "0.5"
 
-lindera-core = { version = "0.13.2", path = "../lindera-core" }
-lindera-decompress = { version = "0.13.2", path = "../lindera-decompress" }
-lindera-compress = { version = "0.13.2", path = "../lindera-compress", optional = true }
+lindera-core = { version = "0.13.3", path = "../lindera-core" }
+lindera-decompress = { version = "0.13.3", path = "../lindera-decompress" }
+lindera-compress = { version = "0.13.3", path = "../lindera-compress", optional = true }
 
 [[bin]]
 name = "lindera-cc-cedict-builder"

@@ -65,13 +65,12 @@ struct Args {
 fn main() -> LinderaResult<()> {
     let args = Args::parse();
 
-    let mut config = TokenizerConfig::default();
-
-    // dictionary type
-    config.dict_type = DictionaryType::from_str(args.dict_type.as_str())?;
-
-    // user dictionary path
-    config.user_dict_path = args.user_dict;
+    // let mut config = TokenizerConfig::default();
+    let mut config = TokenizerConfig {
+        dict_type: DictionaryType::from_str(&args.dict_type)?,
+        user_dict_path: args.user_dict,
+        ..Default::default()
+    };
 
     // user dictionary type
     match args.user_dict_type {
