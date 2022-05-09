@@ -3,7 +3,7 @@ use std::error::Error;
 #[cfg(feature = "cc-cedict")]
 fn main() -> Result<(), Box<dyn Error>> {
     use std::env;
-    use std::fs::{self, create_dir, rename, File};
+    use std::fs::{self, create_dir, File};
     use std::io::{self, Write};
     use std::path::Path;
 
@@ -20,22 +20,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Directory path for build package
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
 
-    // Dictionary file name
-    let file_name = "CC-CEDICT-MeCab-master.zip";
-
     // UniDic MeCab directory
     let input_dir = Path::new(&build_dir).join("CC-CEDICT-MeCab-master");
 
-    // Lindera IPADIC directory
-    let output_dir = Path::new(&build_dir).join("lindera-cc-cedict");
-
     if std::env::var("DOCS_RS").is_ok() {
-        // Use dummy data in docs.rs.
+        // Create directory for dummy input directory for build docs
         create_dir(&input_dir)?;
 
+        // Create dummy char.def
         let mut dummy_char_def = File::create(input_dir.join("char.def"))?;
         dummy_char_def.write_all(b"DEFAULT 0 1 0\n")?;
 
+        // Create dummy CSV file
         let mut dummy_dict_csv = File::create(input_dir.join("dummy_dict.csv"))?;
         dummy_dict_csv
             .write_all(
@@ -47,32 +43,22 @@ fn main() -> Result<(), Box<dyn Error>> {
                     .unwrap(),
             )?;
 
+        // Create dummy unk.def
         File::create(input_dir.join("unk.def"))?;
         let mut dummy_matrix_def = File::create(input_dir.join("matrix.def"))?;
         dummy_matrix_def.write_all(b"0 1 0\n")?;
     } else {
-        // Source file path for build package
-        let source_path_for_build = Path::new(&build_dir).join(&file_name);
+        // Resources directory
+        let resources_dir_path = Path::new("resources");
 
-        // Download source file to build directory
-        if !source_path_for_build.exists() {
-            // copy(&source_path, &source_path_for_build)?;
-            let tmp_path = Path::new(&build_dir).join(file_name.to_owned() + ".download");
+        // Dictionary file name
+        let dict_file_name = "cc-cedict-mecab-master-20220509.zip";
 
-            // Download a tarball
-            let download_url =
-                "https://github.com/ueda-keisuke/CC-CEDICT-MeCab/archive/refs/heads/master.zip";
-            let resp = ureq::get(download_url).call()?;
-            let mut dest = File::create(&tmp_path)?;
-
-            io::copy(&mut resp.into_reader(), &mut dest)?;
-            dest.flush()?;
-
-            rename(tmp_path, &source_path_for_build).expect("Failed to rename temporary file");
-        }
+        // Source dictionary file path
+        let source_dict_file_path = resources_dir_path.join(dict_file_name);
 
         // Unzip
-        let zip_file = File::open(&source_path_for_build)?;
+        let zip_file = File::open(&source_dict_file_path)?;
         let mut archive = ZipArchive::new(zip_file)?;
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
@@ -115,6 +101,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+
+    // Lindera CC-CEDICT directory
+    let output_dir = Path::new(&build_dir).join("lindera-cc-cedict");
 
     // Build a dictionary
     let builder = CcCedictBuilder::new();
