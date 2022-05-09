@@ -1,6 +1,6 @@
 [package]
 name = "lindera-core"
-version = "0.13.3"
+version = "0.13.4"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera-core"
