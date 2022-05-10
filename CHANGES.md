@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.13.5 (2022-05-10)
+- Include the ko-dic dictionary in the repository #190 @mosuka
+
 ## 0.13.4 (2022-05-09)
 - Include the CC-CEDICT dictionary in the repository #189 @mosuka
 
