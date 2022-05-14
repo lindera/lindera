@@ -14,7 +14,7 @@ You can install binary via cargo as follows:
 
 Alternatively, you can download a binary from the following release page:
 
-- https://github.com/lindera-morphology/lindera-cli/releases
+- https://github.com/lindera-morphology/lindera/releases
 
 ## Build
 
