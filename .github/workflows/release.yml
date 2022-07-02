@@ -10,7 +10,6 @@ jobs:
   build:
     name: Build
     strategy:
-      # max-parallel: 1
       matrix:
         target:
           - x86_64-unknown-linux-gnu
@@ -24,15 +23,11 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
         toolchain: [stable]
-        feature: ["default", "ipadic", "ko-dic", "cc-cedict"]
+        feature: ["ipadic", "ko-dic", "cc-cedict", "cjk"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      # - name: Install packages for Linux
-      #   if : matrix.target == 'x86_64-unknown-linux-gnu'
-      #   run: |
-      #     sudo apt install -y liblzma-dev
       - name: Cache ~/.cargo/registry
         uses: actions/cache@v2.1.7
         with:
@@ -118,7 +113,7 @@ jobs:
           - x86_64-unknown-linux-gnu
           - x86_64-pc-windows-msvc
           - x86_64-apple-darwin
-        feature: ["default", "ipadic", "ko-dic", "cc-cedict"]
+        feature: ["ipadic", "ko-dic", "cc-cedict"]
     name: Upload Release
     needs: [create-release]
     runs-on: ubuntu-latest

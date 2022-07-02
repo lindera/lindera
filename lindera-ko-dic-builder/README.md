@@ -83,7 +83,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "하네다공항한정토트백" | lindera -d /tmp/lindera-ko-dic-2.1.1-20180720
+% echo "하네다공항한정토트백" | lindera -k ko-dic -d /tmp/lindera-ko-dic-2.1.1-20180720
 ```
 
 ```text

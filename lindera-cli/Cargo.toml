@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.13.5"
+version = "0.14.0"
 edition = "2021"
 description = "A morphological analysis tool."
 documentation = "https://docs.rs/lindera-cli"
@@ -12,8 +12,9 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []  # no dictionary
+default = ["ipadic"]  # ipadic is the default feature
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
+cjk = ["ipadic", "ko-dic", "cc-cedict"]
 ipadic = ["lindera/ipadic"]  # Japanese dictionary
 unidic = ["lindera/unidic"]  # Japanese dictionary
 ko-dic = ["lindera/ko-dic"]  # Korean dictionary
@@ -21,10 +22,10 @@ cc-cedict = ["lindera/cc-cedict"]  # Chinese dictionary
 compress = ["lindera/compress"]
 
 [dependencies]
-anyhow = "1.0"
-clap = { version = "3.1", features = ["derive", "cargo"] }
+anyhow = "1.0.58"
+clap = { version = "3.2.8", features = ["derive", "cargo"] }
 
-lindera = { version = "0.13.5", path = "../lindera" }
+lindera = { version = "0.14.0", path = "../lindera" }
 
 [[bin]]
 name = "lindera"
