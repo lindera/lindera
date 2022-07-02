@@ -15,8 +15,8 @@ pub enum LinderaErrorKind {
     DictionaryNotFound,
     DictionaryLoadError,
     DictionaryBuildError,
-    DictionaryTypeError,
-    UserDictionaryTypeError,
+    DictionaryKindError,
+    DictionarySourceTypeError,
     ModeError,
 }
 

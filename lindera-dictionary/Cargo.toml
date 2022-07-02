@@ -1,6 +1,6 @@
 [package]
 name = "lindera-dictionary"
-version = "0.13.4"
+version = "0.13.5"
 edition = "2021"
 description = "A Japanese morphological dictionary."
 documentation = "https://docs.rs/lindera-dictionary"
@@ -12,8 +12,8 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0"
-bincode = "1.3"
-byteorder = "1.4"
+anyhow = "1.0.58"
+bincode = "1.3.3"
+byteorder = "1.4.3"
 
-lindera-core = { version = "0.13.4", path = "../lindera-core" }
+lindera-core = { version = "0.13.5", path = "../lindera-core" }

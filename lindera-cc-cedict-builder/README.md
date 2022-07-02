@@ -59,7 +59,7 @@ Downloading a dictionary source from [CC-CEDICT-MeCab](https://github.com/ueda-k
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "它可以进行日语和汉语的语态分析" | lindera -d /tmp/lindera-cc-cedict
+% echo "它可以进行日语和汉语的语态分析" | lindera -k cc-cedict -d /tmp/lindera-cc-cedict
 ```
 
 ```text

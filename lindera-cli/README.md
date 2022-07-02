@@ -92,7 +92,7 @@ For more information on preparing dictionaries, see the following link:
 For example, text can be tokenized using a prepared dictionary as follows:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -t local -d /tmp/lindera-ipadic-2.7.0-20070801
+% echo "日本語の形態素解析を行うことができます。" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text
@@ -141,7 +141,7 @@ If you had a built-in IPADIC, it is also possible to switch to the self-containe
 The following example uses the self-contained IPADIC to tokenize:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -t ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera -k ipadic
 ```
 
 ```text
@@ -164,7 +164,7 @@ EOS
 If UniDic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -t unidic
+% echo "日本語の形態素解析を行うことができます。" | lindera -k unidic
 ```
 
 ```text
@@ -189,7 +189,7 @@ EOS
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "한국어의형태해석을실시할수있습니다." | lindera -t ko-dic
+% echo "한국어의형태해석을실시할수있습니다." | lindera -k ko-dic
 ```
 
 ```text
@@ -212,7 +212,7 @@ EOS
 If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "可以进行中文形态学分析。" | lindera -t cc-cedict
+% echo "可以进行中文形态学分析。" | lindera -k cc-cedict
 ```
 
 ```text
@@ -235,7 +235,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -t ipadic -D ./resources/userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/userdic.csv -t csv
 ```
 
 ```text
@@ -254,7 +254,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -t ipadic -D ./resources/userdic.bin -t bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/userdic.bin -t binary
 ```
 
 ```text
@@ -274,7 +274,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 `normal` mode tokenizes faithfully based on words registered in the dictionary. (Default):
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -t ipadic -m normal
+% echo "関西国際空港限定トートバッグ" | lindera -k ipadic -m normal
 ```
 
 ```text
@@ -287,7 +287,7 @@ EOS
 `decopose` mode tokenizes a compound noun words additionally:
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -t ipadic -m decompose
+% echo "関西国際空港限定トートバッグ" | lindera -k ipadic -m decompose
 ```
 
 ```text
@@ -306,7 +306,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell script
-% echo "お待ちしております。" | lindera -t ipadic -O mecab
+% echo "お待ちしております。" | lindera -k ipadic -O mecab
 ```
 
 ```text
@@ -322,7 +322,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell script
-% echo "お待ちしております。" | lindera -t ipadic -O wakati
+% echo "お待ちしております。" | lindera -k ipadic -O wakati
 ```
 
 ```text
@@ -332,7 +332,7 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell script
-% echo "お待ちしております。" | lindera -t ipadic -O json
+% echo "お待ちしております。" | lindera -k ipadic -O json
 ```
 
 ```json

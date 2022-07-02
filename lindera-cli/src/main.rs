@@ -10,34 +10,47 @@ use lindera::error::LinderaErrorKind;
 use lindera::formatter::format;
 use lindera::formatter::Format;
 use lindera::mode::Mode;
-use lindera::tokenizer::DEFAULT_DICTIONARY_TYPE;
-use lindera::tokenizer::{DictionaryType, Tokenizer, TokenizerConfig, UserDictionaryType};
+use lindera::tokenizer::DictionaryConfig;
+use lindera::tokenizer::DictionaryKind;
+use lindera::tokenizer::DictionarySourceType;
+use lindera::tokenizer::UserDictionaryConfig;
+use lindera::tokenizer::DEFAULT_DICTIONARY_KIND;
+use lindera::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera::LinderaResult;
 
 /// Lindera CLI
 #[derive(Parser, Debug)]
 #[clap(version, about, setting = AppSettings::DeriveDisplayOrder)]
 struct Args {
-    /// The dictionary type. local and ipadic are available.
+    /// The dictionary type.
+    #[clap(
+        short = 'k',
+        long = "dictionary-kind",
+        value_name = "DICTIONARY_KIND",
+        default_value = DEFAULT_DICTIONARY_KIND
+    )]
+    dictionary_kind: DictionaryKind,
+
+    /// Directory path of the dictionary. If specified, loads the specified directory as the specified dictionary kind. If omitted, the self-contained dictionary specified by dictionary kind is loaded.
+    #[clap(short = 'd', long = "dictionary-path", value_name = "DICTIONARY_PATH")]
+    dictionary_path: Option<PathBuf>,
+
+    /// The user dictionary file path. If specified, loads the specified file as a user dictionary.
+    #[clap(
+        short = 'u',
+        long = "user-dictionary-path",
+        value_name = "USER_DICTIONARY_PATH"
+    )]
+    user_dictionary_path: Option<PathBuf>,
+
+    /// The user dictionary source type. Enabled when a user dictionary is specified. Default is "csv".
     #[clap(
         short = 't',
-        long = "dict-type",
-        value_name = "DICT_TYPE",
-        default_value = DEFAULT_DICTIONARY_TYPE
+        long = "user-dictionary-source-type",
+        value_name = "USER_DICTIONARY_SOURCE_TYPE",
+        default_value = "csv"
     )]
-    dict_type: String,
-
-    /// The dictionary direcory. Specify the directory path of the dictionary when "local" is specified in the dictionary type.
-    #[clap(short = 'd', long = "dict", value_name = "DICT")]
-    dict: Option<PathBuf>,
-
-    /// The user dictionary file path.
-    #[clap(short = 'D', long = "user-dict", value_name = "USER_DICT")]
-    user_dict: Option<PathBuf>,
-
-    /// The user dictionary type. csv and bin are available.
-    #[clap(short = 'T', long = "user-dict-type", value_name = "USER_DICT_TYPE")]
-    user_dict_type: Option<String>,
+    user_dictionary_source_type: DictionarySourceType,
 
     /// The tokenization mode. normal, search and decompose are available.
     #[clap(
@@ -46,7 +59,7 @@ struct Args {
         value_name = "MODE",
         default_value = "normal"
     )]
-    mode: String,
+    mode: Mode,
 
     /// The output format. mecab, wakati or json can be specified. If not specified, use the default output format.
     #[clap(
@@ -65,25 +78,25 @@ struct Args {
 fn main() -> LinderaResult<()> {
     let args = Args::parse();
 
-    // let mut config = TokenizerConfig::default();
-    let mut config = TokenizerConfig {
-        dict_type: DictionaryType::from_str(&args.dict_type)?,
-        user_dict_path: args.user_dict,
-        ..Default::default()
+    let dictionary_meta = DictionaryConfig {
+        kind: args.dictionary_kind.clone(),
+        path: args.dictionary_path,
     };
 
-    // user dictionary type
-    match args.user_dict_type {
-        Some(ref user_dict_type) => {
-            config.user_dict_type = UserDictionaryType::from_str(user_dict_type)?;
-        }
-        None => {
-            config.user_dict_type = UserDictionaryType::Csv;
-        }
-    }
+    let user_dictionary_meta = match args.user_dictionary_path {
+        Some(path) => Some(UserDictionaryConfig {
+            kind: args.dictionary_kind,
+            source_type: args.user_dictionary_source_type,
+            path,
+        }),
+        None => None,
+    };
 
-    // mode
-    config.mode = Mode::from_str(args.mode.as_str())?;
+    let config = TokenizerConfig {
+        dictionary: dictionary_meta,
+        user_dictionary: user_dictionary_meta,
+        mode: args.mode,
+    };
 
     // create tokenizer
     let tokenizer = Tokenizer::with_config(config)?;

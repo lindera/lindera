@@ -101,7 +101,7 @@ Detailed version
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "羽田空港限定トートバッグ" | lindera -d /tmp/lindera-ipadic-2.7.0-20070801
+% echo "羽田空港限定トートバッグ" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text
@@ -117,7 +117,7 @@ EOS
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -D ./resources/userdic.bin -t bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801 -u ./resources/userdic.bin -t binary
 ```
 
 ```text

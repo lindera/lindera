@@ -1,20 +1,35 @@
 #[cfg(feature = "ipadic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "ipadic")]
-use lindera::mode::Mode;
-#[cfg(feature = "ipadic")]
-use lindera::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera::LinderaResult;
+#[cfg(feature = "ipadic")]
+use lindera::{
+    mode::Mode,
+    tokenizer::{
+        DictionaryConfig, DictionaryKind, DictionarySourceType, Tokenizer, TokenizerConfig,
+        UserDictionaryConfig,
+    },
+};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
+        let dictionary = DictionaryConfig {
+            kind: DictionaryKind::IPADIC,
+            path: None,
+        };
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: DictionaryKind::IPADIC,
+            source_type: DictionarySourceType::Csv,
+            path: PathBuf::from("./resources/userdic.csv"),
+        });
+
         // create tokenizer
         let config = TokenizerConfig {
-            user_dict_path: Some(PathBuf::from("./resources/userdic.csv")),
+            dictionary,
+            user_dictionary: user_dictionary,
             mode: Mode::Normal,
-            ..TokenizerConfig::default()
         };
         let tokenizer = Tokenizer::with_config(config)?;
 

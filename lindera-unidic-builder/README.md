@@ -70,7 +70,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "羽田空港限定トートバッグ" | lindera -d /tmp/lindera-unidic-2.1.2
+% echo "羽田空港限定トートバッグ" | lindera -k unidic -d /tmp/lindera-unidic-2.1.2
 ```
 
 ```text

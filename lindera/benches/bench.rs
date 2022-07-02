@@ -6,7 +6,10 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
 use lindera::mode::Mode;
-use lindera::tokenizer::{Tokenizer, TokenizerConfig, UserDictionaryType};
+use lindera::tokenizer::{
+    DictionaryConfig, DictionaryKind, DictionarySourceType, Tokenizer, TokenizerConfig,
+    UserDictionaryConfig,
+};
 
 fn bench_constructor(c: &mut Criterion) {
     c.bench_function("bench-constructor", |b| {
@@ -17,11 +20,21 @@ fn bench_constructor(c: &mut Criterion) {
 fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
         b.iter(|| {
+            let dictionary = DictionaryConfig {
+                kind: DictionaryKind::IPADIC,
+                path: None,
+            };
+
+            let user_dictionary = Some(UserDictionaryConfig {
+                kind: DictionaryKind::IPADIC,
+                source_type: DictionarySourceType::Csv,
+                path: PathBuf::from("./resources/userdic.csv"),
+            });
+
             let config = TokenizerConfig {
-                user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
-                user_dict_type: UserDictionaryType::Csv,
+                dictionary,
+                user_dictionary,
                 mode: Mode::Normal,
-                ..TokenizerConfig::default()
             };
             Tokenizer::with_config(config).unwrap()
         })
@@ -36,12 +49,23 @@ fn bench_tokenize(c: &mut Criterion) {
 }
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
-    let config = TokenizerConfig {
-        user_dict_path: Some(PathBuf::from("../resources/userdic.csv")),
-        user_dict_type: UserDictionaryType::Csv,
-        mode: Mode::Normal,
-        ..TokenizerConfig::default()
+    let dictionary = DictionaryConfig {
+        kind: DictionaryKind::IPADIC,
+        path: None,
     };
+
+    let user_dictionary = Some(UserDictionaryConfig {
+        kind: DictionaryKind::IPADIC,
+        source_type: DictionarySourceType::Csv,
+        path: PathBuf::from("./resources/userdic.csv"),
+    });
+
+    let config = TokenizerConfig {
+        dictionary,
+        user_dictionary,
+        mode: Mode::Normal,
+    };
+
     let tokenizer = Tokenizer::with_config(config).unwrap();
     c.bench_function("bench-tokenize-custom-dict", |b| {
         b.iter(|| tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です"))
