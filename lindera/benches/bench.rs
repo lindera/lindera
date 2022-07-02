@@ -20,6 +20,10 @@ fn bench_constructor(c: &mut Criterion) {
 fn bench_constructor_with_custom_dict(c: &mut Criterion) {
     c.bench_function("bench-constructor-custom-dict", |b| {
         b.iter(|| {
+            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("userdic.csv");
+
             let dictionary = DictionaryConfig {
                 kind: DictionaryKind::IPADIC,
                 path: None,
@@ -28,7 +32,7 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
             let user_dictionary = Some(UserDictionaryConfig {
                 kind: DictionaryKind::IPADIC,
                 source_type: DictionarySourceType::Csv,
-                path: PathBuf::from("./resources/userdic.csv"),
+                path: userdic_file,
             });
 
             let config = TokenizerConfig {
@@ -49,6 +53,10 @@ fn bench_tokenize(c: &mut Criterion) {
 }
 
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
+    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("userdic.csv");
+
     let dictionary = DictionaryConfig {
         kind: DictionaryKind::IPADIC,
         path: None,
@@ -57,7 +65,7 @@ fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let user_dictionary = Some(UserDictionaryConfig {
         kind: DictionaryKind::IPADIC,
         source_type: DictionarySourceType::Csv,
-        path: PathBuf::from("./resources/userdic.csv"),
+        path: userdic_file,
     });
 
     let config = TokenizerConfig {
