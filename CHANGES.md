@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.14.0 (2022-07-02)
+- Update CLI #198 @mosuka
+- fix lindera Release page link #192 @mochi-sann
+
 ## 0.13.5 (2022-05-10)
 - Include the ko-dic dictionary in the repository #190 @mosuka
 
