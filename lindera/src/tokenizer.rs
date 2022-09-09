@@ -540,7 +540,7 @@ impl Tokenizer {
     ///
     /// returns: Result<Vec<&str>, LinderaError>
     ///
-    /// * Vec<Token> : the list of `words` if succeeded
+    /// * Vec<&str> : the list of str if succeeded
     /// * LinderaError : Error message with LinderaErrorKind
     ///
     pub fn tokenize_str<'a>(&self, text: &'a str) -> LinderaResult<Vec<&'a str>> {

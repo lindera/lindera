@@ -94,12 +94,27 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_tokenize_str_long_text(c: &mut Criterion) {
+    let mut large_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
+    let mut large_text = String::new();
+    let _size = large_file.read_to_string(&mut large_text).unwrap();
+    let tokenizer = Tokenizer::new().unwrap();
+    // Using benchmark_group for changing sample_size
+    let mut group = c.benchmark_group("Long text");
+    group.sample_size(20);
+    group.bench_function("bench-tokenize-str-long-text", |b| {
+        b.iter(|| tokenizer.tokenize_str(large_text.as_str()));
+    });
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_constructor,
     bench_constructor_with_custom_dict,
     bench_tokenize,
     bench_tokenize_with_custom_dict,
-    bench_tokenize_long_text
+    bench_tokenize_long_text,
+    bench_tokenize_str_long_text,
 );
 criterion_main!(benches);
