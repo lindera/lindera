@@ -411,6 +411,42 @@ impl Tokenizer {
         Ok(tokenizer)
     }
 
+    fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
+        if word_id.is_unknown() {
+            return Ok(vec!["UNK".to_string()]);
+        }
+
+        let (words_idx_data, words_data) = if word_id.is_system() {
+            (
+                self.dictionary.words_idx_data.as_slice(),
+                self.dictionary.words_data.as_slice(),
+            )
+        } else {
+            (
+                self.user_dictionary
+                    .as_ref()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
+                    })?
+                    .words_idx_data
+                    .as_slice(),
+                self.user_dictionary
+                    .as_ref()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
+                    })?
+                    .words_data
+                    .as_slice(),
+            )
+        };
+        let idx = LittleEndian::read_u32(&words_idx_data[4 * word_id.0 as usize..][..4]);
+        let data = &words_data[idx as usize..];
+        let word_detail = bincode::deserialize_from(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+
+        Ok(word_detail)
+    }
+
     /// Returns an array of offsets that mark the beginning of each tokens,
     /// in bytes.
     ///
@@ -471,40 +507,26 @@ impl Tokenizer {
         Ok(())
     }
 
-    fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
-        if word_id.is_unknown() {
-            return Ok(vec!["UNK".to_string()]);
+    fn tokenize_str_without_split<'a>(
+        &self,
+        text: &'a str,
+        tokens: &mut Vec<&'a str>,
+        lattice: &mut Lattice,
+    ) -> LinderaResult<()> {
+        let offsets = self.tokenize_offsets(text, lattice);
+
+        for i in 0..offsets.len() {
+            let (token_start, _word_id) = offsets[i];
+            let token_stop = if i == offsets.len() - 1 {
+                text.len()
+            } else {
+                let (next_start, _) = offsets[i + 1];
+                next_start
+            };
+            tokens.push(&text[token_start..token_stop])
         }
 
-        let (words_idx_data, words_data) = if word_id.is_system() {
-            (
-                self.dictionary.words_idx_data.as_slice(),
-                self.dictionary.words_data.as_slice(),
-            )
-        } else {
-            (
-                self.user_dictionary
-                    .as_ref()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
-                    })?
-                    .words_idx_data
-                    .as_slice(),
-                self.user_dictionary
-                    .as_ref()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("internal error."))
-                    })?
-                    .words_data
-                    .as_slice(),
-            )
-        };
-        let idx = LittleEndian::read_u32(&words_idx_data[4 * word_id.0 as usize..][..4]);
-        let data = &words_data[idx as usize..];
-        let word_detail = bincode::deserialize_from(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(word_detail)
+        Ok(())
     }
 
     /// Tokenize the text
@@ -540,15 +562,19 @@ impl Tokenizer {
     ///
     /// returns: Result<Vec<&str>, LinderaError>
     ///
-    /// * Vec<&str> : the list of str if succeeded
+    /// * Vec<&str> : the list of `&str` if succeeded
     /// * LinderaError : Error message with LinderaErrorKind
     ///
-    pub fn tokenize_str<'a>(&self, text: &'a str) -> LinderaResult<Vec<&'a str>> {
-        let tokens = self
-            .tokenize(text)?
-            .into_iter()
-            .map(|token| token.text)
-            .collect();
+    pub fn tokenize_str<'a>(&self, mut text: &'a str) -> LinderaResult<Vec<&'a str>> {
+        let mut lattice = Lattice::default();
+        let mut tokens = Vec::new();
+        while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
+            self.tokenize_str_without_split(&text[..split_idx + 3], &mut tokens, &mut lattice)?;
+            text = &text[split_idx + 3..];
+        }
+        if !text.is_empty() {
+            self.tokenize_str_without_split(text, &mut tokens, &mut lattice)?;
+        }
 
         Ok(tokens)
     }
