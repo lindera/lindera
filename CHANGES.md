@@ -2,7 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.15.0 (2022-09-09)
+- Tokenize without word details in wakati mode #208 @mosuka
+- Add bench for wakati #207 @mosuka
 - Fix bench #200 @mosuka
 
 ## 0.14.0 (2022-07-02)
