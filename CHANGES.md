@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.16.0 (2022-09-11)
+- Do not deserialize word details during tokenization #211 @mosuka
+
 ## 0.15.1 (2022-09-10)
 - Use tokenize_str() in lindera-cli #210 @mosuka
 
