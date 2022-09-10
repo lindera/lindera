@@ -10,7 +10,7 @@ use crate::prefix_dict::PrefixDict;
 use crate::unknown_dictionary::UnknownDictionary;
 use crate::word_entry::{WordEntry, WordId};
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Penalty {
     pub kanji_penalty_length_threshold: usize,
     pub kanji_penalty_length_penalty: i32,
@@ -47,7 +47,7 @@ impl Penalty {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Mode {
     #[serde(rename = "normal")]
     Normal,

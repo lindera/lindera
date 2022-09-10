@@ -25,7 +25,7 @@ use crate::error::{LinderaError, LinderaErrorKind};
 use crate::mode::Mode;
 use crate::LinderaResult;
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
     #[cfg(feature = "ipadic")]
     #[serde(rename = "ipadic")]
@@ -59,7 +59,7 @@ impl FromStr for DictionaryKind {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionarySourceType {
     #[serde(rename = "csv")]
     Csv,
@@ -79,13 +79,13 @@ impl FromStr for DictionarySourceType {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DictionaryConfig {
     pub kind: DictionaryKind,
     pub path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct UserDictionaryConfig {
     pub kind: DictionaryKind,
     pub source_type: DictionarySourceType,
@@ -109,11 +109,11 @@ pub const DEFAULT_DICTIONARY_KIND: &str = SUPPORTED_DICTIONARY_KIND[0];
 /// Token Object
 pub struct Token<'a> {
     pub text: &'a str,
-    pub detail: Vec<String>,
+    pub word_id: WordId,
 }
 
 /// Tokenizer config
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TokenizerConfig {
     /// The dictionary metadata
     pub dictionary: DictionaryConfig,
@@ -411,7 +411,7 @@ impl Tokenizer {
         Ok(tokenizer)
     }
 
-    fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
+    pub fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
         if word_id.is_unknown() {
             return Ok(vec!["UNK".to_string()]);
         }
@@ -500,30 +500,8 @@ impl Tokenizer {
             };
             tokens.push(Token {
                 text: &text[token_start..token_stop],
-                detail: self.word_detail(word_id)?,
+                word_id,
             })
-        }
-
-        Ok(())
-    }
-
-    fn tokenize_str_without_split<'a>(
-        &self,
-        text: &'a str,
-        tokens: &mut Vec<&'a str>,
-        lattice: &mut Lattice,
-    ) -> LinderaResult<()> {
-        let offsets = self.tokenize_offsets(text, lattice);
-
-        for i in 0..offsets.len() {
-            let (token_start, _word_id) = offsets[i];
-            let token_stop = if i == offsets.len() - 1 {
-                text.len()
-            } else {
-                let (next_start, _) = offsets[i + 1];
-                next_start
-            };
-            tokens.push(&text[token_start..token_stop])
         }
 
         Ok(())
@@ -549,31 +527,6 @@ impl Tokenizer {
         }
         if !text.is_empty() {
             self.tokenize_without_split(text, &mut tokens, &mut lattice)?;
-        }
-
-        Ok(tokens)
-    }
-
-    /// Tokenize the text
-    ///
-    /// # Arguments
-    ///
-    /// * `text`: Japanese text
-    ///
-    /// returns: Result<Vec<&str>, LinderaError>
-    ///
-    /// * Vec<&str> : the list of `&str` if succeeded
-    /// * LinderaError : Error message with LinderaErrorKind
-    ///
-    pub fn tokenize_str<'a>(&self, mut text: &'a str) -> LinderaResult<Vec<&'a str>> {
-        let mut lattice = Lattice::default();
-        let mut tokens = Vec::new();
-        while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
-            self.tokenize_str_without_split(&text[..split_idx + 3], &mut tokens, &mut lattice)?;
-            text = &text[split_idx + 3..];
-        }
-        if !text.is_empty() {
-            self.tokenize_str_without_split(text, &mut tokens, &mut lattice)?;
         }
 
         Ok(tokens)
@@ -752,9 +705,9 @@ mod tests {
     #[cfg(feature = "ipadic")]
     fn test_tokenize_sumomomomo() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("すもももももももものうち").unwrap();
+        let tokens = tokenizer.tokenize("すもももももももものうち").unwrap();
         assert_eq!(
-            tokens,
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]
         );
     }
@@ -763,49 +716,64 @@ mod tests {
     #[cfg(feature = "ipadic")]
     fn test_gyoi() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("御意。 御意〜。").unwrap();
-        assert_eq!(tokens, vec!["御意", "。", " ", "御意", "〜", "。"]);
+        let tokens = tokenizer.tokenize("御意。 御意〜。").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["御意", "。", " ", "御意", "〜", "。"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_demoyorokobi() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("〜でも喜び").unwrap();
-        assert_eq!(tokens, vec!["〜", "でも", "喜び"]);
+        let tokens = tokenizer.tokenize("〜でも喜び").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["〜", "でも", "喜び"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_mukigen_normal2() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("—でも").unwrap();
-        assert_eq!(tokens, vec!["—", "でも"]);
+        let tokens = tokenizer.tokenize("—でも").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["—", "でも"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_atodedenwa() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("後で").unwrap();
-        assert_eq!(tokens, vec!["後で"]);
+        let tokens = tokenizer.tokenize("後で").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["後で"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_ikkagetsu() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("ーヶ月").unwrap();
-        assert_eq!(tokens, vec!["ーヶ", "月"]);
+        let tokens = tokenizer.tokenize("ーヶ月").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["ーヶ", "月"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_mukigen_normal() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("無期限に—でもどの種を?").unwrap();
+        let tokens = tokenizer.tokenize("無期限に—でもどの種を?").unwrap();
         assert_eq!(
-            tokens,
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec!["無", "期限", "に", "—", "でも", "どの", "種", "を", "?"]
         );
     }
@@ -814,38 +782,47 @@ mod tests {
     #[cfg(feature = "ipadic")]
     fn test_demo() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("――!!?").unwrap();
-        assert_eq!(tokens, vec!["――!!?"]);
+        let tokens = tokenizer.tokenize("――!!?").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["――!!?"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_kaikeishi() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("ジム・コガン").unwrap();
-        assert_eq!(tokens, vec!["ジム・コガン"]);
+        let tokens = tokenizer.tokenize("ジム・コガン").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["ジム・コガン"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_bruce() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("ブルース・モラン").unwrap();
-        assert_eq!(tokens, vec!["ブルース・モラン"]);
+        let tokens = tokenizer.tokenize("ブルース・モラン").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["ブルース・モラン"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenize_real() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer
-            .tokenize_str(
+        let tokens = tokenizer
+            .tokenize(
                 "本項で解説する地方病とは、山梨県における日本住血吸虫症の呼称であり、\
              長い間その原因が明らかにならず住民を苦しめた感染症である。",
             )
             .unwrap();
         assert_eq!(
-            tokens,
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
                 "本",
                 "項",
@@ -897,24 +874,33 @@ mod tests {
     #[cfg(feature = "ipadic")]
     fn test_hitobito() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("満々!").unwrap();
-        assert_eq!(tokens, &["満々", "!"]);
+        let tokens = tokenizer.tokenize("満々!").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            &["満々", "!"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenize_short() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("日本住").unwrap();
-        assert_eq!(tokens, vec!["日本", "住"]);
+        let tokens = tokenizer.tokenize("日本住").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["日本", "住"]
+        );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenize_short2() {
         let tokenizer = Tokenizer::new().unwrap();
-        let tokens: Vec<&str> = tokenizer.tokenize_str("ここでは").unwrap();
-        assert_eq!(tokens, vec!["ここ", "で", "は"]);
+        let tokens = tokenizer.tokenize("ここでは").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["ここ", "で", "は"]
+        );
     }
 
     #[test]
@@ -954,7 +940,7 @@ mod tests {
                 "トウキョウスカイツリー",
                 "*"
             ],
-            tokens[0].detail
+            tokenizer.word_detail(tokens[0].word_id).unwrap()
         );
         let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
         assert_eq!(
@@ -1007,7 +993,7 @@ mod tests {
                 "トウキョウスカイツリー",
                 "トウキョウスカイツリー"
             ],
-            tokens[0].detail
+            tokenizer.word_detail(tokens[0].word_id).unwrap()
         );
         let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
         assert_eq!(
@@ -1062,7 +1048,7 @@ mod tests {
                 "トウキョウスカイツリー",
                 "トウキョウスカイツリー"
             ],
-            tokens[0].detail
+            tokenizer.word_detail(tokens[0].word_id).unwrap()
         );
         assert_eq!("とうきょうスカイツリー駅", tokens[4].text);
         assert_eq!(
@@ -1077,7 +1063,7 @@ mod tests {
                 "トウキョウスカイツリーエキ",
                 "*"
             ],
-            tokens[4].detail
+            tokenizer.word_detail(tokens[4].word_id).unwrap()
         );
 
         let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();

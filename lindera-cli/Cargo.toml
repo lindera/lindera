@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.15.1"
+version = "0.16.0"
 edition = "2021"
 description = "A morphological analysis command line interface."
 documentation = "https://docs.rs/lindera-cli"
@@ -26,7 +26,7 @@ anyhow = "1.0.58"
 clap = { version = "3.2.8", features = ["derive", "cargo"] }
 serde_json = "1.0.82"
 
-lindera = { version = "0.15.0", path = "../lindera" }
+lindera = { version = "0.16.0", path = "../lindera" }
 
 [[bin]]
 name = "lindera"
