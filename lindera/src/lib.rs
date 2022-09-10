@@ -1,5 +1,4 @@
 pub mod error;
-pub mod formatter;
 pub mod mode;
 pub mod tokenizer;
 

@@ -6,9 +6,8 @@ use std::str::FromStr;
 
 use clap::{AppSettings, Parser};
 
+use lindera::error::LinderaError;
 use lindera::error::LinderaErrorKind;
-use lindera::formatter::format;
-use lindera::formatter::Format;
 use lindera::mode::Mode;
 use lindera::tokenizer::DictionaryConfig;
 use lindera::tokenizer::DictionaryKind;
@@ -75,6 +74,27 @@ struct Args {
     input_file: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy)]
+/// Formatter type
+pub enum Format {
+    Mecab,
+    Wakati,
+    Json,
+}
+
+impl FromStr for Format {
+    type Err = LinderaError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mecab" => Ok(Format::Mecab),
+            "wakati" => Ok(Format::Wakati),
+            "json" => Ok(Format::Json),
+            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid format: {}", s))),
+        }
+    }
+}
+
 fn main() -> LinderaResult<()> {
     let args = Args::parse();
 
@@ -125,14 +145,44 @@ fn main() -> LinderaResult<()> {
         }
         text = text.trim().to_string();
 
-        // tokenize
-        let tokens = tokenizer.tokenize(&text)?;
+        match output_format {
+            Format::Mecab => {
+                // tokenize
+                let tokens = tokenizer.tokenize(&text)?;
 
-        // output result
-        match format(tokens, output_format) {
-            Ok(output) => println!("{}", output),
-            Err(msg) => println!("{}", msg),
-        };
+                // output result
+                for token in tokens {
+                    println!("{}\t{}", token.text, token.detail.join(","));
+                }
+                println!("EOS");
+            }
+            Format::Json => {
+                // tokenize
+                let tokens = tokenizer.tokenize(&text)?;
+
+                // output result
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&tokens).map_err(|err| {
+                        LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err))
+                    })?
+                );
+            }
+            Format::Wakati => {
+                // tokenize
+                let tokens = tokenizer.tokenize_str(&text)?;
+
+                // output result
+                let mut it = tokens.iter().peekable();
+                while let Some(token) = it.next() {
+                    if it.peek().is_some() {
+                        print!("{} ", token);
+                    } else {
+                        println!("{}", token);
+                    }
+                }
+            }
+        }
     }
 
     Ok(())
