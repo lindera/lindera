@@ -1,6 +1,5 @@
 use std::fs;
-use std::io;
-use std::io::{BufRead, BufReader};
+use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -145,40 +144,47 @@ fn main() -> LinderaResult<()> {
         }
         text = text.trim().to_string();
 
+        // tokenize
+        let tokens = tokenizer.tokenize(&text)?;
+
         match output_format {
             Format::Mecab => {
-                // tokenize
-                let tokens = tokenizer.tokenize(&text)?;
-
                 // output result
                 for token in tokens {
-                    println!("{}\t{}", token.text, token.detail.join(","));
+                    println!(
+                        "{}\t{}",
+                        token.text,
+                        tokenizer.word_detail(token.word_id)?.join(",")
+                    );
                 }
                 println!("EOS");
             }
             Format::Json => {
-                // tokenize
-                let tokens = tokenizer.tokenize(&text)?;
-
                 // output result
+                let mut tokens_json = Vec::new();
+                for token in tokens {
+                    let word_detail = tokenizer.word_detail(token.word_id)?;
+                    let token_info = serde_json::json!({
+                        "text": token.text,
+                        "detail": word_detail,
+                    });
+                    tokens_json.push(token_info);
+                }
                 println!(
                     "{}",
-                    serde_json::to_string_pretty(&tokens).map_err(|err| {
+                    serde_json::to_string_pretty(&tokens_json).map_err(|err| {
                         LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err))
                     })?
                 );
             }
             Format::Wakati => {
-                // tokenize
-                let tokens = tokenizer.tokenize_str(&text)?;
-
                 // output result
                 let mut it = tokens.iter().peekable();
                 while let Some(token) = it.next() {
                     if it.peek().is_some() {
-                        print!("{} ", token);
+                        print!("{} ", token.text);
                     } else {
-                        println!("{}", token);
+                        println!("{}", token.text);
                     }
                 }
             }
