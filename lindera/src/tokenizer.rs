@@ -518,15 +518,11 @@ impl Tokenizer {
     /// * Vec<Token> : the list of `Token` if succeeded
     /// * LinderaError : Error message with LinderaErrorKind
     ///
-    pub fn tokenize<'a>(&self, mut text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
+    pub fn tokenize<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut lattice = Lattice::default();
         let mut tokens = Vec::new();
-        while let Some(split_idx) = text.find(|c| c == '。' || c == '、') {
-            self.tokenize_without_split(&text[..split_idx + 3], &mut tokens, &mut lattice)?;
-            text = &text[split_idx + 3..];
-        }
-        if !text.is_empty() {
-            self.tokenize_without_split(text, &mut tokens, &mut lattice)?;
+        for sub_str in text.split_inclusive(&['。',  '、']) {
+            self.tokenize_without_split(sub_str, &mut tokens, &mut lattice)?;
         }
 
         Ok(tokens)
