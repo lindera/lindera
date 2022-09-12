@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Use split_inclusive() to split text into sentences #213 @mosuka
+
 ## 0.16.0 (2022-09-11)
 - Do not deserialize word details during tokenization #211 @mosuka
 

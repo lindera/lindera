@@ -521,7 +521,7 @@ impl Tokenizer {
     pub fn tokenize<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut lattice = Lattice::default();
         let mut tokens = Vec::new();
-        for sub_str in text.split_inclusive(&['。',  '、']) {
+        for sub_str in text.split_inclusive(&['。', '、']) {
             self.tokenize_without_split(sub_str, &mut tokens, &mut lattice)?;
         }
 
