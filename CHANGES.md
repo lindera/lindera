@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.16.1 (2022-09-13)
+- Bump to 0.16.1 #214 @mosuka
 - Use split_inclusive() to split text into sentences #213 @mosuka
 
 ## 0.16.0 (2022-09-11)
