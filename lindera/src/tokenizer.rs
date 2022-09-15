@@ -300,11 +300,7 @@ fn build_dict(dictionary_meta: DictionaryConfig) -> LinderaResult<Dictionary> {
     Ok(dictionary)
 }
 
-fn build_user_dict(
-    // dict_type: DictionaryType,
-    // path: PathBuf,
-    user_dictionary_meta: UserDictionaryConfig,
-) -> LinderaResult<UserDictionary> {
+fn build_user_dict(user_dictionary_meta: UserDictionaryConfig) -> LinderaResult<UserDictionary> {
     let user_dictionary = match user_dictionary_meta.kind {
         #[cfg(feature = "ipadic")]
         DictionaryKind::IPADIC => match user_dictionary_meta.source_type {
@@ -639,7 +635,7 @@ mod tests {
             "user_dictionary": {
                 "kind": "ipadic",
                 "source_type": "csv",
-                "path": "./resources/user_dict.csv"
+                "path": "./resources/simple_userdic.csv"
             },
             "mode": "normal"
         }
@@ -653,7 +649,7 @@ mod tests {
         assert_eq!(user_dictionary.source_type, DictionarySourceType::Csv);
         assert_eq!(
             user_dictionary.path,
-            PathBuf::from("./resources/user_dict.csv")
+            PathBuf::from("./resources/simple_userdic.csv")
         );
         assert_eq!(args.mode, Mode::Normal);
     }
@@ -904,7 +900,7 @@ mod tests {
     fn test_simple_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("userdic.csv");
+            .join("simple_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
@@ -957,7 +953,7 @@ mod tests {
     fn test_detailed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("detailed_userdic.csv");
+            .join("detailed_ipadic_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
@@ -1010,7 +1006,7 @@ mod tests {
     fn test_mixed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("mixed_userdic.csv");
+            .join("mixed_ipadic_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
@@ -1080,6 +1076,10 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "failed to parse word_cost")]
     fn test_user_dict_invalid_word_cost() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_userdic_invalid_word_cost.csv");
+
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
@@ -1087,7 +1087,7 @@ mod tests {
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
             source_type: DictionarySourceType::Csv,
-            path: PathBuf::from("test/fixtures/userdic_invalid_word_cost.csv"),
+            path: userdic_file,
         });
         let config = TokenizerConfig {
             dictionary,
@@ -1101,6 +1101,10 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
     fn test_user_dict_number_of_fields_is_11() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_userdic_insufficient_number_of_fields.csv");
+
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
@@ -1108,7 +1112,7 @@ mod tests {
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
             source_type: DictionarySourceType::Csv,
-            path: PathBuf::from("test/fixtures/userdic_insufficient_number_of_fields.csv"),
+            path: userdic_file,
         });
         let config = TokenizerConfig {
             dictionary,

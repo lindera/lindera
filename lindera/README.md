@@ -67,12 +67,12 @@ You can see the result as follows:
 You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.
 
 ```
-<surface_form>,<part_of_speech>,<reading>
+<surface>,<part_of_speech>,<reading>
 ```
 
 For example:
 ```shell
-% cat userdic.csv
+% cat simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ

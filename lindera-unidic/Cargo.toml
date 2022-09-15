@@ -1,6 +1,6 @@
 [package]
 name = "lindera-unidic"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 description = "A Japanese morphological dictionary for UniDic."
 documentation = "https://docs.rs/lindera-unidic"
@@ -29,4 +29,4 @@ zip = { version = "0.6.2", optional = true }
 ureq = { version = "2.4.0", default-features = false, features = ["tls"], optional = true }
 
 lindera-core = { version = "0.14.0", path = "../lindera-core" }
-lindera-unidic-builder = { version = "0.14.0", path = "../lindera-unidic-builder"}
+lindera-unidic-builder = { version = "0.15.0", path = "../lindera-unidic-builder"}
