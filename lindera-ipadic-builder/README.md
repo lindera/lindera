@@ -44,7 +44,7 @@ Building a dictionary with `lindera-ipadic-builder` command:
 Building a dictionary with `lindera-ipadic-builder` command:
 
 ```shell script
-% lindera-ipadic-builder -S ./resources/userdic.csv -D ./resources/ipadic_userdic.bin
+% lindera-ipadic-builder -S ./resources/simple_userdic.csv -D ./resources/ipadic_userdic.bin
 ```
 
 

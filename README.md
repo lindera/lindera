@@ -72,7 +72,7 @@ You can give user dictionary entries along with the default system dictionary. U
 
 For example:
 ```shell
-% cat userdic.csv
+% cat ./resources/simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
@@ -100,7 +100,7 @@ fn main() -> LinderaResult<()> {
     let user_dictionary = Some(UserDictionaryConfig {
         kind: DictionaryKind::IPADIC,
         source_type: DictionarySourceType::Csv,
-        path: PathBuf::from("./resources/userdic.csv"),
+        path: PathBuf::from("./resources/simple_userdic.csv"),
     });
 
     // create tokenizer

@@ -45,7 +45,7 @@ Building a dictionary with `lindera-unidic-builder` command:
 Building a dictionary with `lindera-unidic-builder` command:
 
 ```shell script
-% lindera-unidic-builder -S ./resources/userdic.csv -D ./resources/unidic_userdic.bin
+% lindera-unidic-builder -S ./resources/simple_userdic.csv -D ./resources/unidic_userdic.bin
 ```
 
 
