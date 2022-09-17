@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.16.1"
+version = "0.16.2"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -32,10 +32,10 @@ thiserror = "1.0.31"
 
 lindera-core = { version = "0.14.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.14.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.14.0", path = "../lindera-ipadic", optional = true }
-lindera-ipadic-builder = { version = "0.14.0", path = "../lindera-ipadic-builder" }
-lindera-unidic = { version = "0.14.0", path = "../lindera-unidic", optional = true }
-lindera-unidic-builder = { version = "0.14.0", path = "../lindera-unidic-builder" }
+lindera-ipadic = { version = "0.15.0", path = "../lindera-ipadic", optional = true }
+lindera-ipadic-builder = { version = "0.15.0", path = "../lindera-ipadic-builder" }
+lindera-unidic = { version = "0.15.0", path = "../lindera-unidic", optional = true }
+lindera-unidic-builder = { version = "0.15.0", path = "../lindera-unidic-builder" }
 lindera-ko-dic = { version = "0.14.0", path = "../lindera-ko-dic", optional = true }
 lindera-ko-dic-builder = { version = "0.14.0", path = "../lindera-ko-dic-builder" }
 lindera-cc-cedict = { version = "0.14.0", path = "../lindera-cc-cedict", optional = true }

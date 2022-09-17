@@ -22,7 +22,7 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
         b.iter(|| {
             let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
-                .join("userdic.csv");
+                .join("simple_userdic.csv");
 
             let dictionary = DictionaryConfig {
                 kind: DictionaryKind::IPADIC,
@@ -55,7 +55,7 @@ fn bench_tokenize(c: &mut Criterion) {
 fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
     let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
-        .join("userdic.csv");
+        .join("simple_userdic.csv");
 
     let dictionary = DictionaryConfig {
         kind: DictionaryKind::IPADIC,

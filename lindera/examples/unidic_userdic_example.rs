@@ -1,8 +1,8 @@
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "unidic")]
 use std::path::PathBuf;
 
 use lindera::LinderaResult;
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "unidic")]
 use lindera::{
     mode::Mode,
     tokenizer::{
@@ -12,15 +12,15 @@ use lindera::{
 };
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "unidic")]
     {
         let dictionary = DictionaryConfig {
-            kind: DictionaryKind::IPADIC,
+            kind: DictionaryKind::UniDic,
             path: None,
         };
 
         let user_dictionary = Some(UserDictionaryConfig {
-            kind: DictionaryKind::IPADIC,
+            kind: DictionaryKind::UniDic,
             source_type: DictionarySourceType::Csv,
             path: PathBuf::from("./resources/simple_userdic.csv"),
         });

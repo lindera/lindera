@@ -8,7 +8,7 @@ use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use glob::glob;
-use log::info;
+use log::debug;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
@@ -174,7 +174,7 @@ impl DictionaryBuilder for IpadicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinitions> {
         let char_def_path = input_dir.join("char.def");
-        info!("reading {:?}", char_def_path);
+        debug!("reading {:?}", char_def_path);
 
         let char_def = read_euc_file(&char_def_path)?;
         let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
@@ -207,7 +207,7 @@ impl DictionaryBuilder for IpadicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         let unk_data_path = input_dir.join("unk.def");
-        info!("reading {:?}", unk_data_path);
+        debug!("reading {:?}", unk_data_path);
 
         let unk_data = read_euc_file(&unk_data_path)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
@@ -258,7 +258,7 @@ impl DictionaryBuilder for IpadicBuilder {
         let files_data: Vec<String> = filenames
             .iter()
             .map(|filename| {
-                info!("reading {:?}", filename);
+                debug!("reading {:?}", filename);
                 read_euc_file(filename)
             })
             .collect::<LinderaResult<Vec<String>>>()?;
@@ -396,7 +396,7 @@ impl DictionaryBuilder for IpadicBuilder {
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
-        info!("reading {:?}", matrix_data_path);
+        debug!("reading {:?}", matrix_data_path);
 
         let matrix_data = read_euc_file(&matrix_data_path)?;
         let mut lines = Vec::new();
@@ -446,7 +446,7 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        info!("reading {:?}", input_file);
+        debug!("reading {:?}", input_file);
         let data: String = read_utf8_file(input_file)?;
 
         let lines: Vec<&str> = data.lines().collect();
@@ -500,13 +500,6 @@ impl DictionaryBuilder for IpadicBuilder {
         let mut keyset: Vec<(&[u8], u32)> = vec![];
         for (key, word_entries) in &word_entry_map {
             let len = word_entries.len() as u32;
-            assert!(
-                len < (1 << 5),
-                "{} is {} length. Too long. [{}]",
-                key,
-                len,
-                (1 << 5)
-            );
             let val = (id << 5) | len;
             keyset.push((key.as_bytes(), val));
             id += len;

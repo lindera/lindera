@@ -18,6 +18,14 @@ struct Args {
     /// The dictionary destination directory.
     #[clap(short = 'd', long = "dict-dest", value_name = "DICT_DEST")]
     dict_dest: Option<PathBuf>,
+
+    /// The user dictionary source file.
+    #[clap(short = 'S', long = "user-dict-src", value_name = "USER_DICT_SRC")]
+    user_dict_src: Option<PathBuf>,
+
+    /// The user dictionary destination file.
+    #[clap(short = 'D', long = "user-dict-dest", value_name = "USER_DICT_DEST")]
+    user_dict_dest: Option<PathBuf>,
 }
 
 fn main() -> LinderaResult<()> {
@@ -40,6 +48,23 @@ fn main() -> LinderaResult<()> {
         } else {
             return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
                 "`--dict-dest` is required when `--dict-src` is specified"
+            )));
+        }
+    }
+
+    if args.user_dict_src.is_some() {
+        if args.user_dict_dest.is_some() {
+            let user_dict_src = args.user_dict_src.unwrap();
+            let user_dict_dest = args.user_dict_dest.unwrap();
+            match dict_builder.build_user_dictionary(&user_dict_src, &user_dict_dest) {
+                Ok(()) => (),
+                Err(msg) => {
+                    return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(msg)));
+                }
+            }
+        } else {
+            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                "`--user-dict-dest` is required when `--user-dict-src` is specified"
             )));
         }
     }

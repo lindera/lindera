@@ -41,10 +41,10 @@ Building a dictionary with `lindera-ipadic-builder` command:
 
 ## Building a user dictionary
 
-Building a dictionary with `lindera-userdic-builder` command:
+Building a dictionary with `lindera-ipadic-builder` command:
 
 ```shell script
-% lindera-ipadic-builder -S ./resources/userdic.csv -D ./resources/userdic.bin
+% lindera-ipadic-builder -S ./resources/simple_userdic.csv -D ./resources/ipadic_userdic.bin
 ```
 
 
@@ -54,19 +54,19 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 表層形 | surface | |
-| 1 | 左文脈ID | left-context-id | |
-| 2 | 右文脈ID | right-context-id | |
-| 3 | コスト | cost | |
-| 4 | 品詞 | part-of-speech | |
-| 5 | 品詞細分類1 | sub POS 1 | |
-| 6 | 品詞細分類2 | sub POS 2 | |
-| 7 | 品詞細分類3 | sub POS 3 | |
-| 8 | 活用形 | conjugation type | |
-| 9 | 活用型 | conjugation form | |
-| 10 | 原形 | base form | |
-| 11 | 読み | reading | |
-| 12 | 発音 | pronunciation | |
+| 0 | 表層形 | Surface | |
+| 1 | 左文脈ID | Left context ID | |
+| 2 | 右文脈ID | Right context ID | |
+| 3 | コスト | Cost | |
+| 4 | 品詞 | Major POS classification | |
+| 5 | 品詞細分類1 | Middle POS classification | |
+| 6 | 品詞細分類2 | Small POS classification | |
+| 7 | 品詞細分類3 | Fine POS classification | |
+| 8 | 活用形 | Conjugation type | |
+| 9 | 活用型 | Conjugation form | |
+| 10 | 原形 | Base form | |
+| 11 | 読み | Reading | |
+| 12 | 発音 | Pronunciation | |
 
 
 ## User dictionary format (CSV)
@@ -75,25 +75,25 @@ Simple version
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表層形 | surface | |
-| 1 | 品詞 | part-of-speech | |
-| 2 | 読み | reading | |
+| 1 | 品詞 | Major POS classification | |
+| 2 | 読み | Reading | |
 
 Detailed version
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 表層形 | surface | |
-| 1 | 左文脈ID | left-context-id | |
-| 2 | 右文脈ID | right-context-id | |
-| 3 | コスト | cost | |
-| 4 | 品詞 | part-of-speech | |
-| 5 | 品詞細分類1 | sub POS 1 | |
-| 6 | 品詞細分類2 | sub POS 2 | |
-| 7 | 品詞細分類3 | sub POS 3 | |
-| 8 | 活用形 | conjugation type | |
-| 9 | 活用型 | conjugation form | |
-| 10 | 原形 | base form | |
-| 11 | 読み | reading | |
-| 12 | 発音 | pronunciation | |
+| 0 | 表層形 | Surface | |
+| 1 | 左文脈ID | Left context ID | |
+| 2 | 右文脈ID | Right context ID | |
+| 3 | コスト | Cost | |
+| 4 | 品詞 | Major POS classification | |
+| 5 | 品詞細分類1 | Middle POS classification | |
+| 6 | 品詞細分類2 | Small POS classification | |
+| 7 | 品詞細分類3 | Fine POS classification | |
+| 8 | 活用形 | Conjugation type | |
+| 9 | 活用型 | Conjugation form | |
+| 10 | 原形 | Base form | |
+| 11 | 読み | Reading | |
+| 12 | 発音 | Pronunciation | |
 
 
 ## Tokenizing text using produced dictionary
@@ -117,7 +117,7 @@ EOS
 You can tokenize text using produced dictionary with `lindera` command:
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801 -u ./resources/userdic.bin -t binary
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/ipadic_userdic.bin -t binary
 ```
 
 ```text
@@ -132,7 +132,7 @@ EOS
 
 For more details about `lindera` command, please refer to the following URL:
 
-- [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-ipadic-builder)
+- [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-cli)
 
 
 ## API reference
