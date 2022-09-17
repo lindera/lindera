@@ -130,7 +130,7 @@ You can tokenize text using produced dictionary with `lindera` command:
 EOS
 ```
 
-## Tokenizing text using default dictionary and produced binary user dictionary
+## Tokenizing text using UniDic dictionary and produced binary user dictionary
 
 You can tokenize text using produced dictionary with `lindera` command:
 
