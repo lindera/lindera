@@ -149,6 +149,9 @@ You can tokenize text using produced dictionary with `lindera` command:
 EOS
 ```
 
+You can use other user dictionary (e.g. IPADIC) with UniDic.
+But, note that the detailed information of the words will be others one.
+
 For more details about `lindera` command, please refer to the following URL:
 
 - [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-cli)
