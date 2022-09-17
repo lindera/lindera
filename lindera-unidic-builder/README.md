@@ -26,7 +26,7 @@ The following products are required to build:
 ## Dictionary version
 
 This project supports UniDic 2.1.2.
-See [detail of UniDic](https://unidic.ninjal.ac.jp/) .
+See [detail of UniDic](https://clrd.ninjal.ac.jp/unidic/) .
 
 
 ## Building a dictionary
@@ -34,7 +34,7 @@ See [detail of UniDic](https://unidic.ninjal.ac.jp/) .
 Building a dictionary with `lindera-unidic-builder` command:
 
 ```shell script
-% curl -l -o /tmp/unidic-mecab-2.1.2_src.zip "https://ccd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% curl -l -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
 % unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
 % lindera-unidic-builder -s /tmp/unidic-mecab-2.1.2_src -d /tmp/lindera-unidic-2.1.2
 ```
