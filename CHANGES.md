@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.16.2 (Unreleased)
+- Add feature for HTML reports #218 @mosuka
+- Add benchmark for tokenize with word details #217 @mosuka
+- Support UniDic user dictionary #215 @mosuka
+
 ## 0.16.1 (2022-09-13)
 - Bump to 0.16.1 #214 @mosuka
 - Use split_inclusive() to split text into sentences #213 @mosuka
