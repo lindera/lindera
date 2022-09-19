@@ -36,8 +36,8 @@ lindera-ipadic = { version = "0.15.0", path = "../lindera-ipadic", optional = tr
 lindera-ipadic-builder = { version = "0.15.0", path = "../lindera-ipadic-builder" }
 lindera-unidic = { version = "0.15.0", path = "../lindera-unidic", optional = true }
 lindera-unidic-builder = { version = "0.15.0", path = "../lindera-unidic-builder" }
-lindera-ko-dic = { version = "0.14.0", path = "../lindera-ko-dic", optional = true }
-lindera-ko-dic-builder = { version = "0.14.0", path = "../lindera-ko-dic-builder" }
+lindera-ko-dic = { version = "0.15.0", path = "../lindera-ko-dic", optional = true }
+lindera-ko-dic-builder = { version = "0.15.0", path = "../lindera-ko-dic-builder" }
 lindera-cc-cedict = { version = "0.14.0", path = "../lindera-cc-cedict", optional = true }
 lindera-cc-cedict-builder = { version = "0.14.0", path = "../lindera-cc-cedict-builder" }
 

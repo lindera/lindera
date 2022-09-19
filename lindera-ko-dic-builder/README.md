@@ -56,6 +56,15 @@ Building a dictionary with `lindera-ko-dic` command:
 ```
 
 
+## Building a user dictionary
+
+Building a dictionary with `lindera-ko-dic-builder` command:
+
+```shell script
+% lindera-ko-dic-builder -S ./resources/ko-dic_simple_userdic.csv -D ./resources/ko-dic_userdic.bin
+```
+
+
 ## Dictionary format
 
 Information about the dictionary format and part-of-speech tags used by mecab-ko-dic id documented in [this Google Spreadsheet](https://docs.google.com/spreadsheets/d/1-9blXKjtjeKZqsf4NzHeYJCrr49-nXeRF6D80udfcwY/edit#gid=589544265), linked to from mecab-ko-dic's [repository readme](https://bitbucket.org/eunjeon/mecab-ko-dic/src/master/README.md).
@@ -68,14 +77,44 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 
 | Index | Name (Korean) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
-| 1 | 의미 부류 | meaning | (too few examples for me to be sure) |
-| 2 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
-| 3 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
-| 4 | 타입 | type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
-| 5 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
-| 6 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
-| 7 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
+| 0 | 표면 | Surface |
+| 1 | 왼쪽 문맥 ID | Left context ID |
+| 2 | 오른쪽 문맥 ID | Right context ID |
+| 3 | 비용 | Cost |
+| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
+| 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
+| 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
+| 8 | 타입 | type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
+| 9 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
+| 10 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
+| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
+
+
+## User dictionary format (CSV)
+
+Simple version
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 표면 | Surface |
+| 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 2 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
+
+Detailed version
+| Index | Name (Korean) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 표면 | Surface |
+| 1 | 왼쪽 문맥 ID | Left context ID |
+| 2 | 오른쪽 문맥 ID | Right context ID |
+| 3 | 비용 | Cost |
+| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
+| 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
+| 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
+| 8 | 타입 | type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
+| 9 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
+| 10 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
+| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
 
 
 ## Tokenizing text using produced dictionary
@@ -91,6 +130,21 @@ You can tokenize text using produced dictionary with `lindera` command:
 공항    NNG,장소,T,공항,*,*,*,*
 한정    NNG,*,T,한정,*,*,*,*
 토트백  NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
+EOS
+```
+
+## Tokenizing text using ko-dic dictionary and produced binary user dictionary
+
+You can tokenize text using produced dictionary with `lindera` command:
+
+```shell script
+% echo "하네다공항한정토트" | lindera -k ko-dic -u ./resources/ko-dic_userdic.bin -t binary
+```
+
+```text
+하네다공항      NNP,*,*,하네다공항,*,*,*,*
+한정    NNG,*,T,한정,*,*,*,*
+토트    NNP,인명,F,토트,*,*,*,*
 EOS
 ```
 
