@@ -38,8 +38,8 @@ lindera-unidic = { version = "0.15.0", path = "../lindera-unidic", optional = tr
 lindera-unidic-builder = { version = "0.15.0", path = "../lindera-unidic-builder" }
 lindera-ko-dic = { version = "0.15.0", path = "../lindera-ko-dic", optional = true }
 lindera-ko-dic-builder = { version = "0.15.0", path = "../lindera-ko-dic-builder" }
-lindera-cc-cedict = { version = "0.14.0", path = "../lindera-cc-cedict", optional = true }
-lindera-cc-cedict-builder = { version = "0.14.0", path = "../lindera-cc-cedict-builder" }
+lindera-cc-cedict = { version = "0.15.0", path = "../lindera-cc-cedict", optional = true }
+lindera-cc-cedict-builder = { version = "0.15.0", path = "../lindera-cc-cedict-builder" }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }

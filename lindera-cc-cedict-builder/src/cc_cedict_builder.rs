@@ -8,8 +8,10 @@ use std::{fs, u32};
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use glob::glob;
-use log::{debug, info, warn};
+use lindera_core::prefix_dict::PrefixDict;
+use log::{debug, warn};
 use yada::builder::DoubleArrayBuilder;
+use yada::DoubleArray;
 
 #[cfg(feature = "compress")]
 use lindera_compress::compress;
@@ -23,6 +25,9 @@ use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 
+const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
+const SIMPLE_WORD_COST: i16 = -10000;
+const SIMPLE_CONTEXT_ID: u16 = 0;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
 pub struct CcCedictBuilder {}
@@ -86,7 +91,7 @@ impl DictionaryBuilder for CcCedictBuilder {
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinitions> {
         let char_def_path = input_dir.join("char.def");
-        info!("reading {:?}", char_def_path);
+        debug!("reading {:?}", char_def_path);
 
         let char_def = read_utf8_file(&char_def_path)?;
         let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
@@ -119,7 +124,7 @@ impl DictionaryBuilder for CcCedictBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         let unk_data_path = input_dir.join("unk.def");
-        info!("reading {:?}", unk_data_path);
+        debug!("reading {:?}", unk_data_path);
 
         let unk_data = read_utf8_file(&unk_data_path)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
@@ -171,7 +176,7 @@ impl DictionaryBuilder for CcCedictBuilder {
 
         let mut rows: Vec<StringRecord> = Vec::new();
         for filename in filenames {
-            info!("reading {:?}", filename);
+            debug!("reading {:?}", filename);
 
             let mut rdr = csv::ReaderBuilder::new()
                 .has_headers(false)
@@ -298,7 +303,9 @@ impl DictionaryBuilder for CcCedictBuilder {
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
+
         compress_write(&vals_buffer, COMPRESS_ALGORITHM, &mut wtr_vals)?;
+
         wtr_vals
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -308,7 +315,7 @@ impl DictionaryBuilder for CcCedictBuilder {
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
-        info!("reading {:?}", matrix_data_path);
+        debug!("reading {:?}", matrix_data_path);
 
         let matrix_data = read_utf8_file(&matrix_data_path)?;
         let mut lines = Vec::new();
@@ -357,8 +364,123 @@ impl DictionaryBuilder for CcCedictBuilder {
         Ok(())
     }
 
-    fn build_user_dict(&self, _input_file: &Path) -> LinderaResult<UserDictionary> {
-        unimplemented!()
+    fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
+        debug!("reading {:?}", input_file);
+
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(input_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        let mut rows: Vec<StringRecord> = vec![];
+        for result in rdr.records() {
+            let record =
+                result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
+            rows.push(record);
+        }
+        rows.sort_by_key(|row| row[0].to_string());
+
+        let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
+
+        for (row_id, row) in rows.iter().enumerate() {
+            let surface = row[0].to_string();
+            let word_cost = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                SIMPLE_WORD_COST
+            } else {
+                row[3].parse::<i16>().map_err(|err| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse word cost: {}", err))
+                })?
+            };
+            let cost_id = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                SIMPLE_CONTEXT_ID
+            } else {
+                row[1].parse::<u16>().map_err(|err| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse cost id: {}", err))
+                })?
+            };
+
+            word_entry_map
+                .entry(surface)
+                .or_insert_with(Vec::new)
+                .push(WordEntry {
+                    word_id: WordId(row_id as u32, true),
+                    word_cost,
+                    cost_id,
+                });
+        }
+
+        let mut words_data = Vec::<u8>::new();
+        let mut words_idx_data = Vec::<u8>::new();
+        for row in rows.iter() {
+            let word = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                vec![
+                    row[1].to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    row[2].to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ]
+            } else {
+                vec![
+                    row[4].to_string(),
+                    row[5].to_string(),
+                    row[6].to_string(),
+                    row[7].to_string(),
+                    row[8].to_string(),
+                    row[9].to_string(),
+                    row[10].to_string(),
+                    row[11].to_string(),
+                ]
+            };
+
+            let offset = words_data.len();
+            words_idx_data
+                .write_u32::<LittleEndian>(offset as u32)
+                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            bincode::serialize_into(&mut words_data, &word)
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        }
+
+        let mut id = 0u32;
+
+        // building double array trie
+        let mut keyset: Vec<(&[u8], u32)> = vec![];
+        for (key, word_entries) in &word_entry_map {
+            let len = word_entries.len() as u32;
+            let val = (id << 5) | len;
+            keyset.push((key.as_bytes(), val));
+            id += len;
+        }
+        let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+        })?;
+
+        // building values
+        let mut vals_data = Vec::<u8>::new();
+        for word_entries in word_entry_map.values() {
+            for word_entry in word_entries {
+                word_entry
+                    .serialize(&mut vals_data)
+                    .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            }
+        }
+
+        let dict = PrefixDict {
+            da: DoubleArray::new(da_bytes),
+            vals_data,
+            is_system: false,
+        };
+
+        Ok(UserDictionary {
+            dict,
+            words_idx_data,
+            words_data,
+        })
     }
 }
 
