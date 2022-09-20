@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## 0.16.2 (Unreleased)
+- Support CC-CEDICT user dictionary #220 @mosuka
+- Support ko-dic user dictionary #219 @mosuka
 - Add feature for HTML reports #218 @mosuka
 - Add benchmark for tokenize with word details #217 @mosuka
 - Support UniDic user dictionary #215 @mosuka
