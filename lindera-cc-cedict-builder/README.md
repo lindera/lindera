@@ -51,7 +51,59 @@ Downloading a dictionary source from [CC-CEDICT-MeCab](https://github.com/ueda-k
 ```
 
 
+## Building a user dictionary
+
+Building a dictionary with `lindera-cc-cedict-builder` command:
+
+```shell script
+% lindera-cc-cedict-builder -S ./resources/cc-cedict_simple_userdic.csv -D ./resources/cc-cedict_userdic.bin
+```
+
+
 ## Dictionary format
+
+Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf) for details on the unidic-mecab dictionary format and part-of-speech tags.
+
+| Index | Name (Chinese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface |
+| 1 | 左语境ID | Left context ID |
+| 2 | 右语境ID | Right context ID |
+| 3 | 成本 | Cost |
+| 4 | 词类 | Major POS classification | |
+| 5 | 词类1 | Middle POS classification | |
+| 6 | 词类2 | Small POS classification | |
+| 7 | 词类3 | Fine POS classification | |
+| 8 | 併音 | pinyin | |
+| 9 | 繁体字 | traditional | |
+| 10 | 簡体字 | simplified | |
+| 11 | 定义 | definition | |
+
+
+## User dictionary format (CSV)
+
+Simple version
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface |
+| 1 | 词类 | Major POS classification | |
+| 2 | 併音 | pinyin | |
+
+Detailed version
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface |
+| 1 | 左语境ID | Left context ID |
+| 2 | 右语境ID | Right context ID |
+| 3 | 成本 | Cost |
+| 4 | 词类 | Major POS classification | |
+| 5 | 词类1 | Middle POS classification | |
+| 6 | 词类2 | Small POS classification | |
+| 7 | 词类3 | Fine POS classification | |
+| 8 | 併音 | pinyin | |
+| 9 | 繁体字 | traditional | |
+| 10 | 簡体字 | simplified | |
+| 11 | 定义 | definition | |
 
 
 ## Tokenizing text using produced dictionary
@@ -72,6 +124,23 @@ You can tokenize text using produced dictionary with `lindera` command:
 的      *,*,*,*,di4,的,的,aim/clear/
 语态    *,*,*,*,yu3 tai4,語態,语态,voice (grammar)/
 分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+EOS
+```
+
+## Tokenizing text using default dictionary and produced binary user dictionary
+
+You can tokenize text using produced dictionary with `lindera` command:
+
+```shell script
+% echo "羽田机场限量版手提包" | ./target/debug/lindera -k cc-cedict -u ./resources/cc-cedict_userdic.bin -t binary
+```
+
+```text
+羽田机场        *,*,*,*,Yu3 tian2 ji1 chang3,*,*,*
+限      *,*,*,*,xian4,限,限,limit/bound/to set a limit (on)/
+量      *,*,*,*,liang4,量,量,capacity/quantity/amount/to estimate/abbr. for 量詞|量词[liang4 ci2]
+版      *,*,*,*,ban3,版,版,a register/block of printing/edition/version/page/
+手提包  *,*,*,*,shou3 ti2 bao1,手提包,手提包,(hand)bag/hold-all/
 EOS
 ```
 
