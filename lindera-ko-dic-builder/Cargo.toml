@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ko-dic-builder"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 description = "A Korean morphological dictionary builder for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic-builder"

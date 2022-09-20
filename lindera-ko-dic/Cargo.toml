@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ko-dic"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 description = "A Japanese morphological dictionary for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic"
@@ -29,4 +29,4 @@ flate2 = { version = "1.0.24", optional = true }
 tar = { version = "0.4.38", optional = true }
 
 lindera-core = { version = "0.14.0", path = "../lindera-core" }
-lindera-ko-dic-builder = { version = "0.14.0", path = "../lindera-ko-dic-builder"}
+lindera-ko-dic-builder = { version = "0.15.0", path = "../lindera-ko-dic-builder"}

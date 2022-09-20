@@ -22,6 +22,23 @@ The following products are required to build:
 % cargo build --release
 ```
 
+### Build small binary
+
+You can reduce the size of the dictionary by using the "compress" feature flag.  
+Instead, it can only be used with Lindera, which supports compression.
+
+This repo example is this.
+
+```sh
+% cargo build --release --features compress
+```
+
+It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
+
+```text
+% sudo apt install liblzma-dev
+```
+
 
 ## Dictionary version
 
