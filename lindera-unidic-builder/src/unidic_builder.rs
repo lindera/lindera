@@ -416,7 +416,7 @@ impl DictionaryBuilder for UnidicBuilder {
                     "*".to_string(),    // Suffix of a word form
                     "*".to_string(),    // Suffix of a word type
                 ]
-            } else if row.len() == DETAILED_USERDIC_FIELDS_NUM {
+            } else if row.len() >= DETAILED_USERDIC_FIELDS_NUM {
                 let mut tmp_word_detail = Vec::new();
                 for item in row.iter().skip(4) {
                     tmp_word_detail.push(item.to_string());

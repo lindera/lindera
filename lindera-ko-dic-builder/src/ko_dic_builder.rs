@@ -407,7 +407,7 @@ impl DictionaryBuilder for KoDicBuilder {
                     "*".to_string(),    // last part-of-speech
                     "*".to_string(),    // expression
                 ]
-            } else if row.len() == DETAILED_USERDIC_FIELDS_NUM {
+            } else if row.len() >= DETAILED_USERDIC_FIELDS_NUM {
                 let mut tmp_word_detail = Vec::new();
                 for item in row.iter().skip(4) {
                     tmp_word_detail.push(item.to_string());
