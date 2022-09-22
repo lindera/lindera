@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Make user dictionaries extensible #221 @mosuka
+
 ## 0.16.2 (2022-09-20)
 - Support CC-CEDICT user dictionary #220 @mosuka
 - Support ko-dic user dictionary #219 @mosuka
