@@ -28,6 +28,7 @@ use lindera_decompress::Algorithm;
 const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
 const SIMPLE_WORD_COST: i16 = -10000;
 const SIMPLE_CONTEXT_ID: u16 = 0;
+const DETAILED_USERDIC_FIELDS_NUM: usize = 12;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
 
 pub struct KoDicBuilder {}
@@ -238,21 +239,15 @@ impl DictionaryBuilder for KoDicBuilder {
         let mut words_buffer = Vec::new();
         let mut words_idx_buffer = Vec::new();
         for row in rows.iter() {
-            let word = vec![
-                row[4].to_string(),
-                row[5].to_string(),
-                row[6].to_string(),
-                row[7].to_string(),
-                row[8].to_string(),
-                row[9].to_string(),
-                row[10].to_string(),
-                row[11].to_string(),
-            ];
+            let mut word_detail = Vec::new();
+            for item in row.iter().skip(4) {
+                word_detail.push(item.to_string());
+            }
             let offset = words_buffer.len();
             words_idx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_buffer, &word)
+            bincode::serialize_into(&mut words_buffer, &word_detail)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
@@ -375,17 +370,16 @@ impl DictionaryBuilder for KoDicBuilder {
             let word_cost = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
                 SIMPLE_WORD_COST
             } else {
-                row[3].parse::<i16>().map_err(|err| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse word cost: {}", err))
+                row[3].parse::<i16>().map_err(|_err| {
+                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word cost"))
                 })?
             };
             let cost_id = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
                 SIMPLE_CONTEXT_ID
             } else {
-                row[1].parse::<u16>().map_err(|err| {
+                row[1].parse::<u16>().map_err(|_err| {
                     LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse cost id: {}", err))
+                        .with_error(anyhow::anyhow!("failed to parse left context id"))
                 })?
             };
 
@@ -402,35 +396,36 @@ impl DictionaryBuilder for KoDicBuilder {
         let mut words_data = Vec::<u8>::new();
         let mut words_idx_data = Vec::<u8>::new();
         for row in rows.iter() {
-            let word = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+            let word_detail = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
                 vec![
-                    row[1].to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    row[2].to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
+                    row[1].to_string(), //part-of-speech tag
+                    "*".to_string(),    // meaning
+                    "*".to_string(),    // presence or absence
+                    row[2].to_string(), // reading
+                    "*".to_string(),    // type
+                    "*".to_string(),    // first part-of-speech
+                    "*".to_string(),    // last part-of-speech
+                    "*".to_string(),    // expression
                 ]
+            } else if row.len() == DETAILED_USERDIC_FIELDS_NUM {
+                let mut tmp_word_detail = Vec::new();
+                for item in row.iter().skip(4) {
+                    tmp_word_detail.push(item.to_string());
+                }
+                tmp_word_detail
             } else {
-                vec![
-                    row[4].to_string(),
-                    row[5].to_string(),
-                    row[6].to_string(),
-                    row[7].to_string(),
-                    row[8].to_string(),
-                    row[9].to_string(),
-                    row[10].to_string(),
-                    row[11].to_string(),
-                ]
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "user dictionary should be a CSV with {} or {}+ fields",
+                    SIMPLE_USERDIC_FIELDS_NUM,
+                    DETAILED_USERDIC_FIELDS_NUM
+                )));
             };
 
             let offset = words_data.len();
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_data, &word)
+            bincode::serialize_into(&mut words_data, &word_detail)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 

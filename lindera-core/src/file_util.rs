@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use encoding::{DecoderTrap, Encoding};
+use encoding_rs::{EUC_JP, UTF_8};
 
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
@@ -19,14 +19,10 @@ pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
 
 pub fn read_euc_file(filename: &Path) -> LinderaResult<String> {
     let buffer = read_file(filename)?;
-    encoding::all::EUC_JP
-        .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+    Ok(EUC_JP.decode(&buffer).0.into_owned())
 }
 
 pub fn read_utf8_file(filename: &Path) -> LinderaResult<String> {
     let buffer = read_file(filename)?;
-    encoding::all::UTF_8
-        .decode(&buffer, DecoderTrap::Strict)
-        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))
+    Ok(UTF_8.decode(&buffer).0.into_owned())
 }

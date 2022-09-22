@@ -1,8 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 use byteorder::{ByteOrder, LittleEndian};
-use encoding::all::UTF_16LE;
-use encoding::{DecoderTrap, Encoding};
+use encoding_rs::UTF_16LE;
 use serde::{Deserialize, Serialize};
 
 use crate::error::LinderaErrorKind;
@@ -13,9 +12,8 @@ const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
 fn ucs2_to_unicode(ucs2_codepoint: u16) -> LinderaResult<u32> {
     let mut buf = [0u8; 2];
     LittleEndian::write_u16(&mut buf[..], ucs2_codepoint);
-    let s: String = UTF_16LE
-        .decode(&buf[..], DecoderTrap::Strict)
-        .map_err(|err| LinderaErrorKind::Decode.with_error(anyhow::anyhow!(err)))?;
+
+    let s = UTF_16LE.decode(&buf[..]).0.into_owned();
     let chrs: Vec<char> = s.chars().collect();
 
     match chrs.len() {
