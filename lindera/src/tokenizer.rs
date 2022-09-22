@@ -1074,7 +1074,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ipadic")]
-    #[should_panic(expected = "failed to parse word_cost")]
+    #[should_panic(expected = "failed to parse word cost")]
     fn test_user_dict_invalid_word_cost() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
@@ -1099,7 +1099,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ipadic")]
-    #[should_panic(expected = "user dictionary should be a CSV with 3 or 13 fields")]
+    #[should_panic(expected = "user dictionary should be a CSV with 3 or 13+ fields")]
     fn test_user_dict_number_of_fields_is_11() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")

@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::fmt::Debug;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -7,6 +6,9 @@ use std::str::FromStr;
 use std::u32;
 
 use byteorder::{LittleEndian, WriteBytesExt};
+use csv::StringRecord;
+use encoding_rs::EUC_JP;
+use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
 use log::debug;
 use yada::builder::DoubleArrayBuilder;
@@ -17,7 +19,7 @@ use lindera_compress::compress;
 use lindera_core::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
-use lindera_core::file_util::{read_euc_file, read_utf8_file};
+use lindera_core::file_util::read_euc_file;
 use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::parse_unk;
 use lindera_core::user_dictionary::UserDictionary;
@@ -25,93 +27,11 @@ use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 
+const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
+const SIMPLE_WORD_COST: i16 = -10000;
+const SIMPLE_CONTEXT_ID: u16 = 0;
+const DETAILED_USERDIC_FIELDS_NUM: usize = 13;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
-
-#[derive(Debug)]
-pub struct CsvRow<'a> {
-    surface_form: &'a str,
-    left_id: u32,
-    #[allow(dead_code)]
-    right_id: u32,
-    word_cost: i32,
-
-    pos_level1: &'a str,
-    pos_level2: &'a str,
-    pos_level3: &'a str,
-    pos_level4: &'a str,
-
-    pub conjugation_type: &'a str,
-    pub conjugate_form: &'a str,
-
-    pub base_form: &'a str,
-    pub reading: &'a str,
-    pronunciation: &'a str,
-}
-
-impl<'a> CsvRow<'a> {
-    const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
-    const DETAILED_USERDIC_FIELDS_NUM: usize = 13;
-
-    fn from_line(line: &'a str) -> LinderaResult<CsvRow<'a>> {
-        let fields: Vec<_> = line.split(',').collect();
-
-        Ok(CsvRow {
-            surface_form: fields[0],
-            left_id: u32::from_str(fields[1]).map_err(|_err| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse left_id"))
-            })?,
-            right_id: u32::from_str(fields[2]).map_err(|_err| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse right_id"))
-            })?,
-            word_cost: i32::from_str(fields[3]).map_err(|_err| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word_cost"))
-            })?,
-
-            pos_level1: fields[4],
-            pos_level2: fields[5],
-            pos_level3: fields[6],
-            pos_level4: fields[7],
-
-            conjugation_type: fields[8],
-            conjugate_form: fields[9],
-
-            base_form: fields[10],
-            reading: fields[11],
-            pronunciation: fields[12],
-        })
-    }
-
-    fn from_line_user_dict(line: &'a str) -> LinderaResult<CsvRow<'a>> {
-        let fields: Vec<_> = line.split(',').collect();
-
-        match fields.len() {
-            Self::SIMPLE_USERDIC_FIELDS_NUM => Ok(CsvRow {
-                surface_form: fields[0],
-                left_id: 0,
-                right_id: 0,
-                word_cost: -10000,
-
-                pos_level1: fields[1],
-                pos_level2: "*",
-                pos_level3: "*",
-                pos_level4: "*",
-
-                conjugation_type: "*",
-                conjugate_form: "*",
-
-                base_form: fields[0],
-                reading: fields[2],
-                pronunciation: "*",
-            }),
-            Self::DETAILED_USERDIC_FIELDS_NUM => CsvRow::from_line(line),
-            _ => Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                "user dictionary should be a CSV with {} or {} fields",
-                Self::SIMPLE_USERDIC_FIELDS_NUM,
-                Self::DETAILED_USERDIC_FIELDS_NUM
-            ))),
-        }
-    }
-}
 
 pub struct IpadicBuilder {}
 
@@ -255,36 +175,39 @@ impl DictionaryBuilder for IpadicBuilder {
             }
         }
 
-        let files_data: Vec<String> = filenames
-            .iter()
-            .map(|filename| {
-                debug!("reading {:?}", filename);
-                read_euc_file(filename)
-            })
-            .collect::<LinderaResult<Vec<String>>>()?;
+        let mut rows: Vec<StringRecord> = vec![];
+        for filename in filenames {
+            debug!("reading {:?}", filename);
 
-        let lines: Vec<String> = files_data
-            .iter()
-            .flat_map(|file_data: &String| file_data.lines().map(|line| line.to_string()))
-            .map(|line| {
-                line.chars()
-                    .map(|c| {
-                        match c {
-                            '―' => '—', // yeah for EUC_JP and ambiguous unicode 8012 vs 8013
-                            '～' => '〜', // same bullshit as above between for 12316 vs 65374
-                            _ => c,
-                        }
-                    })
-                    .collect::<String>()
-            })
-            .collect();
+            let file = File::open(filename)
+                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            let transcoded = DecodeReaderBytesBuilder::new()
+                .encoding(Some(EUC_JP))
+                .build(file);
 
-        let mut rows: Vec<CsvRow> = lines
-            .iter()
-            .map(|line| CsvRow::from_line(line))
-            .collect::<Result<_, _>>()
-            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
-        rows.sort_by_key(|row| row.surface_form);
+            let mut rdr = csv::ReaderBuilder::new()
+                .has_headers(false)
+                .from_reader(transcoded);
+
+            for result in rdr.records() {
+                let record = result
+                    .map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
+                rows.push(record);
+            }
+        }
+
+        let mut normalized_rows: Vec<Vec<String>> = Vec::new();
+        for row in rows {
+            let mut normalized_row: Vec<String> = Vec::new();
+            for column in row.iter() {
+                // yeah for EUC_JP and ambiguous unicode 8012 vs 8013
+                // same bullshit as above between for 12316 vs 65374
+                normalized_row.push(column.to_string().replace('―', "—").replace('～', "〜"));
+            }
+            normalized_rows.push(normalized_row);
+        }
+
+        normalized_rows.sort_by_key(|row| row.get(0).map(|s| s.to_string()));
 
         let wtr_da_path = output_dir.join(Path::new("dict.da"));
         let mut wtr_da = io::BufWriter::new(
@@ -300,14 +223,20 @@ impl DictionaryBuilder for IpadicBuilder {
 
         let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
 
-        for (row_id, row) in rows.iter().enumerate() {
+        for (row_id, row) in normalized_rows.iter().enumerate() {
             word_entry_map
-                .entry(row.surface_form.to_string())
+                .entry(row[0].to_string())
                 .or_insert_with(Vec::new)
                 .push(WordEntry {
                     word_id: WordId(row_id as u32, true),
-                    word_cost: row.word_cost as i16,
-                    cost_id: row.left_id as u16,
+                    word_cost: i16::from_str(row[3].trim()).map_err(|_err| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("failed to parse word_cost"))
+                    })?,
+                    cost_id: u16::from_str(row[1].trim()).map_err(|_err| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("failed to parse cost_id"))
+                    })?,
                 });
         }
 
@@ -325,23 +254,16 @@ impl DictionaryBuilder for IpadicBuilder {
 
         let mut words_buffer = Vec::new();
         let mut words_idx_buffer = Vec::new();
-        for row in rows.iter() {
-            let word = vec![
-                row.pos_level1.to_string(),
-                row.pos_level2.to_string(),
-                row.pos_level3.to_string(),
-                row.pos_level4.to_string(),
-                row.conjugation_type.to_string(),
-                row.conjugate_form.to_string(),
-                row.base_form.to_string(),
-                row.reading.to_string(),
-                row.pronunciation.to_string(),
-            ];
+        for row in normalized_rows.iter() {
+            let mut word_detail = Vec::new();
+            for item in row.iter().skip(4) {
+                word_detail.push(item.to_string());
+            }
             let offset = words_buffer.len();
             words_idx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_buffer, &word)
+            bincode::serialize_into(&mut words_buffer, &word_detail)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
@@ -360,13 +282,6 @@ impl DictionaryBuilder for IpadicBuilder {
         let mut keyset: Vec<(&[u8], u32)> = vec![];
         for (key, word_entries) in &word_entry_map {
             let len = word_entries.len() as u32;
-            assert!(
-                len < (1 << 5),
-                "{} is {} length. Too long. [{}]",
-                key,
-                len,
-                (1 << 5)
-            );
             let val = (id << 5) | len;
             keyset.push((key.as_bytes(), val));
             id += len;
@@ -386,7 +301,9 @@ impl DictionaryBuilder for IpadicBuilder {
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
+
         compress_write(&vals_buffer, COMPRESS_ALGORITHM, &mut wtr_vals)?;
+
         wtr_vals
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -447,50 +364,85 @@ impl DictionaryBuilder for IpadicBuilder {
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {:?}", input_file);
-        let data: String = read_utf8_file(input_file)?;
 
-        let lines: Vec<&str> = data.lines().collect();
-        let mut rows: Vec<CsvRow> = lines
-            .iter()
-            .map(|line| CsvRow::from_line_user_dict(line))
-            .collect::<Result<_, _>>()
-            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .flexible(true)
+            .from_path(input_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-        // sorting entries
-        rows.sort_by_key(|row| row.surface_form);
+        let mut rows: Vec<StringRecord> = vec![];
+        for result in rdr.records() {
+            let record =
+                result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
+            rows.push(record);
+        }
+        rows.sort_by_key(|row| row[0].to_string());
 
         let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
 
         for (row_id, row) in rows.iter().enumerate() {
+            let surface = row[0].to_string();
+            let word_cost = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                SIMPLE_WORD_COST
+            } else {
+                row[3].parse::<i16>().map_err(|_err| {
+                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word cost"))
+                })?
+            };
+            let cost_id = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                SIMPLE_CONTEXT_ID
+            } else {
+                row[1].parse::<u16>().map_err(|_err| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse left context id"))
+                })?
+            };
+
             word_entry_map
-                .entry(row.surface_form.to_string())
+                .entry(surface)
                 .or_insert_with(Vec::new)
                 .push(WordEntry {
                     word_id: WordId(row_id as u32, false),
-                    word_cost: row.word_cost as i16,
-                    cost_id: row.left_id as u16,
+                    word_cost,
+                    cost_id,
                 });
         }
 
         let mut words_data = Vec::<u8>::new();
         let mut words_idx_data = Vec::<u8>::new();
         for row in rows.iter() {
-            let word = vec![
-                row.pos_level1.to_string(),
-                row.pos_level2.to_string(),
-                row.pos_level3.to_string(),
-                row.pos_level4.to_string(),
-                row.conjugation_type.to_string(),
-                row.conjugate_form.to_string(),
-                row.base_form.to_string(),
-                row.reading.to_string(),
-                row.pronunciation.to_string(),
-            ];
+            let word_detail = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                vec![
+                    row[1].to_string(), // POS
+                    "*".to_string(),    // POS subcategory 1
+                    "*".to_string(),    // POS subcategory 2
+                    "*".to_string(),    // POS subcategory 3
+                    "*".to_string(),    // Conjugation type
+                    "*".to_string(),    // Conjugation form
+                    row[0].to_string(), // Base form
+                    row[2].to_string(), // Reading
+                    "*".to_string(),    // Pronunciation
+                ]
+            } else if row.len() >= DETAILED_USERDIC_FIELDS_NUM {
+                let mut tmp_word_detail = Vec::new();
+                for item in row.iter().skip(4) {
+                    tmp_word_detail.push(item.to_string());
+                }
+                tmp_word_detail
+            } else {
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "user dictionary should be a CSV with {} or {}+ fields",
+                    SIMPLE_USERDIC_FIELDS_NUM,
+                    DETAILED_USERDIC_FIELDS_NUM
+                )));
+            };
+
             let offset = words_data.len();
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_data, &word)
+            bincode::serialize_into(&mut words_data, &word_detail)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 

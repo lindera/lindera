@@ -97,14 +97,16 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 ## User dictionary format (CSV)
 
-Simple version
+### Simple version
+
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表層形 | Surface |
 | 1 | 品詞大分類 | Major POS classification | |
 | 2 | 語彙素読み | Lexeme reading | |
 
-Detailed version
+### Detailed version
+
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表層形 | Surface |
@@ -128,6 +130,7 @@ Detailed version
 | 18 | 語頭変化形 | Prefix of a word type | |
 | 19 | 語末変化型 | Suffix of a word form  | |
 | 20 | 語末変化形 | Suffix of a word type  | |
+| 21 | - | - | After 21, it can be freely expanded. |
 
 
 ## Tokenizing text using produced dictionary

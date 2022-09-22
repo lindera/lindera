@@ -93,14 +93,16 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 
 ## User dictionary format (CSV)
 
-Simple version
+### Simple version
+
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 표면 | Surface |
 | 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
 | 2 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
 
-Detailed version
+### Detailed version
+
 | Index | Name (Korean) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 표면 | Surface |
@@ -115,6 +117,7 @@ Detailed version
 | 9 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
 | 10 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
 | 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
+| 12 | - | - | After 12, it can be freely expanded. |
 
 
 ## Tokenizing text using produced dictionary
