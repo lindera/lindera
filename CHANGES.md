@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.17.0 (2022-09-22)
 - Make user dictionaries extensible #221 @mosuka
 
 ## 0.16.2 (2022-09-20)
