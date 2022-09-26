@@ -148,6 +148,10 @@ For more details about user dictionary format please refer to the following URL:
 
 ### UniDic (Japanese dictionary)
 
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
+
 ```
 % lindera build --build-user-dic --dic-type=unidic ./resources/unidic_simple_userdic.csv ./resources
 ```
