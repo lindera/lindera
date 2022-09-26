@@ -3,74 +3,73 @@ use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use clap::{AppSettings, Parser};
+use clap::{AppSettings, Parser, Subcommand};
 
+use lindera::builder::{build_dictionary, build_user_dictionary};
 use lindera::error::LinderaError;
 use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::tokenizer::DictionaryConfig;
-use lindera::tokenizer::DictionaryKind;
-use lindera::tokenizer::DictionarySourceType;
 use lindera::tokenizer::UserDictionaryConfig;
 use lindera::tokenizer::DEFAULT_DICTIONARY_KIND;
 use lindera::tokenizer::{Tokenizer, TokenizerConfig};
-use lindera::LinderaResult;
+use lindera::{DictionaryKind, LinderaResult};
 
-/// Lindera CLI
-#[derive(Parser, Debug)]
-#[clap(version, about, setting = AppSettings::DeriveDisplayOrder)]
+#[derive(Debug, Parser)]
+#[clap(name = "linera", author, about, version, setting = AppSettings::DeriveDisplayOrder)]
 struct Args {
-    /// The dictionary type.
-    #[clap(
-        short = 'k',
-        long = "dictionary-kind",
-        value_name = "DICTIONARY_KIND",
-        default_value = DEFAULT_DICTIONARY_KIND
-    )]
-    dictionary_kind: DictionaryKind,
+    #[clap(subcommand)]
+    command: Commands,
+}
 
-    /// Directory path of the dictionary. If specified, loads the specified directory as the specified dictionary kind. If omitted, the self-contained dictionary specified by dictionary kind is loaded.
-    #[clap(short = 'd', long = "dictionary-path", value_name = "DICTIONARY_PATH")]
-    dictionary_path: Option<PathBuf>,
+#[derive(Debug, Subcommand)]
+enum Commands {
+    Build(BuildArgs),
+    Tokenize(TokenizeArgs),
+}
 
-    /// The user dictionary file path. If specified, loads the specified file as a user dictionary.
+#[derive(Debug, clap::Args)]
+#[clap(author, about = "Tokenize text using a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
+struct TokenizeArgs {
+    #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
+    dic_type: DictionaryKind,
+    #[clap(short = 'd', long = "dic-dir", help = "Dictionary directory path")]
+    dic_dir: Option<PathBuf>,
     #[clap(
         short = 'u',
-        long = "user-dictionary-path",
-        value_name = "USER_DICTIONARY_PATH"
+        long = "user-dic-file",
+        help = "User dictionary file path"
     )]
-    user_dictionary_path: Option<PathBuf>,
-
-    /// The user dictionary source type. Enabled when a user dictionary is specified. Default is "csv".
-    #[clap(
-        short = 't',
-        long = "user-dictionary-source-type",
-        value_name = "USER_DICTIONARY_SOURCE_TYPE",
-        default_value = "csv"
-    )]
-    user_dictionary_source_type: DictionarySourceType,
-
-    /// The tokenization mode. normal, search and decompose are available.
+    user_dic_file: Option<PathBuf>,
     #[clap(
         short = 'm',
         long = "mode",
-        value_name = "MODE",
-        default_value = "normal"
+        default_value = "normal",
+        help = "Tokenization mode. normal"
     )]
     mode: Mode,
-
-    /// The output format. mecab, wakati or json can be specified. If not specified, use the default output format.
     #[clap(
-        short = 'O',
+        short = 'o',
         long = "output-format",
-        value_name = "OUTPUT_FORMAT",
-        default_value = "mecab"
+        default_value = "mecab",
+        help = "Output format"
     )]
     output_format: String,
+    #[clap(help = "Input text file path")]
+    input_file: Option<PathBuf>,
+}
 
-    /// The input file path that contains the text for morphological analysis.
-    #[clap(value_name = "INPUT_FILE")]
-    input_file: Option<String>,
+#[derive(Debug, clap::Args)]
+#[clap(author, about = "Build a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
+struct BuildArgs {
+    #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
+    build_user_dic: bool,
+    #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
+    dic_type: DictionaryKind,
+    #[clap(help = "Dictionary source path")]
+    src_path: PathBuf,
+    #[clap(help = "Dictionary destination path")]
+    dest_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -97,23 +96,29 @@ impl FromStr for Format {
 fn main() -> LinderaResult<()> {
     let args = Args::parse();
 
-    let dictionary_meta = DictionaryConfig {
-        kind: args.dictionary_kind.clone(),
-        path: args.dictionary_path,
+    match args.command {
+        Commands::Tokenize(args) => tokenize(args),
+        Commands::Build(args) => build(args),
+    }
+}
+
+fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
+    let dictionary_conf = DictionaryConfig {
+        kind: args.dic_type.clone(),
+        path: args.dic_dir,
     };
 
-    let user_dictionary_meta = match args.user_dictionary_path {
+    let user_dictionary_conf = match args.user_dic_file {
         Some(path) => Some(UserDictionaryConfig {
-            kind: args.dictionary_kind,
-            source_type: args.user_dictionary_source_type,
+            kind: args.dic_type,
             path,
         }),
         None => None,
     };
 
     let config = TokenizerConfig {
-        dictionary: dictionary_meta,
-        user_dictionary: user_dictionary_meta,
+        dictionary: dictionary_conf,
+        user_dictionary: user_dictionary_conf,
         mode: args.mode,
     };
 
@@ -192,4 +197,12 @@ fn main() -> LinderaResult<()> {
     }
 
     Ok(())
+}
+
+fn build(args: BuildArgs) -> LinderaResult<()> {
+    if args.build_user_dic {
+        build_user_dictionary(args.dic_type, &args.src_path, &args.dest_path)
+    } else {
+        build_dictionary(args.dic_type, &args.src_path, &args.dest_path)
+    }
 }

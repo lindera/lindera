@@ -9,5 +9,6 @@ Cargo.lock
 
 lindera-ipadic-*-*
 mecab-ipadic-*-*
-
-!mecab-ipadic-*-*.tar.gz
+unidic-mecab-*_src
+mecab-ko-dic-*-*
+CC-CEDICT-MeCab-master

@@ -6,10 +6,8 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
 use lindera::mode::Mode;
-use lindera::tokenizer::{
-    DictionaryConfig, DictionaryKind, DictionarySourceType, Tokenizer, TokenizerConfig,
-    UserDictionaryConfig,
-};
+use lindera::tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig};
+use lindera::DictionaryKind;
 
 fn bench_constructor(c: &mut Criterion) {
     c.bench_function("bench-constructor", |b| {
@@ -31,7 +29,6 @@ fn bench_constructor_with_custom_dict(c: &mut Criterion) {
 
             let user_dictionary = Some(UserDictionaryConfig {
                 kind: DictionaryKind::IPADIC,
-                source_type: DictionarySourceType::Csv,
                 path: userdic_file,
             });
 
@@ -64,7 +61,6 @@ fn bench_tokenize_with_custom_dict(c: &mut Criterion) {
 
     let user_dictionary = Some(UserDictionaryConfig {
         kind: DictionaryKind::IPADIC,
-        source_type: DictionarySourceType::Csv,
         path: userdic_file,
     });
 

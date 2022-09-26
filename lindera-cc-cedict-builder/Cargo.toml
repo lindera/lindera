@@ -29,7 +29,3 @@ yada = "0.5.0"
 lindera-core = { version = "0.17.0", path = "../lindera-core" }
 lindera-decompress = { version = "0.17.0", path = "../lindera-decompress" }
 lindera-compress = { version = "0.17.0", path = "../lindera-compress", optional = true }
-
-[[bin]]
-name = "lindera-cc-cedict-builder"
-path = "src/main.rs"

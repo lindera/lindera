@@ -5,47 +5,9 @@
 IPADIC dictionary builder for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 
-## Install
-
-```shell script
-% cargo install lindera-ipadic-builder
-```
-
-
-## Build
-
-The following products are required to build:
-
-- Rust >= 1.46.0
-
-```shell script
-% cargo build --release
-```
-
-
 ## Dictionary version
 
 This repository contains [mecab-ipadic-2.7.0-20070801](http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/).
-
-
-## Building a dictionary
-
-Building a dictionary with `lindera-ipadic-builder` command:
-
-```shell script
-% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
-% tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
-% lindera-ipadic-builder -s /tmp/mecab-ipadic-2.7.0-20070801 -d /tmp/lindera-ipadic-2.7.0-20070801
-```
-
-
-## Building a user dictionary
-
-Building a dictionary with `lindera-ipadic-builder` command:
-
-```shell script
-% lindera-ipadic-builder -S ./resources/simple_userdic.csv -D ./resources/ipadic_userdic.bin
-```
 
 
 ## Dictionary format
@@ -99,39 +61,7 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 13 | - | - | After 13, it can be freely expanded. |
 
 
-## Tokenizing text using produced dictionary
-
-You can tokenize text using produced dictionary with `lindera` command:
-
-```shell script
-% echo "羽田空港限定トートバッグ" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801
-```
-
-```text
-羽田空港        名詞,固有名詞,一般,*,*,*,羽田空港,ハネダクウコウ,ハネダクーコー
-限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK,*,*,*,*,*,*,*,*
-EOS
-```
-
-
-## Tokenizing text using default dictionary and produced binary user dictionary
-
-You can tokenize text using produced dictionary with `lindera` command:
-
-```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/ipadic_userdic.bin -t binary
-```
-
-```text
-東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
-の      助詞,連体化,*,*,*,*,の,ノ,ノ
-最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
-は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
-です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
-EOS
-```
+## How to use IPADIC dictionary
 
 For more details about `lindera` command, please refer to the following URL:
 

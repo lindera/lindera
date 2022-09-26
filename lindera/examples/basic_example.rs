@@ -5,13 +5,28 @@
     feature = "cc-cedict"
 ))]
 use lindera::tokenizer::Tokenizer;
-use lindera::LinderaResult;
+use lindera::{
+    mode::Mode,
+    tokenizer::{DictionaryConfig, TokenizerConfig},
+    DictionaryKind, LinderaResult,
+};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
+        let dic_config = DictionaryConfig {
+            kind: DictionaryKind::IPADIC,
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary: dic_config,
+            user_dictionary: None,
+            mode: Mode::Normal,
+        };
+
         // create tokenizer
-        let tokenizer = Tokenizer::new()?;
+        let tokenizer = Tokenizer::with_config(config)?;
 
         // tokenize the text
         let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
@@ -24,8 +39,19 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "unidic")]
     {
+        let dic_config = DictionaryConfig {
+            kind: DictionaryKind::UniDic,
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary: dic_config,
+            user_dictionary: None,
+            mode: Mode::Normal,
+        };
+
         // create tokenizer
-        let tokenizer = Tokenizer::new()?;
+        let tokenizer = Tokenizer::with_config(config)?;
 
         // tokenize the text
         let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
@@ -38,8 +64,19 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "ko-dic")]
     {
+        let dic_config = DictionaryConfig {
+            kind: DictionaryKind::KoDic,
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary: dic_config,
+            user_dictionary: None,
+            mode: Mode::Normal,
+        };
+
         // create tokenizer
-        let tokenizer = Tokenizer::new()?;
+        let tokenizer = Tokenizer::with_config(config)?;
 
         let tokens = tokenizer.tokenize("한국어의형태해석을실시할수있습니다.")?;
 
@@ -51,8 +88,19 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "cc-cedict")]
     {
+        let dic_config = DictionaryConfig {
+            kind: DictionaryKind::CcCedict,
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary: dic_config,
+            user_dictionary: None,
+            mode: Mode::Normal,
+        };
+
         // create tokenizer
-        let tokenizer = Tokenizer::new()?;
+        let tokenizer = Tokenizer::with_config(config)?;
 
         #[cfg(feature = "cc-cedict")]
         let tokens = tokenizer.tokenize("可以进行中文形态学分析。")?;

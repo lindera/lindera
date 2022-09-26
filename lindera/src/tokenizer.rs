@@ -3,81 +3,18 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use byteorder::{ByteOrder, LittleEndian};
-use lindera_core::dictionary_builder::DictionaryBuilder;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
-#[cfg(feature = "cc-cedict")]
-use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::dictionary::Dictionary;
-use lindera_core::file_util::read_file;
 use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::viterbi::Lattice;
 use lindera_core::word_entry::WordId;
-#[cfg(feature = "ipadic")]
-use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
-#[cfg(feature = "ko-dic")]
-use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
-#[cfg(feature = "unidic")]
-use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
-use crate::error::{LinderaError, LinderaErrorKind};
+use crate::builder::{load_dictionary, load_user_dictionary};
+use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
-use crate::LinderaResult;
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub enum DictionaryKind {
-    #[cfg(feature = "ipadic")]
-    #[serde(rename = "ipadic")]
-    IPADIC,
-    #[cfg(feature = "unidic")]
-    #[serde(rename = "unidic")]
-    UniDic,
-    #[cfg(feature = "ko-dic")]
-    #[serde(rename = "ko-dic")]
-    KoDic,
-    #[cfg(feature = "cc-cedict")]
-    #[serde(rename = "cc-cedict")]
-    CcCedict,
-}
-
-impl FromStr for DictionaryKind {
-    type Err = LinderaError;
-    fn from_str(input: &str) -> Result<DictionaryKind, Self::Err> {
-        match input {
-            #[cfg(feature = "ipadic")]
-            "ipadic" => Ok(DictionaryKind::IPADIC),
-            #[cfg(feature = "unidic")]
-            "unidic" => Ok(DictionaryKind::UniDic),
-            #[cfg(feature = "ko-dic")]
-            "ko-dic" => Ok(DictionaryKind::KoDic),
-            #[cfg(feature = "cc-cedict")]
-            "cc-cedict" => Ok(DictionaryKind::CcCedict),
-            _ => Err(LinderaErrorKind::DictionaryKindError
-                .with_error(anyhow::anyhow!("Invalid dictionary kind: {}", input))),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub enum DictionarySourceType {
-    #[serde(rename = "csv")]
-    Csv,
-    #[serde(rename = "binary")]
-    Binary,
-}
-
-impl FromStr for DictionarySourceType {
-    type Err = LinderaError;
-    fn from_str(input: &str) -> Result<DictionarySourceType, Self::Err> {
-        match input {
-            "csv" => Ok(DictionarySourceType::Csv),
-            "binary" => Ok(DictionarySourceType::Binary),
-            _ => Err(LinderaErrorKind::DictionarySourceTypeError
-                .with_error(anyhow::anyhow!("Invalid dictionary source type: {}", input))),
-        }
-    }
-}
+use crate::{DictionaryKind, LinderaResult};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DictionaryConfig {
@@ -88,7 +25,6 @@ pub struct DictionaryConfig {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct UserDictionaryConfig {
     pub kind: DictionaryKind,
-    pub source_type: DictionarySourceType,
     pub path: PathBuf,
 }
 
@@ -253,120 +189,6 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
     }
 }
 
-fn build_dict(dictionary_meta: DictionaryConfig) -> LinderaResult<Dictionary> {
-    let dictionary = match dictionary_meta.kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => {
-            if let Some(path) = dictionary_meta.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_ipadic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => {
-            if let Some(path) = dictionary_meta.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_unidic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => {
-            if let Some(path) = dictionary_meta.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_ko_dic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => {
-            if let Some(path) = dictionary_meta.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_cc_cedict::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-    };
-
-    Ok(dictionary)
-}
-
-fn build_user_dict(user_dictionary_meta: UserDictionaryConfig) -> LinderaResult<UserDictionary> {
-    let user_dictionary = match user_dictionary_meta.kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => match user_dictionary_meta.source_type {
-            DictionarySourceType::Csv => {
-                let builder = IpadicBuilder::new();
-                builder
-                    .build_user_dict(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))?
-            }
-            DictionarySourceType::Binary => {
-                let user_dict_bin_data = read_file(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?;
-                UserDictionary::load(&user_dict_bin_data)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        },
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => match user_dictionary_meta.source_type {
-            DictionarySourceType::Csv => {
-                let builder = UnidicBuilder::new();
-                builder
-                    .build_user_dict(&user_dictionary_meta.path)
-                    .map_err(|error| LinderaErrorKind::DictionaryBuildError.with_error(error))?
-            }
-            DictionarySourceType::Binary => {
-                let user_dict_bin_data = read_file(&user_dictionary_meta.path)
-                    .map_err(|error| LinderaErrorKind::DictionaryNotFound.with_error(error))?;
-                UserDictionary::load(&user_dict_bin_data)
-                    .map_err(|error| LinderaErrorKind::DictionaryNotFound.with_error(error))?
-            }
-        },
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => match user_dictionary_meta.source_type {
-            DictionarySourceType::Csv => {
-                let builder = KoDicBuilder::new();
-                builder
-                    .build_user_dict(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))?
-            }
-            DictionarySourceType::Binary => {
-                let user_dict_bin_data = read_file(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?;
-                UserDictionary::load(&user_dict_bin_data)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        },
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => match user_dictionary_meta.source_type {
-            DictionarySourceType::Csv => {
-                let builder = CcCedictBuilder::new();
-                builder
-                    .build_user_dict(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryBuildError.with_error(e))?
-            }
-            DictionarySourceType::Binary => {
-                let user_dict_bin_data = read_file(&user_dictionary_meta.path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?;
-                UserDictionary::load(&user_dict_bin_data)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        },
-    };
-
-    Ok(user_dictionary)
-}
-
 #[derive(Clone)]
 /// Tokenizer
 pub struct Tokenizer {
@@ -391,10 +213,10 @@ impl Tokenizer {
     /// returns: Result<Tokenizer, LinderaError>
     ///
     pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
-        let dictionary = build_dict(config.dictionary)?;
+        let dictionary = load_dictionary(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
-            Some(user_dict_type) => Some(build_user_dict(user_dict_type)?),
+            Some(user_dict_conf) => Some(load_user_dictionary(user_dict_conf)?),
             None => None,
         };
 
@@ -634,8 +456,7 @@ mod tests {
             },
             "user_dictionary": {
                 "kind": "ipadic",
-                "source_type": "csv",
-                "path": "./resources/simple_userdic.csv"
+                "path": "./resources/ipadic_simple_userdic.csv"
             },
             "mode": "normal"
         }
@@ -646,10 +467,9 @@ mod tests {
         let user_dictionary = args.user_dictionary.unwrap();
         assert_eq!(args.dictionary.kind, DictionaryKind::IPADIC);
         assert_eq!(user_dictionary.kind, DictionaryKind::IPADIC);
-        assert_eq!(user_dictionary.source_type, DictionarySourceType::Csv);
         assert_eq!(
             user_dictionary.path,
-            PathBuf::from("./resources/simple_userdic.csv")
+            PathBuf::from("./resources/ipadic_simple_userdic.csv")
         );
         assert_eq!(args.mode, Mode::Normal);
     }
@@ -900,14 +720,65 @@ mod tests {
     fn test_simple_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("simple_userdic.csv");
+            .join("ipadic_simple_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
         };
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
-            source_type: DictionarySourceType::Csv,
+            path: userdic_file,
+        });
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens: Vec<Token> = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
+            .unwrap();
+        assert_eq!("東京スカイツリー", tokens[0].text);
+        assert_eq!(
+            vec![
+                "カスタム名詞",
+                "*",
+                "*",
+                "*",
+                "*",
+                "*",
+                "東京スカイツリー",
+                "トウキョウスカイツリー",
+                "*"
+            ],
+            tokenizer.word_detail(tokens[0].word_id).unwrap()
+        );
+        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
+        assert_eq!(
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です"
+            ],
+            token_texts
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_simple_user_dict_bin() {
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_simple_userdic.bin");
+        let dictionary = DictionaryConfig {
+            kind: DictionaryKind::IPADIC,
+            path: None,
+        };
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: DictionaryKind::IPADIC,
             path: userdic_file,
         });
         let config = TokenizerConfig {
@@ -953,14 +824,13 @@ mod tests {
     fn test_detailed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("detailed_ipadic_userdic.csv");
+            .join("ipadic_detailed_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
         };
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
-            source_type: DictionarySourceType::Csv,
             path: userdic_file,
         });
         let config = TokenizerConfig {
@@ -1006,14 +876,13 @@ mod tests {
     fn test_mixed_user_dict() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("mixed_ipadic_userdic.csv");
+            .join("ipadic_mixed_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
         };
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
-            source_type: DictionarySourceType::Csv,
             path: userdic_file,
         });
         let config = TokenizerConfig {
@@ -1086,7 +955,6 @@ mod tests {
         };
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
-            source_type: DictionarySourceType::Csv,
             path: userdic_file,
         });
         let config = TokenizerConfig {
@@ -1111,7 +979,6 @@ mod tests {
         };
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::IPADIC,
-            source_type: DictionarySourceType::Csv,
             path: userdic_file,
         });
         let config = TokenizerConfig {

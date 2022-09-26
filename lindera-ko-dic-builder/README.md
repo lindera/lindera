@@ -5,64 +5,9 @@
 ko-dic dictionary builder for [Lindera](https://github.com/lindera-morphology/lindera).
 
 
-## Install
-
-```shell script
-% cargo install lindera-ko-dic-builder
-```
-
-
-## Build
-
-The following products are required to build:
-
-- Rust >= 1.46.0
-
-```shell script
-% cargo build --release
-```
-
-### Build small binary
-
-You can reduce the size of the dictionary by using the "compress" feature flag.  
-Instead, it can only be used with Lindera, which supports compression.
-
-This repo example is this.
-
-```sh
-% cargo build --release --features compress
-```
-
-It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
-
-```text
-% sudo apt install liblzma-dev
-```
-
-
 ## Dictionary version
 
 This repository contains [mecab-ko-dic-2.1.1-20180720](https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/).
-
-
-## Building a dictionary
-
-Building a dictionary with `lindera-ko-dic` command:
-
-```shell script
-% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
-% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
-% lindera-ko-dic-builder -s /tmp/mecab-ko-dic-2.1.1-20180720 -d /tmp/lindera-ko-dic-2.1.1-20180720
-```
-
-
-## Building a user dictionary
-
-Building a dictionary with `lindera-ko-dic-builder` command:
-
-```shell script
-% lindera-ko-dic-builder -S ./resources/ko-dic_simple_userdic.csv -D ./resources/ko-dic_userdic.bin
-```
 
 
 ## Dictionary format
@@ -120,36 +65,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 12 | - | - | After 12, it can be freely expanded. |
 
 
-## Tokenizing text using produced dictionary
-
-You can tokenize text using produced dictionary with `lindera` command:
-
-```shell script
-% echo "하네다공항한정토트백" | lindera -k ko-dic -d /tmp/lindera-ko-dic-2.1.1-20180720
-```
-
-```text
-하네다  NNP,인명,F,하네다,*,*,*,*
-공항    NNG,장소,T,공항,*,*,*,*
-한정    NNG,*,T,한정,*,*,*,*
-토트백  NNG,*,T,토트백,Compound,*,*,토트/NNP/인명+백/NNG/*
-EOS
-```
-
-## Tokenizing text using ko-dic dictionary and produced binary user dictionary
-
-You can tokenize text using produced dictionary with `lindera` command:
-
-```shell script
-% echo "하네다공항한정토트" | lindera -k ko-dic -u ./resources/ko-dic_userdic.bin -t binary
-```
-
-```text
-하네다공항      NNP,*,*,하네다공항,*,*,*,*
-한정    NNG,*,T,한정,*,*,*,*
-토트    NNP,인명,F,토트,*,*,*,*
-EOS
-```
+## How to use ko-dic dictionary
 
 For more details about `lindera` command, please refer to the following URL:
 
