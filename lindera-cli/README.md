@@ -115,6 +115,10 @@ It also depends on liblzma to compress the dictionary. Please install the depend
 
 ### IPADIC (Japanese dictionary)
 
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv)
+
 ```
 % lindera build --build-user-dic --dic-type=ipadic ./resources/ipadic_simple_userdic.csv ./resources
 ```
