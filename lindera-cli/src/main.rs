@@ -16,7 +16,7 @@ use lindera::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera::{DictionaryKind, LinderaResult};
 
 #[derive(Debug, Parser)]
-#[clap(author, about, version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(name = "linera", author, about, version, setting = AppSettings::DeriveDisplayOrder)]
 struct Args {
     #[clap(subcommand)]
     command: Commands,
