@@ -138,6 +138,10 @@ For more details about user dictionary format please refer to the following URL:
 
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
 
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
+
 ```
 % lindera build --build-user-dic --dic-type=ko-dic ./resources/ko-dic_simple_userdic.csv ./resources
 ```
