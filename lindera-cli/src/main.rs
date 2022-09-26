@@ -29,7 +29,7 @@ enum Commands {
 }
 
 #[derive(Debug, clap::Args)]
-#[clap(author, about, version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(author, about = "Tokenize text using a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
 struct TokenizeArgs {
     #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
     dic_type: DictionaryKind,
@@ -60,7 +60,7 @@ struct TokenizeArgs {
 }
 
 #[derive(Debug, clap::Args)]
-#[clap(author, about, version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(author, about = "Build a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
 struct BuildArgs {
     #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
     build_user_dic: bool,
