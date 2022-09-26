@@ -33,7 +33,7 @@ enum Commands {
 struct TokenizeArgs {
     #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
     dic_type: DictionaryKind,
-    #[clap(short = 'd', long = "dic-dir", help = "Directory directory path")]
+    #[clap(short = 'd', long = "dic-dir", help = "Dictionary directory path")]
     dic_dir: Option<PathBuf>,
     #[clap(
         short = 'u',
