@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []  # ipadic is the default feature
+default = ["ipadic"]  # ipadic is the default feature
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
 cjk = ["ipadic", "ko-dic", "cc-cedict"]
 ipadic = ["lindera/ipadic"]  # Japanese dictionary
