@@ -5,10 +5,8 @@ use lindera::LinderaResult;
 #[cfg(feature = "unidic")]
 use lindera::{
     mode::Mode,
-    tokenizer::{
-        DictionaryConfig, DictionaryKind, DictionarySourceType, Tokenizer, TokenizerConfig,
-        UserDictionaryConfig,
-    },
+    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
+    DictionaryKind,
 };
 
 fn main() -> LinderaResult<()> {
@@ -21,7 +19,6 @@ fn main() -> LinderaResult<()> {
 
         let user_dictionary = Some(UserDictionaryConfig {
             kind: DictionaryKind::UniDic,
-            source_type: DictionarySourceType::Csv,
             path: PathBuf::from("./resources/simple_userdic.csv"),
         });
 

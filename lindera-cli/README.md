@@ -4,6 +4,7 @@
 
 A morphological analysis command-line interface for [Lindera](https://github.com/lindera-morphology/lindera).
 
+
 ## Install
 
 You can install binary via cargo as follows:
@@ -15,6 +16,7 @@ You can install binary via cargo as follows:
 Alternatively, you can download a binary from the following release page:
 
 - https://github.com/lindera-morphology/lindera/releases
+
 
 ## Build
 
@@ -74,25 +76,78 @@ It also depends on liblzma to compress the dictionary. Please install the depend
 ```
 
 
-## Usage
+## Build dictionary
 
-### Prepare the dictionary
+### IPADIC (Japanese dictionary)
 
-If you have not built binaries with built-in dictionaries, you will need to prepare the dictionaries.
-For more information on preparing dictionaries, see the following link:
+```shell script
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
+% lindera build --dic-type=ipadic /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
+```
 
-- <a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder" target="_blank">Lindera IPADIC Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera-ko-dic-builder" target="_blank">Lindera ko-dic Builder</a>
-- <a href="https://github.com/lindera-morphology/lindera-cc-cedict-builder" target="_blank">Lindera cc-cedict Builder</a>
+### CC-CEDICT (Chinese dictionary)
+
+```shell script
+% curl -L -o /tmp/CC-CEDICT-MeCab.zip https://github.com/ueda-keisuke/CC-CEDICT-MeCab/archive/refs/heads/master.zip
+% unzip /tmp/CC-CEDICT-MeCab.zip -d /tmp
+% lindera build --dic-type=cc-cedict /tmp/CC-CEDICT-MeCab-master /tmp/lindera-cc-cedict
+```
+
+### ko-dic (Korean dictionary)
+
+```shell script
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
+% lindera build --dic-type=ko-dic /tmp/mecab-ko-dic-2.1.1-20180720 /tmp/lindera-ko-dic-2.1.1-20180720
+```
+
+### UniDic (Japanese dictionary)
+
+```shell script
+% curl -l -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
+% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
+% lindera build --dic-type=unidic /tmp/unidic-mecab-2.1.2_src /tmp/lindera-unidic-2.1.2
+```
 
 
-#### External dictionary
+## Build user dictionary
+
+### IPADIC (Japanese dictionary)
+
+```
+% lindera build --build-user-dic --dic-type=ipadic ./resources/ipadic_simple_userdic.csv ./resources
+```
+
+### CC-CEDICT (Chinese dictionary)
+
+```
+% lindera build --build-user-dic --dic-type=cc-cedict ./resources/cc-cedict_simple_userdic.csv ./resources
+```
+
+### ko-dic (Korean dictionary)
+
+```
+% lindera build --build-user-dic --dic-type=ko-dic ./resources/ko-dic_simple_userdic.csv ./resources
+```
+
+### UniDic (Japanese dictionary)
+
+```
+% lindera build --build-user-dic --dic-type=unidic ./resources/unidic_simple_userdic.csv ./resources
+```
+
+
+## Tokenization
+
+### External dictionary
 
 For example, text can be tokenized using a prepared dictionary as follows:
 
+#### IPADIC (Japanese dictionary)
+
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -k ipadic -d /tmp/lindera-ipadic-2.7.0-20070801
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=unidic --dic-dir=/tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text
@@ -109,12 +164,43 @@ For example, text can be tokenized using a prepared dictionary as follows:
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 ```
+
+#### UniDic (Japanese dictionary)
+
+```shell script
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=ipadic --dic-dir=/tmp/lindera-unidic-2.1.2
+```
+
+```text
+日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+
+### Self-contained dictionary
+
+If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
+
+#### Use default dictionary
 
 The CLI already includes IPADIC as the default Japanese dictionary.  
 You can easily tokenize the text and see the results as follows:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize
+```
+
+```text
 ```
 
 ```text
@@ -131,17 +217,13 @@ You can easily tokenize the text and see the results as follows:
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 ```
-
-### Self-contained dictionary
-
-If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
 
 #### IPADIC (Japanese dictionary)
 
 The following example uses the self-contained IPADIC to tokenize:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -k ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=ipadic
 ```
 
 ```text
@@ -164,7 +246,7 @@ EOS
 If UniDic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera -k unidic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=unidic
 ```
 
 ```text
@@ -189,7 +271,7 @@ EOS
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "한국어의형태해석을실시할수있습니다." | lindera -k ko-dic
+% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dic-type=ko-dic
 ```
 
 ```text
@@ -212,7 +294,7 @@ EOS
 If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell script
-% echo "可以进行中文形态学分析。" | lindera -k cc-cedict
+% echo "可以进行中文形态学分析。" | lindera tokenize --dic-type=cc-cedict
 ```
 
 ```text
@@ -235,7 +317,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/simple_userdic.csv -t csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dic-type=ipadic --user-dictionary=./resources/simple_userdic.csv
 ```
 
 ```text
@@ -254,7 +336,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell script
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera -k ipadic -u ./resources/ipadic_userdic.bin -t binary
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dic-type=ipadic --user-dictionary=./resources/ipadic_userdic.bin
 ```
 
 ```text
@@ -274,7 +356,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 `normal` mode tokenizes faithfully based on words registered in the dictionary. (Default):
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -k ipadic -m normal
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dic-type=ipadic --mode=normal
 ```
 
 ```text
@@ -287,7 +369,7 @@ EOS
 `decopose` mode tokenizes a compound noun words additionally:
 
 ```shell script
-% echo "関西国際空港限定トートバッグ" | lindera -k ipadic -m decompose
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dic-type=ipadic --mode=decompose
 ```
 
 ```text
@@ -306,7 +388,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell script
-% echo "お待ちしております。" | lindera -k ipadic -O mecab
+% echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=mecab
 ```
 
 ```text
@@ -322,7 +404,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell script
-% echo "お待ちしております。" | lindera -k ipadic -O wakati
+% echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=wakati
 ```
 
 ```text
@@ -332,7 +414,7 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell script
-% echo "お待ちしております。" | lindera -k ipadic -O json
+% echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=json
 ```
 
 ```json
