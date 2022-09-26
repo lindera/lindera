@@ -5,12 +5,16 @@
     feature = "cc-cedict"
 ))]
 use lindera::tokenizer::Tokenizer;
-use lindera::{LinderaResult, tokenizer::{DictionaryConfig, TokenizerConfig}, mode::Mode, DictionaryKind};
+use lindera::{
+    mode::Mode,
+    tokenizer::{DictionaryConfig, TokenizerConfig},
+    DictionaryKind, LinderaResult,
+};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
-        let dic_config = DictionaryConfig{
+        let dic_config = DictionaryConfig {
             kind: DictionaryKind::IPADIC,
             path: None,
         };
@@ -24,7 +28,6 @@ fn main() -> LinderaResult<()> {
         // create tokenizer
         let tokenizer = Tokenizer::with_config(config)?;
 
-
         // tokenize the text
         let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
 
@@ -36,7 +39,7 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "unidic")]
     {
-        let dic_config = DictionaryConfig{
+        let dic_config = DictionaryConfig {
             kind: DictionaryKind::UniDic,
             path: None,
         };
@@ -61,7 +64,7 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "ko-dic")]
     {
-        let dic_config = DictionaryConfig{
+        let dic_config = DictionaryConfig {
             kind: DictionaryKind::KoDic,
             path: None,
         };
@@ -85,7 +88,7 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(feature = "cc-cedict")]
     {
-        let dic_config = DictionaryConfig{
+        let dic_config = DictionaryConfig {
             kind: DictionaryKind::CcCedict,
             path: None,
         };
