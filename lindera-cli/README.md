@@ -125,6 +125,9 @@ For more details about user dictionary format please refer to the following URL:
 
 ### CC-CEDICT (Chinese dictionary)
 
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv)
 ```
 % lindera build --build-user-dic --dic-type=cc-cedict ./resources/cc-cedict_simple_userdic.csv ./resources
 ```
