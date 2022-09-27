@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Remove excessive tests #225 @mosuka
+- Remove default included dictionary #224 @mosuka
 - New CLI implementation #223 @mosuka
 
 ## 0.17.0 (2022-09-22)

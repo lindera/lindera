@@ -682,7 +682,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "unidic")]
     fn test_tokenize_with_simple_userdic_bin_unidic() {
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::UniDic),
