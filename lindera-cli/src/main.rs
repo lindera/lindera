@@ -6,13 +6,11 @@ use std::str::FromStr;
 use clap::{AppSettings, Parser, Subcommand};
 
 use lindera::builder::{build_dictionary, build_user_dictionary};
-use lindera::error::LinderaError;
-use lindera::error::LinderaErrorKind;
+use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
-use lindera::tokenizer::DictionaryConfig;
-use lindera::tokenizer::UserDictionaryConfig;
-use lindera::tokenizer::DEFAULT_DICTIONARY_KIND;
-use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera::tokenizer::{
+    DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
+};
 use lindera::{DictionaryKind, LinderaResult};
 
 #[derive(Debug, Parser)]
@@ -24,15 +22,20 @@ struct Args {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    List(ListArgs),
     Build(BuildArgs),
     Tokenize(TokenizeArgs),
 }
 
 #[derive(Debug, clap::Args)]
+#[clap(author, about = "List a contained morphological analysis dictionaries", version, setting = AppSettings::DeriveDisplayOrder)]
+struct ListArgs {}
+
+#[derive(Debug, clap::Args)]
 #[clap(author, about = "Tokenize text using a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
 struct TokenizeArgs {
-    #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
-    dic_type: DictionaryKind,
+    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
+    dic_type: Option<DictionaryKind>,
     #[clap(short = 'd', long = "dic-dir", help = "Dictionary directory path")]
     dic_dir: Option<PathBuf>,
     #[clap(
@@ -64,7 +67,7 @@ struct TokenizeArgs {
 struct BuildArgs {
     #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
     build_user_dic: bool,
-    #[clap(short = 't', long = "dic-type", default_value = DEFAULT_DICTIONARY_KIND, help = "Dictionary type")]
+    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
     dic_type: DictionaryKind,
     #[clap(help = "Dictionary source path")]
     src_path: PathBuf,
@@ -97,9 +100,17 @@ fn main() -> LinderaResult<()> {
     let args = Args::parse();
 
     match args.command {
+        Commands::List(args) => list(args),
         Commands::Tokenize(args) => tokenize(args),
         Commands::Build(args) => build(args),
     }
+}
+
+fn list(_args: ListArgs) -> LinderaResult<()> {
+    for dic in CONTAINED_DICTIONARIES {
+        println!("{}", dic);
+    }
+    Ok(())
 }
 
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {

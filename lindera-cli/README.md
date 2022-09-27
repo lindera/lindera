@@ -166,7 +166,7 @@ For example, text can be tokenized using a prepared dictionary as follows:
 #### IPADIC (Japanese dictionary)
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=unidic --dic-dir=/tmp/lindera-ipadic-2.7.0-20070801
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-dir=/tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text
@@ -187,7 +187,7 @@ EOS
 #### UniDic (Japanese dictionary)
 
 ```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=ipadic --dic-dir=/tmp/lindera-unidic-2.1.2
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-dir=/tmp/lindera-unidic-2.1.2
 ```
 
 ```text
@@ -202,6 +202,43 @@ EOS
 でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
 ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
 。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+#### ko-dic (Korean dictionary)
+
+```shell script
+% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dic-dir=/tmp/lindera-ko-dic-2.1.1-20180720
+```
+
+```text
+한국어  NNG,*,F,한국어,Compound,*,*,한국/NNG/*+어/NNG/*
+의      JKG,*,F,의,*,*,*,*
+형태    NNG,*,F,형태,*,*,*,*
+해석    NNG,행위,T,해석,*,*,*,*
+을      JKO,*,T,을,*,*,*,*
+실시    NNG,행위,F,실시,*,*,*,*
+할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
+수      NNG,*,F,수,*,*,*,*
+있      VX,*,T,있,*,*,*,*
+습니다  EF,*,F,습니다,*,*,*,*
+.       UNK
+EOS
+```
+
+#### CC-CEDICT (Chinese dictionary)
+
+```shell script
+% echo "可以进行中文形态学分析。" | lindera tokenize --dic-dir=/tmp/lindera-cc-cedict
+```
+
+```text
+可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
+形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+。      UNK
 EOS
 ```
 
@@ -209,33 +246,6 @@ EOS
 ### Self-contained dictionary
 
 If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
-
-#### Use default dictionary
-
-The CLI already includes IPADIC as the default Japanese dictionary.  
-You can easily tokenize the text and see the results as follows:
-
-```shell script
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize
-```
-
-```text
-```
-
-```text
-日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
-の      助詞,連体化,*,*,*,*,の,ノ,ノ
-形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
-解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
-を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
-行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
-こと    名詞,非自立,一般,*,*,*,こと,コト,コト
-が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
-でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
-ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
-。      記号,句点,*,*,*,*,。,。,。
-EOS
-```
 
 #### IPADIC (Japanese dictionary)
 
@@ -259,6 +269,8 @@ The following example uses the self-contained IPADIC to tokenize:
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 ```
+
+NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=ipadic` option.
 
 #### UniDic (Japanese dictionary)
 
@@ -285,6 +297,8 @@ If UniDic were built in, it could also be tokenized by switching to a self-conta
 EOS
 ```
 
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=unidic` option.
+
 #### ko-dic (Korean dictionary)
 
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
@@ -308,6 +322,8 @@ If ko-dic were built in, it could also be tokenized by switching to a self-conta
 EOS
 ```
 
+NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=ko-dic` option.
+
 #### CC-CEDICT (Chinese dictionary)
 
 If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
@@ -325,6 +341,8 @@ If CC-CEDICT were built in, it could also be tokenized by switching to a self-co
 。      UNK
 EOS
 ```
+
+NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=cc-cedict` option.
 
 
 ### User dictionary
