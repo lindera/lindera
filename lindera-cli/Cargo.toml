@@ -12,13 +12,13 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = ["ipadic"]  # ipadic is the default feature
-full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
-cjk = ["ipadic", "ko-dic", "cc-cedict"]
-ipadic = ["lindera/ipadic"]  # Japanese dictionary
-unidic = ["lindera/unidic"]  # Japanese dictionary
-ko-dic = ["lindera/ko-dic"]  # Korean dictionary
-cc-cedict = ["lindera/cc-cedict"]  # Chinese dictionary
+default = []  # No directories included
+full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]  # All dictionaries included
+cjk = ["cc-cedict", "ipadic", "ko-dic"] # CJK dictionaries included
+ipadic = ["lindera/ipadic"]  # Japanese dictionary included
+unidic = ["lindera/unidic"]  # Japanese dictionary included
+ko-dic = ["lindera/ko-dic"]  # Korean dictionary included
+cc-cedict = ["lindera/cc-cedict"]  # Chinese dictionary included
 compress = ["lindera/compress"]
 
 [dependencies]

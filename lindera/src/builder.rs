@@ -1,16 +1,12 @@
 use std::path::Path;
 
-#[cfg(feature = "cc-cedict")]
 use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::{
     dictionary::Dictionary, dictionary_builder::DictionaryBuilder, file_util::read_file,
     user_dictionary::UserDictionary,
 };
-#[cfg(feature = "ipadic")]
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
-#[cfg(feature = "ko-dic")]
 use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
-#[cfg(feature = "unidic")]
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
 use crate::{
@@ -23,13 +19,9 @@ pub fn resolve_builder(
     dictionary_type: DictionaryKind,
 ) -> LinderaResult<Box<dyn DictionaryBuilder>> {
     match dictionary_type {
-        #[cfg(feature = "ipadic")]
         DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::new())),
-        #[cfg(feature = "unidic")]
         DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::new())),
-        #[cfg(feature = "ko-dic")]
         DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::new())),
-        #[cfg(feature = "cc-cedict")]
         DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::new())),
     }
 }
@@ -58,46 +50,41 @@ pub fn build_user_dictionary(
     resolve_builder(dictionary_type)?.build_user_dictionary(input_file, &output_file)
 }
 
+/// Conta
 pub fn load_dictionary(dictionary_config: DictionaryConfig) -> LinderaResult<Dictionary> {
     let dictionary = match dictionary_config.kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => {
-            if let Some(path) = dictionary_config.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_ipadic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
+        Some(kind) => {
+            // The dictionary specified by the feature flag will be loaded.
+            match kind {
+                #[cfg(feature = "ipadic")]
+                DictionaryKind::IPADIC => lindera_ipadic::load_dictionary()
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+                #[cfg(feature = "unidic")]
+                DictionaryKind::UniDic => lindera_unidic::load_dictionary()
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+                #[cfg(feature = "ko-dic")]
+                DictionaryKind::KoDic => lindera_ko_dic::load_dictionary()
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+                #[cfg(feature = "cc-cedict")]
+                DictionaryKind::CcCedict => lindera_cc_cedict::load_dictionary()
+                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?,
+                #[allow(unreachable_patterns)]
+                _ => {
+                    return Err(LinderaErrorKind::Args
+                        .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind)))
+                }
             }
         }
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => {
-            if let Some(path) = dictionary_config.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_unidic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => {
-            if let Some(path) = dictionary_config.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_ko_dic::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            }
-        }
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => {
-            if let Some(path) = dictionary_config.path {
-                lindera_dictionary::load_dictionary(path)
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
-            } else {
-                lindera_cc_cedict::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))?
+        None => {
+            match dictionary_config.path {
+                Some(path) => {
+                    // load external dictionary from path
+                    lindera_dictionary::load_dictionary(path)?
+                }
+                None => {
+                    return Err(LinderaErrorKind::Args
+                        .with_error(anyhow::anyhow!("Dictionary must be specified")))
+                }
             }
         }
     };
@@ -110,9 +97,16 @@ pub fn load_user_dictionary(
 ) -> LinderaResult<UserDictionary> {
     let user_dictionary = match dictionary_config.path.extension() {
         Some(ext) => match ext.to_str() {
-            Some("csv") => resolve_builder(dictionary_config.kind)?
-                .build_user_dict(&dictionary_config.path)
-                .map_err(|err| LinderaErrorKind::DictionaryBuildError.with_error(err))?,
+            Some("csv") => match dictionary_config.kind {
+                Some(kind) => resolve_builder(kind)?
+                    .build_user_dict(&dictionary_config.path)
+                    .map_err(|err| LinderaErrorKind::DictionaryBuildError.with_error(err))?,
+                None => {
+                    return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                        "Dictionary type must be specified if CSV file specified"
+                    )))
+                }
+            },
             Some("bin") => UserDictionary::load(&read_file(&dictionary_config.path)?)?,
             _ => {
                 return Err(LinderaErrorKind::Args

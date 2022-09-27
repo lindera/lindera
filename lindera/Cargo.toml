@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = ["ipadic"]  # ipadic is the default feature
+default = []
 cjk = ["ipadic", "ko-dic", "cc-cedict"]
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]
 ipadic = ["lindera-ipadic/ipadic"]  # Japanese dictionary
@@ -32,7 +32,7 @@ thiserror = "1.0.31"
 
 lindera-core = { version = "0.17.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.17.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.17.0", path = "../lindera-ipadic", optional = true }
+lindera-ipadic = { version = "0.17.0", path = "../lindera-ipadic" }
 lindera-ipadic-builder = { version = "0.17.0", path = "../lindera-ipadic-builder" }
 lindera-unidic = { version = "0.17.0", path = "../lindera-unidic", optional = true }
 lindera-unidic-builder = { version = "0.17.0", path = "../lindera-unidic-builder" }

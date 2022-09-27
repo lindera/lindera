@@ -1,11 +1,8 @@
-#[cfg(feature = "unidic")]
-use std::path::PathBuf;
-
 use lindera::LinderaResult;
 #[cfg(feature = "unidic")]
 use lindera::{
     mode::Mode,
-    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
+    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig},
     DictionaryKind,
 };
 
@@ -17,16 +14,9 @@ fn main() -> LinderaResult<()> {
             path: None,
         };
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("unidic_simple_userdic.csv"),
-        });
-
         let config = TokenizerConfig {
             dictionary,
-            user_dictionary: user_dictionary,
+            user_dictionary: None,
             mode: Mode::Normal,
         };
 
@@ -34,8 +24,7 @@ fn main() -> LinderaResult<()> {
         let tokenizer = Tokenizer::with_config(config).unwrap();
 
         // tokenize the text
-        let tokens =
-            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
+        let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
 
         // output the tokens
         for token in tokens {
