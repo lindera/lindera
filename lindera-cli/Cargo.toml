@@ -14,7 +14,7 @@ license = "MIT"
 [features]
 default = []  # No directories included
 full = ["ipadic", "unidic", "ko-dic", "cc-cedict"]  # All dictionaries included
-cjk = ["ipadic", "ko-dic", "cc-cedict"] # CJK dictionaries included
+cjk = ["cc-cedict", "ipadic", "ko-dic"] # CJK dictionaries included
 ipadic = ["lindera/ipadic"]  # Japanese dictionary included
 unidic = ["lindera/unidic"]  # Japanese dictionary included
 ko-dic = ["lindera/ko-dic"]  # Korean dictionary included
