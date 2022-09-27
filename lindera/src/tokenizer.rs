@@ -368,852 +368,15 @@ mod tests {
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
-    use lindera_core::{viterbi::Lattice, word_entry::WordId};
-
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
-    ))]
     use crate::{
-        mode::{Mode, Penalty},
-        tokenizer::{DictionaryConfig, Token, Tokenizer, TokenizerConfig, UserDictionaryConfig},
+        mode::Mode,
+        tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
         DictionaryKind,
     };
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_from_bytes_ipdic_default() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ipadic"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::IPADIC));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_from_bytes_unidic_default() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "unidic"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::UniDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_from_bytes_ko_dic_default() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ko-dic"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::KoDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "cc-cedict")]
-    fn test_from_bytes_cc_cedict_default() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "cc-cedict"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::CcCedict));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_from_bytes_ipadic_normal() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ipadic",
-                "mode": "normal"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::IPADIC));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_from_bytes_unidic_normal() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "unidic",
-                "mode": "normal"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::UniDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_from_bytes_ko_dic_normal() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ko-dic",
-                "mode": "normal"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::KoDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "cc-cedict")]
-    fn test_from_bytes_cc_cedict_normal() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "cc-cedict",
-                "mode": "normal"
-            }
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::CcCedict));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_from_bytes_ipadic_decompose() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
-            }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::IPADIC));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Decompose(Penalty::default()));
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_from_bytes_unidic_decompose() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "unidic"
-            },
-            "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
-            }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::UniDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Decompose(Penalty::default()));
-    }
-
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_from_bytes_ko_dic_decompose() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ko-dic"
-            },
-            "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
-            }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::KoDic));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Decompose(Penalty::default()));
-    }
-
-    #[test]
-    #[cfg(feature = "cc-cedict")]
-    fn test_from_bytes_cc_cedict_decompose() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
-            "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
-            }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::CcCedict));
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Decompose(Penalty::default()));
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_from_bytes_local_dictionary() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "path": "./resources/ipadic"
-            },
-            "mode": "normal"
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        assert_eq!(args.dictionary.kind, None);
-        assert_eq!(
-            args.dictionary.path,
-            Some(PathBuf::from("./resources/ipadic"))
-        );
-        assert_eq!(args.user_dictionary, None);
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_from_bytes_user_dictionary() {
-        let json_str = r#"
-        {
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": "./resources/ipadic_simple_userdic.csv"
-            },
-            "mode": "normal"
-        }
-        "#;
-        let json = json_str.as_bytes();
-
-        let args = serde_json::from_slice::<TokenizerConfig>(json).unwrap();
-        let user_dictionary = args.user_dictionary.unwrap();
-        assert_eq!(args.dictionary.kind, Some(DictionaryKind::IPADIC));
-        assert_eq!(user_dictionary.kind, Some(DictionaryKind::IPADIC));
-        assert_eq!(
-            user_dictionary.path,
-            PathBuf::from("./resources/ipadic_simple_userdic.csv")
-        );
-        assert_eq!(args.mode, Mode::Normal);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_empty_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("", &mut Lattice::default());
-        assert_eq!(tokens, &[]);
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_empty_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("", &mut Lattice::default());
-        assert_eq!(tokens, &[]);
-    }
-
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_empty_ko_dic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("", &mut Lattice::default());
-        assert_eq!(tokens, &[]);
-    }
-
-    #[test]
-    #[cfg(feature = "cc-cedict")]
-    fn test_empty_cc_cedict() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("", &mut Lattice::default());
-        assert_eq!(tokens, &[]);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_space_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets(" ", &mut Lattice::default());
-        assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_space_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets(" ", &mut Lattice::default());
-        assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
-    }
-
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_space_ko_dic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets(" ", &mut Lattice::default());
-        assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
-    }
-
-    #[test]
-    #[cfg(feature = "cc-cedict")]
-    fn test_space_cc_cedict() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets(" ", &mut Lattice::default());
-        assert_eq!(tokens, &[(0, WordId(4294967295, true))]);
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_boku_ha_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("僕は", &mut Lattice::default());
-        assert_eq!(
-            tokens,
-            &[(0, WordId(132630, true)), (3, WordId(57063, true))]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_boku_ha_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize_offsets("僕は", &mut Lattice::default());
-        assert_eq!(
-            tokens,
-            &[(0, WordId(288212, true)), (3, WordId(114378, true))]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_sumomo_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("すもももももももものうち").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_sumomo_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("すもももももももものうち").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["すもも", "も", "もも", "も", "もも", "の", "うち"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_gyoi_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("御意。 御意〜。").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["御意", "。", " ", "御意", "〜", "。"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_gyoi_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("御意。 御意〜。").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["御意", "。", " ", "御意", "〜", "。"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_demoyorokobi_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("〜でも喜び").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["〜", "でも", "喜び"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_demoyorokobi_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("〜でも喜び").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["〜", "で", "も", "喜び"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_demo_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("—でも").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["—", "でも"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_demo_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("—でも").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["—", "で", "も"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_atode_ipadic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("後で").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["後で"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "unidic")]
-    fn test_atode_unidic() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("後で").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["後", "で"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_ikkagetsu() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("ーヶ月").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["ーヶ", "月"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_mukigen_normal() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("無期限に—でもどの種を?").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["無", "期限", "に", "—", "でも", "どの", "種", "を", "?"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_demo() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("――!!?").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["――!!?"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_kaikeishi() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("ジム・コガン").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["ジム・コガン"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_bruce() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        let config = TokenizerConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("ブルース・モラン").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["ブルース・モラン"]
-        );
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_tokenize_real() {
+    fn test_tokenize_ipadic() {
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
@@ -1227,65 +390,31 @@ mod tests {
 
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer
-            .tokenize(
-                "本項で解説する地方病とは、山梨県における日本住血吸虫症の呼称であり、\
-             長い間その原因が明らかにならず住民を苦しめた感染症である。",
-            )
+            .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
-                "本",
-                "項",
-                "で",
-                "解説",
-                "する",
-                "地方",
-                "病",
-                "と",
-                "は",
-                "、",
-                "山梨",
-                "県",
-                "における",
-                "日本",
-                "住",
-                "血",
-                "吸",
-                "虫",
-                "症",
+                "日本語",
                 "の",
-                "呼称",
-                "で",
-                "あり",
-                "、",
-                "長い",
-                "間",
-                "その",
-                "原因",
-                "が",
-                "明らか",
-                "に",
-                "なら",
-                "ず",
-                "住民",
+                "形態素",
+                "解析",
                 "を",
-                "苦しめ",
-                "た",
-                "感染",
-                "症",
-                "で",
-                "ある",
+                "行う",
+                "こと",
+                "が",
+                "でき",
+                "ます",
                 "。"
             ]
         );
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_hitobito() {
+    #[cfg(feature = "unidic")]
+    fn test_tokenize_unidic() {
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
+            kind: Some(DictionaryKind::UniDic),
             path: None,
         };
 
@@ -1296,18 +425,23 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("満々!").unwrap();
+        let tokens = tokenizer
+            .tokenize("日本語の形態素解析を行うことができます。")
+            .unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            &["満々", "!"]
+            vec![
+                "日本", "語", "の", "形態", "素", "解析", "を", "行う", "こと", "が", "でき",
+                "ます", "。"
+            ]
         );
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_tokenize_short() {
+    #[cfg(feature = "ko-dic")]
+    fn test_tokenize_ko_dic() {
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
+            kind: Some(DictionaryKind::KoDic),
             path: None,
         };
 
@@ -1318,18 +452,32 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("日本住").unwrap();
+        let tokens = tokenizer
+            .tokenize("한국어의형태해석을실시할수있습니다.")
+            .unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["日本", "住"]
+            vec![
+                "한국어",
+                "의",
+                "형태",
+                "해석",
+                "을",
+                "실시",
+                "할",
+                "수",
+                "있",
+                "습니다",
+                "."
+            ]
         );
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_tokenize_short2() {
+    #[cfg(feature = "cc-cedict")]
+    fn test_tokenize_cc_cedict() {
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
+            kind: Some(DictionaryKind::CcCedict),
             path: None,
         };
 
@@ -1340,16 +488,16 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens = tokenizer.tokenize("ここでは").unwrap();
+        let tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["ここ", "で", "は"]
+            vec!["可以", "进行", "中文", "形态学", "分析", "。"]
         );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_simple_user_dict() {
+    fn test_tokenize_with_simple_userdic_ipadic() {
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
@@ -1371,209 +519,351 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens: Vec<Token> = tokenizer
-            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!("東京スカイツリー", tokens[0].text);
         assert_eq!(
-            vec![
-                "カスタム名詞",
-                "*",
-                "*",
-                "*",
-                "*",
-                "*",
-                "東京スカイツリー",
-                "トウキョウスカイツリー",
-                "*"
-            ],
-            tokenizer.word_detail(tokens[0].word_id).unwrap()
-        );
-        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
-        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
                 "最寄り駅",
                 "は",
                 "とうきょうスカイツリー駅",
-                "です"
-            ],
-            token_texts
+                "です",
+                "。"
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "unidic")]
+    fn test_tokenize_with_simple_userdic_unidic() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::UniDic),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("unidic_simple_userdic.csv");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::UniDic),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
+            .unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り",
+                "駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です",
+                "。"
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ko-dic")]
+    fn test_tokenize_with_simple_userdic_ko_dic() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::KoDic),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ko-dic_simple_userdic.csv");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::KoDic),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["하네다공항", "한정", "토트백", "."]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "cc-cedict")]
+    fn test_tokenize_with_simple_userdic_cc_cedict() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::CcCedict),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("cc-cedict_simple_userdic.csv");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::CcCedict),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["羽田机场", "限定", "托特", "包", "。"]
         );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_simple_user_dict_bin() {
+    fn test_tokenize_with_simple_userdic_bin_ipadic() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_simple_userdic.bin");
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
+
         let user_dictionary = Some(UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         });
+
         let config = TokenizerConfig {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
         };
+
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens: Vec<Token> = tokenizer
-            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!("東京スカイツリー", tokens[0].text);
         assert_eq!(
-            vec![
-                "カスタム名詞",
-                "*",
-                "*",
-                "*",
-                "*",
-                "*",
-                "東京スカイツリー",
-                "トウキョウスカイツリー",
-                "*"
-            ],
-            tokenizer.word_detail(tokens[0].word_id).unwrap()
-        );
-        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
-        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
                 "最寄り駅",
                 "は",
                 "とうきょうスカイツリー駅",
-                "です"
-            ],
-            token_texts
+                "です",
+                "。"
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "unidic")]
+    fn test_tokenize_with_simple_userdic_bin_unidic() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::UniDic),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("unidic_simple_userdic.bin");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::UniDic),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
+            .unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec![
+                "東京スカイツリー",
+                "の",
+                "最寄り",
+                "駅",
+                "は",
+                "とうきょうスカイツリー駅",
+                "です",
+                "。"
+            ]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ko-dic")]
+    fn test_tokenize_with_simple_userdic_bin_ko_dic() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::KoDic),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ko-dic_simple_userdic.bin");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::KoDic),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["하네다공항", "한정", "토트백", "."]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "cc-cedict")]
+    fn test_tokenize_with_simple_userdic_bin_cc_cedict() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::CcCedict),
+            path: None,
+        };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("cc-cedict_simple_userdic.bin");
+
+        let user_dictionary = Some(UserDictionaryConfig {
+            kind: Some(DictionaryKind::CcCedict),
+            path: userdic_file,
+        });
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["羽田机场", "限定", "托特", "包", "。"]
         );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_detailed_user_dict() {
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_detailed_userdic.csv");
+    fn test_tokenize_with_detailed_userdic_ipadic() {
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
         };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_detailed_userdic.csv");
+
         let user_dictionary = Some(UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         });
+
         let config = TokenizerConfig {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
         };
+
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        let tokens: Vec<Token> = tokenizer
-            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!("東京スカイツリー", tokens[0].text);
         assert_eq!(
-            vec![
-                "名詞",
-                "固有名詞",
-                "一般",
-                "カスタム名詞",
-                "*",
-                "*",
-                "東京スカイツリー",
-                "トウキョウスカイツリー",
-                "トウキョウスカイツリー"
-            ],
-            tokenizer.word_detail(tokens[0].word_id).unwrap()
-        );
-        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
-        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
                 "最寄り駅",
                 "は",
                 "とうきょうスカイツリー駅",
-                "です"
-            ],
-            token_texts
+                "です",
+                "。"
+            ]
         );
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_mixed_user_dict() {
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_mixed_userdic.csv");
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
         };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_mixed_userdic.csv");
+
         let user_dictionary = Some(UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         });
+
         let config = TokenizerConfig {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
         };
+
         let tokenizer = Tokenizer::with_config(config).unwrap();
-        assert!(tokenizer.user_dictionary.is_some());
-
-        let tokens: Vec<Token> = tokenizer
-            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
+        let tokens = tokenizer
+            .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!("東京スカイツリー", tokens[0].text);
         assert_eq!(
-            vec![
-                "名詞",
-                "固有名詞",
-                "一般",
-                "カスタム名詞",
-                "*",
-                "*",
-                "東京スカイツリー",
-                "トウキョウスカイツリー",
-                "トウキョウスカイツリー"
-            ],
-            tokenizer.word_detail(tokens[0].word_id).unwrap()
-        );
-        assert_eq!("とうきょうスカイツリー駅", tokens[4].text);
-        assert_eq!(
-            vec![
-                "カスタム名詞",
-                "*",
-                "*",
-                "*",
-                "*",
-                "*",
-                "とうきょうスカイツリー駅",
-                "トウキョウスカイツリーエキ",
-                "*"
-            ],
-            tokenizer.word_detail(tokens[4].word_id).unwrap()
-        );
-
-        let token_texts: Vec<&str> = tokens.iter().map(|token| token.text).collect();
-        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
                 "最寄り駅",
                 "は",
                 "とうきょうスカイツリー駅",
-                "です"
-            ],
-            token_texts
+                "です",
+                "。"
+            ]
         );
     }
 
@@ -1581,23 +871,26 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "failed to parse word cost")]
     fn test_user_dict_invalid_word_cost() {
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_userdic_invalid_word_cost.csv");
-
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
         };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_userdic_invalid_word_cost.csv");
+
         let user_dictionary = Some(UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         });
+
         let config = TokenizerConfig {
             dictionary,
-            user_dictionary: user_dictionary,
+            user_dictionary,
             mode: Mode::Normal,
         };
+
         Tokenizer::with_config(config).unwrap();
     }
 
@@ -1605,23 +898,26 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13+ fields")]
     fn test_user_dict_number_of_fields_is_11() {
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_userdic_insufficient_number_of_fields.csv");
-
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,
         };
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_userdic_insufficient_number_of_fields.csv");
+
         let user_dictionary = Some(UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         });
+
         let config = TokenizerConfig {
             dictionary,
-            user_dictionary: user_dictionary,
+            user_dictionary,
             mode: Mode::Normal,
         };
+
         Tokenizer::with_config(config).unwrap();
     }
 
