@@ -58,7 +58,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 For more details about `lindera` command, please refer to the following URL:
 
-- [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-cli)
+- [Lindera CLI](https://github.com/lindera-morphology/lindera/tree/main/lindera-cli)
 
 
 ## API reference
