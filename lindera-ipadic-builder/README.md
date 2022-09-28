@@ -65,7 +65,7 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 
 For more details about `lindera` command, please refer to the following URL:
 
-- [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-cli)
+- [Lindera CLI](https://github.com/lindera-morphology/lindera/tree/main/lindera-cli)
 
 
 ## API reference

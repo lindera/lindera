@@ -69,7 +69,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 
 For more details about `lindera` command, please refer to the following URL:
 
-- [Lindera CLI](https://github.com/lindera-morphology/lindera/lindera-cli)
+- [Lindera CLI](https://github.com/lindera-morphology/lindera/tree/main/lindera-cli)
 
 
 ## API reference
