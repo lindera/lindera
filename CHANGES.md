@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Update Clap to 4 #231 @mosuka
+- Fix ko-dic NOTICE.txt #228 @johtani
+- Fix broken links #227 @johtani
+- Add members #226 @johtani
 - Remove excessive tests #225 @mosuka
 - Remove default included dictionary #224 @mosuka
 - New CLI implementation #223 @mosuka
