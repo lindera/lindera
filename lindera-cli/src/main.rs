@@ -3,7 +3,7 @@ use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use clap::{AppSettings, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 use lindera::builder::{build_dictionary, build_user_dictionary};
 use lindera::error::{LinderaError, LinderaErrorKind};
@@ -14,7 +14,7 @@ use lindera::tokenizer::{
 use lindera::{DictionaryKind, LinderaResult};
 
 #[derive(Debug, Parser)]
-#[clap(name = "linera", author, about, version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(name = "linera", author, about, version)]
 struct Args {
     #[clap(subcommand)]
     command: Commands,
@@ -28,11 +28,32 @@ enum Commands {
 }
 
 #[derive(Debug, clap::Args)]
-#[clap(author, about = "List a contained morphological analysis dictionaries", version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(
+    author,
+    about = "List a contained morphological analysis dictionaries",
+    version
+)]
 struct ListArgs {}
 
 #[derive(Debug, clap::Args)]
-#[clap(author, about = "Tokenize text using a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
+#[clap(author, about = "Build a morphological analysis dictionary", version)]
+struct BuildArgs {
+    #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
+    build_user_dic: bool,
+    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
+    dic_type: DictionaryKind,
+    #[clap(help = "Dictionary source path")]
+    src_path: PathBuf,
+    #[clap(help = "Dictionary destination path")]
+    dest_path: PathBuf,
+}
+
+#[derive(Debug, clap::Args)]
+#[clap(
+    author,
+    about = "Tokenize text using a morphological analysis dictionary",
+    version
+)]
 struct TokenizeArgs {
     #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
     dic_type: Option<DictionaryKind>,
@@ -60,19 +81,6 @@ struct TokenizeArgs {
     output_format: String,
     #[clap(help = "Input text file path")]
     input_file: Option<PathBuf>,
-}
-
-#[derive(Debug, clap::Args)]
-#[clap(author, about = "Build a morphological analysis dictionary", version, setting = AppSettings::DeriveDisplayOrder)]
-struct BuildArgs {
-    #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
-    build_user_dic: bool,
-    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
-    dic_type: DictionaryKind,
-    #[clap(help = "Dictionary source path")]
-    src_path: PathBuf,
-    #[clap(help = "Dictionary destination path")]
-    dest_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy)]
