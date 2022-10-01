@@ -168,26 +168,29 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         }
         text = text.trim().to_string();
 
-        // tokenize
-        let tokens = tokenizer.tokenize(&text)?;
-
         match output_format {
             Format::Mecab => {
-                // output result
+                let tokens = tokenizer.tokenize_with_details(&text)?;
                 for token in tokens {
                     println!(
                         "{}\t{}",
                         token.text,
-                        tokenizer.word_detail(token.word_id)?.join(",")
+                        token
+                            .details
+                            .unwrap_or_default()
+                            .iter()
+                            .map(|d| d.to_string())
+                            .collect::<Vec<_>>()
+                            .join(",")
                     );
                 }
                 println!("EOS");
             }
             Format::Json => {
-                // output result
+                let tokens = tokenizer.tokenize_with_details(&text)?;
                 let mut tokens_json = Vec::new();
                 for token in tokens {
-                    let word_detail = tokenizer.word_detail(token.word_id)?;
+                    let word_detail = token.details.unwrap_or_default();
                     let token_info = serde_json::json!({
                         "text": token.text,
                         "detail": word_detail,
@@ -202,7 +205,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 );
             }
             Format::Wakati => {
-                // output result
+                let tokens = tokenizer.tokenize(&text)?;
                 let mut it = tokens.iter().peekable();
                 while let Some(token) = it.next() {
                     if it.peek().is_some() {
