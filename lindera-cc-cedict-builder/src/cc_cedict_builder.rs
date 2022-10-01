@@ -8,7 +8,6 @@ use std::{fs, u32};
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use glob::glob;
-use lindera_core::prefix_dict::PrefixDict;
 use log::{debug, warn};
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
@@ -19,6 +18,7 @@ use lindera_core::character_definition::{CharacterDefinitions, CharacterDefiniti
 use lindera_core::dictionary_builder::DictionaryBuilder;
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::file_util::read_utf8_file;
+use lindera_core::prefix_dict::PrefixDict;
 use lindera_core::unknown_dictionary::parse_unk;
 use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::word_entry::{WordEntry, WordId};
