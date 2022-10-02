@@ -274,6 +274,7 @@ impl Tokenizer {
         let mut tokens: Vec<Token> = Vec::new();
         let mut lattice = Lattice::default();
 
+        // Split text into sentences using Japanese punctuation.
         for sentence in text.split_inclusive(&['。', '、']) {
             if text.is_empty() {
                 continue;
@@ -291,34 +292,22 @@ impl Tokenizer {
 
             let offsets = lattice.tokens_offset();
 
-            if with_details {
-                for i in 0..offsets.len() {
-                    let (token_start, word_id) = offsets[i];
-                    let token_stop = if i == offsets.len() - 1 {
-                        sentence.len()
+            for i in 0..offsets.len() {
+                let (token_start, word_id) = offsets[i];
+                let token_stop = if i == offsets.len() - 1 {
+                    sentence.len()
+                } else {
+                    let (next_start, _) = offsets[i + 1];
+                    next_start
+                };
+                tokens.push(Token {
+                    text: &sentence[token_start..token_stop],
+                    details: if with_details {
+                        Some(self.word_detail(word_id)?)
                     } else {
-                        let (next_start, _) = offsets[i + 1];
-                        next_start
-                    };
-                    tokens.push(Token {
-                        text: &sentence[token_start..token_stop],
-                        details: Some(self.word_detail(word_id)?),
-                    })
-                }
-            } else {
-                for i in 0..offsets.len() {
-                    let (token_start, _word_id) = offsets[i];
-                    let token_stop = if i == offsets.len() - 1 {
-                        sentence.len()
-                    } else {
-                        let (next_start, _) = offsets[i + 1];
-                        next_start
-                    };
-                    tokens.push(Token {
-                        text: &sentence[token_start..token_stop],
-                        details: None,
-                    })
-                }
+                        None
+                    },
+                })
             }
         }
 
