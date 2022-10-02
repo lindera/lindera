@@ -45,7 +45,7 @@ pub const CONTAINED_DICTIONARIES: &[&str] = &[
 /// Token Object
 pub struct Token<'a> {
     pub text: &'a str,
-    pub word_id: WordId,
+    pub details: Option<Vec<String>>,
 }
 
 /// Tokenizer config
@@ -230,7 +230,7 @@ impl Tokenizer {
         Ok(tokenizer)
     }
 
-    pub fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
+    fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
         if word_id.is_unknown() {
             return Ok(vec!["UNK".to_string()]);
         }
@@ -266,67 +266,55 @@ impl Tokenizer {
         Ok(word_detail)
     }
 
-    /// Returns an array of offsets that mark the beginning of each tokens,
-    /// in bytes.
-    ///
-    /// For instance
-    /// e.g. "僕は'
-    ///
-    /// returns the array `[0, 3]`
-    ///
-    /// The array, always starts with 0, except if you tokenize the empty string,
-    /// in which case an empty array is returned.
-    ///
-    /// Whitespaces also count as tokens.
-    pub(crate) fn tokenize_offsets(
-        &self,
-        text: &str,
-        lattice: &mut Lattice,
-    ) -> Vec<(usize, WordId)> {
-        if text.is_empty() {
-            return Vec::new();
-        }
-
-        let mode = self.mode.clone();
-
-        lattice.set_text(
-            &self.dictionary.dict,
-            &self.user_dictionary.as_ref().map(|d| &d.dict),
-            &self.dictionary.char_definitions,
-            &self.dictionary.unknown_dictionary,
-            text,
-            &mode,
-        );
-        lattice.calculate_path_costs(&self.dictionary.cost_matrix, &mode);
-        lattice.tokens_offset()
-    }
-
-    fn tokenize_without_split<'a>(
+    fn tokenize_process<'a>(
         &self,
         text: &'a str,
-        tokens: &mut Vec<Token<'a>>,
-        lattice: &mut Lattice,
-    ) -> LinderaResult<()> {
-        let offsets = self.tokenize_offsets(text, lattice);
+        with_details: bool,
+    ) -> LinderaResult<Vec<Token<'a>>> {
+        let mut tokens: Vec<Token> = Vec::new();
+        let mut lattice = Lattice::default();
 
-        for i in 0..offsets.len() {
-            let (token_start, word_id) = offsets[i];
-            let token_stop = if i == offsets.len() - 1 {
-                text.len()
-            } else {
-                let (next_start, _) = offsets[i + 1];
-                next_start
-            };
-            tokens.push(Token {
-                text: &text[token_start..token_stop],
-                word_id,
-            })
+        // Split text into sentences using Japanese punctuation.
+        for sentence in text.split_inclusive(&['。', '、']) {
+            if text.is_empty() {
+                continue;
+            }
+
+            lattice.set_text(
+                &self.dictionary.dict,
+                &self.user_dictionary.as_ref().map(|d| &d.dict),
+                &self.dictionary.char_definitions,
+                &self.dictionary.unknown_dictionary,
+                sentence,
+                &self.mode,
+            );
+            lattice.calculate_path_costs(&self.dictionary.cost_matrix, &self.mode);
+
+            let offsets = lattice.tokens_offset();
+
+            for i in 0..offsets.len() {
+                let (token_start, word_id) = offsets[i];
+                let token_stop = if i == offsets.len() - 1 {
+                    sentence.len()
+                } else {
+                    let (next_start, _) = offsets[i + 1];
+                    next_start
+                };
+                tokens.push(Token {
+                    text: &sentence[token_start..token_stop],
+                    details: if with_details {
+                        Some(self.word_detail(word_id)?)
+                    } else {
+                        None
+                    },
+                })
+            }
         }
 
-        Ok(())
+        Ok(tokens)
     }
 
-    /// Tokenize the text
+    /// Tokenize the text (without word details)
     ///
     /// # Arguments
     ///
@@ -338,13 +326,22 @@ impl Tokenizer {
     /// * LinderaError : Error message with LinderaErrorKind
     ///
     pub fn tokenize<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
-        let mut lattice = Lattice::default();
-        let mut tokens = Vec::new();
-        for sub_str in text.split_inclusive(&['。', '、']) {
-            self.tokenize_without_split(sub_str, &mut tokens, &mut lattice)?;
-        }
+        self.tokenize_process(text, false)
+    }
 
-        Ok(tokens)
+    /// Tokenize the text (with word details)
+    ///
+    /// # Arguments
+    ///
+    /// * `text`: Japanese text
+    ///
+    /// returns: Result<Vec<Token>, LinderaError>
+    ///
+    /// * Vec<Token> : the list of `Token` if succeeded
+    /// * LinderaError : Error message with LinderaErrorKind
+    ///
+    pub fn tokenize_with_details<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
+        self.tokenize_process(text, true)
     }
 }
 

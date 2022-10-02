@@ -529,12 +529,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         let mut group = c.benchmark_group("tokenize-details-long-text-ipadic");
         group.sample_size(20);
         group.bench_function("bench-tokenize-details-long-text-ipadic", |b| {
-            b.iter(|| {
-                let tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
-                for token in tokens {
-                    tokenizer.word_detail(token.word_id).unwrap();
-                }
-            });
+            b.iter(|| tokenizer.tokenize_with_details(long_text.as_str()));
         });
         group.finish();
     }
@@ -570,12 +565,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         let mut group = c.benchmark_group("tokenize-details-long-text-unidic");
         group.sample_size(20);
         group.bench_function("bench-tokenize-details-long-text-unidic", |b| {
-            b.iter(|| {
-                let tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
-                for token in tokens {
-                    tokenizer.word_detail(token.word_id).unwrap();
-                }
-            });
+            b.iter(|| tokenizer.tokenize_with_details(long_text.as_str()));
         });
         group.finish();
     }
