@@ -366,7 +366,7 @@ mod tests {
         feature = "cc-cedict"
     ))]
     use crate::{
-        mode::Mode,
+        mode::{Mode, Penalty},
         tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
         DictionaryKind,
     };
@@ -916,6 +916,50 @@ mod tests {
         };
 
         Tokenizer::with_config(config).unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_tokenize_with_nomal_mode() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary: None,
+            mode: Mode::Normal,
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["羽田空港", "限定", "トートバッグ"]
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_tokenize_with_decompose_mode() {
+        let dictionary = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+
+        let config = TokenizerConfig {
+            dictionary,
+            user_dictionary: None,
+            mode: Mode::Decompose(Penalty::default()),
+        };
+
+        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
+        assert_eq!(
+            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            vec!["羽田", "空港", "限定", "トートバッグ"]
+        );
     }
 
     #[test]
