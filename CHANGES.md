@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Update Dockerfile #234 @mosuka
+- Add test for tokenize mode #233 @mosuka
+- Added a function to tokenize text with word information #232 @mosuka
 - Update Clap to 4 #231 @mosuka
 - Fix ko-dic NOTICE.txt #228 @johtani
 - Fix broken links #227 @johtani
