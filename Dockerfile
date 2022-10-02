@@ -1,4 +1,4 @@
-FROM rust:1.63.0-slim-bullseye AS builder
+FROM rust:1.64.0-slim-bullseye AS builder
 
 ARG LINDERA_VERSION
 
@@ -17,13 +17,12 @@ RUN set -ex \
 
 COPY . .
 
-RUN rustup component add rustfmt --toolchain 1.63.0-x86_64-unknown-linux-gnu
+RUN rustup component add rustfmt --toolchain 1.64.0-x86_64-unknown-linux-gnu
 
 RUN cargo build --release --features="cjk"
 
 FROM debian:bullseye-slim
 
 COPY --from=builder /repo/target/release/lindera /usr/local/bin
-COPY --from=builder /repo/target/release/lindera-ipadic-builder /usr/local/bin
 
 ENTRYPOINT [ "lindera" ]
