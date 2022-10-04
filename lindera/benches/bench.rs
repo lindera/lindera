@@ -425,7 +425,14 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
 fn bench_tokenize_long_text(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        let mut long_text_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
+        let mut long_text_file = BufReader::new(
+            File::open(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../resources")
+                    .join("bocchan.txt"),
+            )
+            .unwrap(),
+        );
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
@@ -461,7 +468,14 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        let mut long_text_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
+        let mut long_text_file = BufReader::new(
+            File::open(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../resources")
+                    .join("bocchan.txt"),
+            )
+            .unwrap(),
+        );
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
@@ -500,7 +514,14 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
 fn bench_tokenize_details_long_text(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        let mut long_text_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
+        let mut long_text_file = BufReader::new(
+            File::open(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../resources")
+                    .join("bocchan.txt"),
+            )
+            .unwrap(),
+        );
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
@@ -536,7 +557,14 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        let mut long_text_file = BufReader::new(File::open("../resources/bocchan.txt").unwrap());
+        let mut long_text_file = BufReader::new(
+            File::open(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../resources")
+                    .join("bocchan.txt"),
+            )
+            .unwrap(),
+        );
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 

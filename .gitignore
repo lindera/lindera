@@ -12,3 +12,5 @@ mecab-ipadic-*-*
 unidic-mecab-*_src
 mecab-ko-dic-*-*
 CC-CEDICT-MeCab-master
+
+flamegraph.svg
