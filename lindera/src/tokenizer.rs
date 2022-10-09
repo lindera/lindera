@@ -6,6 +6,7 @@ use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use lindera_core::dictionary::Dictionary;
+use lindera_core::token::Token;
 use lindera_core::user_dictionary::UserDictionary;
 use lindera_core::viterbi::Lattice;
 use lindera_core::word_entry::WordId;
@@ -39,15 +40,6 @@ pub const CONTAINED_DICTIONARIES: &[&str] = &[
     "cc-cedict",
 ];
 
-// pub const DEFAULT_DICTIONARY_KIND: &str = SUPPORTED_DICTIONARY_KIND[0];
-
-#[derive(Serialize, Clone)]
-/// Token Object
-pub struct Token<'a> {
-    pub text: &'a str,
-    pub details: Option<Vec<String>>,
-}
-
 /// Tokenizer config
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TokenizerConfig {
@@ -67,7 +59,6 @@ impl Default for TokenizerConfig {
     fn default() -> Self {
         Self {
             dictionary: DictionaryConfig {
-                // kind: DictionaryKind::from_str(self::DEFAULT_DICTIONARY_KIND).unwrap(),
                 kind: None,
                 path: None,
             },
@@ -297,7 +288,7 @@ impl Tokenizer {
                 let token_stop = if i == offsets.len() - 1 {
                     sentence.len()
                 } else {
-                    let (next_start, _) = offsets[i + 1];
+                    let (next_start, _word_id) = offsets[i + 1];
                     next_start
                 };
                 tokens.push(Token {

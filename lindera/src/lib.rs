@@ -1,6 +1,9 @@
+pub mod analyzer;
 pub mod builder;
+pub mod character_filter;
 pub mod error;
 pub mod mode;
+pub mod token_filter;
 pub mod tokenizer;
 
 use std::str::FromStr;
@@ -9,8 +12,10 @@ use error::LinderaErrorKind;
 use serde::{Deserialize, Serialize};
 
 use crate::error::LinderaError;
+use lindera_core::token::Token as LinderaToken;
 
 pub type LinderaResult<T> = Result<T, LinderaError>;
+pub type Token<'a> = LinderaToken<'a>;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
