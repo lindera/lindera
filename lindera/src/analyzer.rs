@@ -3,14 +3,16 @@ use serde_json::Value;
 
 use crate::{
     character_filter::{
-        MappingCharacterFilter, RegexCharacterFilter, UnicodeNormalizeCharacterFilter,
-        MAPPING_CHARACTER_FILTER_NAME, REGEX_CHARACTER_FILTER_NAME,
-        UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+        mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME},
+        regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME},
+        unicode_normalize::{
+            UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+        },
     },
     error::LinderaErrorKind,
     token_filter::{
-        LengthTokenFilter, StopWordsTokenFilter, LENGTH_TOKEN_FILTER_NAME,
-        STOP_WORDS_TOKEN_FILTER_NAME,
+        length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
+        stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
     },
     tokenizer::Tokenizer,
     LinderaResult,
