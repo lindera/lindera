@@ -33,14 +33,15 @@ pub struct RegexCharacterFilter {
 }
 
 impl RegexCharacterFilter {
-    pub fn new(config: RegexCharacterFilterConfig) -> Self {
-        let regex = Regex::new(&config.pattern).unwrap();
+    pub fn new(config: RegexCharacterFilterConfig) -> LinderaResult<Self> {
+        let regex =
+            Regex::new(&config.pattern).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
-        Self { config, regex }
+        Ok(Self { config, regex })
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(RegexCharacterFilterConfig::from_slice(data)?))
+        Self::new(RegexCharacterFilterConfig::from_slice(data)?)
     }
 }
 
