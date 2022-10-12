@@ -31,6 +31,7 @@ serde = {version="1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
 thiserror = "1.0.31"
 unicode-normalization = "0.1.22"
+yada = "0.5.0"
 
 lindera-core = { version = "0.17.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.17.0", path = "../lindera-dictionary" }
