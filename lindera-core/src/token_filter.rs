@@ -1,5 +1,5 @@
 use crate::{token::Token, LinderaResult};
 
 pub trait TokenFilter {
-    fn apply<'a>(&self, tokens: Vec<Token<'a>>) -> LinderaResult<Vec<Token<'a>>>;
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()>;
 }

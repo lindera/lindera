@@ -38,15 +38,9 @@ impl StopWordsTokenFilter {
 }
 
 impl TokenFilter for StopWordsTokenFilter {
-    fn apply<'a>(&self, tokens: Vec<Token<'a>>) -> LinderaResult<Vec<Token<'a>>> {
-        let mut t = Vec::new();
-        for token in tokens.iter() {
-            if !self.config.stop_words.contains(token.text) {
-                t.push(token.clone());
-            }
-        }
-
-        Ok(t)
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+        tokens.retain(|token| !self.config.stop_words.contains(token.text));
+        Ok(())
     }
 }
 
@@ -194,7 +188,7 @@ mod tests {
         "#;
         let filter = StopWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let tokens: Vec<Token> = vec![
+        let mut tokens: Vec<Token> = vec![
             Token {
                 text: "to",
                 details: None,
@@ -237,9 +231,9 @@ mod tests {
             },
         ];
 
-        let result = filter.apply(tokens).unwrap();
+        filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].text, "question");
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].text, "question");
     }
 }

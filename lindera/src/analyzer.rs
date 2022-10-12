@@ -140,7 +140,7 @@ impl Analyzer {
         let mut tokens = self.tokenizer.tokenize(text.as_str())?;
 
         for token_filter in &self.token_filters {
-            tokens = token_filter.apply(tokens)?;
+            token_filter.apply(&mut tokens)?;
         }
 
         Ok(tokens)

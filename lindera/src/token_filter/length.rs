@@ -37,26 +37,23 @@ impl LengthTokenFilter {
 }
 
 impl TokenFilter for LengthTokenFilter {
-    fn apply<'a>(&self, tokens: Vec<Token<'a>>) -> LinderaResult<Vec<Token<'a>>> {
-        let mut t = Vec::new();
-        for token in tokens.iter() {
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+        tokens.retain(|token| {
             let len = token.text.chars().count();
             if let Some(min) = self.config.min {
                 if len < min {
-                    continue;
+                    return false;
                 }
             }
-
             if let Some(max) = self.config.max {
                 if len > max {
-                    continue;
+                    return false;
                 }
             }
+            true
+        });
 
-            t.push(token.clone());
-        }
-
-        Ok(t)
+        Ok(())
     }
 }
 
@@ -144,7 +141,7 @@ mod tests {
         "#;
         let filter = LengthTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let tokens: Vec<Token> = vec![
+        let mut tokens: Vec<Token> = vec![
             Token {
                 text: "to",
                 details: None,
@@ -187,10 +184,10 @@ mod tests {
             },
         ];
 
-        let result = filter.apply(tokens).unwrap();
+        filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].text, "not");
-        assert_eq!(result[1].text, "the");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].text, "not");
+        assert_eq!(tokens[1].text, "the");
     }
 }
