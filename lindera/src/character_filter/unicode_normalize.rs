@@ -20,11 +20,11 @@ pub enum UnicodeNormalizeKind {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct UnidoceNormalizeCharacterFilterConfig {
+pub struct UnicodeNormalizeCharacterFilterConfig {
     pub kind: UnicodeNormalizeKind,
 }
 
-impl UnidoceNormalizeCharacterFilterConfig {
+impl UnicodeNormalizeCharacterFilterConfig {
     pub fn new(kind: UnicodeNormalizeKind) -> Self {
         Self { kind }
     }
@@ -36,17 +36,17 @@ impl UnidoceNormalizeCharacterFilterConfig {
 
 #[derive(Clone, Debug)]
 pub struct UnicodeNormalizeCharacterFilter {
-    config: UnidoceNormalizeCharacterFilterConfig,
+    config: UnicodeNormalizeCharacterFilterConfig,
 }
 
 impl UnicodeNormalizeCharacterFilter {
-    pub fn new(config: UnidoceNormalizeCharacterFilterConfig) -> Self {
+    pub fn new(config: UnicodeNormalizeCharacterFilterConfig) -> Self {
         Self { config }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         Ok(Self::new(
-            UnidoceNormalizeCharacterFilterConfig::from_slice(data)?,
+            UnicodeNormalizeCharacterFilterConfig::from_slice(data)?,
         ))
     }
 }
@@ -69,7 +69,7 @@ mod tests {
     use lindera_core::character_filter::CharacterFilter;
 
     use crate::character_filter::unicode_normalize::{
-        UnicodeNormalizeCharacterFilter, UnidoceNormalizeCharacterFilterConfig,
+        UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
     };
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
         }
         "#;
         let config =
-            UnidoceNormalizeCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+            UnicodeNormalizeCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
         assert_eq!(config.kind, super::UnicodeNormalizeKind::NFKC);
     }

@@ -149,12 +149,12 @@ impl Analyzer {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
-    ))]
+    // #[cfg(any(
+    //     feature = "ipadic",
+    //     feature = "unidic",
+    //     feature = "ko-dic",
+    //     feature = "cc-cedict"
+    // ))]
     use crate::analyzer::Analyzer;
 
     #[test]
@@ -310,5 +310,77 @@ mod tests {
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
             vec!["lindera", "日本語", "形態素", "解析", "エンジン", "です"]
         );
+    }
+
+    #[test]
+    // #[cfg(feature = "ipadic")]
+    fn test_analyzer_from_slice_wrong_config() {
+        let config_str = r#"
+        {
+            "character_filters": [
+                {
+                    "kind": "unicode_normalize",
+                    "args": {
+                        "kind": "nfkc"
+                    }
+                },
+                {
+                    "kind": "mapping",
+                    "args": {
+                        "mapping": {
+                            "（株）": "株式会社",
+                            "〒": "郵便"
+                        }            
+                    }
+                },
+                {
+                    "kind": "regex",
+                    "args": {
+                        "pattern": "リンデラ",
+                        "replacement": "lindera"
+                    }
+                }
+            ],
+            "tokenizer": {
+                "dictionary": {
+                    "kind": "ipadic"
+                },
+                "mode": {
+                    "decompose": {
+                        "kanji_penalty_length_threshold": 2,
+                        "kanji_penalty_length_penalty": 3000,
+                        "other_penalty_length_threshold": 7,
+                        "other_penalty_length_penalty": 1700
+                    }
+                }
+            },
+            "token_filters": [
+                {
+                    "kind": "stop_words",
+                    "args": {
+                        "stop_words": [
+                            "a",
+                            "an",
+                            "and",
+                            "are",
+                            "as",
+                            "at",
+                            "with"
+                        ]
+                    }
+                },
+                {
+                    "kind": "length",
+                    "args": {
+                        "min": 1,
+                        "max": 3,  // wrong
+                    }
+                }
+            ]
+        }
+        "#;
+        let result = Analyzer::from_slice(config_str.as_bytes());
+
+        assert_eq!(true, result.is_err());
     }
 }
