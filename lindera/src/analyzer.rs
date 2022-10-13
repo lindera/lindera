@@ -149,12 +149,6 @@ impl Analyzer {
 
 #[cfg(test)]
 mod tests {
-    // #[cfg(any(
-    //     feature = "ipadic",
-    //     feature = "unidic",
-    //     feature = "ko-dic",
-    //     feature = "cc-cedict"
-    // ))]
     use crate::analyzer::Analyzer;
 
     #[test]
