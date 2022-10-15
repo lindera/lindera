@@ -104,7 +104,6 @@ mod tests {
         filter.apply(&mut text).unwrap();
         assert_eq!("Linderaは形態素解析器です。", text);
 
-
         let config_str = r#"
         {
             "pattern": "\\s{2,}",
