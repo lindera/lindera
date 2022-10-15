@@ -103,5 +103,18 @@ mod tests {
         let mut text = "リンデラは形態素解析器です。".to_string();
         filter.apply(&mut text).unwrap();
         assert_eq!("Linderaは形態素解析器です。", text);
+
+
+        let config_str = r#"
+        {
+            "pattern": "\\s{2,}",
+            "replacement": " "
+        }
+        "#;
+        let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "a     b     c".to_string();
+        filter.apply(&mut text).unwrap();
+        assert_eq!("a b c", text);
     }
 }
