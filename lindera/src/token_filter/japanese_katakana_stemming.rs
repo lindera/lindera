@@ -54,12 +54,10 @@ impl TokenFilter for JapaneseKatakanaStemmingTokenFilter {
                 continue;
             }
 
-            let length = token.text.chars().count();
-
             if token
                 .text
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
-                && length > min.get()
+                && token.text.chars().count() > min.get()
             {
                 token.text = &token.text[..token.text.len()
                     - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()];
