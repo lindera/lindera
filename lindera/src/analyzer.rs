@@ -145,7 +145,7 @@ impl Analyzer {
             character_filter.apply(text)?;
         }
 
-        let mut tokens = self.tokenizer.tokenize(text.as_str())?;
+        let mut tokens = self.tokenizer.tokenize_with_details(text.as_str())?;
 
         for token_filter in &self.token_filters {
             token_filter.apply(&mut tokens)?;
