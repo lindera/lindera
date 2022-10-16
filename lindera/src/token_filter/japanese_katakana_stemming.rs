@@ -44,9 +44,7 @@ impl JapaneseKatakanaStemmingTokenFilter {
 
 impl TokenFilter for JapaneseKatakanaStemmingTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        let min = self
-            .config
-            .min.get();
+        let min = self.config.min.get();
 
         for token in tokens.iter_mut() {
             if !is_katakana(token.text) {
