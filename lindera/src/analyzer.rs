@@ -175,19 +175,15 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "ｱ": "ア",
-                            "ｲ": "イ",
-                            "ｳ": "ウ",
-                            "ｴ": "エ",
-                            "ｵ": "オ"
+                            "(株)": "株式会社"
                         }            
                     }
                 },
                 {
                     "kind": "regex",
                     "args": {
-                        "pattern": "リンデラ",
-                        "replacement": "lindera"
+                        "pattern": "\\s{2,}",
+                        "replacement": " "
                     }
                 }
             ],
@@ -195,61 +191,33 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
+                "mode": "normal"
             },
             "token_filters": [
                 {
                     "kind": "stop_words",
                     "args": {
                         "stop_words": [
-                            "a",
-                            "an",
-                            "and",
-                            "are",
-                            "as",
-                            "at",
                             "be",
-                            "but",
-                            "by",
-                            "for",
-                            "if",
-                            "in",
-                            "into",
                             "is",
-                            "it",
-                            "no",
                             "not",
-                            "of",
-                            "on",
                             "or",
-                            "such",
-                            "that",
                             "the",
-                            "their",
-                            "then",
-                            "there",
-                            "these",
-                            "they",
                             "this",
-                            "to",
-                            "was",
-                            "will",
-                            "with"
+                            "to"
                         ]
                     }
                 },
                 {
                     "kind": "length",
                     "args": {
-                        "min": 1,
-                        "max": 3
+                        "min": 1
+                    }
+                },
+                {
+                    "kind": "japanese_katakana_stem",
+                    "args": {
+                        "min": 3
                     }
                 }
             ]
@@ -273,10 +241,18 @@ mod tests {
                     }
                 },
                 {
+                    "kind": "mapping",
+                    "args": {
+                        "mapping": {
+                            "(株)": "株式会社"
+                        }            
+                    }
+                },
+                {
                     "kind": "regex",
                     "args": {
-                        "pattern": "リンデラ",
-                        "replacement": "lindera"
+                        "pattern": "\\s{2,}",
+                        "replacement": " "
                     }
                 }
             ],
@@ -284,20 +260,33 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
+                "mode": "normal"
             },
             "token_filters": [
+                {
+                    "kind": "stop_words",
+                    "args": {
+                        "stop_words": [
+                            "be",
+                            "is",
+                            "not",
+                            "or",
+                            "the",
+                            "this",
+                            "to"
+                        ]
+                    }
+                },
                 {
                     "kind": "length",
                     "args": {
                         "min": 2
+                    }
+                },
+                {
+                    "kind": "japanese_katakana_stem",
+                    "args": {
+                        "min": 3
                     }
                 }
             ]
@@ -305,12 +294,12 @@ mod tests {
         "#;
         let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "ﾘﾝﾃﾞﾗは、日本語の形態素解析エンジンです。".to_string();
+        let mut text = "Ｌｉｎｄｅｒａは、日本語の形態素解析ｴﾝｼﾞﾝです。".to_string();
         let tokens = analyzer.analyze(&mut text).unwrap();
 
         assert_eq!(
             tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
-            vec!["lindera", "日本語", "形態素", "解析", "エンジン", "です"]
+            vec!["Lindera", "日本語", "形態素", "解析", "エンジン", "です"]
         );
     }
 
@@ -330,16 +319,15 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "（株）": "株式会社",
-                            "〒": "郵便"
+                            "(株)": "株式会社"
                         }            
                     }
                 },
                 {
                     "kind": "regex",
                     "args": {
-                        "pattern": "リンデラ",
-                        "replacement": "lindera"
+                        "pattern": "\\s{2,}",
+                        "replacement": " "
                     }
                 }
             ],
@@ -347,35 +335,33 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": {
-                    "decompose": {
-                        "kanji_penalty_length_threshold": 2,
-                        "kanji_penalty_length_penalty": 3000,
-                        "other_penalty_length_threshold": 7,
-                        "other_penalty_length_penalty": 1700
-                    }
-                }
+                "mode": "normal"
             },
             "token_filters": [
                 {
                     "kind": "stop_words",
                     "args": {
                         "stop_words": [
-                            "a",
-                            "an",
-                            "and",
-                            "are",
-                            "as",
-                            "at",
-                            "with"
+                            "be",
+                            "is",
+                            "not",
+                            "or",
+                            "the",
+                            "this",
+                            "to"
                         ]
                     }
                 },
                 {
                     "kind": "length",
                     "args": {
-                        "min": 1,
-                        "max": 3,  // wrong
+                        "min": 2
+                    }
+                },
+                {
+                    "kind": "japanese_katakana_stem_wrong",  // wrong token filter name
+                    "args": {
+                        "min": 3
                     }
                 }
             ]
