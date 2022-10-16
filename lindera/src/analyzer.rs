@@ -11,6 +11,9 @@ use crate::{
     },
     error::LinderaErrorKind,
     token_filter::{
+        japanese_katakana_stem::{
+            JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+        },
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
     },
@@ -117,6 +120,11 @@ impl Analyzer {
                         LENGTH_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
+                        }
+                        JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(
+                                JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(

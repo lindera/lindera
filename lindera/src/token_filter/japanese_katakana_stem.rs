@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{error::LinderaErrorKind, LinderaResult, Token};
 
+pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
 const DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK: char = '\u{30FC}';
 
@@ -13,12 +14,12 @@ fn default_min() -> NonZeroUsize {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseKatakanaStemmingTokenFilterConfig {
+pub struct JapaneseKatakanaStemTokenFilterConfig {
     #[serde(default = "default_min")]
     min: NonZeroUsize,
 }
 
-impl JapaneseKatakanaStemmingTokenFilterConfig {
+impl JapaneseKatakanaStemTokenFilterConfig {
     pub fn new(min: NonZeroUsize) -> Self {
         Self { min }
     }
@@ -28,21 +29,21 @@ impl JapaneseKatakanaStemmingTokenFilterConfig {
     }
 }
 
-pub struct JapaneseKatakanaStemmingTokenFilter {
-    config: JapaneseKatakanaStemmingTokenFilterConfig,
+pub struct JapaneseKatakanaStemTokenFilter {
+    config: JapaneseKatakanaStemTokenFilterConfig,
 }
 
-impl JapaneseKatakanaStemmingTokenFilter {
-    pub fn new(config: JapaneseKatakanaStemmingTokenFilterConfig) -> LinderaResult<Self> {
+impl JapaneseKatakanaStemTokenFilter {
+    pub fn new(config: JapaneseKatakanaStemTokenFilterConfig) -> LinderaResult<Self> {
         Ok(Self { config })
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Self::new(JapaneseKatakanaStemmingTokenFilterConfig::from_slice(data)?)
+        Self::new(JapaneseKatakanaStemTokenFilterConfig::from_slice(data)?)
     }
 }
 
-impl TokenFilter for JapaneseKatakanaStemmingTokenFilter {
+impl TokenFilter for JapaneseKatakanaStemTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let min = self.config.min.get();
 
@@ -81,70 +82,69 @@ mod tests {
     use lindera_core::token_filter::TokenFilter;
 
     use crate::{
-        token_filter::japanese_katakana_stemming::{
-            JapaneseKatakanaStemmingTokenFilter, JapaneseKatakanaStemmingTokenFilterConfig,
+        token_filter::japanese_katakana_stem::{
+            JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
         },
         Token,
     };
 
     #[test]
-    fn test_japanese_katakana_stemming_token_filter_config_from_slice() {
+    fn test_japanese_katakana_stem_token_filter_config_from_slice() {
         let config_str = r#"
         {
             "min": 1
         }
         "#;
         let config =
-            JapaneseKatakanaStemmingTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+            JapaneseKatakanaStemTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
         assert_eq!(config.min.get(), 1);
     }
 
     #[test]
-    fn test_japanese_katakana_stemming_token_filter_config_from_slice_zero() {
+    fn test_japanese_katakana_stem_token_filter_config_from_slice_zero() {
         let config_str = r#"
         {
             "min": 0
         }
         "#;
-        let result = JapaneseKatakanaStemmingTokenFilterConfig::from_slice(config_str.as_bytes());
+        let result = JapaneseKatakanaStemTokenFilterConfig::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_err(), true);
     }
 
     #[test]
-    fn test_japanese_katakana_stemming_token_filter_from_slice() {
+    fn test_japanese_katakana_stem_token_filter_from_slice() {
         let config_str = r#"
         {
             "min": 1
         }
         "#;
-        let result = JapaneseKatakanaStemmingTokenFilter::from_slice(config_str.as_bytes());
+        let result = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_japanese_katakana_stemming_token_filter_from_slice_zero() {
+    fn test_japanese_katakana_stem_token_filter_from_slice_zero() {
         let config_str = r#"
         {
             "min": 0
         }
         "#;
-        let result = JapaneseKatakanaStemmingTokenFilter::from_slice(config_str.as_bytes());
+        let result = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_err(), true);
     }
 
     #[test]
-    fn test_japanese_katakana_stemming_token_filter_apply() {
+    fn test_japanese_katakana_stem_token_filter_apply() {
         let config_str = r#"
         {
             "min": 3
         }
         "#;
-        let filter =
-            JapaneseKatakanaStemmingTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let filter = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
