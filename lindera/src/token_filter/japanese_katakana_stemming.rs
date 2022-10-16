@@ -8,13 +8,18 @@ use crate::{error::LinderaErrorKind, LinderaResult, Token};
 const DEFAULT_MIN: usize = 3;
 const DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK: char = '\u{30FC}';
 
+fn default_min() -> NonZeroUsize {
+    NonZeroUsize::new(DEFAULT_MIN).unwrap()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseKatakanaStemmingTokenFilterConfig {
-    min: Option<NonZeroUsize>,
+    #[serde(default = "default_min")]
+    min: NonZeroUsize,
 }
 
 impl JapaneseKatakanaStemmingTokenFilterConfig {
-    pub fn new(min: Option<NonZeroUsize>) -> Self {
+    pub fn new(min: NonZeroUsize) -> Self {
         Self { min }
     }
 
@@ -41,13 +46,7 @@ impl TokenFilter for JapaneseKatakanaStemmingTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let min = self
             .config
-            .min
-            .unwrap_or(NonZeroUsize::new(DEFAULT_MIN).ok_or_else(|| {
-                LinderaErrorKind::Args.with_error(anyhow::anyhow!("Must be greater than 0."))
-            })?);
-        if min.get() == 0 {
-            return Ok(());
-        }
+            .min.get();
 
         for token in tokens.iter_mut() {
             if !is_katakana(token.text) {
@@ -57,7 +56,7 @@ impl TokenFilter for JapaneseKatakanaStemmingTokenFilter {
             if token
                 .text
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
-                && token.text.chars().count() > min.get()
+                && token.text.chars().count() > min
             {
                 token.text = &token.text[..token.text.len()
                     - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()];
@@ -100,7 +99,7 @@ mod tests {
         let config =
             JapaneseKatakanaStemmingTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.min.unwrap().get(), 1);
+        assert_eq!(config.min.get(), 1);
     }
 
     #[test]
