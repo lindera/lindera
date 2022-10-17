@@ -364,6 +364,45 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ipadic")]
+    fn test_tokenize_config_ipadic_normal() {
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "mode": "normal"
+        }
+        "#;
+
+        let config: TokenizerConfig = serde_json::from_str(config_str).unwrap();
+        assert_eq!(config.dictionary.kind, Some(DictionaryKind::IPADIC));
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_tokenize_config_ipadic_decompose() {
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "mode": {
+                "decompose": {
+                    "kanji_penalty_length_threshold": 2,
+                    "kanji_penalty_length_penalty": 3000,
+                    "other_penalty_length_threshold": 7,
+                    "other_penalty_length_penalty": 1700
+                }
+            }
+        }
+        "#;
+
+        let config: TokenizerConfig = serde_json::from_str(config_str).unwrap();
+        assert_eq!(config.dictionary.kind, Some(DictionaryKind::IPADIC));
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
     fn test_tokenize_ipadic() {
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),

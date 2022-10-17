@@ -266,7 +266,7 @@ impl DictionaryBuilder for UnidicBuilder {
         let mut keyset: Vec<(&[u8], u32)> = vec![];
         for (key, word_entries) in &word_entry_map {
             let len = word_entries.len() as u32;
-            let val = (id << 5) | len;
+            let val = (id << 5) | len; // 27bit for word ID, 5bit for different parts of speech on the same surface.
             keyset.push((key.as_bytes(), val));
             id += len;
         }
