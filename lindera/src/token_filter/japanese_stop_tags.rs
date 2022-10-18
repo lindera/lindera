@@ -158,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn test_stop_words_token_filter_apply() {
+    fn test_japanese_stop_tags_token_filter_apply() {
         let config_str = r#"
         {
             "stop_tags": [
