@@ -27,8 +27,6 @@ impl JapaneseStopTagsTokenFilterConfig {
             formatted_tags.insert(formatted_tag.join(","));
         }
 
-        println!("{:?}", formatted_tags);
-
         Self {
             stop_tags: formatted_tags,
         }
@@ -63,8 +61,6 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
-                println!("{:?}", self.config.stop_tags);
-                println!("{:?}", details);
                 !self.config.stop_tags.contains(&details[0..4].join(","))
             } else {
                 false
