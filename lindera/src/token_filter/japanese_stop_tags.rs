@@ -69,15 +69,6 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
             } else {
                 false
             }
-
-            // if token.details.is_some() {
-            //     let tag = &token.details[0..4];
-            //     !self.config.stop_tags.contains(token.text)
-            // } else {
-            //     false
-            // }
-
-            // true
         });
         Ok(())
     }
