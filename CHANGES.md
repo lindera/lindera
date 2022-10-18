@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add analyze subcommand #238 @mosuka
 - Add Japanese katakana stem token filter #237 @mosuka
 - Add analysis framework #236 @mosuka
 - Fix long text file path #235 @mosuka
