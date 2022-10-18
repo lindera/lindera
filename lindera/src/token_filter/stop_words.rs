@@ -7,6 +7,7 @@ use lindera_core::token_filter::TokenFilter;
 use crate::{error::LinderaErrorKind, LinderaResult, Token};
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct StopWordsTokenFilterConfig {
     stop_words: HashSet<String>,
