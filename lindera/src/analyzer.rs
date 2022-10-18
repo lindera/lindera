@@ -14,6 +14,7 @@ use crate::{
         japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
+        keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
     },
@@ -63,11 +64,6 @@ impl Analyzer {
                         .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
                     match character_filter_name {
-                        UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
-                            character_filters.push(Box::new(
-                                UnicodeNormalizeCharacterFilter::from_slice(&arg_bytes)?,
-                            ));
-                        }
                         MAPPING_CHARACTER_FILTER_NAME => {
                             character_filters
                                 .push(Box::new(MappingCharacterFilter::from_slice(&arg_bytes)?));
@@ -75,6 +71,11 @@ impl Analyzer {
                         REGEX_CHARACTER_FILTER_NAME => {
                             character_filters
                                 .push(Box::new(RegexCharacterFilter::from_slice(&arg_bytes)?));
+                        }
+                        UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
+                            character_filters.push(Box::new(
+                                UnicodeNormalizeCharacterFilter::from_slice(&arg_bytes)?,
+                            ));
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
@@ -113,18 +114,22 @@ impl Analyzer {
                         .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
                     match token_filter_name {
-                        STOP_WORDS_TOKEN_FILTER_NAME => {
+                        JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(
+                                JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
+                            ));
+                        }
+                        KEEP_WORDS_TOKEN_FILTER_NAME => {
                             token_filters
-                                .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
+                                .push(Box::new(KeepWordsTokenFilter::from_slice(&args_bytes)?));
                         }
                         LENGTH_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
                         }
-                        JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(
-                                JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
-                            ));
+                        STOP_WORDS_TOKEN_FILTER_NAME => {
+                            token_filters
+                                .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
