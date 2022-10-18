@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add Japanese stop tags (part-of-speech) token filter #255 @mosuka
 - Add keep words token filter #239 @mosuka
 - Add analyze subcommand #238 @mosuka
 - Add Japanese katakana stem token filter #237 @mosuka
