@@ -1,4 +1,4 @@
-use std::num::NonZeroUsize;
+use std::{borrow::Cow, num::NonZeroUsize};
 
 use lindera_core::token_filter::TokenFilter;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         let min = self.config.min.get();
 
         for token in tokens.iter_mut() {
-            if !is_katakana(token.text) {
+            if !is_katakana(token.text.as_ref()) {
                 continue;
             }
 
@@ -57,8 +57,11 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
                 && token.text.chars().count() > min
             {
-                token.text = &token.text[..token.text.len()
-                    - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()];
+                token.text = Cow::Owned(
+                    token.text.as_ref()[..token.text.len()
+                        - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
+                        .to_string(),
+                );
             }
         }
 
@@ -79,6 +82,8 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use lindera_core::token_filter::TokenFilter;
 
     use crate::{
@@ -148,75 +153,75 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: "カー",
+                text: Cow::Borrowed("カー"),
                 details: None,
             },
             Token {
-                text: "かー",
+                text: Cow::Borrowed("かー"),
                 details: None,
             },
             Token {
-                text: "レバー",
+                text: Cow::Borrowed("レバー"),
                 details: None,
             },
             Token {
-                text: "ればー",
+                text: Cow::Borrowed("ればー"),
                 details: None,
             },
             Token {
-                text: "サッカー",
+                text: Cow::Borrowed("サッカー"),
                 details: None,
             },
             Token {
-                text: "さっかー",
+                text: Cow::Borrowed("さっかー"),
                 details: None,
             },
             Token {
-                text: "レシーバー",
+                text: Cow::Borrowed("レシーバー"),
                 details: None,
             },
             Token {
-                text: "れしーばー",
+                text: Cow::Borrowed("れしーばー"),
                 details: None,
             },
             Token {
-                text: "ア",
+                text: Cow::Borrowed("ア"),
                 details: None,
             },
             Token {
-                text: "あ",
+                text: Cow::Borrowed("あ"),
                 details: None,
             },
             Token {
-                text: "アイ",
+                text: Cow::Borrowed("アイ"),
                 details: None,
             },
             Token {
-                text: "あい",
+                text: Cow::Borrowed("あい"),
                 details: None,
             },
             Token {
-                text: "アイウ",
+                text: Cow::Borrowed("アイウ"),
                 details: None,
             },
             Token {
-                text: "あいう",
+                text: Cow::Borrowed("あいう"),
                 details: None,
             },
             Token {
-                text: "アイウエ",
+                text: Cow::Borrowed("アイウエ"),
                 details: None,
             },
             Token {
-                text: "あいうえ",
+                text: Cow::Borrowed("あいうえ"),
                 details: None,
             },
             Token {
-                text: "アイウエオ",
+                text: Cow::Borrowed("アイウエオ"),
                 details: None,
             },
             Token {
-                text: "あいうえお",
+                text: Cow::Borrowed("あいうえお"),
                 details: None,
             },
         ];

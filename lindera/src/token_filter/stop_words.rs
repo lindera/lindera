@@ -40,13 +40,15 @@ impl StopWordsTokenFilter {
 
 impl TokenFilter for StopWordsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.stop_words.contains(token.text));
+        tokens.retain(|token| !self.config.stop_words.contains(token.text.as_ref()));
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use lindera_core::token_filter::TokenFilter;
 
     use crate::{
@@ -191,43 +193,43 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: "to",
+                text: Cow::Borrowed("to"),
                 details: None,
             },
             Token {
-                text: "be",
+                text: Cow::Borrowed("be"),
                 details: None,
             },
             Token {
-                text: "or",
+                text: Cow::Borrowed("or"),
                 details: None,
             },
             Token {
-                text: "not",
+                text: Cow::Borrowed("not"),
                 details: None,
             },
             Token {
-                text: "to",
+                text: Cow::Borrowed("to"),
                 details: None,
             },
             Token {
-                text: "be",
+                text: Cow::Borrowed("be"),
                 details: None,
             },
             Token {
-                text: "this",
+                text: Cow::Borrowed("this"),
                 details: None,
             },
             Token {
-                text: "is",
+                text: Cow::Borrowed("is"),
                 details: None,
             },
             Token {
-                text: "the",
+                text: Cow::Borrowed("the"),
                 details: None,
             },
             Token {
-                text: "question",
+                text: Cow::Borrowed("question"),
                 details: None,
             },
         ];

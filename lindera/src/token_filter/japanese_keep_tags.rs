@@ -72,6 +72,8 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use lindera_core::token_filter::TokenFilter;
 
     use crate::{
@@ -236,7 +238,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: "すもも",
+                text: Cow::Borrowed("すもも"),
                 details: Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -250,7 +252,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "も",
+                text: Cow::Borrowed("も"),
                 details: Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
@@ -264,7 +266,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "もも",
+                text: Cow::Borrowed("もも"),
                 details: Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -278,7 +280,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "も",
+                text: Cow::Borrowed("も"),
                 details: Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
@@ -292,7 +294,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "もも",
+                text: Cow::Borrowed("もも"),
                 details: Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -306,7 +308,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "の",
+                text: Cow::Borrowed("の"),
                 details: Some(vec![
                     "助詞".to_string(),
                     "連体化".to_string(),
@@ -320,7 +322,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: "うち",
+                text: Cow::Borrowed("うち"),
                 details: Some(vec![
                     "名詞".to_string(),
                     "非自立".to_string(),
