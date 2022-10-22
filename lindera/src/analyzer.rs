@@ -1,5 +1,6 @@
-use lindera_core::{character_filter::CharacterFilter, token_filter::TokenFilter};
 use serde_json::Value;
+
+use lindera_core::{character_filter::CharacterFilter, token_filter::TokenFilter};
 
 use crate::{
     character_filter::{
@@ -15,6 +16,9 @@ use crate::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
         japanese_keep_tags::{JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME},
+        japanese_reading_form::{
+            JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
+        },
         japanese_stop_tags::{JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME},
         keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
@@ -127,6 +131,11 @@ impl Analyzer {
                             token_filters.push(Box::new(JapaneseKeepTagsTokenFilter::from_slice(
                                 &args_bytes,
                             )?));
+                        }
+                        JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(
+                                JapaneseReadingFormTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(JapaneseStopTagsTokenFilter::from_slice(

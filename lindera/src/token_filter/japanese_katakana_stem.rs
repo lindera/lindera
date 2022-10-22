@@ -1,7 +1,8 @@
 use std::{borrow::Cow, num::NonZeroUsize};
 
-use lindera_core::token_filter::TokenFilter;
 use serde::{Deserialize, Serialize};
+
+use lindera_core::token_filter::TokenFilter;
 
 use crate::{error::LinderaErrorKind, LinderaResult, Token};
 
