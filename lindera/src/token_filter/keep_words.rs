@@ -39,13 +39,15 @@ impl KeepWordsTokenFilter {
 
 impl TokenFilter for KeepWordsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| self.config.keep_words.contains(token.text));
+        tokens.retain(|token| self.config.keep_words.contains(token.text.as_ref()));
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use lindera_core::token_filter::TokenFilter;
 
     use crate::{
@@ -97,55 +99,55 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: "Rust",
+                text: Cow::Borrowed("Rust"),
                 details: None,
             },
             Token {
-                text: "製",
+                text: Cow::Borrowed("製"),
                 details: None,
             },
             Token {
-                text: "形態素",
+                text: Cow::Borrowed("形態素"),
                 details: None,
             },
             Token {
-                text: "解析",
+                text: Cow::Borrowed("解析"),
                 details: None,
             },
             Token {
-                text: "器",
+                text: Cow::Borrowed("器"),
                 details: None,
             },
             Token {
-                text: "Lindera",
+                text: Cow::Borrowed("Lindera"),
                 details: None,
             },
             Token {
-                text: "で",
+                text: Cow::Borrowed("で"),
                 details: None,
             },
             Token {
-                text: "日本語",
+                text: Cow::Borrowed("日本語"),
                 details: None,
             },
             Token {
-                text: "を",
+                text: Cow::Borrowed("を"),
                 details: None,
             },
             Token {
-                text: "形態素",
+                text: Cow::Borrowed("形態素"),
                 details: None,
             },
             Token {
-                text: "解析する。",
+                text: Cow::Borrowed("解析する。"),
                 details: None,
             },
             Token {
-                text: "する",
+                text: Cow::Borrowed("する"),
                 details: None,
             },
             Token {
-                text: "。",
+                text: Cow::Borrowed("。"),
                 details: None,
             },
         ];

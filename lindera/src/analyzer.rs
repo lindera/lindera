@@ -18,7 +18,9 @@ use crate::{
         japanese_stop_tags::{JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME},
         keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
+        lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
+        uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
     },
     tokenizer::Tokenizer,
     LinderaResult,
@@ -139,9 +141,15 @@ impl Analyzer {
                             token_filters
                                 .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
                         }
+                        LOWERCASE_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(LowercaseTokenFilter::default()));
+                        }
                         STOP_WORDS_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
+                        }
+                        UPPERCASE_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(UppercaseTokenFilter::default()));
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
@@ -315,7 +323,7 @@ mod tests {
         let tokens = analyzer.analyze(&mut text).unwrap();
 
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["Lindera", "日本語", "形態素", "解析", "エンジン", "です"]
         );
     }

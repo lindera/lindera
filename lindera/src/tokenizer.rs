@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -292,7 +293,7 @@ impl Tokenizer {
                     next_start
                 };
                 tokens.push(Token {
-                    text: &sentence[token_start..token_stop],
+                    text: Cow::Borrowed(&sentence[token_start..token_stop]),
                     details: if with_details {
                         Some(self.word_detail(word_id)?)
                     } else {
@@ -420,7 +421,7 @@ mod tests {
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "日本語",
                 "の",
@@ -456,7 +457,7 @@ mod tests {
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "日本", "語", "の", "形態", "素", "解析", "を", "行う", "こと", "が", "でき",
                 "ます", "。"
@@ -483,7 +484,7 @@ mod tests {
             .tokenize("한국어의형태해석을실시할수있습니다.")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "한국어",
                 "의",
@@ -517,7 +518,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["可以", "进行", "中文", "形态学", "分析", "。"]
         );
     }
@@ -550,7 +551,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -591,7 +592,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -631,7 +632,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["하네다공항", "한정", "토트백", "."]
         );
     }
@@ -662,7 +663,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["羽田机场", "限定", "托特", "包", "。"]
         );
     }
@@ -695,7 +696,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -736,7 +737,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -776,7 +777,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["하네다공항", "한정", "토트백", "."]
         );
     }
@@ -807,7 +808,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["羽田机场", "限定", "托特", "包", "。"]
         );
     }
@@ -840,7 +841,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -881,7 +882,7 @@ mod tests {
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec![
                 "東京スカイツリー",
                 "の",
@@ -965,7 +966,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["羽田空港", "限定", "トートバッグ"]
         );
     }
@@ -987,7 +988,7 @@ mod tests {
         let tokenizer = Tokenizer::with_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
-            tokens.iter().map(|t| t.text).collect::<Vec<_>>(),
+            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
             vec!["羽田", "空港", "限定", "トートバッグ"]
         );
     }

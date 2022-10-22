@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add lowercase token filter and uppercase token filter #257 @mosuka
 - Add Japanese keep tags token filter #256 @mosuka
 - Add Japanese stop tags (part-of-speech) token filter #255 @mosuka
 - Add keep words token filter #239 @mosuka
