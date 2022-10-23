@@ -294,7 +294,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "*".to_string()]),
+                    "*".to_string(),
+                ]),
             },
             Token {
                 text: Cow::Borrowed("バッグ"),
@@ -315,7 +316,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "*".to_string()]),
+                    "*".to_string(),
+                ]),
             },
         ];
 
