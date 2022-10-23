@@ -7,47 +7,47 @@ use lindera_core::token_filter::TokenFilter;
 
 use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
 
-pub const JAPANESE_READING_FORM_TOKEN_FILTER_NAME: &str = "japanese_reading_form";
+pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
 fn default_kind() -> DictionaryKind {
     DictionaryKind::IPADIC
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseReadingFormTokenFilterConfig {
+pub struct JapaneseBaseFormTokenFilterConfig {
     #[serde(default = "default_kind")]
     kind: DictionaryKind,
 }
 
-impl JapaneseReadingFormTokenFilterConfig {
+impl JapaneseBaseFormTokenFilterConfig {
     pub fn new(kind: DictionaryKind) -> Self {
         Self { kind }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<JapaneseReadingFormTokenFilterConfig>(data)
+        serde_json::from_slice::<JapaneseBaseFormTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct JapaneseReadingFormTokenFilter {
-    config: JapaneseReadingFormTokenFilterConfig,
+pub struct JapaneseBaseFormTokenFilter {
+    config: JapaneseBaseFormTokenFilterConfig,
 }
 
-impl JapaneseReadingFormTokenFilter {
-    pub fn new(config: JapaneseReadingFormTokenFilterConfig) -> Self {
+impl JapaneseBaseFormTokenFilter {
+    pub fn new(config: JapaneseBaseFormTokenFilterConfig) -> Self {
         Self { config }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(JapaneseReadingFormTokenFilterConfig::from_slice(
+        Ok(Self::new(JapaneseBaseFormTokenFilterConfig::from_slice(
             data,
         )?))
     }
 }
 
-impl TokenFilter for JapaneseReadingFormTokenFilter {
+impl TokenFilter for JapaneseBaseFormTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(details) = &token.details {
@@ -58,11 +58,11 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
                 match self.config.kind {
                     #[cfg(feature = "ipadic")]
                     DictionaryKind::IPADIC => {
-                        token.text = Cow::Owned(details[7].clone());
+                        token.text = Cow::Owned(details[6].clone());
                     }
                     #[cfg(feature = "unidic")]
                     DictionaryKind::UniDic => {
-                        token.text = Cow::Owned(details[6].clone());
+                        token.text = Cow::Owned(details[10].clone());
                     }
                     _ => {
                         // NOOP
@@ -85,75 +85,73 @@ mod tests {
 
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
     use crate::{
-        token_filter::japanese_reading_form::{
-            JapaneseReadingFormTokenFilter, JapaneseReadingFormTokenFilterConfig,
+        token_filter::japanese_base_form::{
+            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
         },
         DictionaryKind, Token,
     };
 
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_config_from_slice_ipadic() {
+    fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
         {
             "kind": "ipadic"
         }
         "#;
-        let config =
-            JapaneseReadingFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+        let config = JapaneseBaseFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
         assert_eq!(config.kind, DictionaryKind::IPADIC);
     }
 
     #[cfg(feature = "unidic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_config_from_slice_unidic() {
+    fn test_japanese_base_form_token_filter_config_from_slice_unidic() {
         let config_str = r#"
         {
             "kind": "unidic"
         }
         "#;
-        let config =
-            JapaneseReadingFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+        let config = JapaneseBaseFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_from_slice_ipadic() {
+    fn test_japanese_base_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
         {
             "kind": "ipadic"
         }
         "#;
-        let result = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes());
+        let result = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
     #[cfg(feature = "unidic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_from_slice_unidic() {
+    fn test_japanese_base_form_token_filter_from_slice_unidic() {
         let config_str = r#"
         {
             "kind": "unidic"
         }
         "#;
-        let result = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes());
+        let result = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_apply_ipadic() {
+    fn test_japanese_base_form_token_filter_apply_ipadic() {
         let config_str = r#"
         {
             "kind": "ipadic"
         }
         "#;
-        let filter = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -171,42 +169,67 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                text: Cow::Borrowed("に"),
                 details: Some(vec![
-                    "名詞".to_string(),
-                    "サ変接続".to_string(),
+                    "助詞".to_string(),
+                    "格助詞".to_string(),
+                    "一般".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "*".to_string(),
-                    "限定".to_string(),
-                    "ゲンテイ".to_string(),
-                    "ゲンテイ".to_string(),
+                    "に".to_string(),
+                    "ニ".to_string(),
+                    "ニ".to_string(),
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トートバッグ"),
-                details: Some(vec!["UNK".to_string()]),
+                text: Cow::Borrowed("あり"),
+                details: Some(vec![
+                    "動詞".to_string(),
+                    "自立".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "五段・ラ行".to_string(),
+                    "連用形".to_string(),
+                    "ある".to_string(),
+                    "アリ".to_string(),
+                    "アリ".to_string(),
+                ]),
+            },
+            Token {
+                text: Cow::Borrowed("ます"),
+                details: Some(vec![
+                    "助動詞".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "特殊・マス".to_string(),
+                    "基本形".to_string(),
+                    "ます".to_string(),
+                    "マス".to_string(),
+                    "マス".to_string(),
+                ]),
             },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].text, "ハネダクウコウ");
-        assert_eq!(tokens[1].text, "ゲンテイ");
-        assert_eq!(tokens[2].text, "トートバッグ");
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].text, "羽田空港");
+        assert_eq!(tokens[1].text, "に");
+        assert_eq!(tokens[2].text, "ある");
+        assert_eq!(tokens[3].text, "ます");
     }
 
     #[cfg(feature = "unidic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_apply_unidic() {
+    fn test_japanese_base_form_token_filter_apply_unidic() {
         let config_str = r#"
         {
             "kind": "unidic"
         }
         "#;
-        let filter = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -254,21 +277,21 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                text: Cow::Borrowed("に"),
                 details: Some(vec![
-                    "名詞".to_string(),
-                    "普通名詞".to_string(),
-                    "サ変可能".to_string(),
+                    "助詞".to_string(),
+                    "格助詞".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "ゲンテイ".to_string(),
-                    "限定".to_string(),
-                    "限定".to_string(),
-                    "ゲンテー".to_string(),
-                    "限定".to_string(),
-                    "ゲンテー".to_string(),
-                    "漢".to_string(),
+                    "*".to_string(),
+                    "ニ".to_string(),
+                    "に".to_string(),
+                    "に".to_string(),
+                    "ニ".to_string(),
+                    "に".to_string(),
+                    "ニ".to_string(),
+                    "和".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
@@ -276,21 +299,21 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トート"),
+                text: Cow::Borrowed("あり"),
                 details: Some(vec![
-                    "名詞".to_string(),
-                    "普通名詞".to_string(),
-                    "一般".to_string(),
+                    "動詞".to_string(),
+                    "非自立可能".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "*".to_string(),
-                    "トート".to_string(),
-                    "トート".to_string(),
-                    "トート".to_string(),
-                    "トート".to_string(),
-                    "トート".to_string(),
-                    "トート".to_string(),
-                    "外".to_string(),
+                    "五段-ラ行".to_string(),
+                    "連用形-一般".to_string(),
+                    "アル".to_string(),
+                    "有る".to_string(),
+                    "あり".to_string(),
+                    "アリ".to_string(),
+                    "ある".to_string(),
+                    "アル".to_string(),
+                    "和".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
@@ -298,21 +321,21 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("バッグ"),
+                text: Cow::Borrowed("ます"),
                 details: Some(vec![
-                    "名詞".to_string(),
-                    "普通名詞".to_string(),
-                    "一般".to_string(),
+                    "助動詞".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                    "バッグ".to_string(),
-                    "バッグ-bag".to_string(),
-                    "バッグ".to_string(),
-                    "バッグ".to_string(),
-                    "バッグ".to_string(),
-                    "バッグ".to_string(),
-                    "外".to_string(),
+                    "助動詞-マス".to_string(),
+                    "終止形-一般".to_string(),
+                    "マス".to_string(),
+                    "ます".to_string(),
+                    "ます".to_string(),
+                    "マス".to_string(),
+                    "ます".to_string(),
+                    "マス".to_string(),
+                    "和".to_string(),
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
@@ -324,10 +347,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 5);
-        assert_eq!(tokens[0].text, "ハタ");
-        assert_eq!(tokens[1].text, "クウコウ");
-        assert_eq!(tokens[2].text, "ゲンテイ");
-        assert_eq!(tokens[3].text, "トート");
-        assert_eq!(tokens[4].text, "バッグ");
+        assert_eq!(tokens[0].text, "羽田");
+        assert_eq!(tokens[1].text, "空港");
+        assert_eq!(tokens[2].text, "に");
+        assert_eq!(tokens[3].text, "ある");
+        assert_eq!(tokens[4].text, "ます");
     }
 }

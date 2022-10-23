@@ -12,6 +12,7 @@ use crate::{
     },
     error::LinderaErrorKind,
     token_filter::{
+        japanese_base_form::{JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME},
         japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
@@ -122,6 +123,11 @@ impl Analyzer {
                         .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
                     match token_filter_name {
+                        JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(JapaneseBaseFormTokenFilter::from_slice(
+                                &args_bytes,
+                            )?));
+                        }
                         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(
                                 JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,

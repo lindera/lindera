@@ -71,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn test_stop_words_token_filter_from_slice() {
+    fn test_keep_words_token_filter_from_slice() {
         let config_str = r#"
         {
             "keep_words": [
@@ -86,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn test_stop_words_token_filter_apply() {
+    fn test_keep_words_token_filter_apply() {
         let config_str = r#"
         {
             "keep_words": [

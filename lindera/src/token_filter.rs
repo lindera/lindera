@@ -1,3 +1,4 @@
+pub mod japanese_base_form;
 pub mod japanese_katakana_stem;
 pub mod japanese_keep_tags;
 pub mod japanese_reading_form;
