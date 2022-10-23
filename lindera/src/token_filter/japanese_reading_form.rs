@@ -147,7 +147,7 @@ mod tests {
 
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_reading_form_token_filter_apply() {
+    fn test_japanese_reading_form_token_filter_apply_ipadic() {
         let config_str = r#"
         {
             "kind": "ipadic"
@@ -196,5 +196,136 @@ mod tests {
         assert_eq!(tokens[0].text, "ハネダクウコウ");
         assert_eq!(tokens[1].text, "ゲンテイ");
         assert_eq!(tokens[2].text, "トートバッグ");
+    }
+
+    #[cfg(feature = "unidic")]
+    #[test]
+    fn test_japanese_reading_form_token_filter_apply_unidic() {
+        let config_str = r#"
+        {
+            "kind": "unidic"
+        }
+        "#;
+        let filter = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut tokens: Vec<Token> = vec![
+            Token {
+                text: Cow::Borrowed("羽田"),
+                details: Some(vec![
+                    "名詞".to_string(),
+                    "固有名詞".to_string(),
+                    "人名".to_string(),
+                    "姓".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "ハタ".to_string(),
+                    "ハタ".to_string(),
+                    "羽田".to_string(),
+                    "ハタ".to_string(),
+                    "羽田".to_string(),
+                    "ハタ".to_string(),
+                    "固".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ]),
+            },
+            Token {
+                text: Cow::Borrowed("空港"),
+                details: Some(vec![
+                    "名詞".to_string(),
+                    "普通名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "クウコウ".to_string(),
+                    "空港".to_string(),
+                    "空港".to_string(),
+                    "クーコー".to_string(),
+                    "空港".to_string(),
+                    "クーコー".to_string(),
+                    "漢".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ]),
+            },
+            Token {
+                text: Cow::Borrowed("限定"),
+                details: Some(vec![
+                    "名詞".to_string(),
+                    "普通名詞".to_string(),
+                    "サ変可能".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "ゲンテイ".to_string(),
+                    "限定".to_string(),
+                    "限定".to_string(),
+                    "ゲンテー".to_string(),
+                    "限定".to_string(),
+                    "ゲンテー".to_string(),
+                    "漢".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ]),
+            },
+            Token {
+                text: Cow::Borrowed("トート"),
+                details: Some(vec![
+                    "名詞".to_string(),
+                    "普通名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "トート".to_string(),
+                    "トート".to_string(),
+                    "トート".to_string(),
+                    "トート".to_string(),
+                    "トート".to_string(),
+                    "トート".to_string(),
+                    "外".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string()]),
+            },
+            Token {
+                text: Cow::Borrowed("バッグ"),
+                details: Some(vec![
+                    "名詞".to_string(),
+                    "普通名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "バッグ".to_string(),
+                    "バッグ-bag".to_string(),
+                    "バッグ".to_string(),
+                    "バッグ".to_string(),
+                    "バッグ".to_string(),
+                    "バッグ".to_string(),
+                    "外".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string()]),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 5);
+        assert_eq!(tokens[0].text, "ハタ");
+        assert_eq!(tokens[1].text, "クウコウ");
+        assert_eq!(tokens[2].text, "ゲンテイ");
+        assert_eq!(tokens[3].text, "トート");
+        assert_eq!(tokens[4].text, "バッグ");
     }
 }

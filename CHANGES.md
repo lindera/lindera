@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add Japanese base form token filter #259 @mosuka
 - Add Japanese reading form token filter #258 @mosuka
 - Add lowercase token filter and uppercase token filter #257 @mosuka
 - Add Japanese keep tags token filter #256 @mosuka
