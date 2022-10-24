@@ -23,6 +23,9 @@ use crate::{
         japanese_stop_tags::{JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME},
         keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
         korean_keep_tags::{KoreanKeepTagsTokenFilter, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME},
+        korean_reading_form::{
+            KoreanReadingFormTokenFilter, KOREAN_READING_FORM_TOKEN_FILTER_NAME,
+        },
         korean_stop_tags::{KoreanStopTagsTokenFilter, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME},
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
         lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
@@ -158,6 +161,9 @@ impl Analyzer {
                             token_filters.push(Box::new(KoreanKeepTagsTokenFilter::from_slice(
                                 &args_bytes,
                             )?));
+                        }
+                        KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(KoreanReadingFormTokenFilter::default()));
                         }
                         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(KoreanStopTagsTokenFilter::from_slice(
