@@ -82,7 +82,7 @@ mod tests {
     }
 
     #[test]
-    fn test_korean_keep_tagss_token_filter_from_slice() {
+    fn test_korean_keep_tags_token_filter_from_slice() {
         let config_str = r#"
         {
             "keep_tags": [
