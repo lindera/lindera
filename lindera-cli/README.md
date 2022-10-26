@@ -539,6 +539,25 @@ EOS
 ]
 ```
 
+
+## Analysis
+
+Lindera has introduced an analysis framework.  
+The `analyze` command combines character filters, tokenizer and token filters for more advanced text processing.
+Settings for character filters, tokenizer, and token filters used in the analysis are described in JSON.
+
+```shell script
+$ echo "すもももももももものうち" | ./target/debug/lindera analyze --config ./resources/lindera_ipadic_conf.json
+```
+
+```text
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+EOS
+```
+
+
 ## Docker
 
 ### Build Docker container image
