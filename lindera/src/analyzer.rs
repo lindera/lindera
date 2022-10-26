@@ -12,6 +12,15 @@ use crate::{
     },
     error::LinderaErrorKind,
     token_filter::{
+        japanese_base_form::{JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME},
+        japanese_katakana_stem::{
+            JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+        },
+        japanese_keep_tags::{JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME},
+        japanese_reading_form::{
+            JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
+        },
+        japanese_stop_tags::{JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME},
         keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
         korean_keep_tags::{KoreanKeepTagsTokenFilter, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME},
         korean_reading_form::{
@@ -22,16 +31,7 @@ use crate::{
         lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
         uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
-        japanese_base_form::{JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME},
-        japanese_katakana_stem::{
-            JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
-        },
-        japanese_keep_tags::{JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME},
-        japanese_reading_form::{
-            JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
-        },
-        japanese_stop_tags::{JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME},
-        },
+    },
     tokenizer::Tokenizer,
     LinderaResult,
 };
