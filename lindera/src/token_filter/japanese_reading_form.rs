@@ -169,6 +169,8 @@ mod tests {
                     "ハネダクウコウ".to_string(),
                     "ハネダクーコー".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("限定"),
@@ -183,10 +185,14 @@ mod tests {
                     "ゲンテイ".to_string(),
                     "ゲンテイ".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 18,
             },
             Token {
                 text: Cow::Borrowed("トートバッグ"),
                 details: Some(vec!["UNK".to_string()]),
+                byte_start: 18,
+                byte_end: 36,
             },
         ];
 
@@ -230,6 +236,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 6,
             },
             Token {
                 text: Cow::Borrowed("空港"),
@@ -252,6 +260,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 6,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("限定"),
@@ -274,6 +284,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 18,
             },
             Token {
                 text: Cow::Borrowed("トート"),
@@ -296,6 +308,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 18,
+                byte_end: 27,
             },
             Token {
                 text: Cow::Borrowed("バッグ"),
@@ -318,6 +332,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 27,
+                byte_end: 36,
             },
         ];
 

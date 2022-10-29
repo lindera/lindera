@@ -101,54 +101,80 @@ mod tests {
             Token {
                 text: Cow::Borrowed("Rust"),
                 details: None,
+                byte_start: 0,
+                byte_end: 4,
             },
             Token {
                 text: Cow::Borrowed("製"),
                 details: None,
+                byte_start: 4,
+                byte_end: 7,
             },
             Token {
                 text: Cow::Borrowed("形態素"),
                 details: None,
+                byte_start: 7,
+                byte_end: 16,
             },
             Token {
                 text: Cow::Borrowed("解析"),
                 details: None,
+                byte_start: 16,
+                byte_end: 22,
             },
             Token {
                 text: Cow::Borrowed("器"),
                 details: None,
+                byte_start: 22,
+                byte_end: 25,
             },
             Token {
                 text: Cow::Borrowed("Lindera"),
                 details: None,
+                byte_start: 25,
+                byte_end: 32,
             },
             Token {
                 text: Cow::Borrowed("で"),
                 details: None,
+                byte_start: 32,
+                byte_end: 35,
             },
             Token {
                 text: Cow::Borrowed("日本語"),
                 details: None,
+                byte_start: 35,
+                byte_end: 44,
             },
             Token {
                 text: Cow::Borrowed("を"),
                 details: None,
+                byte_start: 44,
+                byte_end: 47,
             },
             Token {
                 text: Cow::Borrowed("形態素"),
                 details: None,
+                byte_start: 47,
+                byte_end: 56,
             },
             Token {
-                text: Cow::Borrowed("解析する。"),
+                text: Cow::Borrowed("解析"),
                 details: None,
+                byte_start: 56,
+                byte_end: 62,
             },
             Token {
                 text: Cow::Borrowed("する"),
                 details: None,
+                byte_start: 62,
+                byte_end: 68,
             },
             Token {
                 text: Cow::Borrowed("。"),
                 details: None,
+                byte_start: 68,
+                byte_end: 71,
             },
         ];
 

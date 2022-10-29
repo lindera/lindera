@@ -167,6 +167,8 @@ mod tests {
                     "ハネダクウコウ".to_string(),
                     "ハネダクーコー".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("に"),
@@ -181,6 +183,8 @@ mod tests {
                     "ニ".to_string(),
                     "ニ".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 15,
             },
             Token {
                 text: Cow::Borrowed("あり"),
@@ -195,6 +199,8 @@ mod tests {
                     "アリ".to_string(),
                     "アリ".to_string(),
                 ]),
+                byte_start: 15,
+                byte_end: 21,
             },
             Token {
                 text: Cow::Borrowed("ます"),
@@ -209,6 +215,8 @@ mod tests {
                     "マス".to_string(),
                     "マス".to_string(),
                 ]),
+                byte_start: 21,
+                byte_end: 27,
             },
         ];
 
@@ -253,6 +261,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 6,
             },
             Token {
                 text: Cow::Borrowed("空港"),
@@ -275,6 +285,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 6,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("に"),
@@ -297,6 +309,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 15,
             },
             Token {
                 text: Cow::Borrowed("あり"),
@@ -319,6 +333,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 15,
+                byte_end: 21,
             },
             Token {
                 text: Cow::Borrowed("ます"),
@@ -341,6 +357,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 21,
+                byte_end: 27,
             },
         ];
 

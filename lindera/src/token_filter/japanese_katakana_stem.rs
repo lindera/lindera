@@ -156,97 +156,35 @@ mod tests {
             Token {
                 text: Cow::Borrowed("カー"),
                 details: None,
-            },
-            Token {
-                text: Cow::Borrowed("かー"),
-                details: None,
+                byte_start: 0,
+                byte_end: 6,
             },
             Token {
                 text: Cow::Borrowed("レバー"),
                 details: None,
-            },
-            Token {
-                text: Cow::Borrowed("ればー"),
-                details: None,
+                byte_start: 7,
+                byte_end: 16,
             },
             Token {
                 text: Cow::Borrowed("サッカー"),
                 details: None,
-            },
-            Token {
-                text: Cow::Borrowed("さっかー"),
-                details: None,
+                byte_start: 17,
+                byte_end: 29,
             },
             Token {
                 text: Cow::Borrowed("レシーバー"),
                 details: None,
-            },
-            Token {
-                text: Cow::Borrowed("れしーばー"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("ア"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("あ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("アイ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("あい"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("アイウ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("あいう"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("アイウエ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("あいうえ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("アイウエオ"),
-                details: None,
-            },
-            Token {
-                text: Cow::Borrowed("あいうえお"),
-                details: None,
+                byte_start: 30,
+                byte_end: 45,
             },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(tokens.len(), 18);
+        assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].text, "カー");
-        assert_eq!(tokens[1].text, "かー");
-        assert_eq!(tokens[2].text, "レバー");
-        assert_eq!(tokens[3].text, "ればー");
-        assert_eq!(tokens[4].text, "サッカ");
-        assert_eq!(tokens[5].text, "さっかー");
-        assert_eq!(tokens[6].text, "レシーバ");
-        assert_eq!(tokens[7].text, "れしーばー");
-        assert_eq!(tokens[8].text, "ア");
-        assert_eq!(tokens[9].text, "あ");
-        assert_eq!(tokens[10].text, "アイ");
-        assert_eq!(tokens[11].text, "あい");
-        assert_eq!(tokens[12].text, "アイウ");
-        assert_eq!(tokens[13].text, "あいう");
-        assert_eq!(tokens[14].text, "アイウエ");
-        assert_eq!(tokens[15].text, "あいうえ");
-        assert_eq!(tokens[16].text, "アイウエオ");
-        assert_eq!(tokens[17].text, "あいうえお");
+        assert_eq!(tokens[1].text, "レバー");
+        assert_eq!(tokens[2].text, "サッカ");
+        assert_eq!(tokens[3].text, "レシーバ");
     }
 }

@@ -213,10 +213,12 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 let tokens = tokenizer.tokenize_with_details(&text)?;
                 let mut tokens_json = Vec::new();
                 for token in tokens {
-                    let word_detail = token.details.unwrap_or_default();
+                    let word_details = token.details.unwrap_or_default();
                     let token_info = serde_json::json!({
                         "text": token.text,
-                        "detail": word_detail,
+                        "details": word_details,
+                        "byte_start": token.byte_start,
+                        "byte_end": token.byte_end,
                     });
                     tokens_json.push(token_info);
                 }
@@ -304,6 +306,8 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
                     let token_info = serde_json::json!({
                         "text": token.text,
                         "details": word_details,
+                        "byte_start": token.byte_start,
+                        "byte_end": token.byte_end,
                     });
                     tokens_json.push(token_info);
                 }

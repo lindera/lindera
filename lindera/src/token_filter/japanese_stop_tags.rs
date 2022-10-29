@@ -208,6 +208,8 @@ mod tests {
                     "スモモ".to_string(),
                     "スモモ".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 9,
             },
             Token {
                 text: Cow::Borrowed("も"),
@@ -222,6 +224,8 @@ mod tests {
                     "モ".to_string(),
                     "モ".to_string(),
                 ]),
+                byte_start: 9,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("もも"),
@@ -236,6 +240,8 @@ mod tests {
                     "モモ".to_string(),
                     "モモ".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 18,
             },
             Token {
                 text: Cow::Borrowed("も"),
@@ -250,6 +256,8 @@ mod tests {
                     "モ".to_string(),
                     "モ".to_string(),
                 ]),
+                byte_start: 18,
+                byte_end: 21,
             },
             Token {
                 text: Cow::Borrowed("もも"),
@@ -264,6 +272,8 @@ mod tests {
                     "モモ".to_string(),
                     "モモ".to_string(),
                 ]),
+                byte_start: 21,
+                byte_end: 27,
             },
             Token {
                 text: Cow::Borrowed("の"),
@@ -278,6 +288,8 @@ mod tests {
                     "ノ".to_string(),
                     "ノ".to_string(),
                 ]),
+                byte_start: 27,
+                byte_end: 30,
             },
             Token {
                 text: Cow::Borrowed("うち"),
@@ -292,6 +304,8 @@ mod tests {
                     "ウチ".to_string(),
                     "ウチ".to_string(),
                 ]),
+                byte_start: 30,
+                byte_end: 36,
             },
         ];
 

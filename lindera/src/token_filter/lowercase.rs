@@ -45,6 +45,8 @@ mod tests {
         let mut tokens: Vec<Token> = vec![Token {
             text: Cow::Borrowed("Rust"),
             details: None,
+            byte_start: 0,
+            byte_end: 4,
         }];
 
         filter.apply(&mut tokens).unwrap();
