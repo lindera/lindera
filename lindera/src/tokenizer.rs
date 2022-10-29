@@ -292,13 +292,20 @@ impl Tokenizer {
                     let (next_start, _word_id) = offsets[i + 1];
                     next_start
                 };
+                let surface = &sentence[token_start..token_stop];
+                if surface == " " {
+                    // skip whitespace
+                    continue;
+                }
                 tokens.push(Token {
-                    text: Cow::Borrowed(&sentence[token_start..token_stop]),
+                    text: Cow::Borrowed(surface),
                     details: if with_details {
                         Some(self.word_detail(word_id)?)
                     } else {
                         None
                     },
+                    byte_start: token_start,
+                    byte_end: token_stop,
                 })
             }
         }

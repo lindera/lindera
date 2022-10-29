@@ -195,42 +195,62 @@ mod tests {
             Token {
                 text: Cow::Borrowed("to"),
                 details: None,
+                byte_start: 0,
+                byte_end: 2,
             },
             Token {
                 text: Cow::Borrowed("be"),
                 details: None,
+                byte_start: 3,
+                byte_end: 5,
             },
             Token {
                 text: Cow::Borrowed("or"),
                 details: None,
+                byte_start: 6,
+                byte_end: 8,
             },
             Token {
                 text: Cow::Borrowed("not"),
                 details: None,
+                byte_start: 9,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("to"),
                 details: None,
+                byte_start: 13,
+                byte_end: 15,
             },
             Token {
                 text: Cow::Borrowed("be"),
                 details: None,
+                byte_start: 16,
+                byte_end: 18,
             },
             Token {
                 text: Cow::Borrowed("this"),
                 details: None,
+                byte_start: 19,
+                byte_end: 23,
             },
             Token {
                 text: Cow::Borrowed("is"),
                 details: None,
+                byte_start: 24,
+                byte_end: 26,
             },
             Token {
                 text: Cow::Borrowed("the"),
                 details: None,
+                byte_start: 27,
+                byte_end: 30,
             },
             Token {
                 text: Cow::Borrowed("question"),
                 details: None,
+                byte_start: 31,
+                byte_end: 39,
             },
         ];
 

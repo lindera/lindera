@@ -206,6 +206,8 @@ mod tests {
                     "*".to_string(),
                     "한국/NNG/*+어/NNG/*".to_string(),
                 ]),
+                byte_start: 0,
+                byte_end: 9,
             },
             Token {
                 text: Cow::Borrowed("의"),
@@ -219,6 +221,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 9,
+                byte_end: 12,
             },
             Token {
                 text: Cow::Borrowed("형태"),
@@ -232,6 +236,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 12,
+                byte_end: 18,
             },
             Token {
                 text: Cow::Borrowed("해석"),
@@ -245,6 +251,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 18,
+                byte_end: 24,
             },
             Token {
                 text: Cow::Borrowed("을"),
@@ -258,6 +266,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 24,
+                byte_end: 27,
             },
             Token {
                 text: Cow::Borrowed("실시"),
@@ -271,6 +281,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 27,
+                byte_end: 33,
             },
             Token {
                 text: Cow::Borrowed("할"),
@@ -284,6 +296,8 @@ mod tests {
                     "ETM".to_string(),
                     "하/VV/*+ᆯ/ETM/*".to_string(),
                 ]),
+                byte_start: 33,
+                byte_end: 36,
             },
             Token {
                 text: Cow::Borrowed("수"),
@@ -297,6 +311,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 36,
+                byte_end: 39,
             },
             Token {
                 text: Cow::Borrowed("있"),
@@ -310,6 +326,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 39,
+                byte_end: 42,
             },
             Token {
                 text: Cow::Borrowed("습니다"),
@@ -323,6 +341,8 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                 ]),
+                byte_start: 42,
+                byte_end: 51,
             },
         ];
 
