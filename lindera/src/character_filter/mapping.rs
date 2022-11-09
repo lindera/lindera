@@ -56,10 +56,14 @@ impl MappingCharacterFilter {
 }
 
 impl CharacterFilter for MappingCharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<()> {
+    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)> {
+        let mut offsets: Vec<usize> = Vec::new();
+        let mut diffs: Vec<i64> = Vec::new();
+
         let mut result = String::new();
         let mut start = 0_usize;
         let len = text.len();
+
         while start < len {
             let suffix = &text[start..];
             match self
@@ -71,6 +75,28 @@ impl CharacterFilter for MappingCharacterFilter {
                 Some(prefix_len) => {
                     let surface = &text[start..start + prefix_len];
                     let replacement = &self.config.mapping[surface];
+
+                    let replacement_len = replacement.len();
+                    let diff = prefix_len as i64 - replacement_len as i64;
+                    let input_offset = start + prefix_len;
+
+                    if diff != 0 {
+                        let prev_diff = *diffs.last().unwrap_or(&0);
+
+                        if diff > 0 {
+                            // Replacement is shorter than matched surface.
+                            offsets.push((input_offset as i64 - diff - prev_diff) as usize);
+                            diffs.push(prev_diff + diff);
+                        } else {
+                            // Replacement is longer than matched surface.
+                            let output_start = input_offset + (-prev_diff as usize);
+                            for extra_idx in 0..-diff as usize {
+                                offsets.push(output_start + extra_idx);
+                                diffs.push(prev_diff - extra_idx as i64 - 1);
+                            }
+                        }
+                    }
+
                     result.push_str(replacement);
 
                     // move start offset
@@ -92,7 +118,10 @@ impl CharacterFilter for MappingCharacterFilter {
 
         *text = result;
 
-        Ok(())
+        println!("offsets: {:?}", offsets);
+        println!("diffs: {:?}", diffs);
+
+        Ok((offsets, diffs))
     }
 }
 
@@ -184,5 +213,43 @@ mod tests {
         let mut text = "Rust製形態素解析器ﾘﾝﾃﾞﾗで日本語を形態素解析する。".to_string();
         filter.apply(&mut text).unwrap();
         assert_eq!("Rust製形態素解析器リンデラで日本語を形態素解析する。", text);
+    }
+
+    #[test]
+    fn test_mapping_character_filter_apply_offsets_diffs() {
+        let config_str = r#"
+        {
+            "mapping": {
+                "B": "bbb",
+                "DE": "ddd",
+                "G": "gggg"
+            }
+        }
+        "#;
+        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "ABCDEFG".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("AbbbCdddFgggg", text);
+        assert_eq!(vec![2, 3, 7, 10, 11, 12], offsets);
+        assert_eq!(vec![-1, -2, -3, -4, -5, -6], diffs);
+
+        let config_str = r#"
+        {
+            "mapping": {
+                "BCD": "b",
+                "FG": "f",
+                "HIJ": "hh",
+                "KL": ""
+            }
+        }
+        "#;
+        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "ABCDEFGHIJKL".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("AbEfhh", text);
+        assert_eq!(vec![2, 4, 6, 6], offsets);
+        assert_eq!(vec![2, 3, 4, 6], diffs);
     }
 }

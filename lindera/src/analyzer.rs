@@ -199,8 +199,13 @@ impl Analyzer {
     }
 
     pub fn analyze<'a>(&self, text: &'a mut String) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
+        let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
+        let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
+
         for character_filter in &self.character_filters {
-            character_filter.apply(text)?;
+            let (offsets, diffs) = character_filter.apply(text)?;
+            offsets_vec.insert(0, offsets);
+            diffs_vec.insert(0, diffs);
         }
 
         let mut tokens = self.tokenizer.tokenize_with_details(text.as_str())?;

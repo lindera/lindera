@@ -52,7 +52,10 @@ impl UnicodeNormalizeCharacterFilter {
 }
 
 impl CharacterFilter for UnicodeNormalizeCharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<()> {
+    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)> {
+        let mut offsets: Vec<usize> = Vec::new();
+        let mut diffs: Vec<i64> = Vec::new();
+
         *text = match self.config.kind {
             UnicodeNormalizeKind::NFC => text.nfc().collect::<String>(),
             UnicodeNormalizeKind::NFD => text.nfd().collect::<String>(),
@@ -60,7 +63,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
         };
 
-        Ok(())
+        Ok((offsets, diffs))
     }
 }
 
