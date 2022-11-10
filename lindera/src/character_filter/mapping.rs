@@ -118,9 +118,6 @@ impl CharacterFilter for MappingCharacterFilter {
 
         *text = result;
 
-        println!("offsets: {:?}", offsets);
-        println!("diffs: {:?}", diffs);
-
         Ok((offsets, diffs))
     }
 }
@@ -145,7 +142,6 @@ mod tests {
         }
         "#;
         let config = MappingCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
         assert_eq!("ア", config.mapping.get("ｱ").unwrap());
     }
 
@@ -163,7 +159,6 @@ mod tests {
         }
         "#;
         let result = MappingCharacterFilter::from_slice(config_str.as_bytes());
-
         assert_eq!(true, result.is_ok());
     }
 
@@ -181,10 +176,11 @@ mod tests {
         }
         "#;
         let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "ｱｲｳｴｵ".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
 
         let config_str = r#"
         {
@@ -195,10 +191,11 @@ mod tests {
         }
         "#;
         let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("リンデラ", text);
+        assert_eq!(vec![12], offsets);
+        assert_eq!(vec![3], diffs);
 
         let config_str = r#"
         {
@@ -209,10 +206,11 @@ mod tests {
         }
         "#;
         let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "Rust製形態素解析器ﾘﾝﾃﾞﾗで日本語を形態素解析する。".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("Rust製形態素解析器リンデラで日本語を形態素解析する。", text);
+        assert_eq!(vec![37], offsets);
+        assert_eq!(vec![3], diffs);
     }
 
     #[test]
@@ -227,7 +225,6 @@ mod tests {
         }
         "#;
         let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "ABCDEFG".to_string();
         let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("AbbbCdddFgggg", text);
@@ -245,7 +242,6 @@ mod tests {
         }
         "#;
         let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "ABCDEFGHIJKL".to_string();
         let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("AbEfhh", text);
