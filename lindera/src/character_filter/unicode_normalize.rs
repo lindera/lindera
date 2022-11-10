@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
 
-use lindera_core::character_filter::CharacterFilter;
+use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
 
@@ -56,12 +56,53 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
-        *text = match self.config.kind {
-            UnicodeNormalizeKind::NFC => text.nfc().collect::<String>(),
-            UnicodeNormalizeKind::NFD => text.nfd().collect::<String>(),
-            UnicodeNormalizeKind::NFKC => text.nfkc().collect::<String>(),
-            UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
-        };
+        let mut result = String::new();
+        let mut input_offset = 0;
+
+        // loop over the characters in the string
+        let mut chars = text.chars();
+        while let Some(c) = chars.next() {
+            let prefix_len = c.len_utf8();
+            let replacement = match self.config.kind {
+                UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
+                UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
+                UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
+                UnicodeNormalizeKind::NFKD => c.nfkd().collect::<String>(),
+            };
+
+            let replacement_len = replacement.len();
+            let diff = prefix_len as i64 - replacement_len as i64;
+            input_offset += prefix_len;
+
+            if diff != 0 {
+                let prev_diff = *diffs.last().unwrap_or(&0);
+
+                if diff > 0 {
+                    // Replacement is shorter than matched surface.
+                    add_offset_diff(
+                        &mut offsets,
+                        &mut diffs,
+                        (input_offset as i64 - diff - prev_diff) as usize,
+                        prev_diff + diff,
+                    );
+                } else {
+                    // Replacement is longer than matched surface.
+                    let output_start = (input_offset as i64 + -prev_diff) as usize;
+                    for extra_idx in 0..diff.abs() as usize {
+                        add_offset_diff(
+                            &mut offsets,
+                            &mut diffs,
+                            output_start + extra_idx,
+                            prev_diff - extra_idx as i64 - 1,
+                        );
+                    }
+                }
+            }
+
+            result.push_str(&replacement);
+        }
+
+        *text = result;
 
         Ok((offsets, diffs))
     }
@@ -110,15 +151,27 @@ mod tests {
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut text = "ＡＢＣＤＥ".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("ABCDE", text);
+        assert_eq!(vec![1, 2, 3, 4, 5], offsets);
+        assert_eq!(vec![2, 4, 6, 8, 10], diffs);
 
         let mut text = "ｱｲｳｴｵ".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
 
         let mut text = "０１２３４５６７８９".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("0123456789", text);
+        assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
+        assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+
+        let mut text = "１０㍑".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("10リットル", text);
+        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
+        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
     }
 }

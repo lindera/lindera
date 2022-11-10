@@ -93,8 +93,8 @@ impl CharacterFilter for MappingCharacterFilter {
                             );
                         } else {
                             // Replacement is longer than matched surface.
-                            let output_start = input_offset + (-prev_diff as usize);
-                            for extra_idx in 0..-diff as usize {
+                            let output_start = (input_offset as i64 + -prev_diff) as usize;
+                            for extra_idx in 0..diff.abs() as usize {
                                 add_offset_diff(
                                     &mut offsets,
                                     &mut diffs,
@@ -255,5 +255,21 @@ mod tests {
         assert_eq!("AbEfhh", text);
         assert_eq!(vec![2, 4, 6], offsets);
         assert_eq!(vec![2, 3, 6], diffs);
+
+        let config_str = r#"
+        {
+            "mapping": {
+                "１": "1",
+                "０": "0",
+                "㍑": "リットル"
+            }
+        }
+        "#;
+        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+        let mut text = "１０㍑".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("10リットル", text);
+        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
+        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
     }
 }
