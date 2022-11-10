@@ -4,6 +4,26 @@ pub trait CharacterFilter {
     fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)>;
 }
 
+pub fn add_offset_diff(offsets: &mut Vec<usize>, diffs: &mut Vec<i64>, offset: usize, diff: i64) {
+    match offsets.last() {
+        Some(&last_offset) => {
+            if last_offset == offset {
+                // Replace the last diff.
+                diffs.pop();
+                diffs.push(diff);
+            } else {
+                offsets.push(offset);
+                diffs.push(diff);
+            }
+        }
+        None => {
+            // First offset.
+            offsets.push(offset);
+            diffs.push(diff);
+        }
+    }
+}
+
 pub fn correct_offset(offset: usize, offsets: &[usize], diffs: &[i64]) -> usize {
     // If `offsets` is empty, the `offset` specified is the correct offset.
     if offsets.is_empty() {

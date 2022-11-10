@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use yada::{builder::DoubleArrayBuilder, DoubleArray};
 
-use lindera_core::character_filter::CharacterFilter;
+use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
 
@@ -85,14 +85,22 @@ impl CharacterFilter for MappingCharacterFilter {
 
                         if diff > 0 {
                             // Replacement is shorter than matched surface.
-                            offsets.push((input_offset as i64 - diff - prev_diff) as usize);
-                            diffs.push(prev_diff + diff);
+                            add_offset_diff(
+                                &mut offsets,
+                                &mut diffs,
+                                (input_offset as i64 - diff - prev_diff) as usize,
+                                prev_diff + diff,
+                            );
                         } else {
                             // Replacement is longer than matched surface.
                             let output_start = input_offset + (-prev_diff as usize);
                             for extra_idx in 0..-diff as usize {
-                                offsets.push(output_start + extra_idx);
-                                diffs.push(prev_diff - extra_idx as i64 - 1);
+                                add_offset_diff(
+                                    &mut offsets,
+                                    &mut diffs,
+                                    output_start + extra_idx,
+                                    prev_diff - extra_idx as i64 - 1,
+                                );
                             }
                         }
                     }
@@ -245,7 +253,7 @@ mod tests {
         let mut text = "ABCDEFGHIJKL".to_string();
         let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("AbEfhh", text);
-        assert_eq!(vec![2, 4, 6, 6], offsets);
-        assert_eq!(vec![2, 3, 4, 6], diffs);
+        assert_eq!(vec![2, 4, 6], offsets);
+        assert_eq!(vec![2, 3, 6], diffs);
     }
 }
