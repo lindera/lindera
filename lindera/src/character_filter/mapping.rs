@@ -94,7 +94,7 @@ impl CharacterFilter for MappingCharacterFilter {
                         } else {
                             // Replacement is longer than matched surface.
                             let output_start = (input_offset as i64 + -prev_diff) as usize;
-                            for extra_idx in 0..diff.abs() as usize {
+                            for extra_idx in 0..diff.unsigned_abs() as usize {
                                 add_offset_diff(
                                     &mut offsets,
                                     &mut diffs,

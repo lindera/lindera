@@ -56,19 +56,45 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
-        let mut result = String::new();
         let mut input_offset = 0;
+        let mut replacement_offset = 0;
+
+        let normalized_text = match self.config.kind {
+            UnicodeNormalizeKind::NFC => text.nfc().collect::<String>(),
+            UnicodeNormalizeKind::NFD => text.nfd().collect::<String>(),
+            UnicodeNormalizeKind::NFKC => text.nfkc().collect::<String>(),
+            UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
+        };
+
+        let mut chars = text.chars();
+        let mut normalized_chars = normalized_text.chars();
 
         // loop over the characters in the string
-        let mut chars = text.chars();
-        while let Some(c) = chars.next() {
+        for c in chars {
             let prefix_len = c.len_utf8();
-            let replacement = match self.config.kind {
+
+            // To compare with the replaced character,
+            // the character before normalization is retrieved and normalized.
+            let tmp_c = match self.config.kind {
                 UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
                 UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
                 UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
                 UnicodeNormalizeKind::NFKD => c.nfkd().collect::<String>(),
             };
+
+            // Find a replacement from the normalized string that matches `tmp_c`.
+            let mut replacement = String::new();
+            let mut normalized_prefix_len = 0;
+            for normalized_c in normalized_chars.by_ref() {
+                normalized_prefix_len += normalized_c.len_utf8();
+                replacement = normalized_text
+                    [replacement_offset..replacement_offset + normalized_prefix_len]
+                    .to_string();
+                if replacement == tmp_c {
+                    replacement_offset += normalized_prefix_len;
+                    break;
+                }
+            }
 
             let replacement_len = replacement.len();
             let diff = prefix_len as i64 - replacement_len as i64;
@@ -88,7 +114,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                 } else {
                     // Replacement is longer than matched surface.
                     let output_start = (input_offset as i64 + -prev_diff) as usize;
-                    for extra_idx in 0..diff.abs() as usize {
+                    for extra_idx in 0..diff.unsigned_abs() as usize {
                         add_offset_diff(
                             &mut offsets,
                             &mut diffs,
@@ -98,11 +124,9 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                     }
                 }
             }
-
-            result.push_str(&replacement);
         }
 
-        *text = result;
+        *text = normalized_text;
 
         Ok((offsets, diffs))
     }
@@ -142,7 +166,111 @@ mod tests {
     }
 
     #[test]
-    fn test_unicode_normalize_character_filter_apply() {
+    fn test_unicode_normalize_character_filter_apply_nfc() {
+        let config_str = r#"
+        {
+            "kind": "nfc"
+        }
+        "#;
+        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "ＡＢＣＤＥ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ＡＢＣＤＥ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ABCDE".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ABCDE", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ｱｲｳｴｵ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ｱｲｳｴｵ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "アイウエオ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "０１２３４５６７８９".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("０１２３４５６７８９", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ﾘﾝﾃﾞﾗ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "１０㌎".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("１０㌎", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+    }
+
+    #[test]
+    fn test_unicode_normalize_character_filter_apply_nfd() {
+        let config_str = r#"
+        {
+            "kind": "nfd"
+        }
+        "#;
+        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "ＡＢＣＤＥ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ＡＢＣＤＥ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ABCDE".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ABCDE", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ｱｲｳｴｵ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ｱｲｳｴｵ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "アイウエオ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "０１２３４５６７８９".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("０１２３４５６７８９", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ﾘﾝﾃﾞﾗ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "１０㌎".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("１０㌎", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+    }
+
+    #[test]
+    fn test_unicode_normalize_character_filter_apply_nfkc() {
         let config_str = r#"
         {
             "kind": "nfkc"
@@ -156,7 +284,19 @@ mod tests {
         assert_eq!(vec![1, 2, 3, 4, 5], offsets);
         assert_eq!(vec![2, 4, 6, 8, 10], diffs);
 
+        let mut text = "ABCDE".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ABCDE", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
         let mut text = "ｱｲｳｴｵ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "アイウエオ".to_string();
         let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("アイウエオ", text);
         assert_eq!(Vec::<usize>::new(), offsets);
@@ -168,9 +308,67 @@ mod tests {
         assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
         assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
 
-        let mut text = "１０㍑".to_string();
+        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
         let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("10リットル", text);
+        assert_eq!("リンデラ", text);
+        assert_eq!(vec![9, 10, 11, 12], offsets);
+        assert_eq!(vec![-1, -2, -3, 3], diffs);
+
+        let mut text = "１０㌎".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("10ガロン", text);
+        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10], offsets);
+        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2], diffs);
+    }
+
+    #[test]
+    fn test_unicode_normalize_character_filter_apply_nfkd() {
+        let config_str = r#"
+        {
+            "kind": "nfkd"
+        }
+        "#;
+        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let mut text = "ＡＢＣＤＥ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ABCDE", text);
+        assert_eq!(vec![1, 2, 3, 4, 5], offsets);
+        assert_eq!(vec![2, 4, 6, 8, 10], diffs);
+
+        let mut text = "ABCDE".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("ABCDE", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "ｱｲｳｴｵ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "アイウエオ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("アイウエオ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "０１２３４５６７８９".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("0123456789", text);
+        assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
+        assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+
+        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("リンテ\u{3099}ラ", text);
+        assert_eq!(Vec::<usize>::new(), offsets);
+        assert_eq!(Vec::<i64>::new(), diffs);
+
+        let mut text = "１０㌎".to_string();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
+        assert_eq!("10カ\u{3099}ロン", text);
         assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
         assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
     }
