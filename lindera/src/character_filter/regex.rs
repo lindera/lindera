@@ -96,7 +96,7 @@ impl CharacterFilter for RegexCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::CharacterFilter;
+    use lindera_core::character_filter::{correct_offset, CharacterFilter};
 
     use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
 
@@ -127,30 +127,52 @@ mod tests {
 
     #[test]
     fn test_regex_character_filter_apply() {
-        let config_str = r#"
         {
-            "pattern": "リンデラ",
-            "replacement": "Lindera"
+            let config_str = r#"
+            {
+                "pattern": "リンデラ",
+                "replacement": "Lindera"
+            }
+            "#;
+            let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "リンデラは形態素解析器です。".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("Linderaは形態素解析器です。", filterd_text);
+            assert_eq!(vec![7], offsets);
+            assert_eq!(vec![5], diffs);
+            let start = 0;
+            let end = 7;
+            assert_eq!("Lindera", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(0, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("リンデラ", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "リンデラは形態素解析器です。".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("Linderaは形態素解析器です。", text);
-        assert_eq!(vec![7], offsets);
-        assert_eq!(vec![5], diffs);
 
-        let config_str = r#"
         {
-            "pattern": "\\s{2,}",
-            "replacement": " "
+            let config_str = r#"
+            {
+                "pattern": "\\s{2,}",
+                "replacement": " "
+            }
+            "#;
+            let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "a     b     c".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("a b c", filterd_text);
+            assert_eq!(vec![2, 4], offsets);
+            assert_eq!(vec![4, 8], diffs);
+            let start = 2;
+            let end = 3;
+            assert_eq!("b", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(7, correct_end);
+            assert_eq!("b", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "a     b     c".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("a b c", text);
-        assert_eq!(vec![2, 4], offsets);
-        assert_eq!(vec![4, 8], diffs);
     }
 }
