@@ -72,13 +72,12 @@ impl CharacterFilter for MappingCharacterFilter {
                 .last()
                 .map(|(_offset_len, prefix_len)| prefix_len)
             {
-                Some(prefix_len) => {
-                    let surface = &text[start..start + prefix_len];
-                    let replacement = &self.config.mapping[surface];
-
+                Some(target_len) => {
+                    let target = &text[start..start + target_len];
+                    let replacement = &self.config.mapping[target];
                     let replacement_len = replacement.len();
-                    let diff = prefix_len as i64 - replacement_len as i64;
-                    let input_offset = start + prefix_len;
+                    let diff = target_len as i64 - replacement_len as i64;
+                    let input_offset = start + target_len;
 
                     if diff != 0 {
                         let prev_diff = *diffs.last().unwrap_or(&0);
@@ -93,12 +92,12 @@ impl CharacterFilter for MappingCharacterFilter {
                             );
                         } else {
                             // Replacement is longer than matched surface.
-                            let output_start = (input_offset as i64 + -prev_diff) as usize;
+                            let output_offset = (input_offset as i64 + -prev_diff) as usize;
                             for extra_idx in 0..diff.unsigned_abs() as usize {
                                 add_offset_diff(
                                     &mut offsets,
                                     &mut diffs,
-                                    output_start + extra_idx,
+                                    output_offset + extra_idx,
                                     prev_diff - extra_idx as i64 - 1,
                                 );
                             }
@@ -108,7 +107,7 @@ impl CharacterFilter for MappingCharacterFilter {
                     result.push_str(replacement);
 
                     // move start offset
-                    start += prefix_len;
+                    start += target_len;
                 }
                 None => {
                     match suffix.chars().next() {
@@ -223,6 +222,10 @@ mod tests {
 
     #[test]
     fn test_mapping_character_filter_apply_offsets_diffs() {
+        //                     11111111112
+        //           012345678901234567890
+        // (input)   ABCDEFG
+        // (outout)  AbbbCdddFgggg
         let config_str = r#"
         {
             "mapping": {

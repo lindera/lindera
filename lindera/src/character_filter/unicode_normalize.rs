@@ -66,7 +66,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
         };
 
-        let mut chars = text.chars();
+        let chars = text.chars();
         let mut normalized_chars = normalized_text.chars();
 
         // loop over the characters in the string
@@ -75,7 +75,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
             // To compare with the replaced character,
             // the character before normalization is retrieved and normalized.
-            let tmp_c = match self.config.kind {
+            let tmp_text = match self.config.kind {
                 UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
                 UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
                 UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
@@ -90,7 +90,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                 replacement = normalized_text
                     [replacement_offset..replacement_offset + normalized_prefix_len]
                     .to_string();
-                if replacement == tmp_c {
+                if replacement == tmp_text {
                     replacement_offset += normalized_prefix_len;
                     break;
                 }

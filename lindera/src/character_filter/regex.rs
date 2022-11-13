@@ -1,7 +1,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use lindera_core::character_filter::CharacterFilter;
+use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
 
@@ -50,6 +50,40 @@ impl CharacterFilter for RegexCharacterFilter {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
+        self.regex.find_iter(text).for_each(|mat| {
+            let target = mat.as_str();
+            let target_len = target.len();
+            let replacement = self.config.replacement.as_str();
+            let replacement_len = replacement.len();
+            let diff = target_len as i64 - replacement_len as i64;
+            let input_offset = mat.start() + target_len;
+
+            if diff != 0 {
+                let prev_diff = *diffs.last().unwrap_or(&0);
+
+                if diff > 0 {
+                    // Replacement is shorter than matched surface.
+                    add_offset_diff(
+                        &mut offsets,
+                        &mut diffs,
+                        (input_offset as i64 - diff - prev_diff) as usize,
+                        prev_diff + diff,
+                    );
+                } else {
+                    // Replacement is longer than matched surface.
+                    let output_start = (input_offset as i64 + -prev_diff) as usize;
+                    for extra_idx in 0..diff.unsigned_abs() as usize {
+                        add_offset_diff(
+                            &mut offsets,
+                            &mut diffs,
+                            output_start + extra_idx,
+                            prev_diff - extra_idx as i64 - 1,
+                        );
+                    }
+                }
+            }
+        });
+
         *text = self
             .regex
             .replace_all(text, &self.config.replacement)
@@ -75,7 +109,6 @@ mod tests {
         }
         "#;
         let config = RegexCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
         assert_eq!("リンデラ", config.pattern);
         assert_eq!("Lindera", config.replacement);
     }
@@ -89,7 +122,6 @@ mod tests {
         }
         "#;
         let result = RegexCharacterFilterConfig::from_slice(config_str.as_bytes());
-
         assert_eq!(true, result.is_ok());
     }
 
@@ -102,10 +134,11 @@ mod tests {
         }
         "#;
         let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "リンデラは形態素解析器です。".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("Linderaは形態素解析器です。", text);
+        assert_eq!(vec![7], offsets);
+        assert_eq!(vec![5], diffs);
 
         let config_str = r#"
         {
@@ -114,9 +147,10 @@ mod tests {
         }
         "#;
         let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-
         let mut text = "a     b     c".to_string();
-        filter.apply(&mut text).unwrap();
+        let (offsets, diffs) = filter.apply(&mut text).unwrap();
         assert_eq!("a b c", text);
+        assert_eq!(vec![2, 4], offsets);
+        assert_eq!(vec![4, 8], diffs);
     }
 }
