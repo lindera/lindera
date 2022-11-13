@@ -134,7 +134,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::CharacterFilter;
+    use lindera_core::character_filter::{correct_offset, CharacterFilter};
 
     use crate::character_filter::unicode_normalize::{
         UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
@@ -174,47 +174,141 @@ mod tests {
         "#;
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "ＡＢＣＤＥ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ＡＢＣＤＥ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ＡＢＣＤＥ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ＡＢＣＤＥ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 6;
+            assert_eq!("Ｂ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("Ｂ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ABCDE".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ABCDE".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 5;
+            assert_eq!("DE", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(5, correct_end);
+            assert_eq!("DE", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ｱｲｳｴｵ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ｱｲｳｴｵ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ｱｲｳｴｵ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ｱｲｳｴｵ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 9;
+            assert_eq!("ｲｳ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("ｲｳ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "アイウエオ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "アイウエオ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 12;
+            let end = 15;
+            assert_eq!("オ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(12, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("オ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "０１２３４５６７８９".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("０１２３４５６７８９", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "０１２３４５６７８９".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("０１２３４５６７８９", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 12;
+            let end = 15;
+            assert_eq!("４", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(12, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("４", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ﾘﾝﾃﾞﾗ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "0123456789".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 5;
+            let end = 6;
+            assert_eq!("5", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(5, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("5", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "１０㌎".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("１０㌎", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ﾘﾝﾃﾞﾗ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ﾃﾞ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ﾃﾞ", &text[correct_start..correct_end]);
+        }
+
+        {
+            let text = "１０㌎".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("１０㌎", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("㌎", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("㌎", &text[correct_start..correct_end]);
+        }
     }
 
     #[test]
@@ -226,47 +320,141 @@ mod tests {
         "#;
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "ＡＢＣＤＥ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ＡＢＣＤＥ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ＡＢＣＤＥ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ＡＢＣＤＥ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 6;
+            assert_eq!("Ｂ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("Ｂ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ABCDE".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ABCDE".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 5;
+            assert_eq!("DE", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(5, correct_end);
+            assert_eq!("DE", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ｱｲｳｴｵ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ｱｲｳｴｵ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ｱｲｳｴｵ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ｱｲｳｴｵ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 9;
+            assert_eq!("ｲｳ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("ｲｳ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "アイウエオ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "アイウエオ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 12;
+            let end = 15;
+            assert_eq!("オ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(12, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("オ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "０１２３４５６７８９".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("０１２３４５６７８９", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "０１２３４５６７８９".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("０１２３４５６７８９", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 12;
+            let end = 15;
+            assert_eq!("４", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(12, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("４", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ﾘﾝﾃﾞﾗ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "0123456789".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 5;
+            let end = 6;
+            assert_eq!("5", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(5, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("5", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "１０㌎".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("１０㌎", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ﾘﾝﾃﾞﾗ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ﾃﾞ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ﾃﾞ", &text[correct_start..correct_end]);
+        }
+
+        {
+            let text = "１０㌎".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("１０㌎", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("㌎", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("㌎", &text[correct_start..correct_end]);
+        }
     }
 
     #[test]
@@ -278,47 +466,141 @@ mod tests {
         "#;
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "ＡＢＣＤＥ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(vec![1, 2, 3, 4, 5], offsets);
-        assert_eq!(vec![2, 4, 6, 8, 10], diffs);
+        {
+            let text = "ＡＢＣＤＥ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(vec![1, 2, 3, 4, 5], offsets);
+            assert_eq!(vec![2, 4, 6, 8, 10], diffs);
+            let start = 2;
+            let end = 4;
+            assert_eq!("CD", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ＣＤ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ABCDE".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ABCDE".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 2;
+            let end = 4;
+            assert_eq!("CD", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(2, correct_start);
+            assert_eq!(4, correct_end);
+            assert_eq!("CD", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ｱｲｳｴｵ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ｱｲｳｴｵ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ウエ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ｳｴ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "アイウエオ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "アイウエオ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ウエ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ウエ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "０１２３４５６７８９".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("0123456789", text);
-        assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
-        assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+        {
+            let text = "０１２３４５６７８９".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
+            assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("678", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(18, correct_start);
+            assert_eq!(27, correct_end);
+            assert_eq!("６７８", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("リンデラ", text);
-        assert_eq!(vec![9, 10, 11, 12], offsets);
-        assert_eq!(vec![-1, -2, -3, 3], diffs);
+        {
+            let text = "0123456789".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("678", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("678", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "１０㌎".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("10ガロン", text);
-        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10], offsets);
-        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2], diffs);
+        {
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("リンデラ", filterd_text);
+            assert_eq!(vec![9, 10, 11, 12], offsets);
+            assert_eq!(vec![-1, -2, -3, 3], diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("デラ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("ﾃﾞﾗ", &text[correct_start..correct_end]);
+        }
+
+        {
+            let text = "１０㌎".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("10ガロン", filterd_text);
+            assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10], offsets);
+            assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2], diffs);
+            let start = 2;
+            let end = 11;
+            assert_eq!("ガロン", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("㌎", &text[correct_start..correct_end]);
+        }
     }
 
     #[test]
@@ -330,46 +612,140 @@ mod tests {
         "#;
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "ＡＢＣＤＥ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(vec![1, 2, 3, 4, 5], offsets);
-        assert_eq!(vec![2, 4, 6, 8, 10], diffs);
+        {
+            let text = "ＡＢＣＤＥ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(vec![1, 2, 3, 4, 5], offsets);
+            assert_eq!(vec![2, 4, 6, 8, 10], diffs);
+            let start = 2;
+            let end = 4;
+            assert_eq!("CD", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ＣＤ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ABCDE".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("ABCDE", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ABCDE".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("ABCDE", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 2;
+            let end = 4;
+            assert_eq!("CD", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(2, correct_start);
+            assert_eq!(4, correct_end);
+            assert_eq!("CD", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ｱｲｳｴｵ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "ｱｲｳｴｵ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ウエ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ｳｴ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "アイウエオ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "アイウエオ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 12;
+            assert_eq!("ウエ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ウエ", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "０１２３４５６７８９".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("0123456789", text);
-        assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
-        assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+        {
+            let text = "０１２３４５６７８９".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
+            assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("678", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(18, correct_start);
+            assert_eq!(27, correct_end);
+            assert_eq!("６７８", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("リンテ\u{3099}ラ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
+        {
+            let text = "0123456789".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("0123456789", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("678", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("678", &text[correct_start..correct_end]);
+        }
 
-        let mut text = "１０㌎".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("10カ\u{3099}ロン", text);
-        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
-        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
+        {
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("リンテ\u{3099}ラ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 6;
+            let end = 15;
+            assert_eq!("テ\u{3099}ラ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("ﾃﾞﾗ", &text[correct_start..correct_end]);
+        }
+
+        {
+            let text = "１０㌎".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("10カ\u{3099}ロン", filterd_text);
+            assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
+            assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
+            let start = 2;
+            let end = 14;
+            assert_eq!("カ\u{3099}ロン", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("㌎", &text[correct_start..correct_end]);
+        }
     }
 }
