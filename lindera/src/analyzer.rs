@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use lindera_core::{character_filter::CharacterFilter, token_filter::TokenFilter};
+use lindera_core::{
+    character_filter::{correct_offset, CharacterFilter},
+    token_filter::TokenFilter,
+};
 
 use crate::{
     character_filter::{
@@ -199,11 +202,17 @@ impl Analyzer {
     }
 
     pub fn analyze<'a>(&self, text: &'a mut String) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
+        println!("text: {}", text);
+        println!("text len: {}", text.len());
+        let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
 
         for character_filter in &self.character_filters {
             let (offsets, diffs) = character_filter.apply(text)?;
+            println!("char filterd text: {}", text);
+            println!("char filterd text len: {}", text.len());
+            text_len_vec.insert(0, text.len());
             offsets_vec.insert(0, offsets);
             diffs_vec.insert(0, diffs);
         }
@@ -212,6 +221,28 @@ impl Analyzer {
 
         for token_filter in &self.token_filters {
             token_filter.apply(&mut tokens)?;
+        }
+
+        // Correct token offsets
+        for token in tokens.iter_mut() {
+            println!(
+                "token: text={:?}, byte_start={}, byte_end={}",
+                token.text, token.byte_start, token.byte_end
+            );
+
+            for (i, offsets) in offsets_vec.iter().enumerate() {
+                println!("{}, offsets: {:?}", i, offsets);
+                println!("{}, diffs:   {:?}", i, diffs_vec[i]);
+                token.byte_start =
+                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
+                token.byte_end =
+                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+            }
+
+            println!(
+                "token: text={:?}, byte_start={}, byte_end={}",
+                token.text, token.byte_start, token.byte_end
+            );
         }
 
         Ok(tokens)
@@ -238,15 +269,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -258,23 +282,35 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
-                    }
-                },
-                {
-                    "kind": "length",
-                    "args": {
-                        "min": 1
                     }
                 },
                 {
@@ -307,15 +343,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -327,23 +356,35 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
-                    }
-                },
-                {
-                    "kind": "length",
-                    "args": {
-                        "min": 2
                     }
                 },
                 {
@@ -356,13 +397,11 @@ mod tests {
         }
         "#;
         let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
-
-        let mut text = "Ｌｉｎｄｅｒａは、日本語の形態素解析ｴﾝｼﾞﾝです。".to_string();
+        let mut text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
         let tokens = analyzer.analyze(&mut text).unwrap();
-
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
-            vec!["Lindera", "日本語", "形態素", "解析", "エンジン", "です"]
+            vec!["Lindera", "形態素", "解析", "エンジン"]
         );
     }
 
@@ -382,15 +421,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -402,27 +434,39 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
                     }
                 },
                 {
-                    "kind": "length",
-                    "args": {
-                        "min": 2
-                    }
-                },
-                {
-                    "kind": "japanese_katakana_stem_wrong",  // wrong token filter name
+                    "kind": "unexisting_filter",
                     "args": {
                         "min": 3
                     }

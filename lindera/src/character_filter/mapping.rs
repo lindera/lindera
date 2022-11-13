@@ -131,7 +131,7 @@ impl CharacterFilter for MappingCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::CharacterFilter;
+    use lindera_core::character_filter::{correct_offset, CharacterFilter};
 
     use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
 
@@ -171,108 +171,157 @@ mod tests {
 
     #[test]
     fn test_mapping_character_filter_apply() {
-        let config_str = r#"
         {
-            "mapping": {
-                "ｱ": "ア",
-                "ｲ": "イ",
-                "ｳ": "ウ",
-                "ｴ": "エ",
-                "ｵ": "オ"
+            let config_str = r#"
+            {
+                "mapping": {
+                    "ｱ": "ア",
+                    "ｲ": "イ",
+                    "ｳ": "ウ",
+                    "ｴ": "エ",
+                    "ｵ": "オ"
+                }
             }
+            "#;
+            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "ｱｲｳｴｵ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("アイウエオ", filterd_text);
+            assert_eq!(Vec::<usize>::new(), offsets);
+            assert_eq!(Vec::<i64>::new(), diffs);
+            let start = 3;
+            let end = 6;
+            assert_eq!("イ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(3, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("ｲ", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "ｱｲｳｴｵ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("アイウエオ", text);
-        assert_eq!(Vec::<usize>::new(), offsets);
-        assert_eq!(Vec::<i64>::new(), diffs);
 
-        let config_str = r#"
         {
-            "mapping": {
-                "ﾘﾝﾃﾞﾗ": "リンデラ",
-                "リンデラ": "Lindera"
+            let config_str = r#"
+            {
+                "mapping": {
+                    "ﾘ": "リ",
+                    "ﾝ": "ン",
+                    "ﾃﾞ": "デ",
+                    "ﾗ": "ラ"
+                }
             }
+            "#;
+            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("リンデラ", filterd_text);
+            assert_eq!(vec![9], offsets);
+            assert_eq!(vec![3], diffs);
+            let start = 6;
+            let end = 9;
+            assert_eq!("デ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(12, correct_end);
+            assert_eq!("ﾃﾞ", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "ﾘﾝﾃﾞﾗ".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("リンデラ", text);
-        assert_eq!(vec![12], offsets);
-        assert_eq!(vec![3], diffs);
 
-        let config_str = r#"
         {
-            "mapping": {
-                "ﾘﾝﾃﾞﾗ": "リンデラ",
-                "リンデラ": "Lindera"
+            let config_str = r#"
+            {
+                "mapping": {
+                    "ﾘﾝﾃﾞﾗ": "リンデラ"
+                }
             }
+            "#;
+            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("リンデラ", filterd_text);
+            assert_eq!(vec![12], offsets);
+            assert_eq!(vec![3], diffs);
+            let start = 0;
+            let end = 12;
+            assert_eq!("リンデラ", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(0, correct_start);
+            assert_eq!(15, correct_end);
+            assert_eq!("ﾘﾝﾃﾞﾗ", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "Rust製形態素解析器ﾘﾝﾃﾞﾗで日本語を形態素解析する。".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("Rust製形態素解析器リンデラで日本語を形態素解析する。", text);
-        assert_eq!(vec![37], offsets);
-        assert_eq!(vec![3], diffs);
-    }
 
-    #[test]
-    fn test_mapping_character_filter_apply_offsets_diffs() {
-        //                     11111111112
-        //           012345678901234567890
-        // (input)   ABCDEFG
-        // (outout)  AbbbCdddFgggg
-        let config_str = r#"
         {
-            "mapping": {
-                "B": "bbb",
-                "DE": "ddd",
-                "G": "gggg"
+            let config_str = r#"
+            {
+                "mapping": {
+                    "リンデラ": "Lindera"
+                }
             }
+            "#;
+            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "Rust製形態素解析器リンデラで日本語を形態素解析する。".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!(
+                "Rust製形態素解析器Linderaで日本語を形態素解析する。",
+                filterd_text
+            );
+            assert_eq!(vec![32], offsets);
+            assert_eq!(vec![5], diffs);
+            let start = 25;
+            let end = 32;
+            assert_eq!("Lindera", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(25, correct_start);
+            assert_eq!(37, correct_end);
+            assert_eq!("リンデラ", &text[correct_start..correct_end]);
+            let start = 35;
+            let end = 44;
+            assert_eq!("日本語", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(40, correct_start);
+            assert_eq!(49, correct_end);
+            assert_eq!("日本語", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "ABCDEFG".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("AbbbCdddFgggg", text);
-        assert_eq!(vec![2, 3, 7, 10, 11, 12], offsets);
-        assert_eq!(vec![-1, -2, -3, -4, -5, -6], diffs);
 
-        let config_str = r#"
         {
-            "mapping": {
-                "BCD": "b",
-                "FG": "f",
-                "HIJ": "hh",
-                "KL": ""
+            let config_str = r#"
+            {
+                "mapping": {
+                    "１": "1",
+                    "０": "0",
+                    "㍑": "リットル"
+                }
             }
+            "#;
+            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let text = "１０㍑".to_string();
+            let mut filterd_text = text.clone();
+            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            assert_eq!("10リットル", filterd_text);
+            assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
+            assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
+            let start = 0;
+            let end = 2;
+            assert_eq!("10", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(0, correct_start);
+            assert_eq!(6, correct_end);
+            assert_eq!("１０", &text[correct_start..correct_end]);
+            let start = 2;
+            let end = 14;
+            assert_eq!("リットル", &filterd_text[start..end]);
+            let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
+            let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
+            assert_eq!(6, correct_start);
+            assert_eq!(9, correct_end);
+            assert_eq!("㍑", &text[correct_start..correct_end]);
         }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "ABCDEFGHIJKL".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("AbEfhh", text);
-        assert_eq!(vec![2, 4, 6], offsets);
-        assert_eq!(vec![2, 3, 6], diffs);
-
-        let config_str = r#"
-        {
-            "mapping": {
-                "１": "1",
-                "０": "0",
-                "㍑": "リットル"
-            }
-        }
-        "#;
-        let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "１０㍑".to_string();
-        let (offsets, diffs) = filter.apply(&mut text).unwrap();
-        assert_eq!("10リットル", text);
-        assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
-        assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
     }
 }

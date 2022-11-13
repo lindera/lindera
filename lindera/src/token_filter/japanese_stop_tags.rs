@@ -61,7 +61,12 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
-                !self.config.stop_tags.contains(&details[0..4].join(","))
+                let mut formatted_tags = vec!["*", "*", "*", "*"];
+                let tags_len = if details.len() >= 4 { 4 } else { 1 };
+                for (i, j) in details[0..tags_len].iter().enumerate() {
+                    formatted_tags[i] = j;
+                }
+                !self.config.stop_tags.contains(&formatted_tags.join(","))
             } else {
                 false
             }
