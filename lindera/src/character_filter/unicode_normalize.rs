@@ -56,9 +56,10 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
-        let mut input_offset = 0;
-        let mut replacement_offset = 0;
+        let mut input_start = 0;
+        let mut replacement_start = 0;
 
+        // Create normalized text for input text.
         let normalized_text = match self.config.kind {
             UnicodeNormalizeKind::NFC => text.nfc().collect::<String>(),
             UnicodeNormalizeKind::NFD => text.nfd().collect::<String>(),
@@ -66,64 +67,108 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
         };
 
-        let chars = text.chars();
+        // Create Chars to compare input text and normalized test one character at a time.
+        let mut chars = text.chars();
         let mut normalized_chars = normalized_text.chars();
 
-        // loop over the characters in the string
-        for c in chars {
-            let prefix_len = c.len_utf8();
-
-            // To compare with the replaced character,
-            // the character before normalization is retrieved and normalized.
-            let tmp_text = match self.config.kind {
-                UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
-                UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
-                UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
-                UnicodeNormalizeKind::NFKD => c.nfkd().collect::<String>(),
-            };
-
-            // Find a replacement from the normalized string that matches `tmp_c`.
-            let mut replacement = String::new();
-            let mut normalized_prefix_len = 0;
-            for normalized_c in normalized_chars.by_ref() {
-                normalized_prefix_len += normalized_c.len_utf8();
-                replacement = normalized_text
-                    [replacement_offset..replacement_offset + normalized_prefix_len]
-                    .to_string();
-                if replacement == tmp_text {
-                    replacement_offset += normalized_prefix_len;
-                    break;
-                }
+        loop {
+            if input_start >= text.len() || replacement_start >= normalized_text.len() {
+                break;
             }
 
-            let replacement_len = replacement.len();
-            let diff = prefix_len as i64 - replacement_len as i64;
-            input_offset += prefix_len;
+            // It takes one character from the input text and performs normalization.
+            let c = chars.next().unwrap();
+            let mut input_len = c.len_utf8();
+            let mut input_text = &text[input_start..input_start + input_len];
+            let mut normalized_input_text = match self.config.kind {
+                UnicodeNormalizeKind::NFC => input_text.nfc().collect::<String>(),
+                UnicodeNormalizeKind::NFD => input_text.nfd().collect::<String>(),
+                UnicodeNormalizeKind::NFKC => input_text.nfkc().collect::<String>(),
+                UnicodeNormalizeKind::NFKD => input_text.nfkd().collect::<String>(),
+            };
 
-            if diff != 0 {
-                let prev_diff = *diffs.last().unwrap_or(&0);
+            // Similarly, it takes one character from from the normalized text.
+            let n = normalized_chars.next().unwrap();
+            let mut replacement_len = n.len_utf8();
+            let mut replacement_text =
+                &normalized_text[replacement_start..replacement_start + replacement_len];
 
-                if diff > 0 {
-                    // Replacement is shorter than matched surface.
-                    add_offset_diff(
-                        &mut offsets,
-                        &mut diffs,
-                        (input_offset as i64 - diff - prev_diff) as usize,
-                        prev_diff + diff,
-                    );
+            if normalized_input_text != replacement_text {
+                if normalized_input_text.len() == replacement_text.len() {
+                    // If the strings obtained above do not match and the number of characters match,
+                    // the input text side is increased by one character until they match,
+                    // and the process is repeated until they match.
+                    // e.g.
+                    //   input_text:       "ｼ" -> "シ"
+                    //   replacement_text: "ジ"
+                    //
+                    //   Increase input text side by one character.
+                    //   input_text:       "ｼﾞ" -> "ジ"
+                    //   replacement_text: "ジ"
+                    while normalized_input_text != replacement_text {
+                        // Add next character to input text.
+                        let next_char = chars.next().unwrap();
+                        input_len += next_char.len_utf8();
+                        input_text = &text[input_start..input_start + input_len];
+                        normalized_input_text = match self.config.kind {
+                            UnicodeNormalizeKind::NFC => input_text.nfc().collect::<String>(),
+                            UnicodeNormalizeKind::NFD => input_text.nfd().collect::<String>(),
+                            UnicodeNormalizeKind::NFKC => input_text.nfkc().collect::<String>(),
+                            UnicodeNormalizeKind::NFKD => input_text.nfkd().collect::<String>(),
+                        };
+                    }
                 } else {
-                    // Replacement is longer than matched surface.
-                    let output_start = (input_offset as i64 + -prev_diff) as usize;
-                    for extra_idx in 0..diff.unsigned_abs() as usize {
-                        add_offset_diff(
-                            &mut offsets,
-                            &mut diffs,
-                            output_start + extra_idx,
-                            prev_diff - extra_idx as i64 - 1,
-                        );
+                    // If the strings obtained above do not match and the number of characters match,
+                    // the replacement text side is increased by one character until they match,
+                    // and the process is repeated until they match.
+                    // e.g.
+                    //   input_text:       "ガロン"
+                    //   replacement_text: "ガ"
+                    //
+                    //   Increase replacement text side by one character.
+                    //   input_text:       "ガロン"
+                    //   replacement_text: "ガロ"
+                    //
+                    //   Increase replacement text side by one character.
+                    //   input_text:       "ガロン"
+                    //   replacement_text: "ガロン"
+                    while normalized_input_text != replacement_text {
+                        // Add next character to replacement text.
+                        let next_char = normalized_chars.next().unwrap();
+                        replacement_len += next_char.len_utf8();
+                        replacement_text = &normalized_text
+                            [replacement_start..replacement_start + replacement_len];
                     }
                 }
             }
+
+            let diff_len = input_len as i64 - replacement_len as i64;
+            let input_offset = input_start + input_len;
+
+            // Record the difference in offset.
+            if diff_len != 0 {
+                let prev_diff = *diffs.last().unwrap_or(&0);
+
+                if diff_len > 0 {
+                    // Replacement is shorter than matched surface.
+                    let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
+                    let diff = prev_diff + diff_len;
+                    add_offset_diff(&mut offsets, &mut diffs, offset, diff);
+                } else {
+                    // Replacement is longer than matched surface.
+                    let output_start = (input_offset as i64 + -prev_diff) as usize;
+
+                    for extra_idx in 0..diff_len.unsigned_abs() as usize {
+                        let offset = output_start + extra_idx;
+                        let differ = prev_diff - extra_idx as i64 - 1;
+                        add_offset_diff(&mut offsets, &mut diffs, offset, differ);
+                    }
+                }
+            }
+
+            // Move next character.
+            input_start += input_len;
+            replacement_start += replacement_len;
         }
 
         *text = normalized_text;
@@ -573,16 +618,16 @@ mod tests {
             let mut filterd_text = text.clone();
             let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
             assert_eq!("リンデラ", filterd_text);
-            assert_eq!(vec![9, 10, 11, 12], offsets);
-            assert_eq!(vec![-1, -2, -3, 3], diffs);
-            let start = 6;
+            assert_eq!(vec![9], offsets);
+            assert_eq!(vec![3], diffs);
+            let start = 0;
             let end = 12;
-            assert_eq!("デラ", &filterd_text[start..end]);
+            assert_eq!("リンデラ", &filterd_text[start..end]);
             let correct_start = correct_offset(start, &offsets, &diffs, filterd_text.len());
             let correct_end = correct_offset(end, &offsets, &diffs, filterd_text.len());
-            assert_eq!(6, correct_start);
+            assert_eq!(0, correct_start);
             assert_eq!(15, correct_end);
-            assert_eq!("ﾃﾞﾗ", &text[correct_start..correct_end]);
+            assert_eq!("ﾘﾝﾃﾞﾗ", &text[correct_start..correct_end]);
         }
 
         {

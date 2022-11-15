@@ -202,18 +202,17 @@ impl Analyzer {
     }
 
     pub fn analyze<'a>(&self, text: &'a mut String) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
-        println!("text: {}", text);
-        println!("text len: {}", text.len());
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
 
         for character_filter in &self.character_filters {
             let (offsets, diffs) = character_filter.apply(text)?;
-            println!("char filterd text: {}", text);
-            println!("char filterd text len: {}", text.len());
+            // Record the length of the text after each character filter is applied.
             text_len_vec.insert(0, text.len());
+            // Record the offsets of each character filter.
             offsets_vec.insert(0, offsets);
+            // Record the diffs of each character filter.
             diffs_vec.insert(0, diffs);
         }
 
@@ -225,24 +224,12 @@ impl Analyzer {
 
         // Correct token offsets
         for token in tokens.iter_mut() {
-            println!(
-                "token: text={:?}, byte_start={}, byte_end={}",
-                token.text, token.byte_start, token.byte_end
-            );
-
             for (i, offsets) in offsets_vec.iter().enumerate() {
-                println!("{}, offsets: {:?}", i, offsets);
-                println!("{}, diffs:   {:?}", i, diffs_vec[i]);
                 token.byte_start =
                     correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
                 token.byte_end =
                     correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
             }
-
-            println!(
-                "token: text={:?}, byte_start={}, byte_end={}",
-                token.text, token.byte_start, token.byte_end
-            );
         }
 
         Ok(tokens)
@@ -397,12 +384,58 @@ mod tests {
         }
         "#;
         let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
-        let mut text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
-        let tokens = analyzer.analyze(&mut text).unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
-            vec!["Lindera", "形態素", "解析", "エンジン"]
-        );
+
+        {
+            let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["Lindera", "形態素", "解析", "エンジン"]
+            );
+
+            let mut tokens_iter = tokens.iter();
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "Lindera");
+                assert_eq!(&text[start..end], "ﾘﾝﾃﾞﾗ");
+            }
+        }
+
+        {
+            let text = "１０㌎のｶﾞｿﾘﾝ".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["10", "ガロン", "ガソリン"]
+            );
+
+            let mut tokens_iter = tokens.iter();
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "10");
+                assert_eq!(&text[start..end], "１０");
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "ガロン");
+                assert_eq!(&text[start..end], "㌎");
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "ガソリン");
+                assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
+            }
+        }
     }
 
     #[test]

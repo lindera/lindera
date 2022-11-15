@@ -61,53 +61,47 @@ impl CharacterFilter for MappingCharacterFilter {
         let mut diffs: Vec<i64> = Vec::new();
 
         let mut result = String::new();
-        let mut start = 0_usize;
+        let mut input_start = 0_usize;
         let len = text.len();
 
-        while start < len {
-            let suffix = &text[start..];
+        while input_start < len {
+            let suffix = &text[input_start..];
             match self
                 .trie
                 .common_prefix_search(suffix.as_bytes())
                 .last()
                 .map(|(_offset_len, prefix_len)| prefix_len)
             {
-                Some(target_len) => {
-                    let target = &text[start..start + target_len];
-                    let replacement = &self.config.mapping[target];
-                    let replacement_len = replacement.len();
-                    let diff = target_len as i64 - replacement_len as i64;
-                    let input_offset = start + target_len;
+                Some(input_len) => {
+                    let input_text = &text[input_start..input_start + input_len];
+                    let replacement_text = &self.config.mapping[input_text];
+                    let replacement_len = replacement_text.len();
+                    let diff_len = input_len as i64 - replacement_len as i64;
+                    let input_offset = input_start + input_len;
 
-                    if diff != 0 {
+                    if diff_len != 0 {
                         let prev_diff = *diffs.last().unwrap_or(&0);
 
-                        if diff > 0 {
+                        if diff_len > 0 {
                             // Replacement is shorter than matched surface.
-                            add_offset_diff(
-                                &mut offsets,
-                                &mut diffs,
-                                (input_offset as i64 - diff - prev_diff) as usize,
-                                prev_diff + diff,
-                            );
+                            let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
+                            let diff = prev_diff + diff_len;
+                            add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                         } else {
                             // Replacement is longer than matched surface.
                             let output_offset = (input_offset as i64 + -prev_diff) as usize;
-                            for extra_idx in 0..diff.unsigned_abs() as usize {
-                                add_offset_diff(
-                                    &mut offsets,
-                                    &mut diffs,
-                                    output_offset + extra_idx,
-                                    prev_diff - extra_idx as i64 - 1,
-                                );
+                            for extra_idx in 0..diff_len.unsigned_abs() as usize {
+                                let offset = output_offset + extra_idx;
+                                let diff = prev_diff - extra_idx as i64 - 1;
+                                add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                             }
                         }
                     }
 
-                    result.push_str(replacement);
+                    result.push_str(replacement_text);
 
                     // move start offset
-                    start += target_len;
+                    input_start += input_len;
                 }
                 None => {
                     match suffix.chars().next() {
@@ -115,7 +109,7 @@ impl CharacterFilter for MappingCharacterFilter {
                             result.push(c);
 
                             // move start offset
-                            start += c.len_utf8();
+                            input_start += c.len_utf8();
                         }
                         None => break,
                     }

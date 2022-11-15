@@ -51,34 +51,29 @@ impl CharacterFilter for RegexCharacterFilter {
         let mut diffs: Vec<i64> = Vec::new();
 
         self.regex.find_iter(text).for_each(|mat| {
-            let target = mat.as_str();
-            let target_len = target.len();
-            let replacement = self.config.replacement.as_str();
-            let replacement_len = replacement.len();
-            let diff = target_len as i64 - replacement_len as i64;
-            let input_offset = mat.start() + target_len;
+            let input_start = mat.start();
+            let input_text = mat.as_str();
+            let input_len = input_text.len();
+            let replacement_text = self.config.replacement.as_str();
+            let replacement_len = replacement_text.len();
+            let diff_len = input_len as i64 - replacement_len as i64;
+            let input_offset = input_start + input_len;
 
-            if diff != 0 {
+            if diff_len != 0 {
                 let prev_diff = *diffs.last().unwrap_or(&0);
 
-                if diff > 0 {
+                if diff_len > 0 {
                     // Replacement is shorter than matched surface.
-                    add_offset_diff(
-                        &mut offsets,
-                        &mut diffs,
-                        (input_offset as i64 - diff - prev_diff) as usize,
-                        prev_diff + diff,
-                    );
+                    let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
+                    let diff = prev_diff + diff_len;
+                    add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                 } else {
                     // Replacement is longer than matched surface.
                     let output_start = (input_offset as i64 + -prev_diff) as usize;
-                    for extra_idx in 0..diff.unsigned_abs() as usize {
-                        add_offset_diff(
-                            &mut offsets,
-                            &mut diffs,
-                            output_start + extra_idx,
-                            prev_diff - extra_idx as i64 - 1,
-                        );
+                    for extra_idx in 0..diff_len.unsigned_abs() as usize {
+                        let offset = output_start + extra_idx;
+                        let diff = prev_diff - extra_idx as i64 - 1;
+                        add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                     }
                 }
             }
