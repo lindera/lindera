@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add analysis example #268 @mosuka
+- Restore to the offset before the character filter is applied like Lucene's CharFilter #267 @mosuka
 - Add token byte offset #266 @mosuka
 
 ## 0.18.0 (2022-10-26)
