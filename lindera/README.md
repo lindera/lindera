@@ -87,7 +87,7 @@ fn main() -> LinderaResult<()> {
 
     let analyzer = Analyzer::from_slice(&config_bytes).unwrap();
 
-    let mut text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。".to_string();
+    let mut text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
     println!("text: {}", text);
 
     // tokenize the text
@@ -110,11 +110,15 @@ The above example can be run as follows:
 
 You can see the result as follows:
 ```text
-text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。
+text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
 token: Lindera, start: 0, end: 21, details: Some(["UNK"])
 token: 形態素, start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
 token: 解析, start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
 token: エンジン, start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
+token: ユーザ, start: 0, end: 26, details: Some(["名詞", "一般", "*", "*", "*", "*", "ユーザー", "ユーザー", "ユーザー"])
+token: 辞書, start: 26, end: 32, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
+token: 利用, start: 35, end: 41, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
+token: 可能, start: 41, end: 47, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 ```
 
 

@@ -16,7 +16,7 @@ fn main() -> LinderaResult<()> {
 
         let analyzer = Analyzer::from_slice(&config_bytes).unwrap();
 
-        let mut text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。".to_string();
+        let mut text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
         println!("text: {}", text);
 
         // tokenize the text
