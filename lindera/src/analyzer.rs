@@ -386,7 +386,7 @@ mod tests {
         let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
+            let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。".to_string();
             let mut analyze_text = text.clone();
             let tokens = analyzer.analyze(&mut analyze_text).unwrap();
             assert_eq!(
