@@ -24,7 +24,10 @@ fn main() -> LinderaResult<()> {
 
         // output the tokens
         for token in tokens {
-            println!("token: {}, start: {}, end: {}, details: {:?}", token.text, token.byte_start, token.byte_end, token.details);
+            println!(
+                "token: {}, start: {}, end: {}, details: {:?}",
+                token.text, token.byte_start, token.byte_end, token.details
+            );
         }
     }
 
