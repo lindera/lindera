@@ -68,7 +68,7 @@ You can see the result as follows:
 This example covers the basic usage of Lindera Analysis Framework.
 
 It will:
-- Apply charactor filter for Unicode normalization (NFKC)
+- Apply character filter for Unicode normalization (NFKC)
 - Tokenize the input text with IPADIC
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
 
