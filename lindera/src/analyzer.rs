@@ -1,6 +1,9 @@
 use serde_json::Value;
 
-use lindera_core::{character_filter::CharacterFilter, token_filter::TokenFilter};
+use lindera_core::{
+    character_filter::{correct_offset, CharacterFilter},
+    token_filter::TokenFilter,
+};
 
 use crate::{
     character_filter::{
@@ -199,14 +202,34 @@ impl Analyzer {
     }
 
     pub fn analyze<'a>(&self, text: &'a mut String) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
+        let mut text_len_vec: Vec<usize> = Vec::new();
+        let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
+        let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
+
         for character_filter in &self.character_filters {
-            character_filter.apply(text)?;
+            let (offsets, diffs) = character_filter.apply(text)?;
+            // Record the length of the text after each character filter is applied.
+            text_len_vec.insert(0, text.len());
+            // Record the offsets of each character filter.
+            offsets_vec.insert(0, offsets);
+            // Record the diffs of each character filter.
+            diffs_vec.insert(0, diffs);
         }
 
         let mut tokens = self.tokenizer.tokenize_with_details(text.as_str())?;
 
         for token_filter in &self.token_filters {
             token_filter.apply(&mut tokens)?;
+        }
+
+        // Correct token offsets
+        for token in tokens.iter_mut() {
+            for (i, offsets) in offsets_vec.iter().enumerate() {
+                token.byte_start =
+                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
+                token.byte_end =
+                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+            }
         }
 
         Ok(tokens)
@@ -233,15 +256,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -253,23 +269,35 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
-                    }
-                },
-                {
-                    "kind": "length",
-                    "args": {
-                        "min": 1
                     }
                 },
                 {
@@ -302,15 +330,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -322,23 +343,35 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
-                    }
-                },
-                {
-                    "kind": "length",
-                    "args": {
-                        "min": 2
                     }
                 },
                 {
@@ -352,13 +385,57 @@ mod tests {
         "#;
         let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut text = "Ｌｉｎｄｅｒａは、日本語の形態素解析ｴﾝｼﾞﾝです。".to_string();
-        let tokens = analyzer.analyze(&mut text).unwrap();
+        {
+            let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["Lindera", "形態素", "解析", "エンジン"]
+            );
 
-        assert_eq!(
-            tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
-            vec!["Lindera", "日本語", "形態素", "解析", "エンジン", "です"]
-        );
+            let mut tokens_iter = tokens.iter();
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "Lindera");
+                assert_eq!(&text[start..end], "ﾘﾝﾃﾞﾗ");
+            }
+        }
+
+        {
+            let text = "１０㌎のｶﾞｿﾘﾝ".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["10", "ガロン", "ガソリン"]
+            );
+
+            let mut tokens_iter = tokens.iter();
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "10");
+                assert_eq!(&text[start..end], "１０");
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "ガロン");
+                assert_eq!(&text[start..end], "㌎");
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                let start = token.byte_start;
+                let end = token.byte_end;
+                assert_eq!(token.text, "ガソリン");
+                assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
+            }
+        }
     }
 
     #[test]
@@ -377,15 +454,8 @@ mod tests {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
-                            "(株)": "株式会社"
-                        }            
-                    }
-                },
-                {
-                    "kind": "regex",
-                    "args": {
-                        "pattern": "\\s{2,}",
-                        "replacement": " "
+                            "リンデラ": "Lindera"
+                        }
                     }
                 }
             ],
@@ -397,27 +467,39 @@ mod tests {
             },
             "token_filters": [
                 {
-                    "kind": "stop_words",
+                    "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_words": [
-                            "be",
-                            "is",
-                            "not",
-                            "or",
-                            "the",
-                            "this",
-                            "to"
+                        "stop_tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
                         ]
                     }
                 },
                 {
-                    "kind": "length",
-                    "args": {
-                        "min": 2
-                    }
-                },
-                {
-                    "kind": "japanese_katakana_stem_wrong",  // wrong token filter name
+                    "kind": "unexisting_filter",
                     "args": {
                         "min": 3
                     }
