@@ -77,7 +77,9 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             }
 
             // It takes one character from the input text and performs normalization.
-            let c = chars.next().unwrap();
+            let c = chars.next().ok_or_else(|| {
+                LinderaErrorKind::Content.with_error(anyhow::anyhow!("Character error."))
+            })?;
             let mut input_len = c.len_utf8();
             let mut input_text = &text[input_start..input_start + input_len];
             let mut normalized_input_text = match self.config.kind {
@@ -88,7 +90,9 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             };
 
             // Similarly, it takes one character from from the normalized text.
-            let n = normalized_chars.next().unwrap();
+            let n = normalized_chars.next().ok_or_else(|| {
+                LinderaErrorKind::Content.with_error(anyhow::anyhow!("Character error."))
+            })?;
             let mut replacement_len = n.len_utf8();
             let mut replacement_text =
                 &normalized_text[replacement_start..replacement_start + replacement_len];
@@ -107,7 +111,10 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                     //   replacement_text: "ジ"
                     while normalized_input_text != replacement_text {
                         // Add next character to input text.
-                        let next_char = chars.next().unwrap();
+                        let next_char = chars.next().ok_or_else(|| {
+                            LinderaErrorKind::Content
+                                .with_error(anyhow::anyhow!("Character error."))
+                        })?;
                         input_len += next_char.len_utf8();
                         input_text = &text[input_start..input_start + input_len];
                         normalized_input_text = match self.config.kind {
@@ -134,7 +141,10 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                     //   replacement_text: "ガロン"
                     while normalized_input_text != replacement_text {
                         // Add next character to replacement text.
-                        let next_char = normalized_chars.next().unwrap();
+                        let next_char = normalized_chars.next().ok_or_else(|| {
+                            LinderaErrorKind::Content
+                                .with_error(anyhow::anyhow!("Character error."))
+                        })?;
                         replacement_len += next_char.len_utf8();
                         replacement_text = &normalized_text
                             [replacement_start..replacement_start + replacement_len];
