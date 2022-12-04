@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Use flate2 for dictionary compression #271 @mosuka
 - Do not use unwrap() #269 @mosuka
 - Add analysis example #268 @mosuka
 - Restore to the offset before the character filter is applied like Lucene's CharFilter #267 @mosuka
