@@ -1,9 +1,11 @@
-use std::collections::BTreeMap;
-use std::fs::{self, File};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::u32;
+use std::{
+    collections::BTreeMap,
+    fs::{self, File},
+    io::{self, Write},
+    path::{Path, PathBuf},
+    str::FromStr,
+    u32,
+};
 
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
@@ -11,27 +13,28 @@ use encoding_rs::EUC_JP;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
 use log::debug;
-use yada::builder::DoubleArrayBuilder;
-use yada::DoubleArray;
+use yada::{builder::DoubleArrayBuilder, DoubleArray};
 
 #[cfg(feature = "compress")]
 use lindera_compress::compress;
-use lindera_core::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
-use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::file_util::read_euc_file;
-use lindera_core::prefix_dict::PrefixDict;
-use lindera_core::unknown_dictionary::parse_unk;
-use lindera_core::user_dictionary::UserDictionary;
-use lindera_core::word_entry::{WordEntry, WordId};
-use lindera_core::LinderaResult;
+use lindera_core::{
+    character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder},
+    dictionary_builder::DictionaryBuilder,
+    error::LinderaErrorKind,
+    file_util::read_euc_file,
+    prefix_dict::PrefixDict,
+    unknown_dictionary::parse_unk,
+    user_dictionary::UserDictionary,
+    word_entry::{WordEntry, WordId},
+    LinderaResult,
+};
 use lindera_decompress::Algorithm;
 
 const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
 const SIMPLE_WORD_COST: i16 = -10000;
 const SIMPLE_CONTEXT_ID: u16 = 0;
 const DETAILED_USERDIC_FIELDS_NUM: usize = 13;
-const COMPRESS_ALGORITHM: Algorithm = Algorithm::LZMA { preset: 9 };
+const COMPRESS_ALGORITHM: Algorithm = Algorithm::Deflate;
 
 pub struct IpadicBuilder {}
 
@@ -51,7 +54,7 @@ impl Default for IpadicBuilder {
 
 impl DictionaryBuilder for IpadicBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        fs::create_dir_all(&output_dir)
+        fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
         let chardef = self.build_chardef(input_dir, output_dir)?;

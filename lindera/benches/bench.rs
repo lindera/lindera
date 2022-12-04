@@ -10,8 +10,7 @@ use std::{
     path::PathBuf,
 };
 
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(any(
     feature = "ipadic",

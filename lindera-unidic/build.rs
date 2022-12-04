@@ -2,13 +2,17 @@ use std::error::Error;
 
 #[cfg(feature = "unidic")]
 fn main() -> Result<(), Box<dyn Error>> {
-    use std::env;
-    use std::fs::{self, create_dir, rename, File};
-    use std::io::{self, Write};
-    use std::path::Path;
+    use std::{
+        env,
+        fs::{self, create_dir, rename, File},
+        io::{self, Write},
+        path::Path,
+    };
 
-    use encoding::all::UTF_8;
-    use encoding::{EncoderTrap, Encoding};
+    use encoding::{
+        all::UTF_8,
+        {EncoderTrap, Encoding},
+    };
     use zip::ZipArchive;
 
     use lindera_core::dictionary_builder::DictionaryBuilder;

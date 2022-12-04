@@ -1,12 +1,11 @@
 #[cfg(feature = "ipadic")]
 use std::env;
 
-use lindera_core::character_definition::CharacterDefinitions;
-use lindera_core::connection::ConnectionCostMatrix;
-use lindera_core::dictionary::Dictionary;
-use lindera_core::prefix_dict::PrefixDict;
-use lindera_core::unknown_dictionary::UnknownDictionary;
-use lindera_core::LinderaResult;
+use lindera_core::{
+    character_definition::CharacterDefinitions, connection::ConnectionCostMatrix,
+    dictionary::Dictionary, prefix_dict::PrefixDict, unknown_dictionary::UnknownDictionary,
+    LinderaResult,
+};
 #[cfg(feature = "compress")]
 use lindera_decompress::decompress;
 
@@ -98,18 +97,22 @@ pub fn load_dictionary() -> LinderaResult<Dictionary> {
 }
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
+    #[allow(clippy::needless_borrow)]
     CharacterDefinitions::load(&CHAR_DEFINITION_DATA)
 }
 
 pub fn connection() -> ConnectionCostMatrix {
+    #[allow(clippy::needless_borrow)]
     ConnectionCostMatrix::load(&CONNECTION_DATA)
 }
 
 pub fn prefix_dict() -> PrefixDict {
+    #[allow(clippy::needless_borrow)]
     PrefixDict::from_static_slice(&IPADIC_DATA, &IPADIC_VALS)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
+    #[allow(clippy::needless_borrow)]
     UnknownDictionary::load(&UNKNOWN_DATA)
 }
 

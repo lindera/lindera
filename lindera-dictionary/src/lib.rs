@@ -1,13 +1,10 @@
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
-use lindera_core::character_definition::CharacterDefinitions;
-use lindera_core::connection::ConnectionCostMatrix;
-use lindera_core::dictionary::Dictionary;
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::prefix_dict::PrefixDict;
-use lindera_core::unknown_dictionary::UnknownDictionary;
-use lindera_core::LinderaResult;
+use lindera_core::{
+    character_definition::CharacterDefinitions, connection::ConnectionCostMatrix,
+    dictionary::Dictionary, error::LinderaErrorKind, prefix_dict::PrefixDict,
+    unknown_dictionary::UnknownDictionary, LinderaResult,
+};
 
 fn read_file(path: PathBuf) -> LinderaResult<Vec<u8>> {
     fs::read(path).map_err(|e| LinderaErrorKind::Io.with_error(e))

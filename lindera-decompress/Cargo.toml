@@ -13,5 +13,5 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0.58"
-lzma-rs = "0.2.0"
+flate2 = "1.0.25"
 serde = { version = "1.0.138", features = ["derive"]}

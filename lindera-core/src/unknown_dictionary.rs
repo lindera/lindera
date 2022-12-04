@@ -1,15 +1,15 @@
-use std::str::FromStr;
-use std::u32;
+use std::{str::FromStr, u32};
 
 use log::warn;
 use serde::{Deserialize, Serialize};
 
-use crate::character_definition::CategoryId;
-use crate::error::LinderaErrorKind;
-use crate::word_entry::{WordEntry, WordId};
-use crate::LinderaResult;
+use crate::{
+    character_definition::CategoryId,
+    error::LinderaErrorKind,
+    word_entry::{WordEntry, WordId},
+    LinderaResult,
+};
 
-//TODO optimize
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UnknownDictionary {
     pub category_references: Vec<Vec<u32>>,
@@ -132,11 +132,4 @@ pub fn parse_unk(
 }
 
 #[cfg(test)]
-mod tests {
-    //    use crate::core::unknown_dictionary::UnknownDictionary;
-
-    //    #[test]
-    //    fn test_parse_unknown_dictionary() {
-    //        let _unknown_dict = UnknownDictionary::load();
-    //    }
-}
+mod tests {}

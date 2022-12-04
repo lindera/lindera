@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::character_definition::CharacterDefinitions;
-use crate::connection::ConnectionCostMatrix;
-use crate::prefix_dict::PrefixDict;
-use crate::unknown_dictionary::UnknownDictionary;
+use crate::{
+    character_definition::CharacterDefinitions, connection::ConnectionCostMatrix,
+    prefix_dict::PrefixDict, unknown_dictionary::UnknownDictionary,
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {

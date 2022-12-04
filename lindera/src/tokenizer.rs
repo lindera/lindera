@@ -3,19 +3,22 @@ use std::fmt;
 use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
 
-use lindera_core::dictionary::Dictionary;
-use lindera_core::token::Token;
-use lindera_core::user_dictionary::UserDictionary;
-use lindera_core::viterbi::Lattice;
-use lindera_core::word_entry::WordId;
+use lindera_core::{
+    dictionary::Dictionary, token::Token, user_dictionary::UserDictionary, viterbi::Lattice,
+    word_entry::WordId,
+};
 
-use crate::builder::{load_dictionary, load_user_dictionary};
-use crate::error::LinderaErrorKind;
-use crate::mode::Mode;
-use crate::{DictionaryKind, LinderaResult};
+use crate::{
+    builder::{load_dictionary, load_user_dictionary},
+    error::LinderaErrorKind,
+    mode::Mode,
+    DictionaryKind, LinderaResult,
+};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DictionaryConfig {

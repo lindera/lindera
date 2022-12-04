@@ -1,11 +1,8 @@
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{fs::File, io::Read, path::Path};
 
 use encoding_rs::{EUC_JP, UTF_8};
 
-use crate::error::LinderaErrorKind;
-use crate::LinderaResult;
+use crate::{error::LinderaErrorKind, LinderaResult};
 
 pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
     let mut input_read = File::open(filename)

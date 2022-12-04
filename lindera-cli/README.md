@@ -69,12 +69,6 @@ Instead, you will be penalized for the execution time of the program.
 % cargo build --release --features=compress
 ```
 
-It also depends on liblzma to compress the dictionary. Please install the dependent packages as follows:
-
-```shell script
-% sudo apt install liblzma-dev
-```
-
 
 ## Build dictionary
 

@@ -11,8 +11,9 @@ use std::str::FromStr;
 use error::LinderaErrorKind;
 use serde::{Deserialize, Serialize};
 
-use crate::error::LinderaError;
 use lindera_core::token::Token as LinderaToken;
+
+use crate::error::LinderaError;
 
 pub type LinderaResult<T> = Result<T, LinderaError>;
 pub type Token<'a> = LinderaToken<'a>;

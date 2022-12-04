@@ -13,14 +13,9 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0.58"
+flate2 = "1.0.25"
 
 lindera-decompress = { version = "0.18.0", path = "../lindera-decompress" }
-
-[target.'cfg(windows)'.dependencies]
-lzma-rs = "0.2.0"
-
-[target.'cfg(not(windows))'.dependencies]
-rust-lzma = { version = "0.5.1"}
 
 [dev-dependencies]
 rand = "0.8.5"
