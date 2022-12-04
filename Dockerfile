@@ -11,7 +11,6 @@ RUN set -ex \
        cmake \
        pkg-config \
        libssl-dev \
-       liblzma-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

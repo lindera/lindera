@@ -1,18 +1,22 @@
-use std::fs::{self, File};
-use std::io::{self, BufRead, BufReader, Read};
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{
+    fs::{self, File},
+    io::{self, BufRead, BufReader, Read},
+    path::PathBuf,
+    str::FromStr,
+};
 
 use clap::{Parser, Subcommand};
 
-use lindera::analyzer::Analyzer;
-use lindera::builder::{build_dictionary, build_user_dictionary};
-use lindera::error::{LinderaError, LinderaErrorKind};
-use lindera::mode::Mode;
-use lindera::tokenizer::{
-    DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
+use lindera::{
+    analyzer::Analyzer,
+    builder::{build_dictionary, build_user_dictionary},
+    error::{LinderaError, LinderaErrorKind},
+    mode::Mode,
+    tokenizer::{
+        DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
+    },
+    DictionaryKind, LinderaResult,
 };
-use lindera::{DictionaryKind, LinderaResult};
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]

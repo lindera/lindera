@@ -3,5 +3,4 @@ use lindera_core::error::{
 };
 
 pub type LinderaErrorKind = LinderaCoreErrorKind;
-
 pub type LinderaError = LinderaCoreError;

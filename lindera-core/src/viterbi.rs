@@ -1,14 +1,15 @@
-use std::str::FromStr;
-use std::u32;
+use std::{str::FromStr, u32};
 
 use serde::{Deserialize, Serialize};
 
-use crate::character_definition::{CategoryId, CharacterDefinitions};
-use crate::connection::ConnectionCostMatrix;
-use crate::error::{LinderaError, LinderaErrorKind};
-use crate::prefix_dict::PrefixDict;
-use crate::unknown_dictionary::UnknownDictionary;
-use crate::word_entry::{WordEntry, WordId};
+use crate::{
+    character_definition::{CategoryId, CharacterDefinitions},
+    connection::ConnectionCostMatrix,
+    error::{LinderaError, LinderaErrorKind},
+    prefix_dict::PrefixDict,
+    unknown_dictionary::UnknownDictionary,
+    word_entry::{WordEntry, WordId},
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Penalty {

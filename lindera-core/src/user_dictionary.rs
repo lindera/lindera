@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::LinderaErrorKind;
-use crate::prefix_dict::PrefixDict;
-use crate::LinderaResult;
+use crate::{error::LinderaErrorKind, prefix_dict::PrefixDict, LinderaResult};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserDictionary {

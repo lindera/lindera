@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use crate::character_definition::CharacterDefinitions;
-use crate::user_dictionary::UserDictionary;
-use crate::LinderaResult;
+use crate::{
+    character_definition::CharacterDefinitions, user_dictionary::UserDictionary, LinderaResult,
+};
 
 pub trait DictionaryBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;

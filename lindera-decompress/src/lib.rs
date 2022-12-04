@@ -1,12 +1,13 @@
-use lzma_rs::xz_decompress;
+use std::io::Read;
+
+use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
 use serde::{Deserialize, Serialize};
-use std::io::BufReader;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Algorithm {
-    Bzip,
-    LZ77,
-    LZMA { preset: u32 },
+    Deflate,
+    Zlib,
+    Gzip,
     Raw,
 }
 
@@ -24,15 +25,24 @@ impl CompressedData {
 
 pub fn decompress(data: CompressedData) -> anyhow::Result<Vec<u8>> {
     match data.algorithm {
-        Algorithm::LZMA { preset: _ } => {
-            let mut buf_reader = BufReader::new(data.data.as_slice());
+        Algorithm::Deflate => {
+            let mut decoder = DeflateDecoder::new(data.data.as_slice());
             let mut output_data = Vec::new();
-            xz_decompress(&mut buf_reader, &mut output_data)?;
+            decoder.read_to_end(&mut output_data)?;
             Ok(output_data)
-        } // TODO: バッファのサイズを意識する
-        Algorithm::Raw => Ok(data.data),
-        _ => {
-            unimplemented!()
         }
+        Algorithm::Zlib => {
+            let mut decoder = ZlibDecoder::new(data.data.as_slice());
+            let mut output_data = Vec::new();
+            decoder.read_to_end(&mut output_data)?;
+            Ok(output_data)
+        }
+        Algorithm::Gzip => {
+            let mut decoder = GzDecoder::new(data.data.as_slice());
+            let mut output_data = Vec::new();
+            decoder.read_to_end(&mut output_data)?;
+            Ok(output_data)
+        }
+        Algorithm::Raw => Ok(data.data),
     }
 }

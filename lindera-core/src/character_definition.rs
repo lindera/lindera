@@ -4,8 +4,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use encoding_rs::UTF_16LE;
 use serde::{Deserialize, Serialize};
 
-use crate::error::LinderaErrorKind;
-use crate::LinderaResult;
+use crate::{error::LinderaErrorKind, LinderaResult};
 
 const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
 

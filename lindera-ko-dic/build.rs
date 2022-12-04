@@ -2,13 +2,17 @@ use std::error::Error;
 
 #[cfg(feature = "ko-dic")]
 fn main() -> Result<(), Box<dyn Error>> {
-    use std::env;
-    use std::fs::{create_dir, File};
-    use std::io::{Cursor, Read, Write};
-    use std::path::Path;
+    use std::{
+        env,
+        fs::{create_dir, File},
+        io::{Cursor, Read, Write},
+        path::Path,
+    };
 
-    use encoding::all::UTF_8;
-    use encoding::{EncoderTrap, Encoding};
+    use encoding::{
+        all::UTF_8,
+        {EncoderTrap, Encoding},
+    };
     use flate2::read::GzDecoder;
     use tar::Archive;
 
