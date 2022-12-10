@@ -48,6 +48,10 @@ impl JapaneseBaseFormTokenFilter {
 }
 
 impl TokenFilter for JapaneseBaseFormTokenFilter {
+    fn name(&self) -> &'static str {
+        JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(details) = &token.details {

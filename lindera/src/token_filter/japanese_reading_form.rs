@@ -48,6 +48,10 @@ impl JapaneseReadingFormTokenFilter {
 }
 
 impl TokenFilter for JapaneseReadingFormTokenFilter {
+    fn name(&self) -> &'static str {
+        JAPANESE_READING_FORM_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(details) = &token.details {

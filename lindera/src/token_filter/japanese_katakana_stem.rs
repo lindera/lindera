@@ -45,6 +45,10 @@ impl JapaneseKatakanaStemTokenFilter {
 }
 
 impl TokenFilter for JapaneseKatakanaStemTokenFilter {
+    fn name(&self) -> &'static str {
+        JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let min = self.config.min.get();
 

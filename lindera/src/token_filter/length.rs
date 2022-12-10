@@ -37,6 +37,10 @@ impl LengthTokenFilter {
 }
 
 impl TokenFilter for LengthTokenFilter {
+    fn name(&self) -> &'static str {
+        LENGTH_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             let len = token.text.chars().count();

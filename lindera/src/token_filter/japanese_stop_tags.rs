@@ -58,6 +58,10 @@ impl JapaneseStopTagsTokenFilter {
 }
 
 impl TokenFilter for JapaneseStopTagsTokenFilter {
+    fn name(&self) -> &'static str {
+        JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {

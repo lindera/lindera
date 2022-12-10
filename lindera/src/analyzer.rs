@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde_json::Value;
 
 use lindera_core::{
@@ -36,13 +38,14 @@ use crate::{
         uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
     },
     tokenizer::Tokenizer,
-    LinderaResult,
+    LinderaResult, Token,
 };
 
 pub struct Analyzer {
     character_filters: Vec<Box<dyn CharacterFilter>>,
     tokenizer: Tokenizer,
     token_filters: Vec<Box<dyn TokenFilter>>,
+    with_details: bool,
 }
 
 impl Analyzer {
@@ -51,10 +54,24 @@ impl Analyzer {
         tokenizer: Tokenizer,
         token_filters: Vec<Box<dyn TokenFilter>>,
     ) -> Self {
+        let with_details = token_filters
+            .iter()
+            .map(|token_filter| token_filter.name())
+            .any(|name| {
+                name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
+                    || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
+                    || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
+                    || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
+                    || name == KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
+                    || name == KOREAN_READING_FORM_TOKEN_FILTER_NAME
+                    || name == KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
+            });
+
         Self {
             character_filters,
             tokenizer,
             token_filters,
+            with_details,
         }
     }
 
@@ -201,35 +218,61 @@ impl Analyzer {
         Ok(Self::new(character_filters, tokenizer, token_filters))
     }
 
-    pub fn analyze<'a>(&self, text: &'a mut String) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
+    pub fn analyze(&self, text: &str) -> crate::LinderaResult<Vec<crate::Token>> {
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
 
+        let mut tmp_text = text.to_string();
+
+        // Appy character filters.
         for character_filter in &self.character_filters {
-            let (offsets, diffs) = character_filter.apply(text)?;
+            let (new_text, offsets, diffs) = character_filter.apply(&tmp_text)?;
+
             // Record the length of the text after each character filter is applied.
-            text_len_vec.insert(0, text.len());
+            text_len_vec.insert(0, new_text.len());
             // Record the offsets of each character filter.
             offsets_vec.insert(0, offsets);
             // Record the diffs of each character filter.
             diffs_vec.insert(0, diffs);
+
+            tmp_text = new_text;
         }
 
-        let mut tokens = self.tokenizer.tokenize_with_details(text.as_str())?;
+        // Tokenize.
+        let mut tmp_tokens = if self.with_details {
+            self.tokenizer.tokenize_with_details(&tmp_text)?
+        } else {
+            self.tokenizer.tokenize(&tmp_text)?
+        };
 
+        // Apply token filters.
         for token_filter in &self.token_filters {
-            token_filter.apply(&mut tokens)?;
+            token_filter.apply(&mut tmp_tokens)?;
         }
 
         // Correct token offsets
-        for token in tokens.iter_mut() {
+        let mut tokens = Vec::new();
+        for token in tmp_tokens.iter_mut() {
+            let mut new_token = Token {
+                text: Cow::Owned(token.text.to_string()),
+                details: token.details.clone(),
+                byte_start: token.byte_start,
+                byte_end: token.byte_end,
+            };
+
             for (i, offsets) in offsets_vec.iter().enumerate() {
-                token.byte_start =
-                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
-                token.byte_end =
-                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+                new_token.byte_start = correct_offset(
+                    new_token.byte_start,
+                    offsets,
+                    &diffs_vec[i],
+                    text_len_vec[i],
+                );
+                new_token.byte_end =
+                    correct_offset(new_token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
             }
+
+            tokens.push(new_token);
         }
 
         Ok(tokens)

@@ -21,6 +21,10 @@ impl Default for UppercaseTokenFilter {
 }
 
 impl TokenFilter for UppercaseTokenFilter {
+    fn name(&self) -> &'static str {
+        UPPERCASE_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             token.text = Cow::Owned(token.text.to_uppercase());

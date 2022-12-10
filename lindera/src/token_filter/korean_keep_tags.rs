@@ -42,6 +42,10 @@ impl KoreanKeepTagsTokenFilter {
 }
 
 impl TokenFilter for KoreanKeepTagsTokenFilter {
+    fn name(&self) -> &'static str {
+        KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
