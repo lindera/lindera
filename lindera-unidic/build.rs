@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         dummy_matrix_def.write_all(b"0 1 0\n")?;
     } else {
         // Source file path for build package
-        let source_path_for_build = Path::new(&build_dir).join(&file_name);
+        let source_path_for_build = Path::new(&build_dir).join(file_name);
 
         // Download source file to build directory
         if !source_path_for_build.exists() {
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 );
                 if let Some(p) = output_file_path.parent() {
                     if !p.exists() {
-                        fs::create_dir_all(&p)?;
+                        fs::create_dir_all(p)?;
                     }
                 }
                 let mut outfile = fs::File::create(&output_file_path)?;

@@ -38,6 +38,10 @@ impl KeepWordsTokenFilter {
 }
 
 impl TokenFilter for KeepWordsTokenFilter {
+    fn name(&self) -> &'static str {
+        KEEP_WORDS_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| self.config.keep_words.contains(token.text.as_ref()));
         Ok(())

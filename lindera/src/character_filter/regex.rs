@@ -46,7 +46,11 @@ impl RegexCharacterFilter {
 }
 
 impl CharacterFilter for RegexCharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)> {
+    fn name(&self) -> &'static str {
+        REGEX_CHARACTER_FILTER_NAME
+    }
+
+    fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)> {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
@@ -79,13 +83,12 @@ impl CharacterFilter for RegexCharacterFilter {
             }
         });
 
-        *text = self
+        let new_text = self
             .regex
             .replace_all(text, &self.config.replacement)
-            .to_mut()
             .to_string();
 
-        Ok((offsets, diffs))
+        Ok((new_text, offsets, diffs))
     }
 }
 
@@ -130,9 +133,8 @@ mod tests {
             }
             "#;
             let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "リンデラは形態素解析器です。".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "リンデラは形態素解析器です。";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("Linderaは形態素解析器です。", filterd_text);
             assert_eq!(vec![7], offsets);
             assert_eq!(vec![5], diffs);
@@ -154,9 +156,8 @@ mod tests {
             }
             "#;
             let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "a     b     c".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "a     b     c";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("a b c", filterd_text);
             assert_eq!(vec![2, 4], offsets);
             assert_eq!(vec![4, 8], diffs);

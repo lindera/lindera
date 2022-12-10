@@ -193,7 +193,6 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             // EOS
             break;
         }
-        text = text.trim().to_string();
 
         match output_format {
             Format::Mecab => {
@@ -283,9 +282,8 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             // EOS
             break;
         }
-        text = text.trim().to_string();
 
-        let tokens = analyzer.analyze(&mut text)?;
+        let tokens = analyzer.analyze(&text)?;
         match output_format {
             Format::Mecab => {
                 for token in tokens {

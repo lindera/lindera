@@ -39,6 +39,10 @@ impl StopWordsTokenFilter {
 }
 
 impl TokenFilter for StopWordsTokenFilter {
+    fn name(&self) -> &'static str {
+        STOP_WORDS_TOKEN_FILTER_NAME
+    }
+
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| !self.config.stop_words.contains(token.text.as_ref()));
         Ok(())

@@ -1,7 +1,8 @@
 use crate::LinderaResult;
 
 pub trait CharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)>;
+    fn name(&self) -> &str;
+    fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)>;
 }
 
 pub fn add_offset_diff(offsets: &mut Vec<usize>, diffs: &mut Vec<i64>, offset: usize, diff: i64) {

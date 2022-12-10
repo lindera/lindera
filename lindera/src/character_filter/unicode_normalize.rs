@@ -52,7 +52,11 @@ impl UnicodeNormalizeCharacterFilter {
 }
 
 impl CharacterFilter for UnicodeNormalizeCharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)> {
+    fn name(&self) -> &'static str {
+        UNICODE_NORMALIZE_CHARACTER_FILTER_NAME
+    }
+
+    fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)> {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
@@ -181,9 +185,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
             replacement_start += replacement_len;
         }
 
-        *text = normalized_text;
-
-        Ok((offsets, diffs))
+        Ok((normalized_text, offsets, diffs))
     }
 }
 
@@ -230,9 +232,8 @@ mod tests {
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let text = "ＡＢＣＤＥ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ＡＢＣＤＥ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ＡＢＣＤＥ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -247,9 +248,8 @@ mod tests {
         }
 
         {
-            let text = "ABCDE".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ABCDE";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -264,9 +264,8 @@ mod tests {
         }
 
         {
-            let text = "ｱｲｳｴｵ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ｱｲｳｴｵ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ｱｲｳｴｵ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -281,9 +280,8 @@ mod tests {
         }
 
         {
-            let text = "アイウエオ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "アイウエオ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -298,9 +296,8 @@ mod tests {
         }
 
         {
-            let text = "０１２３４５６７８９".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "０１２３４５６７８９";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("０１２３４５６７８９", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -315,9 +312,8 @@ mod tests {
         }
 
         {
-            let text = "0123456789".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "0123456789";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -332,9 +328,8 @@ mod tests {
         }
 
         {
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ﾘﾝﾃﾞﾗ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -349,9 +344,8 @@ mod tests {
         }
 
         {
-            let text = "１０㌎".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "１０㌎";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("１０㌎", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -376,9 +370,8 @@ mod tests {
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let text = "ＡＢＣＤＥ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ＡＢＣＤＥ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ＡＢＣＤＥ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -393,9 +386,8 @@ mod tests {
         }
 
         {
-            let text = "ABCDE".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ABCDE";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -410,9 +402,8 @@ mod tests {
         }
 
         {
-            let text = "ｱｲｳｴｵ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ｱｲｳｴｵ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ｱｲｳｴｵ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -427,9 +418,8 @@ mod tests {
         }
 
         {
-            let text = "アイウエオ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "アイウエオ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -444,9 +434,8 @@ mod tests {
         }
 
         {
-            let text = "０１２３４５６７８９".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "０１２３４５６７８９";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("０１２３４５６７８９", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -461,9 +450,8 @@ mod tests {
         }
 
         {
-            let text = "0123456789".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "0123456789";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -478,9 +466,8 @@ mod tests {
         }
 
         {
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ﾘﾝﾃﾞﾗ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -495,9 +482,8 @@ mod tests {
         }
 
         {
-            let text = "１０㌎".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "１０㌎";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("１０㌎", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -522,9 +508,8 @@ mod tests {
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let text = "ＡＢＣＤＥ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ＡＢＣＤＥ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(vec![1, 2, 3, 4, 5], offsets);
             assert_eq!(vec![2, 4, 6, 8, 10], diffs);
@@ -539,9 +524,8 @@ mod tests {
         }
 
         {
-            let text = "ABCDE".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ABCDE";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -556,9 +540,8 @@ mod tests {
         }
 
         {
-            let text = "ｱｲｳｴｵ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ｱｲｳｴｵ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -573,9 +556,8 @@ mod tests {
         }
 
         {
-            let text = "アイウエオ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "アイウエオ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -590,9 +572,8 @@ mod tests {
         }
 
         {
-            let text = "０１２３４５６７８９".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "０１２３４５６７８９";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
             assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
@@ -607,9 +588,8 @@ mod tests {
         }
 
         {
-            let text = "0123456789".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "0123456789";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -624,9 +604,8 @@ mod tests {
         }
 
         {
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("リンデラ", filterd_text);
             assert_eq!(vec![9], offsets);
             assert_eq!(vec![3], diffs);
@@ -641,9 +620,8 @@ mod tests {
         }
 
         {
-            let text = "１０㌎".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "１０㌎";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("10ガロン", filterd_text);
             assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10], offsets);
             assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2], diffs);
@@ -668,9 +646,8 @@ mod tests {
         let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let text = "ＡＢＣＤＥ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ＡＢＣＤＥ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(vec![1, 2, 3, 4, 5], offsets);
             assert_eq!(vec![2, 4, 6, 8, 10], diffs);
@@ -685,9 +662,8 @@ mod tests {
         }
 
         {
-            let text = "ABCDE".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ABCDE";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ABCDE", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -702,9 +678,8 @@ mod tests {
         }
 
         {
-            let text = "ｱｲｳｴｵ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ｱｲｳｴｵ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -719,9 +694,8 @@ mod tests {
         }
 
         {
-            let text = "アイウエオ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "アイウエオ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -736,9 +710,8 @@ mod tests {
         }
 
         {
-            let text = "０１２３４５６７８９".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "０１２３４５６７８９";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10], offsets);
             assert_eq!(vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20], diffs);
@@ -753,9 +726,8 @@ mod tests {
         }
 
         {
-            let text = "0123456789".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "0123456789";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("0123456789", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -770,9 +742,8 @@ mod tests {
         }
 
         {
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("リンテ\u{3099}ラ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -787,9 +758,8 @@ mod tests {
         }
 
         {
-            let text = "１０㌎".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "１０㌎";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("10カ\u{3099}ロン", filterd_text);
             assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
             assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);

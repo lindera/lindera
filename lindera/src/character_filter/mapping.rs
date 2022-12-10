@@ -56,7 +56,11 @@ impl MappingCharacterFilter {
 }
 
 impl CharacterFilter for MappingCharacterFilter {
-    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>)> {
+    fn name(&self) -> &'static str {
+        MAPPING_CHARACTER_FILTER_NAME
+    }
+
+    fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)> {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
@@ -117,9 +121,7 @@ impl CharacterFilter for MappingCharacterFilter {
             }
         }
 
-        *text = result;
-
-        Ok((offsets, diffs))
+        Ok((result, offsets, diffs))
     }
 }
 
@@ -178,9 +180,8 @@ mod tests {
             }
             "#;
             let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "ｱｲｳｴｵ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ｱｲｳｴｵ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("アイウエオ", filterd_text);
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -206,9 +207,8 @@ mod tests {
             }
             "#;
             let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(&text).unwrap();
             assert_eq!("リンデラ", filterd_text);
             assert_eq!(vec![9], offsets);
             assert_eq!(vec![3], diffs);
@@ -231,9 +231,8 @@ mod tests {
             }
             "#;
             let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "ﾘﾝﾃﾞﾗ".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "ﾘﾝﾃﾞﾗ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("リンデラ", filterd_text);
             assert_eq!(vec![12], offsets);
             assert_eq!(vec![3], diffs);
@@ -256,9 +255,8 @@ mod tests {
             }
             "#;
             let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "Rust製形態素解析器リンデラで日本語を形態素解析する。".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "Rust製形態素解析器リンデラで日本語を形態素解析する。";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!(
                 "Rust製形態素解析器Linderaで日本語を形態素解析する。",
                 filterd_text
@@ -294,9 +292,8 @@ mod tests {
             }
             "#;
             let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
-            let text = "１０㍑".to_string();
-            let mut filterd_text = text.clone();
-            let (offsets, diffs) = filter.apply(&mut filterd_text).unwrap();
+            let text = "１０㍑";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("10リットル", filterd_text);
             assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
             assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
