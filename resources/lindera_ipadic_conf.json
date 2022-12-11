@@ -15,9 +15,18 @@
     },
     "token_filters": [
         {
+            "kind": "japanese_compound_word",
+            "args": {
+                "tags": [
+                    "名詞,数",
+                    "名詞,接尾,助数詞"
+                ]
+            }
+        },
+        {
             "kind": "japanese_stop_tags",
             "args": {
-                "stop_tags": [
+                "tags": [
                     "接続詞",
                     "助詞",
                     "助詞,格助詞",
