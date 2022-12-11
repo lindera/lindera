@@ -10,12 +10,12 @@ pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct KoreanKeepTagsTokenFilterConfig {
-    keep_tags: HashSet<String>,
+    tags: HashSet<String>,
 }
 
 impl KoreanKeepTagsTokenFilterConfig {
-    pub fn new(keep_tags: HashSet<String>) -> Self {
-        Self { keep_tags }
+    pub fn new(tags: HashSet<String>) -> Self {
+        Self { tags }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
@@ -49,7 +49,7 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
-                self.config.keep_tags.contains(&details[0])
+                self.config.tags.contains(&details[0])
             } else {
                 false
             }
@@ -75,21 +75,21 @@ mod tests {
     fn test_korean_keep_tags_token_filter_config_from_slice() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "NNG"
             ]
         }
         "#;
         let config = KoreanKeepTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.keep_tags.len(), 1);
+        assert_eq!(config.tags.len(), 1);
     }
 
     #[test]
     fn test_korean_keep_tags_token_filter_from_slice() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "NNG"
             ]
         }
@@ -103,7 +103,7 @@ mod tests {
     fn test_korean_keep_tags_token_filter_apply() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "NNG"
             ]
         }

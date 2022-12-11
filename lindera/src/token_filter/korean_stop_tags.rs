@@ -10,12 +10,12 @@ pub const KOREAN_STOP_TAGS_TOKEN_FILTER_NAME: &str = "korean_stop_tags";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct KoreanStopTagsTokenFilterConfig {
-    stop_tags: HashSet<String>,
+    tags: HashSet<String>,
 }
 
 impl KoreanStopTagsTokenFilterConfig {
-    pub fn new(stop_tags: HashSet<String>) -> Self {
-        Self { stop_tags }
+    pub fn new(tags: HashSet<String>) -> Self {
+        Self { tags }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
@@ -49,7 +49,7 @@ impl TokenFilter for KoreanStopTagsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
-                !self.config.stop_tags.contains(&details[0])
+                !self.config.tags.contains(&details[0])
             } else {
                 false
             }
@@ -75,7 +75,7 @@ mod tests {
     fn test_korean_stop_tags_token_filter_config_from_slice() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "EP",
                 "EF",
                 "EC",
@@ -111,14 +111,14 @@ mod tests {
         "#;
         let config = KoreanStopTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.stop_tags.len(), 30);
+        assert_eq!(config.tags.len(), 30);
     }
 
     #[test]
     fn test_korean_stop_tagss_token_filter_from_slice() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "EP",
                 "EF",
                 "EC",
@@ -161,7 +161,7 @@ mod tests {
     fn test_korean_stop_tags_token_filter_apply() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "EP",
                 "EF",
                 "EC",
