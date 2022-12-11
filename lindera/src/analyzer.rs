@@ -293,6 +293,7 @@ impl Analyzer {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ipadic")]
     use crate::analyzer::Analyzer;
 
     #[test]
