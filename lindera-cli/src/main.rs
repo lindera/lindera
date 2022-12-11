@@ -196,7 +196,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
         match output_format {
             Format::Mecab => {
-                let tokens = tokenizer.tokenize_with_details(&text)?;
+                let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 for token in tokens {
                     println!(
                         "{}\t{}",
@@ -213,7 +213,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 println!("EOS");
             }
             Format::Json => {
-                let tokens = tokenizer.tokenize_with_details(&text)?;
+                let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 let mut tokens_json = Vec::new();
                 for token in tokens {
                     let word_details = token.details.unwrap_or_default();
@@ -233,7 +233,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 );
             }
             Format::Wakati => {
-                let tokens = tokenizer.tokenize(&text)?;
+                let tokens = tokenizer.tokenize(text.trim())?;
                 let mut it = tokens.iter().peekable();
                 while let Some(token) = it.next() {
                     if it.peek().is_some() {
@@ -283,7 +283,7 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             break;
         }
 
-        let tokens = analyzer.analyze(&text)?;
+        let tokens = analyzer.analyze(text.trim())?;
         match output_format {
             Format::Mecab => {
                 for token in tokens {

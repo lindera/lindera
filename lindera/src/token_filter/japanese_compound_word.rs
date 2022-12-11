@@ -85,7 +85,17 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                         let compound_token = compound_token_opt.take().unwrap();
                         compound_token_opt = Some(Token {
                             text: Cow::Owned(format!("{}{}", compound_token.text, token.text)),
-                            details: compound_token.details,
+                            details: Some(vec![
+                                "複合語".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                                "*".to_string(),
+                            ]),
                             byte_start: compound_token.byte_start,
                             byte_end: token.byte_end,
                         });

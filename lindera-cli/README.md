@@ -541,7 +541,7 @@ The `analyze` command combines character filters, tokenizer and token filters fo
 Settings for character filters, tokenizer, and token filters used in the analysis are described in JSON.
 
 ```shell script
-$ echo "すもももももももものうち" | ./target/debug/lindera analyze --config ./resources/lindera_ipadic_conf.json
+$ echo "すもももももももものうち" | lindera analyze --config ./resources/lindera_ipadic_conf.json
 ```
 
 ```text
