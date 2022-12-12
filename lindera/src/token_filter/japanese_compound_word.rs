@@ -92,7 +92,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
             DictionaryKind::UniDic => "複合語,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*"
                 .split(',')
                 .collect::<Vec<&str>>(),
-            _ => "UNK".split(',').collect::<Vec<&str>>(),
+            _ => "複合語,*,*,*,*,*,*,*,*".split(',').collect::<Vec<&str>>(),
         };
 
         if let Some(new_tag_str) = &self.config.new_tag {
