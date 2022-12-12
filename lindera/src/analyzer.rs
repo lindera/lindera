@@ -45,17 +45,17 @@ use crate::{
 };
 
 pub struct Analyzer {
-    character_filters: Vec<Box<dyn CharacterFilter>>,
+    character_filters: Vec<Box<dyn CharacterFilter + Send>>,
     tokenizer: Tokenizer,
-    token_filters: Vec<Box<dyn TokenFilter>>,
+    token_filters: Vec<Box<dyn TokenFilter + Send>>,
     with_details: bool,
 }
 
 impl Analyzer {
     pub fn new(
-        character_filters: Vec<Box<dyn CharacterFilter>>,
+        character_filters: Vec<Box<dyn CharacterFilter + Send>>,
         tokenizer: Tokenizer,
-        token_filters: Vec<Box<dyn TokenFilter>>,
+        token_filters: Vec<Box<dyn TokenFilter + Send>>,
     ) -> Self {
         let with_details = token_filters
             .iter()
@@ -83,7 +83,7 @@ impl Analyzer {
         let args = serde_json::from_slice::<Value>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        let mut character_filters: Vec<Box<dyn CharacterFilter>> = Vec::new();
+        let mut character_filters: Vec<Box<dyn CharacterFilter + Send>> = Vec::new();
         let character_filter_settings = args["character_filters"].as_array();
         if let Some(character_filter_settings) = character_filter_settings {
             for character_filter_setting in character_filter_settings {
@@ -136,7 +136,7 @@ impl Analyzer {
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
         let tokenizer = Tokenizer::with_config(tokenizer_config)?;
 
-        let mut token_filters: Vec<Box<dyn TokenFilter>> = Vec::new();
+        let mut token_filters: Vec<Box<dyn TokenFilter + Send>> = Vec::new();
         let token_filter_settings = args["token_filters"].as_array();
         if let Some(token_filter_settings) = token_filter_settings {
             for token_filter_setting in token_filter_settings {
