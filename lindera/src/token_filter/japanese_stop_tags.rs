@@ -10,13 +10,13 @@ pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseStopTagsTokenFilterConfig {
-    stop_tags: HashSet<String>,
+    tags: HashSet<String>,
 }
 
 impl JapaneseStopTagsTokenFilterConfig {
-    pub fn new(stop_tags: HashSet<String>) -> Self {
+    pub fn new(tags: HashSet<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
-        for tag in stop_tags.iter() {
+        for tag in tags.iter() {
             let mut formatted_tag = vec!["*", "*", "*", "*"];
 
             let tag_array: Vec<&str> = tag.split(',').collect();
@@ -28,7 +28,7 @@ impl JapaneseStopTagsTokenFilterConfig {
         }
 
         Self {
-            stop_tags: formatted_tags,
+            tags: formatted_tags,
         }
     }
 
@@ -36,7 +36,7 @@ impl JapaneseStopTagsTokenFilterConfig {
         let tmp_config = serde_json::from_slice::<JapaneseStopTagsTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Ok(Self::new(tmp_config.stop_tags))
+        Ok(Self::new(tmp_config.tags))
     }
 }
 
@@ -70,11 +70,12 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
                 for (i, j) in details[0..tags_len].iter().enumerate() {
                     formatted_tags[i] = j;
                 }
-                !self.config.stop_tags.contains(&formatted_tags.join(","))
+                !self.config.tags.contains(&formatted_tags.join(","))
             } else {
                 false
             }
         });
+
         Ok(())
     }
 }
@@ -96,7 +97,7 @@ mod tests {
     fn test_japanese_stop_tags_token_filter_config_from_slice() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "接続詞",
                 "助詞",
                 "助詞,格助詞",
@@ -127,14 +128,14 @@ mod tests {
         "#;
         let config = JapaneseStopTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.stop_tags.len(), 25);
+        assert_eq!(config.tags.len(), 25);
     }
 
     #[test]
     fn test_japanese_stop_tagss_token_filter_from_slice() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "接続詞",
                 "助詞",
                 "助詞,格助詞",
@@ -172,7 +173,7 @@ mod tests {
     fn test_japanese_stop_tags_token_filter_apply() {
         let config_str = r#"
         {
-            "stop_tags": [
+            "tags": [
                 "接続詞",
                 "助詞",
                 "助詞,格助詞",

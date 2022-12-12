@@ -10,12 +10,12 @@ pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct StopWordsTokenFilterConfig {
-    stop_words: HashSet<String>,
+    words: HashSet<String>,
 }
 
 impl StopWordsTokenFilterConfig {
-    pub fn new(stop_words: HashSet<String>) -> Self {
-        Self { stop_words }
+    pub fn new(words: HashSet<String>) -> Self {
+        Self { words }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
@@ -44,7 +44,8 @@ impl TokenFilter for StopWordsTokenFilter {
     }
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.stop_words.contains(token.text.as_ref()));
+        tokens.retain(|token| !self.config.words.contains(token.text.as_ref()));
+
         Ok(())
     }
 }
@@ -64,7 +65,7 @@ mod tests {
     fn test_stop_words_token_filter_config_from_slice() {
         let config_str = r#"
         {
-            "stop_words": [
+            "words": [
                 "a",
                 "an",
                 "and",
@@ -103,14 +104,14 @@ mod tests {
         "#;
         let config = StopWordsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.stop_words.len(), 33);
+        assert_eq!(config.words.len(), 33);
     }
 
     #[test]
     fn test_stop_words_token_filter_from_slice() {
         let config_str = r#"
         {
-            "stop_words": [
+            "words": [
                 "a",
                 "an",
                 "and",
@@ -156,7 +157,7 @@ mod tests {
     fn test_stop_words_token_filter_apply() {
         let config_str = r#"
         {
-            "stop_words": [
+            "words": [
                 "a",
                 "an",
                 "and",

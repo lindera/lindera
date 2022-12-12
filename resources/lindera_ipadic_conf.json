@@ -15,9 +15,19 @@
     },
     "token_filters": [
         {
+            "kind": "japanese_compound_word",
+            "args": {
+                "kind": "ipadic",
+                "tags": [
+                    "名詞,数"
+                ],
+                "new_tag": "名詞,数"
+            }
+        },
+        {
             "kind": "japanese_stop_tags",
             "args": {
-                "stop_tags": [
+                "tags": [
                     "接続詞",
                     "助詞",
                     "助詞,格助詞",

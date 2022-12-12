@@ -10,13 +10,13 @@ pub const JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_keep_tags";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseKeepTagsTokenFilterConfig {
-    keep_tags: HashSet<String>,
+    tags: HashSet<String>,
 }
 
 impl JapaneseKeepTagsTokenFilterConfig {
-    pub fn new(keep_tags: HashSet<String>) -> Self {
+    pub fn new(tags: HashSet<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
-        for tag in keep_tags.iter() {
+        for tag in tags.iter() {
             let mut formatted_tag = vec!["*", "*", "*", "*"];
 
             let tag_array: Vec<&str> = tag.split(',').collect();
@@ -28,7 +28,7 @@ impl JapaneseKeepTagsTokenFilterConfig {
         }
 
         Self {
-            keep_tags: formatted_tags,
+            tags: formatted_tags,
         }
     }
 
@@ -36,7 +36,7 @@ impl JapaneseKeepTagsTokenFilterConfig {
         let tmp_config = serde_json::from_slice::<JapaneseKeepTagsTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Ok(Self::new(tmp_config.keep_tags))
+        Ok(Self::new(tmp_config.tags))
     }
 }
 
@@ -65,11 +65,12 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             if let Some(details) = &token.details {
-                self.config.keep_tags.contains(&details[0..4].join(","))
+                self.config.tags.contains(&details[0..4].join(","))
             } else {
                 false
             }
         });
+
         Ok(())
     }
 }
@@ -91,7 +92,7 @@ mod tests {
     fn test_japanese_keep_tags_token_filter_config_from_slice() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "名詞",
                 "名詞,一般",
                 "名詞,固有名詞",
@@ -136,14 +137,14 @@ mod tests {
         "#;
         let config = JapaneseKeepTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.keep_tags.len(), 39);
+        assert_eq!(config.tags.len(), 39);
     }
 
     #[test]
     fn test_japanese_keep_tagss_token_filter_from_slice() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "名詞",
                 "名詞,一般",
                 "名詞,固有名詞",
@@ -195,7 +196,7 @@ mod tests {
     fn test_japanese_keep_tags_token_filter_apply() {
         let config_str = r#"
         {
-            "keep_tags": [
+            "tags": [
                 "名詞",
                 "名詞,一般",
                 "名詞,固有名詞",

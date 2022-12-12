@@ -18,6 +18,9 @@ use crate::{
     error::LinderaErrorKind,
     token_filter::{
         japanese_base_form::{JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME},
+        japanese_compound_word::{
+            JapaneseCompoundWordTokenFilter, JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
+        },
         japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
@@ -59,6 +62,7 @@ impl Analyzer {
             .map(|token_filter| token_filter.name())
             .any(|name| {
                 name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
+                    || name == JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
                     || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
                     || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
                     || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
@@ -153,6 +157,11 @@ impl Analyzer {
                                 &args_bytes,
                             )?));
                         }
+                        JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(
+                                JapaneseCompoundWordTokenFilter::from_slice(&args_bytes)?,
+                            ));
+                        }
                         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(
                                 JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
@@ -222,19 +231,22 @@ impl Analyzer {
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
-
         let mut tmp_text = text.to_string();
 
         // Appy character filters.
         for character_filter in &self.character_filters {
             let (new_text, offsets, diffs) = character_filter.apply(&tmp_text)?;
 
-            // Record the length of the text after each character filter is applied.
-            text_len_vec.insert(0, new_text.len());
-            // Record the offsets of each character filter.
-            offsets_vec.insert(0, offsets);
-            // Record the diffs of each character filter.
-            diffs_vec.insert(0, diffs);
+            if !offsets.is_empty() {
+                // Record the offsets of each character filter.
+                offsets_vec.insert(0, offsets);
+
+                // Record the diffs of each character filter.
+                diffs_vec.insert(0, diffs);
+
+                // Record the length of the text after each character filter is applied.
+                text_len_vec.insert(0, new_text.len());
+            }
 
             tmp_text = new_text;
         }
@@ -281,6 +293,7 @@ impl Analyzer {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ipadic")]
     use crate::analyzer::Analyzer;
 
     #[test]
@@ -314,7 +327,7 @@ mod tests {
                 {
                     "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_tags": [
+                        "tags": [
                             "接続詞",
                             "助詞",
                             "助詞,格助詞",
@@ -386,9 +399,19 @@ mod tests {
             },
             "token_filters": [
                 {
+                    "kind": "japanese_compound_word",
+                    "args": {
+                        "kind": "ipadic",
+                        "tags": [
+                            "名詞,数",
+                            "名詞,接尾,助数詞"
+                        ]            
+                    }
+                },
+                {
                     "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_tags": [
+                        "tags": [
                             "接続詞",
                             "助詞",
                             "助詞,格助詞",
@@ -479,10 +502,20 @@ mod tests {
                 assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
             }
         }
+
+        {
+            let text = "お釣りは百三十四円です。".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["お釣り", "百三十四円"]
+            );
+        }
     }
 
     #[test]
-    // #[cfg(feature = "ipadic")]
+    #[cfg(feature = "ipadic")]
     fn test_analyzer_from_slice_wrong_config() {
         let config_str = r#"
         {
@@ -512,7 +545,7 @@ mod tests {
                 {
                     "kind": "japanese_stop_tags",
                     "args": {
-                        "stop_tags": [
+                        "tags": [
                             "接続詞",
                             "助詞",
                             "助詞,格助詞",
