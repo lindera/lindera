@@ -17,6 +17,7 @@
         {
             "kind": "japanese_compound_word",
             "args": {
+                "kind": "ipadic",
                 "tags": [
                     "名詞,数"
                 ],

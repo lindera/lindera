@@ -3,18 +3,24 @@ use std::{borrow::Cow, collections::HashSet, mem};
 use lindera_core::token_filter::TokenFilter;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
+fn default_kind() -> DictionaryKind {
+    DictionaryKind::IPADIC
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseCompoundWordTokenFilterConfig {
+    #[serde(default = "default_kind")]
+    kind: DictionaryKind,
     tags: HashSet<String>,
     new_tag: Option<String>,
 }
 
 impl JapaneseCompoundWordTokenFilterConfig {
-    pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
+    pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
         for tag in tags.iter() {
             let mut formatted_tag = vec!["*", "*", "*", "*"];
@@ -41,6 +47,7 @@ impl JapaneseCompoundWordTokenFilterConfig {
         };
 
         Self {
+            kind,
             tags: formatted_tags,
             new_tag: formatted_new_tag,
         }
@@ -50,7 +57,11 @@ impl JapaneseCompoundWordTokenFilterConfig {
         let tmp_config = serde_json::from_slice::<JapaneseCompoundWordTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Ok(Self::new(tmp_config.tags, tmp_config.new_tag))
+        Ok(Self::new(
+            tmp_config.kind,
+            tmp_config.tags,
+            tmp_config.new_tag,
+        ))
     }
 }
 
@@ -79,7 +90,16 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let mut new_tokens = Vec::new();
 
-        let mut formatted_details = vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*"];
+        let mut formatted_details = match self.config.kind {
+            #[cfg(feature = "ipadic")]
+            DictionaryKind::IPADIC => "複合語,*,*,*,*,*,*,*,*".split(',').collect::<Vec<&str>>(),
+            #[cfg(feature = "unidic")]
+            DictionaryKind::UniDic => "複合語,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*,*"
+                .split(',')
+                .collect::<Vec<&str>>(),
+            _ => "UNK".split(',').collect::<Vec<&str>>(),
+        };
+
         if let Some(new_tag_str) = &self.config.new_tag {
             let new_tag_array: Vec<&str> = new_tag_str.split(',').collect();
             for (i, j) in new_tag_array.iter().enumerate() {
@@ -153,6 +173,7 @@ mod tests {
     fn test_japanese_compound_word_token_filter_config_from_slice() {
         let config_str = r#"
         {
+            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
@@ -170,6 +191,7 @@ mod tests {
     fn test_japanese_compound_word_token_filter_from_slice() {
         let config_str = r#"
         {
+            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
@@ -186,6 +208,7 @@ mod tests {
     fn test_japanese_compound_word_token_filter_apply() {
         let config_str = r#"
         {
+            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
