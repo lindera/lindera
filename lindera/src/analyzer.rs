@@ -401,6 +401,7 @@ mod tests {
                 {
                     "kind": "japanese_compound_word",
                     "args": {
+                        "kind": "ipadic",
                         "tags": [
                             "名詞,数",
                             "名詞,接尾,助数詞"

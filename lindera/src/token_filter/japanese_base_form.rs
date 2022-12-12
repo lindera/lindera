@@ -9,13 +9,8 @@ use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
-fn default_kind() -> DictionaryKind {
-    DictionaryKind::IPADIC
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseBaseFormTokenFilterConfig {
-    #[serde(default = "default_kind")]
     kind: DictionaryKind,
 }
 

@@ -7,13 +7,8 @@ use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
-fn default_kind() -> DictionaryKind {
-    DictionaryKind::IPADIC
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseCompoundWordTokenFilterConfig {
-    #[serde(default = "default_kind")]
     kind: DictionaryKind,
     tags: HashSet<String>,
     new_tag: Option<String>,
