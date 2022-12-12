@@ -10,10 +10,11 @@ pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_wo
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseCompoundWordTokenFilterConfig {
     tags: HashSet<String>,
+    new_tag: Option<String>,
 }
 
 impl JapaneseCompoundWordTokenFilterConfig {
-    pub fn new(tags: HashSet<String>) -> Self {
+    pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
         for tag in tags.iter() {
             let mut formatted_tag = vec!["*", "*", "*", "*"];
@@ -26,8 +27,22 @@ impl JapaneseCompoundWordTokenFilterConfig {
             formatted_tags.insert(formatted_tag.join(","));
         }
 
+        let formatted_new_tag = if let Some(new_tag_str) = new_tag {
+            let mut formatted_tag = vec!["*", "*", "*", "*"];
+
+            let tag_array: Vec<&str> = new_tag_str.split(',').collect();
+            for (i, j) in tag_array.iter().enumerate() {
+                formatted_tag[i] = j;
+            }
+
+            Some(formatted_tag.join(","))
+        } else {
+            None
+        };
+
         Self {
             tags: formatted_tags,
+            new_tag: formatted_new_tag,
         }
     }
 
@@ -35,7 +50,7 @@ impl JapaneseCompoundWordTokenFilterConfig {
         let tmp_config = serde_json::from_slice::<JapaneseCompoundWordTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Ok(Self::new(tmp_config.tags))
+        Ok(Self::new(tmp_config.tags, tmp_config.new_tag))
     }
 }
 
@@ -64,6 +79,14 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let mut new_tokens = Vec::new();
 
+        let mut formatted_details = vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*"];
+        if let Some(new_tag_str) = &self.config.new_tag {
+            let new_tag_array: Vec<&str> = new_tag_str.split(',').collect();
+            for (i, j) in new_tag_array.iter().enumerate() {
+                formatted_details[i] = j;
+            }
+        }
+
         let mut compound_token_opt = None;
         for token in tokens.iter_mut() {
             if let Some(details) = &mut token.details {
@@ -85,17 +108,9 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                         let compound_token = compound_token_opt.take().unwrap();
                         compound_token_opt = Some(Token {
                             text: Cow::Owned(format!("{}{}", compound_token.text, token.text)),
-                            details: Some(vec![
-                                "複合語".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                                "*".to_string(),
-                            ]),
+                            details: Some(
+                                formatted_details.iter().map(|s| s.to_string()).collect(),
+                            ),
                             byte_start: compound_token.byte_start,
                             byte_end: token.byte_end,
                         });
@@ -141,7 +156,8 @@ mod tests {
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
-            ]
+            ],
+            "new_tag": "複合語"
         }
         "#;
         let config =
@@ -157,7 +173,8 @@ mod tests {
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
-            ]
+            ],
+            "new_tag": "複合語"
         }
         "#;
         let result = JapaneseCompoundWordTokenFilter::from_slice(config_str.as_bytes());
@@ -172,7 +189,8 @@ mod tests {
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
-            ]
+            ],
+            "new_tag": "複合語"
         }
         "#;
         let filter = JapaneseCompoundWordTokenFilter::from_slice(config_str.as_bytes()).unwrap();
@@ -299,5 +317,20 @@ mod tests {
         assert_eq!(tokens[1].text, "玉");
         assert_eq!(tokens[2].text, "を");
         assert_eq!(tokens[3].text, "拾う");
+
+        assert_eq!(
+            tokens[0].details,
+            Some(vec![
+                "複合語".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+            ])
+        );
     }
 }

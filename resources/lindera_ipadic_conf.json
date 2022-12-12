@@ -18,9 +18,9 @@
             "kind": "japanese_compound_word",
             "args": {
                 "tags": [
-                    "名詞,数",
-                    "名詞,接尾,助数詞"
-                ]
+                    "名詞,数"
+                ],
+                "new_tag": "名詞,数"
             }
         },
         {

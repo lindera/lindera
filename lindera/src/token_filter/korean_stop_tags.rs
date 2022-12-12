@@ -54,6 +54,7 @@ impl TokenFilter for KoreanStopTagsTokenFilter {
                 false
             }
         });
+
         Ok(())
     }
 }

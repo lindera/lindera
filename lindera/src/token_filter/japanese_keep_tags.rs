@@ -70,6 +70,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
                 false
             }
         });
+
         Ok(())
     }
 }

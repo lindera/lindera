@@ -75,6 +75,7 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
                 false
             }
         });
+
         Ok(())
     }
 }
