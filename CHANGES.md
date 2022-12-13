@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add Send trait to dynamic filters #275 @higumachan
 - Add Japanese compound word token filter #273 @mosuka
 - Added a function to return a name for each filter #272 @mosuka
 - Use flate2 for dictionary compression #271 @mosuka
