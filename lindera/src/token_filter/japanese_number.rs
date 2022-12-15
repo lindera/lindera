@@ -400,12 +400,18 @@ mod tests {
 
         {
             let s = "億";
-            assert_eq!(to_arabic_numerals(s), String::from_str("100000000").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("100000000").unwrap()
+            );
         }
 
         {
             let s = "兆";
-            assert_eq!(to_arabic_numerals(s), String::from_str("1000000000000").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("1000000000000").unwrap()
+            );
         }
 
         {
@@ -526,52 +532,82 @@ mod tests {
 
         {
             let s = "億二千三百四十五万六千七百八十九";
-            assert_eq!(to_arabic_numerals(s), String::from_str("123456789").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("123456789").unwrap()
+            );
         }
 
         {
             let s = "一億二千三百四十五万六千七百八十九";
-            assert_eq!(to_arabic_numerals(s), String::from_str("123456789").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("123456789").unwrap()
+            );
         }
 
         {
             let s = "十二億三千四百五十六万七千八百九十";
-            assert_eq!(to_arabic_numerals(s), String::from_str("1234567890").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("1234567890").unwrap()
+            );
         }
 
         {
             let s = "一十二億三千四百五十六万七千八百九十";
-            assert_eq!(to_arabic_numerals(s), String::from_str("1234567890").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("1234567890").unwrap()
+            );
         }
 
         {
             let s = "百二十三億四千五百六十七万八千九百一";
-            assert_eq!(to_arabic_numerals(s), String::from_str("12345678901").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("12345678901").unwrap()
+            );
         }
 
         {
             let s = "一百二十三億四千五百六十七万八千九百一";
-            assert_eq!(to_arabic_numerals(s), String::from_str("12345678901").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("12345678901").unwrap()
+            );
         }
 
         {
             let s = "千二百三十四億五千六百七十八万九千十二";
-            assert_eq!(to_arabic_numerals(s), String::from_str("123456789012").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("123456789012").unwrap()
+            );
         }
 
         {
             let s = "一千二百三十四億五千六百七十八万九千十二";
-            assert_eq!(to_arabic_numerals(s), String::from_str("123456789012").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("123456789012").unwrap()
+            );
         }
 
         {
             let s = "兆二千三百四十五億六千七百八十九万百二十三";
-            assert_eq!(to_arabic_numerals(s), String::from_str("1234567890123").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("1234567890123").unwrap()
+            );
         }
 
         {
             let s = "一兆二千三百四十五億六千七百八十九万百二十三";
-            assert_eq!(to_arabic_numerals(s), String::from_str("1234567890123").unwrap());
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("1234567890123").unwrap()
+            );
         }
 
         {
