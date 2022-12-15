@@ -25,6 +25,7 @@ use crate::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
         japanese_keep_tags::{JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME},
+        japanese_number::{JapaneseNumberTokenFilter, JAPANESE_NUMBER_TOKEN_FILTER_NAME},
         japanese_reading_form::{
             JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
         },
@@ -38,7 +39,7 @@ use crate::{
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
         lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
-        uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME}, japanese_number::{JAPANESE_NUMBER_TOKEN_FILTER_NAME, JapaneseNumberTokenFilter},
+        uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
     },
     tokenizer::Tokenizer,
     LinderaResult, Token,
