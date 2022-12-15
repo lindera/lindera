@@ -25,6 +25,12 @@
             }
         },
         {
+            "kind": "japanese_number",
+            "args": {
+                "kind": "ipadic"
+            }
+        },
+        {
             "kind": "japanese_stop_tags",
             "args": {
                 "tags": [

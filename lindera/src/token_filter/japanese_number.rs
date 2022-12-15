@@ -1,6 +1,4 @@
 use std::borrow::Cow;
-// #[cfg(any(feature = "ipadic", feature = "unidic",))]
-// use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
