@@ -25,6 +25,7 @@ use crate::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
         japanese_keep_tags::{JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME},
+        japanese_number::{JapaneseNumberTokenFilter, JAPANESE_NUMBER_TOKEN_FILTER_NAME},
         japanese_reading_form::{
             JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
         },
@@ -64,6 +65,7 @@ impl Analyzer {
                 name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
                     || name == JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
                     || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
+                    || name == JAPANESE_NUMBER_TOKEN_FILTER_NAME
                     || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
                     || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
                     || name == KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
@@ -169,6 +171,11 @@ impl Analyzer {
                         }
                         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(JapaneseKeepTagsTokenFilter::from_slice(
+                                &args_bytes,
+                            )?));
+                        }
+                        JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
+                            token_filters.push(Box::new(JapaneseNumberTokenFilter::from_slice(
                                 &args_bytes,
                             )?));
                         }
