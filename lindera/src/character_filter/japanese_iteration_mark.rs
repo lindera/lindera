@@ -388,5 +388,13 @@ mod tests {
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
         }
+
+        {
+            let text = "ところゞゝゝ馬鹿々々しく騒々しい";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
+            assert_eq!("ところどころ馬鹿馬鹿しく騒騒しい", filterd_text);
+            assert!(offsets.is_empty());
+            assert!(diffs.is_empty());
+        }
     }
 }
