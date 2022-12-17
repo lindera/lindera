@@ -91,7 +91,7 @@ impl CharacterDefinitions {
     }
 
     pub fn category_name(&self, category_id: CategoryId) -> &str {
-        &self.category_names[category_id.0 as usize]
+        &self.category_names[category_id.0]
     }
 
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {

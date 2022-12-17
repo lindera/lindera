@@ -148,17 +148,24 @@ impl JapaneseIterationMarkCharacterFilter {
         Self::new(config)
     }
 
-    fn normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &Vec<char>) -> String {
+    fn normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String {
         let mut normalized_str = String::new();
 
+        let first_iter_mark_pos = iter_marks.first_key_value().map(|(k, _)| *k).unwrap_or(0);
+        let pos_diff = if first_iter_mark_pos < iter_marks.len() {
+            first_iter_mark_pos
+        } else {
+            iter_marks.len()
+        };
+
         for (iter_mark_pos, iter_mark) in iter_marks.iter() {
-            let iter_mark_index = *iter_mark_pos - iter_marks.len();
-            match *iter_mark {
-                &KANJI_ITERATION_MARK if self.config.normalize_kanji => {
+            let iter_mark_index = *iter_mark_pos - pos_diff;
+            match *(*iter_mark) {
+                KANJI_ITERATION_MARK if self.config.normalize_kanji => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     normalized_str.push(*replacement);
                 }
-                &HIRAGANA_ITERATION_MARK if self.config.normalize_kana => {
+                HIRAGANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     if is_hiragana_dakuon(*replacement) {
                         // remove dakuon
@@ -169,12 +176,12 @@ impl JapaneseIterationMarkCharacterFilter {
                         normalized_str.push(*replacement);
                     }
                 }
-                &HIRAGANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
+                HIRAGANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     let replacement = HIRAGANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
                     normalized_str.push(*replacement);
                 }
-                &KATAKANA_ITERATION_MARK if self.config.normalize_kana => {
+                KATAKANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     if is_katakana_dakuon(*replacement) {
                         // remove dakuon
@@ -185,7 +192,7 @@ impl JapaneseIterationMarkCharacterFilter {
                         normalized_str.push(*replacement);
                     }
                 }
-                &KATAKANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
+                KATAKANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     let replacement = KATAKANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
                     normalized_str.push(*replacement);
@@ -224,7 +231,7 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
                     iter_marks.insert(i, c);
                 }
                 _ => {
-                    if iter_marks.len() > 0 {
+                    if !iter_marks.is_empty() {
                         filterd_text.push_str(&self.normalize(&iter_marks, &text_chars));
                         iter_marks.clear();
                     }
@@ -233,7 +240,7 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
             }
         }
 
-        if iter_marks.len() > 0 {
+        if !iter_marks.is_empty() {
             filterd_text.push_str(&self.normalize(&iter_marks, &text_chars));
         }
 
@@ -370,6 +377,14 @@ mod tests {
             let text = "ジヾ";
             let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
             assert_eq!("ジジ", filterd_text);
+            assert!(offsets.is_empty());
+            assert!(diffs.is_empty());
+        }
+
+        {
+            let text = "ところゞゝゝゞゝゝ";
+            let (filterd_text, offsets, diffs) = filter.apply(text).unwrap();
+            assert_eq!("ところどころゞゝゝ", filterd_text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
         }

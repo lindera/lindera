@@ -207,7 +207,7 @@ impl Analyzer {
                             )?));
                         }
                         KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(KoreanReadingFormTokenFilter::default()));
+                            token_filters.push(Box::<KoreanReadingFormTokenFilter>::default());
                         }
                         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(KoreanStopTagsTokenFilter::from_slice(
@@ -219,14 +219,14 @@ impl Analyzer {
                                 .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
                         }
                         LOWERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(LowercaseTokenFilter::default()));
+                            token_filters.push(Box::<LowercaseTokenFilter>::default());
                         }
                         STOP_WORDS_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
                         }
                         UPPERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(UppercaseTokenFilter::default()));
+                            token_filters.push(Box::<UppercaseTokenFilter>::default());
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
