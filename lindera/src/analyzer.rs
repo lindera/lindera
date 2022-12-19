@@ -9,6 +9,9 @@ use lindera_core::{
 
 use crate::{
     character_filter::{
+        japanese_iteration_mark::{
+            JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
+        },
         mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME},
         regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME},
         unicode_normalize::{
@@ -104,6 +107,11 @@ impl Analyzer {
                         .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
                     match character_filter_name {
+                        JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
+                            character_filters.push(Box::new(
+                                JapaneseIterationMarkCharacterFilter::from_slice(&arg_bytes)?,
+                            ));
+                        }
                         MAPPING_CHARACTER_FILTER_NAME => {
                             character_filters
                                 .push(Box::new(MappingCharacterFilter::from_slice(&arg_bytes)?));
@@ -199,7 +207,7 @@ impl Analyzer {
                             )?));
                         }
                         KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(KoreanReadingFormTokenFilter::default()));
+                            token_filters.push(Box::<KoreanReadingFormTokenFilter>::default());
                         }
                         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(Box::new(KoreanStopTagsTokenFilter::from_slice(
@@ -211,14 +219,14 @@ impl Analyzer {
                                 .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
                         }
                         LOWERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(LowercaseTokenFilter::default()));
+                            token_filters.push(Box::<LowercaseTokenFilter>::default());
                         }
                         STOP_WORDS_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
                         }
                         UPPERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(UppercaseTokenFilter::default()));
+                            token_filters.push(Box::<UppercaseTokenFilter>::default());
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
@@ -390,6 +398,13 @@ mod tests {
                     }
                 },
                 {
+                    "kind": "japanese_iteration_mark",
+                    "args": {
+                        "normalize_kanji": true,
+                        "normalize_kana": true
+                    }
+                },
+                {
                     "kind": "mapping",
                     "args": {
                         "mapping": {
@@ -517,6 +532,16 @@ mod tests {
             assert_eq!(
                 tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
                 vec!["お釣り", "百三十四円"]
+            );
+        }
+
+        {
+            let text = "ここは騒々しい".to_string();
+            let mut analyze_text = text.clone();
+            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            assert_eq!(
+                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                vec!["ここ", "騒騒しい"]
             );
         }
     }

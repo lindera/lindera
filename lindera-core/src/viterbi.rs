@@ -189,7 +189,7 @@ impl Lattice {
         for start in 0..len {
             // No arc is ending here.
             // No need to check if a valid word starts here.
-            if self.ends_at[start as usize].is_empty() {
+            if self.ends_at[start].is_empty() {
                 continue;
             }
 

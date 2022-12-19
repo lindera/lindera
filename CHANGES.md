@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add Japanese iteration mark character filter #277 @mosuka
+- Add Japanese number token filter #276 @mosuka
 - Add Send trait to dynamic filters #275 @higumachan
 - Add Japanese compound word token filter #273 @mosuka
 - Added a function to return a name for each filter #272 @mosuka
