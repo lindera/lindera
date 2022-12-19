@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.19.0 (2022-12-19)
+- Bump up version to 0.19.0 #278 @mosuka
 - Add Japanese iteration mark character filter #277 @mosuka
 - Add Japanese number token filter #276 @mosuka
 - Add Send trait to dynamic filters #275 @higumachan
