@@ -6,6 +6,7 @@ use crate::{LinderaResult, Token};
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
+#[derive(Clone, Debug)]
 pub struct UppercaseTokenFilter {}
 
 impl UppercaseTokenFilter {

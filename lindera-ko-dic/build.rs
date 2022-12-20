@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let source_dict_file_path = resources_dir_path.join(dict_file_name);
 
         // Decompress a tarball
-        let mut tar_gz = File::open(&source_dict_file_path)?;
+        let mut tar_gz = File::open(source_dict_file_path)?;
         let mut buffer = Vec::new();
         tar_gz.read_to_end(&mut buffer)?;
         let cursor = Cursor::new(buffer);

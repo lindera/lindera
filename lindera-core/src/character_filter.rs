@@ -1,8 +1,18 @@
 use crate::LinderaResult;
 
-pub trait CharacterFilter {
+pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;
     fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)>;
+}
+
+pub trait CharacterFilterClone {
+    fn box_clone(&self) -> Box<dyn CharacterFilter + 'static + Send + Sync>;
+}
+
+impl<T: CharacterFilter + Clone + 'static> CharacterFilterClone for T {
+    fn box_clone(&self) -> Box<dyn CharacterFilter + 'static + Send + Sync> {
+        Box::new(self.clone())
+    }
 }
 
 pub fn add_offset_diff(offsets: &mut Vec<usize>, diffs: &mut Vec<i64>, offset: usize, diff: i64) {

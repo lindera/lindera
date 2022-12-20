@@ -6,6 +6,7 @@ use crate::{LinderaResult, Token};
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
+#[derive(Clone, Debug)]
 pub struct LowercaseTokenFilter {}
 
 impl LowercaseTokenFilter {
