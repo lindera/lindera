@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Allow cloning of character filters, token filters and analyzer #279 @mosuka
+
 ## 0.19.0 (2022-12-19)
 - Bump up version to 0.19.0 #278 @mosuka
 - Add Japanese iteration mark character filter #277 @mosuka

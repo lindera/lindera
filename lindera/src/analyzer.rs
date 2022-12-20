@@ -48,6 +48,7 @@ use crate::{
     LinderaResult, Token,
 };
 
+// #[derive(Clone)]
 pub struct Analyzer {
     character_filters: Vec<Box<dyn CharacterFilter + Send>>,
     tokenizer: Tokenizer,
@@ -306,6 +307,27 @@ impl Analyzer {
     }
 }
 
+impl Clone for Analyzer {
+    fn clone(&self) -> Self {
+        let mut character_filters: Vec<Box<(dyn CharacterFilter + Send + 'static)>> = Vec::new();
+        for character_filter in self.character_filters.iter() {
+            character_filters.push(character_filter.box_clone());
+        }
+
+        let mut token_filters: Vec<Box<(dyn TokenFilter + Send + 'static)>> = Vec::new();
+        for token_filter in self.token_filters.iter() {
+            token_filters.push(token_filter.box_clone());
+        }
+
+        Analyzer {
+            character_filters,
+            tokenizer: self.tokenizer.clone(),
+            token_filters,
+            with_details: self.with_details,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "ipadic")]
@@ -383,6 +405,90 @@ mod tests {
         let result = Analyzer::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_ipadic_analyzer_clone() {
+        let config_str = r#"
+        {
+            "character_filters": [
+                {
+                    "kind": "unicode_normalize",
+                    "args": {
+                        "kind": "nfkc"
+                    }
+                },
+                {
+                    "kind": "mapping",
+                    "args": {
+                        "mapping": {
+                            "リンデラ": "Lindera"
+                        }
+                    }
+                }
+            ],
+            "tokenizer": {
+                "dictionary": {
+                    "kind": "ipadic"
+                },
+                "mode": "normal"
+            },
+            "token_filters": [
+                {
+                    "kind": "japanese_stop_tags",
+                    "args": {
+                        "tags": [
+                            "接続詞",
+                            "助詞",
+                            "助詞,格助詞",
+                            "助詞,格助詞,一般",
+                            "助詞,格助詞,引用",
+                            "助詞,格助詞,連語",
+                            "助詞,係助詞",
+                            "助詞,副助詞",
+                            "助詞,間投助詞",
+                            "助詞,並立助詞",
+                            "助詞,終助詞",
+                            "助詞,副助詞／並立助詞／終助詞",
+                            "助詞,連体化",
+                            "助詞,副詞化",
+                            "助詞,特殊",
+                            "助動詞",
+                            "記号",
+                            "記号,一般",
+                            "記号,読点",
+                            "記号,句点",
+                            "記号,空白",
+                            "記号,括弧閉",
+                            "その他,間投",
+                            "フィラー",
+                            "非言語音"
+                        ]
+                    }
+                },
+                {
+                    "kind": "japanese_katakana_stem",
+                    "args": {
+                        "min": 3
+                    }
+                }
+            ]
+        }
+        "#;
+        let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
+
+        let cloned_analyzer = analyzer.clone();
+
+        assert_eq!(
+            analyzer.character_filters.len(),
+            cloned_analyzer.character_filters.len()
+        );
+        assert_eq!(
+            analyzer.token_filters.len(),
+            cloned_analyzer.token_filters.len()
+        );
+        assert_eq!(analyzer.with_details, cloned_analyzer.with_details);
     }
 
     #[test]

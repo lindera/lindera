@@ -62,7 +62,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         let source_dict_file_path = resources_dir_path.join(dict_file_name);
 
         // Unzip
-        let zip_file = File::open(&source_dict_file_path)?;
+        let zip_file = File::open(source_dict_file_path)?;
         let mut archive = ZipArchive::new(zip_file)?;
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;

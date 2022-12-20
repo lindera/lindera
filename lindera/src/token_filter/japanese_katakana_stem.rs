@@ -30,6 +30,7 @@ impl JapaneseKatakanaStemTokenFilterConfig {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct JapaneseKatakanaStemTokenFilter {
     config: JapaneseKatakanaStemTokenFilterConfig,
 }

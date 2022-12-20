@@ -22,6 +22,7 @@ impl LengthTokenFilterConfig {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct LengthTokenFilter {
     config: LengthTokenFilterConfig,
 }
