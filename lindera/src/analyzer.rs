@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, fs, path::Path};
 
 use serde_json::Value;
 
@@ -57,40 +57,22 @@ pub struct Analyzer {
 }
 
 impl Analyzer {
-    pub fn new(
-        character_filters: Vec<Box<dyn CharacterFilter + Send>>,
-        tokenizer: Tokenizer,
-        token_filters: Vec<Box<dyn TokenFilter + Send>>,
-    ) -> Self {
-        let with_details = token_filters
-            .iter()
-            .map(|token_filter| token_filter.name())
-            .any(|name| {
-                name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
-                    || name == JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
-                    || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
-                    || name == JAPANESE_NUMBER_TOKEN_FILTER_NAME
-                    || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
-                    || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
-                    || name == KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
-                    || name == KOREAN_READING_FORM_TOKEN_FILTER_NAME
-                    || name == KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
-            });
+    pub fn from_file(path: &Path) -> LinderaResult<Self> {
+        let bytes = fs::read(path).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-        Self {
-            character_filters,
-            tokenizer,
-            token_filters,
-            with_details,
-        }
+        Self::from_slice(&bytes)
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         let args = serde_json::from_slice::<Value>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
+        Self::from_value(&args)
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
         let mut character_filters: Vec<Box<dyn CharacterFilter + Send>> = Vec::new();
-        let character_filter_settings = args["character_filters"].as_array();
+        let character_filter_settings = value["character_filters"].as_array();
         if let Some(character_filter_settings) = character_filter_settings {
             for character_filter_setting in character_filter_settings {
                 let character_filter_name = character_filter_setting["kind"].as_str();
@@ -137,7 +119,7 @@ impl Analyzer {
             }
         }
 
-        let args_value = args["tokenizer"].as_object().ok_or_else(|| {
+        let args_value = value["tokenizer"].as_object().ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing tokenizer config."))
         })?;
         let arg_bytes = serde_json::to_vec(args_value)
@@ -148,7 +130,7 @@ impl Analyzer {
         let tokenizer = Tokenizer::with_config(tokenizer_config)?;
 
         let mut token_filters: Vec<Box<dyn TokenFilter + Send>> = Vec::new();
-        let token_filter_settings = args["token_filters"].as_array();
+        let token_filter_settings = value["token_filters"].as_array();
         if let Some(token_filter_settings) = token_filter_settings {
             for token_filter_setting in token_filter_settings {
                 let token_filter_name = token_filter_setting["kind"].as_str();
@@ -243,7 +225,35 @@ impl Analyzer {
         Ok(Self::new(character_filters, tokenizer, token_filters))
     }
 
-    pub fn analyze(&self, text: &str) -> crate::LinderaResult<Vec<crate::Token>> {
+    fn new(
+        character_filters: Vec<Box<dyn CharacterFilter + Send>>,
+        tokenizer: Tokenizer,
+        token_filters: Vec<Box<dyn TokenFilter + Send>>,
+    ) -> Self {
+        let with_details = token_filters
+            .iter()
+            .map(|token_filter| token_filter.name())
+            .any(|name| {
+                name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
+                    || name == JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
+                    || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
+                    || name == JAPANESE_NUMBER_TOKEN_FILTER_NAME
+                    || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
+                    || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
+                    || name == KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
+                    || name == KOREAN_READING_FORM_TOKEN_FILTER_NAME
+                    || name == KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
+            });
+
+        Self {
+            character_filters,
+            tokenizer,
+            token_filters,
+            with_details,
+        }
+    }
+
+    pub fn analyze<'a>(&self, text: &'a str) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();

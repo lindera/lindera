@@ -1,5 +1,5 @@
 #[cfg(feature = "ipadic")]
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 #[cfg(feature = "ipadic")]
 use lindera::analyzer::Analyzer;
@@ -12,9 +12,7 @@ fn main() -> LinderaResult<()> {
             .join("../resources")
             .join("lindera_ipadic_conf.json");
 
-        let config_bytes = fs::read(path).unwrap();
-
-        let analyzer = Analyzer::from_slice(&config_bytes).unwrap();
+        let analyzer = Analyzer::from_file(&path).unwrap();
 
         let mut text =
             "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
