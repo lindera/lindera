@@ -225,7 +225,7 @@ impl Analyzer {
         Ok(Self::new(character_filters, tokenizer, token_filters))
     }
 
-    fn new(
+    pub fn new(
         character_filters: Vec<Box<dyn CharacterFilter + Send>>,
         tokenizer: Tokenizer,
         token_filters: Vec<Box<dyn TokenFilter + Send>>,
