@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Make new() to the public #282 @mosuka
+
 ## 0.19.1 (2022-12-22)
 - Bump up version to 0.19.1 #281 @mosuka
 - Add lifetime #280 @mosuka
