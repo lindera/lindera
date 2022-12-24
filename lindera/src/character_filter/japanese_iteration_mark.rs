@@ -1,7 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use lindera_core::character_filter::CharacterFilter;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
@@ -13,16 +12,6 @@ const HIRAGANA_ITERATION_MARK: char = 'ゝ';
 const HIRAGANA_DAKUON_ITERATION_MARK: char = 'ゞ';
 const KATAKANA_ITERATION_MARK: char = 'ヽ';
 const KATAKANA_DAKUON_ITERATION_MARK: char = 'ヾ';
-
-fn hiragana_has_dakuon(c: &char) -> bool {
-    let codepoint = *c as u32;
-    // か…ぢ
-    (codepoint >= 0x304b && codepoint <= 0x3062 && codepoint % 2 == 0) ||
-    // つ…ど
-    (codepoint >= 0x3064 && codepoint <= 0x3069 && codepoint % 2 == 1) ||
-    // は…ぽ
-    (codepoint >= 0x306f && codepoint <= 0x307d && codepoint % 3 == 1)
-}
 
 fn hiragana_add_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
@@ -46,16 +35,6 @@ fn hiragana_remove_dakuon(c: &char) -> char {
     }
 }
 
-fn katakana_has_dakuon(c: &char) -> bool {
-    let codepoint = *c as u32;
-    // カ…ヂ
-    (codepoint >= 0x30ab && codepoint <= 0x30c2 && codepoint % 2 == 0) ||
-    // ツ…ド
-    (codepoint >= 0x30c4 && codepoint <= 0x30c9 && codepoint % 2 == 1) ||
-    // ハ…ポ
-    (codepoint >= 0x30cf && codepoint <= 0x30dd && codepoint % 3 == 1)
-}
-
 fn katakana_add_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
     match codepoint {
@@ -74,105 +53,6 @@ fn katakana_remove_dakuon(c: &char) -> char {
         0x30cf..=0x30dd if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         _ => *c,
     }
-}
-
-static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
-    let mut m = HashMap::new();
-    m.insert('か', 'が');
-    m.insert('が', 'が');
-    m.insert('き', 'ぎ');
-    m.insert('ぎ', 'ぎ');
-    m.insert('く', 'ぐ');
-    m.insert('ぐ', 'ぐ');
-    m.insert('け', 'げ');
-    m.insert('げ', 'げ');
-    m.insert('こ', 'ご');
-    m.insert('ご', 'ご');
-    m.insert('さ', 'ざ');
-    m.insert('ざ', 'ざ');
-    m.insert('し', 'じ');
-    m.insert('じ', 'じ');
-    m.insert('す', 'ず');
-    m.insert('ず', 'ず');
-    m.insert('せ', 'ぜ');
-    m.insert('ぜ', 'ぜ');
-    m.insert('そ', 'ぞ');
-    m.insert('ぞ', 'ぞ');
-    m.insert('た', 'だ');
-    m.insert('だ', 'だ');
-    m.insert('ち', 'ぢ');
-    m.insert('ぢ', 'ぢ');
-    m.insert('つ', 'づ');
-    m.insert('づ', 'づ');
-    m.insert('て', 'で');
-    m.insert('で', 'で');
-    m.insert('と', 'ど');
-    m.insert('ど', 'ど');
-    m.insert('は', 'ば');
-    m.insert('ば', 'ば');
-    m.insert('ひ', 'び');
-    m.insert('び', 'び');
-    m.insert('ふ', 'ぶ');
-    m.insert('ぶ', 'ぶ');
-    m.insert('へ', 'べ');
-    m.insert('べ', 'べ');
-    m.insert('ほ', 'ぼ');
-    m.insert('ぼ', 'ぼ');
-    m
-});
-
-static KATAKANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
-    let mut m = HashMap::new();
-    m.insert('カ', 'ガ');
-    m.insert('ガ', 'ガ');
-    m.insert('キ', 'ギ');
-    m.insert('ギ', 'ギ');
-    m.insert('ク', 'グ');
-    m.insert('グ', 'グ');
-    m.insert('ケ', 'ゲ');
-    m.insert('ゲ', 'ゲ');
-    m.insert('コ', 'ゴ');
-    m.insert('ゴ', 'ゴ');
-    m.insert('サ', 'ザ');
-    m.insert('ザ', 'ザ');
-    m.insert('シ', 'ジ');
-    m.insert('ジ', 'ジ');
-    m.insert('ス', 'ズ');
-    m.insert('ズ', 'ズ');
-    m.insert('セ', 'ゼ');
-    m.insert('ゼ', 'ゼ');
-    m.insert('ソ', 'ゾ');
-    m.insert('ゾ', 'ゾ');
-    m.insert('タ', 'ダ');
-    m.insert('ダ', 'ダ');
-    m.insert('チ', 'ヂ');
-    m.insert('ヂ', 'ヂ');
-    m.insert('ツ', 'ヅ');
-    m.insert('ヅ', 'ヅ');
-    m.insert('テ', 'デ');
-    m.insert('デ', 'デ');
-    m.insert('ト', 'ド');
-    m.insert('ド', 'ド');
-    m.insert('ハ', 'バ');
-    m.insert('バ', 'バ');
-    // m.insert('パ', 'バ');
-    m.insert('ヒ', 'ビ');
-    m.insert('ビ', 'ビ');
-    m.insert('フ', 'ブ');
-    m.insert('ブ', 'ブ');
-    m.insert('ヘ', 'ベ');
-    m.insert('ベ', 'ベ');
-    m.insert('ホ', 'ボ');
-    m.insert('ボ', 'ボ');
-    m
-});
-
-fn is_hiragana_dakuon(c: char) -> bool {
-    HIRAGANA_DAKUON_MAP.values().any(|&v| v == c)
-}
-
-fn is_katakana_dakuon(c: char) -> bool {
-    KATAKANA_DAKUON_MAP.values().any(|&v| v == c)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -298,16 +178,125 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
+    use std::collections::HashMap;
 
     use lindera_core::character_filter::CharacterFilter;
+    use once_cell::sync::Lazy;
 
     use crate::character_filter::japanese_iteration_mark::{
-        hiragana_add_dakuon, hiragana_has_dakuon, hiragana_remove_dakuon, is_hiragana_dakuon,
-        katakana_add_dakuon, katakana_has_dakuon, katakana_remove_dakuon,
+        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
         JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
-        HIRAGANA_DAKUON_MAP, KATAKANA_DAKUON_MAP,
     };
+
+    fn hiragana_has_dakuon(c: &char) -> bool {
+        let codepoint = *c as u32;
+        // か…ぢ
+        (codepoint >= 0x304b && codepoint <= 0x3062 && codepoint % 2 == 0) ||
+        // つ…ど
+        (codepoint >= 0x3064 && codepoint <= 0x3069 && codepoint % 2 == 1) ||
+        // は…ぽ
+        (codepoint >= 0x306f && codepoint <= 0x307d && codepoint % 3 == 1)
+    }
+
+    fn katakana_has_dakuon(c: &char) -> bool {
+        let codepoint = *c as u32;
+        // カ…ヂ
+        (codepoint >= 0x30ab && codepoint <= 0x30c2 && codepoint % 2 == 0) ||
+        // ツ…ド
+        (codepoint >= 0x30c4 && codepoint <= 0x30c9 && codepoint % 2 == 1) ||
+        // ハ…ポ
+        (codepoint >= 0x30cf && codepoint <= 0x30dd && codepoint % 3 == 1)
+    }
+
+    static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
+        let mut m = HashMap::new();
+        m.insert('か', 'が');
+        m.insert('が', 'が');
+        m.insert('き', 'ぎ');
+        m.insert('ぎ', 'ぎ');
+        m.insert('く', 'ぐ');
+        m.insert('ぐ', 'ぐ');
+        m.insert('け', 'げ');
+        m.insert('げ', 'げ');
+        m.insert('こ', 'ご');
+        m.insert('ご', 'ご');
+        m.insert('さ', 'ざ');
+        m.insert('ざ', 'ざ');
+        m.insert('し', 'じ');
+        m.insert('じ', 'じ');
+        m.insert('す', 'ず');
+        m.insert('ず', 'ず');
+        m.insert('せ', 'ぜ');
+        m.insert('ぜ', 'ぜ');
+        m.insert('そ', 'ぞ');
+        m.insert('ぞ', 'ぞ');
+        m.insert('た', 'だ');
+        m.insert('だ', 'だ');
+        m.insert('ち', 'ぢ');
+        m.insert('ぢ', 'ぢ');
+        m.insert('つ', 'づ');
+        m.insert('づ', 'づ');
+        m.insert('て', 'で');
+        m.insert('で', 'で');
+        m.insert('と', 'ど');
+        m.insert('ど', 'ど');
+        m.insert('は', 'ば');
+        m.insert('ば', 'ば');
+        m.insert('ひ', 'び');
+        m.insert('び', 'び');
+        m.insert('ふ', 'ぶ');
+        m.insert('ぶ', 'ぶ');
+        m.insert('へ', 'べ');
+        m.insert('べ', 'べ');
+        m.insert('ほ', 'ぼ');
+        m.insert('ぼ', 'ぼ');
+        m
+    });
+
+    static KATAKANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
+        let mut m = HashMap::new();
+        m.insert('カ', 'ガ');
+        m.insert('ガ', 'ガ');
+        m.insert('キ', 'ギ');
+        m.insert('ギ', 'ギ');
+        m.insert('ク', 'グ');
+        m.insert('グ', 'グ');
+        m.insert('ケ', 'ゲ');
+        m.insert('ゲ', 'ゲ');
+        m.insert('コ', 'ゴ');
+        m.insert('ゴ', 'ゴ');
+        m.insert('サ', 'ザ');
+        m.insert('ザ', 'ザ');
+        m.insert('シ', 'ジ');
+        m.insert('ジ', 'ジ');
+        m.insert('ス', 'ズ');
+        m.insert('ズ', 'ズ');
+        m.insert('セ', 'ゼ');
+        m.insert('ゼ', 'ゼ');
+        m.insert('ソ', 'ゾ');
+        m.insert('ゾ', 'ゾ');
+        m.insert('タ', 'ダ');
+        m.insert('ダ', 'ダ');
+        m.insert('チ', 'ヂ');
+        m.insert('ヂ', 'ヂ');
+        m.insert('ツ', 'ヅ');
+        m.insert('ヅ', 'ヅ');
+        m.insert('テ', 'デ');
+        m.insert('デ', 'デ');
+        m.insert('ト', 'ド');
+        m.insert('ド', 'ド');
+        m.insert('ハ', 'バ');
+        m.insert('バ', 'バ');
+        m.insert('ヒ', 'ビ');
+        m.insert('ビ', 'ビ');
+        m.insert('フ', 'ブ');
+        m.insert('ブ', 'ブ');
+        m.insert('ヘ', 'ベ');
+        m.insert('ベ', 'ベ');
+        m.insert('ホ', 'ボ');
+        m.insert('ボ', 'ボ');
+        m
+    });
 
     #[test]
     fn test_japanese_iteration_mark_character_filter_config_from_slice() {
@@ -519,73 +508,5 @@ mod tests {
                 assert_ne!(hiragana_remove_dakuon(v), *v);
             }
         }
-    }
-
-    #[test]
-    #[ignore]
-    fn bench_hiragana_detection() {
-        let chars = HIRAGANA_DAKUON_MAP.keys().collect::<Vec<_>>();
-        let iters = 100000;
-
-        // new
-        let start = Instant::now();
-        let mut results = vec![];
-
-        for _ in 0..iters {
-            for c in chars.iter() {
-                results.push(hiragana_has_dakuon(c));
-            }
-        }
-
-        let elapsed = start.elapsed();
-        println!("new: {}ms {}", elapsed.as_millis(), results.len());
-
-        // old
-        let start = Instant::now();
-        let mut results = vec![];
-
-        for _ in 0..iters {
-            for c in chars.iter() {
-                results.push(is_hiragana_dakuon(**c));
-            }
-        }
-
-        let elapsed = start.elapsed();
-        println!("old: {}ms {}", elapsed.as_millis(), results.len());
-    }
-
-    #[test]
-    #[ignore]
-    fn bench_hiragana_conversion() {
-        let chars = HIRAGANA_DAKUON_MAP.keys().collect::<Vec<_>>();
-        let iters = 100000;
-
-        // new
-        let start = Instant::now();
-        let mut results_a = vec![];
-
-        for _ in 0..iters {
-            for c in chars.iter() {
-                results_a.push(hiragana_add_dakuon(c));
-            }
-        }
-
-        let elapsed = start.elapsed();
-        println!("new: {}ms {}", elapsed.as_millis(), results_a.len());
-
-        // old
-        let start = Instant::now();
-        let mut results_b = vec![];
-
-        for _ in 0..iters {
-            for c in chars.iter() {
-                results_b.push(*HIRAGANA_DAKUON_MAP.get(*c).unwrap());
-            }
-        }
-
-        let elapsed = start.elapsed();
-        println!("old: {}ms {}", elapsed.as_millis(), results_b.len());
-
-        assert_eq!(results_a, results_b);
     }
 }
