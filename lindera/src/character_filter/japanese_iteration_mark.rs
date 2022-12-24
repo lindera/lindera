@@ -14,6 +14,68 @@ const HIRAGANA_DAKUON_ITERATION_MARK: char = 'ゞ';
 const KATAKANA_ITERATION_MARK: char = 'ヽ';
 const KATAKANA_DAKUON_ITERATION_MARK: char = 'ヾ';
 
+fn hiragana_has_dakuon(c: &char) -> bool {
+    let codepoint = *c as u32;
+    // か…ぢ
+    (codepoint >= 0x304b && codepoint <= 0x3062 && codepoint % 2 == 0) ||
+    // つ…ど
+    (codepoint >= 0x3064 && codepoint <= 0x3069 && codepoint % 2 == 1) ||
+    // は…ぽ
+    (codepoint >= 0x306f && codepoint <= 0x307d && codepoint % 3 == 1)
+}
+
+fn hiragana_add_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    match codepoint {
+        0x304b..=0x3062 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x3064..=0x3069 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x306f..=0x307d if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        _ => *c,
+    }
+}
+
+fn hiragana_remove_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    match codepoint {
+        0x304b..=0x3062 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x3064..=0x3069 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x306f..=0x307d if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        _ => *c,
+    }
+}
+
+fn katakana_has_dakuon(c: &char) -> bool {
+    let codepoint = *c as u32;
+    // カ…ヂ
+    (codepoint >= 0x30ab && codepoint <= 0x30c2 && codepoint % 2 == 0) ||
+    // ツ…ド
+    (codepoint >= 0x30c4 && codepoint <= 0x30c9 && codepoint % 2 == 1) ||
+    // ハ…ポ
+    (codepoint >= 0x30cf && codepoint <= 0x30dd && codepoint % 3 == 1)
+}
+
+fn katakana_add_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    match codepoint {
+        0x30ab..=0x30c2 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x30c4..=0x30c9 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x30cf..=0x30dd if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        _ => *c,
+    }
+}
+
+fn katakana_remove_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    match codepoint {
+        0x30ab..=0x30c2 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x30c4..=0x30c9 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x30cf..=0x30dd if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        _ => *c,
+    }
+}
+
 static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
     let mut m = HashMap::new();
     m.insert('か', 'が');
@@ -93,7 +155,7 @@ static KATAKANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
     m.insert('ド', 'ド');
     m.insert('ハ', 'バ');
     m.insert('バ', 'バ');
-    m.insert('パ', 'バ');
+    // m.insert('パ', 'バ');
     m.insert('ヒ', 'ビ');
     m.insert('ビ', 'ビ');
     m.insert('フ', 'ブ');
@@ -167,35 +229,21 @@ impl JapaneseIterationMarkCharacterFilter {
                 }
                 HIRAGANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    if is_hiragana_dakuon(*replacement) {
-                        // remove dakuon
-                        let replacement =
-                            char::from_u32(*replacement as u32 - 1).unwrap_or(*replacement);
-                        normalized_str.push(replacement);
-                    } else {
-                        normalized_str.push(*replacement);
-                    }
+                    normalized_str.push(hiragana_remove_dakuon(replacement));
                 }
                 HIRAGANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    let replacement = HIRAGANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
-                    normalized_str.push(*replacement);
+                    let replacement = hiragana_add_dakuon(replacement);
+                    normalized_str.push(replacement);
                 }
                 KATAKANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    if is_katakana_dakuon(*replacement) {
-                        // remove dakuon
-                        let replacement =
-                            char::from_u32(*replacement as u32 - 1).unwrap_or(*replacement);
-                        normalized_str.push(replacement);
-                    } else {
-                        normalized_str.push(*replacement);
-                    }
+                    normalized_str.push(katakana_remove_dakuon(replacement));
                 }
                 KATAKANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    let replacement = KATAKANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
-                    normalized_str.push(*replacement);
+                    let replacement = katakana_add_dakuon(replacement);
+                    normalized_str.push(replacement);
                 }
                 _ => {
                     normalized_str.push(**iter_mark);
@@ -250,10 +298,15 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use lindera_core::character_filter::CharacterFilter;
 
     use crate::character_filter::japanese_iteration_mark::{
+        hiragana_add_dakuon, hiragana_has_dakuon, hiragana_remove_dakuon, is_hiragana_dakuon,
+        katakana_add_dakuon, katakana_has_dakuon, katakana_remove_dakuon,
         JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+        HIRAGANA_DAKUON_MAP, KATAKANA_DAKUON_MAP,
     };
 
     #[test]
@@ -396,5 +449,143 @@ mod tests {
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
         }
+    }
+
+    #[test]
+    fn test_katakana_has_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert!(katakana_has_dakuon(v));
+            } else {
+                assert!(!katakana_has_dakuon(k));
+                assert!(katakana_has_dakuon(v));
+            }
+        }
+    }
+
+    #[test]
+    fn test_katakana_add_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert_eq!(katakana_add_dakuon(v), *v);
+            } else {
+                assert_eq!(katakana_add_dakuon(k), *v, "{k}->{v}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_katakana_remove_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k != *v {
+                assert_eq!(katakana_remove_dakuon(v), *k);
+                assert_eq!(katakana_remove_dakuon(k), *k);
+            } else {
+                assert_ne!(katakana_remove_dakuon(v), *v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_has_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert!(hiragana_has_dakuon(v));
+            } else {
+                assert!(!hiragana_has_dakuon(k));
+                assert!(hiragana_has_dakuon(v));
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_add_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert_eq!(hiragana_add_dakuon(v), *v);
+            } else {
+                assert_eq!(hiragana_add_dakuon(k), *v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_remove_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k != *v {
+                assert_eq!(hiragana_remove_dakuon(v), *k);
+                assert_eq!(hiragana_remove_dakuon(k), *k);
+            } else {
+                assert_ne!(hiragana_remove_dakuon(v), *v);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn bm_detection() {
+        let chars = HIRAGANA_DAKUON_MAP.keys().collect::<Vec<_>>();
+        let iters = 100000;
+
+        // new
+        let start = Instant::now();
+        let mut results = vec![];
+
+        for _ in 0..iters {
+            for c in chars.iter() {
+                results.push(hiragana_has_dakuon(c));
+            }
+        }
+
+        let elapsed = start.elapsed();
+        println!("new: {}ms {}", elapsed.as_millis(), results.len());
+
+        // old
+        let start = Instant::now();
+        let mut results = vec![];
+
+        for _ in 0..iters {
+            for c in chars.iter() {
+                results.push(is_hiragana_dakuon(**c));
+            }
+        }
+
+        let elapsed = start.elapsed();
+        println!("old: {}ms {}", elapsed.as_millis(), results.len());
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_hiragana_conversion() {
+        let chars = HIRAGANA_DAKUON_MAP.keys().collect::<Vec<_>>();
+        let iters = 100000;
+
+        // new
+        let start = Instant::now();
+        let mut results_a = vec![];
+
+        for _ in 0..iters {
+            for c in chars.iter() {
+                results_a.push(hiragana_add_dakuon(c));
+            }
+        }
+
+        let elapsed = start.elapsed();
+        println!("new: {}ms {}", elapsed.as_millis(), results_a.len());
+
+        // old
+        let start = Instant::now();
+        let mut results_b = vec![];
+
+        for _ in 0..iters {
+            for c in chars.iter() {
+                results_b.push(*HIRAGANA_DAKUON_MAP.get(*c).unwrap());
+            }
+        }
+
+        let elapsed = start.elapsed();
+        println!("old: {}ms {}", elapsed.as_millis(), results_b.len());
+
+        assert_eq!(results_a, results_b);
     }
 }
