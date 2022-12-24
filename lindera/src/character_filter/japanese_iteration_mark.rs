@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn bm_detection() {
+    fn bench_hiragana_detection() {
         let chars = HIRAGANA_DAKUON_MAP.keys().collect::<Vec<_>>();
         let iters = 100000;
 
