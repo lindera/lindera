@@ -1,7 +1,6 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use lindera_core::character_filter::CharacterFilter;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
@@ -14,103 +13,46 @@ const HIRAGANA_DAKUON_ITERATION_MARK: char = 'ゞ';
 const KATAKANA_ITERATION_MARK: char = 'ヽ';
 const KATAKANA_DAKUON_ITERATION_MARK: char = 'ヾ';
 
-static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
-    let mut m = HashMap::new();
-    m.insert('か', 'が');
-    m.insert('が', 'が');
-    m.insert('き', 'ぎ');
-    m.insert('ぎ', 'ぎ');
-    m.insert('く', 'ぐ');
-    m.insert('ぐ', 'ぐ');
-    m.insert('け', 'げ');
-    m.insert('げ', 'げ');
-    m.insert('こ', 'ご');
-    m.insert('ご', 'ご');
-    m.insert('さ', 'ざ');
-    m.insert('ざ', 'ざ');
-    m.insert('し', 'じ');
-    m.insert('じ', 'じ');
-    m.insert('す', 'ず');
-    m.insert('ず', 'ず');
-    m.insert('せ', 'ぜ');
-    m.insert('ぜ', 'ぜ');
-    m.insert('そ', 'ぞ');
-    m.insert('ぞ', 'ぞ');
-    m.insert('た', 'だ');
-    m.insert('だ', 'だ');
-    m.insert('ち', 'ぢ');
-    m.insert('ぢ', 'ぢ');
-    m.insert('つ', 'づ');
-    m.insert('づ', 'づ');
-    m.insert('て', 'で');
-    m.insert('で', 'で');
-    m.insert('と', 'ど');
-    m.insert('ど', 'ど');
-    m.insert('は', 'ば');
-    m.insert('ば', 'ば');
-    m.insert('ひ', 'び');
-    m.insert('び', 'び');
-    m.insert('ふ', 'ぶ');
-    m.insert('ぶ', 'ぶ');
-    m.insert('へ', 'べ');
-    m.insert('べ', 'べ');
-    m.insert('ほ', 'ぼ');
-    m.insert('ぼ', 'ぼ');
-    m
-});
-
-static KATAKANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
-    let mut m = HashMap::new();
-    m.insert('カ', 'ガ');
-    m.insert('ガ', 'ガ');
-    m.insert('キ', 'ギ');
-    m.insert('ギ', 'ギ');
-    m.insert('ク', 'グ');
-    m.insert('グ', 'グ');
-    m.insert('ケ', 'ゲ');
-    m.insert('ゲ', 'ゲ');
-    m.insert('コ', 'ゴ');
-    m.insert('ゴ', 'ゴ');
-    m.insert('サ', 'ザ');
-    m.insert('ザ', 'ザ');
-    m.insert('シ', 'ジ');
-    m.insert('ジ', 'ジ');
-    m.insert('ス', 'ズ');
-    m.insert('ズ', 'ズ');
-    m.insert('セ', 'ゼ');
-    m.insert('ゼ', 'ゼ');
-    m.insert('ソ', 'ゾ');
-    m.insert('ゾ', 'ゾ');
-    m.insert('タ', 'ダ');
-    m.insert('ダ', 'ダ');
-    m.insert('チ', 'ヂ');
-    m.insert('ヂ', 'ヂ');
-    m.insert('ツ', 'ヅ');
-    m.insert('ヅ', 'ヅ');
-    m.insert('テ', 'デ');
-    m.insert('デ', 'デ');
-    m.insert('ト', 'ド');
-    m.insert('ド', 'ド');
-    m.insert('ハ', 'バ');
-    m.insert('バ', 'バ');
-    m.insert('パ', 'バ');
-    m.insert('ヒ', 'ビ');
-    m.insert('ビ', 'ビ');
-    m.insert('フ', 'ブ');
-    m.insert('ブ', 'ブ');
-    m.insert('ヘ', 'ベ');
-    m.insert('ベ', 'ベ');
-    m.insert('ホ', 'ボ');
-    m.insert('ボ', 'ボ');
-    m
-});
-
-fn is_hiragana_dakuon(c: char) -> bool {
-    HIRAGANA_DAKUON_MAP.values().any(|&v| v == c)
+fn hiragana_add_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    match codepoint {
+        0x304b..=0x3062 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x3064..=0x3069 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x306f..=0x307d if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        _ => *c,
+    }
 }
 
-fn is_katakana_dakuon(c: char) -> bool {
-    KATAKANA_DAKUON_MAP.values().any(|&v| v == c)
+fn hiragana_remove_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    match codepoint {
+        0x304b..=0x3062 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x3064..=0x3069 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x306f..=0x307d if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        _ => *c,
+    }
+}
+
+fn katakana_add_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    match codepoint {
+        0x30ab..=0x30c2 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x30c4..=0x30c9 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x30cf..=0x30dd if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        _ => *c,
+    }
+}
+
+fn katakana_remove_dakuon(c: &char) -> char {
+    let codepoint = *c as u32;
+    match codepoint {
+        0x30ab..=0x30c2 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x30c4..=0x30c9 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x30cf..=0x30dd if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        _ => *c,
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -167,35 +109,21 @@ impl JapaneseIterationMarkCharacterFilter {
                 }
                 HIRAGANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    if is_hiragana_dakuon(*replacement) {
-                        // remove dakuon
-                        let replacement =
-                            char::from_u32(*replacement as u32 - 1).unwrap_or(*replacement);
-                        normalized_str.push(replacement);
-                    } else {
-                        normalized_str.push(*replacement);
-                    }
+                    normalized_str.push(hiragana_remove_dakuon(replacement));
                 }
                 HIRAGANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    let replacement = HIRAGANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
-                    normalized_str.push(*replacement);
+                    let replacement = hiragana_add_dakuon(replacement);
+                    normalized_str.push(replacement);
                 }
                 KATAKANA_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    if is_katakana_dakuon(*replacement) {
-                        // remove dakuon
-                        let replacement =
-                            char::from_u32(*replacement as u32 - 1).unwrap_or(*replacement);
-                        normalized_str.push(replacement);
-                    } else {
-                        normalized_str.push(*replacement);
-                    }
+                    normalized_str.push(katakana_remove_dakuon(replacement));
                 }
                 KATAKANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
-                    let replacement = KATAKANA_DAKUON_MAP.get(replacement).unwrap_or(replacement);
-                    normalized_str.push(*replacement);
+                    let replacement = katakana_add_dakuon(replacement);
+                    normalized_str.push(replacement);
                 }
                 _ => {
                     normalized_str.push(**iter_mark);
@@ -250,11 +178,125 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use lindera_core::character_filter::CharacterFilter;
+    use once_cell::sync::Lazy;
 
     use crate::character_filter::japanese_iteration_mark::{
+        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
         JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
     };
+
+    fn hiragana_has_dakuon(c: &char) -> bool {
+        let codepoint = *c as u32;
+        // か…ぢ
+        (codepoint >= 0x304b && codepoint <= 0x3062 && codepoint % 2 == 0) ||
+        // つ…ど
+        (codepoint >= 0x3064 && codepoint <= 0x3069 && codepoint % 2 == 1) ||
+        // は…ぽ
+        (codepoint >= 0x306f && codepoint <= 0x307d && codepoint % 3 == 1)
+    }
+
+    fn katakana_has_dakuon(c: &char) -> bool {
+        let codepoint = *c as u32;
+        // カ…ヂ
+        (codepoint >= 0x30ab && codepoint <= 0x30c2 && codepoint % 2 == 0) ||
+        // ツ…ド
+        (codepoint >= 0x30c4 && codepoint <= 0x30c9 && codepoint % 2 == 1) ||
+        // ハ…ポ
+        (codepoint >= 0x30cf && codepoint <= 0x30dd && codepoint % 3 == 1)
+    }
+
+    static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
+        let mut m = HashMap::new();
+        m.insert('か', 'が');
+        m.insert('が', 'が');
+        m.insert('き', 'ぎ');
+        m.insert('ぎ', 'ぎ');
+        m.insert('く', 'ぐ');
+        m.insert('ぐ', 'ぐ');
+        m.insert('け', 'げ');
+        m.insert('げ', 'げ');
+        m.insert('こ', 'ご');
+        m.insert('ご', 'ご');
+        m.insert('さ', 'ざ');
+        m.insert('ざ', 'ざ');
+        m.insert('し', 'じ');
+        m.insert('じ', 'じ');
+        m.insert('す', 'ず');
+        m.insert('ず', 'ず');
+        m.insert('せ', 'ぜ');
+        m.insert('ぜ', 'ぜ');
+        m.insert('そ', 'ぞ');
+        m.insert('ぞ', 'ぞ');
+        m.insert('た', 'だ');
+        m.insert('だ', 'だ');
+        m.insert('ち', 'ぢ');
+        m.insert('ぢ', 'ぢ');
+        m.insert('つ', 'づ');
+        m.insert('づ', 'づ');
+        m.insert('て', 'で');
+        m.insert('で', 'で');
+        m.insert('と', 'ど');
+        m.insert('ど', 'ど');
+        m.insert('は', 'ば');
+        m.insert('ば', 'ば');
+        m.insert('ひ', 'び');
+        m.insert('び', 'び');
+        m.insert('ふ', 'ぶ');
+        m.insert('ぶ', 'ぶ');
+        m.insert('へ', 'べ');
+        m.insert('べ', 'べ');
+        m.insert('ほ', 'ぼ');
+        m.insert('ぼ', 'ぼ');
+        m
+    });
+
+    static KATAKANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
+        let mut m = HashMap::new();
+        m.insert('カ', 'ガ');
+        m.insert('ガ', 'ガ');
+        m.insert('キ', 'ギ');
+        m.insert('ギ', 'ギ');
+        m.insert('ク', 'グ');
+        m.insert('グ', 'グ');
+        m.insert('ケ', 'ゲ');
+        m.insert('ゲ', 'ゲ');
+        m.insert('コ', 'ゴ');
+        m.insert('ゴ', 'ゴ');
+        m.insert('サ', 'ザ');
+        m.insert('ザ', 'ザ');
+        m.insert('シ', 'ジ');
+        m.insert('ジ', 'ジ');
+        m.insert('ス', 'ズ');
+        m.insert('ズ', 'ズ');
+        m.insert('セ', 'ゼ');
+        m.insert('ゼ', 'ゼ');
+        m.insert('ソ', 'ゾ');
+        m.insert('ゾ', 'ゾ');
+        m.insert('タ', 'ダ');
+        m.insert('ダ', 'ダ');
+        m.insert('チ', 'ヂ');
+        m.insert('ヂ', 'ヂ');
+        m.insert('ツ', 'ヅ');
+        m.insert('ヅ', 'ヅ');
+        m.insert('テ', 'デ');
+        m.insert('デ', 'デ');
+        m.insert('ト', 'ド');
+        m.insert('ド', 'ド');
+        m.insert('ハ', 'バ');
+        m.insert('バ', 'バ');
+        m.insert('ヒ', 'ビ');
+        m.insert('ビ', 'ビ');
+        m.insert('フ', 'ブ');
+        m.insert('ブ', 'ブ');
+        m.insert('ヘ', 'ベ');
+        m.insert('ベ', 'ベ');
+        m.insert('ホ', 'ボ');
+        m.insert('ボ', 'ボ');
+        m
+    });
 
     #[test]
     fn test_japanese_iteration_mark_character_filter_config_from_slice() {
@@ -395,6 +437,76 @@ mod tests {
             assert_eq!("ところどころ馬鹿馬鹿しく騒騒しい", filterd_text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_katakana_has_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert!(katakana_has_dakuon(v));
+            } else {
+                assert!(!katakana_has_dakuon(k));
+                assert!(katakana_has_dakuon(v));
+            }
+        }
+    }
+
+    #[test]
+    fn test_katakana_add_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert_eq!(katakana_add_dakuon(v), *v);
+            } else {
+                assert_eq!(katakana_add_dakuon(k), *v, "{k}->{v}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_katakana_remove_dakuon() {
+        for (k, v) in KATAKANA_DAKUON_MAP.iter() {
+            if *k != *v {
+                assert_eq!(katakana_remove_dakuon(v), *k);
+                assert_eq!(katakana_remove_dakuon(k), *k);
+            } else {
+                assert_ne!(katakana_remove_dakuon(v), *v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_has_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert!(hiragana_has_dakuon(v));
+            } else {
+                assert!(!hiragana_has_dakuon(k));
+                assert!(hiragana_has_dakuon(v));
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_add_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k == *v {
+                assert_eq!(hiragana_add_dakuon(v), *v);
+            } else {
+                assert_eq!(hiragana_add_dakuon(k), *v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_hiragana_remove_dakuon() {
+        for (k, v) in HIRAGANA_DAKUON_MAP.iter() {
+            if *k != *v {
+                assert_eq!(hiragana_remove_dakuon(v), *k);
+                assert_eq!(hiragana_remove_dakuon(k), *k);
+            } else {
+                assert_ne!(hiragana_remove_dakuon(v), *v);
+            }
         }
     }
 }
