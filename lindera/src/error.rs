@@ -1,6 +1,2 @@
-use lindera_core::error::{
-    LinderaError as LinderaCoreError, LinderaErrorKind as LinderaCoreErrorKind,
-};
-
-pub type LinderaErrorKind = LinderaCoreErrorKind;
-pub type LinderaError = LinderaCoreError;
+pub type LinderaError = lindera_core::error::LinderaError;
+pub type LinderaErrorKind = lindera_core::error::LinderaErrorKind;
