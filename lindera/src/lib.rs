@@ -8,15 +8,14 @@ pub mod tokenizer;
 
 use std::str::FromStr;
 
-use error::LinderaErrorKind;
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token::Token as LinderaToken;
-
-use crate::error::LinderaError;
+use crate::error::{LinderaError, LinderaErrorKind};
 
 pub type LinderaResult<T> = Result<T, LinderaError>;
-pub type Token<'a> = LinderaToken<'a>;
+pub type Token<'a> = lindera_core::token::Token<'a>;
+pub type CharacterFilter = dyn lindera_core::character_filter::CharacterFilter;
+pub type TokenFilter = dyn lindera_core::token_filter::TokenFilter;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
