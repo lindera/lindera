@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Add Japanese kana token filter #288 @mosuka
 - Add structure for boxing character filter and token filter #287 @mosuka
 
 ## 0.19.3 (2022-12-26)
