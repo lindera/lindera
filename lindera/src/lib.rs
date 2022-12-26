@@ -14,8 +14,8 @@ use crate::error::{LinderaError, LinderaErrorKind};
 
 pub type LinderaResult<T> = Result<T, LinderaError>;
 pub type Token<'a> = lindera_core::token::Token<'a>;
-pub type CharacterFilter = dyn lindera_core::character_filter::CharacterFilter;
-pub type TokenFilter = dyn lindera_core::token_filter::TokenFilter;
+pub type BoxCharacterFilter = lindera_core::character_filter::BoxCharacterFilter;
+pub type BoxTokenFilter = lindera_core::token_filter::BoxTokenFilter;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
