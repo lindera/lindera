@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::LinderaResult;
 
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
@@ -5,13 +7,29 @@ pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn apply(&self, text: &str) -> LinderaResult<(String, Vec<usize>, Vec<i64>)>;
 }
 
+pub struct BoxCharacterFilter(Box<dyn CharacterFilter + 'static + Send + Sync>);
+
+impl Deref for BoxCharacterFilter {
+    type Target = dyn CharacterFilter;
+
+    fn deref(&self) -> &dyn CharacterFilter {
+        &*self.0
+    }
+}
+
+impl<T: CharacterFilter> From<T> for BoxCharacterFilter {
+    fn from(character_filter: T) -> BoxCharacterFilter {
+        BoxCharacterFilter(Box::new(character_filter))
+    }
+}
+
 pub trait CharacterFilterClone {
-    fn box_clone(&self) -> Box<dyn CharacterFilter + 'static + Send + Sync>;
+    fn box_clone(&self) -> BoxCharacterFilter;
 }
 
 impl<T: CharacterFilter + Clone + 'static> CharacterFilterClone for T {
-    fn box_clone(&self) -> Box<dyn CharacterFilter + 'static + Send + Sync> {
-        Box::new(self.clone())
+    fn box_clone(&self) -> BoxCharacterFilter {
+        BoxCharacterFilter::from(self.clone())
     }
 }
 

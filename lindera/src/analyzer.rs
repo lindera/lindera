@@ -3,8 +3,8 @@ use std::{borrow::Cow, fs, path::Path};
 use serde_json::Value;
 
 use lindera_core::{
-    character_filter::{correct_offset, CharacterFilter},
-    token_filter::TokenFilter,
+    character_filter::{correct_offset, BoxCharacterFilter},
+    token_filter::BoxTokenFilter,
 };
 
 use crate::{
@@ -50,9 +50,9 @@ use crate::{
 
 // #[derive(Clone)]
 pub struct Analyzer {
-    character_filters: Vec<Box<dyn CharacterFilter + Send>>,
+    character_filters: Vec<BoxCharacterFilter>,
     tokenizer: Tokenizer,
-    token_filters: Vec<Box<dyn TokenFilter + Send>>,
+    token_filters: Vec<BoxTokenFilter>,
     with_details: bool,
 }
 
@@ -71,7 +71,7 @@ impl Analyzer {
     }
 
     pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        let mut character_filters: Vec<Box<dyn CharacterFilter + Send>> = Vec::new();
+        let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
         let character_filter_settings = value["character_filters"].as_array();
         if let Some(character_filter_settings) = character_filter_settings {
             for character_filter_setting in character_filter_settings {
@@ -91,20 +91,22 @@ impl Analyzer {
 
                     match character_filter_name {
                         JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
-                            character_filters.push(Box::new(
+                            character_filters.push(BoxCharacterFilter::from(
                                 JapaneseIterationMarkCharacterFilter::from_slice(&arg_bytes)?,
                             ));
                         }
                         MAPPING_CHARACTER_FILTER_NAME => {
-                            character_filters
-                                .push(Box::new(MappingCharacterFilter::from_slice(&arg_bytes)?));
+                            character_filters.push(BoxCharacterFilter::from(
+                                MappingCharacterFilter::from_slice(&arg_bytes)?,
+                            ));
                         }
                         REGEX_CHARACTER_FILTER_NAME => {
-                            character_filters
-                                .push(Box::new(RegexCharacterFilter::from_slice(&arg_bytes)?));
+                            character_filters.push(BoxCharacterFilter::from(
+                                RegexCharacterFilter::from_slice(&arg_bytes)?,
+                            ));
                         }
                         UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
-                            character_filters.push(Box::new(
+                            character_filters.push(BoxCharacterFilter::from(
                                 UnicodeNormalizeCharacterFilter::from_slice(&arg_bytes)?,
                             ));
                         }
@@ -129,7 +131,7 @@ impl Analyzer {
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
         let tokenizer = Tokenizer::with_config(tokenizer_config)?;
 
-        let mut token_filters: Vec<Box<dyn TokenFilter + Send>> = Vec::new();
+        let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
         let token_filter_settings = value["token_filters"].as_array();
         if let Some(token_filter_settings) = token_filter_settings {
             for token_filter_setting in token_filter_settings {
@@ -146,70 +148,77 @@ impl Analyzer {
 
                     match token_filter_name {
                         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(JapaneseBaseFormTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                JapaneseBaseFormTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(
+                            token_filters.push(BoxTokenFilter::from(
                                 JapaneseCompoundWordTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
                         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(
+                            token_filters.push(BoxTokenFilter::from(
                                 JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
                         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(JapaneseKeepTagsTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                JapaneseKeepTagsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(JapaneseNumberTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                JapaneseNumberTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(
+                            token_filters.push(BoxTokenFilter::from(
                                 JapaneseReadingFormTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
                         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(JapaneseStopTagsTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                JapaneseStopTagsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         KEEP_WORDS_TOKEN_FILTER_NAME => {
-                            token_filters
-                                .push(Box::new(KeepWordsTokenFilter::from_slice(&args_bytes)?));
+                            token_filters.push(BoxTokenFilter::from(
+                                KeepWordsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(KoreanKeepTagsTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                KoreanKeepTagsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::<KoreanReadingFormTokenFilter>::default());
+                            token_filters.push(BoxTokenFilter::from(
+                                KoreanReadingFormTokenFilter::default(),
+                            ));
                         }
                         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::new(KoreanStopTagsTokenFilter::from_slice(
-                                &args_bytes,
-                            )?));
+                            token_filters.push(BoxTokenFilter::from(
+                                KoreanStopTagsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         LENGTH_TOKEN_FILTER_NAME => {
-                            token_filters
-                                .push(Box::new(LengthTokenFilter::from_slice(&args_bytes)?));
+                            token_filters.push(BoxTokenFilter::from(
+                                LengthTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         LOWERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::<LowercaseTokenFilter>::default());
+                            token_filters
+                                .push(BoxTokenFilter::from(LowercaseTokenFilter::default()));
                         }
                         STOP_WORDS_TOKEN_FILTER_NAME => {
-                            token_filters
-                                .push(Box::new(StopWordsTokenFilter::from_slice(&args_bytes)?));
+                            token_filters.push(BoxTokenFilter::from(
+                                StopWordsTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         UPPERCASE_TOKEN_FILTER_NAME => {
-                            token_filters.push(Box::<UppercaseTokenFilter>::default());
+                            token_filters
+                                .push(BoxTokenFilter::from(UppercaseTokenFilter::default()));
                         }
                         _ => {
                             return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
@@ -226,9 +235,9 @@ impl Analyzer {
     }
 
     pub fn new(
-        character_filters: Vec<Box<dyn CharacterFilter + Send>>,
+        character_filters: Vec<BoxCharacterFilter>,
         tokenizer: Tokenizer,
-        token_filters: Vec<Box<dyn TokenFilter + Send>>,
+        token_filters: Vec<BoxTokenFilter>,
     ) -> Self {
         let with_details = token_filters
             .iter()
@@ -319,12 +328,12 @@ impl Analyzer {
 
 impl Clone for Analyzer {
     fn clone(&self) -> Self {
-        let mut character_filters: Vec<Box<(dyn CharacterFilter + Send + 'static)>> = Vec::new();
+        let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
         for character_filter in self.character_filters.iter() {
             character_filters.push(character_filter.box_clone());
         }
 
-        let mut token_filters: Vec<Box<(dyn TokenFilter + Send + 'static)>> = Vec::new();
+        let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
         for token_filter in self.token_filters.iter() {
             token_filters.push(token_filter.box_clone());
         }
