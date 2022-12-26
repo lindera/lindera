@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use lindera_core::{
     character_filter::{correct_offset, BoxCharacterFilter},
-    token_filter::{BoxTokenFilter},
+    token_filter::BoxTokenFilter,
 };
 
 use crate::{
@@ -261,8 +261,6 @@ impl Analyzer {
             with_details,
         }
     }
-
-
 
     pub fn analyze<'a>(&self, text: &'a str) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
         let mut text_len_vec: Vec<usize> = Vec::new();
