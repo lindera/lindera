@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## 0.19.3 (2022-12-23)
+## 0.19.3 (2022-12-26)
 - Bump up version to 0.19.3 #286 @mosuka
 - Refactoring #285 @mosuka
 - Use Unicode values instead of HashMap for performance #284 @encody
