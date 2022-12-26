@@ -1,5 +1,6 @@
 pub mod japanese_base_form;
 pub mod japanese_compound_word;
+pub mod japanese_kana;
 pub mod japanese_katakana_stem;
 pub mod japanese_keep_tags;
 pub mod japanese_number;

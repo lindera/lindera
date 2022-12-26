@@ -24,6 +24,7 @@ use crate::{
         japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
         },
+        japanese_kana::{JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME},
         japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
         },
@@ -155,6 +156,11 @@ impl Analyzer {
                         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 JapaneseCompoundWordTokenFilter::from_slice(&args_bytes)?,
+                            ));
+                        }
+                        JAPANESE_KANA_TOKEN_FILTER_NAME => {
+                            token_filters.push(BoxTokenFilter::from(
+                                JapaneseKanaTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
                         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {

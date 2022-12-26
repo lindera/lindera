@@ -26,6 +26,7 @@ anyhow = "1.0.68"
 bincode = "1.3.3"
 byteorder = "1.4.3"
 encoding = "0.2.33"
+kanaria = "0.2.0"
 regex = "1.7.0"
 serde = {version="1.0.151", features = ["derive"] }
 serde_json = "1.0.91"
