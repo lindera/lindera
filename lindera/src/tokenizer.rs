@@ -296,10 +296,6 @@ impl Tokenizer {
                     next_start
                 };
                 let surface = &sentence[token_start..token_stop];
-                if surface == " " {
-                    // skip whitespace
-                    continue;
-                }
                 tokens.push(Token {
                     text: Cow::Borrowed(surface),
                     details: if with_details {

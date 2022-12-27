@@ -6,6 +6,8 @@ use std::{
 };
 
 use clap::{Parser, Subcommand};
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 use lindera::{
     analyzer::Analyzer,
@@ -15,8 +17,10 @@ use lindera::{
     tokenizer::{
         DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
     },
-    DictionaryKind, LinderaResult,
+    DictionaryKind, LinderaResult, Token,
 };
+
+static REGEX_SPACE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s+$").unwrap());
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]
@@ -72,6 +76,8 @@ struct TokenizeArgs {
         help = "Output format"
     )]
     output_format: String,
+    #[clap(short = 's', long = "show-spaces", help = "Show spaces")]
+    show_spaces: bool,
     #[clap(help = "Input text file path")]
     input_file: Option<PathBuf>,
 }
@@ -148,6 +154,14 @@ fn list(_args: ListArgs) -> LinderaResult<()> {
     Ok(())
 }
 
+fn is_unkown(token: &Token) -> bool {
+    if let Some(details) = &token.details {
+        details[0] == "UNK"
+    } else {
+        false
+    }
+}
+
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let dictionary_conf = DictionaryConfig {
         kind: args.dic_type.clone(),
@@ -197,15 +211,17 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         match output_format {
             Format::Mecab => {
                 let tokens = tokenizer.tokenize_with_details(text.trim())?;
-                for token in tokens {
+                for token in tokens.iter().filter(|token| {
+                    let is_unk = is_unkown(token);
+                    !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                }) {
                     println!(
                         "{}\t{}",
                         token.text,
                         token
                             .details
-                            .unwrap_or_default()
                             .iter()
-                            .map(|d| d.to_string())
+                            .flat_map(|v| v.iter().map(|s| s.to_string()))
                             .collect::<Vec<_>>()
                             .join(",")
                     );
@@ -215,8 +231,16 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             Format::Json => {
                 let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 let mut tokens_json = Vec::new();
-                for token in tokens {
-                    let word_details = token.details.unwrap_or_default();
+
+                for token in tokens.iter().filter(|token| {
+                    let is_unk = is_unkown(token);
+                    !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                }) {
+                    let word_details = token
+                        .details
+                        .iter()
+                        .flat_map(|v| v.iter().map(|s| s.to_string()))
+                        .collect::<Vec<_>>();
                     let token_info = serde_json::json!({
                         "text": token.text,
                         "details": word_details,
@@ -233,8 +257,14 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 );
             }
             Format::Wakati => {
-                let tokens = tokenizer.tokenize(text.trim())?;
-                let mut it = tokens.iter().peekable();
+                let tokens = tokenizer.tokenize_with_details(text.trim())?;
+                let mut it = tokens
+                    .iter()
+                    .filter(|token| {
+                        let is_unk = is_unkown(token);
+                        !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                    })
+                    .peekable();
                 while let Some(token) = it.next() {
                     if it.peek().is_some() {
                         print!("{} ", token.text);
