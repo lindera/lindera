@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ko-dic-builder"
-version = "0.19.1"
+version = "0.19.2"
 edition = "2021"
 description = "A Korean morphological dictionary builder for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic-builder"
@@ -26,5 +26,5 @@ log = "0.4.17"
 yada = "0.5.0"
 
 lindera-compress = { version = "0.19.0", path = "../lindera-compress", optional = true }
-lindera-core = { version = "0.19.1", path = "../lindera-core" }
+lindera-core = { version = "0.19.2", path = "../lindera-core" }
 lindera-decompress = { version = "0.19.0", path = "../lindera-decompress" }

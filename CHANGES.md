@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.19.4 (2022-12-27)
+- Bump up to 0.19.4 #290 @mosuka
 - Change some functions for Tokenizer and Analyzer #289 @mosuka
 - Add Japanese kana token filter #288 @mosuka
 - Add structure for boxing character filter and token filter #287 @mosuka
