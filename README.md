@@ -34,8 +34,20 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
+    let dictionary = DictionaryConfig {
+        kind: Some(DictionaryKind::IPADIC),
+        path: None,
+    };
+
+    let config = TokenizerConfig {
+        dictionary,
+        user_dictionary: None,
+        mode: Mode::Normal,
+        with_details: false,
+    };
+
     // create tokenizer
-    let tokenizer = Tokenizer::new()?;
+    let tokenizer = Tokenizer::new(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")?;
@@ -106,10 +118,12 @@ fn main() -> LinderaResult<()> {
     // create tokenizer
     let config = TokenizerConfig {
         dictionary,
-        user_dictionary: user_dictionary,
+        user_dictionary,
         mode: Mode::Normal,
+        with_details: false,
     };
-    let tokenizer = Tokenizer::with_config(config)?;
+
+    let tokenizer = Tokenizer::new(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
