@@ -54,7 +54,6 @@ pub struct Analyzer {
     character_filters: Vec<BoxCharacterFilter>,
     tokenizer: Tokenizer,
     token_filters: Vec<BoxTokenFilter>,
-    with_details: bool,
 }
 
 impl Analyzer {
@@ -130,7 +129,7 @@ impl Analyzer {
 
         let tokenizer_config = serde_json::from_slice(&arg_bytes)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        let tokenizer = Tokenizer::with_config(tokenizer_config)?;
+        let tokenizer = Tokenizer::new(tokenizer_config)?;
 
         let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
         let token_filter_settings = value["token_filters"].as_array();
@@ -242,9 +241,10 @@ impl Analyzer {
 
     pub fn new(
         character_filters: Vec<BoxCharacterFilter>,
-        tokenizer: Tokenizer,
+        mut tokenizer: Tokenizer,
         token_filters: Vec<BoxTokenFilter>,
     ) -> Self {
+        // Check if a token filter is applied that should retrieve the details of the word.
         let with_details = token_filters
             .iter()
             .map(|token_filter| token_filter.name())
@@ -260,12 +260,18 @@ impl Analyzer {
                     || name == KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
             });
 
+        // Override the tokenizer setting if token filters are applied that require to retrieval word details.
+        tokenizer.with_details(with_details);
+
         Self {
             character_filters,
             tokenizer,
             token_filters,
-            with_details,
         }
+    }
+
+    pub fn with_details(&mut self, with_details: bool) {
+        self.tokenizer.with_details(with_details);
     }
 
     pub fn analyze<'a>(&self, text: &'a str) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
@@ -293,11 +299,7 @@ impl Analyzer {
         }
 
         // Tokenize.
-        let mut tmp_tokens = if self.with_details {
-            self.tokenizer.tokenize_with_details(&tmp_text)?
-        } else {
-            self.tokenizer.tokenize(&tmp_text)?
-        };
+        let mut tmp_tokens = self.tokenizer.tokenize(&tmp_text)?;
 
         // Apply token filters.
         for token_filter in &self.token_filters {
@@ -348,7 +350,6 @@ impl Clone for Analyzer {
             character_filters,
             tokenizer: self.tokenizer.clone(),
             token_filters,
-            with_details: self.with_details,
         }
     }
 }
@@ -383,7 +384,8 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal"
+                "mode": "normal",
+                "with_details": false
             },
             "token_filters": [
                 {
@@ -457,7 +459,8 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal"
+                "mode": "normal",
+                "with_details": true
             },
             "token_filters": [
                 {
@@ -513,7 +516,6 @@ mod tests {
             analyzer.token_filters.len(),
             cloned_analyzer.token_filters.len()
         );
-        assert_eq!(analyzer.with_details, cloned_analyzer.with_details);
     }
 
     #[test]
@@ -548,7 +550,8 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal"
+                "mode": "normal",
+                "with_details": false
             },
             "token_filters": [
                 {
@@ -702,7 +705,8 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal"
+                "mode": "normal",
+                "with_details": false
             },
             "token_filters": [
                 {

@@ -55,6 +55,10 @@ pub struct TokenizerConfig {
 
     /// Tokenize mode
     pub mode: Mode,
+
+    /// Flag for retrieving the word details.
+    /// If true is set, the tokenizer retrieves the word details from the dictionary.
+    pub with_details: bool,
 }
 
 impl Default for TokenizerConfig {
@@ -68,6 +72,7 @@ impl Default for TokenizerConfig {
             },
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         }
     }
 }
@@ -81,6 +86,7 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
             Dictionary,
             UserDictionary,
             Mode,
+            WithDetails,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -94,7 +100,8 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("`dictionary`, `user_dictionary` or `mode`")
+                        formatter
+                            .write_str("`dictionary`, `user_dictionary`, `mode` or `with_details`")
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
@@ -105,6 +112,7 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                             "dictionary" => Ok(Field::Dictionary),
                             "user_dictionary" => Ok(Field::UserDictionary),
                             "mode" => Ok(Field::Mode),
+                            "with_details" => Ok(Field::WithDetails),
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -132,11 +140,13 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let user_dictionary = seq.next_element()?.unwrap_or(None);
                 let mode = seq.next_element()?.unwrap_or(Mode::Normal);
+                let with_details = seq.next_element()?.unwrap_or(false);
 
                 Ok(TokenizerConfig {
                     dictionary,
                     user_dictionary,
                     mode,
+                    with_details,
                 })
             }
 
@@ -147,6 +157,7 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                 let mut dictionary = None;
                 let mut user_dictionary = None;
                 let mut mode = None;
+                let mut with_details = None;
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Dictionary => {
@@ -167,20 +178,28 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
                             }
                             mode = Some(map.next_value()?);
                         }
+                        Field::WithDetails => {
+                            if with_details.is_some() {
+                                return Err(de::Error::duplicate_field("with_details"));
+                            }
+                            with_details = Some(map.next_value()?);
+                        }
                     }
                 }
                 let dictionary =
                     dictionary.ok_or_else(|| de::Error::missing_field("dictionary"))?;
                 let mode = mode.unwrap_or(Mode::Normal);
+                let with_details = with_details.unwrap_or(false);
                 Ok(TokenizerConfig {
                     dictionary,
                     user_dictionary,
                     mode,
+                    with_details,
                 })
             }
         }
 
-        const FIELDS: &[&str] = &["dictionary", "user_dictionary", "mode"];
+        const FIELDS: &[&str] = &["dictionary", "user_dictionary", "mode", "with_details"];
         deserializer.deserialize_struct("TokenizerConfig", FIELDS, DurationVisitor)
     }
 }
@@ -191,15 +210,10 @@ pub struct Tokenizer {
     dictionary: Dictionary,
     user_dictionary: Option<UserDictionary>,
     mode: Mode,
+    with_details: bool,
 }
 
 impl Tokenizer {
-    /// Creates a new instance with default TokenizerConfig
-    pub fn new() -> LinderaResult<Tokenizer> {
-        let config = TokenizerConfig::default();
-        Tokenizer::with_config(config)
-    }
-
     /// Creates a new instance with the config
     ///
     /// # Arguments
@@ -208,7 +222,7 @@ impl Tokenizer {
     ///
     /// returns: Result<Tokenizer, LinderaError>
     ///
-    pub fn with_config(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
+    pub fn new(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
         let dictionary = load_dictionary(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
@@ -220,9 +234,15 @@ impl Tokenizer {
             dictionary,
             user_dictionary,
             mode: config.mode,
+            with_details: config.with_details,
         };
 
         Ok(tokenizer)
+    }
+
+    /// Set flag for retrieving the word details.
+    pub fn with_details(&mut self, with_details: bool) {
+        self.with_details = with_details;
     }
 
     fn word_detail(&self, word_id: WordId) -> LinderaResult<Vec<String>> {
@@ -261,11 +281,18 @@ impl Tokenizer {
         Ok(word_detail)
     }
 
-    fn tokenize_process<'a>(
-        &self,
-        text: &'a str,
-        with_details: bool,
-    ) -> LinderaResult<Vec<Token<'a>>> {
+    /// Tokenize the text (without word details)
+    ///
+    /// # Arguments
+    ///
+    /// * `text`: Japanese text
+    ///
+    /// returns: Result<Vec<Token>, LinderaError>
+    ///
+    /// * Vec<Token> : the list of `Token` if succeeded
+    /// * LinderaError : Error message with LinderaErrorKind
+    ///
+    pub fn tokenize<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut lattice = Lattice::default();
 
@@ -296,13 +323,9 @@ impl Tokenizer {
                     next_start
                 };
                 let surface = &sentence[token_start..token_stop];
-                if surface == " " {
-                    // skip whitespace
-                    continue;
-                }
                 tokens.push(Token {
                     text: Cow::Borrowed(surface),
-                    details: if with_details {
+                    details: if self.with_details {
                         Some(self.word_detail(word_id)?)
                     } else {
                         None
@@ -314,36 +337,6 @@ impl Tokenizer {
         }
 
         Ok(tokens)
-    }
-
-    /// Tokenize the text (without word details)
-    ///
-    /// # Arguments
-    ///
-    /// * `text`: Japanese text
-    ///
-    /// returns: Result<Vec<Token>, LinderaError>
-    ///
-    /// * Vec<Token> : the list of `Token` if succeeded
-    /// * LinderaError : Error message with LinderaErrorKind
-    ///
-    pub fn tokenize<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
-        self.tokenize_process(text, false)
-    }
-
-    /// Tokenize the text (with word details)
-    ///
-    /// # Arguments
-    ///
-    /// * `text`: Japanese text
-    ///
-    /// returns: Result<Vec<Token>, LinderaError>
-    ///
-    /// * Vec<Token> : the list of `Token` if succeeded
-    /// * LinderaError : Error message with LinderaErrorKind
-    ///
-    pub fn tokenize_with_details<'a>(&self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
-        self.tokenize_process(text, true)
     }
 }
 
@@ -424,9 +417,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
@@ -460,9 +454,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
@@ -487,9 +482,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("한국어의형태해석을실시할수있습니다.")
             .unwrap();
@@ -523,9 +519,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -554,9 +551,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -595,9 +593,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -637,9 +636,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -668,9 +668,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -699,9 +700,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -740,9 +742,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -782,9 +785,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -813,9 +817,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -844,9 +849,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -885,9 +891,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -927,9 +934,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        Tokenizer::with_config(config).unwrap();
+        Tokenizer::new(config).unwrap();
     }
 
     #[test]
@@ -954,9 +962,10 @@ mod tests {
             dictionary,
             user_dictionary,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        Tokenizer::with_config(config).unwrap();
+        Tokenizer::new(config).unwrap();
     }
 
     #[test]
@@ -971,9 +980,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -993,9 +1003,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Decompose(Penalty::default()),
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -1026,9 +1037,10 @@ mod tests {
             dictionary,
             user_dictionary: None,
             mode: Mode::Normal,
+            with_details: false,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::new(config).unwrap();
 
         let tokens = tokenizer.tokenize(large_text.as_str()).unwrap();
         assert!(!tokens.is_empty());
