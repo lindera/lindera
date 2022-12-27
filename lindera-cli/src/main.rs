@@ -98,6 +98,8 @@ struct AnalyzeArgs {
         help = "Output format"
     )]
     output_format: String,
+    #[clap(short = 's', long = "show-spaces", help = "Show spaces")]
+    show_spaces: bool,
     #[clap(help = "Input text file path")]
     input_file: Option<PathBuf>,
 }
@@ -180,10 +182,11 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         dictionary: dictionary_conf,
         user_dictionary: user_dictionary_conf,
         mode: args.mode,
+        with_details: true,
     };
 
     // create tokenizer
-    let tokenizer = Tokenizer::with_config(config)?;
+    let tokenizer = Tokenizer::new(config)?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;
@@ -208,12 +211,11 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             break;
         }
 
+        let tokens = tokenizer.tokenize(text.trim())?;
         match output_format {
             Format::Mecab => {
-                let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 for token in tokens.iter().filter(|token| {
-                    let is_unk = is_unkown(token);
-                    !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                    !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
                 }) {
                     println!(
                         "{}\t{}",
@@ -229,12 +231,9 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 println!("EOS");
             }
             Format::Json => {
-                let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 let mut tokens_json = Vec::new();
-
                 for token in tokens.iter().filter(|token| {
-                    let is_unk = is_unkown(token);
-                    !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                    !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
                 }) {
                     let word_details = token
                         .details
@@ -257,12 +256,10 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 );
             }
             Format::Wakati => {
-                let tokens = tokenizer.tokenize_with_details(text.trim())?;
                 let mut it = tokens
                     .iter()
                     .filter(|token| {
-                        let is_unk = is_unkown(token);
-                        !REGEX_SPACE.is_match(&token.text) && is_unk || args.show_spaces
+                        !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
                     })
                     .peekable();
                 while let Some(token) = it.next() {
@@ -316,15 +313,16 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
         let tokens = analyzer.analyze(text.trim())?;
         match output_format {
             Format::Mecab => {
-                for token in tokens {
+                for token in tokens.iter().filter(|token| {
+                    !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
+                }) {
                     println!(
                         "{}\t{}",
                         token.text,
                         token
                             .details
-                            .unwrap_or_default()
                             .iter()
-                            .map(|d| d.to_string())
+                            .flat_map(|v| v.iter().map(|s| s.to_string()))
                             .collect::<Vec<_>>()
                             .join(",")
                     );
@@ -333,8 +331,14 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             }
             Format::Json => {
                 let mut tokens_json = Vec::new();
-                for token in tokens {
-                    let word_details = token.details.unwrap_or_default();
+                for token in tokens.iter().filter(|token| {
+                    !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
+                }) {
+                    let word_details = token
+                        .details
+                        .iter()
+                        .flat_map(|v| v.iter().map(|s| s.to_string()))
+                        .collect::<Vec<_>>();
                     let token_info = serde_json::json!({
                         "text": token.text,
                         "details": word_details,
@@ -351,7 +355,12 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
                 );
             }
             Format::Wakati => {
-                let mut it = tokens.iter().peekable();
+                let mut it = tokens
+                    .iter()
+                    .filter(|token| {
+                        !REGEX_SPACE.is_match(&token.text) && !is_unkown(token) || args.show_spaces
+                    })
+                    .peekable();
                 while let Some(token) = it.next() {
                     if it.peek().is_some() {
                         print!("{} ", token.text);
