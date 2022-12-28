@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Add mapping token filter #291 @mosuka
+
 ## 0.19.4 (2022-12-27)
 - Bump up to 0.19.4 #290 @mosuka
 - Change some functions for Tokenizer and Analyzer #289 @mosuka
