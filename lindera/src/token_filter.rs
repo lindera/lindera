@@ -12,5 +12,6 @@ pub mod korean_reading_form;
 pub mod korean_stop_tags;
 pub mod length;
 pub mod lowercase;
+pub mod mapping;
 pub mod stop_words;
 pub mod uppercase;

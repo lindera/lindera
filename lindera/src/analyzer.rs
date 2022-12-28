@@ -42,6 +42,7 @@ use crate::{
         korean_stop_tags::{KoreanStopTagsTokenFilter, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME},
         length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
         lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
+        mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
         uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
     },
@@ -49,7 +50,6 @@ use crate::{
     LinderaResult, Token,
 };
 
-// #[derive(Clone)]
 pub struct Analyzer {
     character_filters: Vec<BoxCharacterFilter>,
     tokenizer: Tokenizer,
@@ -215,6 +215,11 @@ impl Analyzer {
                         LOWERCASE_TOKEN_FILTER_NAME => {
                             token_filters
                                 .push(BoxTokenFilter::from(LowercaseTokenFilter::default()));
+                        }
+                        MAPPING_TOKEN_FILTER_NAME => {
+                            token_filters.push(BoxTokenFilter::from(
+                                MappingTokenFilter::from_slice(&args_bytes)?,
+                            ));
                         }
                         STOP_WORDS_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
