@@ -222,7 +222,7 @@ impl Tokenizer {
     ///
     /// returns: Result<Tokenizer, LinderaError>
     ///
-    pub fn new(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
+    pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
         let dictionary = load_dictionary(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
@@ -230,14 +230,26 @@ impl Tokenizer {
             None => None,
         };
 
-        let tokenizer = Tokenizer {
+        Ok(Self::new(
             dictionary,
             user_dictionary,
-            mode: config.mode,
-            with_details: config.with_details,
-        };
+            config.mode,
+            config.with_details,
+        ))
+    }
 
-        Ok(tokenizer)
+    pub fn new(
+        dictionary: Dictionary,
+        user_dictionary: Option<UserDictionary>,
+        mode: Mode,
+        with_details: bool,
+    ) -> Self {
+        Self {
+            dictionary,
+            user_dictionary,
+            mode,
+            with_details,
+        }
     }
 
     /// Set flag for retrieving the word details.

@@ -18,6 +18,9 @@
         "dictionary": {
             "kind": "ipadic"
         },
+        "user_dictionary": {
+            "path": "/home/minoru/user_dict.bin"
+        },
         "mode": "normal"
     },
     "token_filters": [

@@ -134,6 +134,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                     if compound_token_opt.is_some() {
                         let compound_token = compound_token_opt.take().unwrap();
                         new_tokens.push(compound_token);
+                        compound_token_opt = None;
                     }
                     new_tokens.push(Token {
                         text: Cow::Owned(token.text.to_string()),
@@ -143,6 +144,10 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                     });
                 }
             }
+        }
+        if compound_token_opt.is_some() {
+            let compound_token = compound_token_opt.take().unwrap();
+            new_tokens.push(compound_token);
         }
 
         mem::swap(tokens, &mut new_tokens);
