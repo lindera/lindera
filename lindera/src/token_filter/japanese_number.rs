@@ -93,16 +93,16 @@ fn to_arabic_numerals(from_str: &str) -> String {
     let mut i = from_chars.iter().peekable();
     while let Some(c) = i.next() {
         match c {
-            '０' | '〇' | '零' => num_buf.insert(0, '0'),
-            '１' | '一' | '壱' => num_buf.insert(0, '1'),
-            '２' | '二' | '弐' => num_buf.insert(0, '2'),
-            '３' | '三' | '参' => num_buf.insert(0, '3'),
-            '４' | '四' => num_buf.insert(0, '4'),
-            '５' | '五' => num_buf.insert(0, '5'),
-            '６' | '六' => num_buf.insert(0, '6'),
-            '７' | '七' => num_buf.insert(0, '7'),
-            '８' | '八' => num_buf.insert(0, '8'),
-            '９' | '九' => num_buf.insert(0, '9'),
+            '0' | '０' | '〇' | '零' => num_buf.insert(0, '0'),
+            '1' | '１' | '一' | '壱' => num_buf.insert(0, '1'),
+            '2' | '２' | '二' | '弐' => num_buf.insert(0, '2'),
+            '3' | '３' | '三' | '参' => num_buf.insert(0, '3'),
+            '4' | '４' | '四' => num_buf.insert(0, '4'),
+            '5' | '５' | '五' => num_buf.insert(0, '5'),
+            '6' | '６' | '六' => num_buf.insert(0, '6'),
+            '7' | '７' | '七' => num_buf.insert(0, '7'),
+            '8' | '８' | '八' => num_buf.insert(0, '8'),
+            '9' | '９' | '九' => num_buf.insert(0, '9'),
             '十' | '拾' => {
                 num_buf = adjust_digits(&num_buf, "0", &digit);
 

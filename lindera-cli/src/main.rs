@@ -170,7 +170,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     };
 
     // create tokenizer
-    let tokenizer = Tokenizer::new(config)?;
+    let tokenizer = Tokenizer::from_config(config)?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;

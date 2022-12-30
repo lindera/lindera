@@ -32,7 +32,7 @@ fn main() -> LinderaResult<()> {
         };
 
         #[allow(unused_variables)]
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // tokenize the text
         let tokens = tokenizer.tokenize("羽田机场限定托特包。")?;

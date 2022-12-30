@@ -129,7 +129,7 @@ impl Analyzer {
 
         let tokenizer_config = serde_json::from_slice(&arg_bytes)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        let tokenizer = Tokenizer::new(tokenizer_config)?;
+        let tokenizer = Tokenizer::from_config(tokenizer_config)?;
 
         let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
         let token_filter_settings = value["token_filters"].as_array();

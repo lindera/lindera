@@ -222,7 +222,7 @@ impl Tokenizer {
     ///
     /// returns: Result<Tokenizer, LinderaError>
     ///
-    pub fn new(config: TokenizerConfig) -> LinderaResult<Tokenizer> {
+    pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
         let dictionary = load_dictionary(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
@@ -230,14 +230,26 @@ impl Tokenizer {
             None => None,
         };
 
-        let tokenizer = Tokenizer {
+        Ok(Self::new(
             dictionary,
             user_dictionary,
-            mode: config.mode,
-            with_details: config.with_details,
-        };
+            config.mode,
+            config.with_details,
+        ))
+    }
 
-        Ok(tokenizer)
+    pub fn new(
+        dictionary: Dictionary,
+        user_dictionary: Option<UserDictionary>,
+        mode: Mode,
+        with_details: bool,
+    ) -> Self {
+        Self {
+            dictionary,
+            user_dictionary,
+            mode,
+            with_details,
+        }
     }
 
     /// Set flag for retrieving the word details.
@@ -420,7 +432,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
@@ -457,7 +469,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
@@ -485,7 +497,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("한국어의형태해석을실시할수있습니다.")
             .unwrap();
@@ -522,7 +534,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -554,7 +566,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -596,7 +608,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -639,7 +651,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -671,7 +683,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -703,7 +715,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -745,7 +757,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -788,7 +800,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -820,7 +832,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -852,7 +864,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -894,7 +906,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
@@ -937,7 +949,7 @@ mod tests {
             with_details: false,
         };
 
-        Tokenizer::new(config).unwrap();
+        Tokenizer::from_config(config).unwrap();
     }
 
     #[test]
@@ -965,7 +977,7 @@ mod tests {
             with_details: false,
         };
 
-        Tokenizer::new(config).unwrap();
+        Tokenizer::from_config(config).unwrap();
     }
 
     #[test]
@@ -983,7 +995,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -1006,7 +1018,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
         assert_eq!(
             tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
@@ -1040,7 +1052,7 @@ mod tests {
             with_details: false,
         };
 
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         let tokens = tokenizer.tokenize(large_text.as_str()).unwrap();
         assert!(!tokens.is_empty());

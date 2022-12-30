@@ -47,7 +47,7 @@ fn main() -> LinderaResult<()> {
     };
 
     // create tokenizer
-    let tokenizer = Tokenizer::new(config)?;
+    let tokenizer = Tokenizer::from_config(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")?;

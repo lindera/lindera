@@ -22,7 +22,7 @@ fn main() -> LinderaResult<()> {
         };
 
         #[allow(unused_variables)]
-        let tokenizer = Tokenizer::new(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // tokenize the text
         let tokens = tokenizer.tokenize("한국어의형태해석을실시할수있습니다.")?;
