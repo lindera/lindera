@@ -19,7 +19,7 @@
             "kind": "ipadic"
         },
         "user_dictionary": {
-            "path": "/home/minoru/user_dict.bin"
+            "path": "./resources/ipadic_simple_userdic.bin"
         },
         "mode": "normal"
     },

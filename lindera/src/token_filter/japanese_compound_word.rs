@@ -218,142 +218,234 @@ mod tests {
         "#;
         let filter = JapaneseCompoundWordTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<Token> = vec![
-            Token {
-                text: Cow::Borrowed("１"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "１".to_string(),
-                    "イチ".to_string(),
-                    "イチ".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 3,
-            },
-            Token {
-                text: Cow::Borrowed("０"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "０".to_string(),
-                    "ゼロ".to_string(),
-                    "ゼロ".to_string(),
-                ]),
-                byte_start: 3,
-                byte_end: 6,
-            },
-            Token {
-                text: Cow::Borrowed("０"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "０".to_string(),
-                    "ゼロ".to_string(),
-                    "ゼロ".to_string(),
-                ]),
-                byte_start: 6,
-                byte_end: 9,
-            },
-            Token {
-                text: Cow::Borrowed("円"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "接尾".to_string(),
-                    "助数詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "円".to_string(),
-                    "エン".to_string(),
-                    "エン".to_string(),
-                ]),
-                byte_start: 9,
-                byte_end: 12,
-            },
-            Token {
-                text: Cow::Borrowed("玉"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "接尾".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "玉".to_string(),
-                    "ダマ".to_string(),
-                    "ダマ".to_string(),
-                ]),
-                byte_start: 12,
-                byte_end: 15,
-            },
-            Token {
-                text: Cow::Borrowed("を"),
-                details: Some(vec![
-                    "助詞".to_string(),
-                    "格助詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "を".to_string(),
-                    "ヲ".to_string(),
-                    "ヲ".to_string(),
-                ]),
-                byte_start: 27,
-                byte_end: 30,
-            },
-            Token {
-                text: Cow::Borrowed("拾う"),
-                details: Some(vec![
-                    "動詞".to_string(),
-                    "自立".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "五段・ワ行促音便".to_string(),
-                    "基本形".to_string(),
-                    "拾う".to_string(),
-                    "ヒロウ".to_string(),
-                    "ヒロウ".to_string(),
-                ]),
-                byte_start: 30,
-                byte_end: 36,
-            },
-        ];
+        {
+            let mut tokens: Vec<Token> = vec![
+                Token {
+                    text: Cow::Borrowed("１"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "１".to_string(),
+                        "イチ".to_string(),
+                        "イチ".to_string(),
+                    ]),
+                    byte_start: 0,
+                    byte_end: 3,
+                },
+                Token {
+                    text: Cow::Borrowed("０"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "０".to_string(),
+                        "ゼロ".to_string(),
+                        "ゼロ".to_string(),
+                    ]),
+                    byte_start: 3,
+                    byte_end: 6,
+                },
+                Token {
+                    text: Cow::Borrowed("０"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "０".to_string(),
+                        "ゼロ".to_string(),
+                        "ゼロ".to_string(),
+                    ]),
+                    byte_start: 6,
+                    byte_end: 9,
+                },
+                Token {
+                    text: Cow::Borrowed("円"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "接尾".to_string(),
+                        "助数詞".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "円".to_string(),
+                        "エン".to_string(),
+                        "エン".to_string(),
+                    ]),
+                    byte_start: 9,
+                    byte_end: 12,
+                },
+                Token {
+                    text: Cow::Borrowed("玉"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "接尾".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "玉".to_string(),
+                        "ダマ".to_string(),
+                        "ダマ".to_string(),
+                    ]),
+                    byte_start: 12,
+                    byte_end: 15,
+                },
+                Token {
+                    text: Cow::Borrowed("を"),
+                    details: Some(vec![
+                        "助詞".to_string(),
+                        "格助詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "を".to_string(),
+                        "ヲ".to_string(),
+                        "ヲ".to_string(),
+                    ]),
+                    byte_start: 27,
+                    byte_end: 30,
+                },
+                Token {
+                    text: Cow::Borrowed("拾う"),
+                    details: Some(vec![
+                        "動詞".to_string(),
+                        "自立".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "五段・ワ行促音便".to_string(),
+                        "基本形".to_string(),
+                        "拾う".to_string(),
+                        "ヒロウ".to_string(),
+                        "ヒロウ".to_string(),
+                    ]),
+                    byte_start: 30,
+                    byte_end: 36,
+                },
+            ];
 
-        filter.apply(&mut tokens).unwrap();
+            filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].text, "１００円");
-        assert_eq!(tokens[1].text, "玉");
-        assert_eq!(tokens[2].text, "を");
-        assert_eq!(tokens[3].text, "拾う");
+            assert_eq!(tokens.len(), 4);
+            assert_eq!(tokens[0].text, "１００円");
+            assert_eq!(tokens[1].text, "玉");
+            assert_eq!(tokens[2].text, "を");
+            assert_eq!(tokens[3].text, "拾う");
 
-        assert_eq!(
-            tokens[0].details,
-            Some(vec![
-                "複合語".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-            ])
-        );
+            assert_eq!(
+                tokens[0].details,
+                Some(vec![
+                    "複合語".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ])
+            );
+        }
+
+        {
+            let mut tokens: Vec<Token> = vec![
+                Token {
+                    text: Cow::Borrowed("渋谷"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "地域".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "渋谷".to_string(),
+                        "シブヤ".to_string(),
+                        "シブヤ".to_string(),
+                    ]),
+                    byte_start: 0,
+                    byte_end: 6,
+                },
+                Token {
+                    text: Cow::Borrowed("１"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "１".to_string(),
+                        "イチ".to_string(),
+                        "イチ".to_string(),
+                    ]),
+                    byte_start: 6,
+                    byte_end: 9,
+                },
+                Token {
+                    text: Cow::Borrowed("０"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "０".to_string(),
+                        "ゼロ".to_string(),
+                        "ゼロ".to_string(),
+                    ]),
+                    byte_start: 9,
+                    byte_end: 12,
+                },
+                Token {
+                    text: Cow::Borrowed("９"),
+                    details: Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "９".to_string(),
+                        "キュウ".to_string(),
+                        "キュー".to_string(),
+                    ]),
+                    byte_start: 12,
+                    byte_end: 15,
+                },
+            ];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 2);
+            assert_eq!(tokens[0].text, "渋谷");
+            assert_eq!(tokens[1].text, "１０９");
+
+            assert_eq!(
+                tokens[1].details,
+                Some(vec![
+                    "複合語".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ])
+            );
+        }
     }
 }
