@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.19.5 (2023-01-07)
+- Bump up version to 0.19.5 #293 @mosuka
 - Add functions for dictionary and Fix Bugs #292 @mosuka
 - Add mapping token filter #291 @mosuka
 
