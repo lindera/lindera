@@ -111,7 +111,6 @@ fn main() -> LinderaResult<()> {
 
     let user_dictionary = Some(UserDictionaryConfig {
         kind: DictionaryKind::IPADIC,
-        source_type: DictionarySourceType::Csv,
         path: PathBuf::from("./resources/ipadic_simple_userdic.csv"),
     });
 
