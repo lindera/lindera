@@ -108,25 +108,4 @@ impl<'a> Token<'a> {
 
 #[cfg(test)]
 mod tests {
-
-    // use crate::dic
-    // #[test]
-    // // #[cfg(feature = "ipadic")]
-    // fn test_token_ipadic() {
-
-    //     let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-    //     Token::new("羽田空港", 0, 12, WordId::default(), &dictionary, None)
-    //             .set_details(Some(vec![
-    //                 "名詞".to_string(),
-    //                 "固有名詞".to_string(),
-    //                 "一般".to_string(),
-    //                 "*".to_string(),
-    //                 "*".to_string(),
-    //                 "*".to_string(),
-    //                 "羽田空港".to_string(),
-    //                 "ハネダクウコウ".to_string(),
-    //                 "ハネダクーコー".to_string(),
-    //             ]))
-    // }
 }
