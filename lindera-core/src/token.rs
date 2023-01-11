@@ -105,6 +105,3 @@ impl<'a> Token<'a> {
         self
     }
 }
-
-#[cfg(test)]
-mod tests {}
