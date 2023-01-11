@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fs, path::Path};
+use std::{fs, mem, path::Path};
 
 use serde_json::Value;
 
@@ -246,28 +246,9 @@ impl Analyzer {
 
     pub fn new(
         character_filters: Vec<BoxCharacterFilter>,
-        mut tokenizer: Tokenizer,
+        tokenizer: Tokenizer,
         token_filters: Vec<BoxTokenFilter>,
     ) -> Self {
-        // Check if a token filter is applied that should retrieve the details of the word.
-        let with_details = token_filters
-            .iter()
-            .map(|token_filter| token_filter.name())
-            .any(|name| {
-                name == JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
-                    || name == JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
-                    || name == JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
-                    || name == JAPANESE_NUMBER_TOKEN_FILTER_NAME
-                    || name == JAPANESE_READING_FORM_TOKEN_FILTER_NAME
-                    || name == JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
-                    || name == KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
-                    || name == KOREAN_READING_FORM_TOKEN_FILTER_NAME
-                    || name == KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
-            });
-
-        // Override the tokenizer setting if token filters are applied that require to retrieval word details.
-        tokenizer.with_details(with_details);
-
         Self {
             character_filters,
             tokenizer,
@@ -275,19 +256,14 @@ impl Analyzer {
         }
     }
 
-    pub fn with_details(&mut self, with_details: bool) {
-        self.tokenizer.with_details(with_details);
-    }
-
-    pub fn analyze<'a>(&self, text: &'a str) -> crate::LinderaResult<Vec<crate::Token<'a>>> {
+    pub fn analyze<'a>(&'a self, text: &'a mut String) -> crate::LinderaResult<Vec<Token<'a>>> {
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
-        let mut tmp_text = text.to_string();
 
         // Appy character filters.
         for character_filter in &self.character_filters {
-            let (new_text, offsets, diffs) = character_filter.apply(&tmp_text)?;
+            let (new_text, offsets, diffs) = character_filter.apply(text)?;
 
             if !offsets.is_empty() {
                 // Record the offsets of each character filter.
@@ -300,11 +276,11 @@ impl Analyzer {
                 text_len_vec.insert(0, new_text.len());
             }
 
-            tmp_text = new_text;
+            mem::swap(text, &mut new_text.clone());
         }
 
         // Tokenize.
-        let mut tmp_tokens = self.tokenizer.tokenize(&tmp_text)?;
+        let mut tmp_tokens = self.tokenizer.tokenize(text)?;
 
         // Apply token filters.
         for token_filter in &self.token_filters {
@@ -313,21 +289,27 @@ impl Analyzer {
 
         // Correct token offsets
         let mut tokens = Vec::new();
-        for token in tmp_tokens.iter_mut() {
-            let mut new_token = Token {
-                text: Cow::Owned(token.text.to_string()),
-                details: token.details.clone(),
-                byte_start: token.byte_start,
-                byte_end: token.byte_end,
-            };
+        for token in tmp_tokens.iter() {
+            let mut new_token = Token::new(
+                token.get_text(),
+                token.byte_start,
+                token.byte_end,
+                token.word_id,
+                token.dictionary,
+                token.user_dictionary,
+            );
 
+            // Override details.
             for (i, offsets) in offsets_vec.iter().enumerate() {
+                // Override start.
                 new_token.byte_start = correct_offset(
                     new_token.byte_start,
                     offsets,
                     &diffs_vec[i],
                     text_len_vec[i],
                 );
+
+                // Override end.
                 new_token.byte_end =
                     correct_offset(new_token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
             }
@@ -389,8 +371,7 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal",
-                "with_details": false
+                "mode": "normal"
             },
             "token_filters": [
                 {
@@ -464,8 +445,7 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal",
-                "with_details": true
+                "mode": "normal"
             },
             "token_filters": [
                 {
@@ -555,8 +535,7 @@ mod tests {
                 "dictionary": {
                     "kind": "ipadic"
                 },
-                "mode": "normal",
-                "with_details": false
+                "mode": "normal"
             },
             "token_filters": [
                 {
@@ -617,7 +596,7 @@ mod tests {
             let mut analyze_text = text.clone();
             let tokens = analyzer.analyze(&mut analyze_text).unwrap();
             assert_eq!(
-                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
                 vec!["Lindera", "形態素", "解析", "エンジン"]
             );
 
@@ -626,7 +605,7 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, "Lindera");
+                assert_eq!(token.get_text(), "Lindera");
                 assert_eq!(&text[start..end], "ﾘﾝﾃﾞﾗ");
             }
         }
@@ -636,7 +615,7 @@ mod tests {
             let mut analyze_text = text.clone();
             let tokens = analyzer.analyze(&mut analyze_text).unwrap();
             assert_eq!(
-                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
                 vec!["10", "ガロン", "ガソリン"]
             );
 
@@ -645,21 +624,21 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, "10");
+                assert_eq!(token.get_text(), "10");
                 assert_eq!(&text[start..end], "１０");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, "ガロン");
+                assert_eq!(token.get_text(), "ガロン");
                 assert_eq!(&text[start..end], "㌎");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, "ガソリン");
+                assert_eq!(token.get_text(), "ガソリン");
                 assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
             }
         }
@@ -669,7 +648,7 @@ mod tests {
             let mut analyze_text = text.clone();
             let tokens = analyzer.analyze(&mut analyze_text).unwrap();
             assert_eq!(
-                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
                 vec!["お釣り", "百三十四円"]
             );
         }
@@ -679,7 +658,7 @@ mod tests {
             let mut analyze_text = text.clone();
             let tokens = analyzer.analyze(&mut analyze_text).unwrap();
             assert_eq!(
-                tokens.iter().map(|t| t.text.as_ref()).collect::<Vec<_>>(),
+                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
                 vec!["ここ", "騒騒しい"]
             );
         }

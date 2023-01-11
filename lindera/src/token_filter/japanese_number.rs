@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use serde::{Deserialize, Serialize};
 
 use lindera_core::token_filter::TokenFilter;
@@ -56,7 +54,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
         };
 
         for token in tokens.iter_mut() {
-            if let Some(details) = &mut token.details {
+            if let Some(details) = &mut token.get_details() {
                 let mut tag_vec = vec!["*", "*", "*", "*"];
                 let tags_len = if details.len() >= 4 { 4 } else { 1 };
                 for (i, j) in details[0..tags_len].iter().enumerate() {
@@ -65,7 +63,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
                 let tag = tag_vec.join(",");
 
                 if tag == number_tag {
-                    token.text = Cow::Owned(to_arabic_numerals(&token.text));
+                    token.set_text(to_arabic_numerals(token.get_text()));
                 }
             }
         }
@@ -233,16 +231,15 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use std::borrow::Cow;
     use std::str::FromStr;
 
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use lindera_core::token_filter::TokenFilter;
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
     use crate::token_filter::japanese_number::to_arabic_numerals;
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
     use crate::{
+        builder,
         token_filter::japanese_number::{
             JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
         },
@@ -849,76 +846,76 @@ mod tests {
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "一".to_string(),
-                    "イチ".to_string(),
-                    "イチ".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 3,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![Token::new("一", 0, 3, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "数".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "一".to_string(),
+                        "イチ".to_string(),
+                        "イチ".to_string(),
+                    ]))
+                    .clone()];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "1");
+            assert_eq!(tokens[0].get_text(), "1");
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一二三"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 9,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一二三", 0, 9, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                        ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "123");
+            assert_eq!(tokens[0].get_text(), "123");
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 129,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                                ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "123456789012345678901234");
+            assert_eq!(tokens[0].get_text(), "123456789012345678901234");
         }
     }
 
@@ -932,100 +929,100 @@ mod tests {
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "イチ".to_string(),
-                    "一".to_string(),
-                    "一".to_string(),
-                    "イチ".to_string(),
-                    "一".to_string(),
-                    "イチ".to_string(),
-                    "漢".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "チ促".to_string(),
-                    "基本形".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 3,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![Token::new("一", 0, 3, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "数詞".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "イチ".to_string(),
+                        "一".to_string(),
+                        "一".to_string(),
+                        "イチ".to_string(),
+                        "一".to_string(),
+                        "イチ".to_string(),
+                        "漢".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "チ促".to_string(),
+                        "基本形".to_string(),
+                    ]))
+                    .clone()];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "1");
+            assert_eq!(tokens[0].get_text(), "1");
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一二三"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 9,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一二三", 0, 9, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数詞".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                        ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "123");
+            assert_eq!(tokens[0].get_text(), "123");
         }
 
         {
-            let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四"),
-                details: Some(vec![
-                    "名詞".to_string(),
-                    "数詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 129,
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数詞".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                                        ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].text, "123456789012345678901234");
+            assert_eq!(tokens[0].get_text(), "123456789012345678901234");
         }
     }
 }

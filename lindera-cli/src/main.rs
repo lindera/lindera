@@ -15,7 +15,7 @@ use lindera::{
     tokenizer::{
         DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
     },
-    DictionaryKind, LinderaResult,
+    DictionaryKind, LinderaResult, Token,
 };
 
 #[derive(Debug, Parser)]
@@ -148,6 +148,66 @@ fn list(_args: ListArgs) -> LinderaResult<()> {
     Ok(())
 }
 
+fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+    for token in tokens.iter_mut() {
+        let text = token.get_text().to_string();
+        let details = token.get_details().ok_or_else(|| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!("Failed to get word details."))
+        })?;
+        println!(
+            "{}\t{}",
+            text,
+            details
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+    }
+    println!("EOS");
+
+    Ok(())
+}
+
+fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+    let mut tokens_json = Vec::new();
+    for token in tokens.iter_mut() {
+        let word_details = token
+            .get_details()
+            .iter()
+            .flat_map(|v| v.iter().map(|s| s.to_string()))
+            .collect::<Vec<_>>();
+        let token_info = serde_json::json!({
+            "text": token.get_text(),
+            "id": token.word_id,
+            "details": word_details,
+            "byte_start": token.byte_start,
+            "byte_end": token.byte_end,
+        });
+        tokens_json.push(token_info);
+    }
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&tokens_json)
+            .map_err(|err| { LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)) })?
+    );
+
+    Ok(())
+}
+
+fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
+    let mut it = tokens.iter().peekable();
+    while let Some(token) = it.next() {
+        if it.peek().is_some() {
+            print!("{} ", token.get_text());
+        } else {
+            println!("{}", token.get_text());
+        }
+    }
+
+    Ok(())
+}
+
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let dictionary_conf = DictionaryConfig {
         kind: args.dic_type.clone(),
@@ -166,7 +226,6 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         dictionary: dictionary_conf,
         user_dictionary: user_dictionary_conf,
         mode: args.mode,
-        with_details: true,
     };
 
     // create tokenizer
@@ -198,52 +257,13 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         let tokens = tokenizer.tokenize(text.trim())?;
         match output_format {
             Format::Mecab => {
-                for token in tokens.iter() {
-                    println!(
-                        "{}\t{}",
-                        token.text,
-                        token
-                            .details
-                            .iter()
-                            .flat_map(|v| v.iter().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    );
-                }
-                println!("EOS");
+                mecab_output(tokens)?;
             }
             Format::Json => {
-                let mut tokens_json = Vec::new();
-                for token in tokens.iter() {
-                    let word_details = token
-                        .details
-                        .iter()
-                        .flat_map(|v| v.iter().map(|s| s.to_string()))
-                        .collect::<Vec<_>>();
-                    let token_info = serde_json::json!({
-                        "text": token.text,
-                        "details": word_details,
-                        "byte_start": token.byte_start,
-                        "byte_end": token.byte_end,
-                    });
-                    tokens_json.push(token_info);
-                }
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&tokens_json).map_err(|err| {
-                        LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err))
-                    })?
-                );
+                json_output(tokens)?;
             }
             Format::Wakati => {
-                let mut it = tokens.iter().peekable();
-                while let Some(token) = it.next() {
-                    if it.peek().is_some() {
-                        print!("{} ", token.text);
-                    } else {
-                        println!("{}", token.text);
-                    }
-                }
+                wakati_output(tokens)?;
             }
         }
     }
@@ -284,56 +304,17 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             // EOS
             break;
         }
-
-        let tokens = analyzer.analyze(text.trim())?;
+        let mut text = text.trim().to_string();
+        let tokens = analyzer.analyze(&mut text)?;
         match output_format {
             Format::Mecab => {
-                for token in tokens.iter() {
-                    println!(
-                        "{}\t{}",
-                        token.text,
-                        token
-                            .details
-                            .iter()
-                            .flat_map(|v| v.iter().map(|s| s.to_string()))
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    );
-                }
-                println!("EOS");
+                mecab_output(tokens)?;
             }
             Format::Json => {
-                let mut tokens_json = Vec::new();
-                for token in tokens.iter() {
-                    let word_details = token
-                        .details
-                        .iter()
-                        .flat_map(|v| v.iter().map(|s| s.to_string()))
-                        .collect::<Vec<_>>();
-                    let token_info = serde_json::json!({
-                        "text": token.text,
-                        "details": word_details,
-                        "byte_start": token.byte_start,
-                        "byte_end": token.byte_end,
-                    });
-                    tokens_json.push(token_info);
-                }
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&tokens_json).map_err(|err| {
-                        LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err))
-                    })?
-                );
+                json_output(tokens)?;
             }
             Format::Wakati => {
-                let mut it = tokens.iter().peekable();
-                while let Some(token) = it.next() {
-                    if it.peek().is_some() {
-                        print!("{} ", token.text);
-                    } else {
-                        println!("{}", token.text);
-                    }
-                }
+                wakati_output(tokens)?;
             }
         }
     }

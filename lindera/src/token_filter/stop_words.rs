@@ -44,7 +44,7 @@ impl TokenFilter for StopWordsTokenFilter {
     }
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.words.contains(token.text.as_ref()));
+        tokens.retain(|token| !self.config.words.contains(token.get_text()));
 
         Ok(())
     }
@@ -52,14 +52,12 @@ impl TokenFilter for StopWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    #[cfg(feature = "ipadic")]
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use lindera_core::token_filter::TokenFilter;
-
-    use crate::{
-        token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig},
-        Token,
-    };
+    use crate::token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig};
+    #[cfg(feature = "ipadic")]
+    use crate::{builder, DictionaryKind, Token};
 
     #[test]
     fn test_stop_words_token_filter_config_from_slice() {
@@ -154,7 +152,8 @@ mod tests {
     }
 
     #[test]
-    fn test_stop_words_token_filter_apply() {
+    #[cfg(feature = "ipadic")]
+    fn test_stop_words_token_filter_apply_ipadic() {
         let config_str = r#"
         {
             "words": [
@@ -196,72 +195,44 @@ mod tests {
         "#;
         let filter = StopWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
         let mut tokens: Vec<Token> = vec![
-            Token {
-                text: Cow::Borrowed("to"),
-                details: None,
-                byte_start: 0,
-                byte_end: 2,
-            },
-            Token {
-                text: Cow::Borrowed("be"),
-                details: None,
-                byte_start: 3,
-                byte_end: 5,
-            },
-            Token {
-                text: Cow::Borrowed("or"),
-                details: None,
-                byte_start: 6,
-                byte_end: 8,
-            },
-            Token {
-                text: Cow::Borrowed("not"),
-                details: None,
-                byte_start: 9,
-                byte_end: 12,
-            },
-            Token {
-                text: Cow::Borrowed("to"),
-                details: None,
-                byte_start: 13,
-                byte_end: 15,
-            },
-            Token {
-                text: Cow::Borrowed("be"),
-                details: None,
-                byte_start: 16,
-                byte_end: 18,
-            },
-            Token {
-                text: Cow::Borrowed("this"),
-                details: None,
-                byte_start: 19,
-                byte_end: 23,
-            },
-            Token {
-                text: Cow::Borrowed("is"),
-                details: None,
-                byte_start: 24,
-                byte_end: 26,
-            },
-            Token {
-                text: Cow::Borrowed("the"),
-                details: None,
-                byte_start: 27,
-                byte_end: 30,
-            },
-            Token {
-                text: Cow::Borrowed("question"),
-                details: None,
-                byte_start: 31,
-                byte_end: 39,
-            },
+            Token::new("to", 0, 2, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("be", 3, 5, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("or", 6, 8, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("not", 9, 12, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("to", 13, 15, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("be", 16, 18, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("this", 19, 23, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("is", 24, 26, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("the", 27, 30, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("question", 31, 39, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].text, "question");
+        assert_eq!(tokens[0].get_text(), "question");
     }
 }

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use lindera_core::token_filter::TokenFilter;
 
 use crate::{LinderaResult, Token};
@@ -28,7 +26,7 @@ impl TokenFilter for UppercaseTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.text = Cow::Owned(token.text.to_uppercase());
+            token.set_text(token.get_text().to_uppercase());
         }
 
         Ok(())
@@ -37,26 +35,29 @@ impl TokenFilter for UppercaseTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    #[cfg(feature = "ipadic")]
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use lindera_core::token_filter::TokenFilter;
-
-    use crate::{token_filter::uppercase::UppercaseTokenFilter, Token};
+    #[cfg(feature = "ipadic")]
+    use crate::{builder, token_filter::uppercase::UppercaseTokenFilter, DictionaryKind, Token};
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_uppercase_token_filter_apply() {
         let filter = UppercaseTokenFilter::default();
 
-        let mut tokens: Vec<Token> = vec![Token {
-            text: Cow::Borrowed("Rust"),
-            details: None,
-            byte_start: 0,
-            byte_end: 4,
-        }];
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> =
+            vec![
+                Token::new("Rust", 0, 4, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec!["UNK".to_string()]))
+                    .clone(),
+            ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].text, "RUST");
+        assert_eq!(tokens[0].get_text(), "RUST");
     }
 }

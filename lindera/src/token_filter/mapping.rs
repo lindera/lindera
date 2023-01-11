@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use lindera_core::token_filter::TokenFilter;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ impl TokenFilter for MappingTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let text = token.text.to_string();
+            let text = token.get_text();
 
             let mut result = String::new();
             let mut start = 0_usize;
@@ -98,7 +98,7 @@ impl TokenFilter for MappingTokenFilter {
                 }
             }
 
-            token.text = Cow::Owned(result);
+            token.set_text(result);
         }
 
         Ok(())
@@ -107,14 +107,12 @@ impl TokenFilter for MappingTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    #[cfg(feature = "ipadic")]
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use lindera_core::token_filter::TokenFilter;
-
-    use crate::{
-        token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig},
-        Token,
-    };
+    use crate::token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig};
+    #[cfg(feature = "ipadic")]
+    use crate::{builder, DictionaryKind, Token};
 
     #[test]
     fn test_mapping_token_filter_config_from_slice() {
@@ -151,7 +149,8 @@ mod tests {
     }
 
     #[test]
-    fn test_mapping_token_filter_apply() {
+    #[cfg(feature = "ipadic")]
+    fn test_mapping_token_filter_apply_ipadic() {
         {
             let config_str = r#"
             {
@@ -162,26 +161,42 @@ mod tests {
             "#;
             let filter = MappingTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+            let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
             let mut tokens: Vec<Token> = vec![
-                Token {
-                    text: Cow::Borrowed("籠原"),
-                    details: None,
-                    byte_start: 0,
-                    byte_end: 6,
-                },
-                Token {
-                    text: Cow::Borrowed("駅"),
-                    details: None,
-                    byte_start: 6,
-                    byte_end: 9,
-                },
+                Token::new("籠原", 0, 6, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "籠原".to_string(),
+                        "カゴハラ".to_string(),
+                        "カゴハラ".to_string(),
+                    ]))
+                    .clone(),
+                Token::new("駅", 0, 6, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "接尾".to_string(),
+                        "地域".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "駅".to_string(),
+                        "エキ".to_string(),
+                        "エキ".to_string(),
+                    ]))
+                    .clone(),
             ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(tokens[0].text, "篭原");
-            assert_eq!(tokens[1].text, "駅");
+            assert_eq!(tokens[0].get_text(), "篭原");
+            assert_eq!(tokens[1].get_text(), "駅");
         }
     }
 }
