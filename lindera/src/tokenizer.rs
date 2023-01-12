@@ -16,16 +16,30 @@ use crate::{
     DictionaryKind, LinderaResult,
 };
 
+/// Dictionary config
+/// 
+/// Use this if you want to use a dictionary when tokenizing.
+/// 
+/// Either `kind` or `path` must be specified.
+/// 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DictionaryConfig {
+    /// Specify the kind of dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT) if a self-contained dictionary is used for tokenization.
     pub kind: Option<DictionaryKind>,
+    /// Specifies the path to a pre-built external dictionary if one is used.
     pub path: Option<PathBuf>,
 }
 
+/// User dictionary config
+/// 
+/// Use this if you want to use a user dictionary when tokenizing.
+/// 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct UserDictionaryConfig {
-    pub kind: Option<DictionaryKind>,
+    /// Path to the user dictionary file.
     pub path: PathBuf,
+    /// If the user dictionary was in CSV format, specify the dictionary type (IPADIC, UniDic, ko-dic or CC-CEDICT).
+    pub kind: Option<DictionaryKind>,
 }
 
 // Only the value specified by the feature flag is stored.
@@ -43,13 +57,13 @@ pub const CONTAINED_DICTIONARIES: &[&str] = &[
 /// Tokenizer config
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TokenizerConfig {
-    /// The dictionary metadata
+    /// The dictionary config to be used for tokenization.
     pub dictionary: DictionaryConfig,
 
-    /// The user dictionary metadata.
+    /// The user dictionary config to be used for tokenization. (Optional)
     pub user_dictionary: Option<UserDictionaryConfig>,
 
-    /// Tokenize mode
+    /// The tokenization mode.
     pub mode: Mode,
 }
 
@@ -184,19 +198,24 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
 #[derive(Clone)]
 /// Tokenizer
 pub struct Tokenizer {
+    /// The dictionary to be used for tokenization.
     dictionary: Dictionary,
+
+    /// The user dictionary to be used for tokenization. (Optional)
     user_dictionary: Option<UserDictionary>,
+
+    /// The tokenization mode.
     mode: Mode,
 }
 
 impl Tokenizer {
-    /// Creates a new instance with the config
+    /// Create a new tokenizer from the tokenizer config.
     ///
     /// # Arguments
     ///
-    /// * `config`: settings of Tokenizer
+    /// * `config`: The tokenizer config.
     ///
-    /// returns: Result<Tokenizer, LinderaError>
+    /// returns: LinderaResult<Tokenizer>
     ///
     pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
         let dictionary = load_dictionary(config.dictionary)?;
@@ -209,6 +228,16 @@ impl Tokenizer {
         Ok(Self::new(dictionary, user_dictionary, config.mode))
     }
 
+    /// Create a new tokenizer.
+    ///
+    /// # Arguments
+    ///
+    /// * `dictionary`: The dictionary to be used for tokenization.
+    /// * `user_dictionary`: The user dictionary to be used for tokenization. (Optional)
+    /// * `mode`: The tokenization mode.
+    ///
+    /// returns: LinderaResult<Tokenizer>
+    ///
     pub fn new(
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
@@ -221,15 +250,15 @@ impl Tokenizer {
         }
     }
 
-    /// Tokenize the text (without word details)
+    /// Tokenize the text
     ///
     /// # Arguments
     ///
-    /// * `text`: Japanese text
+    /// * `text`: The text to be tokenized.
     ///
-    /// returns: Result<Vec<Token>, LinderaError>
+    /// returns: LinderaResult<Vec<Token>>
     ///
-    /// * Vec<Token> : the list of `Token` if succeeded
+    /// * Vec<Token> : The list of `Token` if succeeded
     /// * LinderaError : Error message with LinderaErrorKind
     ///
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
