@@ -17,11 +17,11 @@ use crate::{
 };
 
 /// Dictionary config
-/// 
+///
 /// Use this if you want to use a dictionary when tokenizing.
-/// 
+///
 /// Either `kind` or `path` must be specified.
-/// 
+///
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DictionaryConfig {
     /// Specify the kind of dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT) if a self-contained dictionary is used for tokenization.
@@ -31,9 +31,9 @@ pub struct DictionaryConfig {
 }
 
 /// User dictionary config
-/// 
+///
 /// Use this if you want to use a user dictionary when tokenizing.
-/// 
+///
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct UserDictionaryConfig {
     /// Path to the user dictionary file.
