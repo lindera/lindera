@@ -40,7 +40,7 @@ fn bench_constructor(c: &mut Criterion) {
                     user_dictionary: None,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -59,7 +59,7 @@ fn bench_constructor(c: &mut Criterion) {
                     user_dictionary: None,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -78,7 +78,7 @@ fn bench_constructor(c: &mut Criterion) {
                     user_dictionary: None,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -97,7 +97,7 @@ fn bench_constructor(c: &mut Criterion) {
                     user_dictionary: None,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -128,7 +128,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     user_dictionary,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -156,7 +156,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     user_dictionary,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -184,7 +184,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     user_dictionary,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -212,7 +212,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     user_dictionary,
                     mode: Mode::Normal,
                 };
-                Tokenizer::with_config(config).unwrap()
+                Tokenizer::from_config(config).unwrap()
             })
         });
     }
@@ -233,7 +233,7 @@ fn bench_tokenize(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         c.bench_function("bench-tokenize-ipadic", |b| {
             b.iter(|| tokenizer.tokenize("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。"))
@@ -253,7 +253,7 @@ fn bench_tokenize(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         c.bench_function("bench-tokenize-unidic", |b| {
             b.iter(|| tokenizer.tokenize("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。"))
@@ -325,7 +325,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         c.bench_function("bench-tokenize-with-simple-userdic-ipadic", |b| {
             b.iter(|| {
                 tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
@@ -454,7 +454,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
             user_dictionary,
             mode: Mode::Normal,
         };
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // Using benchmark_group for changing sample_size
         let mut group = c.benchmark_group("tokenize-long-text-ipadic");
@@ -497,7 +497,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
             user_dictionary,
             mode: Mode::Normal,
         };
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // Using benchmark_group for changing sample_size
         let mut group = c.benchmark_group("tokenize-long-text-unidic");
@@ -543,13 +543,18 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
             user_dictionary,
             mode: Mode::Normal,
         };
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // Using benchmark_group for changing sample_size
         let mut group = c.benchmark_group("tokenize-details-long-text-ipadic");
         group.sample_size(20);
         group.bench_function("bench-tokenize-details-long-text-ipadic", |b| {
-            b.iter(|| tokenizer.tokenize_with_details(long_text.as_str()));
+            b.iter(|| {
+                let mut tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
+                for token in tokens.iter_mut() {
+                    let _details = token.get_details();
+                }
+            });
         });
         group.finish();
     }

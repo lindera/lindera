@@ -43,7 +43,6 @@ fn main() -> LinderaResult<()> {
         dictionary,
         user_dictionary: None,
         mode: Mode::Normal,
-        with_details: false,
     };
 
     // create tokenizer
@@ -54,7 +53,7 @@ fn main() -> LinderaResult<()> {
 
     // output the tokens
     for token in tokens {
-        println!("{}", token.text);
+        println!("{}", token.get_text());
     }
 
     Ok(())
@@ -107,7 +106,13 @@ fn main() -> LinderaResult<()> {
 
     // output the tokens
     for token in tokens {
-        println!("token: {}, start: {}, end: {}, details: {:?}", token.text, token.byte_start, token.byte_end, token.details);
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.get_text(),
+            token.byte_start,
+            token.byte_end,
+            token.clone().get_details()
+        );
     }
 
     Ok(())
@@ -174,17 +179,16 @@ fn main() -> LinderaResult<()> {
         dictionary,
         user_dictionary,
         mode: Mode::Normal,
-        with_details: false,
     };
 
-    let tokenizer = Tokenizer::new(config)?;
+    let tokenizer = Tokenizer::from_config(config)?;
 
     // tokenize the text
     let tokens = tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
 
     // output the tokens
     for token in tokens {
-        println!("{}", token.text);
+        println!("{}", token.get_text());
     }
 
     Ok(())

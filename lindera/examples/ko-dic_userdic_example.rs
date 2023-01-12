@@ -28,7 +28,6 @@ fn main() -> LinderaResult<()> {
             dictionary,
             user_dictionary: user_dictionary,
             mode: Mode::Normal,
-            with_details: false,
         };
 
         #[allow(unused_variables)]
@@ -39,7 +38,7 @@ fn main() -> LinderaResult<()> {
 
         // output the tokens
         for token in tokens {
-            println!("{}", token.text);
+            println!("{}", token.get_text());
         }
     }
 

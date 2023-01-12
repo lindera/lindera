@@ -44,7 +44,7 @@ impl TokenFilter for LengthTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         tokens.retain(|token| {
-            let len = token.text.chars().count();
+            let len = token.get_text().chars().count();
             if let Some(min) = self.config.min {
                 if len < min {
                     return false;
@@ -64,14 +64,12 @@ impl TokenFilter for LengthTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    #[cfg(feature = "ipadic")]
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use lindera_core::token_filter::TokenFilter;
-
-    use crate::{
-        token_filter::length::{LengthTokenFilter, LengthTokenFilterConfig},
-        Token,
-    };
+    use crate::token_filter::length::{LengthTokenFilter, LengthTokenFilterConfig};
+    #[cfg(feature = "ipadic")]
+    use crate::{builder, DictionaryKind, Token};
 
     #[test]
     fn test_length_token_filter_config_from_slice() {
@@ -139,7 +137,8 @@ mod tests {
     }
 
     #[test]
-    fn test_length_token_filter_apply() {
+    #[cfg(feature = "ipadic")]
+    fn test_length_token_filter_apply_ipadic() {
         let config_str = r#"
         {
             "min": 3,
@@ -148,73 +147,45 @@ mod tests {
         "#;
         let filter = LengthTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
         let mut tokens: Vec<Token> = vec![
-            Token {
-                text: Cow::Borrowed("to"),
-                details: None,
-                byte_start: 0,
-                byte_end: 2,
-            },
-            Token {
-                text: Cow::Borrowed("be"),
-                details: None,
-                byte_start: 3,
-                byte_end: 5,
-            },
-            Token {
-                text: Cow::Borrowed("or"),
-                details: None,
-                byte_start: 6,
-                byte_end: 8,
-            },
-            Token {
-                text: Cow::Borrowed("not"),
-                details: None,
-                byte_start: 9,
-                byte_end: 12,
-            },
-            Token {
-                text: Cow::Borrowed("to"),
-                details: None,
-                byte_start: 13,
-                byte_end: 15,
-            },
-            Token {
-                text: Cow::Borrowed("be"),
-                details: None,
-                byte_start: 16,
-                byte_end: 18,
-            },
-            Token {
-                text: Cow::Borrowed("this"),
-                details: None,
-                byte_start: 19,
-                byte_end: 23,
-            },
-            Token {
-                text: Cow::Borrowed("is"),
-                details: None,
-                byte_start: 24,
-                byte_end: 26,
-            },
-            Token {
-                text: Cow::Borrowed("the"),
-                details: None,
-                byte_start: 27,
-                byte_end: 30,
-            },
-            Token {
-                text: Cow::Borrowed("question"),
-                details: None,
-                byte_start: 31,
-                byte_end: 39,
-            },
+            Token::new("to", 0, 2, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("be", 3, 5, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("or", 6, 8, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("not", 9, 12, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("to", 13, 15, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("be", 16, 18, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("this", 19, 23, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("is", 24, 26, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("the", 27, 30, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
+            Token::new("question", 31, 39, WordId::default(), &dictionary, None)
+                .set_details(Some(vec!["UNK".to_string()]))
+                .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 2);
-        assert_eq!(tokens[0].text, "not");
-        assert_eq!(tokens[1].text, "the");
+        assert_eq!(tokens[0].get_text(), "not");
+        assert_eq!(tokens[1].get_text(), "the");
     }
 }

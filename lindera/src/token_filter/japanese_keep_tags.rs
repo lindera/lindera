@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, mem};
 
 use serde::{Deserialize, Serialize};
 
@@ -63,13 +63,17 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
     }
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| {
-            if let Some(details) = &token.details {
-                self.config.tags.contains(&details[0..4].join(","))
-            } else {
-                false
+        let mut new_tokens = Vec::new();
+
+        for token in tokens.iter_mut() {
+            if let Some(details) = token.get_details() {
+                if self.config.tags.contains(&details[0..4].join(",")) {
+                    new_tokens.push(token.clone());
+                }
             }
-        });
+        }
+
+        mem::swap(tokens, &mut new_tokens);
 
         Ok(())
     }
@@ -77,16 +81,14 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    #[cfg(feature = "ipadic")]
+    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use lindera_core::token_filter::TokenFilter;
-
-    use crate::{
-        token_filter::japanese_keep_tags::{
-            JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
-        },
-        Token,
+    use crate::token_filter::japanese_keep_tags::{
+        JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
     };
+    #[cfg(feature = "ipadic")]
+    use crate::{builder, DictionaryKind, Token};
 
     #[test]
     fn test_japanese_keep_tags_token_filter_config_from_slice() {
@@ -193,7 +195,8 @@ mod tests {
     }
 
     #[test]
-    fn test_japanese_keep_tags_token_filter_apply() {
+    #[cfg(feature = "ipadic")]
+    fn test_japanese_keep_tags_token_filter_apply_ipadic() {
         let config_str = r#"
         {
             "tags": [
@@ -241,10 +244,11 @@ mod tests {
         "#;
         let filter = JapaneseKeepTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+
         let mut tokens: Vec<Token> = vec![
-            Token {
-                text: Cow::Borrowed("すもも"),
-                details: Some(vec![
+            Token::new("すもも", 0, 9, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -254,13 +258,10 @@ mod tests {
                     "すもも".to_string(),
                     "スモモ".to_string(),
                     "スモモ".to_string(),
-                ]),
-                byte_start: 0,
-                byte_end: 9,
-            },
-            Token {
-                text: Cow::Borrowed("も"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("も", 9, 12, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
                     "*".to_string(),
@@ -270,13 +271,10 @@ mod tests {
                     "も".to_string(),
                     "モ".to_string(),
                     "モ".to_string(),
-                ]),
-                byte_start: 9,
-                byte_end: 12,
-            },
-            Token {
-                text: Cow::Borrowed("もも"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("もも", 12, 18, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -286,13 +284,10 @@ mod tests {
                     "もも".to_string(),
                     "モモ".to_string(),
                     "モモ".to_string(),
-                ]),
-                byte_start: 12,
-                byte_end: 18,
-            },
-            Token {
-                text: Cow::Borrowed("も"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("も", 18, 21, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
                     "*".to_string(),
@@ -302,13 +297,10 @@ mod tests {
                     "も".to_string(),
                     "モ".to_string(),
                     "モ".to_string(),
-                ]),
-                byte_start: 18,
-                byte_end: 21,
-            },
-            Token {
-                text: Cow::Borrowed("もも"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("もも", 21, 27, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -318,13 +310,10 @@ mod tests {
                     "もも".to_string(),
                     "モモ".to_string(),
                     "モモ".to_string(),
-                ]),
-                byte_start: 21,
-                byte_end: 27,
-            },
-            Token {
-                text: Cow::Borrowed("の"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("の", 27, 30, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "助詞".to_string(),
                     "連体化".to_string(),
                     "*".to_string(),
@@ -334,13 +323,10 @@ mod tests {
                     "の".to_string(),
                     "ノ".to_string(),
                     "ノ".to_string(),
-                ]),
-                byte_start: 27,
-                byte_end: 30,
-            },
-            Token {
-                text: Cow::Borrowed("うち"),
-                details: Some(vec![
+                ]))
+                .clone(),
+            Token::new("うち", 30, 36, WordId::default(), &dictionary, None)
+                .set_details(Some(vec![
                     "名詞".to_string(),
                     "非自立".to_string(),
                     "副詞可能".to_string(),
@@ -350,18 +336,16 @@ mod tests {
                     "うち".to_string(),
                     "ウチ".to_string(),
                     "ウチ".to_string(),
-                ]),
-                byte_start: 30,
-                byte_end: 36,
-            },
+                ]))
+                .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].text, "すもも");
-        assert_eq!(tokens[1].text, "もも");
-        assert_eq!(tokens[2].text, "もも");
-        assert_eq!(tokens[3].text, "うち");
+        assert_eq!(tokens[0].get_text(), "すもも");
+        assert_eq!(tokens[1].get_text(), "もも");
+        assert_eq!(tokens[2].get_text(), "もも");
+        assert_eq!(tokens[3].get_text(), "うち");
     }
 }
