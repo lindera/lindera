@@ -2,7 +2,8 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.20.0 (2023-01-14)
+- Bump up to 0.20.0 #298 @mosuka
 - Adding a reference to a dictionary to a member of a token structure #297 @mosuka
 
 ## 0.19.5 (2023-01-07)
