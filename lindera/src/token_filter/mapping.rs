@@ -23,6 +23,8 @@ impl MappingTokenFilterConfig {
     }
 }
 
+/// Replace characters with the specified character mappings.
+///
 #[derive(Clone)]
 pub struct MappingTokenFilter {
     config: MappingTokenFilterConfig,

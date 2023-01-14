@@ -22,6 +22,8 @@ impl KeepWordsTokenFilterConfig {
     }
 }
 
+/// Keep only the tokens of the specified text.
+///
 #[derive(Clone, Debug)]
 pub struct KeepWordsTokenFilter {
     config: KeepWordsTokenFilterConfig,

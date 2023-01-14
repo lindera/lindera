@@ -22,6 +22,9 @@ impl JapaneseReadingFormTokenFilterConfig {
     }
 }
 
+/// Replace the text of a token with the reading of the text as registered in the morphological dictionary.
+/// The reading is in katakana.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseReadingFormTokenFilter {
     config: JapaneseReadingFormTokenFilterConfig,

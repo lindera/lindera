@@ -8,8 +8,10 @@ pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum KanaKind {
+    /// Katakana to Hiragana.
     #[serde(rename = "hiragana")]
     Hiragana,
+    /// Hiragana to Katakana.
     #[serde(rename = "katakana")]
     Katakana,
 }
@@ -30,6 +32,7 @@ impl JapaneseKanaTokenFilterConfig {
     }
 }
 
+/// Convert only katakana to hiragana, or only hiragana to katakana.
 #[derive(Clone, Debug)]
 pub struct JapaneseKanaTokenFilter {
     config: JapaneseKanaTokenFilterConfig,

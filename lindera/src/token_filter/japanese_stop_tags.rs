@@ -40,6 +40,8 @@ impl JapaneseStopTagsTokenFilterConfig {
     }
 }
 
+/// Remove tokens with the specified part-of-speech tag.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseStopTagsTokenFilter {
     config: JapaneseStopTagsTokenFilterConfig,

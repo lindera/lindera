@@ -40,6 +40,8 @@ impl JapaneseKeepTagsTokenFilterConfig {
     }
 }
 
+/// Keep only tokens with the specified part-of-speech tag.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseKeepTagsTokenFilter {
     config: JapaneseKeepTagsTokenFilterConfig,

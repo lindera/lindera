@@ -24,6 +24,8 @@ impl KoreanKeepTagsTokenFilterConfig {
     }
 }
 
+/// Keep only tokens with the specified part-of-speech tag.
+///
 #[derive(Clone, Debug)]
 pub struct KoreanKeepTagsTokenFilter {
     config: KoreanKeepTagsTokenFilterConfig,

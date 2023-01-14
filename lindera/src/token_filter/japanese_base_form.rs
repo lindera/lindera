@@ -22,6 +22,9 @@ impl JapaneseBaseFormTokenFilterConfig {
     }
 }
 
+/// Replace the term text with the base form registered in the morphological dictionary.
+/// This acts as a lemmatizer for verbs and adjectives.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseBaseFormTokenFilter {
     config: JapaneseBaseFormTokenFilterConfig,

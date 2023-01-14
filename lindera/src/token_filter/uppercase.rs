@@ -4,6 +4,8 @@ use crate::{LinderaResult, Token};
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
+/// Normalizes token text to upper case.
+/// 
 #[derive(Clone, Debug)]
 pub struct UppercaseTokenFilter {}
 

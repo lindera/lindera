@@ -22,6 +22,8 @@ impl LengthTokenFilterConfig {
     }
 }
 
+/// Keep only tokens with the specified number of characters of text.
+///
 #[derive(Clone, Debug)]
 pub struct LengthTokenFilter {
     config: LengthTokenFilterConfig,

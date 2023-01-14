@@ -16,6 +16,7 @@ fn default_min() -> NonZeroUsize {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseKatakanaStemTokenFilterConfig {
+    /// Minimum length.
     #[serde(default = "default_min")]
     min: NonZeroUsize,
 }
@@ -30,6 +31,10 @@ impl JapaneseKatakanaStemTokenFilterConfig {
     }
 }
 
+/// Normalizes common katakana spelling variations ending with a long sound (U+30FC)
+/// by removing that character.
+/// Only katakana words longer than the minimum length are stemmed.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseKatakanaStemTokenFilter {
     config: JapaneseKatakanaStemTokenFilterConfig,

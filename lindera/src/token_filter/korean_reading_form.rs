@@ -4,6 +4,8 @@ use crate::{LinderaResult, Token};
 
 pub const KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str = "korean_reading_form";
 
+/// Replace the text of a token with the reading of the text as registered in the morphological dictionary.
+///
 #[derive(Clone, Debug)]
 pub struct KoreanReadingFormTokenFilter {}
 
