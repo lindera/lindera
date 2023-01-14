@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ko-dic"
-version = "0.19.2"
+version = "0.20.0"
 edition = "2021"
 description = "A Japanese morphological dictionary for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic"
@@ -20,13 +20,13 @@ bincode = "1.3.3"
 byteorder = "1.4.3"
 once_cell = "1.16.0"
 
-lindera-core = { version = "0.19.2", path = "../lindera-core" }
-lindera-decompress = { version = "0.19.0", path = "../lindera-decompress", optional = true }
+lindera-core = { version = "0.20.0", path = "../lindera-core" }
+lindera-decompress = { version = "0.20.0", path = "../lindera-decompress", optional = true }
 
 [build-dependencies]
 encoding = { version = "0.2.33", optional = true }
 flate2 = { version = "1.0.25", optional = true }
 tar = { version = "0.4.38", optional = true }
 
-lindera-core = { version = "0.19.2", path = "../lindera-core" }
-lindera-ko-dic-builder = { version = "0.19.2", path = "../lindera-ko-dic-builder"}
+lindera-core = { version = "0.20.0", path = "../lindera-core" }
+lindera-ko-dic-builder = { version = "0.20.0", path = "../lindera-ko-dic-builder"}
