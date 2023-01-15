@@ -74,6 +74,8 @@ impl JapaneseIterationMarkCharacterFilterConfig {
     }
 }
 
+/// Normalizes Japanese horizontal iteration marks (odoriji) to their expanded form.
+///
 #[derive(Clone)]
 pub struct JapaneseIterationMarkCharacterFilter {
     config: JapaneseIterationMarkCharacterFilterConfig,

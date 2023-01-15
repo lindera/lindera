@@ -24,6 +24,8 @@ impl MappingCharacterFilterConfig {
     }
 }
 
+/// Replace characters with the specified character mappings.
+///
 #[derive(Clone)]
 pub struct MappingCharacterFilter {
     config: MappingCharacterFilterConfig,
