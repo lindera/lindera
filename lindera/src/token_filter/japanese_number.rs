@@ -22,6 +22,8 @@ impl JapaneseNumberTokenFilterConfig {
     }
 }
 
+/// Convert tokens representing Japanese numerals, including Kanji numerals, to Arabic numerals.
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseNumberTokenFilter {
     config: JapaneseNumberTokenFilterConfig,

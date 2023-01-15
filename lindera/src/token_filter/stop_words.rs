@@ -23,6 +23,8 @@ impl StopWordsTokenFilterConfig {
     }
 }
 
+/// Remove the tokens of the specified text.
+///
 #[derive(Clone, Debug)]
 pub struct StopWordsTokenFilter {
     config: StopWordsTokenFilterConfig,

@@ -34,6 +34,8 @@ impl UnicodeNormalizeCharacterFilterConfig {
     }
 }
 
+/// Normalize Unicode string.
+///
 #[derive(Clone, Debug)]
 pub struct UnicodeNormalizeCharacterFilter {
     config: UnicodeNormalizeCharacterFilterConfig,

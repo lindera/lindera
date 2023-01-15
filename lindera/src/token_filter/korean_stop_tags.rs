@@ -24,6 +24,8 @@ impl KoreanStopTagsTokenFilterConfig {
     }
 }
 
+/// Remove tokens with the specified part-of-speech tag.
+///
 #[derive(Clone, Debug)]
 pub struct KoreanStopTagsTokenFilter {
     config: KoreanStopTagsTokenFilterConfig,

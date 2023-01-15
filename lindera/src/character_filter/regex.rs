@@ -26,6 +26,8 @@ impl RegexCharacterFilterConfig {
     }
 }
 
+/// Replace string matched with a regular expression pattern to replacement string.
+///
 #[derive(Clone, Debug)]
 pub struct RegexCharacterFilter {
     config: RegexCharacterFilterConfig,
