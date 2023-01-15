@@ -5,7 +5,7 @@ use crate::{LinderaResult, Token};
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
 /// Normalizes token text to lower case.
-/// 
+///
 #[derive(Clone, Debug)]
 pub struct LowercaseTokenFilter {}
 
