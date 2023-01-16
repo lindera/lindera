@@ -1,24 +1,47 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 use lindera_core::token_filter::TokenFilter;
 
-use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
+use crate::{error::LinderaErrorKind, LinderaResult, Token};
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct JapaneseNumberTokenFilterConfig {
-    kind: DictionaryKind,
+    tags: Option<HashSet<String>>,
 }
 
 impl JapaneseNumberTokenFilterConfig {
-    pub fn new(kind: DictionaryKind) -> Self {
-        Self { kind }
+    pub fn new(tags: Option<HashSet<String>>) -> Self {
+        match tags {
+            Some(tags) => {
+                let mut formatted_tags: HashSet<String> = HashSet::new();
+                for tag in tags.iter() {
+                    let mut formatted_tag = vec!["*", "*", "*", "*"];
+
+                    let tag_array: Vec<&str> = tag.split(',').collect();
+                    for (i, j) in tag_array.iter().enumerate() {
+                        formatted_tag[i] = j;
+                    }
+
+                    formatted_tags.insert(formatted_tag.join(","));
+                }
+
+                Self {
+                    tags: Some(formatted_tags),
+                }
+            }
+            None => Self { tags: None },
+        }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<JapaneseNumberTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        let tmp_config = serde_json::from_slice::<JapaneseNumberTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+
+        Ok(Self::new(tmp_config.tags))
     }
 }
 
@@ -47,14 +70,6 @@ impl TokenFilter for JapaneseNumberTokenFilter {
     }
 
     fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        let number_tag = match self.config.kind {
-            #[cfg(feature = "ipadic")]
-            DictionaryKind::IPADIC => "名詞,数,*,*",
-            #[cfg(feature = "unidic")]
-            DictionaryKind::UniDic => "名詞,数詞,*,*",
-            _ => "",
-        };
-
         for token in tokens.iter_mut() {
             if let Some(details) = &mut token.get_details() {
                 let mut tag_vec = vec!["*", "*", "*", "*"];
@@ -64,8 +79,16 @@ impl TokenFilter for JapaneseNumberTokenFilter {
                 }
                 let tag = tag_vec.join(",");
 
-                if tag == number_tag {
-                    token.set_text(to_arabic_numerals(token.get_text()));
+                match self.config.tags {
+                    Some(ref tags) => {
+                        if tags.contains(&tag) {
+                            token.set_text(to_arabic_numerals(token.get_text()));
+                        }
+                    }
+                    None => {
+                        // If a tag is omitted, all tokans are covered.
+                        token.set_text(to_arabic_numerals(token.get_text()));
+                    }
                 }
             }
         }
@@ -223,7 +246,8 @@ fn to_arabic_numerals(from_str: &str) -> String {
                 }
             }
             _ => {
-                continue;
+                num_buf.insert(0, *c);
+                digit.clear();
             }
         }
     }
@@ -238,15 +262,11 @@ mod tests {
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
     use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
 
-    use crate::token_filter::japanese_number::to_arabic_numerals;
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use crate::{
-        builder,
-        token_filter::japanese_number::{
-            JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
-        },
-        DictionaryKind, Token,
+    use crate::token_filter::japanese_number::{
+        to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
     };
+    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    use crate::{builder, DictionaryKind, Token};
 
     #[test]
     fn test_to_number_str() {
@@ -786,64 +806,95 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_japanese_number_token_filter_config_from_slice() {
+        {
+            let config_str = r#"
+            {
+                "tags": null
+            }
+            "#;
+            let config =
+                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+
+            assert!(config.tags.is_none());
+        }
+
+        {
+            let config_str = r#"
+            {
+            }
+            "#;
+            let config =
+                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+
+            assert!(config.tags.is_none());
+        }
+
+        {
+            let config_str = r#"
+            {
+                "tags": [
+                    "名詞,数"
+                ]
+            }
+            "#;
+            let config =
+                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+
+            assert!(config.tags.is_some());
+
+            assert!(config.tags.unwrap().contains("名詞,数,*,*"));
+        }
+    }
+
+    #[test]
+    fn test_japanese_number_token_filter_from_slice() {
+        {
+            // test empty tags
+            let config_str = r#"
+            {
+            }
+            "#;
+            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
+
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+        }
+
+        {
+            let config_str = r#"
+            {
+                "tags": [
+                    "名詞,数"
+                ]
+            }
+            "#;
+            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
+
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+            assert_eq!(true, result.is_ok());
+        }
+    }
+
+    #[test]
     #[cfg(feature = "ipadic")]
-    #[test]
-    fn test_japanese_number_token_filter_config_from_slice_ipadic() {
+    fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         let config_str = r#"
         {
-            "kind": "ipadic"
-        }
-        "#;
-        let config = JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, DictionaryKind::IPADIC);
-    }
-
-    #[cfg(feature = "unidic")]
-    #[test]
-    fn test_japanese_number_token_filter_config_from_slice_unidic() {
-        let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
-        let config = JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, DictionaryKind::UniDic);
-    }
-
-    #[cfg(feature = "ipadic")]
-    #[test]
-    fn test_japanese_number_token_filter_from_slice_ipadic() {
-        let config_str = r#"
-        {
-            "kind": "ipadic"
-        }
-        "#;
-        let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
-
-        assert_eq!(true, result.is_ok());
-    }
-
-    #[cfg(feature = "unidic")]
-    #[test]
-    fn test_japanese_number_token_filter_from_slice_unidic() {
-        let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
-        let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
-
-        assert_eq!(true, result.is_ok());
-    }
-
-    #[cfg(feature = "ipadic")]
-    #[test]
-    fn test_japanese_number_token_filter_apply_ipadic() {
-        let config_str = r#"
-        {
-            "kind": "ipadic"
+            "tags": [
+                "名詞,数"
+            ]
         }
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
@@ -919,41 +970,69 @@ mod tests {
             assert_eq!(tokens.len(), 1);
             assert_eq!(tokens[0].get_text(), "123456789012345678901234");
         }
+
+        {
+            let mut tokens: Vec<Token> = vec![
+                Token::new("鈴木", 0, 9, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "人名".to_string(),
+                        "姓".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "鈴木".to_string(),
+                        "スズキ".to_string(),
+                        "スズキ".to_string(),
+                    ]))
+                    .clone(),
+                Token::new("一郎", 0, 9, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "人名".to_string(),
+                        "名".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "一郎".to_string(),
+                        "イチロウ".to_string(),
+                        "イチロー".to_string(),
+                    ]))
+                    .clone(),
+            ];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 2);
+            assert_eq!(tokens[0].get_text(), "鈴木");
+            assert_eq!(tokens[1].get_text(), "一郎");
+        }
     }
 
-    #[cfg(feature = "unidic")]
     #[test]
-    fn test_japanese_number_token_filter_apply_unidic() {
+    #[cfg(feature = "ipadic")]
+    fn test_japanese_number_token_filter_apply_empty_ipadic() {
         let config_str = r#"
         {
-            "kind": "unidic"
         }
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         {
             let mut tokens: Vec<Token> =
                 vec![Token::new("一", 0, 3, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
-                        "数詞".to_string(),
+                        "数".to_string(),
                         "*".to_string(),
                         "*".to_string(),
                         "*".to_string(),
                         "*".to_string(),
-                        "イチ".to_string(),
-                        "一".to_string(),
                         "一".to_string(),
                         "イチ".to_string(),
-                        "一".to_string(),
                         "イチ".to_string(),
-                        "漢".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "チ促".to_string(),
-                        "基本形".to_string(),
                     ]))
                     .clone()];
 
@@ -969,15 +1048,7 @@ mod tests {
                     Token::new("一二三", 0, 9, WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
-                            "数詞".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
+                            "数".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
@@ -1001,7 +1072,7 @@ mod tests {
                     Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
-                            "数詞".to_string(),
+                            "数".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
@@ -1009,15 +1080,7 @@ mod tests {
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                                        ]))
+                                ]))
                         .clone(),
                 ];
 
@@ -1025,6 +1088,43 @@ mod tests {
 
             assert_eq!(tokens.len(), 1);
             assert_eq!(tokens[0].get_text(), "123456789012345678901234");
+        }
+
+        {
+            let mut tokens: Vec<Token> = vec![
+                Token::new("鈴木", 0, 9, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "人名".to_string(),
+                        "姓".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "鈴木".to_string(),
+                        "スズキ".to_string(),
+                        "スズキ".to_string(),
+                    ]))
+                    .clone(),
+                Token::new("一郎", 0, 9, WordId::default(), &dictionary, None)
+                    .set_details(Some(vec![
+                        "名詞".to_string(),
+                        "固有名詞".to_string(),
+                        "人名".to_string(),
+                        "名".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "一郎".to_string(),
+                        "イチロウ".to_string(),
+                        "イチロー".to_string(),
+                    ]))
+                    .clone(),
+            ];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 2);
+            assert_eq!(tokens[0].get_text(), "鈴木");
+            assert_eq!(tokens[1].get_text(), "1郎");
         }
     }
 }

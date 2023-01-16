@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+- Change from specifying a dictionary to specifying a part-of-speech tags #300 @mosuka
 - Add filter desctiptions #299 @mosuka
 
 ## 0.20.0 (2023-01-14)
