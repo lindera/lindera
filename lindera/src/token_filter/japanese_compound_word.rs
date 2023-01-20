@@ -141,6 +141,8 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                             compound_token.dictionary,
                             compound_token.user_dictionary,
                         );
+                        // TODO: Generate merged details.
+                        // Currently the details of the first token are set.
                         new_compound_token.set_details(Some(formatted_details.clone()));
                         compound_token_opt = Some(new_compound_token);
                     }
