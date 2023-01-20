@@ -214,7 +214,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("한국어", 0, 9, WordId::default(), &dictionary, None)
+            Token::new("한국어", 0, 9, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "NNG".to_string(),
                     "*".to_string(),
@@ -226,7 +226,7 @@ mod tests {
                     "한국/NNG/*+어/NNG/*".to_string(),
                 ]))
                 .clone(),
-            Token::new("의", 9, 12, WordId::default(), &dictionary, None)
+            Token::new("의", 9, 12, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "JKG".to_string(),
                     "*".to_string(),
@@ -238,7 +238,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("형태", 12, 18, WordId::default(), &dictionary, None)
+            Token::new("형태", 12, 18, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "NNG".to_string(),
                     "*".to_string(),
@@ -250,7 +250,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("해석", 18, 24, WordId::default(), &dictionary, None)
+            Token::new("해석", 18, 24, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "NNG".to_string(),
                     "행위".to_string(),
@@ -262,7 +262,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("을", 24, 27, WordId::default(), &dictionary, None)
+            Token::new("을", 24, 27, 4, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "JKO".to_string(),
                     "*".to_string(),
@@ -274,7 +274,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("실시", 27, 33, WordId::default(), &dictionary, None)
+            Token::new("실시", 27, 33, 5, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "NNG".to_string(),
                     "행위".to_string(),
@@ -286,7 +286,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("할", 33, 36, WordId::default(), &dictionary, None)
+            Token::new("할", 33, 36, 6, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "VV+ETM".to_string(),
                     "*".to_string(),
@@ -298,7 +298,7 @@ mod tests {
                     "하/VV/*+ᆯ/ETM/*".to_string(),
                 ]))
                 .clone(),
-            Token::new("수", 36, 39, WordId::default(), &dictionary, None)
+            Token::new("수", 36, 39, 7, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "NNG".to_string(),
                     "*".to_string(),
@@ -310,7 +310,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("있", 39, 42, WordId::default(), &dictionary, None)
+            Token::new("있", 39, 42, 8, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "VX".to_string(),
                     "*".to_string(),
@@ -322,7 +322,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("습니다", 42, 51, WordId::default(), &dictionary, None)
+            Token::new("습니다", 42, 51, 9, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "EF".to_string(),
                     "*".to_string(),

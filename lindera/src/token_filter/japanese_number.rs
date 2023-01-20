@@ -903,19 +903,21 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> =
-                vec![Token::new("一", 0, 3, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
-                        "名詞".to_string(),
-                        "数".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "一".to_string(),
-                        "イチ".to_string(),
-                        "イチ".to_string(),
-                    ]))
-                    .clone()];
+                vec![
+                    Token::new("一", 0, 3, 0, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "一".to_string(),
+                            "イチ".to_string(),
+                            "イチ".to_string(),
+                        ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -926,7 +928,7 @@ mod tests {
         {
             let mut tokens: Vec<Token> =
                 vec![
-                    Token::new("一二三", 0, 9, WordId::default(), &dictionary, None)
+                    Token::new("一二三", 0, 9, 0, WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
                             "数".to_string(),
@@ -950,7 +952,7 @@ mod tests {
         {
             let mut tokens: Vec<Token> =
                 vec![
-                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, WordId::default(), &dictionary, None)
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129,0, WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
                             "数".to_string(),
@@ -973,7 +975,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![
-                Token::new("鈴木", 0, 9, WordId::default(), &dictionary, None)
+                Token::new("鈴木", 0, 6, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
@@ -986,7 +988,7 @@ mod tests {
                         "スズキ".to_string(),
                     ]))
                     .clone(),
-                Token::new("一郎", 0, 9, WordId::default(), &dictionary, None)
+                Token::new("一郎", 6, 12, 1, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
@@ -1022,19 +1024,21 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> =
-                vec![Token::new("一", 0, 3, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
-                        "名詞".to_string(),
-                        "数".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "一".to_string(),
-                        "イチ".to_string(),
-                        "イチ".to_string(),
-                    ]))
-                    .clone()];
+                vec![
+                    Token::new("一", 0, 3, 0, WordId::default(), &dictionary, None)
+                        .set_details(Some(vec![
+                            "名詞".to_string(),
+                            "数".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "一".to_string(),
+                            "イチ".to_string(),
+                            "イチ".to_string(),
+                        ]))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -1045,7 +1049,7 @@ mod tests {
         {
             let mut tokens: Vec<Token> =
                 vec![
-                    Token::new("一二三", 0, 9, WordId::default(), &dictionary, None)
+                    Token::new("一二三", 0, 9, 0, WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
                             "数".to_string(),
@@ -1069,7 +1073,7 @@ mod tests {
         {
             let mut tokens: Vec<Token> =
                 vec![
-                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, WordId::default(), &dictionary, None)
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, 0,WordId::default(), &dictionary, None)
                         .set_details(Some(vec![
                             "名詞".to_string(),
                             "数".to_string(),
@@ -1092,7 +1096,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![
-                Token::new("鈴木", 0, 9, WordId::default(), &dictionary, None)
+                Token::new("鈴木", 0, 9, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
@@ -1105,7 +1109,7 @@ mod tests {
                         "スズキ".to_string(),
                     ]))
                     .clone(),
-                Token::new("一郎", 0, 9, WordId::default(), &dictionary, None)
+                Token::new("一郎", 0, 9, 1, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),

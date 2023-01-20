@@ -142,7 +142,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, WordId::default(), &dictionary, None)
+            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -155,7 +155,7 @@ mod tests {
                     "ハネダクーコー".to_string(),
                 ]))
                 .clone(),
-            Token::new("限定", 12, 18, WordId::default(), &dictionary, None)
+            Token::new("限定", 12, 18, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "サ変接続".to_string(),
@@ -168,9 +168,17 @@ mod tests {
                     "ゲンテイ".to_string(),
                 ]))
                 .clone(),
-            Token::new("トートバッグ", 18, 36, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
+            Token::new(
+                "トートバッグ",
+                18,
+                36,
+                2,
+                WordId::default(),
+                &dictionary,
+                None,
+            )
+            .set_details(Some(vec!["UNK".to_string()]))
+            .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -194,7 +202,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("埼玉", 0, 6, WordId::default(), &dictionary, None)
+            Token::new("埼玉", 0, 6, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -207,7 +215,7 @@ mod tests {
                     "サイタマ".to_string(),
                 ]))
                 .clone(),
-            Token::new("県", 6, 9, WordId::default(), &dictionary, None)
+            Token::new("県", 6, 9, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -220,7 +228,7 @@ mod tests {
                     "ケン".to_string(),
                 ]))
                 .clone(),
-            Token::new("さいたま", 9, 21, WordId::default(), &dictionary, None)
+            Token::new("さいたま", 9, 21, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -233,7 +241,7 @@ mod tests {
                     "サイタマ".to_string(),
                 ]))
                 .clone(),
-            Token::new("市", 21, 24, WordId::default(), &dictionary, None)
+            Token::new("市", 21, 24, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -270,7 +278,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, WordId::default(), &dictionary, None)
+            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -283,7 +291,7 @@ mod tests {
                     "ハネダクーコー".to_string(),
                 ]))
                 .clone(),
-            Token::new("限定", 12, 18, WordId::default(), &dictionary, None)
+            Token::new("限定", 12, 18, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "サ変接続".to_string(),
@@ -296,9 +304,17 @@ mod tests {
                     "ゲンテイ".to_string(),
                 ]))
                 .clone(),
-            Token::new("トートバッグ", 18, 36, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
+            Token::new(
+                "トートバッグ",
+                18,
+                36,
+                2,
+                WordId::default(),
+                &dictionary,
+                None,
+            )
+            .set_details(Some(vec!["UNK".to_string()]))
+            .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -322,7 +338,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("埼玉", 0, 6, WordId::default(), &dictionary, None)
+            Token::new("埼玉", 0, 6, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -335,7 +351,7 @@ mod tests {
                     "サイタマ".to_string(),
                 ]))
                 .clone(),
-            Token::new("県", 6, 9, WordId::default(), &dictionary, None)
+            Token::new("県", 6, 9, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -348,7 +364,7 @@ mod tests {
                     "ケン".to_string(),
                 ]))
                 .clone(),
-            Token::new("さいたま", 9, 21, WordId::default(), &dictionary, None)
+            Token::new("さいたま", 9, 21, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -361,7 +377,7 @@ mod tests {
                     "サイタマ".to_string(),
                 ]))
                 .clone(),
-            Token::new("市", 21, 24, WordId::default(), &dictionary, None)
+            Token::new("市", 21, 24, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -398,7 +414,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("東京", 0, 6, WordId::default(), &dictionary, None)
+            Token::new("東京", 0, 6, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -411,7 +427,7 @@ mod tests {
                     "トーキョー".to_string(),
                 ]))
                 .clone(),
-            Token::new("都", 6, 9, WordId::default(), &dictionary, None)
+            Token::new("都", 6, 9, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -424,7 +440,7 @@ mod tests {
                     "ト".to_string(),
                 ]))
                 .clone(),
-            Token::new("あきる野", 9, 21, WordId::default(), &dictionary, None)
+            Token::new("あきる野", 9, 21, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -437,7 +453,7 @@ mod tests {
                     "アキルノ".to_string(),
                 ]))
                 .clone(),
-            Token::new("市", 21, 24, WordId::default(), &dictionary, None)
+            Token::new("市", 21, 24, 4, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
@@ -474,7 +490,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("南北線", 0, 9, WordId::default(), &dictionary, None)
+            Token::new("南北線", 0, 9, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -487,7 +503,7 @@ mod tests {
                     "ナンボクセン".to_string(),
                 ]))
                 .clone(),
-            Token::new("四ツ谷", 9, 18, WordId::default(), &dictionary, None)
+            Token::new("四ツ谷", 9, 18, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -500,7 +516,7 @@ mod tests {
                     "ヨツヤ".to_string(),
                 ]))
                 .clone(),
-            Token::new("駅", 18, 21, WordId::default(), &dictionary, None)
+            Token::new("駅", 18, 21, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "接尾".to_string(),

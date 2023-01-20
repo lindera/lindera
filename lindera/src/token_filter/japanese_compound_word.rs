@@ -111,6 +111,8 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
             }
         }
 
+        let mut position = 0_usize;
+
         let mut compound_token_opt = None;
         for token in tokens.iter_mut() {
             if let Some(details) = &mut token.get_details() {
@@ -124,16 +126,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
 
                 if self.config.tags.contains(&pos) {
                     if compound_token_opt.is_none() {
-                        // let mut compound_token = Token::new(
-                        //     token.get_text(),
-                        //     token.byte_start,
-                        //     token.byte_end,
-                        //     token.word_id,
-                        //     token.dictionary,
-                        //     token.user_dictionary,
-                        // );
-                        // compound_token.set_details(token.get_details());
-                        // compound_token_opt = Some(compound_token);
+                        // new compound token start.
                         compound_token_opt = Some(token.clone());
                     } else {
                         let compound_token = compound_token_opt.take().ok_or_else(|| {
@@ -142,7 +135,8 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                         let mut new_compound_token = Token::new(
                             &format!("{}{}", compound_token.get_text(), token.get_text()),
                             compound_token.byte_start,
-                            compound_token.byte_end,
+                            token.byte_end,
+                            compound_token.position,
                             compound_token.word_id,
                             compound_token.dictionary,
                             compound_token.user_dictionary,
@@ -152,34 +146,27 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                     }
                 } else {
                     if compound_token_opt.is_some() {
-                        let compound_token = compound_token_opt.take().unwrap();
+                        let mut compound_token = compound_token_opt.take().ok_or_else(|| {
+                            LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
+                        })?;
+                        compound_token.position = position; // set new token position.
                         new_tokens.push(compound_token);
+                        position += 1; // increment position.
                         compound_token_opt = None;
                     }
-
-                    // let mut new_token = Token::new(
-                    //     token.get_text(),
-                    //     token.byte_start,
-                    //     token.byte_end,
-                    //     token.word_id,
-                    //     token.dictionary,
-                    //     token.user_dictionary,
-                    // );
-                    // let details = match token.get_details() {
-                    //     Some(details) => Some(details.iter().map(|v| v.to_string()).collect::<Vec<String>>()),
-                    //     None => None,
-                    // };
-                    // new_token.set_details(details);
-
-                    // new_tokens.push(new_token);
-
-                    new_tokens.push(token.clone());
+                    let mut new_token = token.clone();
+                    new_token.position = position; // set new token position.
+                    new_tokens.push(new_token);
+                    position += 1; // increment position.
                 }
             }
         }
 
         if compound_token_opt.is_some() {
-            let compound_token = compound_token_opt.take().unwrap();
+            let mut compound_token = compound_token_opt.take().ok_or_else(|| {
+                LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
+            })?;
+            compound_token.position = position; // set new token position.
             new_tokens.push(compound_token);
         }
 
@@ -255,7 +242,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![
-                Token::new("１", 0, 3, WordId::default(), &dictionary, None)
+                Token::new("１", 0, 3, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -268,7 +255,7 @@ mod tests {
                         "イチ".to_string(),
                     ]))
                     .clone(),
-                Token::new("０", 3, 6, WordId::default(), &dictionary, None)
+                Token::new("０", 3, 6, 1, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -281,7 +268,7 @@ mod tests {
                         "ゼロ".to_string(),
                     ]))
                     .clone(),
-                Token::new("０", 6, 9, WordId::default(), &dictionary, None)
+                Token::new("０", 6, 9, 2, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -294,7 +281,7 @@ mod tests {
                         "ゼロ".to_string(),
                     ]))
                     .clone(),
-                Token::new("円", 9, 12, WordId::default(), &dictionary, None)
+                Token::new("円", 9, 12, 3, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "接尾".to_string(),
@@ -307,7 +294,7 @@ mod tests {
                         "エン".to_string(),
                     ]))
                     .clone(),
-                Token::new("玉", 12, 15, WordId::default(), &dictionary, None)
+                Token::new("玉", 12, 15, 4, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "接尾".to_string(),
@@ -320,7 +307,7 @@ mod tests {
                         "ダマ".to_string(),
                     ]))
                     .clone(),
-                Token::new("を", 15, 18, WordId::default(), &dictionary, None)
+                Token::new("を", 15, 18, 5, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "助詞".to_string(),
                         "格助詞".to_string(),
@@ -333,7 +320,7 @@ mod tests {
                         "ヲ".to_string(),
                     ]))
                     .clone(),
-                Token::new("拾う", 18, 24, WordId::default(), &dictionary, None)
+                Token::new("拾う", 18, 24, 6, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "動詞".to_string(),
                         "自立".to_string(),
@@ -352,9 +339,21 @@ mod tests {
 
             assert_eq!(tokens.len(), 4);
             assert_eq!(tokens[0].get_text(), "１００円");
+            assert_eq!(tokens[0].byte_start, 0);
+            assert_eq!(tokens[0].byte_end, 12);
+            assert_eq!(tokens[0].position, 0);
             assert_eq!(tokens[1].get_text(), "玉");
+            assert_eq!(tokens[1].byte_start, 12);
+            assert_eq!(tokens[1].byte_end, 15);
+            assert_eq!(tokens[1].position, 1);
             assert_eq!(tokens[2].get_text(), "を");
+            assert_eq!(tokens[2].byte_start, 15);
+            assert_eq!(tokens[2].byte_end, 18);
+            assert_eq!(tokens[2].position, 2);
             assert_eq!(tokens[3].get_text(), "拾う");
+            assert_eq!(tokens[3].byte_start, 18);
+            assert_eq!(tokens[3].byte_end, 24);
+            assert_eq!(tokens[3].position, 3);
 
             assert_eq!(
                 tokens[0].get_details(),
@@ -364,7 +363,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![
-                Token::new("渋谷", 0, 6, WordId::default(), &dictionary, None)
+                Token::new("渋谷", 0, 6, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
@@ -377,7 +376,7 @@ mod tests {
                         "シブヤ".to_string(),
                     ]))
                     .clone(),
-                Token::new("１", 6, 9, WordId::default(), &dictionary, None)
+                Token::new("１", 6, 9, 1, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -390,7 +389,7 @@ mod tests {
                         "イチ".to_string(),
                     ]))
                     .clone(),
-                Token::new("０", 9, 12, WordId::default(), &dictionary, None)
+                Token::new("０", 9, 12, 2, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -403,7 +402,7 @@ mod tests {
                         "ゼロ".to_string(),
                     ]))
                     .clone(),
-                Token::new("９", 9, 12, WordId::default(), &dictionary, None)
+                Token::new("９", 9, 12, 3, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),

@@ -294,6 +294,7 @@ impl Analyzer {
                 token.get_text(),
                 token.byte_start,
                 token.byte_end,
+                token.position,
                 token.word_id,
                 token.dictionary,
                 token.user_dictionary,

@@ -52,7 +52,7 @@ mod tests {
 
         let mut tokens: Vec<Token> =
             vec![
-                Token::new("Rust", 0, 4, WordId::default(), &dictionary, None)
+                Token::new("Rust", 0, 4, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec!["UNK".to_string()]))
                     .clone(),
             ];

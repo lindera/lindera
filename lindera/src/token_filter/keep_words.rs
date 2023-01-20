@@ -106,7 +106,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("すもも", 0, 9, WordId::default(), &dictionary, None)
+            Token::new("すもも", 0, 9, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -119,7 +119,7 @@ mod tests {
                     "スモモ".to_string(),
                 ]))
                 .clone(),
-            Token::new("も", 9, 12, WordId::default(), &dictionary, None)
+            Token::new("も", 9, 12, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
@@ -132,7 +132,7 @@ mod tests {
                     "モ".to_string(),
                 ]))
                 .clone(),
-            Token::new("もも", 12, 18, WordId::default(), &dictionary, None)
+            Token::new("もも", 12, 18, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -145,7 +145,7 @@ mod tests {
                     "モモ".to_string(),
                 ]))
                 .clone(),
-            Token::new("も", 18, 21, WordId::default(), &dictionary, None)
+            Token::new("も", 18, 21, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
@@ -158,7 +158,7 @@ mod tests {
                     "モ".to_string(),
                 ]))
                 .clone(),
-            Token::new("もも", 21, 27, WordId::default(), &dictionary, None)
+            Token::new("もも", 21, 27, 4, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "一般".to_string(),
@@ -171,7 +171,7 @@ mod tests {
                     "モモ".to_string(),
                 ]))
                 .clone(),
-            Token::new("の", 27, 30, WordId::default(), &dictionary, None)
+            Token::new("の", 27, 30, 5, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助詞".to_string(),
                     "連体化".to_string(),
@@ -184,7 +184,7 @@ mod tests {
                     "ノ".to_string(),
                 ]))
                 .clone(),
-            Token::new("うち", 30, 36, WordId::default(), &dictionary, None)
+            Token::new("うち", 30, 36, 6, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "非自立".to_string(),
