@@ -294,6 +294,7 @@ impl Analyzer {
                 token.get_text(),
                 token.byte_start,
                 token.byte_end,
+                token.position,
                 token.word_id,
                 token.dictionary,
                 token.user_dictionary,
@@ -594,11 +595,79 @@ mod tests {
         {
             let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
             let mut analyze_text = text.clone();
-            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
-            assert_eq!(
-                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-                vec!["Lindera", "形態素", "解析", "エンジン"]
-            );
+            let mut tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            let mut tokens_iter = tokens.iter_mut();
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "Lindera");
+                assert_eq!(token.byte_start, 0);
+                assert_eq!(token.byte_end, 15);
+                assert_eq!(token.position, 0);
+                assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "形態素");
+                assert_eq!(token.byte_start, 18);
+                assert_eq!(token.byte_end, 27);
+                assert_eq!(token.position, 2);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "形態素",
+                        "ケイタイソ",
+                        "ケイタイソ"
+                    ]
+                );
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "解析");
+                assert_eq!(token.byte_start, 27);
+                assert_eq!(token.byte_end, 33);
+                assert_eq!(token.position, 3);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "サ変接続",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "解析",
+                        "カイセキ",
+                        "カイセキ"
+                    ]
+                );
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "エンジン");
+                assert_eq!(token.byte_start, 33);
+                assert_eq!(token.byte_end, 48);
+                assert_eq!(token.position, 4);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "エンジン",
+                        "エンジン",
+                        "エンジン"
+                    ]
+                );
+            }
 
             let mut tokens_iter = tokens.iter();
             {
@@ -613,11 +682,58 @@ mod tests {
         {
             let text = "１０㌎のｶﾞｿﾘﾝ".to_string();
             let mut analyze_text = text.clone();
-            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
-            assert_eq!(
-                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-                vec!["10", "ガロン", "ガソリン"]
-            );
+            let mut tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            let mut tokens_iter = tokens.iter_mut();
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "10");
+                assert_eq!(token.byte_start, 0);
+                assert_eq!(token.byte_end, 6);
+                assert_eq!(token.position, 0);
+                assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "ガロン");
+                assert_eq!(token.byte_start, 6);
+                assert_eq!(token.byte_end, 9);
+                assert_eq!(token.position, 1);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "接尾",
+                        "助数詞",
+                        "*",
+                        "*",
+                        "*",
+                        "ガロン",
+                        "ガロン",
+                        "ガロン"
+                    ]
+                );
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "ガソリン");
+                assert_eq!(token.byte_start, 12);
+                assert_eq!(token.byte_end, 27);
+                assert_eq!(token.position, 3);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "ガソリン",
+                        "ガソリン",
+                        "ガソリン"
+                    ]
+                );
+            }
 
             let mut tokens_iter = tokens.iter();
             {
@@ -646,21 +762,89 @@ mod tests {
         {
             let text = "お釣りは百三十四円です。".to_string();
             let mut analyze_text = text.clone();
-            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
-            assert_eq!(
-                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-                vec!["お釣り", "百三十四円"]
-            );
+            let mut tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            let mut tokens_iter = tokens.iter_mut();
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "お釣り");
+                assert_eq!(token.byte_start, 0);
+                assert_eq!(token.byte_end, 9);
+                assert_eq!(token.position, 0);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "*",
+                        "お釣り",
+                        "オツリ",
+                        "オツリ"
+                    ]
+                );
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "百三十四円");
+                assert_eq!(token.byte_start, 12);
+                assert_eq!(token.byte_end, 27);
+                assert_eq!(token.position, 2);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec!["名詞", "数", "*", "*", "*", "*", "百", "ヒャク", "ヒャク"]
+                );
+            }
         }
 
         {
             let text = "ここは騒々しい".to_string();
             let mut analyze_text = text.clone();
-            let tokens = analyzer.analyze(&mut analyze_text).unwrap();
-            assert_eq!(
-                tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-                vec!["ここ", "騒騒しい"]
-            );
+            let mut tokens = analyzer.analyze(&mut analyze_text).unwrap();
+            let mut tokens_iter = tokens.iter_mut();
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "ここ");
+                assert_eq!(token.byte_start, 0);
+                assert_eq!(token.byte_end, 6);
+                assert_eq!(token.position, 0);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "名詞",
+                        "代名詞",
+                        "一般",
+                        "*",
+                        "*",
+                        "*",
+                        "ここ",
+                        "ココ",
+                        "ココ"
+                    ]
+                );
+            }
+            {
+                let token = tokens_iter.next().unwrap();
+                assert_eq!(token.get_text(), "騒騒しい");
+                assert_eq!(token.byte_start, 9);
+                assert_eq!(token.byte_end, 21);
+                assert_eq!(token.position, 2);
+                assert_eq!(
+                    token.get_details().unwrap(),
+                    vec![
+                        "形容詞",
+                        "自立",
+                        "*",
+                        "*",
+                        "形容詞・イ段",
+                        "基本形",
+                        "騒騒しい",
+                        "ソウゾウシイ",
+                        "ソーゾーシイ"
+                    ]
+                );
+            }
         }
     }
 

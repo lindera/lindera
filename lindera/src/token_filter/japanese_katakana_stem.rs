@@ -164,7 +164,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("カー", 0, 6, WordId::default(), &dictionary, None)
+            Token::new("カー", 0, 6, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -177,7 +177,7 @@ mod tests {
                     "カー".to_string(),
                 ]))
                 .clone(),
-            Token::new("レバー", 7, 16, WordId::default(), &dictionary, None)
+            Token::new("レバー", 7, 16, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -190,7 +190,7 @@ mod tests {
                     "レバー".to_string(),
                 ]))
                 .clone(),
-            Token::new("サッカー", 17, 29, WordId::default(), &dictionary, None)
+            Token::new("サッカー", 17, 29, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -203,19 +203,27 @@ mod tests {
                     "サッカー".to_string(),
                 ]))
                 .clone(),
-            Token::new("レシーバー", 30, 45, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "レシーバー".to_string(),
-                    "レシーバー".to_string(),
-                    "レシーバー".to_string(),
-                ]))
-                .clone(),
+            Token::new(
+                "レシーバー",
+                30,
+                45,
+                3,
+                WordId::default(),
+                &dictionary,
+                None,
+            )
+            .set_details(Some(vec![
+                "名詞".to_string(),
+                "固有名詞".to_string(),
+                "一般".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "*".to_string(),
+                "レシーバー".to_string(),
+                "レシーバー".to_string(),
+                "レシーバー".to_string(),
+            ]))
+            .clone(),
         ];
 
         filter.apply(&mut tokens).unwrap();

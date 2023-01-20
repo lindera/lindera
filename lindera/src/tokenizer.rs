@@ -265,6 +265,8 @@ impl Tokenizer {
         let mut tokens: Vec<Token> = Vec::new();
         let mut lattice = Lattice::default();
 
+        let mut position = 0_usize;
+
         // Split text into sentences using Japanese punctuation.
         for sentence in text.split_inclusive(&['。', '、']) {
             if text.is_empty() {
@@ -297,10 +299,13 @@ impl Tokenizer {
                     surface,
                     token_start,
                     token_end,
+                    position,
                     word_id,
                     &self.dictionary,
                     self.user_dictionary.as_ref(),
                 ));
+
+                position += 1;
             }
         }
 
@@ -388,25 +393,201 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "日本語",
-                "の",
-                "形態素",
-                "解析",
-                "を",
-                "行う",
-                "こと",
-                "が",
-                "でき",
-                "ます",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "日本語");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 9);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "日本語",
+                    "ニホンゴ",
+                    "ニホンゴ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 9);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "形態素");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 21);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "形態素",
+                    "ケイタイソ",
+                    "ケイタイソ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "解析");
+            assert_eq!(token.byte_start, 21);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "サ変接続",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "解析",
+                    "カイセキ",
+                    "カイセキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "を");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "格助詞", "一般", "*", "*", "*", "を", "ヲ", "ヲ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "行う");
+            assert_eq!(token.byte_start, 30);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "動詞",
+                    "自立",
+                    "*",
+                    "*",
+                    "五段・ワ行促音便",
+                    "基本形",
+                    "行う",
+                    "オコナウ",
+                    "オコナウ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "こと");
+            assert_eq!(token.byte_start, 36);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "非自立",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "こと",
+                    "コト",
+                    "コト"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "が");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 45);
+            assert_eq!(token.position, 7);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "格助詞", "一般", "*", "*", "*", "が", "ガ", "ガ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "でき");
+            assert_eq!(token.byte_start, 45);
+            assert_eq!(token.byte_end, 51);
+            assert_eq!(token.position, 8);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "動詞",
+                    "自立",
+                    "*",
+                    "*",
+                    "一段",
+                    "連用形",
+                    "できる",
+                    "デキ",
+                    "デキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "ます");
+            assert_eq!(token.byte_start, 51);
+            assert_eq!(token.byte_end, 57);
+            assert_eq!(token.position, 9);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "特殊・マス",
+                    "基本形",
+                    "ます",
+                    "マス",
+                    "マス"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 57);
+            assert_eq!(token.byte_end, 60);
+            assert_eq!(token.position, 10);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
+            );
+        }
     }
 
     #[test]
@@ -424,16 +605,387 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("日本語の形態素解析を行うことができます。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "日本", "語", "の", "形態", "素", "解析", "を", "行う", "こと", "が", "でき",
-                "ます", "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "日本");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 6);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "地名",
+                    "国",
+                    "*",
+                    "*",
+                    "ニッポン",
+                    "日本",
+                    "日本",
+                    "ニッポン",
+                    "日本",
+                    "ニッポン",
+                    "固",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "語");
+            assert_eq!(token.byte_start, 6);
+            assert_eq!(token.byte_end, 9);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "ゴ",
+                    "語",
+                    "語",
+                    "ゴ",
+                    "語",
+                    "ゴ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 9);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ノ",
+                    "の",
+                    "の",
+                    "ノ",
+                    "の",
+                    "ノ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "形態");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "ケイタイ",
+                    "形態",
+                    "形態",
+                    "ケータイ",
+                    "形態",
+                    "ケータイ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "素");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 21);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "接尾辞",
+                    "名詞的",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "ソ",
+                    "素",
+                    "素",
+                    "ソ",
+                    "素",
+                    "ソ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "解析");
+            assert_eq!(token.byte_start, 21);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "サ変可能",
+                    "*",
+                    "*",
+                    "*",
+                    "カイセキ",
+                    "解析",
+                    "解析",
+                    "カイセキ",
+                    "解析",
+                    "カイセキ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "を");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ヲ",
+                    "を",
+                    "を",
+                    "オ",
+                    "を",
+                    "オ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "行う");
+            assert_eq!(token.byte_start, 30);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 7);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "動詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "五段-ワア行",
+                    "連体形-一般",
+                    "オコナウ",
+                    "行う",
+                    "行う",
+                    "オコナウ",
+                    "行う",
+                    "オコナウ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "こと");
+            assert_eq!(token.byte_start, 36);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 8);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "コト",
+                    "事",
+                    "こと",
+                    "コト",
+                    "こと",
+                    "コト",
+                    "和",
+                    "コ濁",
+                    "基本形",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "が");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 45);
+            assert_eq!(token.position, 9);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ガ",
+                    "が",
+                    "が",
+                    "ガ",
+                    "が",
+                    "ガ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "でき");
+            assert_eq!(token.byte_start, 45);
+            assert_eq!(token.byte_end, 51);
+            assert_eq!(token.position, 10);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "動詞",
+                    "非自立可能",
+                    "*",
+                    "*",
+                    "上一段-カ行",
+                    "連用形-一般",
+                    "デキル",
+                    "出来る",
+                    "でき",
+                    "デキ",
+                    "できる",
+                    "デキル",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "ます");
+            assert_eq!(token.byte_start, 51);
+            assert_eq!(token.byte_end, 57);
+            assert_eq!(token.position, 11);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "助動詞-マス",
+                    "終止形-一般",
+                    "マス",
+                    "ます",
+                    "ます",
+                    "マス",
+                    "ます",
+                    "マス",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 57);
+            assert_eq!(token.byte_end, 60);
+            assert_eq!(token.position, 12);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "補助記号",
+                    "句点",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "",
+                    "。",
+                    "。",
+                    "",
+                    "。",
+                    "",
+                    "記号",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
     }
 
     #[test]
@@ -451,25 +1003,146 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("한국어의형태해석을실시할수있습니다.")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "한국어",
-                "의",
-                "형태",
-                "해석",
-                "을",
-                "실시",
-                "할",
-                "수",
-                "있",
-                "습니다",
-                "."
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "한국어");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 9);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "NNG",
+                    "*",
+                    "F",
+                    "한국어",
+                    "Compound",
+                    "*",
+                    "*",
+                    "한국/NNG/*+어/NNG/*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "의");
+            assert_eq!(token.byte_start, 9);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["JKG", "*", "F", "의", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "형태");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "*", "F", "형태", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "해석");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "행위", "T", "해석", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "을");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["JKO", "*", "T", "을", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "실시");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 33);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "행위", "F", "실시", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "할");
+            assert_eq!(token.byte_start, 33);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "VV+ETM",
+                    "*",
+                    "T",
+                    "할",
+                    "Inflect",
+                    "VV",
+                    "ETM",
+                    "하/VV/*+ᆯ/ETM/*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "수");
+            assert_eq!(token.byte_start, 36);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 7);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "*", "F", "수", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "있");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 8);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["VX", "*", "T", "있", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "습니다");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 51);
+            assert_eq!(token.position, 9);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["EF", "*", "F", "습니다", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), ".");
+            assert_eq!(token.byte_start, 51);
+            assert_eq!(token.byte_end, 52);
+            assert_eq!(token.position, 10);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]
@@ -487,11 +1160,116 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["可以", "进行", "中文", "形态学", "分析", "。"]
-        );
+        let mut tokens = tokenizer.tokenize("可以进行中文形态学分析。").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "可以");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 6);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ke3 yi3",
+                    "可以",
+                    "可以",
+                    "can/may/possible/able to/not bad/pretty good/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "进行");
+            assert_eq!(token.byte_start, 6);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*", 
+                    "*", 
+                    "*", 
+                    "*", 
+                    "jin4 xing2", 
+                    "進行", 
+                    "进行", 
+                    "to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "中文");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "Zhong1 wen2",
+                    "中文",
+                    "中文",
+                    "Chinese language/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "形态学");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "xing2 tai4 xue2",
+                    "形態學",
+                    "形态学",
+                    "morphology (in biology or linguistics)/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "分析");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 33);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "fen1 xi1",
+                    "分析",
+                    "分析",
+                    "to analyze/analysis/CL:個|个[ge4]/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 33);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 5);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]
@@ -518,21 +1296,127 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "東京スカイツリー",
+                    "トウキョウスカイツリー",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り駅");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "最寄り駅",
+                    "モヨリエキ",
+                    "モヨリエキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "とうきょうスカイツリー駅",
+                    "トウキョウスカイツリーエキ",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "特殊・デス",
+                    "基本形",
+                    "です",
+                    "デス",
+                    "デス"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
+            );
+        }
     }
 
     #[test]
@@ -559,22 +1443,242 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り",
-                "駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "トウキョウスカイツリー",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ノ",
+                    "の",
+                    "の",
+                    "ノ",
+                    "の",
+                    "ノ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "モヨリ",
+                    "最寄り",
+                    "最寄り",
+                    "モヨリ",
+                    "最寄り",
+                    "モヨリ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "駅");
+            assert_eq!(token.byte_start, 36);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "エキ",
+                    "駅",
+                    "駅",
+                    "エキ",
+                    "駅",
+                    "エキ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "係助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ハ",
+                    "は",
+                    "は",
+                    "ワ",
+                    "は",
+                    "ワ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "トウキョウスカイツリーエキ",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "助動詞-デス",
+                    "終止形-一般",
+                    "デス",
+                    "です",
+                    "です",
+                    "デス",
+                    "です",
+                    "デス",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 7);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "補助記号",
+                    "句点",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "",
+                    "。",
+                    "。",
+                    "",
+                    "。",
+                    "",
+                    "記号",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
     }
 
     #[test]
@@ -601,11 +1705,61 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["하네다공항", "한정", "토트백", "."]
-        );
+        let mut tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "하네다공항");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 15);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNP", "*", "*", "하네다공항", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "한정");
+            assert_eq!(token.byte_start, 15);
+            assert_eq!(token.byte_end, 21);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "*", "T", "한정", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "토트백");
+            assert_eq!(token.byte_start, 21);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "NNG",
+                    "*",
+                    "T",
+                    "토트백",
+                    "Compound",
+                    "*",
+                    "*",
+                    "토트/NNP/인명+백/NNG/*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), ".");
+            assert_eq!(token.byte_start, 30);
+            assert_eq!(token.byte_end, 31);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["SF", "*", "*", "*", "*", "*", "*", "*"]
+            );
+        }
     }
 
     #[test]
@@ -632,11 +1786,88 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["羽田机场", "限定", "托特", "包", "。"]
-        );
+        let mut tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "羽田机场");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["*", "*", "*", "*", "Yu3 tian2 ji1 chang3", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "限定");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "xian4 ding4",
+                    "限定",
+                    "限定",
+                    "to restrict to/to limit/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "托特");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "tuo1 te4",
+                    "托特",
+                    "托特",
+                    "(loanword) tote (bag)/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "包");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*", 
+                    "*", 
+                    "*", 
+                    "*", 
+                    "bao1", 
+                    "包", 
+                    "包", 
+                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]", 
+                    "隻|只[zhi1]/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 4);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]
@@ -663,21 +1894,127 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "東京スカイツリー",
+                    "トウキョウスカイツリー",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り駅");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "最寄り駅",
+                    "モヨリエキ",
+                    "モヨリエキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "とうきょうスカイツリー駅",
+                    "トウキョウスカイツリーエキ",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "特殊・デス",
+                    "基本形",
+                    "です",
+                    "デス",
+                    "デス"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
+            );
+        }
     }
 
     #[test]
@@ -704,22 +2041,242 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り",
-                "駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "トウキョウスカイツリー",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ノ",
+                    "の",
+                    "の",
+                    "ノ",
+                    "の",
+                    "ノ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "モヨリ",
+                    "最寄り",
+                    "最寄り",
+                    "モヨリ",
+                    "最寄り",
+                    "モヨリ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "駅");
+            assert_eq!(token.byte_start, 36);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "普通名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "エキ",
+                    "駅",
+                    "駅",
+                    "エキ",
+                    "駅",
+                    "エキ",
+                    "漢",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助詞",
+                    "係助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ハ",
+                    "は",
+                    "は",
+                    "ワ",
+                    "は",
+                    "ワ",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "トウキョウスカイツリーエキ",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "助動詞-デス",
+                    "終止形-一般",
+                    "デス",
+                    "です",
+                    "です",
+                    "デス",
+                    "です",
+                    "デス",
+                    "和",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 7);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "補助記号",
+                    "句点",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "",
+                    "。",
+                    "。",
+                    "",
+                    "。",
+                    "",
+                    "記号",
+                    "*",
+                    "*",
+                    "*",
+                    "*"
+                ]
+            );
+        }
     }
 
     #[test]
@@ -746,11 +2303,61 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["하네다공항", "한정", "토트백", "."]
-        );
+        let mut tokens = tokenizer.tokenize("하네다공항한정토트백.").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "하네다공항");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 15);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNP", "*", "*", "하네다공항", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "한정");
+            assert_eq!(token.byte_start, 15);
+            assert_eq!(token.byte_end, 21);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["NNG", "*", "T", "한정", "*", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "토트백");
+            assert_eq!(token.byte_start, 21);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "NNG",
+                    "*",
+                    "T",
+                    "토트백",
+                    "Compound",
+                    "*",
+                    "*",
+                    "토트/NNP/인명+백/NNG/*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), ".");
+            assert_eq!(token.byte_start, 30);
+            assert_eq!(token.byte_end, 31);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["SF", "*", "*", "*", "*", "*", "*", "*"]
+            );
+        }
     }
 
     #[test]
@@ -777,11 +2384,88 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["羽田机场", "限定", "托特", "包", "。"]
-        );
+        let mut tokens = tokenizer.tokenize("羽田机场限定托特包。").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "羽田机场");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["*", "*", "*", "*", "Yu3 tian2 ji1 chang3", "*", "*", "*"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "限定");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "xian4 ding4",
+                    "限定",
+                    "限定",
+                    "to restrict to/to limit/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "托特");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "tuo1 te4",
+                    "托特",
+                    "托特",
+                    "(loanword) tote (bag)/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "包");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "*", 
+                    "*", 
+                    "*", 
+                    "*", 
+                    "bao1", 
+                    "包", 
+                    "包", 
+                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]", 
+                    "隻|只[zhi1]/"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 30);
+            assert_eq!(token.position, 4);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]
@@ -808,21 +2492,127 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "東京スカイツリー",
+                    "トウキョウスカイツリー",
+                    "トウキョウスカイツリー"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り駅");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "最寄り駅",
+                    "モヨリエキ",
+                    "モヨリエキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "とうきょうスカイツリー駅",
+                    "トウキョウスカイツリーエキ",
+                    "トウキョウスカイツリーエキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "特殊・デス",
+                    "基本形",
+                    "です",
+                    "デス",
+                    "デス"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
+            );
+        }
     }
 
     #[test]
@@ -849,21 +2639,127 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer
+        let mut tokens = tokenizer
             .tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。")
             .unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec![
-                "東京スカイツリー",
-                "の",
-                "最寄り駅",
-                "は",
-                "とうきょうスカイツリー駅",
-                "です",
-                "。"
-            ]
-        );
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "東京スカイツリー");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 24);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "東京スカイツリー",
+                    "トウキョウスカイツリー",
+                    "トウキョウスカイツリー"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "の");
+            assert_eq!(token.byte_start, 24);
+            assert_eq!(token.byte_end, 27);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "最寄り駅");
+            assert_eq!(token.byte_start, 27);
+            assert_eq!(token.byte_end, 39);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "最寄り駅",
+                    "モヨリエキ",
+                    "モヨリエキ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "は");
+            assert_eq!(token.byte_start, 39);
+            assert_eq!(token.byte_end, 42);
+            assert_eq!(token.position, 3);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "とうきょうスカイツリー駅");
+            assert_eq!(token.byte_start, 42);
+            assert_eq!(token.byte_end, 78);
+            assert_eq!(token.position, 4);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "カスタム名詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "とうきょうスカイツリー駅",
+                    "トウキョウスカイツリーエキ",
+                    "*"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "です");
+            assert_eq!(token.byte_start, 78);
+            assert_eq!(token.byte_end, 84);
+            assert_eq!(token.position, 5);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "特殊・デス",
+                    "基本形",
+                    "です",
+                    "デス",
+                    "デス"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "。");
+            assert_eq!(token.byte_start, 84);
+            assert_eq!(token.byte_end, 87);
+            assert_eq!(token.position, 6);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
+            );
+        }
     }
 
     #[test]
@@ -935,11 +2831,58 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["羽田空港", "限定", "トートバッグ"]
-        );
+        let mut tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "羽田空港");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "羽田空港",
+                    "ハネダクウコウ",
+                    "ハネダクーコー"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "限定");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "サ変接続",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "限定",
+                    "ゲンテイ",
+                    "ゲンテイ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "トートバッグ");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 2);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]
@@ -957,11 +2900,79 @@ mod tests {
         };
 
         let tokenizer = Tokenizer::from_config(config).unwrap();
-        let tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
-        assert_eq!(
-            tokens.iter().map(|t| t.get_text()).collect::<Vec<_>>(),
-            vec!["羽田", "空港", "限定", "トートバッグ"]
-        );
+        let mut tokens = tokenizer.tokenize("羽田空港限定トートバッグ").unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "羽田");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 6);
+            assert_eq!(token.position, 0);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "人名",
+                    "姓",
+                    "*",
+                    "*",
+                    "羽田",
+                    "ハタ",
+                    "ハタ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "空港");
+            assert_eq!(token.byte_start, 6);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 1);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "空港",
+                    "クウコウ",
+                    "クーコー"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "限定");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 2);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec![
+                    "名詞",
+                    "サ変接続",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "限定",
+                    "ゲンテイ",
+                    "ゲンテイ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.get_text(), "トートバッグ");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 3);
+            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+        }
     }
 
     #[test]

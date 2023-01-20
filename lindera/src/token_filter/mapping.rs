@@ -166,7 +166,7 @@ mod tests {
             let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
             let mut tokens: Vec<Token> = vec![
-                Token::new("籠原", 0, 6, WordId::default(), &dictionary, None)
+                Token::new("籠原", 0, 6, 0, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
@@ -179,7 +179,7 @@ mod tests {
                         "カゴハラ".to_string(),
                     ]))
                     .clone(),
-                Token::new("駅", 0, 6, WordId::default(), &dictionary, None)
+                Token::new("駅", 6, 9, 1, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "接尾".to_string(),

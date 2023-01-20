@@ -161,7 +161,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, WordId::default(), &dictionary, None)
+            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -174,7 +174,7 @@ mod tests {
                     "ハネダクーコー".to_string(),
                 ]))
                 .clone(),
-            Token::new("に", 12, 15, WordId::default(), &dictionary, None)
+            Token::new("に", 12, 15, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助詞".to_string(),
                     "格助詞".to_string(),
@@ -187,7 +187,7 @@ mod tests {
                     "ニ".to_string(),
                 ]))
                 .clone(),
-            Token::new("あり", 15, 18, WordId::default(), &dictionary, None)
+            Token::new("あり", 15, 18, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "動詞".to_string(),
                     "自立".to_string(),
@@ -200,7 +200,7 @@ mod tests {
                     "アリ".to_string(),
                 ]))
                 .clone(),
-            Token::new("ます", 18, 24, WordId::default(), &dictionary, None)
+            Token::new("ます", 18, 24, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助動詞".to_string(),
                     "*".to_string(),
@@ -237,7 +237,7 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("羽田", 0, 6, WordId::default(), &dictionary, None)
+            Token::new("羽田", 0, 6, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
@@ -258,7 +258,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("空港", 6, 12, WordId::default(), &dictionary, None)
+            Token::new("空港", 6, 12, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "名詞".to_string(),
                     "普通名詞".to_string(),
@@ -279,7 +279,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("に", 12, 15, WordId::default(), &dictionary, None)
+            Token::new("に", 12, 15, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助詞".to_string(),
                     "格助詞".to_string(),
@@ -300,7 +300,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("あり", 15, 18, WordId::default(), &dictionary, None)
+            Token::new("あり", 15, 18, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "動詞".to_string(),
                     "非自立可能".to_string(),
@@ -321,7 +321,7 @@ mod tests {
                     "*".to_string(),
                 ]))
                 .clone(),
-            Token::new("ます", 18, 24, WordId::default(), &dictionary, None)
+            Token::new("ます", 18, 24, 4, WordId::default(), &dictionary, None)
                 .set_details(Some(vec![
                     "助動詞".to_string(),
                     "*".to_string(),

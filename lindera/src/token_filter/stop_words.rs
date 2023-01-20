@@ -200,34 +200,34 @@ mod tests {
         let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("to", 0, 2, WordId::default(), &dictionary, None)
+            Token::new("to", 0, 2, 0, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("be", 3, 5, WordId::default(), &dictionary, None)
+            Token::new("be", 3, 5, 1, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("or", 6, 8, WordId::default(), &dictionary, None)
+            Token::new("or", 6, 8, 2, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("not", 9, 12, WordId::default(), &dictionary, None)
+            Token::new("not", 9, 12, 3, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("to", 13, 15, WordId::default(), &dictionary, None)
+            Token::new("to", 13, 15, 4, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("be", 16, 18, WordId::default(), &dictionary, None)
+            Token::new("be", 16, 18, 5, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("this", 19, 23, WordId::default(), &dictionary, None)
+            Token::new("this", 19, 23, 6, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("is", 24, 26, WordId::default(), &dictionary, None)
+            Token::new("is", 24, 26, 7, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("the", 27, 30, WordId::default(), &dictionary, None)
+            Token::new("the", 27, 30, 8, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
-            Token::new("question", 31, 39, WordId::default(), &dictionary, None)
+            Token::new("question", 31, 39, 9, WordId::default(), &dictionary, None)
                 .set_details(Some(vec!["UNK".to_string()]))
                 .clone(),
         ];

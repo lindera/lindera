@@ -10,13 +10,30 @@ static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {
+    /// Text content of the token.
     text: Cow<'a, str>,
-    details: Option<Vec<String>>,
+
+    /// Starting position of the token in bytes.
     pub byte_start: usize,
+
+    /// Ending position of the token in bytes.
     pub byte_end: usize,
+
+    /// Position, expressed in number of tokens.
+    pub position: usize,
+
+    /// The ID of the word and a flag to indicate whether the word is registered in the dictionary.
     pub word_id: WordId,
+
+    /// Reference of dictionary.
     pub dictionary: &'a Dictionary,
+
+    /// Reference of user dictionary.
     pub user_dictionary: Option<&'a UserDictionary>,
+
+    /// Detailes about the token.
+    /// It contains metadata for tokens, such as part-of-speech information.
+    details: Option<Vec<String>>,
 }
 
 impl<'a> Token<'a> {
@@ -24,6 +41,7 @@ impl<'a> Token<'a> {
         text: &str,
         start: usize,
         end: usize,
+        position: usize,
         word_id: WordId,
         dictionary: &'a Dictionary,
         user_dictionary: Option<&'a UserDictionary>,
@@ -33,6 +51,7 @@ impl<'a> Token<'a> {
             details: None,
             byte_start: start,
             byte_end: end,
+            position,
             word_id,
             dictionary,
             user_dictionary,
