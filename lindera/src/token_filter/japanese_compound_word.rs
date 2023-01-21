@@ -111,7 +111,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
             }
         }
 
-        let mut position = 0_usize;
+        // let mut position = 0_usize;
 
         let mut compound_token_opt = None;
         for token in tokens.iter_mut() {
@@ -126,7 +126,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
 
                 if self.config.tags.contains(&pos) {
                     if compound_token_opt.is_none() {
-                        // new compound token start.
+                        // Create new compound token start.
                         compound_token_opt = Some(token.clone());
                     } else {
                         let compound_token = compound_token_opt.take().ok_or_else(|| {
@@ -144,31 +144,34 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                         // TODO: Generate merged details.
                         // Currently the details of the first token are set.
                         new_compound_token.set_details(Some(formatted_details.clone()));
+
+                        // Calculate position_length.
+                        new_compound_token.position_length =
+                            compound_token.position_length + token.position_length;
+
                         compound_token_opt = Some(new_compound_token);
                     }
                 } else {
                     if compound_token_opt.is_some() {
-                        let mut compound_token = compound_token_opt.take().ok_or_else(|| {
+                        let compound_token = compound_token_opt.take().ok_or_else(|| {
                             LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
                         })?;
-                        compound_token.position = position; // set new token position.
+
                         new_tokens.push(compound_token);
-                        position += 1; // increment position.
+
+                        // Clear compound token
                         compound_token_opt = None;
                     }
-                    let mut new_token = token.clone();
-                    new_token.position = position; // set new token position.
+                    let new_token = token.clone();
                     new_tokens.push(new_token);
-                    position += 1; // increment position.
                 }
             }
         }
 
         if compound_token_opt.is_some() {
-            let mut compound_token = compound_token_opt.take().ok_or_else(|| {
+            let compound_token = compound_token_opt.take().ok_or_else(|| {
                 LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
             })?;
-            compound_token.position = position; // set new token position.
             new_tokens.push(compound_token);
         }
 
@@ -344,18 +347,22 @@ mod tests {
             assert_eq!(tokens[0].byte_start, 0);
             assert_eq!(tokens[0].byte_end, 12);
             assert_eq!(tokens[0].position, 0);
+            assert_eq!(tokens[0].position_length, 4);
             assert_eq!(tokens[1].get_text(), "玉");
             assert_eq!(tokens[1].byte_start, 12);
             assert_eq!(tokens[1].byte_end, 15);
-            assert_eq!(tokens[1].position, 1);
+            assert_eq!(tokens[1].position, 4);
+            assert_eq!(tokens[1].position_length, 1);
             assert_eq!(tokens[2].get_text(), "を");
             assert_eq!(tokens[2].byte_start, 15);
             assert_eq!(tokens[2].byte_end, 18);
-            assert_eq!(tokens[2].position, 2);
+            assert_eq!(tokens[2].position, 5);
+            assert_eq!(tokens[2].position_length, 1);
             assert_eq!(tokens[3].get_text(), "拾う");
             assert_eq!(tokens[3].byte_start, 18);
             assert_eq!(tokens[3].byte_end, 24);
-            assert_eq!(tokens[3].position, 3);
+            assert_eq!(tokens[3].position, 6);
+            assert_eq!(tokens[3].position_length, 1);
 
             assert_eq!(
                 tokens[0].get_details(),
@@ -404,7 +411,7 @@ mod tests {
                         "ゼロ".to_string(),
                     ]))
                     .clone(),
-                Token::new("９", 9, 12, 3, WordId::default(), &dictionary, None)
+                Token::new("９", 12, 15, 3, WordId::default(), &dictionary, None)
                     .set_details(Some(vec![
                         "名詞".to_string(),
                         "数".to_string(),
@@ -423,7 +430,15 @@ mod tests {
 
             assert_eq!(tokens.len(), 2);
             assert_eq!(tokens[0].get_text(), "渋谷");
+            assert_eq!(tokens[0].byte_start, 0);
+            assert_eq!(tokens[0].byte_end, 6);
+            assert_eq!(tokens[0].position, 0);
+            assert_eq!(tokens[0].position_length, 1);
             assert_eq!(tokens[1].get_text(), "１０９");
+            assert_eq!(tokens[1].byte_start, 6);
+            assert_eq!(tokens[1].byte_end, 15);
+            assert_eq!(tokens[1].position, 1);
+            assert_eq!(tokens[1].position_length, 3);
 
             assert_eq!(
                 tokens[1].get_details(),

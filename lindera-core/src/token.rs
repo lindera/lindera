@@ -22,6 +22,9 @@ pub struct Token<'a> {
     /// Position, expressed in number of tokens.
     pub position: usize,
 
+    /// The length expressed in term of number of original tokens.
+    pub position_length: usize,
+
     /// The ID of the word and a flag to indicate whether the word is registered in the dictionary.
     pub word_id: WordId,
 
@@ -52,6 +55,7 @@ impl<'a> Token<'a> {
             byte_start: start,
             byte_end: end,
             position,
+            position_length: 1,
             word_id,
             dictionary,
             user_dictionary,
