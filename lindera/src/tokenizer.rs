@@ -403,6 +403,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -424,6 +425,7 @@ mod tests {
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
@@ -435,6 +437,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -456,6 +459,7 @@ mod tests {
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -477,6 +481,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "格助詞", "一般", "*", "*", "*", "を", "ヲ", "ヲ"]
@@ -488,6 +493,7 @@ mod tests {
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -509,6 +515,7 @@ mod tests {
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -530,6 +537,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 45);
             assert_eq!(token.position, 7);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "格助詞", "一般", "*", "*", "*", "が", "ガ", "ガ"]
@@ -541,6 +549,7 @@ mod tests {
             assert_eq!(token.byte_start, 45);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 8);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -562,6 +571,7 @@ mod tests {
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 57);
             assert_eq!(token.position, 9);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -583,6 +593,7 @@ mod tests {
             assert_eq!(token.byte_start, 57);
             assert_eq!(token.byte_end, 60);
             assert_eq!(token.position, 10);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
@@ -615,6 +626,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -644,6 +656,7 @@ mod tests {
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -673,6 +686,7 @@ mod tests {
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -702,6 +716,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -731,6 +746,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -760,6 +776,7 @@ mod tests {
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -789,6 +806,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -818,6 +836,7 @@ mod tests {
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 7);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -847,6 +866,7 @@ mod tests {
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 8);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -876,6 +896,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 45);
             assert_eq!(token.position, 9);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -905,6 +926,7 @@ mod tests {
             assert_eq!(token.byte_start, 45);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 10);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -934,6 +956,7 @@ mod tests {
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 57);
             assert_eq!(token.position, 11);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -963,6 +986,7 @@ mod tests {
             assert_eq!(token.byte_start, 57);
             assert_eq!(token.byte_end, 60);
             assert_eq!(token.position, 12);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1013,6 +1037,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1033,6 +1058,7 @@ mod tests {
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["JKG", "*", "F", "의", "*", "*", "*", "*"]
@@ -1044,6 +1070,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "*", "F", "형태", "*", "*", "*", "*"]
@@ -1055,6 +1082,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "행위", "T", "해석", "*", "*", "*", "*"]
@@ -1066,6 +1094,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["JKO", "*", "T", "을", "*", "*", "*", "*"]
@@ -1077,6 +1106,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 33);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "행위", "F", "실시", "*", "*", "*", "*"]
@@ -1088,6 +1118,7 @@ mod tests {
             assert_eq!(token.byte_start, 33);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1108,6 +1139,7 @@ mod tests {
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 7);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "*", "F", "수", "*", "*", "*", "*"]
@@ -1119,6 +1151,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 8);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["VX", "*", "T", "있", "*", "*", "*", "*"]
@@ -1130,6 +1163,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 9);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["EF", "*", "F", "습니다", "*", "*", "*", "*"]
@@ -1141,6 +1175,7 @@ mod tests {
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 52);
             assert_eq!(token.position, 10);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }
@@ -1168,6 +1203,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1188,6 +1224,7 @@ mod tests {
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1208,6 +1245,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1228,6 +1266,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1248,6 +1287,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 33);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1268,6 +1308,7 @@ mod tests {
             assert_eq!(token.byte_start, 33);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }
@@ -1306,6 +1347,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1327,6 +1369,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
@@ -1338,6 +1381,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1359,6 +1403,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
@@ -1370,6 +1415,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1391,6 +1437,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1412,6 +1459,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
@@ -1453,6 +1501,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1482,6 +1531,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1511,6 +1561,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1540,6 +1591,7 @@ mod tests {
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1569,6 +1621,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1598,6 +1651,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1627,6 +1681,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1656,6 +1711,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 7);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1713,6 +1769,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 15);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNP", "*", "*", "하네다공항", "*", "*", "*", "*"]
@@ -1724,6 +1781,7 @@ mod tests {
             assert_eq!(token.byte_start, 15);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "*", "T", "한정", "*", "*", "*", "*"]
@@ -1735,6 +1793,7 @@ mod tests {
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1755,6 +1814,7 @@ mod tests {
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 31);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["SF", "*", "*", "*", "*", "*", "*", "*"]
@@ -1794,6 +1854,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["*", "*", "*", "*", "Yu3 tian2 ji1 chang3", "*", "*", "*"]
@@ -1805,6 +1866,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1825,6 +1887,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1845,6 +1908,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1866,6 +1930,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }
@@ -1904,6 +1969,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1925,6 +1991,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
@@ -1936,6 +2003,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1957,6 +2025,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
@@ -1968,6 +2037,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -1989,6 +2059,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2010,6 +2081,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
@@ -2051,6 +2123,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2080,6 +2153,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2109,6 +2183,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2138,6 +2213,7 @@ mod tests {
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2167,6 +2243,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2196,6 +2273,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2225,6 +2303,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2254,6 +2333,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 7);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2311,6 +2391,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 15);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNP", "*", "*", "하네다공항", "*", "*", "*", "*"]
@@ -2322,6 +2403,7 @@ mod tests {
             assert_eq!(token.byte_start, 15);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["NNG", "*", "T", "한정", "*", "*", "*", "*"]
@@ -2333,6 +2415,7 @@ mod tests {
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2353,6 +2436,7 @@ mod tests {
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 31);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["SF", "*", "*", "*", "*", "*", "*", "*"]
@@ -2392,6 +2476,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["*", "*", "*", "*", "Yu3 tian2 ji1 chang3", "*", "*", "*"]
@@ -2403,6 +2488,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2423,6 +2509,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2443,6 +2530,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2464,6 +2552,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }
@@ -2502,6 +2591,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2523,6 +2613,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
@@ -2534,6 +2625,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2555,6 +2647,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
@@ -2566,6 +2659,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2587,6 +2681,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2608,6 +2703,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
@@ -2649,6 +2745,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2670,6 +2767,7 @@ mod tests {
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
@@ -2681,6 +2779,7 @@ mod tests {
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2702,6 +2801,7 @@ mod tests {
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
@@ -2713,6 +2813,7 @@ mod tests {
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2734,6 +2835,7 @@ mod tests {
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2755,6 +2857,7 @@ mod tests {
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
@@ -2839,6 +2942,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2860,6 +2964,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2881,6 +2986,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }
@@ -2908,6 +3014,7 @@ mod tests {
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2929,6 +3036,7 @@ mod tests {
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2950,6 +3058,7 @@ mod tests {
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
@@ -2971,6 +3080,7 @@ mod tests {
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
             assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
         }
     }

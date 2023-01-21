@@ -290,15 +290,7 @@ impl Analyzer {
         // Correct token offsets
         let mut tokens = Vec::new();
         for token in tmp_tokens.iter() {
-            let mut new_token = Token::new(
-                token.get_text(),
-                token.byte_start,
-                token.byte_end,
-                token.position,
-                token.word_id,
-                token.dictionary,
-                token.user_dictionary,
-            );
+            let mut new_token = token.clone();
 
             // Override details.
             for (i, offsets) in offsets_vec.iter().enumerate() {
@@ -603,6 +595,7 @@ mod tests {
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 15);
                 assert_eq!(token.position, 0);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
             }
             {
@@ -611,6 +604,7 @@ mod tests {
                 assert_eq!(token.byte_start, 18);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -632,6 +626,7 @@ mod tests {
                 assert_eq!(token.byte_start, 27);
                 assert_eq!(token.byte_end, 33);
                 assert_eq!(token.position, 3);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -653,6 +648,7 @@ mod tests {
                 assert_eq!(token.byte_start, 33);
                 assert_eq!(token.byte_end, 48);
                 assert_eq!(token.position, 4);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -690,6 +686,7 @@ mod tests {
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
             }
             {
@@ -698,6 +695,7 @@ mod tests {
                 assert_eq!(token.byte_start, 6);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 1);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -719,6 +717,7 @@ mod tests {
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 3);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -770,6 +769,7 @@ mod tests {
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 0);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -787,13 +787,15 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
+                println!("test {:?} {}", token.get_text(), token.position_length);
                 assert_eq!(token.get_text(), "百三十四円");
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
+                assert_eq!(token.position_length, 5);
                 assert_eq!(
                     token.get_details().unwrap(),
-                    vec!["名詞", "数", "*", "*", "*", "*", "百", "ヒャク", "ヒャク"]
+                    vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*"]
                 );
             }
         }
@@ -809,6 +811,7 @@ mod tests {
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
@@ -830,6 +833,7 @@ mod tests {
                 assert_eq!(token.byte_start, 9);
                 assert_eq!(token.byte_end, 21);
                 assert_eq!(token.position, 2);
+                assert_eq!(token.position_length, 1);
                 assert_eq!(
                     token.get_details().unwrap(),
                     vec![
