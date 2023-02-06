@@ -266,6 +266,7 @@ impl Tokenizer {
         let mut lattice = Lattice::default();
 
         let mut position = 0_usize;
+        let mut byte_position = 0_usize;
 
         // Split text into sentences using Japanese punctuation.
         for sentence in text.split_inclusive(&['。', '、']) {
@@ -286,14 +287,21 @@ impl Tokenizer {
             let offsets = lattice.tokens_offset();
 
             for i in 0..offsets.len() {
-                let (token_start, word_id) = offsets[i];
-                let token_end = if i == offsets.len() - 1 {
+                let (byte_start, word_id) = offsets[i];
+                let byte_end = if i == offsets.len() - 1 {
                     sentence.len()
                 } else {
                     let (next_start, _word_id) = offsets[i + 1];
                     next_start
                 };
-                let surface = &sentence[token_start..token_end];
+
+                // retrieve token from its sentence byte positions
+                let surface = &sentence[byte_start..byte_end];
+
+                // compute the token's absolute byte positions
+                let token_start = byte_position;
+                byte_position += surface.len();
+                let token_end = byte_position;
 
                 tokens.push(Token::new(
                     surface,
@@ -624,8 +632,8 @@ mod tests {
         {
             let token = tokens_iter.next().unwrap();
             assert_eq!(token.get_text(), "。");
-            assert_eq!(token.byte_start, 57);
-            assert_eq!(token.byte_end, 60);
+            assert_eq!(token.byte_start, 69);
+            assert_eq!(token.byte_end, 72);
             assert_eq!(token.position, 12);
             assert_eq!(token.position_length, 1);
             assert_eq!(
