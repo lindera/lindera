@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.21.1 (2023-02-09)
+- Bump up version to 0.21.1 #306 @mosuka
+- Fix token boundaries #305 @ManyTheFish
+
 ## 0.21.0 (2023-01-22)
 - Bump up version to 0.21.0 #303 @mosuka
 - Add position length #302 @mosuka
