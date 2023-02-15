@@ -10,6 +10,7 @@ LINDERA_KO_DIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | 
 LINDERA_CC_CEDICT_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict-builder") | .version')
 LINDERA_CC_CEDICT_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version')
 LINDERA_DICTIONARY_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
+LINDERA_FILTER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-filter") | .version')
 LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 LINDERA_CLI_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
 
@@ -78,6 +79,10 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict | 
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
 	(cd lindera-dictionary && cargo package && cargo publish)
+	sleep 10
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-filter | jq -r '.versions[].num' | grep $(LINDERA_FILTER_VERSION)),)
+	(cd lindera-filter && cargo package && cargo publish)
 	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
