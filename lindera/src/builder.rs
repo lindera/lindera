@@ -5,6 +5,7 @@ use lindera_core::{
     dictionary::Dictionary, dictionary_builder::DictionaryBuilder, file_util::read_file,
     user_dictionary::UserDictionary,
 };
+use lindera_dictionary::{load_dictionary_from_kind, DictionaryKind};
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
@@ -12,7 +13,7 @@ use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 use crate::{
     error::LinderaErrorKind,
     tokenizer::{DictionaryConfig, UserDictionaryConfig},
-    DictionaryKind, LinderaResult,
+    LinderaResult,
 };
 
 pub fn resolve_builder(
@@ -50,32 +51,6 @@ pub fn build_user_dictionary(
     resolve_builder(dictionary_type)?.build_user_dictionary(input_file, &output_file)
 }
 
-pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
-    // The dictionary specified by the feature flag will be loaded.
-    match kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => lindera_ipadic::load_dictionary()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => lindera_unidic::load_dictionary()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => lindera_ko_dic::load_dictionary()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => lindera_cc_cedict::load_dictionary()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-        #[allow(unreachable_patterns)]
-        _ => Err(LinderaErrorKind::Args
-            .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
-    }
-}
-
-pub fn load_dictionary_from_path(path: PathBuf) -> LinderaResult<Dictionary> {
-    // load external dictionary from path
-    lindera_dictionary::load_dictionary(path)
-}
-
 pub fn load_dictionary(dictionary_config: DictionaryConfig) -> LinderaResult<Dictionary> {
     match dictionary_config.kind {
         Some(kind) => {
@@ -86,7 +61,7 @@ pub fn load_dictionary(dictionary_config: DictionaryConfig) -> LinderaResult<Dic
             match dictionary_config.path {
                 Some(path) => {
                     // load external dictionary from path
-                    load_dictionary_from_path(path)
+                    lindera_dictionary::load_dictionary(path)
                 }
                 None => Err(LinderaErrorKind::Args
                     .with_error(anyhow::anyhow!("Dictionary must be specified"))),

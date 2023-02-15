@@ -2,9 +2,11 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -69,26 +71,24 @@ impl TokenFilter for JapaneseNumberTokenFilter {
         JAPANESE_NUMBER_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            if let Some(details) = &mut token.get_details() {
-                let mut tag_vec = vec!["*", "*", "*", "*"];
-                let tags_len = if details.len() >= 4 { 4 } else { 1 };
-                for (i, j) in details[0..tags_len].iter().enumerate() {
-                    tag_vec[i] = j;
-                }
-                let tag = tag_vec.join(",");
+            let mut tag_vec = vec!["*", "*", "*", "*"];
+            let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
+            for (i, j) in token.details[0..tags_len].iter().enumerate() {
+                tag_vec[i] = j;
+            }
+            let tag = tag_vec.join(",");
 
-                match self.config.tags {
-                    Some(ref tags) => {
-                        if tags.contains(&tag) {
-                            token.set_text(to_arabic_numerals(token.get_text()));
-                        }
+            match self.config.tags {
+                Some(ref tags) => {
+                    if tags.contains(&tag) {
+                        token.text = to_arabic_numerals(&token.text);
                     }
-                    None => {
-                        // If a tag is omitted, all tokans are covered.
-                        token.set_text(to_arabic_numerals(token.get_text()));
-                    }
+                }
+                None => {
+                    // If a tag is omitted, all tokans are covered.
+                    token.text = to_arabic_numerals(&token.text);
                 }
             }
         }
@@ -259,14 +259,11 @@ fn to_arabic_numerals(from_str: &str) -> String {
 mod tests {
     use std::str::FromStr;
 
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::japanese_number::{
         to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
     };
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_to_number_str() {
@@ -899,84 +896,96 @@ mod tests {
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        {
+            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
+                text: "一".to_string(),
+                byte_start: 0,
+                byte_end: 3,
+                position: 0,
+                position_length: 1,
+                details: vec![
+                    "名詞".to_string(),
+                    "数".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "一".to_string(),
+                    "イチ".to_string(),
+                    "イチ".to_string(),
+                ],
+            }];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 1);
+            assert_eq!(&tokens[0].text, "1");
+        }
 
         {
-            let mut tokens: Vec<Token> =
+            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
+                text: "一二三".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                details: vec![
+                    "名詞".to_string(),
+                    "数".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ],
+            }];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 1);
+            assert_eq!(&tokens[0].text, "123");
+        }
+
+        {
+            let mut tokens: Vec<FilteredToken> =
                 vec![
-                    Token::new("一", 0, 3, 0, WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
+                    FilteredToken{
+                        text:"一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四".to_string(),
+                        byte_start:0,
+                        byte_end: 129,
+                        position:0,
+                        position_length:1,
+                        details:vec![
                             "名詞".to_string(),
                             "数".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
-                            "一".to_string(),
-                            "イチ".to_string(),
-                            "イチ".to_string(),
-                        ]))
-                        .clone(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                        ]
+                    },
                 ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "1");
+            assert_eq!(&tokens[0].text, "123456789012345678901234");
         }
 
         {
-            let mut tokens: Vec<Token> =
-                vec![
-                    Token::new("一二三", 0, 9, 0, WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                        ]))
-                        .clone(),
-                ];
-
-            filter.apply(&mut tokens).unwrap();
-
-            assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "123");
-        }
-
-        {
-            let mut tokens: Vec<Token> =
-                vec![
-                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129,0, WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                                ]))
-                        .clone(),
-                ];
-
-            filter.apply(&mut tokens).unwrap();
-
-            assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "123456789012345678901234");
-        }
-
-        {
-            let mut tokens: Vec<Token> = vec![
-                Token::new("鈴木", 0, 6, 0, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+            let mut tokens: Vec<FilteredToken> = vec![
+                FilteredToken {
+                    text: "鈴木".to_string(),
+                    byte_start: 0,
+                    byte_end: 6,
+                    position: 0,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
                         "人名".to_string(),
@@ -986,10 +995,15 @@ mod tests {
                         "鈴木".to_string(),
                         "スズキ".to_string(),
                         "スズキ".to_string(),
-                    ]))
-                    .clone(),
-                Token::new("一郎", 6, 12, 1, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+                    ],
+                },
+                FilteredToken {
+                    text: "一郎".to_string(),
+                    byte_start: 6,
+                    byte_end: 12,
+                    position: 1,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
                         "人名".to_string(),
@@ -999,15 +1013,15 @@ mod tests {
                         "一郎".to_string(),
                         "イチロウ".to_string(),
                         "イチロー".to_string(),
-                    ]))
-                    .clone(),
+                    ],
+                },
             ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(tokens[0].get_text(), "鈴木");
-            assert_eq!(tokens[1].get_text(), "一郎");
+            assert_eq!(&tokens[0].text, "鈴木");
+            assert_eq!(&tokens[1].text, "一郎");
         }
     }
 
@@ -1020,84 +1034,96 @@ mod tests {
         "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        {
+            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
+                text: "一".to_string(),
+                byte_start: 0,
+                byte_end: 3,
+                position: 0,
+                position_length: 1,
+                details: vec![
+                    "名詞".to_string(),
+                    "数".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "一".to_string(),
+                    "イチ".to_string(),
+                    "イチ".to_string(),
+                ],
+            }];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 1);
+            assert_eq!(&tokens[0].text, "1");
+        }
 
         {
-            let mut tokens: Vec<Token> =
+            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
+                text: "一二三".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                details: vec![
+                    "名詞".to_string(),
+                    "数".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                ],
+            }];
+
+            filter.apply(&mut tokens).unwrap();
+
+            assert_eq!(tokens.len(), 1);
+            assert_eq!(&tokens[0].text, "123");
+        }
+
+        {
+            let mut tokens: Vec<FilteredToken> =
                 vec![
-                    Token::new("一", 0, 3, 0, WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
+                    FilteredToken{
+                        text: "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四".to_string(),
+                        byte_start: 0,
+                        byte_end:129,
+                        position: 0,
+                        position_length: 1,
+                        details:vec![
                             "名詞".to_string(),
                             "数".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
                             "*".to_string(),
-                            "一".to_string(),
-                            "イチ".to_string(),
-                            "イチ".to_string(),
-                        ]))
-                        .clone(),
+                            "*".to_string(),
+                            "*".to_string(),
+                            "*".to_string(),
+                        ]
+                    },
                 ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "1");
+            assert_eq!(&tokens[0].text, "123456789012345678901234");
         }
 
         {
-            let mut tokens: Vec<Token> =
-                vec![
-                    Token::new("一二三", 0, 9, 0, WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                        ]))
-                        .clone(),
-                ];
-
-            filter.apply(&mut tokens).unwrap();
-
-            assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "123");
-        }
-
-        {
-            let mut tokens: Vec<Token> =
-                vec![
-                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, 0,WordId::default(), &dictionary, None)
-                        .set_details(Some(vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                                ]))
-                        .clone(),
-                ];
-
-            filter.apply(&mut tokens).unwrap();
-
-            assert_eq!(tokens.len(), 1);
-            assert_eq!(tokens[0].get_text(), "123456789012345678901234");
-        }
-
-        {
-            let mut tokens: Vec<Token> = vec![
-                Token::new("鈴木", 0, 9, 0, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+            let mut tokens: Vec<FilteredToken> = vec![
+                FilteredToken {
+                    text: "鈴木".to_string(),
+                    byte_start: 0,
+                    byte_end: 9,
+                    position: 0,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
                         "人名".to_string(),
@@ -1107,10 +1133,15 @@ mod tests {
                         "鈴木".to_string(),
                         "スズキ".to_string(),
                         "スズキ".to_string(),
-                    ]))
-                    .clone(),
-                Token::new("一郎", 0, 9, 1, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+                    ],
+                },
+                FilteredToken {
+                    text: "一郎".to_string(),
+                    byte_start: 0,
+                    byte_end: 9,
+                    position: 1,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
                         "人名".to_string(),
@@ -1120,15 +1151,15 @@ mod tests {
                         "一郎".to_string(),
                         "イチロウ".to_string(),
                         "イチロー".to_string(),
-                    ]))
-                    .clone(),
+                    ],
+                },
             ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(tokens[0].get_text(), "鈴木");
-            assert_eq!(tokens[1].get_text(), "1郎");
+            assert_eq!(&tokens[0].text, "鈴木");
+            assert_eq!(&tokens[1].text, "1郎");
         }
     }
 }

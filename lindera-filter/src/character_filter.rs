@@ -1,6 +1,11 @@
+pub mod japanese_iteration_mark;
+pub mod mapping;
+pub mod regex;
+pub mod unicode_normalize;
+
 use std::ops::Deref;
 
-use crate::LinderaResult;
+use lindera_core::LinderaResult;
 
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;

@@ -2,9 +2,11 @@ use std::{collections::HashSet, mem};
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
@@ -64,34 +66,19 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         let mut new_tokens = Vec::new();
 
         for token in tokens.iter_mut() {
-            if let Some(details) = token.get_details() {
-                let mut formatted_tags = vec!["*", "*", "*", "*"];
-                let tags_len = if details.len() >= 4 { 4 } else { 1 };
-                for (i, j) in details[0..tags_len].iter().enumerate() {
-                    formatted_tags[i] = j;
-                }
-                if !self.config.tags.contains(&formatted_tags.join(",")) {
-                    new_tokens.push(token.clone());
-                }
+            let mut formatted_tags = vec!["*", "*", "*", "*"];
+            let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
+            for (i, j) in token.details[0..tags_len].iter().enumerate() {
+                formatted_tags[i] = j;
+            }
+            if !self.config.tags.contains(&formatted_tags.join(",")) {
+                new_tokens.push(token.clone());
             }
         }
-
-        // tokens.retain(|mut token| {
-        //     if let Some(details) = token.get_details() {
-        //         let mut formatted_tags = vec!["*", "*", "*", "*"];
-        //         let tags_len = if details.len() >= 4 { 4 } else { 1 };
-        //         for (i, j) in details[0..tags_len].iter().enumerate() {
-        //             formatted_tags[i] = j;
-        //         }
-        //         !self.config.tags.contains(&formatted_tags.join(","))
-        //     } else {
-        //         false
-        //     }
-        // });
 
         mem::swap(tokens, &mut new_tokens);
 
@@ -101,14 +88,11 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::japanese_stop_tags::{
         JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
     };
     #[cfg(feature = "ipadic")]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_japanese_stop_tags_token_filter_config_from_slice() {
@@ -222,11 +206,14 @@ mod tests {
         "#;
         let filter = JapaneseStopTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("すもも", 0, 9, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "すもも".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -236,10 +223,15 @@ mod tests {
                     "すもも".to_string(),
                     "スモモ".to_string(),
                     "スモモ".to_string(),
-                ]))
-                .clone(),
-            Token::new("も", 9, 12, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "も".to_string(),
+                byte_start: 9,
+                byte_end: 12,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
                     "*".to_string(),
@@ -249,10 +241,15 @@ mod tests {
                     "も".to_string(),
                     "モ".to_string(),
                     "モ".to_string(),
-                ]))
-                .clone(),
-            Token::new("もも", 12, 18, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "もも".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -262,10 +259,15 @@ mod tests {
                     "もも".to_string(),
                     "モモ".to_string(),
                     "モモ".to_string(),
-                ]))
-                .clone(),
-            Token::new("も", 18, 21, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "も".to_string(),
+                byte_start: 18,
+                byte_end: 21,
+                position: 3,
+                position_length: 1,
+                details: vec![
                     "助詞".to_string(),
                     "係助詞".to_string(),
                     "*".to_string(),
@@ -275,10 +277,15 @@ mod tests {
                     "も".to_string(),
                     "モ".to_string(),
                     "モ".to_string(),
-                ]))
-                .clone(),
-            Token::new("もも", 21, 27, 4, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "もも".to_string(),
+                byte_start: 21,
+                byte_end: 27,
+                position: 4,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "一般".to_string(),
                     "*".to_string(),
@@ -288,10 +295,15 @@ mod tests {
                     "もも".to_string(),
                     "モモ".to_string(),
                     "モモ".to_string(),
-                ]))
-                .clone(),
-            Token::new("の", 27, 30, 5, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "の".to_string(),
+                byte_start: 27,
+                byte_end: 30,
+                position: 5,
+                position_length: 1,
+                details: vec![
                     "助詞".to_string(),
                     "連体化".to_string(),
                     "*".to_string(),
@@ -301,10 +313,15 @@ mod tests {
                     "の".to_string(),
                     "ノ".to_string(),
                     "ノ".to_string(),
-                ]))
-                .clone(),
-            Token::new("うち", 30, 36, 6, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "うち".to_string(),
+                byte_start: 30,
+                byte_end: 36,
+                position: 6,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "非自立".to_string(),
                     "副詞可能".to_string(),
@@ -314,16 +331,16 @@ mod tests {
                     "うち".to_string(),
                     "ウチ".to_string(),
                     "ウチ".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].get_text(), "すもも");
-        assert_eq!(tokens[1].get_text(), "もも");
-        assert_eq!(tokens[2].get_text(), "もも");
-        assert_eq!(tokens[3].get_text(), "うち");
+        assert_eq!(&tokens[0].text, "すもも");
+        assert_eq!(&tokens[1].text, "もも");
+        assert_eq!(&tokens[2].text, "もも");
+        assert_eq!(&tokens[3].text, "うち");
     }
 }

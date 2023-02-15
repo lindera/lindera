@@ -2,9 +2,11 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
 
@@ -45,8 +47,8 @@ impl TokenFilter for StopWordsTokenFilter {
         STOP_WORDS_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.words.contains(token.get_text()));
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
+        tokens.retain(|token| !self.config.words.contains(&token.text));
 
         Ok(())
     }
@@ -54,12 +56,10 @@ impl TokenFilter for StopWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig};
+
     #[cfg(feature = "ipadic")]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_stop_words_token_filter_config_from_slice() {
@@ -197,44 +197,92 @@ mod tests {
         "#;
         let filter = StopWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("to", 0, 2, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("be", 3, 5, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("or", 6, 8, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("not", 9, 12, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("to", 13, 15, 4, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("be", 16, 18, 5, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("this", 19, 23, 6, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("is", 24, 26, 7, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("the", 27, 30, 8, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
-            Token::new("question", 31, 39, 9, WordId::default(), &dictionary, None)
-                .set_details(Some(vec!["UNK".to_string()]))
-                .clone(),
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "to".to_string(),
+                byte_start: 0,
+                byte_end: 2,
+                position: 0,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "be".to_string(),
+                byte_start: 3,
+                byte_end: 5,
+                position: 1,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "or".to_string(),
+                byte_start: 6,
+                byte_end: 8,
+                position: 2,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "not".to_string(),
+                byte_start: 9,
+                byte_end: 12,
+                position: 3,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "to".to_string(),
+                byte_start: 13,
+                byte_end: 15,
+                position: 4,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "be".to_string(),
+                byte_start: 16,
+                byte_end: 18,
+                position: 5,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "this".to_string(),
+                byte_start: 19,
+                byte_end: 23,
+                position: 6,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "is".to_string(),
+                byte_start: 24,
+                byte_end: 26,
+                position: 7,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "the".to_string(),
+                byte_start: 27,
+                byte_end: 30,
+                position: 8,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
+            FilteredToken {
+                text: "question".to_string(),
+                byte_start: 31,
+                byte_end: 39,
+                position: 9,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].get_text(), "question");
+        assert_eq!(&tokens[0].text, "question");
     }
 }

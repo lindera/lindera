@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use yada::{builder::DoubleArrayBuilder, DoubleArray};
 
-use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult};
+use super::{add_offset_diff, CharacterFilter};
 
 pub const MAPPING_CHARACTER_FILTER_NAME: &str = "mapping";
 
@@ -129,9 +129,11 @@ impl CharacterFilter for MappingCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::{correct_offset, CharacterFilter};
-
-    use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
+    use crate::character_filter::{
+        correct_offset,
+        mapping::{MappingCharacterFilter, MappingCharacterFilterConfig},
+        CharacterFilter,
+    };
 
     #[test]
     fn test_mapping_character_filter_config_from_slice() {

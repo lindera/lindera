@@ -2,9 +2,11 @@ use std::num::NonZeroUsize;
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
@@ -55,24 +57,22 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         let min = self.config.min.get();
 
         for token in tokens.iter_mut() {
-            if !is_katakana(token.get_text()) {
+            if !is_katakana(&token.text) {
                 continue;
             }
 
             if token
-                .get_text()
+                .text
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
-                && token.get_text().chars().count() > min
+                && token.text.chars().count() > min
             {
-                token.set_text(
-                    token.get_text()[..token.get_text().len()
-                        - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
-                        .to_string(),
-                );
+                token.text = token.text[..token.text.len()
+                    - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
+                    .to_string();
             }
         }
 
@@ -93,14 +93,11 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::japanese_katakana_stem::{
         JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
     };
     #[cfg(feature = "ipadic")]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_japanese_katakana_stem_token_filter_config_from_slice() {
@@ -161,11 +158,14 @@ mod tests {
         "#;
         let filter = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("カー", 0, 6, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "カー".to_string(),
+                byte_start: 0,
+                byte_end: 6,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -175,10 +175,15 @@ mod tests {
                     "カー".to_string(),
                     "カー".to_string(),
                     "カー".to_string(),
-                ]))
-                .clone(),
-            Token::new("レバー", 7, 16, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "レバー".to_string(),
+                byte_start: 7,
+                byte_end: 16,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -188,10 +193,15 @@ mod tests {
                     "レバー".to_string(),
                     "レバー".to_string(),
                     "レバー".to_string(),
-                ]))
-                .clone(),
-            Token::new("サッカー", 17, 29, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "サッカー".to_string(),
+                byte_start: 17,
+                byte_end: 29,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -201,37 +211,34 @@ mod tests {
                     "サッカー".to_string(),
                     "サッカー".to_string(),
                     "サッカー".to_string(),
-                ]))
-                .clone(),
-            Token::new(
-                "レシーバー",
-                30,
-                45,
-                3,
-                WordId::default(),
-                &dictionary,
-                None,
-            )
-            .set_details(Some(vec![
-                "名詞".to_string(),
-                "固有名詞".to_string(),
-                "一般".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "*".to_string(),
-                "レシーバー".to_string(),
-                "レシーバー".to_string(),
-                "レシーバー".to_string(),
-            ]))
-            .clone(),
+                ],
+            },
+            FilteredToken {
+                text: "レシーバー".to_string(),
+                byte_start: 30,
+                byte_end: 45,
+                position: 3,
+                position_length: 1,
+                details: vec![
+                    "名詞".to_string(),
+                    "固有名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "レシーバー".to_string(),
+                    "レシーバー".to_string(),
+                    "レシーバー".to_string(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].get_text(), "カー");
-        assert_eq!(tokens[1].get_text(), "レバー");
-        assert_eq!(tokens[2].get_text(), "サッカ");
-        assert_eq!(tokens[3].get_text(), "レシーバ");
+        assert_eq!(&tokens[0].text, "カー");
+        assert_eq!(&tokens[1].text, "レバー");
+        assert_eq!(&tokens[2].text, "サッカ");
+        assert_eq!(&tokens[3].text, "レシーバ");
     }
 }

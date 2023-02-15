@@ -1,0 +1,30 @@
+[package]
+name = "lindera-filter"
+version = "0.21.0"
+edition = "2021"
+
+[features]
+default = []  # No directories included
+ipadic = ["lindera-dictionary/ipadic"]  # Japanese dictionary included
+unidic = ["lindera-dictionary/unidic"]  # Japanese dictionary included
+ko-dic = ["lindera-dictionary/ko-dic"]  # Korean dictionary included
+cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included
+
+[dependencies]
+anyhow = "1.0.68"
+bincode = "1.3.3"
+byteorder = "1.4.3"
+kanaria = "0.2.0"
+once_cell = "1.17.0"
+regex = "1.7.1"
+serde = { version="1.0.152", features = ["derive"] }
+serde_json = "1.0.91"
+unicode-blocks = "0.1.5"
+unicode-normalization = "0.1.22"
+yada = "0.5.0"
+
+lindera-core = { version = "0.21.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.21.0", path = "../lindera-dictionary" }
+
+[dev-dependencies]
+once_cell = "1.17.0"

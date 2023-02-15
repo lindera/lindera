@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use serde::{Deserialize, Serialize};
 use yada::{builder::DoubleArrayBuilder, DoubleArray};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
 
@@ -61,16 +63,16 @@ impl TokenFilter for MappingTokenFilter {
         MAPPING_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let text = token.get_text();
+            // let text = token.text;
 
             let mut result = String::new();
             let mut start = 0_usize;
-            let len = text.len();
+            let len = token.text.len();
 
             while start < len {
-                let suffix = &text[start..];
+                let suffix = &token.text[start..];
                 match self
                     .trie
                     .common_prefix_search(suffix.as_bytes())
@@ -78,7 +80,7 @@ impl TokenFilter for MappingTokenFilter {
                     .map(|(_offset_len, prefix_len)| prefix_len)
                 {
                     Some(prefix_len) => {
-                        let surface = &text[start..start + prefix_len];
+                        let surface = &token.text[start..start + prefix_len];
                         let replacement = &self.config.mapping[surface];
 
                         result.push_str(replacement);
@@ -100,7 +102,7 @@ impl TokenFilter for MappingTokenFilter {
                 }
             }
 
-            token.set_text(result);
+            token.text = result;
         }
 
         Ok(())
@@ -109,12 +111,9 @@ impl TokenFilter for MappingTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig};
     #[cfg(feature = "ipadic")]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_mapping_token_filter_config_from_slice() {
@@ -163,11 +162,14 @@ mod tests {
             "#;
             let filter = MappingTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-            let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-            let mut tokens: Vec<Token> = vec![
-                Token::new("籠原", 0, 6, 0, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+            let mut tokens: Vec<FilteredToken> = vec![
+                FilteredToken {
+                    text: "籠原".to_string(),
+                    byte_start: 0,
+                    byte_end: 6,
+                    position: 0,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "固有名詞".to_string(),
                         "一般".to_string(),
@@ -177,10 +179,15 @@ mod tests {
                         "籠原".to_string(),
                         "カゴハラ".to_string(),
                         "カゴハラ".to_string(),
-                    ]))
-                    .clone(),
-                Token::new("駅", 6, 9, 1, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec![
+                    ],
+                },
+                FilteredToken {
+                    text: "駅".to_string(),
+                    byte_start: 6,
+                    byte_end: 9,
+                    position: 1,
+                    position_length: 1,
+                    details: vec![
                         "名詞".to_string(),
                         "接尾".to_string(),
                         "地域".to_string(),
@@ -190,15 +197,15 @@ mod tests {
                         "駅".to_string(),
                         "エキ".to_string(),
                         "エキ".to_string(),
-                    ]))
-                    .clone(),
+                    ],
+                },
             ];
 
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(tokens[0].get_text(), "篭原");
-            assert_eq!(tokens[1].get_text(), "駅");
+            assert_eq!(&tokens[0].text, "篭原");
+            assert_eq!(&tokens[1].text, "駅");
         }
     }
 }

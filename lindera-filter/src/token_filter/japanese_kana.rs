@@ -1,8 +1,10 @@
 use kanaria::string::UCSStr;
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use serde::{Deserialize, Serialize};
 
-use crate::{error::LinderaErrorKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
 
@@ -53,14 +55,14 @@ impl TokenFilter for JapaneseKanaTokenFilter {
         JAPANESE_KANA_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             match self.config.kind {
                 KanaKind::Hiragana => {
-                    token.set_text(UCSStr::from_str(&token.get_text()).hiragana().to_string());
+                    token.text = UCSStr::from_str(&token.text).hiragana().to_string();
                 }
                 KanaKind::Katakana => {
-                    token.set_text(UCSStr::from_str(&token.get_text()).katakana().to_string());
+                    token.text = UCSStr::from_str(&token.text).katakana().to_string();
                 }
             }
         }
@@ -71,15 +73,12 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
     use crate::token_filter::japanese_kana::{
         JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, KanaKind,
     };
 
     #[cfg(feature = "ipadic")]
-    use crate::{builder, DictionaryKind, Token};
+    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_japanese_kana_token_filter_config_from_slice_hiragana() {
@@ -139,11 +138,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "羽田空港".to_string(),
+                byte_start: 0,
+                byte_end: 12,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -153,10 +155,15 @@ mod tests {
                     "羽田空港".to_string(),
                     "ハネダクウコウ".to_string(),
                     "ハネダクーコー".to_string(),
-                ]))
-                .clone(),
-            Token::new("限定", 12, 18, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "限定".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "サ変接続".to_string(),
                     "*".to_string(),
@@ -166,27 +173,24 @@ mod tests {
                     "限定".to_string(),
                     "ゲンテイ".to_string(),
                     "ゲンテイ".to_string(),
-                ]))
-                .clone(),
-            Token::new(
-                "トートバッグ",
-                18,
-                36,
-                2,
-                WordId::default(),
-                &dictionary,
-                None,
-            )
-            .set_details(Some(vec!["UNK".to_string()]))
-            .clone(),
+                ],
+            },
+            FilteredToken {
+                text: "トートバッグ".to_string(),
+                byte_start: 18,
+                byte_end: 36,
+                position: 2,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].get_text(), "羽田空港");
-        assert_eq!(tokens[1].get_text(), "限定");
-        assert_eq!(tokens[2].get_text(), "とーとばっぐ");
+        assert_eq!(&tokens[0].text, "羽田空港");
+        assert_eq!(&tokens[1].text, "限定");
+        assert_eq!(&tokens[2].text, "とーとばっぐ");
     }
 
     #[test]
@@ -199,11 +203,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("埼玉", 0, 6, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "埼玉".to_string(),
+                byte_start: 0,
+                byte_end: 6,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "地域".to_string(),
@@ -213,10 +220,15 @@ mod tests {
                     "埼玉".to_string(),
                     "サイタマ".to_string(),
                     "サイタマ".to_string(),
-                ]))
-                .clone(),
-            Token::new("県", 6, 9, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "県".to_string(),
+                byte_start: 6,
+                byte_end: 9,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -226,10 +238,15 @@ mod tests {
                     "県".to_string(),
                     "ケン".to_string(),
                     "ケン".to_string(),
-                ]))
-                .clone(),
-            Token::new("さいたま", 9, 21, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "さいたま".to_string(),
+                byte_start: 9,
+                byte_end: 21,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -239,10 +256,15 @@ mod tests {
                     "さいたま".to_string(),
                     "サイタマ".to_string(),
                     "サイタマ".to_string(),
-                ]))
-                .clone(),
-            Token::new("市", 21, 24, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "市".to_string(),
+                byte_start: 21,
+                byte_end: 24,
+                position: 3,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -252,17 +274,17 @@ mod tests {
                     "市".to_string(),
                     "シ".to_string(),
                     "シ".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].get_text(), "埼玉");
-        assert_eq!(tokens[1].get_text(), "県");
-        assert_eq!(tokens[2].get_text(), "サイタマ");
-        assert_eq!(tokens[3].get_text(), "市");
+        assert_eq!(&tokens[0].text, "埼玉");
+        assert_eq!(&tokens[1].text, "県");
+        assert_eq!(&tokens[2].text, "サイタマ");
+        assert_eq!(&tokens[3].text, "市");
     }
 
     #[test]
@@ -275,11 +297,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "羽田空港".to_string(),
+                byte_start: 0,
+                byte_end: 12,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -289,10 +314,15 @@ mod tests {
                     "羽田空港".to_string(),
                     "ハネダクウコウ".to_string(),
                     "ハネダクーコー".to_string(),
-                ]))
-                .clone(),
-            Token::new("限定", 12, 18, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "限定".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "サ変接続".to_string(),
                     "*".to_string(),
@@ -302,27 +332,24 @@ mod tests {
                     "限定".to_string(),
                     "ゲンテイ".to_string(),
                     "ゲンテイ".to_string(),
-                ]))
-                .clone(),
-            Token::new(
-                "トートバッグ",
-                18,
-                36,
-                2,
-                WordId::default(),
-                &dictionary,
-                None,
-            )
-            .set_details(Some(vec!["UNK".to_string()]))
-            .clone(),
+                ],
+            },
+            FilteredToken {
+                text: "トートバッグ".to_string(),
+                byte_start: 18,
+                byte_end: 36,
+                position: 2,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].get_text(), "羽田空港");
-        assert_eq!(tokens[1].get_text(), "限定");
-        assert_eq!(tokens[2].get_text(), "トートバッグ");
+        assert_eq!(&tokens[0].text, "羽田空港");
+        assert_eq!(&tokens[1].text, "限定");
+        assert_eq!(&tokens[2].text, "トートバッグ");
     }
 
     #[test]
@@ -335,11 +362,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("埼玉", 0, 6, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "埼玉".to_string(),
+                byte_start: 0,
+                byte_end: 6,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "地域".to_string(),
@@ -349,10 +379,15 @@ mod tests {
                     "埼玉".to_string(),
                     "サイタマ".to_string(),
                     "サイタマ".to_string(),
-                ]))
-                .clone(),
-            Token::new("県", 6, 9, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "県".to_string(),
+                byte_start: 6,
+                byte_end: 9,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -362,10 +397,15 @@ mod tests {
                     "県".to_string(),
                     "ケン".to_string(),
                     "ケン".to_string(),
-                ]))
-                .clone(),
-            Token::new("さいたま", 9, 21, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "さいたま".to_string(),
+                byte_start: 9,
+                byte_end: 21,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -375,10 +415,15 @@ mod tests {
                     "さいたま".to_string(),
                     "サイタマ".to_string(),
                     "サイタマ".to_string(),
-                ]))
-                .clone(),
-            Token::new("市", 21, 24, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "市".to_string(),
+                byte_start: 21,
+                byte_end: 24,
+                position: 3,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -388,17 +433,17 @@ mod tests {
                     "市".to_string(),
                     "シ".to_string(),
                     "シ".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].get_text(), "埼玉");
-        assert_eq!(tokens[1].get_text(), "県");
-        assert_eq!(tokens[2].get_text(), "さいたま");
-        assert_eq!(tokens[3].get_text(), "市");
+        assert_eq!(&tokens[0].text, "埼玉");
+        assert_eq!(&tokens[1].text, "県");
+        assert_eq!(&tokens[2].text, "さいたま");
+        assert_eq!(&tokens[3].text, "市");
     }
 
     #[test]
@@ -411,11 +456,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("東京", 0, 6, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "東京".to_string(),
+                byte_start: 0,
+                byte_end: 6,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "地域".to_string(),
@@ -425,10 +473,15 @@ mod tests {
                     "東京".to_string(),
                     "トウキョウ".to_string(),
                     "トーキョー".to_string(),
-                ]))
-                .clone(),
-            Token::new("都", 6, 9, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "都".to_string(),
+                byte_start: 6,
+                byte_end: 9,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -438,10 +491,15 @@ mod tests {
                     "都".to_string(),
                     "ト".to_string(),
                     "ト".to_string(),
-                ]))
-                .clone(),
-            Token::new("あきる野", 9, 21, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "あきる野".to_string(),
+                byte_start: 9,
+                byte_end: 21,
+                position: 3,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "地域".to_string(),
@@ -451,10 +509,15 @@ mod tests {
                     "あきる野".to_string(),
                     "アキルノ".to_string(),
                     "アキルノ".to_string(),
-                ]))
-                .clone(),
-            Token::new("市", 21, 24, 4, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "市".to_string(),
+                byte_start: 21,
+                byte_end: 24,
+                position: 4,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -464,17 +527,17 @@ mod tests {
                     "市".to_string(),
                     "シ".to_string(),
                     "シ".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].get_text(), "東京");
-        assert_eq!(tokens[1].get_text(), "都");
-        assert_eq!(tokens[2].get_text(), "アキル野");
-        assert_eq!(tokens[3].get_text(), "市");
+        assert_eq!(&tokens[0].text, "東京");
+        assert_eq!(&tokens[1].text, "都");
+        assert_eq!(&tokens[2].text, "アキル野");
+        assert_eq!(&tokens[3].text, "市");
     }
 
     #[test]
@@ -487,11 +550,14 @@ mod tests {
         "#;
         let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("南北線", 0, 9, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "南北線".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -501,10 +567,15 @@ mod tests {
                     "南北線".to_string(),
                     "ナンボクセン".to_string(),
                     "ナンボクセン".to_string(),
-                ]))
-                .clone(),
-            Token::new("四ツ谷", 9, 18, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "四ツ谷".to_string(),
+                byte_start: 9,
+                byte_end: 18,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "地域".to_string(),
@@ -514,10 +585,15 @@ mod tests {
                     "四ツ谷".to_string(),
                     "ヨツヤ".to_string(),
                     "ヨツヤ".to_string(),
-                ]))
-                .clone(),
-            Token::new("駅", 18, 21, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "駅".to_string(),
+                byte_start: 18,
+                byte_end: 21,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "接尾".to_string(),
                     "地域".to_string(),
@@ -527,15 +603,15 @@ mod tests {
                     "駅".to_string(),
                     "エキ".to_string(),
                     "エキ".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].get_text(), "南北線");
-        assert_eq!(tokens[1].get_text(), "四つ谷");
-        assert_eq!(tokens[2].get_text(), "駅");
+        assert_eq!(&tokens[0].text, "南北線");
+        assert_eq!(&tokens[1].text, "四つ谷");
+        assert_eq!(&tokens[2].text, "駅");
     }
 }

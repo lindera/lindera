@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
 
-use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult};
+use super::{add_offset_diff, CharacterFilter};
 
 pub const UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str = "unicode_normalize";
 
@@ -193,10 +193,13 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::{correct_offset, CharacterFilter};
 
-    use crate::character_filter::unicode_normalize::{
-        UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
+    use crate::character_filter::{
+        correct_offset,
+        unicode_normalize::{
+            UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
+        },
+        CharacterFilter,
     };
 
     #[test]

@@ -28,7 +28,7 @@ fn main() -> LinderaResult<()> {
 
         // output the tokens
         for token in tokens {
-            println!("{}", token.get_text());
+            println!("{}", token.text);
         }
     }
 

@@ -19,7 +19,10 @@ ipadic = ["lindera/ipadic"]  # Japanese dictionary included
 unidic = ["lindera/unidic"]  # Japanese dictionary included
 ko-dic = ["lindera/ko-dic"]  # Korean dictionary included
 cc-cedict = ["lindera/cc-cedict"]  # Chinese dictionary included
-compress = ["lindera/compress"]
+ipadic-compress = ["lindera/ipadic-compress"]
+unidic-compress = ["lindera/unidic-compress"]
+ko-dic-compress = ["lindera/ko-dic-compress"]
+cc-cedict-compress = ["lindera/cc-cedict-compress"]
 
 [dependencies]
 anyhow = "1.0.68"
