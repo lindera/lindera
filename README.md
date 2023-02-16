@@ -63,7 +63,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell script
-% cargo run --features=ipadic --example=basic_example
+% cargo run --features=ipadic --example=ipadic_basic_example
 ```
 
 You can see the result as follows:
@@ -197,7 +197,7 @@ fn main() -> LinderaResult<()> {
 
 The above example can be by `cargo run --example`:
 ```shell
-% cargo run --features=ipadic --example=userdic_example
+% cargo run --features=ipadic --example=ipadic_userdic_example
 東京スカイツリー
 の
 最寄り駅
