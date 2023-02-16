@@ -1,4 +1,4 @@
-FROM rust:1.66.0-slim-bullseye AS builder
+FROM rust:1.67.1-slim-bullseye AS builder
 
 ARG LINDERA_VERSION
 
@@ -16,9 +16,9 @@ RUN set -ex \
 
 COPY . .
 
-RUN rustup component add rustfmt --toolchain 1.66.0-x86_64-unknown-linux-gnu
+RUN rustup component add rustfmt --toolchain 1.67.1-x86_64-unknown-linux-gnu
 
-RUN cargo build --release --features="all-dictionaries"
+RUN cargo build --release --features=ipadic,unidic,ko-dic,cc-cedict
 
 FROM debian:bullseye-slim
 

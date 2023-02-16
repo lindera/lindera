@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.21.1"
+version = "0.22.0"
 edition = "2021"
 description = "A morphological analysis command line interface."
 documentation = "https://docs.rs/lindera-cli"
@@ -13,8 +13,6 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-all-dictionaries = ["ipadic", "unidic", "ko-dic", "cc-cedict"]  # All dictionaries included
-cjk = ["cc-cedict", "ipadic", "ko-dic"] # CJK dictionaries included
 ipadic = ["lindera/ipadic"]  # Japanese dictionary included
 unidic = ["lindera/unidic"]  # Japanese dictionary included
 ko-dic = ["lindera/ko-dic"]  # Korean dictionary included
@@ -29,7 +27,7 @@ anyhow = "1.0.68"
 clap = { version = "4.1.1", features = ["derive", "cargo"] }
 serde_json = "1.0.91"
 
-lindera = { version = "0.21.1", path = "../lindera" }
+lindera = { version = "0.22.0", path = "../lindera" }
 
 [[bin]]
 name = "lindera"
