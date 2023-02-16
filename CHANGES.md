@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.22.0 (2023-02-16)
+- Bump up version to 0.22.0 #308 @mosuka
+- Separate the filters into lindera-filter packages and put the token back to use &str #307 @mosuka
+
 ## 0.21.1 (2023-02-09)
 - Bump up version to 0.21.1 #306 @mosuka
 - Fix token boundaries #305 @ManyTheFish
