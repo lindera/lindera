@@ -1,6 +1,6 @@
 [package]
 name = "lindera-dictionary"
-version = "0.21.0"
+version = "0.22.0"
 edition = "2021"
 description = "A Japanese morphological dictionary."
 documentation = "https://docs.rs/lindera-dictionary"
@@ -13,14 +13,14 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-ipadic = ["lindera-ipadic"]  # Japanese dictionary included
-unidic = ["lindera-unidic"]  # Japanese dictionary included
-ko-dic = ["lindera-ko-dic"]  # Korean dictionary included
-cc-cedict = ["lindera-cc-cedict"]  # Chinese dictionary included
-ipadic-compress = ["lindera-ipadic/compress"]
-unidic-compress = ["lindera-unidic/compress"]
-ko-dic-compress = ["lindera-ko-dic/compress"]
-cc-cedict-compress = ["lindera-cc-cedict/compress"]
+ipadic = ["lindera-ipadic"]  # Include Japanese dictionary (IPADIC)
+unidic = ["lindera-unidic"]  # Include Japanese dictionary (UniDic)
+ko-dic = ["lindera-ko-dic"]  # Include Korean dictionary (ko-dic)
+cc-cedict = ["lindera-cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
+ipadic-compress = ["lindera-ipadic/compress"]  # Compress Japanese dictionary (IPADIC)
+unidic-compress = ["lindera-unidic/compress"]  # Compress Japanese dictionary (UniDic)
+ko-dic-compress = ["lindera-ko-dic/compress"]  # Compress Korean dictionary (ko-dic)
+cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
 anyhow = "1.0.68"
@@ -28,8 +28,8 @@ bincode = "1.3.3"
 byteorder = "1.4.3"
 serde = { version="1.0.152", features = ["derive"] }
 
-lindera-core = { version = "0.21.0", path = "../lindera-core" }
-lindera-cc-cedict = { version = "0.21.0", path = "../lindera-cc-cedict", optional = true }
-lindera-ipadic = { version = "0.21.0", path = "../lindera-ipadic", optional = true }
-lindera-ko-dic = { version = "0.21.0", path = "../lindera-ko-dic", optional = true }
-lindera-unidic = { version = "0.21.0", path = "../lindera-unidic", optional = true }
+lindera-core = { version = "0.22.0", path = "../lindera-core" }
+lindera-cc-cedict = { version = "0.22.0", path = "../lindera-cc-cedict", optional = true }
+lindera-ipadic = { version = "0.22.0", path = "../lindera-ipadic", optional = true }
+lindera-ko-dic = { version = "0.22.0", path = "../lindera-ko-dic", optional = true }
+lindera-unidic = { version = "0.22.0", path = "../lindera-unidic", optional = true }

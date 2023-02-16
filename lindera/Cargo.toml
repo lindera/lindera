@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.21.1"
+version = "0.22.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -13,14 +13,14 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-ipadic = ["lindera-dictionary/ipadic", "lindera-filter/ipadic"]  # Japanese dictionary included
-unidic = ["lindera-dictionary/unidic", "lindera-filter/unidic"]  # Japanese dictionary included
-ko-dic = ["lindera-dictionary/ko-dic", "lindera-filter/ko-dic"]  # Korean dictionary included
-cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included
-ipadic-compress = ["lindera-dictionary/ipadic-compress"]
-unidic-compress = ["lindera-dictionary/unidic-compress"]
-ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]
-cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]
+ipadic = ["lindera-dictionary/ipadic", "lindera-filter/ipadic"]  # Include Japanese dictionary (IPADIC)
+unidic = ["lindera-dictionary/unidic", "lindera-filter/unidic"]  # Include Japanese dictionary (UniDic)
+ko-dic = ["lindera-dictionary/ko-dic", "lindera-filter/ko-dic"]  # Include Korean dictionary (ko-dic)
+cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
+ipadic-compress = ["lindera-dictionary/ipadic-compress"]  # Compress Japanese dictionary (IPADIC)
+unidic-compress = ["lindera-dictionary/unidic-compress"]  # Compress Japanese dictionary (UniDic)
+ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]  # Compress Korean dictionary (ko-dic)
+cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
 anyhow = "1.0.68"
@@ -36,13 +36,13 @@ unicode-blocks = "0.1.5"
 unicode-normalization = "0.1.22"
 yada = "0.5.0"
 
-lindera-cc-cedict-builder = { version = "0.21.0", path = "../lindera-cc-cedict-builder" }
-lindera-core = { version = "0.21.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.21.0", path = "../lindera-dictionary" }
-lindera-ipadic-builder = { version = "0.21.0", path = "../lindera-ipadic-builder" }
-lindera-ko-dic-builder = { version = "0.21.0", path = "../lindera-ko-dic-builder" }
-lindera-unidic-builder = { version = "0.21.0", path = "../lindera-unidic-builder" }
-lindera-filter = { version = "0.21.0", path = "../lindera-filter" }
+lindera-cc-cedict-builder = { version = "0.22.0", path = "../lindera-cc-cedict-builder" }
+lindera-core = { version = "0.22.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.22.0", path = "../lindera-dictionary" }
+lindera-ipadic-builder = { version = "0.22.0", path = "../lindera-ipadic-builder" }
+lindera-ko-dic-builder = { version = "0.22.0", path = "../lindera-ko-dic-builder" }
+lindera-unidic-builder = { version = "0.22.0", path = "../lindera-unidic-builder" }
+lindera-filter = { version = "0.22.0", path = "../lindera-filter" }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }

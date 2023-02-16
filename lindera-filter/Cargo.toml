@@ -1,6 +1,6 @@
 [package]
 name = "lindera-filter"
-version = "0.21.0"
+version = "0.22.0"
 edition = "2021"
 
 [features]
@@ -23,8 +23,8 @@ unicode-blocks = "0.1.5"
 unicode-normalization = "0.1.22"
 yada = "0.5.0"
 
-lindera-core = { version = "0.21.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.21.0", path = "../lindera-dictionary" }
+lindera-core = { version = "0.22.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.22.0", path = "../lindera-dictionary" }
 
 [dev-dependencies]
 once_cell = "1.17.0"

@@ -1,6 +1,6 @@
 [package]
 name = "lindera-compress"
-version = "0.21.0"
+version = "0.22.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera-compress"
@@ -15,7 +15,7 @@ license = "MIT"
 anyhow = "1.0.68"
 flate2 = "1.0.25"
 
-lindera-decompress = { version = "0.21.0", path = "../lindera-decompress" }
+lindera-decompress = { version = "0.22.0", path = "../lindera-decompress" }
 
 [dev-dependencies]
 rand = "0.8.5"
