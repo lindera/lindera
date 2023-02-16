@@ -7,7 +7,7 @@ documentation = "https://docs.rs/lindera-filter"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
-keywords = ["japanese", "morphological", "dictionary", "filter", "character", "token"]
+keywords = ["filter", "character", "token"]
 categories = ["text-processing"]
 license = "MIT"
 
