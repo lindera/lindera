@@ -1,6 +1,8 @@
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::LinderaResult;
 
-use crate::{LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
@@ -26,9 +28,9 @@ impl TokenFilter for LowercaseTokenFilter {
         LOWERCASE_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.set_text(token.get_text().to_lowercase());
+            token.text = token.text.to_lowercase();
         }
 
         Ok(())
@@ -38,28 +40,28 @@ impl TokenFilter for LowercaseTokenFilter {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "ipadic")]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
-
-    #[cfg(feature = "ipadic")]
-    use crate::{builder, token_filter::lowercase::LowercaseTokenFilter, DictionaryKind, Token};
+    use crate::{
+        token::FilteredToken, token_filter::lowercase::LowercaseTokenFilter,
+        token_filter::TokenFilter,
+    };
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_lowercase_token_filter_apply_ipadic() {
         let filter = LowercaseTokenFilter::default();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> =
-            vec![
-                Token::new("Rust", 0, 4, 1, WordId::default(), &dictionary, None)
-                    .set_details(Some(vec!["UNK".to_string()]))
-                    .clone(),
-            ];
+        let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
+            text: "Rust".to_string(),
+            byte_start: 0,
+            byte_end: 4,
+            position: 0,
+            position_length: 1,
+            details: vec!["UNK".to_string()],
+        }];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
-        assert_eq!(tokens[0].get_text(), "rust");
+        assert_eq!(&tokens[0].text, "rust");
     }
 }

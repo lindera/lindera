@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use lindera_core::token_filter::TokenFilter;
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_dictionary::DictionaryKind;
 
-use crate::{error::LinderaErrorKind, DictionaryKind, LinderaResult, Token};
+use crate::token::FilteredToken;
+
+use super::TokenFilter;
 
 pub const JAPANESE_READING_FORM_TOKEN_FILTER_NAME: &str = "japanese_reading_form";
 
@@ -47,30 +50,20 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
         JAPANESE_READING_FORM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let details = match token.get_details() {
-                Some(details) => details,
-                None => {
-                    return Err(LinderaErrorKind::Io
-                        .with_error(anyhow::anyhow!("Failed to get word details.")))
-                }
-            };
-
-            if details[0] == "UNK" {
+            if &token.details[0] == "UNK" {
                 // NOOP
                 continue;
             }
             match self.config.kind {
                 #[cfg(feature = "ipadic")]
                 DictionaryKind::IPADIC => {
-                    let new_text = details[7].to_string();
-                    token.set_text(new_text);
+                    token.text = token.details[7].clone();
                 }
                 #[cfg(feature = "unidic")]
                 DictionaryKind::UniDic => {
-                    let new_text = details[6].to_string();
-                    token.set_text(new_text);
+                    token.text = token.details[6].clone();
                 }
                 _ => {
                     // NOOP
@@ -85,15 +78,15 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
 #[cfg(test)]
 mod tests {
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use lindera_core::{token_filter::TokenFilter, word_entry::WordId};
+    use lindera_dictionary::DictionaryKind;
 
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
     use crate::{
-        builder,
+        token::FilteredToken,
         token_filter::japanese_reading_form::{
             JapaneseReadingFormTokenFilter, JapaneseReadingFormTokenFilterConfig,
         },
-        DictionaryKind, Token,
+        token_filter::TokenFilter,
     };
 
     #[cfg(feature = "ipadic")]
@@ -160,11 +153,14 @@ mod tests {
         "#;
         let filter = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("羽田空港", 0, 12, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "羽田空港".to_string(),
+                byte_start: 0,
+                byte_end: 12,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "一般".to_string(),
@@ -174,10 +170,15 @@ mod tests {
                     "羽田空港".to_string(),
                     "ハネダクウコウ".to_string(),
                     "ハネダクーコー".to_string(),
-                ]))
-                .clone(),
-            Token::new("限定", 12, 18, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "限定".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "サ変接続".to_string(),
                     "*".to_string(),
@@ -187,27 +188,24 @@ mod tests {
                     "限定".to_string(),
                     "ゲンテイ".to_string(),
                     "ゲンテイ".to_string(),
-                ]))
-                .clone(),
-            Token::new(
-                "トートバッグ",
-                18,
-                36,
-                2,
-                WordId::default(),
-                &dictionary,
-                None,
-            )
-            .set_details(Some(vec!["UNK".to_string()]))
-            .clone(),
+                ],
+            },
+            FilteredToken {
+                text: "トートバッグ".to_string(),
+                byte_start: 18,
+                byte_end: 36,
+                position: 2,
+                position_length: 1,
+                details: vec!["UNK".to_string()],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].get_text(), "ハネダクウコウ");
-        assert_eq!(tokens[1].get_text(), "ゲンテイ");
-        assert_eq!(tokens[2].get_text(), "トートバッグ");
+        assert_eq!(&tokens[0].text, "ハネダクウコウ");
+        assert_eq!(&tokens[1].text, "ゲンテイ");
+        assert_eq!(&tokens[2].text, "トートバッグ");
     }
 
     #[cfg(feature = "unidic")]
@@ -220,11 +218,14 @@ mod tests {
         "#;
         let filter = JapaneseReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary = builder::load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
-
-        let mut tokens: Vec<Token> = vec![
-            Token::new("羽田", 0, 6, 0, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+        let mut tokens: Vec<FilteredToken> = vec![
+            FilteredToken {
+                text: "羽田".to_string(),
+                byte_start: 0,
+                byte_end: 6,
+                position: 0,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "固有名詞".to_string(),
                     "人名".to_string(),
@@ -242,10 +243,15 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                ]))
-                .clone(),
-            Token::new("空港", 6, 12, 1, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "空港".to_string(),
+                byte_start: 6,
+                byte_end: 12,
+                position: 1,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "普通名詞".to_string(),
                     "一般".to_string(),
@@ -263,10 +269,15 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                ]))
-                .clone(),
-            Token::new("限定", 12, 18, 2, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "限定".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 2,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "普通名詞".to_string(),
                     "サ変可能".to_string(),
@@ -284,10 +295,15 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                ]))
-                .clone(),
-            Token::new("トート", 18, 27, 3, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "トート".to_string(),
+                byte_start: 18,
+                byte_end: 27,
+                position: 3,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "普通名詞".to_string(),
                     "一般".to_string(),
@@ -305,10 +321,15 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                ]))
-                .clone(),
-            Token::new("バッグ", 27, 36, 4, WordId::default(), &dictionary, None)
-                .set_details(Some(vec![
+                ],
+            },
+            FilteredToken {
+                text: "バッグ".to_string(),
+                byte_start: 27,
+                byte_end: 36,
+                position: 4,
+                position_length: 1,
+                details: vec![
                     "名詞".to_string(),
                     "普通名詞".to_string(),
                     "一般".to_string(),
@@ -326,17 +347,17 @@ mod tests {
                     "*".to_string(),
                     "*".to_string(),
                     "*".to_string(),
-                ]))
-                .clone(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 5);
-        assert_eq!(tokens[0].get_text(), "ハタ");
-        assert_eq!(tokens[1].get_text(), "クウコウ");
-        assert_eq!(tokens[2].get_text(), "ゲンテイ");
-        assert_eq!(tokens[3].get_text(), "トート");
-        assert_eq!(tokens[4].get_text(), "バッグ");
+        assert_eq!(&tokens[0].text, "ハタ");
+        assert_eq!(&tokens[1].text, "クウコウ");
+        assert_eq!(&tokens[2].text, "ゲンテイ");
+        assert_eq!(&tokens[3].text, "トート");
+        assert_eq!(&tokens[4].text, "バッグ");
     }
 }

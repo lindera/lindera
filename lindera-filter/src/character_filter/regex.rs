@@ -1,9 +1,9 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use lindera_core::character_filter::{add_offset_diff, CharacterFilter};
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::{error::LinderaErrorKind, LinderaResult};
+use super::{add_offset_diff, CharacterFilter};
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
 
@@ -96,9 +96,11 @@ impl CharacterFilter for RegexCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use lindera_core::character_filter::{correct_offset, CharacterFilter};
-
-    use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
+    use crate::character_filter::{
+        correct_offset,
+        regex::{RegexCharacterFilter, RegexCharacterFilterConfig},
+        CharacterFilter,
+    };
 
     #[test]
     fn test_regex_character_filter_config_from_slice() {

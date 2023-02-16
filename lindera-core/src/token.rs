@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use serde::Serialize;
@@ -11,7 +9,7 @@ static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {
     /// Text content of the token.
-    text: Cow<'a, str>,
+    pub text: &'a str,
 
     /// Starting position of the token in bytes.
     pub byte_start: usize,
@@ -41,7 +39,7 @@ pub struct Token<'a> {
 
 impl<'a> Token<'a> {
     pub fn new(
-        text: &str,
+        text: &'a str,
         start: usize,
         end: usize,
         position: usize,
@@ -50,7 +48,7 @@ impl<'a> Token<'a> {
         user_dictionary: Option<&'a UserDictionary>,
     ) -> Self {
         Self {
-            text: Cow::Owned(text.to_string()),
+            text,
             details: None,
             byte_start: start,
             byte_end: end,
@@ -60,16 +58,6 @@ impl<'a> Token<'a> {
             dictionary,
             user_dictionary,
         }
-    }
-
-    pub fn get_text(&self) -> &str {
-        self.text.as_ref()
-    }
-
-    // pub fn set_text(&mut self, text: &str) -> &Token<'a> {
-    pub fn set_text(&mut self, text: String) -> &Token<'a> {
-        self.text = Cow::Owned(text);
-        self
     }
 
     fn details(&self) -> Option<Vec<&str>> {

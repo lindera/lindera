@@ -14,6 +14,7 @@ members = [
     "lindera-ko-dic",
     "lindera-cc-cedict-builder",
     "lindera-cc-cedict",
+    "lindera-filter",
 ]
 resolver = "2"
 

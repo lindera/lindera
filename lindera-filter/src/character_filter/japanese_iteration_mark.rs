@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use lindera_core::character_filter::CharacterFilter;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
+
+use super::CharacterFilter;
 
 pub const JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str = "japanese_iteration_mark";
 
@@ -182,12 +183,15 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
 mod tests {
     use std::collections::HashMap;
 
-    use lindera_core::character_filter::CharacterFilter;
     use once_cell::sync::Lazy;
 
-    use crate::character_filter::japanese_iteration_mark::{
-        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
-        JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+    use crate::character_filter::{
+        japanese_iteration_mark::{
+            hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon,
+            katakana_remove_dakuon, JapaneseIterationMarkCharacterFilter,
+            JapaneseIterationMarkCharacterFilterConfig,
+        },
+        CharacterFilter,
     };
 
     fn hiragana_has_dakuon(c: &char) -> bool {

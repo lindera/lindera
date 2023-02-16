@@ -13,13 +13,14 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-all-dictionaries = ["ipadic", "unidic", "ko-dic", "cc-cedict"]  # All dictionaries included
-cjk = ["cc-cedict", "ipadic", "ko-dic"] # CJK dictionaries included
-ipadic = ["lindera-ipadic/ipadic"]  # Japanese dictionary included
-unidic = ["lindera-unidic/unidic"]  # Japanese dictionary included
-ko-dic = ["lindera-ko-dic/ko-dic"]  # Korean dictionary included
-cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Chinese dictionary included
-compress = ["lindera-ipadic/compress", "lindera-unidic/compress"]
+ipadic = ["lindera-dictionary/ipadic", "lindera-filter/ipadic"]  # Japanese dictionary included
+unidic = ["lindera-dictionary/unidic", "lindera-filter/unidic"]  # Japanese dictionary included
+ko-dic = ["lindera-dictionary/ko-dic", "lindera-filter/ko-dic"]  # Korean dictionary included
+cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included
+ipadic-compress = ["lindera-dictionary/ipadic-compress"]
+unidic-compress = ["lindera-dictionary/unidic-compress"]
+ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]
+cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]
 
 [dependencies]
 anyhow = "1.0.68"
@@ -35,16 +36,13 @@ unicode-blocks = "0.1.5"
 unicode-normalization = "0.1.22"
 yada = "0.5.0"
 
-lindera-cc-cedict = { version = "0.21.0", path = "../lindera-cc-cedict", optional = true }
 lindera-cc-cedict-builder = { version = "0.21.0", path = "../lindera-cc-cedict-builder" }
 lindera-core = { version = "0.21.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.21.0", path = "../lindera-dictionary" }
-lindera-ipadic = { version = "0.21.0", path = "../lindera-ipadic" }
 lindera-ipadic-builder = { version = "0.21.0", path = "../lindera-ipadic-builder" }
-lindera-ko-dic = { version = "0.21.0", path = "../lindera-ko-dic", optional = true }
 lindera-ko-dic-builder = { version = "0.21.0", path = "../lindera-ko-dic-builder" }
-lindera-unidic = { version = "0.21.0", path = "../lindera-unidic", optional = true }
 lindera-unidic-builder = { version = "0.21.0", path = "../lindera-unidic-builder" }
+lindera-filter = { version = "0.21.0", path = "../lindera-filter" }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }

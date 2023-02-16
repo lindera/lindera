@@ -1,14 +1,10 @@
-use std::{fs, mem, path::Path};
+use std::{fs, path::Path};
 
 use serde_json::Value;
 
-use lindera_core::{
-    character_filter::{correct_offset, BoxCharacterFilter},
-    token_filter::BoxTokenFilter,
-};
-
-use crate::{
+use lindera_filter::{
     character_filter::{
+        correct_offset,
         japanese_iteration_mark::{
             JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
         },
@@ -17,8 +13,8 @@ use crate::{
         unicode_normalize::{
             UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
         },
+        BoxCharacterFilter,
     },
-    error::LinderaErrorKind,
     token_filter::{
         japanese_base_form::{JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME},
         japanese_compound_word::{
@@ -45,10 +41,11 @@ use crate::{
         mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME},
         stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
         uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
+        BoxTokenFilter,
     },
-    tokenizer::Tokenizer,
-    LinderaResult, Token,
 };
+
+use crate::{error::LinderaErrorKind, tokenizer::Tokenizer, FilteredToken, LinderaResult};
 
 pub struct Analyzer {
     character_filters: Vec<BoxCharacterFilter>,
@@ -256,14 +253,16 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze<'a>(&'a self, text: &'a mut String) -> crate::LinderaResult<Vec<Token<'a>>> {
+    pub fn analyze(&self, text: &str) -> crate::LinderaResult<Vec<FilteredToken>> {
+        let mut normalized_text = text.to_string();
+
         let mut text_len_vec: Vec<usize> = Vec::new();
         let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
         let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
 
         // Appy character filters.
         for character_filter in &self.character_filters {
-            let (new_text, offsets, diffs) = character_filter.apply(text)?;
+            let (new_text, offsets, diffs) = character_filter.apply(normalized_text.as_str())?;
 
             if !offsets.is_empty() {
                 // Record the offsets of each character filter.
@@ -276,41 +275,52 @@ impl Analyzer {
                 text_len_vec.insert(0, new_text.len());
             }
 
-            mem::swap(text, &mut new_text.clone());
+            normalized_text = new_text;
         }
 
         // Tokenize.
-        let mut tmp_tokens = self.tokenizer.tokenize(text)?;
+        let mut tmp_tokens = self.tokenizer.tokenize(&normalized_text)?;
+
+        // Make filtered tokens.
+        let mut filtered_tokens = Vec::new();
+        for tmp_token in tmp_tokens.iter_mut() {
+            filtered_tokens.push(FilteredToken {
+                text: tmp_token.text.to_string(),
+                byte_start: tmp_token.byte_start,
+                byte_end: tmp_token.byte_end,
+                position: tmp_token.position,
+                position_length: tmp_token.position_length,
+                details: tmp_token
+                    .get_details()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
+                    })?
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            });
+        }
 
         // Apply token filters.
         for token_filter in &self.token_filters {
-            token_filter.apply(&mut tmp_tokens)?;
+            token_filter.apply(&mut filtered_tokens)?;
         }
 
         // Correct token offsets
-        let mut tokens = Vec::new();
-        for token in tmp_tokens.iter() {
-            let mut new_token = token.clone();
-
+        for token in filtered_tokens.iter_mut() {
             // Override details.
             for (i, offsets) in offsets_vec.iter().enumerate() {
                 // Override start.
-                new_token.byte_start = correct_offset(
-                    new_token.byte_start,
-                    offsets,
-                    &diffs_vec[i],
-                    text_len_vec[i],
-                );
+                token.byte_start =
+                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
 
                 // Override end.
-                new_token.byte_end =
-                    correct_offset(new_token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+                token.byte_end =
+                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
             }
-
-            tokens.push(new_token);
         }
 
-        Ok(tokens)
+        Ok(filtered_tokens)
     }
 }
 
@@ -538,7 +548,7 @@ mod tests {
                         "tags": [
                             "名詞,数",
                             "名詞,接尾,助数詞"
-                        ]            
+                        ]
                     }
                 },
                 {
@@ -591,76 +601,76 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "Lindera");
+                assert_eq!(token.text, "Lindera".to_string());
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 15);
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
-                assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+                assert_eq!(token.details, vec!["UNK".to_string()]);
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "形態素");
+                assert_eq!(token.text, "形態素".to_string());
                 assert_eq!(token.byte_start, 18);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "一般",
-                        "*",
-                        "*",
-                        "*",
-                        "*",
-                        "形態素",
-                        "ケイタイソ",
-                        "ケイタイソ"
+                        "名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "形態素".to_string(),
+                        "ケイタイソ".to_string(),
+                        "ケイタイソ".to_string()
                     ]
                 );
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "解析");
+                assert_eq!(token.text, "解析".to_string());
                 assert_eq!(token.byte_start, 27);
                 assert_eq!(token.byte_end, 33);
                 assert_eq!(token.position, 3);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "サ変接続",
-                        "*",
-                        "*",
-                        "*",
-                        "*",
-                        "解析",
-                        "カイセキ",
-                        "カイセキ"
+                        "名詞".to_string(),
+                        "サ変接続".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "解析".to_string(),
+                        "カイセキ".to_string(),
+                        "カイセキ".to_string()
                     ]
                 );
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "エンジン");
+                assert_eq!(token.text, "エンジン".to_string());
                 assert_eq!(token.byte_start, 33);
                 assert_eq!(token.byte_end, 48);
                 assert_eq!(token.position, 4);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "一般",
-                        "*",
-                        "*",
-                        "*",
-                        "*",
-                        "エンジン",
-                        "エンジン",
-                        "エンジン"
+                        "名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "エンジン".to_string(),
+                        "エンジン".to_string(),
+                        "エンジン".to_string()
                     ]
                 );
             }
@@ -670,7 +680,7 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.get_text(), "Lindera");
+                assert_eq!(token.text, "Lindera".to_string());
                 assert_eq!(&text[start..end], "ﾘﾝﾃﾞﾗ");
             }
         }
@@ -682,54 +692,54 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "10");
+                assert_eq!(token.text, "10".to_string());
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
-                assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+                assert_eq!(token.details, vec!["UNK".to_string()]);
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "ガロン");
+                assert_eq!(token.text, "ガロン".to_string());
                 assert_eq!(token.byte_start, 6);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 1);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "接尾",
-                        "助数詞",
-                        "*",
-                        "*",
-                        "*",
-                        "ガロン",
-                        "ガロン",
-                        "ガロン"
+                        "名詞".to_string(),
+                        "接尾".to_string(),
+                        "助数詞".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "ガロン".to_string(),
+                        "ガロン".to_string(),
+                        "ガロン".to_string()
                     ]
                 );
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "ガソリン");
+                assert_eq!(token.text, "ガソリン".to_string());
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 3);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "一般",
-                        "*",
-                        "*",
-                        "*",
-                        "*",
-                        "ガソリン",
-                        "ガソリン",
-                        "ガソリン"
+                        "名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "ガソリン".to_string(),
+                        "ガソリン".to_string(),
+                        "ガソリン".to_string()
                     ]
                 );
             }
@@ -739,21 +749,21 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.get_text(), "10");
+                assert_eq!(token.text, "10".to_string());
                 assert_eq!(&text[start..end], "１０");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.get_text(), "ガロン");
+                assert_eq!(token.text, "ガロン".to_string());
                 assert_eq!(&text[start..end], "㌎");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.get_text(), "ガソリン");
+                assert_eq!(token.text, "ガソリン".to_string());
                 assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
             }
         }
@@ -765,37 +775,46 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "お釣り");
+                assert_eq!(token.text, "お釣り".to_string());
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "一般",
-                        "*",
-                        "*",
-                        "*",
-                        "*",
-                        "お釣り",
-                        "オツリ",
-                        "オツリ"
+                        "名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "お釣り".to_string(),
+                        "オツリ".to_string(),
+                        "オツリ".to_string()
                     ]
                 );
             }
             {
                 let token = tokens_iter.next().unwrap();
-                println!("test {:?} {}", token.get_text(), token.position_length);
-                assert_eq!(token.get_text(), "百三十四円");
+                assert_eq!(token.text, "百三十四円".to_string());
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 5);
                 assert_eq!(
-                    token.get_details().unwrap(),
-                    vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*"]
+                    token.details,
+                    vec![
+                        "複合語".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string()
+                    ]
                 );
             }
         }
@@ -807,45 +826,45 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "ここ");
+                assert_eq!(token.text, "ここ".to_string());
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "名詞",
-                        "代名詞",
-                        "一般",
-                        "*",
-                        "*",
-                        "*",
-                        "ここ",
-                        "ココ",
-                        "ココ"
+                        "名詞".to_string(),
+                        "代名詞".to_string(),
+                        "一般".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "ここ".to_string(),
+                        "ココ".to_string(),
+                        "ココ".to_string()
                     ]
                 );
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.get_text(), "騒騒しい");
+                assert_eq!(token.text, "騒騒しい".to_string());
                 assert_eq!(token.byte_start, 9);
                 assert_eq!(token.byte_end, 21);
                 assert_eq!(token.position, 2);
                 assert_eq!(token.position_length, 1);
                 assert_eq!(
-                    token.get_details().unwrap(),
+                    token.details,
                     vec![
-                        "形容詞",
-                        "自立",
-                        "*",
-                        "*",
-                        "形容詞・イ段",
-                        "基本形",
-                        "騒騒しい",
-                        "ソウゾウシイ",
-                        "ソーゾーシイ"
+                        "形容詞".to_string(),
+                        "自立".to_string(),
+                        "*".to_string(),
+                        "*".to_string(),
+                        "形容詞・イ段".to_string(),
+                        "基本形".to_string(),
+                        "騒騒しい".to_string(),
+                        "ソウゾウシイ".to_string(),
+                        "ソーゾーシイ".to_string()
                     ]
                 );
             }

@@ -53,7 +53,7 @@ fn main() -> LinderaResult<()> {
 
     // output the tokens
     for token in tokens {
-        println!("{}", token.get_text());
+        println!("{}", token.text);
     }
 
     Ok(())
@@ -108,10 +108,10 @@ fn main() -> LinderaResult<()> {
     for token in tokens {
         println!(
             "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
-            token.get_text(),
+            token.text,
             token.byte_start,
             token.byte_end,
-            token.clone().get_details()
+            token.details
         );
     }
 
@@ -188,7 +188,7 @@ fn main() -> LinderaResult<()> {
 
     // output the tokens
     for token in tokens {
-        println!("{}", token.get_text());
+        println!("{}", token.text);
     }
 
     Ok(())
