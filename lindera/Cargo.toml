@@ -13,14 +13,14 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-ipadic = ["lindera-dictionary/ipadic", "lindera-filter/ipadic"]  # Japanese dictionary included
-unidic = ["lindera-dictionary/unidic", "lindera-filter/unidic"]  # Japanese dictionary included
-ko-dic = ["lindera-dictionary/ko-dic", "lindera-filter/ko-dic"]  # Korean dictionary included
-cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included
-ipadic-compress = ["lindera-dictionary/ipadic-compress"]
-unidic-compress = ["lindera-dictionary/unidic-compress"]
-ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]
-cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]
+ipadic = ["lindera-dictionary/ipadic", "lindera-filter/ipadic"]  # Include Japanese dictionary (IPADIC)
+unidic = ["lindera-dictionary/unidic", "lindera-filter/unidic"]  # Include Japanese dictionary (UniDic)
+ko-dic = ["lindera-dictionary/ko-dic", "lindera-filter/ko-dic"]  # Include Korean dictionary (ko-dic)
+cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
+ipadic-compress = ["lindera-dictionary/ipadic-compress"]  # Compress Japanese dictionary (IPADIC)
+unidic-compress = ["lindera-dictionary/unidic-compress"]  # Compress Japanese dictionary (UniDic)
+ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]  # Compress Korean dictionary (ko-dic)
+cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
 anyhow = "1.0.68"
