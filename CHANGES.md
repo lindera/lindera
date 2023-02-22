@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Add filter feature #313 @mosuka
+
 ## 0.22.1 (2023-02-19)
 - Fix feature flag bug #312 @mosuka
 

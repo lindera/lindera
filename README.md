@@ -13,11 +13,11 @@ The following products are required to build:
 
 ## Usage
 
-Make sure you activated the full features of the lindera crate on Cargo.toml:
+Put the following in Cargo.toml:
 
 ```
 [dependencies]
-lindera = { version = "0.19.0", features = ["all-dictionaries"] }
+lindera = { version = "0.22.1", features = ["ipadic"] }
 ```
 
 ### Basic example
@@ -122,7 +122,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell script
-% cargo run --features=ipadic --example=analysis_example
+% cargo run --features=ipadic,ipadic-filter --example=analysis_example
 ```
 
 You can see the result as follows:

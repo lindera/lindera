@@ -1,20 +1,33 @@
 use std::{
-    fs::{self, File},
-    io::{self, BufRead, BufReader, Read},
+    fs,
+    io::{self, BufRead, BufReader},
     path::PathBuf,
     str::FromStr,
 };
 
+#[cfg(any(
+    feature = "ipadic-filter",
+    feature = "unidic-filter",
+    feature = "ko-dic-filter",
+    feature = "cc-cedict-filter",
+))]
+use std::{fs::File, io::Read};
+
 use clap::{Parser, Subcommand};
 
+#[cfg(any(
+    feature = "ipadic-filter",
+    feature = "unidic-filter",
+    feature = "ko-dic-filter",
+    feature = "cc-cedict-filter",
+))]
+use lindera::analyzer::Analyzer;
+
 use lindera::{
-    analyzer::Analyzer,
-    builder::{build_dictionary, build_user_dictionary},
+    dictionary::{build_dictionary, build_user_dictionary, DictionaryConfig, UserDictionaryConfig},
     error::{LinderaError, LinderaErrorKind},
     mode::Mode,
-    tokenizer::{
-        DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig, CONTAINED_DICTIONARIES,
-    },
+    tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES},
     DictionaryKind, FilteredToken, LinderaResult,
 };
 
@@ -29,6 +42,12 @@ struct Args {
 enum Commands {
     List(ListArgs),
     Tokenize(TokenizeArgs),
+    #[cfg(any(
+        feature = "ipadic-filter",
+        feature = "unidic-filter",
+        feature = "ko-dic-filter",
+        feature = "cc-cedict-filter",
+    ))]
     Analyze(AnalyzeArgs),
     Build(BuildArgs),
 }
@@ -76,6 +95,12 @@ struct TokenizeArgs {
     input_file: Option<PathBuf>,
 }
 
+#[cfg(any(
+    feature = "ipadic-filter",
+    feature = "unidic-filter",
+    feature = "ko-dic-filter",
+    feature = "cc-cedict-filter",
+))]
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
@@ -136,6 +161,12 @@ fn main() -> LinderaResult<()> {
     match args.command {
         Commands::List(args) => list(args),
         Commands::Tokenize(args) => tokenize(args),
+        #[cfg(any(
+            feature = "ipadic-filter",
+            feature = "unidic-filter",
+            feature = "ko-dic-filter",
+            feature = "cc-cedict-filter",
+        ))]
         Commands::Analyze(args) => analyze(args),
         Commands::Build(args) => build(args),
     }
@@ -271,6 +302,12 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     Ok(())
 }
 
+#[cfg(any(
+    feature = "ipadic-filter",
+    feature = "unidic-filter",
+    feature = "ko-dic-filter",
+    feature = "cc-cedict-filter",
+))]
 fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
     let mut config_file = File::open(args.config_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
