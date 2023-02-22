@@ -1,8 +1,9 @@
 use lindera::LinderaResult;
 #[cfg(feature = "ipadic")]
 use lindera::{
+    dictionary::DictionaryConfig,
     mode::Mode,
-    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig},
+    tokenizer::{Tokenizer, TokenizerConfig},
     DictionaryKind,
 };
 

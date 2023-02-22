@@ -9,12 +9,35 @@ use lindera_dictionary::{load_dictionary_from_kind, DictionaryKind};
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::LinderaErrorKind,
-    tokenizer::{DictionaryConfig, UserDictionaryConfig},
-    LinderaResult,
-};
+use crate::{error::LinderaErrorKind, LinderaResult};
+
+/// Dictionary config
+///
+/// Use this if you want to use a dictionary when tokenizing.
+///
+/// Either `kind` or `path` must be specified.
+///
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DictionaryConfig {
+    /// Specify the kind of dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT) if a self-contained dictionary is used for tokenization.
+    pub kind: Option<DictionaryKind>,
+    /// Specifies the path to a pre-built external dictionary if one is used.
+    pub path: Option<PathBuf>,
+}
+
+/// User dictionary config
+///
+/// Use this if you want to use a user dictionary when tokenizing.
+///
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct UserDictionaryConfig {
+    /// Path to the user dictionary file.
+    pub path: PathBuf,
+    /// If the user dictionary was in CSV format, specify the dictionary type (IPADIC, UniDic, ko-dic or CC-CEDICT).
+    pub kind: Option<DictionaryKind>,
+}
 
 pub fn resolve_builder(
     dictionary_type: DictionaryKind,

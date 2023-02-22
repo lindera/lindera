@@ -4,8 +4,9 @@ use std::path::PathBuf;
 use lindera::LinderaResult;
 #[cfg(feature = "ipadic")]
 use lindera::{
+    dictionary::{DictionaryConfig, UserDictionaryConfig},
     mode::Mode,
-    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
+    tokenizer::{Tokenizer, TokenizerConfig},
     DictionaryKind,
 };
 
