@@ -1,13 +1,13 @@
 [package]
 name = "lindera-filter"
-version = "0.22.1"
+version = "0.23.0"
 edition = "2021"
 description = "Character and token filters for Lindera."
 documentation = "https://docs.rs/lindera-filter"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
-keywords = ["filter", "character", "token"]
+keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
@@ -31,8 +31,8 @@ unicode-blocks = "0.1.5"
 unicode-normalization = "0.1.22"
 yada = "0.5.0"
 
-lindera-core = { version = "0.22.1", path = "../lindera-core" }
-lindera-dictionary = { version = "0.22.1", path = "../lindera-dictionary" }
+lindera-core = { version = "0.23.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.23.0", path = "../lindera-dictionary" }
 
 [dev-dependencies]
 once_cell = "1.17.0"
