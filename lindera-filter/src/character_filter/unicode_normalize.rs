@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
+use unicode_segmentation::UnicodeSegmentation;
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
@@ -62,106 +63,21 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
+        let mut result = String::new();
         let mut input_start = 0;
-        let mut replacement_start = 0;
 
-        // Create normalized text for input text.
-        let normalized_text = match self.config.kind {
-            UnicodeNormalizeKind::NFC => text.nfc().collect::<String>(),
-            UnicodeNormalizeKind::NFD => text.nfd().collect::<String>(),
-            UnicodeNormalizeKind::NFKC => text.nfkc().collect::<String>(),
-            UnicodeNormalizeKind::NFKD => text.nfkd().collect::<String>(),
-        };
-
-        // Create Chars to compare input text and normalized test one character at a time.
-        let mut chars = text.chars();
-        let mut normalized_chars = normalized_text.chars();
-
-        loop {
-            if input_start >= text.len() || replacement_start >= normalized_text.len() {
-                break;
-            }
-
-            // It takes one character from the input text and performs normalization.
-            let c = chars.next().ok_or_else(|| {
-                LinderaErrorKind::Content.with_error(anyhow::anyhow!("Character error."))
-            })?;
-            let mut input_len = c.len_utf8();
-            let mut input_text = &text[input_start..input_start + input_len];
-            let mut normalized_input_text = match self.config.kind {
-                UnicodeNormalizeKind::NFC => input_text.nfc().collect::<String>(),
-                UnicodeNormalizeKind::NFD => input_text.nfd().collect::<String>(),
-                UnicodeNormalizeKind::NFKC => input_text.nfkc().collect::<String>(),
-                UnicodeNormalizeKind::NFKD => input_text.nfkd().collect::<String>(),
+        for c in text.graphemes(true) {
+            let input_len = c.len();
+            let replacement_text = match self.config.kind {
+                UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
+                UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
+                UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
+                UnicodeNormalizeKind::NFKD => c.nfkd().collect::<String>(),
             };
-
-            // Similarly, it takes one character from from the normalized text.
-            let n = normalized_chars.next().ok_or_else(|| {
-                LinderaErrorKind::Content.with_error(anyhow::anyhow!("Character error."))
-            })?;
-            let mut replacement_len = n.len_utf8();
-            let mut replacement_text =
-                &normalized_text[replacement_start..replacement_start + replacement_len];
-
-            if normalized_input_text != replacement_text {
-                if normalized_input_text.len() == replacement_text.len() {
-                    // If the strings obtained above do not match and the number of characters match,
-                    // the input text side is increased by one character until they match,
-                    // and the process is repeated until they match.
-                    // e.g.
-                    //   input_text:       "ｼ" -> "シ"
-                    //   replacement_text: "ジ"
-                    //
-                    //   Increase input text side by one character.
-                    //   input_text:       "ｼﾞ" -> "ジ"
-                    //   replacement_text: "ジ"
-                    while normalized_input_text != replacement_text {
-                        // Add next character to input text.
-                        let next_char = chars.next().ok_or_else(|| {
-                            LinderaErrorKind::Content
-                                .with_error(anyhow::anyhow!("Character error."))
-                        })?;
-                        input_len += next_char.len_utf8();
-                        input_text = &text[input_start..input_start + input_len];
-                        normalized_input_text = match self.config.kind {
-                            UnicodeNormalizeKind::NFC => input_text.nfc().collect::<String>(),
-                            UnicodeNormalizeKind::NFD => input_text.nfd().collect::<String>(),
-                            UnicodeNormalizeKind::NFKC => input_text.nfkc().collect::<String>(),
-                            UnicodeNormalizeKind::NFKD => input_text.nfkd().collect::<String>(),
-                        };
-                    }
-                } else {
-                    // If the strings obtained above do not match and the number of characters match,
-                    // the replacement text side is increased by one character until they match,
-                    // and the process is repeated until they match.
-                    // e.g.
-                    //   input_text:       "ガロン"
-                    //   replacement_text: "ガ"
-                    //
-                    //   Increase replacement text side by one character.
-                    //   input_text:       "ガロン"
-                    //   replacement_text: "ガロ"
-                    //
-                    //   Increase replacement text side by one character.
-                    //   input_text:       "ガロン"
-                    //   replacement_text: "ガロン"
-                    while normalized_input_text != replacement_text {
-                        // Add next character to replacement text.
-                        let next_char = normalized_chars.next().ok_or_else(|| {
-                            LinderaErrorKind::Content
-                                .with_error(anyhow::anyhow!("Character error."))
-                        })?;
-                        replacement_len += next_char.len_utf8();
-                        replacement_text = &normalized_text
-                            [replacement_start..replacement_start + replacement_len];
-                    }
-                }
-            }
-
+            let replacement_len = replacement_text.len();
             let diff_len = input_len as i64 - replacement_len as i64;
             let input_offset = input_start + input_len;
 
-            // Record the difference in offset.
             if diff_len != 0 {
                 let prev_diff = *diffs.last().unwrap_or(&0);
 
@@ -172,22 +88,22 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
                     add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                 } else {
                     // Replacement is longer than matched surface.
-                    let output_start = (input_offset as i64 + -prev_diff) as usize;
-
+                    let output_offset = (input_offset as i64 + -prev_diff) as usize;
                     for extra_idx in 0..diff_len.unsigned_abs() as usize {
-                        let offset = output_start + extra_idx;
-                        let differ = prev_diff - extra_idx as i64 - 1;
-                        add_offset_diff(&mut offsets, &mut diffs, offset, differ);
+                        let offset = output_offset + extra_idx;
+                        let diff = prev_diff - extra_idx as i64 - 1;
+                        add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                     }
                 }
             }
 
-            // Move next character.
+            result.push_str(&replacement_text);
+
+            // move start offset
             input_start += input_len;
-            replacement_start += replacement_len;
         }
 
-        Ok((normalized_text, offsets, diffs))
+        Ok((result, offsets, diffs))
     }
 }
 
