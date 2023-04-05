@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.23.0"
+version = "0.23.1"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -46,7 +46,7 @@ lindera-dictionary = { version = "0.23.0", path = "../lindera-dictionary" }
 lindera-ipadic-builder = { version = "0.23.0", path = "../lindera-ipadic-builder" }
 lindera-ko-dic-builder = { version = "0.23.0", path = "../lindera-ko-dic-builder" }
 lindera-unidic-builder = { version = "0.23.0", path = "../lindera-unidic-builder" }
-lindera-filter = { version = "0.23.0", path = "../lindera-filter" }
+lindera-filter = { version = "0.23.1", path = "../lindera-filter" }
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["html_reports"] }
