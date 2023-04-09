@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const KOREAN_STOP_TAGS_TOKEN_FILTER_NAME: &str = "korean_stop_tags";
 
@@ -70,7 +68,7 @@ mod tests {
     use crate::token_filter::korean_stop_tags::{
         KoreanStopTagsTokenFilter, KoreanStopTagsTokenFilterConfig,
     };
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -160,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
     fn test_korean_stop_tags_token_filter_apply() {
         let config_str = r#"
         {

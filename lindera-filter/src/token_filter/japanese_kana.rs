@@ -2,9 +2,7 @@ use kanaria::string::UCSStr;
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use serde::{Deserialize, Serialize};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
 
@@ -73,12 +71,13 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::japanese_kana::{
-        JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, KanaKind,
+    use crate::{
+        token::FilteredToken,
+        token_filter::{
+            japanese_kana::{JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, KanaKind},
+            TokenFilter,
+        },
     };
-
-    #[cfg(feature = "ipadic")]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_japanese_kana_token_filter_config_from_slice_hiragana() {
@@ -129,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         let config_str = r#"
         {
@@ -194,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         let config_str = r#"
         {
@@ -288,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
         let config_str = r#"
         {
@@ -353,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
         let config_str = r#"
         {
@@ -447,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana2_ipadic() {
         let config_str = r#"
         {
@@ -541,7 +540,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana2_ipadic() {
         let config_str = r#"
         {

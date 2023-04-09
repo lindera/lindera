@@ -2,9 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
 
@@ -68,9 +66,13 @@ impl TokenFilter for LengthTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::length::{LengthTokenFilter, LengthTokenFilterConfig};
-    #[cfg(feature = "ipadic")]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
+    use crate::{
+        token::FilteredToken,
+        token_filter::{
+            length::{LengthTokenFilter, LengthTokenFilterConfig},
+            TokenFilter,
+        },
+    };
 
     #[test]
     fn test_length_token_filter_config_from_slice() {
@@ -138,7 +140,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_length_token_filter_apply_ipadic() {
         let config_str = r#"
         {

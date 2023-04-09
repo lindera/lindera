@@ -4,7 +4,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use super::{add_offset_diff, CharacterFilter};
+use crate::character_filter::{add_offset_diff, CharacterFilter};
 
 pub const UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str = "unicode_normalize";
 

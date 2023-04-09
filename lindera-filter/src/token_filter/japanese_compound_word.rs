@@ -5,9 +5,7 @@ use serde::{Deserialize, Serialize};
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_dictionary::DictionaryKind;
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
@@ -183,7 +181,7 @@ mod tests {
         JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
     };
 
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -222,7 +220,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         let config_str = r#"
         {

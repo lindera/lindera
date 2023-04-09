@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
@@ -91,7 +89,7 @@ mod tests {
     use crate::token_filter::japanese_stop_tags::{
         JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
     };
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -171,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_stop_tags_token_filter_apply_ipadic() {
         let config_str = r#"
         {

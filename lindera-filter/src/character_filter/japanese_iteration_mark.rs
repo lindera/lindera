@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use super::CharacterFilter;
+use crate::character_filter::CharacterFilter;
 
 pub const JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str = "japanese_iteration_mark";
 

@@ -1,8 +1,6 @@
 use lindera_core::LinderaResult;
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
@@ -39,14 +37,12 @@ impl TokenFilter for UppercaseTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
     use crate::{
         token::FilteredToken,
         token_filter::{uppercase::UppercaseTokenFilter, TokenFilter},
     };
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_uppercase_token_filter_apply() {
         let filter = UppercaseTokenFilter::default();
 
