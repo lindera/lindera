@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::{
     dictionary::Dictionary, dictionary_builder::DictionaryBuilder, file_util::read_file,
@@ -9,7 +11,6 @@ use lindera_dictionary::{load_dictionary_from_kind, DictionaryKind};
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
 use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
-use serde::{Deserialize, Serialize};
 
 use crate::{error::LinderaErrorKind, LinderaResult};
 

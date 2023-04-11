@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
 
@@ -56,10 +54,13 @@ impl TokenFilter for StopWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig};
-
-    #[cfg(feature = "ipadic")]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
+    use crate::{
+        token::FilteredToken,
+        token_filter::{
+            stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig},
+            TokenFilter,
+        },
+    };
 
     #[test]
     fn test_stop_words_token_filter_config_from_slice() {
@@ -154,7 +155,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_stop_words_token_filter_apply_ipadic() {
         let config_str = r#"
         {

@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_dictionary::DictionaryKind;
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
@@ -78,19 +76,25 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
     use lindera_dictionary::DictionaryKind;
 
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
     use crate::{
         token::FilteredToken,
-        token_filter::japanese_base_form::{
-            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
+        token_filter::{
+            japanese_base_form::{JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig},
+            TokenFilter,
         },
-        token_filter::TokenFilter,
     };
 
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -103,7 +107,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::IPADIC);
     }
 
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_unidic() {
         let config_str = r#"
@@ -116,7 +120,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -129,7 +133,7 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_unidic() {
         let config_str = r#"
@@ -142,7 +146,7 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_ipadic() {
         let config_str = r#"
@@ -236,7 +240,7 @@ mod tests {
         assert_eq!(tokens[3].text, "ます".to_string());
     }
 
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_unidic() {
         let config_str = r#"

@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -262,7 +260,10 @@ mod tests {
     use crate::token_filter::japanese_number::{
         to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
     };
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -885,7 +886,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         let config_str = r#"
         {
@@ -1026,7 +1027,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         let config_str = r#"
         {

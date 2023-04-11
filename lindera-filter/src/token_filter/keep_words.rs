@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const KEEP_WORDS_TOKEN_FILTER_NAME: &str = "keep_words";
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -55,9 +53,13 @@ impl TokenFilter for KeepWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::keep_words::{KeepWordsTokenFilter, KeepWordsTokenFilterConfig};
-    #[cfg(feature = "ipadic")]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
+    use crate::{
+        token::FilteredToken,
+        token_filter::{
+            keep_words::{KeepWordsTokenFilter, KeepWordsTokenFilterConfig},
+            TokenFilter,
+        },
+    };
 
     #[test]
     fn test_keep_words_token_filter_config_from_slice() {
@@ -90,7 +92,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_keep_words_token_filter_apply_ipadic() {
         let config_str = r#"
         {

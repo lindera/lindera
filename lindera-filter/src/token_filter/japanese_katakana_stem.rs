@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
@@ -93,11 +91,15 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::japanese_katakana_stem::{
-        JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
+    use crate::{
+        token::FilteredToken,
+        token_filter::{
+            japanese_katakana_stem::{
+                JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
+            },
+            TokenFilter,
+        },
     };
-    #[cfg(feature = "ipadic")]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
     fn test_japanese_katakana_stem_token_filter_config_from_slice() {
@@ -149,7 +151,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
         let config_str = r#"
         {

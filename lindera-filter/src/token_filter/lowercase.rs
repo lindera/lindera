@@ -1,8 +1,6 @@
 use lindera_core::LinderaResult;
 
-use crate::token::FilteredToken;
-
-use super::TokenFilter;
+use crate::{token::FilteredToken, token_filter::TokenFilter};
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
@@ -39,14 +37,12 @@ impl TokenFilter for LowercaseTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
     use crate::{
-        token::FilteredToken, token_filter::lowercase::LowercaseTokenFilter,
-        token_filter::TokenFilter,
+        token::FilteredToken,
+        token_filter::{lowercase::LowercaseTokenFilter, TokenFilter},
     };
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_lowercase_token_filter_apply_ipadic() {
         let filter = LowercaseTokenFilter::default();
 

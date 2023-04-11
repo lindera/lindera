@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 
-use super::{add_offset_diff, CharacterFilter};
+use crate::character_filter::{add_offset_diff, CharacterFilter};
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
 

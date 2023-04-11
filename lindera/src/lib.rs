@@ -1,8 +1,10 @@
-#[cfg(any(feature = "ipadic", feature = "unidic", feature = "ko-dic",))]
+// #[cfg(any(feature = "ipadic", feature = "unidic", feature = "ko-dic",))]
 pub mod analyzer;
+pub mod character_filter;
 pub mod dictionary;
 pub mod error;
 pub mod mode;
+pub mod token_filter;
 pub mod tokenizer;
 
 use crate::error::LinderaError;
