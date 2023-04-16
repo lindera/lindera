@@ -270,6 +270,16 @@ jobs:
             popd
           fi
           sleep 20
+          LINDERA_TOKENIZER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-tokenizer") | .version')
+          LINDERA_TOKENIZER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-tokenizer | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_TOKENIZER_VERSIONS} | grep ${LINDERA_TOKENIZER_VERSION} >/dev/null; then
+            echo "lindera-tokenizer ${LINDERA_TOKENIZER_VERSION} has already published"
+          else
+            pushd lindera-tokenizer
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
           LINDERA_FILTER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-filter") | .version')
           LINDERA_FILTER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-filter | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_FILTER_VERSIONS} | grep ${LINDERA_FILTER_VERSION} >/dev/null; then
