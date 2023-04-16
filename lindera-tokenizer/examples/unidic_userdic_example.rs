@@ -1,7 +1,7 @@
-use lindera::LinderaResult;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "ko-dic")]
+    #[cfg(feature = "unidic")]
     {
         use std::path::PathBuf;
 
@@ -10,15 +10,15 @@ fn main() -> LinderaResult<()> {
         use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
+            kind: Some(DictionaryKind::UniDic),
             path: None,
         };
 
         let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
+            kind: Some(DictionaryKind::UniDic),
             path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
-                .join("ko-dic_simple_userdic.csv"),
+                .join("unidic_simple_userdic.csv"),
         });
 
         let config = TokenizerConfig {
@@ -31,7 +31,8 @@ fn main() -> LinderaResult<()> {
         let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // tokenize the text
-        let tokens = tokenizer.tokenize("하네다공항한정토트백.")?;
+        let tokens =
+            tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")?;
 
         // output the tokens
         for token in tokens {

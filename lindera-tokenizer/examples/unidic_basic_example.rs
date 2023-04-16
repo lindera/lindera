@@ -1,14 +1,14 @@
-use lindera::LinderaResult;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "unidic")]
     {
         use lindera_core::viterbi::Mode;
         use lindera_dictionary::{DictionaryConfig, DictionaryKind};
         use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
+            kind: Some(DictionaryKind::UniDic),
             path: None,
         };
 

@@ -1,4 +1,4 @@
-use lindera::LinderaResult;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "cc-cedict")]

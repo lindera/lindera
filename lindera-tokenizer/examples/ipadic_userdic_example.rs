@@ -1,7 +1,7 @@
-use lindera::LinderaResult;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "unidic")]
+    #[cfg(feature = "ipadic")]
     {
         use std::path::PathBuf;
 
@@ -10,15 +10,15 @@ fn main() -> LinderaResult<()> {
         use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
+            kind: Some(DictionaryKind::IPADIC),
             path: None,
         };
 
         let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
+            kind: Some(DictionaryKind::IPADIC),
             path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
-                .join("unidic_simple_userdic.csv"),
+                .join("ipadic_simple_userdic.csv"),
         });
 
         let config = TokenizerConfig {
