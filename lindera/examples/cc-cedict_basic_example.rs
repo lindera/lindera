@@ -1,15 +1,12 @@
 use lindera::LinderaResult;
-#[cfg(feature = "cc-cedict")]
-use lindera::{
-    dictionary::DictionaryConfig,
-    mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig},
-    DictionaryKind,
-};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "cc-cedict")]
     {
+        use lindera_core::viterbi::Mode;
+        use lindera_dictionary::{DictionaryConfig, DictionaryKind};
+        use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::CcCedict),
             path: None,

@@ -1,15 +1,12 @@
 use lindera::LinderaResult;
-#[cfg(feature = "ko-dic")]
-use lindera::{
-    dictionary::DictionaryConfig,
-    mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig},
-    DictionaryKind,
-};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ko-dic")]
     {
+        use lindera_core::viterbi::Mode;
+        use lindera_dictionary::{DictionaryConfig, DictionaryKind};
+        use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::KoDic),
             path: None,

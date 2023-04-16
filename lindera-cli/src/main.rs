@@ -24,12 +24,14 @@ use clap::{Parser, Subcommand};
 use lindera::analyzer::Analyzer;
 
 use lindera::{
-    dictionary::{build_dictionary, build_user_dictionary, DictionaryConfig, UserDictionaryConfig},
     error::{LinderaError, LinderaErrorKind},
     mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES},
     DictionaryKind, FilteredToken, LinderaResult,
 };
+use lindera_dictionary::{
+    build_dictionary, build_user_dictionary, DictionaryConfig, UserDictionaryConfig,
+};
+use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES};
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]

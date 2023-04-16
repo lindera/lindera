@@ -6,14 +6,16 @@ use serde::{
 };
 
 use lindera_core::{
-    dictionary::Dictionary, token::Token, user_dictionary::UserDictionary, viterbi::Lattice,
-};
-
-use crate::{
-    dictionary::{load_dictionary, load_user_dictionary, DictionaryConfig, UserDictionaryConfig},
-    mode::Mode,
+    dictionary::Dictionary,
+    user_dictionary::UserDictionary,
+    viterbi::{Lattice, Mode},
     LinderaResult,
 };
+use lindera_dictionary::{
+    load_dictionary_from_config, load_user_dictionary, DictionaryConfig, UserDictionaryConfig,
+};
+
+use crate::token::Token;
 
 // Only the value specified by the feature flag is stored.
 pub const CONTAINED_DICTIONARIES: &[&str] = &[
@@ -191,7 +193,7 @@ impl Tokenizer {
     /// returns: LinderaResult<Tokenizer>
     ///
     pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
-        let dictionary = load_dictionary(config.dictionary)?;
+        let dictionary = load_dictionary_from_config(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
             Some(user_dict_conf) => Some(load_user_dictionary(user_dict_conf)?),
@@ -302,10 +304,11 @@ mod tests {
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
+    use std::path::PathBuf;
+    #[cfg(any(feature = "ipadic", feature = "unidic",))]
     use std::{
         fs::File,
         io::{BufReader, Read},
-        path::PathBuf,
     };
 
     #[cfg(any(
@@ -314,11 +317,26 @@ mod tests {
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
-    use crate::{
-        mode::{Mode, Penalty},
-        tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
-        DictionaryKind,
-    };
+    use lindera_core::viterbi::Mode;
+
+    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    use lindera_core::viterbi::Penalty;
+
+    #[cfg(any(
+        feature = "ipadic",
+        feature = "unidic",
+        feature = "ko-dic",
+        feature = "cc-cedict"
+    ))]
+    use lindera_dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
+
+    #[cfg(any(
+        feature = "ipadic",
+        feature = "unidic",
+        feature = "ko-dic",
+        feature = "cc-cedict"
+    ))]
+    use crate::tokenizer::{Tokenizer, TokenizerConfig};
 
     #[test]
     #[cfg(feature = "ipadic")]

@@ -1,14 +1,16 @@
+#[cfg(any(feature = "ipadic", feature = "unidic",))]
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+};
+
 #[cfg(any(
     feature = "ipadic",
     feature = "unidic",
     feature = "ko-dic",
     feature = "cc-cedict"
 ))]
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -18,11 +20,21 @@ use criterion::{criterion_group, criterion_main, Criterion};
     feature = "ko-dic",
     feature = "cc-cedict"
 ))]
-use lindera::{
-    mode::Mode,
-    tokenizer::{DictionaryConfig, Tokenizer, TokenizerConfig, UserDictionaryConfig},
-    DictionaryKind,
-};
+use lindera_core::viterbi::Mode;
+#[cfg(any(
+    feature = "ipadic",
+    feature = "unidic",
+    feature = "ko-dic",
+    feature = "cc-cedict"
+))]
+use lindera_dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
+#[cfg(any(
+    feature = "ipadic",
+    feature = "unidic",
+    feature = "ko-dic",
+    feature = "cc-cedict"
+))]
+use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
 #[allow(unused_variables)]
 fn bench_constructor(c: &mut Criterion) {
@@ -273,7 +285,7 @@ fn bench_tokenize(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         c.bench_function("bench-tokenize-ko-dic", |b| {
             b.iter(|| tokenizer.tokenize("검색엔진(search engine)은컴퓨터시스템에저장된정보를찾아주거나웹검색(web search query)을도와주도록설계된정보검색시스템또는컴퓨터프로그램이다. 이러한검색결과는목록으로표시되는것이보통이다."))
@@ -293,7 +305,7 @@ fn bench_tokenize(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         c.bench_function("bench-tokenize-cc-cedict", |b| {
             b.iter(|| tokenizer.tokenize("搜索引擎（英語：search engine）是一种信息检索系统，旨在协助搜索存储在计算机系统中的信息。搜索结果一般被称为“hits”，通常会以表单的形式列出。网络搜索引擎是最常见、公开的一种搜索引擎，其功能为搜索万维网上储存的信息。"))
@@ -355,7 +367,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         c.bench_function("bench-tokenize-with-simple-userdic-unidic", |b| {
             b.iter(|| {
                 tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です")
@@ -385,7 +397,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         c.bench_function("bench-tokenize-with-simple-userdic-ko-dic", |b| {
             b.iter(|| tokenizer.tokenize("하네다공항한정토트백."))
         });
@@ -413,7 +425,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             mode: Mode::Normal,
         };
 
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
         c.bench_function("bench-tokenize-with-simple-userdic-cc-cedict", |b| {
             b.iter(|| tokenizer.tokenize("羽田机场限定托特包。"))
         });
@@ -591,13 +603,18 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
             user_dictionary,
             mode: Mode::Normal,
         };
-        let tokenizer = Tokenizer::with_config(config).unwrap();
+        let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // Using benchmark_group for changing sample_size
         let mut group = c.benchmark_group("tokenize-details-long-text-unidic");
         group.sample_size(20);
         group.bench_function("bench-tokenize-details-long-text-unidic", |b| {
-            b.iter(|| tokenizer.tokenize_with_details(long_text.as_str()));
+            b.iter(|| {
+                let mut tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
+                for token in tokens.iter_mut() {
+                    let _details = token.get_details();
+                }
+            });
         });
         group.finish();
     }

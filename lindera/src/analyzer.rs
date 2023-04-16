@@ -17,6 +17,7 @@ use lindera_filter::{
         BoxTokenFilter,
     },
 };
+use lindera_tokenizer::tokenizer::Tokenizer;
 
 #[cfg(any(
     all(feature = "ipadic", feature = "ipadic-filter",),
@@ -49,7 +50,6 @@ use crate::{
         LengthTokenFilter, LowercaseTokenFilter, MappingTokenFilter, StopWordsTokenFilter,
         UppercaseTokenFilter,
     },
-    tokenizer::Tokenizer,
     FilteredToken, LinderaResult,
 };
 

@@ -1,18 +1,14 @@
-#[cfg(feature = "cc-cedict")]
-use std::path::PathBuf;
-
 use lindera::LinderaResult;
-#[cfg(feature = "cc-cedict")]
-use lindera::{
-    dictionary::{DictionaryConfig, UserDictionaryConfig},
-    mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig},
-    DictionaryKind,
-};
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "cc-cedict")]
     {
+        use std::path::PathBuf;
+
+        use lindera_core::viterbi::Mode;
+        use lindera_dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
+        use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::CcCedict),
             path: None,

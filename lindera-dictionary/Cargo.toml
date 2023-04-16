@@ -30,6 +30,10 @@ serde = { version="1.0.152", features = ["derive"] }
 
 lindera-core = { version = "0.23.0", path = "../lindera-core" }
 lindera-cc-cedict = { version = "0.23.0", path = "../lindera-cc-cedict", optional = true }
+lindera-cc-cedict-builder = { version = "0.23.0", path = "../lindera-cc-cedict-builder" }
 lindera-ipadic = { version = "0.23.0", path = "../lindera-ipadic", optional = true }
+lindera-ipadic-builder = { version = "0.23.0", path = "../lindera-ipadic-builder" }
 lindera-ko-dic = { version = "0.23.0", path = "../lindera-ko-dic", optional = true }
+lindera-ko-dic-builder = { version = "0.23.0", path = "../lindera-ko-dic-builder" }
 lindera-unidic = { version = "0.23.0", path = "../lindera-unidic", optional = true }
+lindera-unidic-builder = { version = "0.23.0", path = "../lindera-unidic-builder" }

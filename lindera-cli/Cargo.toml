@@ -32,6 +32,8 @@ clap = { version = "4.1.1", features = ["derive", "cargo"] }
 serde_json = "1.0.91"
 
 lindera = { version = "0.23.1", path = "../lindera" }
+lindera-dictionary = { version = "0.23.0", path = "../lindera-dictionary" }
+lindera-tokenizer = { version = "0.24.0", path = "../lindera-tokenizer" }
 
 [[bin]]
 name = "lindera"
