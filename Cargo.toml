@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "lindera",
+    "lindera-analyzer",
     "lindera-cc-cedict",
     "lindera-cc-cedict-builder",
     "lindera-cli",

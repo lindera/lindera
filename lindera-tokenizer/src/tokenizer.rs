@@ -6,10 +6,7 @@ use serde::{
 };
 
 use lindera_core::{
-    dictionary::Dictionary,
-    user_dictionary::UserDictionary,
-    viterbi::{Lattice, Mode},
-    LinderaResult,
+    dictionary::Dictionary, dictionary::UserDictionary, mode::Mode, viterbi::Lattice, LinderaResult,
 };
 use lindera_dictionary::{
     load_dictionary_from_config, load_user_dictionary, DictionaryConfig, UserDictionaryConfig,
@@ -317,10 +314,10 @@ mod tests {
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
-    use lindera_core::viterbi::Mode;
+    use lindera_core::mode::Mode;
 
     #[cfg(any(feature = "ipadic", feature = "unidic",))]
-    use lindera_core::viterbi::Penalty;
+    use lindera_core::mode::Penalty;
 
     #[cfg(any(
         feature = "ipadic",

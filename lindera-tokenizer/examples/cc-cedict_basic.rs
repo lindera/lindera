@@ -3,7 +3,7 @@ use lindera_core::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera_core::viterbi::Mode;
+        use lindera_core::mode::Mode;
         use lindera_dictionary::{DictionaryConfig, DictionaryKind};
         use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 

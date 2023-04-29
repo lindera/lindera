@@ -20,7 +20,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
     feature = "ko-dic",
     feature = "cc-cedict"
 ))]
-use lindera_core::viterbi::Mode;
+use lindera_core::mode::Mode;
 #[cfg(any(
     feature = "ipadic",
     feature = "unidic",

@@ -2,7 +2,10 @@ use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use lindera_core::{dictionary::Dictionary, user_dictionary::UserDictionary, word_entry::WordId};
+use lindera_core::{
+    dictionary::{Dictionary, UserDictionary},
+    word_entry::WordId,
+};
 
 static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 

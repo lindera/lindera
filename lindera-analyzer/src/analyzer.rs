@@ -2,18 +2,33 @@ use std::{fs, path::Path};
 
 use serde_json::Value;
 
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 use lindera_filter::{
     character_filter::{
-        correct_offset, japanese_iteration_mark::JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
-        mapping::MAPPING_CHARACTER_FILTER_NAME, regex::REGEX_CHARACTER_FILTER_NAME,
-        unicode_normalize::UNICODE_NORMALIZE_CHARACTER_FILTER_NAME, BoxCharacterFilter,
+        correct_offset,
+        japanese_iteration_mark::{
+            JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
+        },
+        mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME},
+        regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME},
+        unicode_normalize::{
+            UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+        },
+        BoxCharacterFilter,
     },
+    token::FilteredToken,
     token_filter::{
-        japanese_kana::JAPANESE_KANA_TOKEN_FILTER_NAME,
-        japanese_katakana_stem::JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
-        keep_words::KEEP_WORDS_TOKEN_FILTER_NAME, length::LENGTH_TOKEN_FILTER_NAME,
-        lowercase::LOWERCASE_TOKEN_FILTER_NAME, mapping::MAPPING_TOKEN_FILTER_NAME,
-        stop_words::STOP_WORDS_TOKEN_FILTER_NAME, uppercase::UPPERCASE_TOKEN_FILTER_NAME,
+        japanese_kana::{JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME},
+        japanese_katakana_stem::{
+            JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+        },
+        keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
+        length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
+        lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
+        mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME},
+        stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
+        uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
         BoxTokenFilter,
     },
 };
@@ -39,32 +54,22 @@ use lindera_filter::token_filter::{
     korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
 };
 
-use crate::{
-    character_filter::{
-        JapaneseIterationMarkCharacterFilter, MappingCharacterFilter, RegexCharacterFilter,
-        UnicodeNormalizeCharacterFilter,
-    },
-    error::LinderaErrorKind,
-    token_filter::{
-        JapaneseKanaTokenFilter, JapaneseKatakanaStemTokenFilter, KeepWordsTokenFilter,
-        LengthTokenFilter, LowercaseTokenFilter, MappingTokenFilter, StopWordsTokenFilter,
-        UppercaseTokenFilter,
-    },
-    FilteredToken, LinderaResult,
-};
-
 #[cfg(any(
     all(feature = "ipadic", feature = "ipadic-filter",),
     all(feature = "unidic", feature = "unidic-filter",)
 ))]
-use crate::token_filter::{
-    JapaneseBaseFormTokenFilter, JapaneseCompoundWordTokenFilter, JapaneseKeepTagsTokenFilter,
-    JapaneseNumberTokenFilter, JapaneseReadingFormTokenFilter, JapaneseStopTagsTokenFilter,
+use lindera_filter::token_filter::{
+    japanese_base_form::JapaneseBaseFormTokenFilter,
+    japanese_compound_word::JapaneseCompoundWordTokenFilter,
+    japanese_keep_tags::JapaneseKeepTagsTokenFilter, japanese_number::JapaneseNumberTokenFilter,
+    japanese_reading_form::JapaneseReadingFormTokenFilter,
+    japanese_stop_tags::JapaneseStopTagsTokenFilter,
 };
 
 #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
-use crate::token_filter::{
-    KoreanKeepTagsTokenFilter, KoreanReadingFormTokenFilter, KoreanStopTagsTokenFilter,
+use lindera_filter::token_filter::{
+    korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
+    korean_stop_tags::KoreanStopTagsTokenFilter,
 };
 
 pub struct Analyzer {
@@ -300,7 +305,7 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze(&self, text: &str) -> crate::LinderaResult<Vec<FilteredToken>> {
+    pub fn analyze(&self, text: &str) -> LinderaResult<Vec<FilteredToken>> {
         let mut normalized_text = text.to_string();
 
         let mut text_len_vec: Vec<usize> = Vec::new();

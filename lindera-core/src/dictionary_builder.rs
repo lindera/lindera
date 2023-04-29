@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::{
-    character_definition::CharacterDefinitions, user_dictionary::UserDictionary, LinderaResult,
+    character_definition::CharacterDefinitions, dictionary::UserDictionary, LinderaResult,
 };
 
 pub trait DictionaryBuilder {

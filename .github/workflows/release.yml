@@ -290,6 +290,16 @@ jobs:
             popd
           fi
           sleep 20
+          LINDERA_ANALYZER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-analyzer") | .version')
+          LINDERA_ANALYZER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-analyzer | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_ANALYZER_VERSIONS} | grep ${LINDERA_ANALYZER_VERSION} >/dev/null; then
+            echo "lindera-analyzer ${LINDERA_ANALYZER_VERSION} has already published"
+          else
+            pushd lindera-analyzer
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
           LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_VERSIONS} | grep ${LINDERA_VERSION} >/dev/null; then

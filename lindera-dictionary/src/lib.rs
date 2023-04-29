@@ -10,12 +10,11 @@ use lindera_cc_cedict_builder::cc_cedict_builder::CcCedictBuilder;
 use lindera_core::{
     character_definition::CharacterDefinitions,
     connection::ConnectionCostMatrix,
-    dictionary::Dictionary,
+    dictionary::{Dictionary, UserDictionary},
     dictionary_builder::DictionaryBuilder,
     error::{LinderaError, LinderaErrorKind},
     prefix_dict::PrefixDict,
     unknown_dictionary::UnknownDictionary,
-    user_dictionary::UserDictionary,
     LinderaResult,
 };
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;

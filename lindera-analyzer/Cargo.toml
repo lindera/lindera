@@ -1,13 +1,13 @@
 [package]
-name = "lindera-cli"
+name = "lindera-analyzer"
 version = "0.24.0"
 edition = "2021"
-description = "A morphological analysis command line interface."
-documentation = "https://docs.rs/lindera-cli"
+description = "A morphological analysis library."
+documentation = "https://docs.rs/lindera"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
-keywords = ["morphological", "analysis", "cli"]
+keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
@@ -28,10 +28,18 @@ cc-cedict-filter = ["lindera-filter/cc-cedict"]  # Include filters for CC-CEDICT
 
 [dependencies]
 anyhow = "1.0.68"
-clap = { version = "4.1.1", features = ["derive", "cargo"] }
+bincode = "1.3.3"
+byteorder = "1.4.3"
+encoding = "0.2.33"
+kanaria = "0.2.0"
+regex = "1.7.1"
+serde = {version="1.0.152", features = ["derive"] }
 serde_json = "1.0.91"
+thiserror = "1.0.38"
+unicode-blocks = "0.1.5"
+unicode-normalization = "0.1.22"
+yada = "0.5.0"
 
-lindera-analyzer = { version = "0.24.0", path = "../lindera-analyzer" }
 lindera-cc-cedict-builder = { version = "0.24.0", path = "../lindera-cc-cedict-builder" }
 lindera-core = { version = "0.24.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.24.0", path = "../lindera-dictionary" }
@@ -40,7 +48,3 @@ lindera-ipadic-builder = { version = "0.24.0", path = "../lindera-ipadic-builder
 lindera-ko-dic-builder = { version = "0.24.0", path = "../lindera-ko-dic-builder" }
 lindera-tokenizer = { version = "0.24.0", path = "../lindera-tokenizer" }
 lindera-unidic-builder = { version = "0.24.0", path = "../lindera-unidic-builder" }
-
-[[bin]]
-name = "lindera"
-path = "src/main.rs"

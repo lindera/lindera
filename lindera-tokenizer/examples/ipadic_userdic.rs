@@ -5,7 +5,7 @@ fn main() -> LinderaResult<()> {
     {
         use std::path::PathBuf;
 
-        use lindera_core::viterbi::Mode;
+        use lindera_core::mode::Mode;
         use lindera_dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
         use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
