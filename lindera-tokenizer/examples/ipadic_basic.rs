@@ -1,15 +1,12 @@
-use lindera::LinderaResult;
-#[cfg(feature = "ipadic")]
-use lindera::{
-    dictionary::DictionaryConfig,
-    mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig},
-    DictionaryKind,
-};
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
+        use lindera_core::mode::Mode;
+        use lindera_dictionary::{DictionaryConfig, DictionaryKind};
+        use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: None,

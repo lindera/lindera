@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.23.1"
+version = "0.24.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -11,47 +11,4 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
-[features]
-default = []  # No directories included
-ipadic = ["lindera-dictionary/ipadic"]  # Include IPADIC dictionary (Japanese)
-unidic = ["lindera-dictionary/unidic"]  # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera-dictionary/ko-dic"]  # Include ko-dic dictionary (Korean)
-cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
-ipadic-filter = ["lindera-filter/ipadic"]  # Include filters for IPADIC
-unidic-filter = ["lindera-filter/unidic"]  # Include filters for UniDic
-ko-dic-filter = ["lindera-filter/ko-dic"]  # Include filters for ko-dic
-cc-cedict-filter = ["lindera-filter/cc-cedict"]  # Include filters for CC-CEDICT
-ipadic-compress = ["lindera-dictionary/ipadic-compress"]  # Compress IPADIC
-unidic-compress = ["lindera-dictionary/unidic-compress"]  # Compress UniDic
-ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]  # Compress ko-dic
-cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress CC-CEDICT
-
 [dependencies]
-anyhow = "1.0.68"
-bincode = "1.3.3"
-byteorder = "1.4.3"
-encoding = "0.2.33"
-kanaria = "0.2.0"
-regex = "1.7.1"
-serde = {version="1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
-thiserror = "1.0.38"
-unicode-blocks = "0.1.5"
-unicode-normalization = "0.1.22"
-yada = "0.5.0"
-
-lindera-cc-cedict-builder = { version = "0.23.0", path = "../lindera-cc-cedict-builder" }
-lindera-core = { version = "0.23.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.23.0", path = "../lindera-dictionary" }
-lindera-ipadic-builder = { version = "0.23.0", path = "../lindera-ipadic-builder" }
-lindera-ko-dic-builder = { version = "0.23.0", path = "../lindera-ko-dic-builder" }
-lindera-unidic-builder = { version = "0.23.0", path = "../lindera-unidic-builder" }
-lindera-filter = { version = "0.23.1", path = "../lindera-filter" }
-
-[dev-dependencies]
-criterion = { version = "0.4.0", features = ["html_reports"] }
-once_cell = "1.17.0"
-
-[[bench]]
-name = "bench"
-harness = false

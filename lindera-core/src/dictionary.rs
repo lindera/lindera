@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     character_definition::CharacterDefinitions, connection::ConnectionCostMatrix,
-    prefix_dict::PrefixDict, unknown_dictionary::UnknownDictionary,
+    error::LinderaErrorKind, prefix_dict::PrefixDict, unknown_dictionary::UnknownDictionary,
+    LinderaResult,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -13,4 +14,18 @@ pub struct Dictionary {
     pub unknown_dictionary: UnknownDictionary,
     pub words_idx_data: Vec<u8>,
     pub words_data: Vec<u8>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct UserDictionary {
+    pub dict: PrefixDict<Vec<u8>>,
+    pub words_idx_data: Vec<u8>,
+    pub words_data: Vec<u8>,
+}
+
+impl UserDictionary {
+    pub fn load(user_dict_data: &[u8]) -> LinderaResult<UserDictionary> {
+        bincode::deserialize(user_dict_data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
+    }
 }

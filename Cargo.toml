@@ -1,20 +1,22 @@
 [workspace]
 members = [
-    "lindera-core",
-    "lindera-ipadic-builder",
-    "lindera-dictionary",
-    "lindera-ipadic",
     "lindera",
+    "lindera-analyzer",
+    "lindera-cc-cedict",
+    "lindera-cc-cedict-builder",
     "lindera-cli",
     "lindera-compress",
+    "lindera-core",
     "lindera-decompress",
-    "lindera-unidic-builder",
-    "lindera-unidic",
-    "lindera-ko-dic-builder",
-    "lindera-ko-dic",
-    "lindera-cc-cedict-builder",
-    "lindera-cc-cedict",
+    "lindera-dictionary",
     "lindera-filter",
+    "lindera-ipadic",
+    "lindera-ipadic-builder",
+    "lindera-ko-dic",
+    "lindera-ko-dic-builder",
+    "lindera-tokenizer",
+    "lindera-unidic",
+    "lindera-unidic-builder",
 ]
 resolver = "2"
 

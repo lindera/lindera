@@ -1,11 +1,11 @@
-use lindera::LinderaResult;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     {
         use std::path::PathBuf;
 
-        use lindera::analyzer::Analyzer;
+        use lindera_analyzer::analyzer::Analyzer;
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("lindera_ipadic_conf.json");

@@ -19,12 +19,12 @@ use yada::{builder::DoubleArrayBuilder, DoubleArray};
 use lindera_compress::compress;
 use lindera_core::{
     character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder},
+    dictionary::UserDictionary,
     dictionary_builder::DictionaryBuilder,
     error::LinderaErrorKind,
     file_util::read_euc_file,
     prefix_dict::PrefixDict,
     unknown_dictionary::parse_unk,
-    user_dictionary::UserDictionary,
     word_entry::{WordEntry, WordId},
     LinderaResult,
 };

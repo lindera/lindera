@@ -1,0 +1,41 @@
+[package]
+name = "lindera-tokenizer"
+version = "0.24.0"
+edition = "2021"
+description = "A morphological analysis library."
+documentation = "https://docs.rs/lindera-tokenizer"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera"
+readme = "README.md"
+keywords = ["morphological", "analysis", "library", "tokenizer"]
+categories = ["text-processing"]
+license = "MIT"
+
+[features]
+default = []  # No directories included
+ipadic = ["lindera-dictionary/ipadic"]  # Include IPADIC dictionary (Japanese)
+unidic = ["lindera-dictionary/unidic"]  # Include UniDic dictionary (Japanese)
+ko-dic = ["lindera-dictionary/ko-dic"]  # Include ko-dic dictionary (Korean)
+cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
+ipadic-compress = ["lindera-dictionary/ipadic-compress"]  # Compress IPADIC
+unidic-compress = ["lindera-dictionary/unidic-compress"]  # Compress UniDic
+ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]  # Compress ko-dic
+cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress CC-CEDICT
+
+[dependencies]
+bincode = "1.3.3"
+byteorder = "1.4.3"
+once_cell = "1.17.0"
+serde = {version="1.0.152", features = ["derive"] }
+serde_json = "1.0.91"
+
+lindera-core = { version = "0.24.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.24.0", path = "../lindera-dictionary" }
+
+[dev-dependencies]
+criterion = { version = "0.4.0", features = ["html_reports"] }
+once_cell = "1.17.0"
+
+[[bench]]
+name = "bench"
+harness = false

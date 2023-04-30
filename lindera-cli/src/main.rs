@@ -21,15 +21,18 @@ use clap::{Parser, Subcommand};
     feature = "ko-dic-filter",
     feature = "cc-cedict-filter",
 ))]
-use lindera::analyzer::Analyzer;
+use lindera_analyzer::analyzer::Analyzer;
 
-use lindera::{
-    dictionary::{build_dictionary, build_user_dictionary, DictionaryConfig, UserDictionaryConfig},
+use lindera_core::{
     error::{LinderaError, LinderaErrorKind},
     mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES},
-    DictionaryKind, FilteredToken, LinderaResult,
+    LinderaResult,
 };
+use lindera_dictionary::{
+    build_dictionary, build_user_dictionary, DictionaryConfig, DictionaryKind, UserDictionaryConfig,
+};
+use lindera_filter::token::FilteredToken;
+use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES};
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]

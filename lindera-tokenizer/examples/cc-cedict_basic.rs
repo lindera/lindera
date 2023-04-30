@@ -1,17 +1,14 @@
-use lindera::LinderaResult;
-#[cfg(feature = "unidic")]
-use lindera::{
-    dictionary::DictionaryConfig,
-    mode::Mode,
-    tokenizer::{Tokenizer, TokenizerConfig},
-    DictionaryKind,
-};
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "unidic")]
+    #[cfg(feature = "cc-cedict")]
     {
+        use lindera_core::mode::Mode;
+        use lindera_dictionary::{DictionaryConfig, DictionaryKind};
+        use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+
         let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
+            kind: Some(DictionaryKind::CcCedict),
             path: None,
         };
 
@@ -25,7 +22,7 @@ fn main() -> LinderaResult<()> {
         let tokenizer = Tokenizer::from_config(config).unwrap();
 
         // tokenize the text
-        let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
+        let tokens = tokenizer.tokenize("可以进行中文形态学分析。")?;
 
         // output the tokens
         for token in tokens {

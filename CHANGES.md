@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.24.0 (2023-04-29)
+- Split the lindera crate into lindera-analyzer and lindera-tokenizer crates #319 @mosuka
+
 ## 0.23.1 (2023-04-05)
 - Bump up version to 0.23.1 #316 @mosuka
 - Refactor unicode normalize #315 @mosuka
