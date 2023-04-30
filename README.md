@@ -30,8 +30,8 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::tokenizer::Tokenizer;
-use lindera::LinderaResult;
+use lindera_tokenizer::tokenizer::Tokenizer;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {
@@ -86,8 +86,8 @@ It will:
 ```rust
 use std::{fs, path::PathBuf};
 
-use lindera::analyzer::Analyzer;
-use lindera::LinderaResult;
+use lindera_analyzer::analyzer::Analyzer;
+use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -160,7 +160,7 @@ With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
 use std::path::PathBuf;
 
-use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 use lindera_core::viterbi::Mode;
 use lindera_core::LinderaResult;
 
