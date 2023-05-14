@@ -30,8 +30,9 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera_tokenizer::tokenizer::Tokenizer;
-use lindera_core::LinderaResult;
+use lindera_core::{mode::Mode, LinderaResult};
+use lindera_dictionary::{DictionaryConfig, DictionaryKind};
+use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {
