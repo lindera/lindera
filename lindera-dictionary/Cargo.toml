@@ -14,12 +14,14 @@ license = "MIT"
 [features]
 default = []  # No directories included
 ipadic = ["lindera-ipadic/ipadic"]  # Include Japanese dictionary (IPADIC)
-unidic = ["lindera-unidic/unidic"]  # Include Japanese dictionary (UniDic)
-ko-dic = ["lindera-ko-dic/ko-dic"]  # Include Korean dictionary (ko-dic)
-cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
 ipadic-compress = ["lindera-ipadic/compress"]  # Compress Japanese dictionary (IPADIC)
+ipadic-neologd = ["lindera-ipadic-neologd/ipadic-neologd"]  # Include Japanese dictionary (IPADIC NEologd)
+ipadic-neologd-compress = ["lindera-ipadic-neologd/compress"]  # Compress Japanese dictionary (IPADIC NEologd)
+unidic = ["lindera-unidic/unidic"]  # Include Japanese dictionary (UniDic)
 unidic-compress = ["lindera-unidic/compress"]  # Compress Japanese dictionary (UniDic)
+ko-dic = ["lindera-ko-dic/ko-dic"]  # Include Korean dictionary (ko-dic)
 ko-dic-compress = ["lindera-ko-dic/compress"]  # Compress Korean dictionary (ko-dic)
+cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
 cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
@@ -33,6 +35,8 @@ lindera-cc-cedict = { version = "0.24.0", path = "../lindera-cc-cedict", optiona
 lindera-cc-cedict-builder = { version = "0.24.0", path = "../lindera-cc-cedict-builder" }
 lindera-ipadic = { version = "0.24.0", path = "../lindera-ipadic", optional = true }
 lindera-ipadic-builder = { version = "0.24.0", path = "../lindera-ipadic-builder" }
+lindera-ipadic-neologd = { version = "0.24.0", path = "../lindera-ipadic-neologd", optional = true }
+lindera-ipadic-neologd-builder = { version = "0.24.0", path = "../lindera-ipadic-neologd-builder" }
 lindera-ko-dic = { version = "0.24.0", path = "../lindera-ko-dic", optional = true }
 lindera-ko-dic-builder = { version = "0.24.0", path = "../lindera-ko-dic-builder" }
 lindera-unidic = { version = "0.24.0", path = "../lindera-unidic", optional = true }

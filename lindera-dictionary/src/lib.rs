@@ -18,6 +18,7 @@ use lindera_core::{
     LinderaResult,
 };
 use lindera_ipadic_builder::ipadic_builder::IpadicBuilder;
+use lindera_ipadic_neologd_builder::ipadic_neologd_builder::IpadicNeologdBuilder;
 use lindera_ko_dic_builder::ko_dic_builder::KoDicBuilder;
 use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 
@@ -25,6 +26,8 @@ use lindera_unidic_builder::unidic_builder::UnidicBuilder;
 pub enum DictionaryKind {
     #[serde(rename = "ipadic")]
     IPADIC,
+    #[serde(rename = "ipadic-neologd")]
+    IPADICNEologd,
     #[serde(rename = "unidic")]
     UniDic,
     #[serde(rename = "ko-dic")]
@@ -38,6 +41,7 @@ impl FromStr for DictionaryKind {
     fn from_str(input: &str) -> Result<DictionaryKind, Self::Err> {
         match input {
             "ipadic" => Ok(DictionaryKind::IPADIC),
+            "ipadic-neologd" => Ok(DictionaryKind::IPADICNEologd),
             "unidic" => Ok(DictionaryKind::UniDic),
             "ko-dic" => Ok(DictionaryKind::KoDic),
             "cc-cedict" => Ok(DictionaryKind::CcCedict),
@@ -78,6 +82,7 @@ pub fn resolve_builder(
 ) -> LinderaResult<Box<dyn DictionaryBuilder>> {
     match dictionary_type {
         DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::new())),
+        DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::new())),
         DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::new())),
         DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::new())),
         DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::new())),
@@ -148,6 +153,9 @@ pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictiona
     match kind {
         #[cfg(feature = "ipadic")]
         DictionaryKind::IPADIC => lindera_ipadic::load_dictionary()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[cfg(feature = "ipadic-neologd")]
+        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::load_dictionary()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[cfg(feature = "unidic")]
         DictionaryKind::UniDic => lindera_unidic::load_dictionary()

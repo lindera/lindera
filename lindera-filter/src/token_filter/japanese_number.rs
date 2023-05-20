@@ -262,6 +262,7 @@ mod tests {
     };
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
@@ -886,7 +887,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         let config_str = r#"
         {
@@ -1027,7 +1031,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         let config_str = r#"
         {

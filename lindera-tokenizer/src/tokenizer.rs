@@ -18,6 +18,8 @@ use crate::token::Token;
 pub const CONTAINED_DICTIONARIES: &[&str] = &[
     #[cfg(feature = "ipadic")]
     "ipadic",
+    #[cfg(feature = "ipadic-neologd")]
+    "ipadic-neologd",
     #[cfg(feature = "unidic")]
     "unidic",
     #[cfg(feature = "ko-dic")]
@@ -297,12 +299,13 @@ impl Tokenizer {
 mod tests {
     #[cfg(any(
         feature = "ipadic",
+        feature = "ipadic-neologd",
         feature = "unidic",
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
     use std::path::PathBuf;
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     use std::{
         fs::File,
         io::{BufReader, Read},
@@ -310,17 +313,19 @@ mod tests {
 
     #[cfg(any(
         feature = "ipadic",
+        feature = "ipadic-neologd",
         feature = "unidic",
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
     use lindera_core::mode::Mode;
 
-    #[cfg(any(feature = "ipadic", feature = "unidic",))]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     use lindera_core::mode::Penalty;
 
     #[cfg(any(
         feature = "ipadic",
+        feature = "ipadic-neologd",
         feature = "unidic",
         feature = "ko-dic",
         feature = "cc-cedict"
@@ -329,6 +334,7 @@ mod tests {
 
     #[cfg(any(
         feature = "ipadic",
+        feature = "ipadic-neologd",
         feature = "unidic",
         feature = "ko-dic",
         feature = "cc-cedict"

@@ -77,12 +77,14 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
 mod tests {
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
     use lindera_dictionary::DictionaryKind;
 
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
     use crate::{
@@ -95,7 +97,10 @@ mod tests {
         },
     };
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_reading_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -109,7 +114,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::IPADIC);
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_reading_form_token_filter_config_from_slice_unidic() {
         let config_str = r#"
@@ -123,7 +128,10 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_reading_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -136,7 +144,7 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_reading_form_token_filter_from_slice_unidic() {
         let config_str = r#"
@@ -149,7 +157,10 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_reading_form_token_filter_apply_ipadic() {
         let config_str = r#"

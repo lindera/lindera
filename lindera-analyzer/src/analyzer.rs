@@ -36,6 +36,7 @@ use lindera_tokenizer::tokenizer::Tokenizer;
 
 #[cfg(any(
     all(feature = "ipadic", feature = "ipadic-filter",),
+    all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
     all(feature = "unidic", feature = "unidic-filter",)
 ))]
 use lindera_filter::token_filter::{
@@ -56,6 +57,7 @@ use lindera_filter::token_filter::{
 
 #[cfg(any(
     all(feature = "ipadic", feature = "ipadic-filter",),
+    all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
     all(feature = "unidic", feature = "unidic-filter",)
 ))]
 use lindera_filter::token_filter::{
@@ -171,6 +173,7 @@ impl Analyzer {
                     match token_filter_name {
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
@@ -180,6 +183,7 @@ impl Analyzer {
                         }
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
@@ -199,6 +203,7 @@ impl Analyzer {
                         }
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
@@ -208,6 +213,7 @@ impl Analyzer {
                         }
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
@@ -217,6 +223,7 @@ impl Analyzer {
                         }
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
@@ -226,6 +233,7 @@ impl Analyzer {
                         }
                         #[cfg(any(
                             all(feature = "ipadic", feature = "ipadic-filter",),
+                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
                             all(feature = "unidic", feature = "unidic-filter",)
                         ))]
                         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
@@ -398,7 +406,10 @@ impl Clone for Analyzer {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     use crate::analyzer::Analyzer;
 
     #[test]
@@ -476,7 +487,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_ipadic_analyzer_clone() {
         let config_str = r#"
         {
@@ -559,7 +573,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_ipadic_analyzer_analyze() {
         let config_str = r#"
         {
@@ -924,7 +941,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_analyzer_from_slice_wrong_config() {
         let config_str = r#"
         {

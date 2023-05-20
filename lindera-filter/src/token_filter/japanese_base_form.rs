@@ -60,6 +60,10 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
                 DictionaryKind::IPADIC => {
                     token.text = token.details[6].clone();
                 }
+                #[cfg(feature = "ipadic-neologd")]
+                DictionaryKind::IPADICNEologd => {
+                    token.text = token.details[6].clone();
+                }
                 #[cfg(feature = "unidic")]
                 DictionaryKind::UniDic => {
                     token.text = token.details[10].clone();
@@ -78,12 +82,14 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 mod tests {
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
     use lindera_dictionary::DictionaryKind;
 
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
     use crate::{
@@ -94,7 +100,10 @@ mod tests {
         },
     };
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -120,7 +129,10 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -146,7 +158,10 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_ipadic() {
         let config_str = r#"

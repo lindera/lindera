@@ -12,6 +12,8 @@ members = [
     "lindera-filter",
     "lindera-ipadic",
     "lindera-ipadic-builder",
+    "lindera-ipadic-neologd",
+    "lindera-ipadic-neologd-builder",
     "lindera-ko-dic",
     "lindera-ko-dic-builder",
     "lindera-tokenizer",

@@ -89,7 +89,11 @@ mod tests {
     use crate::token_filter::japanese_stop_tags::{
         JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
     };
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -169,7 +173,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_japanese_stop_tags_token_filter_apply_ipadic() {
         let config_str = r#"
         {
