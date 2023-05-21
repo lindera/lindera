@@ -7,7 +7,7 @@ documentation = "https://docs.rs/lindera-ipadic-neologd-builder"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
-keywords = ["japanese", "morphological", "dictionary", "builder", "ipadic", "neologd"]
+keywords = ["japanese", "dictionary", "builder", "ipadic", "neologd"]
 categories = ["text-processing"]
 license = "MIT"
 
