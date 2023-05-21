@@ -8,7 +8,7 @@
 This repository contains [mecab-ipadic-neologd](https://github.com/neologd/mecab-ipadic-neologd).
 
 
-## 
+## Prepare dictionary
 ```
 % ./mecab-ipadic-neologd-master/bin/install-mecab-ipadic-neologd --create_user_dic -p $(pwd)/mecab-ipadic-neologd-master/tmp -y
 ```
