@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Add IPADIC-NEologd dictionary #322 @mosuka
+- update readme.md #320 @chatblanc-ciel
+
 ## 0.24.0 (2023-04-29)
 - Split the lindera crate into lindera-analyzer and lindera-tokenizer crates #319 @mosuka
 

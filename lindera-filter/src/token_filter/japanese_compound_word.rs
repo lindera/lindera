@@ -181,7 +181,10 @@ mod tests {
         JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
     };
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
@@ -220,7 +223,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    ))]
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         let config_str = r#"
         {

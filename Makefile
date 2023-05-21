@@ -3,6 +3,8 @@ LINDERA_DECOMPRESS_VERSION ?= $(shell cargo metadata --no-deps --format-version=
 LINDERA_COMPRESS_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-compress") | .version')
 LINDERA_IPADIC_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')
 LINDERA_IPADIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
+LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd-builder") | .version')
+LINDERA_IPADIC_NEOLOGD_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version')
 LINDERA_UNIDIC_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic-builder") | .version')
 LINDERA_UNIDIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
 LINDERA_KO_DIC_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic-builder") | .version')
@@ -53,6 +55,14 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-build
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
 	(cd lindera-ipadic && cargo package && cargo publish)
+	sleep 10
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION)),)
+	(cd lindera-ipadic-neologd-builder && cargo package && cargo publish)
+	sleep 10
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_NEOLOGD_VERSION)),)
+	(cd lindera-ipadic-neologd && cargo package && cargo publish)
 	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic-builder | jq -r '.versions[].num' | grep $(LINDERA_UNIDIC_BUILDER_VERSION)),)

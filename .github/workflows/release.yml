@@ -200,6 +200,26 @@ jobs:
             popd
           fi
           sleep 20
+          LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd-builder") | .version')
+          LINDERA_IPADIC_NEOLOGD_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_IPADIC_NEOLOGD_BUILDER_VERSIONS} | grep ${LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-ipadic-neologd-builder ${LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-ipadic-neologd-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+          LINDERA_IPADIC_NEOLOGD_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version')
+          LINDERA_IPADIC_NEOLOGD_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_IPADIC_NEOLOGD_VERSIONS} | grep ${LINDERA_IPADIC_NEOLOGD_VERSION} >/dev/null; then
+            echo "lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION} has already published"
+          else
+            pushd lindera-ipadic-neologd
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
           LINDERA_UNIDIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic-builder") | .version')
           LINDERA_UNIDIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_UNIDIC_BUILDER_VERSIONS} | grep ${LINDERA_UNIDIC_BUILDER_VERSION} >/dev/null; then

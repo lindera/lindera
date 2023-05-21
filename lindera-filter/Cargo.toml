@@ -14,6 +14,7 @@ license = "MIT"
 [features]
 default = []  # No directories included
 ipadic = ["lindera-dictionary/ipadic"]  # Japanese dictionary included
+ipadic-neologd = ["lindera-dictionary/ipadic-neologd"]  # Japanese dictionary included
 unidic = ["lindera-dictionary/unidic"]  # Japanese dictionary included
 ko-dic = ["lindera-dictionary/ko-dic"]  # Korean dictionary included
 cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included

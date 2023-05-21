@@ -128,7 +128,6 @@ mod tests {
     }
 
     #[test]
-    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         let config_str = r#"
         {
@@ -193,7 +192,6 @@ mod tests {
     }
 
     #[test]
-    // #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         let config_str = r#"
         {
