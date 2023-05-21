@@ -1,6 +1,6 @@
 [package]
 name = "lindera-analyzer"
-version = "0.24.0"
+version = "0.25.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -43,11 +43,11 @@ unicode-blocks = "0.1.5"
 unicode-normalization = "0.1.22"
 yada = "0.5.0"
 
-lindera-cc-cedict-builder = { version = "0.24.0", path = "../lindera-cc-cedict-builder" }
-lindera-core = { version = "0.24.0", path = "../lindera-core" }
-lindera-dictionary = { version = "0.24.0", path = "../lindera-dictionary" }
-lindera-filter = { version = "0.24.0", path = "../lindera-filter" }
-lindera-ipadic-builder = { version = "0.24.0", path = "../lindera-ipadic-builder" }
-lindera-ko-dic-builder = { version = "0.24.0", path = "../lindera-ko-dic-builder" }
-lindera-tokenizer = { version = "0.24.0", path = "../lindera-tokenizer" }
-lindera-unidic-builder = { version = "0.24.0", path = "../lindera-unidic-builder" }
+lindera-cc-cedict-builder = { version = "0.25.0", path = "../lindera-cc-cedict-builder" }
+lindera-core = { version = "0.25.0", path = "../lindera-core" }
+lindera-dictionary = { version = "0.25.0", path = "../lindera-dictionary" }
+lindera-filter = { version = "0.25.0", path = "../lindera-filter" }
+lindera-ipadic-builder = { version = "0.25.0", path = "../lindera-ipadic-builder" }
+lindera-ko-dic-builder = { version = "0.25.0", path = "../lindera-ko-dic-builder" }
+lindera-tokenizer = { version = "0.25.0", path = "../lindera-tokenizer" }
+lindera-unidic-builder = { version = "0.25.0", path = "../lindera-unidic-builder" }
