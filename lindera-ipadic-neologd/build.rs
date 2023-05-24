@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             rename(tmp_path, &source_path_for_build).expect("Failed to rename temporary file");
         }
-        
+
         // Decompress a tar.gz file
         let mut tar_gz = File::open(source_path_for_build)?;
         let mut buffer = Vec::new();
