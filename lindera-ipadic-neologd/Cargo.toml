@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic-neologd = ["encoding", "flate2", "tar"]
+ipadic-neologd = ["encoding", "flate2", "tar", "ureq"]
 compress = ["lindera-ipadic-neologd-builder/compress", "lindera-decompress"]
 
 [dependencies]
@@ -27,6 +27,7 @@ lindera-decompress = { version = "0.25.0", path = "../lindera-decompress", optio
 encoding = { version = "0.2.33", optional = true }
 flate2 = { version = "1.0.25", optional = true }
 tar = { version = "0.4.38", optional = true }
+ureq = { version = "2.5.0", default-features = false, features = ["tls"], optional = true }
 
 lindera-core = { version = "0.25.0", path = "../lindera-core" }
 lindera-ipadic-neologd-builder = { version = "0.25.0", path = "../lindera-ipadic-neologd-builder"}
