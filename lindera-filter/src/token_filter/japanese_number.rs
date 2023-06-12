@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_tokenizer::token::Token;
 
-use crate::{token::FilteredToken, token_filter::TokenFilter};
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -69,24 +70,26 @@ impl TokenFilter for JapaneseNumberTokenFilter {
         JAPANESE_NUMBER_TOKEN_FILTER_NAME
     }
 
-    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let mut tag_vec = vec!["*", "*", "*", "*"];
-            let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
-            for (i, j) in token.details[0..tags_len].iter().enumerate() {
-                tag_vec[i] = j;
-            }
-            let tag = tag_vec.join(",");
-
-            match self.config.tags {
-                Some(ref tags) => {
-                    if tags.contains(&tag) {
-                        token.text = to_arabic_numerals(&token.text);
-                    }
+            if let Some(details) = &mut token.get_details() {
+                let mut tag_vec = vec!["*", "*", "*", "*"];
+                let tags_len = if details.len() >= 4 { 4 } else { 1 };
+                for (i, j) in details[0..tags_len].iter().enumerate() {
+                    tag_vec[i] = j;
                 }
-                None => {
-                    // If a tag is omitted, all tokans are covered.
-                    token.text = to_arabic_numerals(&token.text);
+                let tag = tag_vec.join(",");
+
+                match self.config.tags {
+                    Some(ref tags) => {
+                        if tags.contains(&tag) {
+                            token.text = to_arabic_numerals(&token.text).into();
+                        }
+                    }
+                    None => {
+                        // If a tag is omitted, all tokans are covered.
+                        token.text = to_arabic_numerals(&token.text).into();
+                    }
                 }
             }
         }
@@ -255,20 +258,27 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     use std::str::FromStr;
 
-    use crate::token_filter::japanese_number::{
-        to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_core::word_entry::WordId;
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_tokenizer::token::Token;
+
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use crate::token_filter::{
+        japanese_number::{
+            to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
+        },
+        TokenFilter,
     };
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
-    fn test_to_number_str() {
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    fn test_to_number_str_ipadic() {
         {
             let s = "０";
             assert_eq!(to_arabic_numerals(s), String::from_str("0").unwrap());
@@ -806,13 +816,14 @@ mod tests {
     }
 
     #[test]
-    fn test_japanese_number_token_filter_config_from_slice() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_number_token_filter_config_from_slice_ipadic() {
         {
             let config_str = r#"
-            {
-                "tags": null
-            }
-            "#;
+                {
+                    "tags": null
+                }
+                "#;
             let config =
                 JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
@@ -821,9 +832,9 @@ mod tests {
 
         {
             let config_str = r#"
-            {
-            }
-            "#;
+                {
+                }
+                "#;
             let config =
                 JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
@@ -832,12 +843,12 @@ mod tests {
 
         {
             let config_str = r#"
-            {
-                "tags": [
-                    "名詞,数"
-                ]
-            }
-            "#;
+                {
+                    "tags": [
+                        "名詞,数"
+                    ]
+                }
+                "#;
             let config =
                 JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
@@ -848,78 +859,61 @@ mod tests {
     }
 
     #[test]
-    fn test_japanese_number_token_filter_from_slice() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_number_token_filter_from_slice_ipadic() {
         {
             // test empty tags
             let config_str = r#"
-            {
-            }
-            "#;
+                {
+                }
+                "#;
             let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
 
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
             assert_eq!(true, result.is_ok());
         }
 
         {
             let config_str = r#"
+                {
+                    "tags": [
+                        "名詞,数"
+                    ]
+                }
+                "#;
+            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
+
+            assert_eq!(true, result.is_ok());
+        }
+    }
+
+    #[test]
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    fn test_japanese_number_token_filter_apply_numbers_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
+        let config_str = r#"
             {
                 "tags": [
                     "名詞,数"
                 ]
             }
             "#;
-            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
-
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-            assert_eq!(true, result.is_ok());
-        }
-    }
-
-    #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
-    fn test_japanese_number_token_filter_apply_numbers_ipadic() {
-        let config_str = r#"
-        {
-            "tags": [
-                "名詞,数"
-            ]
-        }
-        "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
-                text: "一".to_string(),
-                byte_start: 0,
-                byte_end: 3,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "一".to_string(),
-                    "イチ".to_string(),
-                    "イチ".to_string(),
-                ],
-            }];
+            let mut tokens: Vec<Token> = vec![Token::new(
+                "一",
+                0,
+                3,
+                0,
+                WordId(102657, true),
+                &dictionary,
+                None,
+            )];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -928,24 +922,17 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
-                text: "一二三".to_string(),
-                byte_start: 0,
-                byte_end: 9,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一二三", 0, 9, 0, WordId(102657, true), &dictionary, None)
+                        .set_details(Some(
+                            "名詞,数,*,*,*,*,*,*,*"
+                                .split(',')
+                                .map(|s| s.to_string())
+                                .collect::<Vec<String>>(),
+                        ))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -954,26 +941,16 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> =
+            let mut tokens: Vec<Token> =
                 vec![
-                    FilteredToken{
-                        text:"一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四".to_string(),
-                        byte_start:0,
-                        byte_end: 129,
-                        position:0,
-                        position_length:1,
-                        details:vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                        ]
-                    },
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, 0, WordId(102657, true), &dictionary, None)
+                        .set_details(Some(
+                            "名詞,数,*,*,*,*,*,*,*"
+                                .split(',')
+                                .map(|s| s.to_string())
+                                .collect::<Vec<String>>(),
+                        ))
+                        .clone(),
                 ];
 
             filter.apply(&mut tokens).unwrap();
@@ -983,43 +960,9 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![
-                FilteredToken {
-                    text: "鈴木".to_string(),
-                    byte_start: 0,
-                    byte_end: 6,
-                    position: 0,
-                    position_length: 1,
-                    details: vec![
-                        "名詞".to_string(),
-                        "固有名詞".to_string(),
-                        "人名".to_string(),
-                        "姓".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "鈴木".to_string(),
-                        "スズキ".to_string(),
-                        "スズキ".to_string(),
-                    ],
-                },
-                FilteredToken {
-                    text: "一郎".to_string(),
-                    byte_start: 6,
-                    byte_end: 12,
-                    position: 1,
-                    position_length: 1,
-                    details: vec![
-                        "名詞".to_string(),
-                        "固有名詞".to_string(),
-                        "人名".to_string(),
-                        "名".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "一郎".to_string(),
-                        "イチロウ".to_string(),
-                        "イチロー".to_string(),
-                    ],
-                },
+            let mut tokens: Vec<Token> = vec![
+                Token::new("鈴木", 0, 6, 0, WordId(368893, true), &dictionary, None),
+                Token::new("一郎", 6, 12, 0, WordId(103913, true), &dictionary, None),
             ];
 
             filter.apply(&mut tokens).unwrap();
@@ -1031,36 +974,30 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-        }
-        "#;
+            {
+            }
+            "#;
         let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
-                text: "一".to_string(),
-                byte_start: 0,
-                byte_end: 3,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "一".to_string(),
-                    "イチ".to_string(),
-                    "イチ".to_string(),
-                ],
-            }];
+            let mut tokens: Vec<Token> = vec![Token::new(
+                "一",
+                0,
+                3,
+                0,
+                WordId(102657, true),
+                &dictionary,
+                None,
+            )];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -1069,24 +1006,17 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![FilteredToken {
-                text: "一二三".to_string(),
-                byte_start: 0,
-                byte_end: 9,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "数".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            }];
+            let mut tokens: Vec<Token> =
+                vec![
+                    Token::new("一二三", 0, 9, 0, WordId(102657, true), &dictionary, None)
+                        .set_details(Some(
+                            "名詞,数,*,*,*,*,*,*,*"
+                                .split(',')
+                                .map(|s| s.to_string())
+                                .collect::<Vec<String>>(),
+                        ))
+                        .clone(),
+                ];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -1095,26 +1025,16 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> =
+            let mut tokens: Vec<Token> =
                 vec![
-                    FilteredToken{
-                        text: "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四".to_string(),
-                        byte_start: 0,
-                        byte_end:129,
-                        position: 0,
-                        position_length: 1,
-                        details:vec![
-                            "名詞".to_string(),
-                            "数".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                            "*".to_string(),
-                        ]
-                    },
+                    Token::new("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四", 0, 129, 0, WordId(102657, true), &dictionary, None)
+                        .set_details(Some(
+                            "名詞,数,*,*,*,*,*,*,*"
+                                .split(',')
+                                .map(|s| s.to_string())
+                                .collect::<Vec<String>>(),
+                        ))
+                        .clone(),
                 ];
 
             filter.apply(&mut tokens).unwrap();
@@ -1124,43 +1044,9 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<FilteredToken> = vec![
-                FilteredToken {
-                    text: "鈴木".to_string(),
-                    byte_start: 0,
-                    byte_end: 9,
-                    position: 0,
-                    position_length: 1,
-                    details: vec![
-                        "名詞".to_string(),
-                        "固有名詞".to_string(),
-                        "人名".to_string(),
-                        "姓".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "鈴木".to_string(),
-                        "スズキ".to_string(),
-                        "スズキ".to_string(),
-                    ],
-                },
-                FilteredToken {
-                    text: "一郎".to_string(),
-                    byte_start: 0,
-                    byte_end: 9,
-                    position: 1,
-                    position_length: 1,
-                    details: vec![
-                        "名詞".to_string(),
-                        "固有名詞".to_string(),
-                        "人名".to_string(),
-                        "名".to_string(),
-                        "*".to_string(),
-                        "*".to_string(),
-                        "一郎".to_string(),
-                        "イチロウ".to_string(),
-                        "イチロー".to_string(),
-                    ],
-                },
+            let mut tokens: Vec<Token> = vec![
+                Token::new("鈴木", 0, 6, 0, WordId(368893, true), &dictionary, None),
+                Token::new("一郎", 6, 12, 0, WordId(103913, true), &dictionary, None),
             ];
 
             filter.apply(&mut tokens).unwrap();

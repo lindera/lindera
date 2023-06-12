@@ -3,8 +3,9 @@ use std::{collections::HashSet, mem};
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_tokenizer::token::Token;
 
-use crate::{token::FilteredToken, token_filter::TokenFilter};
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
@@ -64,17 +65,19 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
-    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let mut new_tokens = Vec::new();
 
         for token in tokens.iter_mut() {
-            let mut formatted_tags = vec!["*", "*", "*", "*"];
-            let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
-            for (i, j) in token.details[0..tags_len].iter().enumerate() {
-                formatted_tags[i] = j;
-            }
-            if !self.config.tags.contains(&formatted_tags.join(",")) {
-                new_tokens.push(token.clone());
+            if let Some(details) = &mut token.get_details() {
+                let mut formatted_tags = vec!["*", "*", "*", "*"];
+                let tags_len = if details.len() >= 4 { 4 } else { 1 };
+                for (i, j) in details[0..tags_len].iter().enumerate() {
+                    formatted_tags[i] = j;
+                }
+                if !self.config.tags.contains(&formatted_tags.join(",")) {
+                    new_tokens.push(token.clone());
+                }
             }
         }
 
@@ -86,258 +89,147 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::token_filter::japanese_stop_tags::{
-        JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_core::word_entry::WordId;
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use lindera_tokenizer::token::Token;
+
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use crate::token_filter::{
+        japanese_stop_tags::{JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig},
+        TokenFilter,
     };
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
-    use crate::{token::FilteredToken, token_filter::TokenFilter};
 
     #[test]
-    fn test_japanese_stop_tags_token_filter_config_from_slice() {
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    fn test_japanese_stop_tags_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
-        {
-            "tags": [
-                "接続詞",
-                "助詞",
-                "助詞,格助詞",
-                "助詞,格助詞,一般",
-                "助詞,格助詞,引用",
-                "助詞,格助詞,連語",
-                "助詞,係助詞",
-                "助詞,副助詞",
-                "助詞,間投助詞",
-                "助詞,並立助詞",
-                "助詞,終助詞",
-                "助詞,副助詞／並立助詞／終助詞",
-                "助詞,連体化",
-                "助詞,副詞化",
-                "助詞,特殊",
-                "助動詞",
-                "記号",
-                "記号,一般",
-                "記号,読点",
-                "記号,句点",
-                "記号,空白",
-                "記号,括弧閉",
-                "その他,間投",
-                "フィラー",
-                "非言語音"
-            ]
-        }
-        "#;
+            {
+                "tags": [
+                    "接続詞",
+                    "助詞",
+                    "助詞,格助詞",
+                    "助詞,格助詞,一般",
+                    "助詞,格助詞,引用",
+                    "助詞,格助詞,連語",
+                    "助詞,係助詞",
+                    "助詞,副助詞",
+                    "助詞,間投助詞",
+                    "助詞,並立助詞",
+                    "助詞,終助詞",
+                    "助詞,副助詞／並立助詞／終助詞",
+                    "助詞,連体化",
+                    "助詞,副詞化",
+                    "助詞,特殊",
+                    "助動詞",
+                    "記号",
+                    "記号,一般",
+                    "記号,読点",
+                    "記号,句点",
+                    "記号,空白",
+                    "記号,括弧閉",
+                    "その他,間投",
+                    "フィラー",
+                    "非言語音"
+                ]
+            }
+            "#;
         let config = JapaneseStopTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
         assert_eq!(config.tags.len(), 25);
     }
 
     #[test]
-    fn test_japanese_stop_tagss_token_filter_from_slice() {
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    fn test_japanese_stop_tagss_token_filter_from_slice_ipadic() {
         let config_str = r#"
-        {
-            "tags": [
-                "接続詞",
-                "助詞",
-                "助詞,格助詞",
-                "助詞,格助詞,一般",
-                "助詞,格助詞,引用",
-                "助詞,格助詞,連語",
-                "助詞,係助詞",
-                "助詞,副助詞",
-                "助詞,間投助詞",
-                "助詞,並立助詞",
-                "助詞,終助詞",
-                "助詞,副助詞／並立助詞／終助詞",
-                "助詞,連体化",
-                "助詞,副詞化",
-                "助詞,特殊",
-                "助動詞",
-                "記号",
-                "記号,一般",
-                "記号,読点",
-                "記号,句点",
-                "記号,空白",
-                "記号,括弧閉",
-                "その他,間投",
-                "フィラー",
-                "非言語音"
-            ]
-        }
-        "#;
+            {
+                "tags": [
+                    "接続詞",
+                    "助詞",
+                    "助詞,格助詞",
+                    "助詞,格助詞,一般",
+                    "助詞,格助詞,引用",
+                    "助詞,格助詞,連語",
+                    "助詞,係助詞",
+                    "助詞,副助詞",
+                    "助詞,間投助詞",
+                    "助詞,並立助詞",
+                    "助詞,終助詞",
+                    "助詞,副助詞／並立助詞／終助詞",
+                    "助詞,連体化",
+                    "助詞,副詞化",
+                    "助詞,特殊",
+                    "助動詞",
+                    "記号",
+                    "記号,一般",
+                    "記号,読点",
+                    "記号,句点",
+                    "記号,空白",
+                    "記号,括弧閉",
+                    "その他,間投",
+                    "フィラー",
+                    "非言語音"
+                ]
+            }
+            "#;
         let result = JapaneseStopTagsTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
     #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     fn test_japanese_stop_tags_token_filter_apply_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-            "tags": [
-                "接続詞",
-                "助詞",
-                "助詞,格助詞",
-                "助詞,格助詞,一般",
-                "助詞,格助詞,引用",
-                "助詞,格助詞,連語",
-                "助詞,係助詞",
-                "助詞,副助詞",
-                "助詞,間投助詞",
-                "助詞,並立助詞",
-                "助詞,終助詞",
-                "助詞,副助詞／並立助詞／終助詞",
-                "助詞,連体化",
-                "助詞,副詞化",
-                "助詞,特殊",
-                "助動詞",
-                "記号",
-                "記号,一般",
-                "記号,読点",
-                "記号,句点",
-                "記号,空白",
-                "記号,括弧閉",
-                "その他,間投",
-                "フィラー",
-                "非言語音"
-            ]
-        }
-        "#;
+            {
+                "tags": [
+                    "接続詞",
+                    "助詞",
+                    "助詞,格助詞",
+                    "助詞,格助詞,一般",
+                    "助詞,格助詞,引用",
+                    "助詞,格助詞,連語",
+                    "助詞,係助詞",
+                    "助詞,副助詞",
+                    "助詞,間投助詞",
+                    "助詞,並立助詞",
+                    "助詞,終助詞",
+                    "助詞,副助詞／並立助詞／終助詞",
+                    "助詞,連体化",
+                    "助詞,副詞化",
+                    "助詞,特殊",
+                    "助動詞",
+                    "記号",
+                    "記号,一般",
+                    "記号,読点",
+                    "記号,句点",
+                    "記号,空白",
+                    "記号,括弧閉",
+                    "その他,間投",
+                    "フィラー",
+                    "非言語音"
+                ]
+            }
+            "#;
         let filter = JapaneseStopTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<FilteredToken> = vec![
-            FilteredToken {
-                text: "すもも".to_string(),
-                byte_start: 0,
-                byte_end: 9,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "すもも".to_string(),
-                    "スモモ".to_string(),
-                    "スモモ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "も".to_string(),
-                byte_start: 9,
-                byte_end: 12,
-                position: 1,
-                position_length: 1,
-                details: vec![
-                    "助詞".to_string(),
-                    "係助詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "も".to_string(),
-                    "モ".to_string(),
-                    "モ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "もも".to_string(),
-                byte_start: 12,
-                byte_end: 18,
-                position: 2,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "もも".to_string(),
-                    "モモ".to_string(),
-                    "モモ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "も".to_string(),
-                byte_start: 18,
-                byte_end: 21,
-                position: 3,
-                position_length: 1,
-                details: vec![
-                    "助詞".to_string(),
-                    "係助詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "も".to_string(),
-                    "モ".to_string(),
-                    "モ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "もも".to_string(),
-                byte_start: 21,
-                byte_end: 27,
-                position: 4,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "もも".to_string(),
-                    "モモ".to_string(),
-                    "モモ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "の".to_string(),
-                byte_start: 27,
-                byte_end: 30,
-                position: 5,
-                position_length: 1,
-                details: vec![
-                    "助詞".to_string(),
-                    "連体化".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "の".to_string(),
-                    "ノ".to_string(),
-                    "ノ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "うち".to_string(),
-                byte_start: 30,
-                byte_end: 36,
-                position: 6,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "非自立".to_string(),
-                    "副詞可能".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "うち".to_string(),
-                    "ウチ".to_string(),
-                    "ウチ".to_string(),
-                ],
-            },
+        let mut tokens: Vec<Token> = vec![
+            Token::new("すもも", 0, 9, 0, WordId(36165, true), &dictionary, None),
+            Token::new("も", 9, 12, 1, WordId(73246, true), &dictionary, None),
+            Token::new("もも", 12, 18, 2, WordId(74990, true), &dictionary, None),
+            Token::new("も", 18, 21, 3, WordId(73246, true), &dictionary, None),
+            Token::new("もも", 21, 27, 4, WordId(74990, true), &dictionary, None),
+            Token::new("の", 27, 30, 5, WordId(55831, true), &dictionary, None),
+            Token::new("うち", 30, 36, 6, WordId(8029, true), &dictionary, None),
         ];
 
         filter.apply(&mut tokens).unwrap();
