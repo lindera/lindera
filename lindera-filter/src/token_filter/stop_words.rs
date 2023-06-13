@@ -3,8 +3,9 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_tokenizer::token::Token;
 
-use crate::{token::FilteredToken, token_filter::TokenFilter};
+use crate::token_filter::TokenFilter;
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
 
@@ -45,8 +46,8 @@ impl TokenFilter for StopWordsTokenFilter {
         STOP_WORDS_TOKEN_FILTER_NAME
     }
 
-    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.words.contains(&token.text));
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+        tokens.retain(|token| !self.config.words.contains(token.text.to_string().as_str()));
 
         Ok(())
     }
@@ -54,235 +55,82 @@ impl TokenFilter for StopWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        token::FilteredToken,
-        token_filter::{
-            stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig},
-            TokenFilter,
-        },
-    };
+    #[cfg(any(all(feature = "ipadic",),))]
+    use lindera_core::word_entry::WordId;
+    #[cfg(any(all(feature = "ipadic",),))]
+    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+    #[cfg(any(all(feature = "ipadic",),))]
+    use lindera_tokenizer::token::Token;
+
+    use crate::token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig};
+    #[cfg(any(all(feature = "ipadic",),))]
+    use crate::token_filter::TokenFilter;
 
     #[test]
     fn test_stop_words_token_filter_config_from_slice() {
         let config_str = r#"
-        {
-            "words": [
-                "a",
-                "an",
-                "and",
-                "are",
-                "as",
-                "at",
-                "be",
-                "but",
-                "by",
-                "for",
-                "if",
-                "in",
-                "into",
-                "is",
-                "it",
-                "no",
-                "not",
-                "of",
-                "on",
-                "or",
-                "such",
-                "that",
-                "the",
-                "their",
-                "then",
-                "there",
-                "these",
-                "they",
-                "this",
-                "to",
-                "was",
-                "will",
-                "with"
-            ]
-        }
-        "#;
+            {
+                "words": [
+                    "も",
+                    "の"
+                ]
+            }
+            "#;
         let config = StopWordsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(config.words.len(), 33);
+        assert_eq!(config.words.len(), 2);
     }
 
     #[test]
     fn test_stop_words_token_filter_from_slice() {
         let config_str = r#"
-        {
-            "words": [
-                "a",
-                "an",
-                "and",
-                "are",
-                "as",
-                "at",
-                "be",
-                "but",
-                "by",
-                "for",
-                "if",
-                "in",
-                "into",
-                "is",
-                "it",
-                "no",
-                "not",
-                "of",
-                "on",
-                "or",
-                "such",
-                "that",
-                "the",
-                "their",
-                "then",
-                "there",
-                "these",
-                "they",
-                "this",
-                "to",
-                "was",
-                "will",
-                "with"
-            ]
-        }
-        "#;
+            {
+                "words": [
+                    "も",
+                    "の"
+                ]
+            }
+            "#;
         let result = StopWordsTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
     #[test]
+    #[cfg(any(all(feature = "ipadic",),))]
     fn test_stop_words_token_filter_apply_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-            "words": [
-                "a",
-                "an",
-                "and",
-                "are",
-                "as",
-                "at",
-                "be",
-                "but",
-                "by",
-                "for",
-                "if",
-                "in",
-                "into",
-                "is",
-                "it",
-                "no",
-                "not",
-                "of",
-                "on",
-                "or",
-                "such",
-                "that",
-                "the",
-                "their",
-                "then",
-                "there",
-                "these",
-                "they",
-                "this",
-                "to",
-                "was",
-                "will",
-                "with"
-            ]
-        }
-        "#;
+            {
+                "words": [
+                    "も",
+                    "の"
+                ]
+            }
+            "#;
         let filter = StopWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<FilteredToken> = vec![
-            FilteredToken {
-                text: "to".to_string(),
-                byte_start: 0,
-                byte_end: 2,
-                position: 0,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "be".to_string(),
-                byte_start: 3,
-                byte_end: 5,
-                position: 1,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "or".to_string(),
-                byte_start: 6,
-                byte_end: 8,
-                position: 2,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "not".to_string(),
-                byte_start: 9,
-                byte_end: 12,
-                position: 3,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "to".to_string(),
-                byte_start: 13,
-                byte_end: 15,
-                position: 4,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "be".to_string(),
-                byte_start: 16,
-                byte_end: 18,
-                position: 5,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "this".to_string(),
-                byte_start: 19,
-                byte_end: 23,
-                position: 6,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "is".to_string(),
-                byte_start: 24,
-                byte_end: 26,
-                position: 7,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "the".to_string(),
-                byte_start: 27,
-                byte_end: 30,
-                position: 8,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
-            FilteredToken {
-                text: "question".to_string(),
-                byte_start: 31,
-                byte_end: 39,
-                position: 9,
-                position_length: 1,
-                details: vec!["UNK".to_string()],
-            },
+        let mut tokens: Vec<Token> = vec![
+            Token::new("すもも", 0, 9, 0, WordId(36165, true), &dictionary, None),
+            Token::new("も", 9, 12, 1, WordId(73246, true), &dictionary, None),
+            Token::new("もも", 12, 18, 2, WordId(74990, true), &dictionary, None),
+            Token::new("も", 18, 21, 3, WordId(73246, true), &dictionary, None),
+            Token::new("もも", 21, 27, 4, WordId(74990, true), &dictionary, None),
+            Token::new("の", 27, 30, 5, WordId(55831, true), &dictionary, None),
+            Token::new("うち", 30, 36, 6, WordId(8029, true), &dictionary, None),
         ];
 
         filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(tokens.len(), 1);
-        assert_eq!(&tokens[0].text, "question");
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(&tokens[0].text, "すもも");
+        assert_eq!(&tokens[1].text, "もも");
+        assert_eq!(&tokens[2].text, "もも");
+        assert_eq!(&tokens[3].text, "うち");
     }
 }

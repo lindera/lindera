@@ -17,7 +17,6 @@ use lindera_filter::{
         },
         BoxCharacterFilter,
     },
-    token::FilteredToken,
     token_filter::{
         japanese_kana::{JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME},
         japanese_katakana_stem::{
@@ -73,6 +72,8 @@ use lindera_filter::token_filter::{
     korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
     korean_stop_tags::KoreanStopTagsTokenFilter,
 };
+
+use crate::token::Token;
 
 pub struct Analyzer {
     character_filters: Vec<BoxCharacterFilter>,
@@ -313,7 +314,7 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze(&self, text: &str) -> LinderaResult<Vec<FilteredToken>> {
+    pub fn analyze(&self, text: &str) -> LinderaResult<Vec<Token>> {
         let mut normalized_text = text.to_string();
 
         let mut text_len_vec: Vec<usize> = Vec::new();
@@ -341,33 +342,13 @@ impl Analyzer {
         // Tokenize.
         let mut tmp_tokens = self.tokenizer.tokenize(&normalized_text)?;
 
-        // Make filtered tokens.
-        let mut filtered_tokens = Vec::new();
-        for tmp_token in tmp_tokens.iter_mut() {
-            filtered_tokens.push(FilteredToken {
-                text: tmp_token.text.to_string(),
-                byte_start: tmp_token.byte_start,
-                byte_end: tmp_token.byte_end,
-                position: tmp_token.position,
-                position_length: tmp_token.position_length,
-                details: tmp_token
-                    .get_details()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
-                    })?
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-            });
-        }
-
         // Apply token filters.
         for token_filter in &self.token_filters {
-            token_filter.apply(&mut filtered_tokens)?;
+            token_filter.apply(&mut tmp_tokens)?;
         }
 
         // Correct token offsets
-        for token in filtered_tokens.iter_mut() {
+        for token in tmp_tokens.iter_mut() {
             // Override details.
             for (i, offsets) in offsets_vec.iter().enumerate() {
                 // Override start.
@@ -380,7 +361,28 @@ impl Analyzer {
             }
         }
 
-        Ok(filtered_tokens)
+        // Make analyzed tokens.
+        let mut tokens = Vec::new();
+        for token in tmp_tokens.iter_mut() {
+            tokens.push(Token {
+                text: token.text.to_string(),
+                byte_start: token.byte_start,
+                byte_end: token.byte_end,
+                position: token.position,
+                position_length: token.position_length,
+                word_id: token.word_id,
+                details: token
+                    .get_details()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
+                    })?
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+            });
+        }
+
+        Ok(tokens)
     }
 }
 

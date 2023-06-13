@@ -22,6 +22,7 @@ use clap::{Parser, Subcommand};
     feature = "cc-cedict-filter",
 ))]
 use lindera_analyzer::analyzer::Analyzer;
+use lindera_analyzer::token::Token;
 
 use lindera_core::{
     error::{LinderaError, LinderaErrorKind},
@@ -31,7 +32,6 @@ use lindera_core::{
 use lindera_dictionary::{
     build_dictionary, build_user_dictionary, DictionaryConfig, DictionaryKind, UserDictionaryConfig,
 };
-use lindera_filter::token::FilteredToken;
 use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES};
 
 #[derive(Debug, Parser)]
@@ -182,23 +182,24 @@ fn list(_args: ListArgs) -> LinderaResult<()> {
     Ok(())
 }
 
-fn mecab_output(tokens: Vec<FilteredToken>) -> LinderaResult<()> {
-    for token in tokens.iter() {
-        println!("{}\t{}", token.text, token.details.join(","));
+fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+    for token in tokens.iter_mut() {
+        println!("{}\t{}", token.text.clone(), token.details.join(","));
     }
     println!("EOS");
 
     Ok(())
 }
 
-fn json_output(tokens: Vec<FilteredToken>) -> LinderaResult<()> {
+fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     let mut tokens_json = Vec::new();
-    for token in tokens.iter() {
+    for token in tokens.iter_mut() {
         let token_info = serde_json::json!({
-            "text": token.text,
+            "text": token.text.clone(),
             "details": token.details,
             "byte_start": token.byte_start,
             "byte_end": token.byte_end,
+            "word_id": token.word_id,
         });
         tokens_json.push(token_info);
     }
@@ -211,7 +212,7 @@ fn json_output(tokens: Vec<FilteredToken>) -> LinderaResult<()> {
     Ok(())
 }
 
-fn wakati_output(tokens: Vec<FilteredToken>) -> LinderaResult<()> {
+fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
     let mut it = tokens.iter().peekable();
     while let Some(token) = it.next() {
         if it.peek().is_some() {
@@ -270,15 +271,16 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             break;
         }
 
-        let mut tokens = tokenizer.tokenize(text.trim())?;
-        let mut filtered_tokens = Vec::new();
-        for token in tokens.iter_mut() {
-            filtered_tokens.push(FilteredToken {
+        let mut tmp_tokens = tokenizer.tokenize(text.trim())?;
+        let mut tokens = Vec::new();
+        for token in tmp_tokens.iter_mut() {
+            tokens.push(Token {
                 text: token.text.to_string(),
                 byte_start: token.byte_start,
                 byte_end: token.byte_end,
                 position: token.position,
                 position_length: token.position_length,
+                word_id: token.word_id,
                 details: token
                     .get_details()
                     .ok_or_else(|| {
@@ -291,13 +293,13 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         }
         match output_format {
             Format::Mecab => {
-                mecab_output(filtered_tokens)?;
+                mecab_output(tokens)?;
             }
             Format::Json => {
-                json_output(filtered_tokens)?;
+                json_output(tokens)?;
             }
             Format::Wakati => {
-                wakati_output(filtered_tokens)?;
+                wakati_output(tokens)?;
             }
         }
     }
@@ -345,7 +347,7 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             break;
         }
         let text = text.trim().to_string();
-        let tokens = analyzer.analyze(&text)?;
+        let tokens = analyzer.analyze(&mut &text)?;
         match output_format {
             Format::Mecab => {
                 mecab_output(tokens)?;

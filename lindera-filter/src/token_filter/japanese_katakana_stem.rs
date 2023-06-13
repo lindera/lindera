@@ -3,8 +3,9 @@ use std::num::NonZeroUsize;
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_tokenizer::token::Token;
 
-use crate::{token::FilteredToken, token_filter::TokenFilter};
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
@@ -55,7 +56,7 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
     }
 
-    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         let min = self.config.min.get();
 
         for token in tokens.iter_mut() {
@@ -70,7 +71,8 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
             {
                 token.text = token.text[..token.text.len()
                     - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
-                    .to_string();
+                    .to_string()
+                    .into();
             }
         }
 
@@ -91,23 +93,41 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        token::FilteredToken,
-        token_filter::{
-            japanese_katakana_stem::{
-                JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
-            },
-            TokenFilter,
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use lindera_core::word_entry::WordId;
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use lindera_tokenizer::token::Token;
+
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use crate::token_filter::{
+        japanese_katakana_stem::{
+            JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
         },
+        TokenFilter,
     };
 
     #[test]
-    fn test_japanese_katakana_stem_token_filter_config_from_slice() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_katakana_stem_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
-        {
-            "min": 1
-        }
-        "#;
+            {
+                "min": 1
+            }
+            "#;
         let config =
             JapaneseKatakanaStemTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
 
@@ -115,131 +135,77 @@ mod tests {
     }
 
     #[test]
-    fn test_japanese_katakana_stem_token_filter_config_from_slice_zero() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_katakana_stem_token_filter_config_from_slice_zero_ipadic() {
         let config_str = r#"
-        {
-            "min": 0
-        }
-        "#;
+            {
+                "min": 0
+            }
+            "#;
         let result = JapaneseKatakanaStemTokenFilterConfig::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_err(), true);
     }
 
     #[test]
-    fn test_japanese_katakana_stem_token_filter_from_slice() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_katakana_stem_token_filter_from_slice_ipadic() {
         let config_str = r#"
-        {
-            "min": 1
-        }
-        "#;
+            {
+                "min": 1
+            }
+            "#;
         let result = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_japanese_katakana_stem_token_filter_from_slice_zero() {
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    fn test_japanese_katakana_stem_token_filter_from_slice_zero_ipadic() {
         let config_str = r#"
-        {
-            "min": 0
-        }
-        "#;
+            {
+                "min": 0
+            }
+            "#;
         let result = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(result.is_err(), true);
     }
 
     #[test]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-            "min": 3
-        }
-        "#;
+            {
+                "min": 3
+            }
+            "#;
         let filter = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<FilteredToken> = vec![
-            FilteredToken {
-                text: "カー".to_string(),
-                byte_start: 0,
-                byte_end: 6,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "カー".to_string(),
-                    "カー".to_string(),
-                    "カー".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "レバー".to_string(),
-                byte_start: 7,
-                byte_end: 16,
-                position: 1,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "レバー".to_string(),
-                    "レバー".to_string(),
-                    "レバー".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "サッカー".to_string(),
-                byte_start: 17,
-                byte_end: 29,
-                position: 2,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "サッカー".to_string(),
-                    "サッカー".to_string(),
-                    "サッカー".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "レシーバー".to_string(),
-                byte_start: 30,
-                byte_end: 45,
-                position: 3,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "レシーバー".to_string(),
-                    "レシーバー".to_string(),
-                    "レシーバー".to_string(),
-                ],
-            },
+        let mut tokens: Vec<Token> = vec![
+            Token::new("バター", 0, 9, 0, WordId(94843, true), &dictionary, None),
+            Token::new(
+                "メーカー",
+                9,
+                21,
+                1,
+                WordId(100137, true),
+                &dictionary,
+                None,
+            ),
         ];
 
         filter.apply(&mut tokens).unwrap();
 
-        assert_eq!(tokens.len(), 4);
-        assert_eq!(&tokens[0].text, "カー");
-        assert_eq!(&tokens[1].text, "レバー");
-        assert_eq!(&tokens[2].text, "サッカ");
-        assert_eq!(&tokens[3].text, "レシーバ");
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(&tokens[0].text, "バター");
+        assert_eq!(&tokens[1].text, "メーカ");
     }
 }

@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_dictionary::DictionaryKind;
+use lindera_tokenizer::token::Token;
 
-use crate::{token::FilteredToken, token_filter::TokenFilter};
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
@@ -48,28 +49,29 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
     }
 
-    // fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-    fn apply(&self, tokens: &mut Vec<FilteredToken>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            if &token.details[0] == "UNK" {
-                // NOOP
-                continue;
-            }
-            match self.config.kind {
-                #[cfg(feature = "ipadic")]
-                DictionaryKind::IPADIC => {
-                    token.text = token.details[6].clone();
-                }
-                #[cfg(feature = "ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => {
-                    token.text = token.details[6].clone();
-                }
-                #[cfg(feature = "unidic")]
-                DictionaryKind::UniDic => {
-                    token.text = token.details[10].clone();
-                }
-                _ => {
+            if let Some(details) = token.get_details() {
+                if details[0] == "UNK" {
                     // NOOP
+                    continue;
+                }
+                match self.config.kind {
+                    #[cfg(feature = "ipadic")]
+                    DictionaryKind::IPADIC => {
+                        token.text = details[6].to_string().into();
+                    }
+                    #[cfg(feature = "ipadic-neologd")]
+                    DictionaryKind::IPADICNEologd => {
+                        token.text = details[6].to_string().into();
+                    }
+                    #[cfg(feature = "unidic")]
+                    DictionaryKind::UniDic => {
+                        token.text = details[10].to_string().into();
+                    }
+                    _ => {
+                        // NOOP
+                    }
                 }
             }
         }
@@ -82,28 +84,30 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 mod tests {
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
-    use lindera_dictionary::DictionaryKind;
+    use lindera_core::word_entry::WordId;
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+    #[cfg(any(
+        all(feature = "ipadic", feature = "ipadic-filter",),
+        all(feature = "unidic", feature = "unidic-filter",)
+    ))]
+    use lindera_tokenizer::token::Token;
 
     #[cfg(any(
         all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
         all(feature = "unidic", feature = "unidic-filter",)
     ))]
-    use crate::{
-        token::FilteredToken,
-        token_filter::{
-            japanese_base_form::{JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig},
-            TokenFilter,
-        },
+    use crate::token_filter::{
+        japanese_base_form::{JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig},
+        TokenFilter,
     };
 
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -129,10 +133,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -149,101 +150,44 @@ mod tests {
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_unidic() {
         let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
+            {
+                "kind": "unidic"
+            }
+            "#;
         let result = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_ipadic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::IPADIC),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-            "kind": "ipadic"
-        }
-        "#;
+            {
+                "kind": "ipadic"
+            }
+            "#;
         let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<FilteredToken> = vec![
-            FilteredToken {
-                text: "羽田空港".to_string(),
-                byte_start: 0,
-                byte_end: 12,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "羽田空港".to_string(),
-                    "ハネダクウコウ".to_string(),
-                    "ハネダクーコー".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "に".to_string(),
-                byte_start: 12,
-                byte_end: 15,
-                position: 1,
-                position_length: 1,
-                details: vec![
-                    "助詞".to_string(),
-                    "格助詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "に".to_string(),
-                    "ニ".to_string(),
-                    "ニ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "あり".to_string(),
-                byte_start: 15,
-                byte_end: 18,
-                position: 2,
-                position_length: 1,
-                details: vec![
-                    "動詞".to_string(),
-                    "自立".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "五段・ラ行".to_string(),
-                    "連用形".to_string(),
-                    "ある".to_string(),
-                    "アリ".to_string(),
-                    "アリ".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "ます".to_string(),
-                byte_start: 18,
-                byte_end: 24,
-                position: 3,
-                position_length: 1,
-                details: vec![
-                    "助動詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "特殊・マス".to_string(),
-                    "基本形".to_string(),
-                    "ます".to_string(),
-                    "マス".to_string(),
-                    "マス".to_string(),
-                ],
-            },
+        let mut tokens: Vec<Token> = vec![
+            Token::new(
+                "羽田空港",
+                0,
+                12,
+                0,
+                WordId(321702, true),
+                &dictionary,
+                None,
+            ),
+            Token::new("に", 12, 15, 1, WordId(53041, true), &dictionary, None),
+            Token::new("あり", 15, 21, 2, WordId(3222, true), &dictionary, None),
+            Token::new("ます", 21, 27, 3, WordId(68730, true), &dictionary, None),
         ];
 
         filter.apply(&mut tokens).unwrap();
@@ -258,144 +202,25 @@ mod tests {
     #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_unidic() {
+        let dictionary_config = DictionaryConfig {
+            kind: Some(DictionaryKind::UniDic),
+            path: None,
+        };
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
+
         let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
+            {
+                "kind": "unidic"
+            }
+            "#;
         let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let mut tokens: Vec<FilteredToken> = vec![
-            FilteredToken {
-                text: "羽田".to_string(),
-                byte_start: 0,
-                byte_end: 6,
-                position: 0,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "固有名詞".to_string(),
-                    "人名".to_string(),
-                    "姓".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "ハタ".to_string(),
-                    "ハタ".to_string(),
-                    "羽田".to_string(),
-                    "ハタ".to_string(),
-                    "羽田".to_string(),
-                    "ハタ".to_string(),
-                    "固".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "空港".to_string(),
-                byte_start: 6,
-                byte_end: 12,
-                position: 1,
-                position_length: 1,
-                details: vec![
-                    "名詞".to_string(),
-                    "普通名詞".to_string(),
-                    "一般".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "クウコウ".to_string(),
-                    "空港".to_string(),
-                    "空港".to_string(),
-                    "クーコー".to_string(),
-                    "空港".to_string(),
-                    "クーコー".to_string(),
-                    "漢".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "に".to_string(),
-                byte_start: 12,
-                byte_end: 15,
-                position: 2,
-                position_length: 1,
-                details: vec![
-                    "助詞".to_string(),
-                    "格助詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "ニ".to_string(),
-                    "に".to_string(),
-                    "に".to_string(),
-                    "ニ".to_string(),
-                    "に".to_string(),
-                    "ニ".to_string(),
-                    "和".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "あり".to_string(),
-                byte_start: 15,
-                byte_end: 18,
-                position: 3,
-                position_length: 1,
-                details: vec![
-                    "動詞".to_string(),
-                    "非自立可能".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "五段-ラ行".to_string(),
-                    "連用形-一般".to_string(),
-                    "アル".to_string(),
-                    "有る".to_string(),
-                    "あり".to_string(),
-                    "アリ".to_string(),
-                    "ある".to_string(),
-                    "アル".to_string(),
-                    "和".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            },
-            FilteredToken {
-                text: "ます".to_string(),
-                byte_start: 18,
-                byte_end: 24,
-                position: 4,
-                position_length: 1,
-                details: vec![
-                    "助動詞".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "助動詞-マス".to_string(),
-                    "終止形-一般".to_string(),
-                    "マス".to_string(),
-                    "ます".to_string(),
-                    "ます".to_string(),
-                    "マス".to_string(),
-                    "ます".to_string(),
-                    "マス".to_string(),
-                    "和".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                    "*".to_string(),
-                ],
-            },
+        let mut tokens: Vec<Token> = vec![
+            Token::new("羽田", 0, 6, 0, WordId(618177, true), &dictionary, None),
+            Token::new("空港", 6, 12, 1, WordId(587348, true), &dictionary, None),
+            Token::new("に", 12, 15, 2, WordId(106480, true), &dictionary, None),
+            Token::new("あり", 15, 21, 2, WordId(6075, true), &dictionary, None),
+            Token::new("ます", 21, 27, 2, WordId(140895, true), &dictionary, None),
         ];
 
         filter.apply(&mut tokens).unwrap();
