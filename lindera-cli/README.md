@@ -393,7 +393,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 EOS
 ```
 
-`decopose` mode tokenizes a compound noun words additionally:
+`decompose` mode tokenizes a compound noun words additionally:
 
 ```shell script
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dic-type=ipadic --mode=decompose
