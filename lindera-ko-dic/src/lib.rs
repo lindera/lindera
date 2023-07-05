@@ -102,8 +102,14 @@ pub fn char_def() -> LinderaResult<CharacterDefinitions> {
 }
 
 pub fn connection() -> ConnectionCostMatrix {
-    #[allow(clippy::needless_borrow)]
-    ConnectionCostMatrix::load(&CONNECTION_DATA)
+    #[cfg(feature = "compress")]
+    {
+        ConnectionCostMatrix::load(&CONNECTION_DATA)
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        ConnectionCostMatrix::load_static(CONNECTION_DATA)
+    }
 }
 
 pub fn prefix_dict() -> PrefixDict {
