@@ -1,17 +1,27 @@
+use std::borrow::Cow;
+
 use byteorder::{ByteOrder, LittleEndian};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ConnectionCostMatrix {
-    pub costs_data: Vec<u8>,
+    pub costs_data: Cow<'static, [u8]>,
     pub backward_size: u32,
 }
 
 impl ConnectionCostMatrix {
+    pub fn load_static(conn_data: &'static [u8]) -> ConnectionCostMatrix {
+        let backward_size = LittleEndian::read_i16(&conn_data[2..4]);
+        ConnectionCostMatrix {
+            costs_data: Cow::Borrowed(&conn_data[4..]),
+            backward_size: backward_size as u32,
+        }
+    }
+
     pub fn load(conn_data: &[u8]) -> ConnectionCostMatrix {
         let backward_size = LittleEndian::read_i16(&conn_data[2..4]);
         ConnectionCostMatrix {
-            costs_data: conn_data[4..].to_vec(),
+            costs_data: Cow::Owned(conn_data[4..].to_vec()),
             backward_size: backward_size as u32,
         }
     }

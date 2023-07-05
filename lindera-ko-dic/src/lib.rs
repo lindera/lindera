@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 #[cfg(feature = "ko-dic")]
 use std::env;
 
@@ -102,8 +103,14 @@ pub fn char_def() -> LinderaResult<CharacterDefinitions> {
 }
 
 pub fn connection() -> ConnectionCostMatrix {
-    #[allow(clippy::needless_borrow)]
-    ConnectionCostMatrix::load(&CONNECTION_DATA)
+    #[cfg(feature = "compress")]
+    {
+        ConnectionCostMatrix::load(&CONNECTION_DATA)
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        ConnectionCostMatrix::load_static(CONNECTION_DATA)
+    }
 }
 
 pub fn prefix_dict() -> PrefixDict {
@@ -116,10 +123,24 @@ pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
     UnknownDictionary::load(&UNKNOWN_DATA)
 }
 
-pub fn words_idx_data() -> Vec<u8> {
-    WORDS_IDX_DATA.to_vec()
+pub fn words_idx_data() -> Cow<'static, [u8]> {
+    #[cfg(feature = "compress")]
+    {
+        Cow::Owned(WORDS_IDX_DATA.to_vec())
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        Cow::Borrowed(WORDS_IDX_DATA)
+    }
 }
 
-pub fn words_data() -> Vec<u8> {
-    WORDS_DATA.to_vec()
+pub fn words_data() -> Cow<'static, [u8]> {
+    #[cfg(feature = "compress")]
+    {
+        Cow::Owned(WORDS_DATA.to_vec())
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        Cow::Borrowed(WORDS_DATA)
+    }
 }
