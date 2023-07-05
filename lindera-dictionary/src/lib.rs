@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     fs,
     path::{Path, PathBuf},
     str::FromStr,
@@ -143,8 +144,8 @@ pub fn load_dictionary(path: PathBuf) -> LinderaResult<Dictionary> {
         cost_matrix: connection(path.clone())?,
         char_definitions: char_def(path.clone())?,
         unknown_dictionary: unknown_dict(path.clone())?,
-        words_idx_data: words_idx_data(path.clone())?,
-        words_data: words_data(path)?,
+        words_idx_data: Cow::Owned(words_idx_data(path.clone())?),
+        words_data: Cow::Owned(words_data(path)?),
     })
 }
 

@@ -92,8 +92,8 @@ impl<'a> Token<'a> {
 
         let (words_idx_data, words_data) = if self.word_id.is_system() {
             (
-                self.dictionary.words_idx_data.as_slice(),
-                self.dictionary.words_data.as_slice(),
+                &*self.dictionary.words_idx_data,
+                &*self.dictionary.words_data,
             )
         } else {
             match self.user_dictionary {

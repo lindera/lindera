@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,8 +14,8 @@ pub struct Dictionary {
     pub cost_matrix: ConnectionCostMatrix,
     pub char_definitions: CharacterDefinitions,
     pub unknown_dictionary: UnknownDictionary,
-    pub words_idx_data: Vec<u8>,
-    pub words_data: Vec<u8>,
+    pub words_idx_data: Cow<'static, [u8]>,
+    pub words_data: Cow<'static, [u8]>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
