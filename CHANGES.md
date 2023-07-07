@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.26.0 (2023-07-07)
+- Reduce dictionary data copy #329 @BlueGreenMagick
+- Fix typo in lindera-cli/README #328 @abetomo
+- Change the token text type #327 @mosuka
+
 ## 0.25.0 (2023-05-21)
 - Download NEologd dictionary from Google Drive #325 @mosuka
 - Add IPADIC-NEologd dictionary #322 @mosuka

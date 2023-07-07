@@ -1,6 +1,6 @@
 [package]
 name = "lindera-decompress"
-version = "0.25.0"
+version = "0.26.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera-decompress"
@@ -12,6 +12,6 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.68"
-flate2 = "1.0.25"
-serde = { version = "1.0.152", features = ["derive"]}
+anyhow = "1.0.71"
+flate2 = "1.0.26"
+serde = { version = "1.0.167", features = ["derive"]}
