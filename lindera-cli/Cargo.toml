@@ -30,9 +30,9 @@ cc-cedict-compress = ["lindera-tokenizer/cc-cedict-compress"]  # Compress CC-CED
 cc-cedict-filter = ["lindera-filter/cc-cedict"]  # Include filters for CC-CEDICT
 
 [dependencies]
-anyhow = "1.0.68"
-clap = { version = "4.1.1", features = ["derive", "cargo"] }
-serde_json = "1.0.91"
+anyhow = "1.0.71"
+clap = { version = "4.3.11", features = ["derive", "cargo"] }
+serde_json = "1.0.100"
 
 lindera-analyzer = { version = "0.26.0", path = "../lindera-analyzer" }
 lindera-cc-cedict-builder = { version = "0.26.0", path = "../lindera-cc-cedict-builder" }

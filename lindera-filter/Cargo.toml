@@ -25,15 +25,15 @@ cc-cedict = ["lindera-dictionary/cc-cedict"]  # Chinese dictionary included
 cc-cedict-filter = []
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1.0.71"
 bincode = "1.3.3"
 byteorder = "1.4.3"
 kanaria = "0.2.0"
-once_cell = "1.17.0"
-regex = "1.7.1"
-serde = { version="1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
-unicode-blocks = "0.1.5"
+once_cell = "1.18.0"
+regex = "1.9.0"
+serde = { version="1.0.167", features = ["derive"] }
+serde_json = "1.0.100"
+unicode-blocks = "0.1.8"
 unicode-normalization = "0.1.22"
 unicode-segmentation = "1.10.1"
 yada = "0.5.0"
@@ -43,4 +43,4 @@ lindera-dictionary = { version = "0.26.0", path = "../lindera-dictionary" }
 lindera-tokenizer = { version = "0.26.0", path = "../lindera-tokenizer" }
 
 [dev-dependencies]
-once_cell = "1.17.0"
+once_cell = "1.18.0"

@@ -25,10 +25,10 @@ cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Include Chinese dictionary (CC-CE
 cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1.0.71"
 bincode = "1.3.3"
 byteorder = "1.4.3"
-serde = { version="1.0.152", features = ["derive"] }
+serde = { version="1.0.167", features = ["derive"] }
 
 lindera-core = { version = "0.26.0", path = "../lindera-core" }
 lindera-cc-cedict = { version = "0.26.0", path = "../lindera-cc-cedict", optional = true }

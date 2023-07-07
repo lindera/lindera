@@ -12,12 +12,12 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1.0.71"
 bincode = "1.3.3"
 byteorder = "1.4.3"
-encoding_rs = "0.8.31"
-log = "0.4.17"
-once_cell = "1.17.0"
-serde = {version="1.0.152", features = ["derive"] }
-thiserror = "1.0.38"
+encoding_rs = "0.8.32"
+log = "0.4.19"
+once_cell = "1.18.0"
+serde = {version="1.0.167", features = ["derive"] }
+thiserror = "1.0.43"
 yada = "0.5.0"
