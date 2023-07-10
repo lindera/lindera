@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.27.0 (2023-07-10)
+- Move the character and token filters to the analyzer package #331 @mosuka
+
 ## 0.26.0 (2023-07-07)
 - Reduce dictionary data copy #329 @BlueGreenMagick
 - Fix typo in lindera-cli/README #328 @abetomo
