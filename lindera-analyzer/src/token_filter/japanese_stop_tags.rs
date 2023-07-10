@@ -1,11 +1,10 @@
-use std::{collections::HashSet, mem};
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
-use lindera_tokenizer::token::Token;
 
-use crate::token_filter::TokenFilter;
+use crate::{token::Token, token_filter::TokenFilter};
 
 pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
@@ -65,23 +64,15 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
-        let mut new_tokens = Vec::new();
-
-        for token in tokens.iter_mut() {
-            if let Some(details) = &mut token.get_details() {
-                let mut formatted_tags = vec!["*", "*", "*", "*"];
-                let tags_len = if details.len() >= 4 { 4 } else { 1 };
-                for (i, j) in details[0..tags_len].iter().enumerate() {
-                    formatted_tags[i] = j;
-                }
-                if !self.config.tags.contains(&formatted_tags.join(",")) {
-                    new_tokens.push(token.clone());
-                }
+    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
+        tokens.retain(|token| {
+            let mut formatted_tags = vec!["*", "*", "*", "*"];
+            let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
+            for (i, j) in token.details[0..tags_len].iter().enumerate() {
+                formatted_tags[i] = j;
             }
-        }
-
-        mem::swap(tokens, &mut new_tokens);
+            !self.config.tags.contains(&formatted_tags.join(","))
+        });
 
         Ok(())
     }
@@ -91,15 +82,14 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
 mod tests {
     #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     use lindera_core::word_entry::WordId;
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
-    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
-    use lindera_tokenizer::token::Token;
 
     #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
-    use crate::token_filter::{
-        japanese_stop_tags::{JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig},
-        TokenFilter,
+    use crate::{
+        token::Token,
+        token_filter::{
+            japanese_stop_tags::{JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig},
+            TokenFilter,
+        },
     };
 
     #[test]
@@ -183,12 +173,6 @@ mod tests {
     #[test]
     #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     fn test_japanese_stop_tags_token_filter_apply_ipadic() {
-        let dictionary_config = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
-
         let config_str = r#"
             {
                 "tags": [
@@ -223,13 +207,139 @@ mod tests {
         let filter = JapaneseStopTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("すもも", 0, 9, 0, WordId(36165, true), &dictionary, None),
-            Token::new("も", 9, 12, 1, WordId(73246, true), &dictionary, None),
-            Token::new("もも", 12, 18, 2, WordId(74990, true), &dictionary, None),
-            Token::new("も", 18, 21, 3, WordId(73246, true), &dictionary, None),
-            Token::new("もも", 21, 27, 4, WordId(74990, true), &dictionary, None),
-            Token::new("の", 27, 30, 5, WordId(55831, true), &dictionary, None),
-            Token::new("うち", 30, 36, 6, WordId(8029, true), &dictionary, None),
+            Token {
+                text: "すもも".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                word_id: WordId(36165, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "すもも".to_string(),
+                    "スモモ".to_string(),
+                    "スモモ".to_string(),
+                ],
+            },
+            Token {
+                text: "も".to_string(),
+                byte_start: 9,
+                byte_end: 12,
+                position: 1,
+                position_length: 1,
+                word_id: WordId(73246, true),
+                details: vec![
+                    "助詞".to_string(),
+                    "係助詞".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "も".to_string(),
+                    "モ".to_string(),
+                    "モ".to_string(),
+                ],
+            },
+            Token {
+                text: "もも".to_string(),
+                byte_start: 12,
+                byte_end: 18,
+                position: 2,
+                position_length: 1,
+                word_id: WordId(74990, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "もも".to_string(),
+                    "モモ".to_string(),
+                    "モモ".to_string(),
+                ],
+            },
+            Token {
+                text: "も".to_string(),
+                byte_start: 18,
+                byte_end: 21,
+                position: 3,
+                position_length: 1,
+                word_id: WordId(73246, true),
+                details: vec![
+                    "助詞".to_string(),
+                    "係助詞".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "も".to_string(),
+                    "モ".to_string(),
+                    "モ".to_string(),
+                ],
+            },
+            Token {
+                text: "もも".to_string(),
+                byte_start: 21,
+                byte_end: 27,
+                position: 4,
+                position_length: 1,
+                word_id: WordId(74990, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "もも".to_string(),
+                    "モモ".to_string(),
+                    "モモ".to_string(),
+                ],
+            },
+            Token {
+                text: "の".to_string(),
+                byte_start: 27,
+                byte_end: 30,
+                position: 5,
+                position_length: 1,
+                word_id: WordId(55831, true),
+                details: vec![
+                    "助詞".to_string(),
+                    "連体化".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "の".to_string(),
+                    "ノ".to_string(),
+                    "ノ".to_string(),
+                ],
+            },
+            Token {
+                text: "うち".to_string(),
+                byte_start: 30,
+                byte_end: 36,
+                position: 6,
+                position_length: 1,
+                word_id: WordId(8029, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "非自立".to_string(),
+                    "副詞可能".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "うち".to_string(),
+                    "ウチ".to_string(),
+                    "ウチ".to_string(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();
