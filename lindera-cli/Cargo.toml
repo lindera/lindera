@@ -15,19 +15,19 @@ license = "MIT"
 default = []  # No directories included
 ipadic = ["lindera-tokenizer/ipadic"]  # Include IPADIC dictionary (Japanese)
 ipadic-compress = ["lindera-tokenizer/ipadic-compress"]  # Compress IPADIC
-ipadic-filter = ["lindera-filter/ipadic"]  # Include filters for IPADIC
+ipadic-filter = ["lindera-analyzer/ipadic-filter"]  # Include filters for IPADIC
 ipadic-neologd = ["lindera-tokenizer/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
 ipadic-neologd-compress = ["lindera-tokenizer/ipadic-neologd-compress"]  # Compress IPADIC NEologd
-ipadic-neologd-filter = ["lindera-filter/ipadic-neologd"]  # Include filters for IPADIC NEologd
+ipadic-neologd-filter = ["lindera-analyzer/ipadic-neologd-filter"]  # Include filters for IPADIC NEologd
 unidic = ["lindera-tokenizer/unidic"]  # Include UniDic dictionary (Japanese)
 unidic-compress = ["lindera-tokenizer/unidic-compress"]  # Compress UniDic
-unidic-filter = ["lindera-filter/unidic"]  # Include filters for UniDic
+unidic-filter = ["lindera-analyzer/unidic-filter"]  # Include filters for UniDic
 ko-dic = ["lindera-tokenizer/ko-dic"]  # Include ko-dic dictionary (Korean)
 ko-dic-compress = ["lindera-tokenizer/ko-dic-compress"]  # Compress ko-dic
-ko-dic-filter = ["lindera-filter/ko-dic"]  # Include filters for ko-dic
+ko-dic-filter = ["lindera-analyzer/ko-dic-filter"]  # Include filters for ko-dic
 cc-cedict = ["lindera-tokenizer/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
 cc-cedict-compress = ["lindera-tokenizer/cc-cedict-compress"]  # Compress CC-CEDICT
-cc-cedict-filter = ["lindera-filter/cc-cedict"]  # Include filters for CC-CEDICT
+cc-cedict-filter = ["lindera-analyzer/cc-cedict-filter"]  # Include filters for CC-CEDICT
 
 [dependencies]
 anyhow = "1.0.71"
@@ -38,7 +38,6 @@ lindera-analyzer = { version = "0.26.0", path = "../lindera-analyzer" }
 lindera-cc-cedict-builder = { version = "0.26.0", path = "../lindera-cc-cedict-builder" }
 lindera-core = { version = "0.26.0", path = "../lindera-core" }
 lindera-dictionary = { version = "0.26.0", path = "../lindera-dictionary" }
-lindera-filter = { version = "0.26.0", path = "../lindera-filter" }
 lindera-ipadic-builder = { version = "0.26.0", path = "../lindera-ipadic-builder" }
 lindera-ipadic-neologd-builder = { version = "0.26.0", path = "../lindera-ipadic-neologd-builder" }
 lindera-ko-dic-builder = { version = "0.26.0", path = "../lindera-ko-dic-builder" }

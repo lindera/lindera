@@ -2,9 +2,7 @@ use std::{fs, path::Path};
 
 use serde_json::Value;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-use lindera_filter::{
+use crate::{
     character_filter::{
         correct_offset,
         japanese_iteration_mark::{
@@ -31,6 +29,7 @@ use lindera_filter::{
         BoxTokenFilter,
     },
 };
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_tokenizer::tokenizer::Tokenizer;
 
 #[cfg(any(
@@ -38,7 +37,7 @@ use lindera_tokenizer::tokenizer::Tokenizer;
     all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
     all(feature = "unidic", feature = "unidic-filter",)
 ))]
-use lindera_filter::token_filter::{
+use crate::token_filter::{
     japanese_base_form::JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
     japanese_compound_word::JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
     japanese_keep_tags::JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
@@ -48,7 +47,7 @@ use lindera_filter::token_filter::{
 };
 
 #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
-use lindera_filter::token_filter::{
+use crate::token_filter::{
     korean_keep_tags::KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
     korean_reading_form::KOREAN_READING_FORM_TOKEN_FILTER_NAME,
     korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
@@ -59,7 +58,7 @@ use lindera_filter::token_filter::{
     all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
     all(feature = "unidic", feature = "unidic-filter",)
 ))]
-use lindera_filter::token_filter::{
+use crate::token_filter::{
     japanese_base_form::JapaneseBaseFormTokenFilter,
     japanese_compound_word::JapaneseCompoundWordTokenFilter,
     japanese_keep_tags::JapaneseKeepTagsTokenFilter, japanese_number::JapaneseNumberTokenFilter,
@@ -68,7 +67,7 @@ use lindera_filter::token_filter::{
 };
 
 #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
-use lindera_filter::token_filter::{
+use crate::token_filter::{
     korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
     korean_stop_tags::KoreanStopTagsTokenFilter,
 };
@@ -342,25 +341,6 @@ impl Analyzer {
         // Tokenize.
         let mut tmp_tokens = self.tokenizer.tokenize(&normalized_text)?;
 
-        // Apply token filters.
-        for token_filter in &self.token_filters {
-            token_filter.apply(&mut tmp_tokens)?;
-        }
-
-        // Correct token offsets
-        for token in tmp_tokens.iter_mut() {
-            // Override details.
-            for (i, offsets) in offsets_vec.iter().enumerate() {
-                // Override start.
-                token.byte_start =
-                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
-
-                // Override end.
-                token.byte_end =
-                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
-            }
-        }
-
         // Make analyzed tokens.
         let mut tokens = Vec::new();
         for token in tmp_tokens.iter_mut() {
@@ -380,6 +360,25 @@ impl Analyzer {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>(),
             });
+        }
+
+        // Apply token filters.
+        for token_filter in &self.token_filters {
+            token_filter.apply(&mut tokens)?;
+        }
+
+        // Correct token offsets
+        for token in tokens.iter_mut() {
+            // Override details.
+            for (i, offsets) in offsets_vec.iter().enumerate() {
+                // Override start.
+                token.byte_start =
+                    correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
+
+                // Override end.
+                token.byte_end =
+                    correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+            }
         }
 
         Ok(tokens)

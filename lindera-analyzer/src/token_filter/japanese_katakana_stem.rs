@@ -3,9 +3,8 @@ use std::num::NonZeroUsize;
 use serde::{Deserialize, Serialize};
 
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
-use lindera_tokenizer::token::Token;
 
-use crate::token_filter::TokenFilter;
+use crate::{token::Token, token_filter::TokenFilter};
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
@@ -56,7 +55,7 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         let min = self.config.min.get();
 
         for token in tokens.iter_mut() {
@@ -93,31 +92,18 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
     use lindera_core::word_entry::WordId;
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
-    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
-    use lindera_tokenizer::token::Token;
 
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
-    ))]
-    use crate::token_filter::{
-        japanese_katakana_stem::{
-            JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    use crate::{
+        token::Token,
+        token_filter::{
+            japanese_katakana_stem::{
+                JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
+            },
+            TokenFilter,
         },
-        TokenFilter,
     };
 
     #[test]
@@ -176,12 +162,6 @@ mod tests {
     #[test]
     #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
-        let dictionary_config = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
-
         let config_str = r#"
             {
                 "min": 3
@@ -190,16 +170,44 @@ mod tests {
         let filter = JapaneseKatakanaStemTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let mut tokens: Vec<Token> = vec![
-            Token::new("バター", 0, 9, 0, WordId(94843, true), &dictionary, None),
-            Token::new(
-                "メーカー",
-                9,
-                21,
-                1,
-                WordId(100137, true),
-                &dictionary,
-                None,
-            ),
+            Token {
+                text: "バター".to_string(),
+                byte_start: 0,
+                byte_end: 9,
+                position: 0,
+                position_length: 1,
+                word_id: WordId(94843, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "バター".to_string(),
+                    "バター".to_string(),
+                    "バター".to_string(),
+                ],
+            },
+            Token {
+                text: "メーカー".to_string(),
+                byte_start: 9,
+                byte_end: 21,
+                position: 1,
+                position_length: 1,
+                word_id: WordId(100137, true),
+                details: vec![
+                    "名詞".to_string(),
+                    "一般".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "*".to_string(),
+                    "バター".to_string(),
+                    "バター".to_string(),
+                    "バター".to_string(),
+                ],
+            },
         ];
 
         filter.apply(&mut tokens).unwrap();

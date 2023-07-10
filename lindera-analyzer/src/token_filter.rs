@@ -19,11 +19,13 @@ pub mod uppercase;
 use std::ops::Deref;
 
 use lindera_core::LinderaResult;
-use lindera_tokenizer::token::Token;
+// use lindera_tokenizer::token::Token;
+
+use crate::token::Token;
 
 pub trait TokenFilter: 'static + Send + Sync + TokenFilterClone {
     fn name(&self) -> &str;
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()>;
+    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()>;
 }
 
 pub struct BoxTokenFilter(Box<dyn TokenFilter + 'static + Send + Sync>);

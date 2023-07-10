@@ -1,2 +1,5 @@
-pub mod character_filter;
-pub mod token_filter;
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {}
+}

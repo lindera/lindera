@@ -1,7 +1,6 @@
 use lindera_core::LinderaResult;
-use lindera_tokenizer::token::Token;
 
-use crate::token_filter::TokenFilter;
+use crate::{token::Token, token_filter::TokenFilter};
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
@@ -27,7 +26,7 @@ impl TokenFilter for LowercaseTokenFilter {
         LOWERCASE_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             token.text = token.text.to_lowercase().into();
         }
@@ -40,34 +39,27 @@ impl TokenFilter for LowercaseTokenFilter {
 mod tests {
     #[cfg(any(all(feature = "ipadic",),))]
     use lindera_core::word_entry::WordId;
-    #[cfg(any(all(feature = "ipadic",),))]
-    use lindera_dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
-    #[cfg(any(all(feature = "ipadic",),))]
-    use lindera_tokenizer::token::Token;
 
     #[cfg(any(all(feature = "ipadic",),))]
-    use crate::token_filter::{lowercase::LowercaseTokenFilter, TokenFilter};
+    use crate::{
+        token::Token,
+        token_filter::{lowercase::LowercaseTokenFilter, TokenFilter},
+    };
 
     #[test]
     #[cfg(any(all(feature = "ipadic",),))]
     fn test_lowercase_token_filter_apply_ipadic() {
-        let dictionary_config = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
-
         let filter = LowercaseTokenFilter::default();
 
-        let mut tokens: Vec<Token> = vec![Token::new(
-            "Rust",
-            0,
-            9,
-            0,
-            WordId(4294967295, true),
-            &dictionary,
-            None,
-        )];
+        let mut tokens: Vec<Token> = vec![Token {
+            text: "Rust".to_string(),
+            byte_start: 0,
+            byte_end: 4,
+            position: 0,
+            position_length: 1,
+            word_id: WordId(4294967295, true),
+            details: vec!["UNK".to_string()],
+        }];
 
         filter.apply(&mut tokens).unwrap();
 
