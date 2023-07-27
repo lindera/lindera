@@ -243,7 +243,7 @@ impl Tokenizer {
         let mut byte_position = 0_usize;
 
         // Split text into sentences using Japanese punctuation.
-        for sentence in text.split_inclusive(&['。', '、']) {
+        for sentence in text.split_inclusive(&['。', '、', '\n', '\t']) {
             if text.is_empty() {
                 continue;
             }
