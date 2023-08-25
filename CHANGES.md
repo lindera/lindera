@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.27.1 (2023-08-25)
+- Change UniDic download url #337 @mosuka
+
 ## 0.27.0 (2023-07-10)
 - Move the character and token filters to the analyzer package #331 @mosuka
 

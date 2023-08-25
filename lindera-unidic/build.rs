@@ -64,8 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let tmp_path = Path::new(&build_dir).join(file_name.to_owned() + ".download");
 
             // Download a tarball
-            let download_url =
-                "https://drive.google.com/uc?export=download&confirm=yes&id=1LsYNZqw_ep1VJf3p49NZd9UTYaRq-V4p";
+            let download_url = "https://download.johtani.info/unidic-mecab-2.1.2_src.zip";
             let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
 
