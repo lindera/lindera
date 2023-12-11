@@ -178,7 +178,7 @@ fn main() -> LinderaResult<()> {
     println!("text: {}", text);
 
     // tokenize the text
-    let tokens = analyzer.analyze(&mut text)?;
+    let tokens = analyzer.analyze(&text)?;
 
     // output the tokens
     for token in tokens {
