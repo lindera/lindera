@@ -30,25 +30,25 @@ cc-cedict-compress = ["lindera-tokenizer/cc-cedict-compress"]  # Compress CC-CED
 cc-cedict-filter = []  # Include filters for CC-CEDICT
 
 [dependencies]
-anyhow = "1.0.71"
-bincode = "1.3.3"
-byteorder = "1.4.3"
-encoding = "0.2.33"
-kanaria = "0.2.0"
-once_cell = "1.18.0"
-regex = "1.9.0"
-serde = {version="1.0.167", features = ["derive"] }
-serde_json = "1.0.100"
-thiserror = "1.0.43"
-unicode-blocks = "0.1.8"
-unicode-normalization = "0.1.22"
-unicode-segmentation = "1.10.1"
-yada = "0.5.0"
+anyhow.workspace = true
+bincode.workspace = true
+byteorder.workspace = true
+encoding.workspace = true
+kanaria.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+unicode-blocks.workspace = true
+unicode-normalization.workspace = true
+unicode-segmentation.workspace = true
+yada.workspace = true
 
-lindera-cc-cedict-builder = { version = "0.27.1", path = "../lindera-cc-cedict-builder" }
-lindera-core = { version = "0.27.1", path = "../lindera-core" }
-lindera-dictionary = { version = "0.27.1", path = "../lindera-dictionary" }
-lindera-ipadic-builder = { version = "0.27.1", path = "../lindera-ipadic-builder" }
-lindera-ko-dic-builder = { version = "0.27.1", path = "../lindera-ko-dic-builder" }
-lindera-tokenizer = { version = "0.27.1", path = "../lindera-tokenizer" }
-lindera-unidic-builder = { version = "0.27.1", path = "../lindera-unidic-builder" }
+lindera-cc-cedict-builder.workspace = true
+lindera-core.workspace = true
+lindera-dictionary.workspace = true
+lindera-ipadic-builder.workspace = true
+lindera-ko-dic-builder.workspace = true
+lindera-tokenizer.workspace = true
+lindera-unidic-builder.workspace = true

@@ -25,19 +25,19 @@ cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Include Chinese dictionary (CC-CE
 cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
 
 [dependencies]
-anyhow = "1.0.71"
-bincode = "1.3.3"
-byteorder = "1.4.3"
-serde = { version="1.0.167", features = ["derive"] }
+anyhow.workspace = true
+bincode.workspace = true
+byteorder.workspace = true
+serde.workspace = true
 
-lindera-core = { version = "0.27.1", path = "../lindera-core" }
-lindera-cc-cedict = { version = "0.27.1", path = "../lindera-cc-cedict", optional = true }
-lindera-cc-cedict-builder = { version = "0.27.1", path = "../lindera-cc-cedict-builder" }
-lindera-ipadic = { version = "0.27.1", path = "../lindera-ipadic", optional = true }
-lindera-ipadic-builder = { version = "0.27.1", path = "../lindera-ipadic-builder" }
-lindera-ipadic-neologd = { version = "0.27.1", path = "../lindera-ipadic-neologd", optional = true }
-lindera-ipadic-neologd-builder = { version = "0.27.1", path = "../lindera-ipadic-neologd-builder" }
-lindera-ko-dic = { version = "0.27.1", path = "../lindera-ko-dic", optional = true }
-lindera-ko-dic-builder = { version = "0.27.1", path = "../lindera-ko-dic-builder" }
-lindera-unidic = { version = "0.27.1", path = "../lindera-unidic", optional = true }
-lindera-unidic-builder = { version = "0.27.1", path = "../lindera-unidic-builder" }
+lindera-core.workspace = true
+lindera-cc-cedict = { workspace = true, optional = true }
+lindera-cc-cedict-builder.workspace = true
+lindera-ipadic = { workspace = true, optional = true }
+lindera-ipadic-builder.workspace = true
+lindera-ipadic-neologd = { workspace = true, optional = true }
+lindera-ipadic-neologd-builder.workspace = true
+lindera-ko-dic = { workspace = true, optional = true }
+lindera-ko-dic-builder.workspace = true
+lindera-unidic = { workspace = true, optional = true }
+lindera-unidic-builder.workspace = true

@@ -16,17 +16,17 @@ unidic = ["encoding", "zip", "ureq"]
 compress = ["lindera-unidic-builder/compress", "lindera-decompress"]
 
 [dependencies]
-bincode = "1.3.3"
-byteorder = "1.4.3"
-once_cell = "1.18.0"
+bincode.workspace = true
+byteorder.workspace = true
+once_cell.workspace = true
 
-lindera-core = { version = "0.27.1", path = "../lindera-core" }
-lindera-decompress = { version = "0.27.1", path = "../lindera-decompress", optional = true }
+lindera-core.workspace = true
+lindera-decompress = { workspace = true, optional = true }
 
 [build-dependencies]
-encoding = { version = "0.2.33", optional = true }
-zip = { version = "0.6.6", optional = true }
-ureq = { version = "2.7.1", default-features = false, features = ["tls"], optional = true }
+encoding = { workspace = true, optional = true }
+zip = { workspace = true, optional = true }
+ureq = { workspace = true, optional = true }
 
-lindera-core = { version = "0.27.1", path = "../lindera-core" }
-lindera-unidic-builder = { version = "0.27.1", path = "../lindera-unidic-builder"}
+lindera-core.workspace = true
+lindera-unidic-builder.workspace = true
