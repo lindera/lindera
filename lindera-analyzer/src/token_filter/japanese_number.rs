@@ -811,6 +811,26 @@ mod tests {
         }
     }
 
+
+    #[test]
+    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    fn test_to_number_str_invalid_digits() {
+        {
+            let s = "十百";
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("?").unwrap()
+            );
+        }
+        {
+            let s = "億兆";
+            assert_eq!(
+                to_arabic_numerals(s),
+                String::from_str("?").unwrap()
+            );
+        }
+    }
+
     #[test]
     #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
     fn test_japanese_number_token_filter_config_from_slice_ipadic() {
