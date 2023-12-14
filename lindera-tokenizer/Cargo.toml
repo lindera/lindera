@@ -25,18 +25,18 @@ cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include CC-CEDICT dictionary (Ch
 cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress CC-CEDICT
 
 [dependencies]
-bincode = "1.3.3"
-byteorder = "1.4.3"
-once_cell = "1.18.0"
-serde = {version="1.0.167", features = ["derive"] }
-serde_json = "1.0.100"
+bincode.workspace = true
+byteorder.workspace = true
+once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
-lindera-core = { version = "0.27.1", path = "../lindera-core" }
-lindera-dictionary = { version = "0.27.1", path = "../lindera-dictionary" }
+lindera-core.workspace = true
+lindera-dictionary.workspace = true
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
-once_cell = "1.18.0"
+criterion.workspace = true
+once_cell.workspace = true
 
 [[bench]]
 name = "bench"

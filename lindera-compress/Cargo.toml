@@ -12,10 +12,10 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.71"
-flate2 = "1.0.26"
+anyhow.workspace = true
+flate2.workspace = true
 
-lindera-decompress = { version = "0.27.1", path = "../lindera-decompress" }
+lindera-decompress.workspace = true
 
 [dev-dependencies]
-rand = "0.8.5"
+rand.workspace = true

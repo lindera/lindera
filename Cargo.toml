@@ -22,6 +22,56 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+lindera = { path = "lindera" }
+lindera-analyzer = { path = "lindera-analyzer" }
+lindera-cc-cedict = { path = "lindera-cc-cedict" }
+lindera-cc-cedict-builder = { path = "lindera-cc-cedict-builder" }
+lindera-cli = { path = "lindera-cli" }
+lindera-compress = { path = "lindera-compress" }
+lindera-core = { path = "lindera-core" }
+lindera-decompress = { path = "lindera-decompress" }
+lindera-dictionary = { path = "lindera-dictionary" }
+lindera-filter = { path = "lindera-filter" }
+lindera-ipadic = { path = "lindera-ipadic" }
+lindera-ipadic-builder = { path = "lindera-ipadic-builder" }
+lindera-ipadic-neologd = { path = "lindera-ipadic-neologd" }
+lindera-ipadic-neologd-builder = { path = "lindera-ipadic-neologd-builder" }
+lindera-ko-dic = { path = "lindera-ko-dic" }
+lindera-ko-dic-builder = { path = "lindera-ko-dic-builder" }
+lindera-tokenizer = { path = "lindera-tokenizer" }
+lindera-unidic = { path = "lindera-unidic" }
+lindera-unidic-builder = { path = "lindera-unidic-builder" }
+
+anyhow = "1.0.71"
+bincode = "1.3.3"
+byteorder = "1.4.3"
+clap = { version = "4.3.11", features = ["derive", "cargo"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
+csv = "1.2.2"
+encoding = "0.2.33"
+encoding_rs = "0.8.32"
+encoding_rs_io = "0.1.7"
+env_logger = "0.10.0"
+flate2 = "1.0.26"
+glob = "0.3.1"
+kanaria = "0.2.0"
+log = "0.4.19"
+once_cell = "1.18.0"
+rand = "0.8.5"
+regex = "1.9.0"
+serde = {version="1.0.167", features = ["derive"] }
+serde_json = "1.0.100"
+tar = { version = "0.4.38" }
+thiserror = "1.0.43"
+unicode-blocks = "0.1.8"
+unicode-normalization = "0.1.22"
+unicode-segmentation = "1.10.1"
+ureq = { version = "2.7.1", default-features = false, features = ["tls"] }
+yada = "0.5.0"
+zip = { version = "0.6.6" }
+
+
 [profile.release]
 lto = true
 

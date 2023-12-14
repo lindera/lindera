@@ -12,6 +12,6 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
-anyhow = "1.0.71"
-flate2 = "1.0.26"
-serde = { version = "1.0.167", features = ["derive"]}
+anyhow.workspace = true
+flate2.workspace = true
+serde.workspace = true
