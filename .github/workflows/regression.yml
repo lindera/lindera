@@ -1,6 +1,7 @@
 name: Regression
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -8,23 +9,42 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  check:
-    name: Check
+  fmt:
+    name: Format
     strategy:
       matrix:
         os: [ubuntu-latest]
         toolchain: [stable]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - name: Run checkout
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
-      - uses: actions-rs/cargo@v1
+          components: rustfmt, clippy
+      - name: Check format
+        run: cargo fmt --all -- --check
+
+  check:
+    name: Check
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        toolchain: [stable]
+        features: ["ipadic", "ko-dic", "cc-cedict"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
-          command: check
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+      - name: Run check
+        run: cargo check --features "${{ matrix.features }}"
 
   test:
     name: Test
@@ -35,33 +55,12 @@ jobs:
         features: ["ipadic", "ko-dic", "cc-cedict"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - name: Run checkout
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features "${{ matrix.features }}"
-
-  fmt:
-    name: Format
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        toolchain: [stable]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.toolchain }}
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+          components: rustfmt, clippy
+      - name: Run test
+        run: cargo test --features "${{ matrix.features }}"

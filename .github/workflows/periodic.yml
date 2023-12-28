@@ -20,14 +20,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
-      - name: Check format
-        run: cargo fmt --all -- --check
-#      - name: Run clippy
-#        run: cargo clippy -- -D warnings
-      - name: Run check
-        run: cargo check --features "${{ matrix.features }}"
       - name: Run test
         run: cargo test --features "${{ matrix.features }}"
