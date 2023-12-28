@@ -29,3 +29,5 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Run check
         run: cargo check --features "${{ matrix.features }}"
+      - name: Run test
+        run: cargo test --features "${{ matrix.features }}"
