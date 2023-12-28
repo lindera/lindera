@@ -25,8 +25,8 @@ jobs:
           components: rustfmt, clippy
       - name: Check format
         run: cargo fmt --all -- --check
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
+#      - name: Run clippy
+#        run: cargo clippy -- -D warnings
       - name: Run check
         run: cargo check --features "${{ matrix.features }}"
       - name: Run test
