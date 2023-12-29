@@ -1,6 +1,6 @@
 [package]
 name = "lindera-filter"
-version = "0.27.1"
+version = "0.27.2"
 edition = "2021"
 description = "Character and token filters for Lindera."
 documentation = "https://docs.rs/lindera-filter"
