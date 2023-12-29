@@ -113,25 +113,25 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r 
 	(cd lindera-cli && cargo package && cargo publish)
 endif
 
-docker-build:
-ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_VERSION)),)
-	docker build --tag=linderamorphology/lindera:latest --build-arg="LINDERA_VERSION=$(LINDERA_VERSION)" .
-	docker tag linderamorphology/lindera:latest linderamorphology/lindera:$(LINDERA_VERSION)
-endif
-
-docker-push:
-ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_VERSION)),)
-	docker push linderamorphology/lindera:latest
-	docker push linderamorphology/lindera:$(LINDERA_VERSION)
-endif
-
-docker-clean:
-ifneq ($(shell docker ps -f 'status=exited' -q),)
-	docker rm $(shell docker ps -f 'status=exited' -q)
-endif
-ifneq ($(shell docker images -f 'dangling=true' -q),)
-	docker rmi -f $(shell docker images -f 'dangling=true' -q)
-endif
-ifneq ($(docker volume ls -f 'dangling=true' -q),)
-	docker volume rm $(docker volume ls -f 'dangling=true' -q)
-endif
+#docker-build:
+#ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_VERSION)),)
+#	docker build --tag=linderamorphology/lindera:latest --build-arg="LINDERA_VERSION=$(LINDERA_VERSION)" .
+#	docker tag linderamorphology/lindera:latest linderamorphology/lindera:$(LINDERA_VERSION)
+#endif
+#
+#docker-push:
+#ifeq ($(shell curl -s 'https://registry.hub.docker.com/v2/repositories/linderamorphology/lindera/tags' | jq -r '."results"[]["name"]' | grep $(LINDERA_VERSION)),)
+#	docker push linderamorphology/lindera:latest
+#	docker push linderamorphology/lindera:$(LINDERA_VERSION)
+#endif
+#
+#docker-clean:
+#ifneq ($(shell docker ps -f 'status=exited' -q),)
+#	docker rm $(shell docker ps -f 'status=exited' -q)
+#endif
+#ifneq ($(shell docker images -f 'dangling=true' -q),)
+#	docker rmi -f $(shell docker images -f 'dangling=true' -q)
+#endif
+#ifneq ($(docker volume ls -f 'dangling=true' -q),)
+#	docker volume rm $(docker volume ls -f 'dangling=true' -q)
+#endif

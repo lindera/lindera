@@ -19,11 +19,13 @@ jobs:
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
+
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
+
       - name: Check format
         run: cargo fmt --all -- --check
 
@@ -38,11 +40,13 @@ jobs:
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
+
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
+
       - name: Run check
         run: cargo check --features "${{ matrix.features }}"
 
@@ -57,10 +61,12 @@ jobs:
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
+
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
+
       - name: Run test
         run: cargo test --features "${{ matrix.features }}"

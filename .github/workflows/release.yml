@@ -26,50 +26,50 @@ jobs:
         feature: ["ipadic", "ko-dic", "cc-cedict"]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
+      - name: Run checkout
         uses: actions/checkout@v4
+
       - name: Cache ~/.cargo/registry
         uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Cache ~/.cargo/git
         uses: actions/cache@v3
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Cache target
         uses: actions/cache@v3
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          override: true
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --features "${{ matrix.feature }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
-          use-cross: false
+          components: rustfmt, clippy
+
+      - name: Run build
+        run: cargo build --release --features="${{ matrix.feature }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
+
       - name: Create artifact for Linux
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip \
-            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
+
       - name: Create artifact for Windows
         if: matrix.os == 'windows-latest'
-        run: |
-          powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.target }}.zip -Path target/${{ matrix.feature }}/${{ matrix.target }}/release/*.exe
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.target }}.zip -Path target/${{ matrix.feature }}/${{ matrix.target }}/release/*.exe
+
       - name: Create artifact for OSX
         if: matrix.os == 'macos-latest'
-        run: |
-          zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip \
-            target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
+
       - name: Upload artifact
-        uses: actions/upload-artifact@v2.3.1
+        uses: actions/upload-artifact@v2
         with:
           name: build-${{ matrix.feature }}-${{ matrix.target }}
           path: lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create release
-        uses: actions/create-release@v1.1.4
+        uses: actions/create-release@v1
         id: create-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,11 +89,12 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+
       - name: Create release_upload_url.txt
-        run: |
-          echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
+        run: echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
+
       - name: Upload release_upload_url.txt
-        uses: actions/upload-artifact@v2.3.1
+        uses: actions/upload-artifact@v2
         with:
           name: create-release
           path: release_upload_url.txt
@@ -114,15 +115,18 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: create-release
-      - id: upload-url
-        run: |
-          echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+
+      - name: Upload release
+        id: upload-url
+        run: echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+
       - name: Download artifact
         uses: actions/download-artifact@v1
         with:
           name: build-${{ matrix.feature }}-${{ matrix.target }}
+
       - name: Upload release assets
-        uses: actions/upload-release-asset@v1.0.2
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -142,13 +146,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@v1
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
-      - name: Publish crate
+          components: rustfmt, clippy
+
+      - name: Publish lindera-core
         run: |
           LINDERA_CORE_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-core") | .version')
           LINDERA_CORE_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-core | jq -r 'select(.versions != null) | .versions[].num')
@@ -160,6 +165,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-decompress
+        run: |
           LINDERA_DECOMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-decompress") | .version')
           LINDERA_DECOMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_DECOMPRESS_VERSIONS} | grep ${LINDERA_DECOMPRESS_VERSION} >/dev/null; then
@@ -170,6 +178,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-compress
+        run: |
           LINDERA_COMPRESS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-compress") | .version')
           LINDERA_COMPRESS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-compress | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_COMPRESS_VERSIONS} | grep ${LINDERA_COMPRESS_VERSION} >/dev/null; then
@@ -180,6 +191,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ipadic-builder
+        run: |
           LINDERA_IPADIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')
           LINDERA_IPADIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_BUILDER_VERSIONS} | grep ${LINDERA_IPADIC_BUILDER_VERSION} >/dev/null; then
@@ -190,6 +204,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ipadic
+        run: |
           LINDERA_IPADIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
           LINDERA_IPADIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_VERSIONS} | grep ${LINDERA_IPADIC_VERSION} >/dev/null; then
@@ -200,6 +217,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ipadic-neologd-builder
+        run: |
           LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd-builder") | .version')
           LINDERA_IPADIC_NEOLOGD_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_NEOLOGD_BUILDER_VERSIONS} | grep ${LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION} >/dev/null; then
@@ -210,6 +230,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ipadic-neologd
+        run: |
           LINDERA_IPADIC_NEOLOGD_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version')
           LINDERA_IPADIC_NEOLOGD_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_IPADIC_NEOLOGD_VERSIONS} | grep ${LINDERA_IPADIC_NEOLOGD_VERSION} >/dev/null; then
@@ -220,6 +243,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-unidic-builder
+        run: |
           LINDERA_UNIDIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic-builder") | .version')
           LINDERA_UNIDIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_UNIDIC_BUILDER_VERSIONS} | grep ${LINDERA_UNIDIC_BUILDER_VERSION} >/dev/null; then
@@ -230,6 +256,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-unidic
+        run: |
           LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
           LINDERA_UNIDIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_UNIDIC_VERSIONS} | grep ${LINDERA_UNIDIC_VERSION} >/dev/null; then
@@ -240,6 +269,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ko-dic-builder
+        run: |
           LINDERA_KO_DIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic-builder") | .version')
           LINDERA_KO_DIC_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ko-dic-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_KO_DIC_BUILDER_VERSIONS} | grep ${LINDERA_KO_DIC_BUILDER_VERSION} >/dev/null; then
@@ -250,6 +282,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-ko-dic
+        run: |
           LINDERA_KO_DIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version')
           LINDERA_KO_DIC_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-ko-dic | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_KO_DIC_VERSIONS} | grep ${LINDERA_KO_DIC_VERSION} >/dev/null; then
@@ -260,6 +295,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-cc-cedict-builder
+        run: |
           LINDERA_CC_CEDICT_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict-builder") | .version')
           LINDERA_CC_CEDICT_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict-builder | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CC_CEDICT_BUILDER_VERSIONS} | grep ${LINDERA_CC_CEDICT_BUILDER_VERSION} >/dev/null; then
@@ -270,6 +308,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-cc-cedict
+        run: |
           LINDERA_CC_CEDICT_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version')
           LINDERA_CC_CEDICT_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CC_CEDICT_VERSIONS} | grep ${LINDERA_CC_CEDICT_VERSION} >/dev/null; then
@@ -280,6 +321,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-dictionary
+        run: |
           LINDERA_DICTIONARY_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
           LINDERA_DICTIONARY_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_DICTIONARY_VERSIONS} | grep ${LINDERA_DICTIONARY_VERSION} >/dev/null; then
@@ -290,6 +334,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-tokenizer
+        run: |
           LINDERA_TOKENIZER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-tokenizer") | .version')
           LINDERA_TOKENIZER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-tokenizer | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_TOKENIZER_VERSIONS} | grep ${LINDERA_TOKENIZER_VERSION} >/dev/null; then
@@ -300,6 +347,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-filter
+        run: |
           LINDERA_FILTER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-filter") | .version')
           LINDERA_FILTER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-filter | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_FILTER_VERSIONS} | grep ${LINDERA_FILTER_VERSION} >/dev/null; then
@@ -310,6 +360,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-analyzer
+        run: |
           LINDERA_ANALYZER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-analyzer") | .version')
           LINDERA_ANALYZER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-analyzer | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_ANALYZER_VERSIONS} | grep ${LINDERA_ANALYZER_VERSION} >/dev/null; then
@@ -320,6 +373,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera
+        run: |
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
           LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_VERSIONS} | grep ${LINDERA_VERSION} >/dev/null; then
@@ -330,6 +386,9 @@ jobs:
             popd
           fi
           sleep 20
+
+      - name: Publish lindera-cli
+        run: |
           LINDERA_CLI_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
           LINDERA_CLI_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r 'select(.versions != null) | .versions[].num')
           if echo ${LINDERA_CLI_VERSIONS} | grep ${LINDERA_CLI_VERSION} >/dev/null; then
@@ -340,42 +399,47 @@ jobs:
             popd
           fi
 
-  push-container:
-    name: Push Docker container
-    strategy:
-      matrix:
-        os: [ ubuntu-latest ]
-        toolchain: [stable]
-    needs: [publish-crates]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.toolchain }}
-          override: true
-      - name: Fetch latest version
-        run: |
-          LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
-          echo "LINDERA_VERSION=${LINDERA_VERSION}" >> $GITHUB_ENV
-      - name: Setup QUME
-        uses: docker/setup-qemu-action@v2
-      - name: Setup Docker build environment
-        uses: docker/setup-buildx-action@v2
-      - name: Docker login
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build Docker image
-        uses: docker/build-push-action@v4
-        with:
-          push: true
-          build-args: |
-            LINDERA_VERSION=${{ env.LINDERA_VERSION }}
-          tags: |
-            linderamorphology/lindera:latest
-            linderamorphology/lindera:${{ env.LINDERA_VERSION }}
+#  push-container:
+#    name: Push Docker container
+#    strategy:
+#      matrix:
+#        os: [ ubuntu-latest ]
+#        toolchain: [stable]
+#    needs: [publish-crates]
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#      - name: Run checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Install toolchain
+#        uses: dtolnay/rust-toolchain@v1
+#        with:
+#          toolchain: ${{ matrix.toolchain }}
+#          components: rustfmt, clippy
+#
+#      - name: Fetch latest version
+#        run: |
+#          LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
+#          echo "LINDERA_VERSION=${LINDERA_VERSION}" >> $GITHUB_ENV
+#
+#      - name: Setup QUME
+#        uses: docker/setup-qemu-action@v2
+#
+#      - name: Setup Docker build environment
+#        uses: docker/setup-buildx-action@v2
+#
+#      - name: Docker login
+#        uses: docker/login-action@v2
+#        with:
+#          username: ${{ secrets.DOCKERHUB_USERNAME }}
+#          password: ${{ secrets.DOCKERHUB_TOKEN }}
+#
+#      - name: Build Docker image
+#        uses: docker/build-push-action@v4
+#        with:
+#          push: true
+#          build-args: |
+#            LINDERA_VERSION=${{ env.LINDERA_VERSION }}
+#          tags: |
+#            linderamorphology/lindera:latest
+#            linderamorphology/lindera:${{ env.LINDERA_VERSION }}
