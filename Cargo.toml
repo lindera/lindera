@@ -23,25 +23,25 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera = { path = "lindera" }
-lindera-analyzer = { path = "lindera-analyzer" }
-lindera-cc-cedict = { path = "lindera-cc-cedict" }
-lindera-cc-cedict-builder = { path = "lindera-cc-cedict-builder" }
-lindera-cli = { path = "lindera-cli" }
-lindera-compress = { path = "lindera-compress" }
-lindera-core = { path = "lindera-core" }
-lindera-decompress = { path = "lindera-decompress" }
-lindera-dictionary = { path = "lindera-dictionary" }
-lindera-filter = { path = "lindera-filter" }
-lindera-ipadic = { path = "lindera-ipadic" }
-lindera-ipadic-builder = { path = "lindera-ipadic-builder" }
-lindera-ipadic-neologd = { path = "lindera-ipadic-neologd" }
-lindera-ipadic-neologd-builder = { path = "lindera-ipadic-neologd-builder" }
-lindera-ko-dic = { path = "lindera-ko-dic" }
-lindera-ko-dic-builder = { path = "lindera-ko-dic-builder" }
-lindera-tokenizer = { path = "lindera-tokenizer" }
-lindera-unidic = { path = "lindera-unidic" }
-lindera-unidic-builder = { path = "lindera-unidic-builder" }
+lindera = { version = "0.27.2", path = "lindera" }
+lindera-analyzer = { version = "0.27.2", path = "lindera-analyzer" }
+lindera-cc-cedict = { version = "0.27.2", path = "lindera-cc-cedict" }
+lindera-cc-cedict-builder = { version = "0.27.2", path = "lindera-cc-cedict-builder" }
+lindera-cli = { version = "0.27.2", path = "lindera-cli" }
+lindera-compress = { version = "0.27.2", path = "lindera-compress" }
+lindera-core = { version = "0.27.2", path = "lindera-core" }
+lindera-decompress = { version = "0.27.2", path = "lindera-decompress" }
+lindera-dictionary = { version = "0.27.2", path = "lindera-dictionary" }
+lindera-filter = { version = "0.27.2", path = "lindera-filter" }
+lindera-ipadic = { version = "0.27.2", path = "lindera-ipadic" }
+lindera-ipadic-builder = { version = "0.27.2", path = "lindera-ipadic-builder" }
+lindera-ipadic-neologd = { version = "0.27.2", path = "lindera-ipadic-neologd" }
+lindera-ipadic-neologd-builder = { version = "0.27.2", path = "lindera-ipadic-neologd-builder" }
+lindera-ko-dic = { version = "0.27.2", path = "lindera-ko-dic" }
+lindera-ko-dic-builder = { version = "0.27.2", path = "lindera-ko-dic-builder" }
+lindera-tokenizer = { version = "0.27.2", path = "lindera-tokenizer" }
+lindera-unidic = { version = "0.27.2", path = "lindera-unidic" }
+lindera-unidic-builder = { version = "0.27.2", path = "lindera-unidic-builder" }
 
 anyhow = "1.0.71"
 bincode = "1.3.3"
