@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload release
         id: upload-url
-        run: echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
+        run: echo "url=$(cat create-release/release_upload_url.txt)" >> $GITHUB_OUTPUT
 
       - name: Download artifact
         uses: actions/download-artifact@v4
