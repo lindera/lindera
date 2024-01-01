@@ -71,7 +71,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         toolchain: [stable]
-    needs: [upload-release]
+    needs: [release]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
