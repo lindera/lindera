@@ -13,38 +13,17 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
             archive: tar.gz
           - target: x86_64-pc-windows-msvc
-            os: windows-latest
             archive: zip
           - target: x86_64-apple-darwin
-            os: macos-latest
             archive: zip
         toolchain: [stable]
         feature: ["ipadic", "ko-dic", "cc-cedict"]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
-
-      - name: Cache ~/.cargo/registry
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache ~/.cargo/git
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache target
-        uses: actions/cache@v3
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Compile
         id: compile
