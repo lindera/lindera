@@ -7,21 +7,20 @@ on:
       - "v*.*.*"
 
 jobs:
-  build:
+  release:
     name: Build
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            archive: tar.gz
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            archive: zip
           - target: x86_64-apple-darwin
             os: macos-latest
+            archive: zip
         toolchain: [stable]
         feature: ["ipadic", "ko-dic", "cc-cedict"]
     runs-on: ${{ matrix.os }}
@@ -47,93 +46,24 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Compile
+        id: compile
+        uses: rust-build/rust-build.action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
-
-      - name: Run build
-        run: cargo build --release --features="${{ matrix.feature }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
-
-      - name: Create artifact for Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
-
-      - name: Create artifact for Windows
-        if: matrix.os == 'windows-latest'
-        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.target }}.zip -Path target/${{ matrix.feature }}/${{ matrix.target }}/release/*.exe
-
-      - name: Create artifact for OSX
-        if: matrix.os == 'macos-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}.zip target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera
+          RUSTTARGET: ${{ matrix.target }}
+          UPLOAD_MODE: none
+          FEATURES: ${{ matrix.feature }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.feature }}-${{ matrix.target }}
-          path: lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
-
-  create-release:
-    name: Create Release
-    needs: [build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create release
-        uses: actions/create-release@v1
-        id: create-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-
-      - name: Create release_upload_url.txt
-        run: echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
-
-      - name: Upload release_upload_url.txt
-        uses: actions/upload-artifact@v4
-        with:
-          name: create-release
-          path: release_upload_url.txt
-
-  upload-release:
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-        feature: ["ipadic", "ko-dic", "cc-cedict"]
-    name: Upload Release
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release_upload_url.txt
-        uses: actions/download-artifact@v4
-        with:
-          name: create-release
-
-      - name: Upload release
-        id: upload-url
-        run: echo "url=$(cat create-release/release_upload_url.txt)" >> $GITHUB_OUTPUT
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-${{ matrix.feature }}-${{ matrix.target }}
-
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.upload-url.outputs.url }}
-          asset_path: ./build-${{ matrix.feature }}-${{ matrix.target }}/lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
-          asset_name: lindera-${{ matrix.feature }}-${{ matrix.target }}.zip
-          asset_content_type: application/zip
+          name: Binary
+          path: |
+            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+            ${{ steps.compile.outputs.BUILT_CHECKSUM }}
 
   publish-crates:
     name: Publish crate
