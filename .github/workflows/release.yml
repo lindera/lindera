@@ -26,7 +26,7 @@ jobs:
             extension: ""
         toolchain: [stable]
         feature: ["ipadic", "ko-dic", "cc-cedict"]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
