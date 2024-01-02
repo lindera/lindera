@@ -26,7 +26,7 @@ jobs:
             archive: .zip
             extension: ""
         toolchain: [stable]
-        feature: ["ipadic", "ko-dic", "cc-cedict"]
+        feature: [ipadic, ko-dic, cc-cedict]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Run checkout
