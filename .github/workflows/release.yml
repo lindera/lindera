@@ -56,6 +56,10 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           targets: ${{ matrix.target }}
 
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1
+
       - name: Compile
         run: cargo build --release --features=${{ matrix.feature }} --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
 
