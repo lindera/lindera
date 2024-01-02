@@ -50,6 +50,11 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
       - name: Compile
         run: cargo build --release --features=${{ matrix.feature }} --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
 
