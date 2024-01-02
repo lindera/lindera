@@ -11,17 +11,18 @@ jobs:
     name: Build
     strategy:
       matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+          - os: ubuntu-latest
             archive: .zip
             extension: ""
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
+          - os: windows-latest
             archive: .zip
             extension: .exe
-          - target: x86_64-apple-darwin
-            os: macos-latest
+          - os: macos-latest
             archive: .zip
             extension: ""
         toolchain: [stable]
