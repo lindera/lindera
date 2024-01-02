@@ -13,11 +13,17 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
-            archive: tar.gz
+            os: ubuntu-latest
+            archive: .zip
+            extension: ""
           - target: x86_64-pc-windows-msvc
-            archive: zip
+            os: windows-latest
+            archive: .zip
+            extension: .exe
           - target: x86_64-apple-darwin
-            archive: zip
+            os: macos-latest
+            archive: .zip
+            extension: ""
         toolchain: [stable]
         feature: ["ipadic", "ko-dic", "cc-cedict"]
     runs-on: ubuntu-latest
@@ -25,24 +31,45 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v4
 
+      - name: Cache ~/.cargo/registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache ~/.cargo/git
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache target
+        uses: actions/cache@v3
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Compile
-        id: compile
-        uses: rust-build/rust-build.action@v1.4.4
+        run: cargo build --release --features="${{ matrix.features }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
+
+      - name: Create artifact for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+
+      - name: Create artifact for Windows
+        if: matrix.os == 'windows-latest'
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} -Path target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+
+      - name: Create artifact for OSX
+        if: matrix.os == 'macos-latest'
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          RUSTTARGET: ${{ matrix.target }}
-          UPLOAD_MODE: none
-          FEATURES: ${{ matrix.feature }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Binary
-          path: |
-            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
-            ${{ steps.compile.outputs.BUILT_CHECKSUM }}
+          files: lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }}
 
   publish-crates:
     name: Publish crate
