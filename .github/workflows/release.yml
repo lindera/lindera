@@ -51,7 +51,7 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Compile
-        run: cargo build --release --features="${{ matrix.features }}" --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
+        run: cargo build --release --features=${{ matrix.feature }} --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
 
       - name: Create artifact for Linux
         if: matrix.os == 'ubuntu-latest'
