@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.27.2 (2024-01-02)
+- Update release.yml #363 @mosuka
+- Update release.yml #361 @mosuka
+- Update release.yml #360 @mosuka
+- Add versions #359 @mosuka
+- Bump up version to 0.27.2 #357 @mosuka
+- Updaqte workflows #355 @mosuka
+- Update workflows #352 @mosuka
+- Update periodic.yml #351 @mosuka
+- Add workflow_dispatch #350 @mosuka
+- Update periodic.yml #349 @mosuka
+- Summarize dependencies, using workspace dependencie #347 @higumachan
+- I put a badge of crates.io in README.md #345 @higumachan
+- Analyzer.analyze doesn't require mutable reference #344 @tokuhirom
+- Bump actions/checkout from 3 to 4 #338 @dependabot
+
 ## 0.27.1 (2023-08-25)
 - Change UniDic download url #337 @mosuka
 
