@@ -54,6 +54,7 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+          targets: ${{ matrix.target }}
 
       - name: Compile
         run: cargo build --release --features=${{ matrix.feature }} --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
