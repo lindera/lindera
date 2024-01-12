@@ -173,13 +173,13 @@ impl<'de> Deserialize<'de> for TokenizerConfig {
 /// Tokenizer
 pub struct Tokenizer {
     /// The dictionary to be used for tokenization.
-    dictionary: Dictionary,
+    pub dictionary: Dictionary,
 
     /// The user dictionary to be used for tokenization. (Optional)
-    user_dictionary: Option<UserDictionary>,
+    pub user_dictionary: Option<UserDictionary>,
 
     /// The tokenization mode.
-    mode: Mode,
+    pub mode: Mode,
 }
 
 impl Tokenizer {
