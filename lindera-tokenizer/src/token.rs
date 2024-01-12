@@ -1,4 +1,3 @@
-use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
@@ -88,29 +87,14 @@ impl<'a> Token<'a> {
             return self.details();
         }
 
-        let (words_idx_data, words_data) = if self.word_id.is_system() {
-            (
-                &*self.dictionary.words_idx_data,
-                &*self.dictionary.words_data,
-            )
+        self.details = if self.word_id.is_system() {
+            self.dictionary.word_details(self.word_id.0 as usize)
         } else {
             match self.user_dictionary {
-                Some(user_dictionary) => (
-                    user_dictionary.words_idx_data.as_slice(),
-                    user_dictionary.words_data.as_slice(),
-                ),
-                None => return None,
+                Some(user_dictionary) => user_dictionary.word_details(self.word_id.0 as usize),
+                None => None,
             }
         };
-
-        let idx = LittleEndian::read_u32(&words_idx_data[4 * self.word_id.0 as usize..][..4]);
-        let data = &words_data[idx as usize..];
-
-        self.details = match bincode::deserialize_from(data) {
-            Ok(details) => Some(details),
-            Err(_err) => None,
-        };
-
         self.details()
     }
 

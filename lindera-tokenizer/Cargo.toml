@@ -26,7 +26,6 @@ cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress CC-CE
 
 [dependencies]
 bincode.workspace = true
-byteorder.workspace = true
 once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true
