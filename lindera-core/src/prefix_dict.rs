@@ -52,6 +52,27 @@ impl<D: Deref<Target = [u8]>> PrefixDict<D> {
                 })
             })
     }
+
+    /// Find `WordEntry`s with surface
+    pub fn find_surface(&self, surface: &str) -> Vec<WordEntry> {
+        match self.da.exact_match_search(surface) {
+            Some(offset_len) => {
+                let offset = offset_len >> 5u32;
+                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
+                let data: &[u8] = &self.vals_data[offset_bytes..];
+                let len = offset_len & ((1u32 << 5) - 1u32);
+                (0..len as usize)
+                    .map(|i| {
+                        WordEntry::deserialize(
+                            &data[WordEntry::SERIALIZED_LEN * i..],
+                            self.is_system,
+                        )
+                    })
+                    .collect::<Vec<WordEntry>>()
+            }
+            None => vec![],
+        }
+    }
 }
 
 #[cfg(test)]
