@@ -220,7 +220,11 @@ impl DictionaryBuilder for UnidicBuilder {
                         LinderaErrorKind::Parse
                             .with_error(anyhow::anyhow!("failed to parse word_cost"))
                     })?,
-                    cost_id: u16::from_str(row[1].trim()).map_err(|_err| {
+                    left_id: u16::from_str(row[1].trim()).map_err(|_err| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("failed to parse cost_id"))
+                    })?,
+                    right_id: u16::from_str(row[2].trim()).map_err(|_err| {
                         LinderaErrorKind::Parse
                             .with_error(anyhow::anyhow!("failed to parse cost_id"))
                     })?,
@@ -377,13 +381,19 @@ impl DictionaryBuilder for UnidicBuilder {
                     LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word cost"))
                 })?
             };
-            let cost_id = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
-                SIMPLE_CONTEXT_ID
+            let (left_id, right_id) = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
+                (SIMPLE_CONTEXT_ID, SIMPLE_CONTEXT_ID)
             } else {
-                row[1].parse::<u16>().map_err(|_err| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse left context id"))
-                })?
+                (
+                    row[1].parse::<u16>().map_err(|_err| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("failed to parse left context id"))
+                    })?,
+                    row[2].parse::<u16>().map_err(|_err| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("failed to parse left context id"))
+                    })?,
+                )
             };
 
             word_entry_map
@@ -392,7 +402,8 @@ impl DictionaryBuilder for UnidicBuilder {
                 .push(WordEntry {
                     word_id: WordId(row_id as u32, true),
                     word_cost,
-                    cost_id,
+                    left_id,
+                    right_id,
                 });
         }
 
