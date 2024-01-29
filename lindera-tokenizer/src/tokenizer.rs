@@ -1158,14 +1158,14 @@ mod tests {
             assert_eq!(
                 token.get_details().unwrap(),
                 vec![
-                    "VV+ETM",
+                    "XSV+ETM",
                     "*",
                     "T",
                     "할",
                     "Inflect",
-                    "VV",
+                    "XSV",
                     "ETM",
-                    "하/VV/*+ᆯ/ETM/*"
+                    "하/XSV/*+ᆯ/ETM/*"
                 ]
             );
         }
@@ -1178,7 +1178,7 @@ mod tests {
             assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
-                vec!["NNG", "*", "F", "수", "*", "*", "*", "*"]
+                vec!["NNB", "*", "F", "수", "*", "*", "*", "*"]
             );
         }
         {
@@ -1190,7 +1190,7 @@ mod tests {
             assert_eq!(token.position_length, 1);
             assert_eq!(
                 token.get_details().unwrap(),
-                vec!["VX", "*", "T", "있", "*", "*", "*", "*"]
+                vec!["VV", "*", "T", "있", "*", "*", "*", "*"]
             );
         }
         {
@@ -1212,7 +1212,10 @@ mod tests {
             assert_eq!(token.byte_end, 52);
             assert_eq!(token.position, 10);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.get_details().unwrap(), vec!["UNK"]);
+            assert_eq!(
+                token.get_details().unwrap(),
+                vec!["SF", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 

@@ -104,7 +104,8 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
             }
             WordEntry {
                 word_id: WordId(std::u32::MAX, true),
-                cost_id: e.left_id as u16,
+                left_id: e.left_id as u16,
+                right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,
             }
         })
