@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.28.0 (2024-02-23)
+- Upgrade dependencies #371
+- Bump microsoft/setup-msbuild from 1 to 2 #370 @dependabot
+- Add right_id to WordEntry #369 @BlueGreenMagick
+- Update env_logger requirement from 0.10.0 to 0.11.0 #367 @dependabot
+- Bump actions/cache from 3 to 4 #366 @dependabot
+- Delete unused file #365 @mosuka
+- Find word entry by surface #364 @BlueGreenMagick
+
 ## 0.27.2 (2024-01-02)
 - Update release.yml #363 @mosuka
 - Update release.yml #361 @mosuka
