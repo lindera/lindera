@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::fs::rename;
+use std::io;
 
 #[cfg(feature = "ipadic")]
 fn main() -> Result<(), Box<dyn Error>> {
@@ -25,8 +27,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Directory path for build package
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
 
+    // Dictionary file name
+    let file_name = "mecab-ipadic-2.7.0-20070801.tar.gz";
+
     // MeCab IPADIC directory
     let input_dir = Path::new(&build_dir).join("mecab-ipadic-2.7.0-20070801");
+
+    // Lindera IPADIC directory
+    let output_dir = Path::new(&build_dir).join("lindera-ipadic");
 
     if std::env::var("DOCS_RS").is_ok() {
         // Create directory for dummy input directory for build docs
@@ -52,27 +60,34 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut dummy_matrix_def = File::create(input_dir.join("matrix.def"))?;
         dummy_matrix_def.write_all(b"0 1 0\n")?;
     } else {
-        // Resources directory
-        let resources_dir_path = Path::new("resources");
+        // Source file path for build package
+        let source_path_for_build = Path::new(&build_dir).join(file_name);
 
-        // Dictionary file name
-        let dict_file_name = "mecab-ipadic-2.7.0-20070801.tar.gz";
+        // Download source file to build directory
+        if !source_path_for_build.exists() {
+            // copy(&source_path, &source_path_for_build)?;
+            let tmp_path = Path::new(&build_dir).join(file_name.to_owned() + ".download");
 
-        // Source dictionary file path
-        let source_dict_file_path = resources_dir_path.join(dict_file_name);
+            // Download a tarball
+            let download_url = "https://github.com/lindera-morphology/mecab-ipadic/archive/refs/tags/2.7.0-20070801.tar.gz";
+            let resp = ureq::get(download_url).call()?;
+            let mut dest = File::create(&tmp_path)?;
+
+            io::copy(&mut resp.into_reader(), &mut dest)?;
+            dest.flush()?;
+
+            rename(tmp_path, &source_path_for_build).expect("Failed to rename temporary file");
+        }
 
         // Decompress a tar.gz file
-        let mut tar_gz = File::open(source_dict_file_path)?;
+        let mut tar_gz = File::open(source_path_for_build)?;
         let mut buffer = Vec::new();
         tar_gz.read_to_end(&mut buffer)?;
         let cursor = Cursor::new(buffer);
-        let gzdecoder = GzDecoder::new(cursor);
-        let mut archive = Archive::new(gzdecoder);
+        let decoder = GzDecoder::new(cursor);
+        let mut archive = Archive::new(decoder);
         archive.unpack(&build_dir)?;
     }
-
-    // Lindera IPADIC directory
-    let output_dir = Path::new(&build_dir).join("lindera-ipadic");
 
     // Build a dictionary
     let builder = IpadicBuilder::new();
