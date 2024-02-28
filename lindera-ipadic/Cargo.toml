@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["encoding", "flate2", "tar"]
+ipadic = ["encoding", "flate2", "tar", "ureq"]
 compress = ["lindera-ipadic-builder/compress", "lindera-decompress"]
 
 [dependencies]
@@ -27,6 +27,7 @@ lindera-decompress = { workspace = true, optional = true }
 encoding = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
 tar = { workspace =true, optional = true }
+ureq = { workspace = true, optional = true }
 
 lindera-core.workspace = true
 lindera-ipadic-builder.workspace = true
