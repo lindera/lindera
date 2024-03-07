@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str;
 
 use byteorder::{ByteOrder, LittleEndian};
 use serde::{Deserialize, Serialize};
@@ -24,12 +25,19 @@ impl Dictionary {
         if 4 * word_id >= self.words_idx_data.len() {
             return None;
         }
-        let idx = LittleEndian::read_u32(&self.words_idx_data[4 * word_id..][..4]);
-        let data = &self.words_data[idx as usize..];
-        match bincode::deserialize_from(data) {
-            Ok(details) => Some(details),
-            Err(_err) => None,
+        let idx: usize = LittleEndian::read_u32(&self.words_idx_data[4 * word_id..][..4])
+            .try_into()
+            .ok()?;
+        let data = &self.words_data[idx..];
+        let joined_details_len: usize = LittleEndian::read_u32(data).try_into().ok()?;
+        let joined_details_bytes: &[u8] = &self.words_data[idx + 4..idx + 4 + joined_details_len];
+
+        let mut details = Vec::new();
+        for bytes in joined_details_bytes.split(|&b| b == 0) {
+            let detail = str::from_utf8(bytes).ok()?.to_string();
+            details.push(detail);
         }
+        Some(details)
     }
 }
 

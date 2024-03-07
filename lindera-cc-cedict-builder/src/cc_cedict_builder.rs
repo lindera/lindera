@@ -263,15 +263,23 @@ impl DictionaryBuilder for CcCedictBuilder {
         let mut words_buffer = Vec::new();
         let mut words_idx_buffer = Vec::new();
         for row in rows.iter() {
-            let mut word_detail = Vec::new();
-            for item in row.iter().skip(4) {
-                word_detail.push(item.to_string());
-            }
             let offset = words_buffer.len();
             words_idx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_buffer, &word_detail)
+
+            let mut word_details = Vec::new();
+            for item in row.iter().skip(4) {
+                word_details.push(item);
+            }
+            let joined_details = word_details.join("\0");
+            let joined_details_len = u32::try_from(joined_details.as_bytes().len())
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            words_buffer
+                .write_u32::<LittleEndian>(joined_details_len)
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            words_buffer
+                .write_all(&joined_details.as_bytes())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
