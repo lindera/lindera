@@ -1,20 +1,14 @@
 use std::error::Error;
-use std::fs::rename;
-use std::io;
 
 #[cfg(feature = "ipadic")]
 fn main() -> Result<(), Box<dyn Error>> {
-    use std::{
-        env,
-        fs::{create_dir, File},
-        io::{Cursor, Read, Write},
-        path::Path,
-    };
+    use std::env;
+    use std::fs::{create_dir, rename, File};
+    use std::io::{self, Cursor, Read, Write};
+    use std::path::Path;
 
-    use encoding::{
-        all::EUC_JP,
-        {EncoderTrap, Encoding},
-    };
+    use encoding::all::EUC_JP;
+    use encoding::{EncoderTrap, Encoding};
     use flate2::read::GzDecoder;
     use tar::Archive;
 
