@@ -3,7 +3,7 @@ use std::error::Error;
 #[cfg(feature = "ipadic")]
 fn main() -> Result<(), Box<dyn Error>> {
     use std::env;
-    use std::fs::{rename, create_dir, File};
+    use std::fs::{create_dir, rename, File};
     use std::io::{self, Cursor, Read, Write};
     use std::path::Path;
 
