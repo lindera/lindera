@@ -69,7 +69,6 @@ unicode-normalization = "0.1.23"
 unicode-segmentation = "1.11.0"
 ureq = { version = "2.9.6", default-features = false, features = ["tls"] }
 yada = "0.5.0"
-zip = "0.6.6"
 
 
 [profile.release]
