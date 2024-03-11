@@ -79,7 +79,7 @@ jobs:
         run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
