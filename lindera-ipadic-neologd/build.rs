@@ -2,17 +2,13 @@ use std::error::Error;
 
 #[cfg(feature = "ipadic-neologd")]
 fn main() -> Result<(), Box<dyn Error>> {
-    use std::{
-        env,
-        fs::{create_dir, rename, File},
-        io::{self, Cursor, Read, Write},
-        path::Path,
-    };
+    use std::env;
+    use std::fs::{create_dir, rename, File};
+    use std::io::{self, Cursor, Read, Write};
+    use std::path::Path;
 
-    use encoding::{
-        all::UTF_8,
-        {EncoderTrap, Encoding},
-    };
+    use encoding::all::UTF_8;
+    use encoding::{EncoderTrap, Encoding};
     use flate2::read::GzDecoder;
     use tar::Archive;
 
@@ -26,10 +22,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     let build_dir = env::var_os("OUT_DIR").unwrap(); // ex) target/debug/build/<pkg>/out
 
     // Dictionary file name
-    let file_name = "mecab-ipadic-2.7.0-20070801-neologd-20200820.tar.gz";
+    let file_name = "mecab-ipadic-neologd-0.0.7-20200820.tar.gz";
 
     // MeCab IPADIC directory
-    let input_dir = Path::new(&build_dir).join("mecab-ipadic-2.7.0-20070801-neologd-20200820");
+    let input_dir = Path::new(&build_dir).join("mecab-ipadic-neologd-0.0.7-20200820");
+
+    // Lindera CC-CEDICT directory
+    let output_dir = Path::new(&build_dir).join("lindera-ipadic-neologd");
 
     if std::env::var("DOCS_RS").is_ok() {
         // Create directory for dummy input directory for build docs
@@ -65,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Download a tarball
             let download_url =
-                "https://drive.google.com/uc?export=download&confirm=yes&id=1zZeh16ezz5z6I40HaynHeit4EQsyDuPQ";
+                "https://github.com/lindera-morphology/mecab-ipadic-neologd/archive/refs/tags/0.0.7-20200820.tar.gz";
             let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
 
@@ -80,13 +79,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         let mut buffer = Vec::new();
         tar_gz.read_to_end(&mut buffer)?;
         let cursor = Cursor::new(buffer);
-        let gzdecoder = GzDecoder::new(cursor);
-        let mut archive = Archive::new(gzdecoder);
+        let decoder = GzDecoder::new(cursor);
+        let mut archive = Archive::new(decoder);
         archive.unpack(&build_dir)?;
     }
-
-    // Lindera IPADIC directory
-    let output_dir = Path::new(&build_dir).join("lindera-ipadic-neologd");
 
     // Build a dictionary
     let builder = IpadicNeologdBuilder::new();
