@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Update dependencies #381 @mosuka
+- Download IPADIC-NEologd from self repository #380 @mosuka
+- Download UniDic from self repository #379 @mosuka
+- Bump softprops/action-gh-release from 1 to 2 #378 @dependabot
+- Download ko-dic from self repository #377 @mosuka
+- Download CC-CEDICT from self repository #376 @mosuka
+- Optimize built dict.words file size #375 @BlueGreenMagick
+- Separate IPADIC from the source repository #373 @mosuka
+
 ## 0.28.0 (2024-02-23)
 - Upgrade dependencies #371
 - Bump microsoft/setup-msbuild from 1 to 2 #370 @dependabot
