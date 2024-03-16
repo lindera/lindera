@@ -24,10 +24,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Dictionary file name
     let file_name = "mecab-ipadic-neologd-0.0.7-20200820.tar.gz";
 
-    // MeCab IPADIC directory
+    // MeCab IPADIC NEologd directory
     let input_dir = Path::new(&build_dir).join("mecab-ipadic-neologd-0.0.7-20200820");
 
-    // Lindera CC-CEDICT directory
+    // Lindera IPADIC NEologd directory
     let output_dir = Path::new(&build_dir).join("lindera-ipadic-neologd");
 
     if std::env::var("DOCS_RS").is_ok() {
