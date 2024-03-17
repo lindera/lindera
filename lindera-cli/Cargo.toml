@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.28.0"
+version = "0.29.0"
 edition = "2021"
 description = "A morphological analysis command line interface."
 documentation = "https://docs.rs/lindera-cli"
