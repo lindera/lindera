@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## 0.29.0 (2024-03-17)
 - Update dependencies #381 @mosuka
 - Download IPADIC-NEologd from self repository #380 @mosuka
 - Download UniDic from self repository #379 @mosuka
