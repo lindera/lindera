@@ -16,7 +16,7 @@ pub struct Token {
     /// Position, expressed in number of tokens.
     pub position: usize,
 
-    /// The length expressed in term of number of original tokens.
+    /// The length expressed in terms of number of original tokens.
     pub position_length: usize,
 
     /// The ID of the word and a flag to indicate whether the word is registered in the dictionary.

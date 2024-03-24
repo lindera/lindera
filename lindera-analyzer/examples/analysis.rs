@@ -1,7 +1,7 @@
 use lindera_core::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     {
         use std::path::PathBuf;
 

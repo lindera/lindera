@@ -75,7 +75,7 @@ Instead, you will be penalized for the execution time of the program.
 ### IPADIC (Japanese dictionary)
 
 ```shell script
-% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "http://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/mecab-ipadic-2.7.0-20070801.tar.gz"
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "https://github.com/lindera-morphology/mecab-ipadic/archive/refs/tags/2.7.0-20070801.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
 % lindera build --dic-type=ipadic /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
 ```
@@ -83,15 +83,15 @@ Instead, you will be penalized for the execution time of the program.
 ### CC-CEDICT (Chinese dictionary)
 
 ```shell script
-% curl -L -o /tmp/CC-CEDICT-MeCab.zip https://github.com/ueda-keisuke/CC-CEDICT-MeCab/archive/refs/heads/master.zip
-% unzip /tmp/CC-CEDICT-MeCab.zip -d /tmp
-% lindera build --dic-type=cc-cedict /tmp/CC-CEDICT-MeCab-master /tmp/lindera-cc-cedict
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://github.com/lindera-morphology/CC-CEDICT-MeCab/archive/refs/tags/0.1.0-20200409.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+% lindera build --dic-type=cc-cedict /tmp/CC-CEDICT-MeCab-0.1.0-20200409 /tmp/lindera-cc-cedict-0.1.0-20200409
 ```
 
 ### ko-dic (Korean dictionary)
 
 ```shell script
-% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://github.com/lindera-morphology/mecab-ko-dic/archive/refs/tags/2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 % lindera build --dic-type=ko-dic /tmp/mecab-ko-dic-2.1.1-20180720 /tmp/lindera-ko-dic-2.1.1-20180720
 ```
@@ -99,9 +99,9 @@ Instead, you will be penalized for the execution time of the program.
 ### UniDic (Japanese dictionary)
 
 ```shell script
-% curl -l -o /tmp/unidic-mecab-2.1.2_src.zip "https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/unidic-mecab-2.1.2_src.zip"
-% unzip /tmp/unidic-mecab-2.1.2_src.zip -d /tmp
-% lindera build --dic-type=unidic /tmp/unidic-mecab-2.1.2_src /tmp/lindera-unidic-2.1.2
+% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://github.com/lindera-morphology/unidic-mecab/archive/refs/tags/2.1.2.tar.gz"
+% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+% lindera build --dic-type=unidic /tmp/unidic-mecab-2.1.2 /tmp/lindera-unidic-2.1.2
 ```
 
 
@@ -219,7 +219,7 @@ EOS
 #### CC-CEDICT (Chinese dictionary)
 
 ```shell script
-% echo "可以进行中文形态学分析。" | lindera tokenize --dic-dir=/tmp/lindera-cc-cedict
+% echo "可以进行中文形态学分析。" | lindera tokenize --dic-dir=/tmp/lindera-cc-cedict-0.1.0-20200409
 ```
 
 ```text
