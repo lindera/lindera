@@ -32,10 +32,9 @@ use crate::{
 use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_tokenizer::tokenizer::Tokenizer;
 
-#[cfg(any(
-    all(feature = "ipadic", feature = "ipadic-filter",),
-    all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    all(feature = "unidic", feature = "unidic-filter",)
+#[cfg(all(
+    any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
+    feature = "filter"
 ))]
 use crate::token_filter::{
     japanese_base_form::JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
@@ -46,17 +45,16 @@ use crate::token_filter::{
     japanese_stop_tags::JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME,
 };
 
-#[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+#[cfg(all(feature = "ko-dic", feature = "filter",))]
 use crate::token_filter::{
     korean_keep_tags::KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
     korean_reading_form::KOREAN_READING_FORM_TOKEN_FILTER_NAME,
     korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
 };
 
-#[cfg(any(
-    all(feature = "ipadic", feature = "ipadic-filter",),
-    all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    all(feature = "unidic", feature = "unidic-filter",)
+#[cfg(all(
+    any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
+    feature = "filter"
 ))]
 use crate::token_filter::{
     japanese_base_form::JapaneseBaseFormTokenFilter,
@@ -66,7 +64,7 @@ use crate::token_filter::{
     japanese_stop_tags::JapaneseStopTagsTokenFilter,
 };
 
-#[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+#[cfg(all(feature = "ko-dic", feature = "filter",))]
 use crate::token_filter::{
     korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
     korean_stop_tags::KoreanStopTagsTokenFilter,
@@ -171,20 +169,26 @@ impl Analyzer {
                         .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
                     match token_filter_name {
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 JapaneseBaseFormTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
@@ -201,40 +205,52 @@ impl Analyzer {
                                 JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 JapaneseKeepTagsTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 JapaneseNumberTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 JapaneseReadingFormTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(any(
-                            all(feature = "ipadic", feature = "ipadic-filter",),
-                            all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-                            all(feature = "unidic", feature = "unidic-filter",)
+                        #[cfg(all(
+                            any(
+                                feature = "ipadic",
+                                feature = "ipadic-neologd",
+                                feature = "unidic"
+                            ),
+                            feature = "filter"
                         ))]
                         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
@@ -246,19 +262,19 @@ impl Analyzer {
                                 KeepWordsTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
                         KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 KoreanKeepTagsTokenFilter::from_slice(&args_bytes)?,
                             ));
                         }
-                        #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
                         KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 KoreanReadingFormTokenFilter::default(),
                             ));
                         }
-                        #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
                         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
                             token_filters.push(BoxTokenFilter::from(
                                 KoreanStopTagsTokenFilter::from_slice(&args_bytes)?,

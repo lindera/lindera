@@ -150,7 +150,7 @@ Put the following in Cargo.toml:
 
 ```
 [dependencies]
-lindera-analyzer = { version = "0.24.0", features = ["ipadic", "ipadic-filter"] }
+lindera-analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -199,7 +199,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell script
-% cargo run --features=ipadic,ipadic-filter --example=analysis_example
+% cargo run --features=ipadic,filter --example=analysis_example
 ```
 
 You can see the result as follows:

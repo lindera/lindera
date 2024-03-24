@@ -14,15 +14,11 @@ license = "MIT"
 [features]
 default = []  # No directories included
 ipadic = ["lindera-dictionary/ipadic"]  # Include IPADIC dictionary (Japanese)
-ipadic-compress = ["lindera-dictionary/ipadic-compress"]  # Compress IPADIC
 ipadic-neologd = ["lindera-dictionary/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
-ipadic-neologd-compress = ["lindera-dictionary/ipadic-neologd-compress"]  # Compress IPADIC NEologd
 unidic = ["lindera-dictionary/unidic"]  # Include UniDic dictionary (Japanese)
-unidic-compress = ["lindera-dictionary/unidic-compress"]  # Compress UniDic
 ko-dic = ["lindera-dictionary/ko-dic"]  # Include ko-dic dictionary (Korean)
-ko-dic-compress = ["lindera-dictionary/ko-dic-compress"]  # Compress ko-dic
 cc-cedict = ["lindera-dictionary/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
-cc-cedict-compress = ["lindera-dictionary/cc-cedict-compress"]  # Compress CC-CEDICT
+compress = ["lindera-dictionary/compress"]  # Compress dictionaries
 
 [dependencies]
 bincode.workspace = true

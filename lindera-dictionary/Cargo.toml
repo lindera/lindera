@@ -14,15 +14,16 @@ license = "MIT"
 [features]
 default = []  # No directories included
 ipadic = ["lindera-ipadic/ipadic"]  # Include Japanese dictionary (IPADIC)
-ipadic-compress = ["lindera-ipadic/compress"]  # Compress Japanese dictionary (IPADIC)
+#ipadic-compress = ["lindera-ipadic/compress"]  # Compress Japanese dictionary (IPADIC)
 ipadic-neologd = ["lindera-ipadic-neologd/ipadic-neologd"]  # Include Japanese dictionary (IPADIC NEologd)
-ipadic-neologd-compress = ["lindera-ipadic-neologd/compress"]  # Compress Japanese dictionary (IPADIC NEologd)
+#ipadic-neologd-compress = ["lindera-ipadic-neologd/compress"]  # Compress Japanese dictionary (IPADIC NEologd)
 unidic = ["lindera-unidic/unidic"]  # Include Japanese dictionary (UniDic)
-unidic-compress = ["lindera-unidic/compress"]  # Compress Japanese dictionary (UniDic)
+#unidic-compress = ["lindera-unidic/compress"]  # Compress Japanese dictionary (UniDic)
 ko-dic = ["lindera-ko-dic/ko-dic"]  # Include Korean dictionary (ko-dic)
-ko-dic-compress = ["lindera-ko-dic/compress"]  # Compress Korean dictionary (ko-dic)
+#ko-dic-compress = ["lindera-ko-dic/compress"]  # Compress Korean dictionary (ko-dic)
 cc-cedict = ["lindera-cc-cedict/cc-cedict"]  # Include Chinese dictionary (CC-CEDICT)
-cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
+#cc-cedict-compress = ["lindera-cc-cedict/compress"]  # Compress Chinese dictionary (CC-CEDICT)
+compress = ["lindera-ipadic/compress", "lindera-ipadic-neologd/compress", "lindera-unidic/compress", "lindera-ko-dic/compress", "lindera-cc-cedict/compress"]  # Compress dictionaries
 
 [dependencies]
 anyhow.workspace = true

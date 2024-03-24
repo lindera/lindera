@@ -16,7 +16,7 @@ const KATAKANA_DAKUON_ITERATION_MARK: char = 'ヾ';
 
 fn hiragana_add_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
-    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    // Unsafe code is okay, because we know that all the characters within these ranges exist.
     match codepoint {
         0x304b..=0x3062 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
         0x3064..=0x3069 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
@@ -27,7 +27,7 @@ fn hiragana_add_dakuon(c: &char) -> char {
 
 fn hiragana_remove_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
-    // Unsafe code is okay, because we know that all of the characters within these ranges exist.
+    // Unsafe code is okay, because we know that all the characters within these ranges exist.
     match codepoint {
         0x304b..=0x3062 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         0x3064..=0x3069 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },

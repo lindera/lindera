@@ -17,7 +17,7 @@ Put the following in Cargo.toml:
 
 ```
 [dependencies]
-lindera_analyzer = { version = "0.24.0", features = ["ipadic", "ipadic-filter"] }
+lindera_analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 ```
 
 ### Basic example
@@ -68,7 +68,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell script
-% cargo run --features=ipadic,ipadic-filter --example=analysis
+% cargo run --features=ipadic,filter --example=analysis
 ```
 
 You can see the result as follows:

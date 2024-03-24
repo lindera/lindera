@@ -5,22 +5,12 @@ use std::{
     str::FromStr,
 };
 
-#[cfg(any(
-    feature = "ipadic-filter",
-    feature = "unidic-filter",
-    feature = "ko-dic-filter",
-    feature = "cc-cedict-filter",
-))]
+#[cfg(feature = "filter")]
 use std::{fs::File, io::Read};
 
 use clap::{Parser, Subcommand};
 
-#[cfg(any(
-    feature = "ipadic-filter",
-    feature = "unidic-filter",
-    feature = "ko-dic-filter",
-    feature = "cc-cedict-filter",
-))]
+#[cfg(feature = "filter")]
 use lindera_analyzer::analyzer::Analyzer;
 use lindera_analyzer::token::Token;
 
@@ -45,12 +35,7 @@ struct Args {
 enum Commands {
     List(ListArgs),
     Tokenize(TokenizeArgs),
-    #[cfg(any(
-        feature = "ipadic-filter",
-        feature = "unidic-filter",
-        feature = "ko-dic-filter",
-        feature = "cc-cedict-filter",
-    ))]
+    #[cfg(feature = "filter")]
     Analyze(AnalyzeArgs),
     Build(BuildArgs),
 }
@@ -98,12 +83,7 @@ struct TokenizeArgs {
     input_file: Option<PathBuf>,
 }
 
-#[cfg(any(
-    feature = "ipadic-filter",
-    feature = "unidic-filter",
-    feature = "ko-dic-filter",
-    feature = "cc-cedict-filter",
-))]
+#[cfg(feature = "filter")]
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
@@ -164,12 +144,7 @@ fn main() -> LinderaResult<()> {
     match args.command {
         Commands::List(args) => list(args),
         Commands::Tokenize(args) => tokenize(args),
-        #[cfg(any(
-            feature = "ipadic-filter",
-            feature = "unidic-filter",
-            feature = "ko-dic-filter",
-            feature = "cc-cedict-filter",
-        ))]
+        #[cfg(feature = "filter")]
         Commands::Analyze(args) => analyze(args),
         Commands::Build(args) => build(args),
     }
@@ -307,12 +282,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     Ok(())
 }
 
-#[cfg(any(
-    feature = "ipadic-filter",
-    feature = "unidic-filter",
-    feature = "ko-dic-filter",
-    feature = "cc-cedict-filter",
-))]
+#[cfg(feature = "filter")]
 fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
     let mut config_file = File::open(args.config_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
