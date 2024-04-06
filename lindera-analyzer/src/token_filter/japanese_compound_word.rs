@@ -20,7 +20,7 @@ impl JapaneseCompoundWordTokenFilterConfig {
     pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
         for tag in tags.iter() {
-            let mut formatted_tag = vec!["*", "*", "*", "*"];
+            let mut formatted_tag = ["*", "*", "*", "*"];
 
             let tag_array: Vec<&str> = tag.split(',').collect();
             for (i, j) in tag_array.iter().enumerate() {
@@ -31,7 +31,7 @@ impl JapaneseCompoundWordTokenFilterConfig {
         }
 
         let formatted_new_tag = if let Some(new_tag_str) = new_tag {
-            let mut formatted_tag = vec!["*", "*", "*", "*"];
+            let mut formatted_tag = ["*", "*", "*", "*"];
 
             let tag_array: Vec<&str> = new_tag_str.split(',').collect();
             for (i, j) in tag_array.iter().enumerate() {
@@ -80,7 +80,7 @@ impl JapaneseCompoundWordTokenFilter {
         ))
     }
 
-    fn concat_token<'a>(&self, token1: &mut Token, token2: &Token) {
+    fn concat_token(&self, token1: &mut Token, token2: &Token) {
         token1.text = format!("{}{}", token1.text, token2.text);
         token1.byte_end = token2.byte_end;
         token1.position_length += token2.position_length;
@@ -121,7 +121,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
         let mut new_tokens = Vec::new();
         let mut compound_token_opt = None;
         for token in tokens.iter_mut() {
-            let mut formatted_tags = vec!["*", "*", "*", "*"];
+            let mut formatted_tags = ["*", "*", "*", "*"];
             let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
             for (i, j) in token.details[0..tags_len].iter().enumerate() {
                 formatted_tags[i] = j;
@@ -172,10 +172,10 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{
@@ -186,7 +186,7 @@ mod tests {
         },
     };
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     #[test]
     fn test_japanese_compound_word_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -205,7 +205,7 @@ mod tests {
         assert_eq!(config.tags.len(), 2);
     }
 
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     #[test]
     fn test_japanese_compound_word_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         let config_str = r#"
             {

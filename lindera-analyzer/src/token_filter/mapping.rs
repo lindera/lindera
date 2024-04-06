@@ -99,7 +99,7 @@ impl TokenFilter for MappingTokenFilter {
                 }
             }
 
-            token.text = result.into();
+            token.text = result;
         }
 
         Ok(())
@@ -108,11 +108,11 @@ impl TokenFilter for MappingTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
     use crate::token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig};
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use crate::{token::Token, token_filter::TokenFilter};
 
     #[test]
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_mapping_token_filter_apply_ipadic() {
         let config_str = r#"
         {

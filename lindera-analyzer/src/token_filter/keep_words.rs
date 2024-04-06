@@ -53,11 +53,11 @@ impl TokenFilter for KeepWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use lindera_core::word_entry::WordId;
 
     use crate::token_filter::keep_words::{KeepWordsTokenFilter, KeepWordsTokenFilterConfig};
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use crate::{token::Token, token_filter::TokenFilter};
 
     #[test]
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     fn test_keep_words_token_filter_apply_ipadic() {
         let config_str = r#"
             {

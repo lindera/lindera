@@ -28,7 +28,7 @@ impl TokenFilter for UppercaseTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.text = token.text.to_uppercase().into();
+            token.text = token.text.to_uppercase();
         }
 
         Ok(())
@@ -37,17 +37,17 @@ impl TokenFilter for UppercaseTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use crate::{
         token::Token,
         token_filter::{uppercase::UppercaseTokenFilter, TokenFilter},
     };
 
     #[test]
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     fn test_uppercase_token_filter_apply() {
         let filter = UppercaseTokenFilter::default();
 

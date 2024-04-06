@@ -11,18 +11,13 @@ use crate::{
 
 const EOS_NODE: EdgeId = EdgeId(1u32);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum EdgeType {
+    #[default]
     KNOWN,
     UNKNOWN,
     USER,
     INSERTED,
-}
-
-impl Default for EdgeType {
-    fn default() -> Self {
-        EdgeType::KNOWN
-    }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]

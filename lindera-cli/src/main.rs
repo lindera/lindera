@@ -1,28 +1,28 @@
-use std::{
-    fs,
-    io::{self, BufRead, BufReader},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 #[cfg(feature = "filter")]
-use std::{fs::File, io::Read};
+use std::io::Read;
+use std::path::Path;
 
 use clap::{Parser, Subcommand};
 
 #[cfg(feature = "filter")]
-use lindera_analyzer::analyzer::Analyzer;
-use lindera_analyzer::token::Token;
+use lindera::{Analyzer, AnalyzerConfig};
 
-use lindera_core::{
-    error::{LinderaError, LinderaErrorKind},
-    mode::Mode,
-    LinderaResult,
-};
-use lindera_dictionary::{
-    build_dictionary, build_user_dictionary, DictionaryConfig, DictionaryKind, UserDictionaryConfig,
-};
-use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig, CONTAINED_DICTIONARIES};
+use lindera::AnalyzerToken;
+use lindera::DictionaryBuilderResolver;
+use lindera::DictionaryConfig;
+use lindera::DictionaryKind;
+use lindera::LinderaError;
+use lindera::LinderaErrorKind;
+use lindera::LinderaResult;
+use lindera::Mode;
+use lindera::Tokenizer;
+use lindera::TokenizerConfig;
+use lindera::UserDictionaryConfig;
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]
@@ -151,13 +151,15 @@ fn main() -> LinderaResult<()> {
 }
 
 fn list(_args: ListArgs) -> LinderaResult<()> {
-    for dic in CONTAINED_DICTIONARIES {
-        println!("{}", dic);
+    // let a = DictionaryKind::iter().collect::<Vec<_>>();
+
+    for dic in DictionaryKind::contained_variants() {
+        println!("{}", dic.as_str());
     }
     Ok(())
 }
 
-fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+fn mecab_output(mut tokens: Vec<AnalyzerToken>) -> LinderaResult<()> {
     for token in tokens.iter_mut() {
         println!("{}\t{}", token.text.clone(), token.details.join(","));
     }
@@ -166,7 +168,7 @@ fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     Ok(())
 }
 
-fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+fn json_output(mut tokens: Vec<AnalyzerToken>) -> LinderaResult<()> {
     let mut tokens_json = Vec::new();
     for token in tokens.iter_mut() {
         let token_info = serde_json::json!({
@@ -187,7 +189,7 @@ fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     Ok(())
 }
 
-fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
+fn wakati_output(tokens: Vec<AnalyzerToken>) -> LinderaResult<()> {
     let mut it = tokens.iter().peekable();
     while let Some(token) = it.next() {
         if it.peek().is_some() {
@@ -228,9 +230,9 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
-        Box::new(BufReader::new(fs::File::open(input_file).map_err(
-            |err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)),
-        )?))
+        Box::new(BufReader::new(File::open(input_file).map_err(|err| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))
+        })?))
     } else {
         Box::new(BufReader::new(io::stdin()))
     };
@@ -249,7 +251,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         let mut tmp_tokens = tokenizer.tokenize(text.trim())?;
         let mut tokens = Vec::new();
         for token in tmp_tokens.iter_mut() {
-            tokens.push(Token {
+            tokens.push(AnalyzerToken {
                 text: token.text.to_string(),
                 byte_start: token.byte_start,
                 byte_end: token.byte_end,
@@ -291,17 +293,19 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
         .read_to_end(&mut config_bytes)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-    let analyzer = Analyzer::from_slice(&config_bytes)
+    let analyzer_config = AnalyzerConfig::from_slice(&config_bytes)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    let analyzer = Analyzer::from_config(&analyzer_config)?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
-        Box::new(BufReader::new(fs::File::open(input_file).map_err(
-            |err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)),
-        )?))
+        Box::new(BufReader::new(File::open(input_file).map_err(|err| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))
+        })?))
     } else {
         Box::new(BufReader::new(io::stdin()))
     };
@@ -317,7 +321,7 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
             break;
         }
         let text = text.trim().to_string();
-        let tokens = analyzer.analyze(&mut &text)?;
+        let tokens = analyzer.analyze(&text)?;
         match output_format {
             Format::Mecab => {
                 mecab_output(tokens)?;
@@ -335,9 +339,18 @@ fn analyze(args: AnalyzeArgs) -> LinderaResult<()> {
 }
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
+    let builder = DictionaryBuilderResolver::resolve_builder(args.dic_type)?;
+
     if args.build_user_dic {
-        build_user_dictionary(args.dic_type, &args.src_path, &args.dest_path)
+        let output_file = if let Some(filename) = args.src_path.file_name() {
+            let mut output_file = Path::new(&args.dest_path).join(filename);
+            output_file.set_extension("bin");
+            output_file
+        } else {
+            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!("failed to get filename")));
+        };
+        builder.build_user_dictionary(&args.src_path, &output_file)
     } else {
-        build_dictionary(args.dic_type, &args.src_path, &args.dest_path)
+        builder.build_dictionary(&args.src_path, &args.dest_path)
     }
 }

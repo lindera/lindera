@@ -57,15 +57,15 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
             match self.config.kind {
                 #[cfg(feature = "ipadic")]
                 DictionaryKind::IPADIC => {
-                    token.text = token.details[6].to_string().into();
+                    token.text = token.details[6].to_string();
                 }
                 #[cfg(feature = "ipadic-neologd")]
                 DictionaryKind::IPADICNEologd => {
-                    token.text = token.details[6].to_string().into();
+                    token.text = token.details[6].to_string();
                 }
                 #[cfg(feature = "unidic")]
                 DictionaryKind::UniDic => {
-                    token.text = token.details[10].to_string().into();
+                    token.text = token.details[10].to_string();
                 }
                 _ => {
                     // NOOP

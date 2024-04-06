@@ -17,7 +17,7 @@ impl JapaneseKeepTagsTokenFilterConfig {
     pub fn new(tags: HashSet<String>) -> Self {
         let mut formatted_tags: HashSet<String> = HashSet::new();
         for tag in tags.iter() {
-            let mut formatted_tag = vec!["*", "*", "*", "*"];
+            let mut formatted_tag = ["*", "*", "*", "*"];
 
             let tag_array: Vec<&str> = tag.split(',').collect();
             for (i, j) in tag_array.iter().enumerate() {
@@ -66,7 +66,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         tokens.retain(|token| {
-            let mut formatted_tags = vec!["*", "*", "*", "*"];
+            let mut formatted_tags = ["*", "*", "*", "*"];
             let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
             for (i, j) in token.details[0..tags_len].iter().enumerate() {
                 formatted_tags[i] = j;
@@ -80,10 +80,10 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{
@@ -93,7 +93,7 @@ mod tests {
     };
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_keep_tags_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
             {
@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_keep_tags_token_filter_apply_ipadic() {
         let config_str = r#"
             {

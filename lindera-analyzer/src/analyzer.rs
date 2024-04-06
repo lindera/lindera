@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::{fs, path::Path};
 
 use serde_json::Value;
@@ -72,13 +73,12 @@ use crate::token_filter::{
 
 use crate::token::Token;
 
-pub struct Analyzer {
-    character_filters: Vec<BoxCharacterFilter>,
-    tokenizer: Tokenizer,
-    token_filters: Vec<BoxTokenFilter>,
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct AnalyzerConfig {
+    inner: Value,
 }
 
-impl Analyzer {
+impl AnalyzerConfig {
     pub fn from_file(path: &Path) -> LinderaResult<Self> {
         let bytes = fs::read(path).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
@@ -89,10 +89,25 @@ impl Analyzer {
         let args = serde_json::from_slice::<Value>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Self::from_value(&args)
+        Ok(Self { inner: args })
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+pub struct Analyzer {
+    /// Character filters
+    pub character_filters: Vec<BoxCharacterFilter>,
+
+    /// Tokenizer
+    pub tokenizer: Tokenizer,
+
+    /// Token filters
+    pub token_filters: Vec<BoxTokenFilter>,
+}
+
+impl Analyzer {
+    pub fn from_config(config: &AnalyzerConfig) -> LinderaResult<Self> {
+        let value = &config.inner;
+
         let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
         let character_filter_settings = value["character_filters"].as_array();
         if let Some(character_filter_settings) = character_filter_settings {
@@ -423,15 +438,16 @@ impl Clone for Analyzer {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
+    #[cfg(all(
+        any(feature = "ipadic", feature = "ipadic-neologd"),
+        feature = "filter"
     ))]
     use crate::analyzer::Analyzer;
+    use crate::analyzer::AnalyzerConfig;
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
-    fn test_ipadic_analyzer_from_slice() {
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
+    fn test_analyzer_config_from_slice() {
         let config_str = r#"
         {
             "character_filters": [
@@ -498,17 +514,14 @@ mod tests {
             ]
         }
         "#;
-        let result = Analyzer::from_slice(config_str.as_bytes());
+        let result = AnalyzerConfig::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
 
     #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
-    fn test_ipadic_analyzer_clone() {
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
+    fn test_analyzer_config_clone() {
         let config_str = r#"
         {
             "character_filters": [
@@ -575,25 +588,15 @@ mod tests {
             ]
         }
         "#;
-        let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
+        let analyzer_config = AnalyzerConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        let cloned_analyzer = analyzer.clone();
+        let cloned_analyzer_config = analyzer_config.clone();
 
-        assert_eq!(
-            analyzer.character_filters.len(),
-            cloned_analyzer.character_filters.len()
-        );
-        assert_eq!(
-            analyzer.token_filters.len(),
-            cloned_analyzer.token_filters.len()
-        );
+        assert_eq!(analyzer_config.inner, cloned_analyzer_config.inner);
     }
 
     #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_ipadic_analyzer_analyze() {
         let config_str = r#"
         {
@@ -678,7 +681,9 @@ mod tests {
             ]
         }
         "#;
-        let analyzer = Analyzer::from_slice(config_str.as_bytes()).unwrap();
+        let analyzer_config = AnalyzerConfig::from_slice(config_str.as_bytes()).unwrap();
+
+        let analyzer = Analyzer::from_config(&analyzer_config).unwrap();
 
         {
             let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。".to_string();
@@ -955,83 +960,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    #[test]
-    #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "ipadic-neologd", feature = "ipadic-neologd-filter",),
-    ))]
-    fn test_analyzer_from_slice_wrong_config() {
-        let config_str = r#"
-        {
-            "character_filters": [
-                {
-                    "kind": "unicode_normalize",
-                    "args": {
-                        "kind": "nfkc"
-                    }
-                },
-                {
-                    "kind": "mapping",
-                    "args": {
-                        "mapping": {
-                            "リンデラ": "Lindera"
-                        }
-                    }
-                }
-            ],
-            "tokenizer": {
-                "dictionary": {
-                    "kind": "ipadic"
-                },
-                "mode": "normal",
-                "with_details": false
-            },
-            "token_filters": [
-                {
-                    "kind": "japanese_stop_tags",
-                    "args": {
-                        "tags": [
-                            "接続詞",
-                            "助詞",
-                            "助詞,格助詞",
-                            "助詞,格助詞,一般",
-                            "助詞,格助詞,引用",
-                            "助詞,格助詞,連語",
-                            "助詞,係助詞",
-                            "助詞,副助詞",
-                            "助詞,間投助詞",
-                            "助詞,並立助詞",
-                            "助詞,終助詞",
-                            "助詞,副助詞／並立助詞／終助詞",
-                            "助詞,連体化",
-                            "助詞,副詞化",
-                            "助詞,特殊",
-                            "助動詞",
-                            "記号",
-                            "記号,一般",
-                            "記号,読点",
-                            "記号,句点",
-                            "記号,空白",
-                            "記号,括弧閉",
-                            "その他,間投",
-                            "フィラー",
-                            "非言語音"
-                        ]
-                    }
-                },
-                {
-                    "kind": "unexisting_filter",
-                    "args": {
-                        "min": 3
-                    }
-                }
-            ]
-        }
-        "#;
-        let result = Analyzer::from_slice(config_str.as_bytes());
-
-        assert_eq!(true, result.is_err());
     }
 }

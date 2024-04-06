@@ -28,7 +28,7 @@ impl TokenFilter for LowercaseTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.text = token.text.to_lowercase().into();
+            token.text = token.text.to_lowercase();
         }
 
         Ok(())
@@ -37,17 +37,17 @@ impl TokenFilter for LowercaseTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use crate::{
         token::Token,
         token_filter::{lowercase::LowercaseTokenFilter, TokenFilter},
     };
 
     #[test]
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     fn test_lowercase_token_filter_apply_ipadic() {
         let filter = LowercaseTokenFilter::default();
 

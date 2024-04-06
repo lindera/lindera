@@ -25,7 +25,7 @@ use crate::token::Token;
 
 pub trait TokenFilter: 'static + Send + Sync + TokenFilterClone {
     fn name(&self) -> &str;
-    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()>;
+    fn apply(&self, tokens: &mut Vec<Token>) -> LinderaResult<()>;
 }
 
 pub struct BoxTokenFilter(Box<dyn TokenFilter + 'static + Send + Sync>);

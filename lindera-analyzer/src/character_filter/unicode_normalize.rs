@@ -48,9 +48,9 @@ impl UnicodeNormalizeCharacterFilter {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(
-            UnicodeNormalizeCharacterFilterConfig::from_slice(data)?,
-        ))
+        let config = UnicodeNormalizeCharacterFilterConfig::from_slice(data)?;
+
+        Ok(Self::new(config))
     }
 }
 

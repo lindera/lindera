@@ -70,8 +70,7 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
             {
                 token.text = token.text[..token.text.len()
                     - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
-                    .to_string()
-                    .into();
+                    .to_string();
             }
         }
 
@@ -92,10 +91,10 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{
@@ -107,7 +106,7 @@ mod tests {
     };
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_katakana_stem_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
             {
@@ -121,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_katakana_stem_token_filter_config_from_slice_zero_ipadic() {
         let config_str = r#"
             {
@@ -134,7 +133,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_katakana_stem_token_filter_from_slice_ipadic() {
         let config_str = r#"
             {
@@ -147,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_katakana_stem_token_filter_from_slice_zero_ipadic() {
         let config_str = r#"
             {
@@ -160,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter",))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
         let config_str = r#"
             {

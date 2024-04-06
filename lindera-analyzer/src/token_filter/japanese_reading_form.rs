@@ -57,15 +57,15 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
             match self.config.kind {
                 #[cfg(feature = "ipadic")]
                 DictionaryKind::IPADIC => {
-                    token.text = token.details[7].to_string().into();
+                    token.text = token.details[7].to_string();
                 }
                 #[cfg(feature = "ipadic-neologd")]
                 DictionaryKind::IPADICNEologd => {
-                    token.text = token.details[7].to_string().into();
+                    token.text = token.details[7].to_string();
                 }
                 #[cfg(feature = "unidic")]
                 DictionaryKind::UniDic => {
-                    token.text = token.details[6].to_string().into();
+                    token.text = token.details[6].to_string();
                 }
                 _ => {
                     // NOOP
@@ -80,24 +80,24 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
 #[cfg(test)]
 mod tests {
     #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
+        all(feature = "ipadic", feature = "filter",),
+        all(feature = "unidic", feature = "filter",)
     ))]
     use crate::token::Token;
     #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
+        all(feature = "ipadic", feature = "filter",),
+        all(feature = "unidic", feature = "filter",)
     ))]
     use lindera_core::word_entry::WordId;
     #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
+        all(feature = "ipadic", feature = "filter",),
+        all(feature = "unidic", feature = "filter",)
     ))]
     use lindera_dictionary::DictionaryKind;
 
     #[cfg(any(
-        all(feature = "ipadic", feature = "ipadic-filter",),
-        all(feature = "unidic", feature = "unidic-filter",)
+        all(feature = "ipadic", feature = "filter",),
+        all(feature = "unidic", feature = "filter",)
     ))]
     use crate::token_filter::{
         japanese_reading_form::{
@@ -106,7 +106,7 @@ mod tests {
         TokenFilter,
     };
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter"))]
     #[test]
     fn test_japanese_reading_form_token_filter_config_from_slice_ipadic() {
         let config_str = r#"
@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::IPADIC);
     }
 
-    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
+    #[cfg(all(feature = "unidic", feature = "filter"))]
     #[test]
     fn test_japanese_reading_form_token_filter_config_from_slice_unidic() {
         let config_str = r#"
@@ -134,7 +134,7 @@ mod tests {
         assert_eq!(config.kind, DictionaryKind::UniDic);
     }
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter"))]
     #[test]
     fn test_japanese_reading_form_token_filter_from_slice_ipadic() {
         let config_str = r#"
@@ -147,7 +147,7 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
+    #[cfg(all(feature = "unidic", feature = "filter"))]
     #[test]
     fn test_japanese_reading_form_token_filter_from_slice_unidic() {
         let config_str = r#"
@@ -160,7 +160,7 @@ mod tests {
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter"))]
     #[test]
     fn test_japanese_reading_form_token_filter_apply_ipadic() {
         let config_str = r#"
@@ -228,7 +228,7 @@ mod tests {
         assert_eq!(&tokens[2].text, "トートバッグ");
     }
 
-    #[cfg(all(feature = "unidic", feature = "unidic-filter",))]
+    #[cfg(all(feature = "unidic", feature = "filter",))]
     #[test]
     fn test_japanese_reading_form_token_filter_apply_unidic() {
         let config_str = r#"

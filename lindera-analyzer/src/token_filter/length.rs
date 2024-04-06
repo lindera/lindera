@@ -66,11 +66,11 @@ impl TokenFilter for LengthTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use lindera_core::word_entry::WordId;
 
     use crate::token_filter::length::{LengthTokenFilter, LengthTokenFilterConfig};
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     use crate::{token::Token, token_filter::TokenFilter};
 
     #[test]
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic",),))]
+    #[cfg(feature = "ipadic")]
     fn test_length_token_filter_apply_ipadic() {
         let config_str = r#"
             {

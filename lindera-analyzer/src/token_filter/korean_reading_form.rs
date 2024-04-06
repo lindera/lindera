@@ -29,7 +29,7 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
     fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if token.details[0] != "UNK" {
-                token.text = token.details[3].to_string().into();
+                token.text = token.details[3].to_string();
             }
         }
 

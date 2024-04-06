@@ -19,7 +19,7 @@ impl JapaneseNumberTokenFilterConfig {
             Some(tags) => {
                 let mut formatted_tags: HashSet<String> = HashSet::new();
                 for tag in tags.iter() {
-                    let mut formatted_tag = vec!["*", "*", "*", "*"];
+                    let mut formatted_tag = ["*", "*", "*", "*"];
 
                     let tag_array: Vec<&str> = tag.split(',').collect();
                     for (i, j) in tag_array.iter().enumerate() {
@@ -71,7 +71,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 
     fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let mut tag_vec = vec!["*", "*", "*", "*"];
+            let mut tag_vec = ["*", "*", "*", "*"];
             let tags_len = if token.details.len() >= 4 { 4 } else { 1 };
             for (i, j) in token.details[0..tags_len].iter().enumerate() {
                 tag_vec[i] = j;
@@ -81,12 +81,12 @@ impl TokenFilter for JapaneseNumberTokenFilter {
             match self.config.tags {
                 Some(ref tags) => {
                     if tags.contains(&tag) {
-                        token.text = to_arabic_numerals(&token.text).into();
+                        token.text = to_arabic_numerals(&token.text);
                     }
                 }
                 None => {
                     // If a tag is omitted, all tokans are covered.
-                    token.text = to_arabic_numerals(&token.text).into();
+                    token.text = to_arabic_numerals(&token.text);
                 }
             }
         }
@@ -255,13 +255,13 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use std::str::FromStr;
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{
@@ -273,7 +273,7 @@ mod tests {
     };
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_to_number_str_ipadic() {
         {
             let s = "０";
@@ -812,7 +812,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_number_token_filter_config_from_slice_ipadic() {
         {
             let config_str = r#"
@@ -855,7 +855,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "ipadic-filter"))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_number_token_filter_from_slice_ipadic() {
         {
             // test empty tags
@@ -883,7 +883,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         let config_str = r#"
             {
@@ -1029,7 +1029,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(all(feature = "ipadic", feature = "ipadic-filter",),))]
+    #[cfg(all(feature = "ipadic", feature = "filter",))]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         let config_str = r#"
             {

@@ -77,20 +77,20 @@ impl JapaneseIterationMarkCharacterFilterConfig {
 
 /// Normalizes Japanese horizontal iteration marks (odoriji) to their expanded form.
 ///
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct JapaneseIterationMarkCharacterFilter {
     config: JapaneseIterationMarkCharacterFilterConfig,
 }
 
 impl JapaneseIterationMarkCharacterFilter {
-    pub fn new(config: JapaneseIterationMarkCharacterFilterConfig) -> LinderaResult<Self> {
-        Ok(Self { config })
+    pub fn new(config: JapaneseIterationMarkCharacterFilterConfig) -> Self {
+        Self { config }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         let config = JapaneseIterationMarkCharacterFilterConfig::from_slice(data)?;
 
-        Self::new(config)
+        Ok(Self::new(config))
     }
 
     fn normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String {

@@ -33,7 +33,7 @@ pub struct MappingCharacterFilter {
 }
 
 impl MappingCharacterFilter {
-    pub fn new(config: MappingCharacterFilterConfig) -> LinderaResult<Self> {
+    pub fn new(config: MappingCharacterFilterConfig) -> Self {
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
         let mut keys = config.mapping.keys().collect::<Vec<_>>();
         keys.sort();
@@ -41,19 +41,21 @@ impl MappingCharacterFilter {
             keyset.push((key.as_bytes(), value as u32));
         }
 
-        let data = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
-        })?;
+        let data = DoubleArrayBuilder::build(&keyset)
+            .ok_or_else(|| {
+                LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+            })
+            .unwrap();
 
         let trie = DoubleArray::new(data);
 
-        Ok(Self { config, trie })
+        Self { config, trie }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         let config = MappingCharacterFilterConfig::from_slice(data)?;
 
-        Self::new(config)
+        Ok(Self::new(config))
     }
 }
 
