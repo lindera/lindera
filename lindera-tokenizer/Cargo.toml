@@ -28,11 +28,3 @@ serde_json.workspace = true
 
 lindera-core.workspace = true
 lindera-dictionary.workspace = true
-
-[dev-dependencies]
-criterion.workspace = true
-once_cell.workspace = true
-
-[[bench]]
-name = "bench"
-harness = false

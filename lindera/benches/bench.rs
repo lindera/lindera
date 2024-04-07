@@ -20,21 +20,9 @@ use criterion::{criterion_group, criterion_main, Criterion};
     feature = "ko-dic",
     feature = "cc-cedict"
 ))]
-use lindera_core::mode::Mode;
-#[cfg(any(
-    feature = "ipadic",
-    feature = "unidic",
-    feature = "ko-dic",
-    feature = "cc-cedict"
-))]
-use lindera_dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
-#[cfg(any(
-    feature = "ipadic",
-    feature = "unidic",
-    feature = "ko-dic",
-    feature = "cc-cedict"
-))]
-use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera::{
+    DictionaryConfig, DictionaryKind, Mode, Tokenizer, TokenizerConfig, UserDictionaryConfig,
+};
 
 #[allow(unused_variables)]
 fn bench_constructor(c: &mut Criterion) {
