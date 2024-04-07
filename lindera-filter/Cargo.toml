@@ -12,3 +12,21 @@ categories = ["text-processing"]
 license = "MIT"
 
 [dependencies]
+anyhow.workspace = true
+kanaria.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-blocks.workspace = true
+unicode-normalization.workspace = true
+unicode-segmentation.workspace = true
+yada.workspace = true
+
+lindera-cc-cedict-builder.workspace = true
+lindera-core.workspace = true
+lindera-dictionary.workspace = true
+lindera-ipadic-builder.workspace = true
+lindera-ko-dic-builder.workspace = true
+#lindera-tokenizer.workspace = true
+lindera-unidic-builder.workspace = true

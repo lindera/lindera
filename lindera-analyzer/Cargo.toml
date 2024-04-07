@@ -41,6 +41,7 @@ yada.workspace = true
 lindera-cc-cedict-builder.workspace = true
 lindera-core.workspace = true
 lindera-dictionary.workspace = true
+lindera-filter.workspace = true
 lindera-ipadic-builder.workspace = true
 lindera-ko-dic-builder.workspace = true
 lindera-tokenizer.workspace = true

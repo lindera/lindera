@@ -25,6 +25,7 @@ filter = ["lindera-analyzer/filter"]  # Include filters
 lindera-analyzer.workspace = true
 lindera-core.workspace = true
 lindera-dictionary.workspace = true
+lindera-filter.workspace = true
 lindera-tokenizer.workspace = true
 
 [dev-dependencies]

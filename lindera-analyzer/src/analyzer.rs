@@ -3,7 +3,8 @@ use std::{fs, path::Path};
 
 use serde_json::Value;
 
-use crate::{
+use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_filter::{
     character_filter::{
         correct_offset,
         japanese_iteration_mark::{
@@ -30,14 +31,13 @@ use crate::{
         BoxTokenFilter,
     },
 };
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
 use lindera_tokenizer::tokenizer::Tokenizer;
 
 #[cfg(all(
     any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
     feature = "filter"
 ))]
-use crate::token_filter::{
+use lindera_filter::token_filter::{
     japanese_base_form::JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
     japanese_compound_word::JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
     japanese_keep_tags::JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
@@ -47,7 +47,7 @@ use crate::token_filter::{
 };
 
 #[cfg(all(feature = "ko-dic", feature = "filter",))]
-use crate::token_filter::{
+use lindera_filter::token_filter::{
     korean_keep_tags::KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
     korean_reading_form::KOREAN_READING_FORM_TOKEN_FILTER_NAME,
     korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
@@ -57,7 +57,7 @@ use crate::token_filter::{
     any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
     feature = "filter"
 ))]
-use crate::token_filter::{
+use lindera_filter::token_filter::{
     japanese_base_form::JapaneseBaseFormTokenFilter,
     japanese_compound_word::JapaneseCompoundWordTokenFilter,
     japanese_keep_tags::JapaneseKeepTagsTokenFilter, japanese_number::JapaneseNumberTokenFilter,
@@ -66,12 +66,12 @@ use crate::token_filter::{
 };
 
 #[cfg(all(feature = "ko-dic", feature = "filter",))]
-use crate::token_filter::{
+use lindera_filter::token_filter::{
     korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
     korean_stop_tags::KoreanStopTagsTokenFilter,
 };
 
-use crate::token::Token;
+use lindera_filter::token::Token;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct AnalyzerConfig {

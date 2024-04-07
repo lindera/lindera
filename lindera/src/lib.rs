@@ -15,120 +15,120 @@ pub type UserDictionary = lindera_core::dictionary::UserDictionary;
 pub type Analyzer = lindera_analyzer::analyzer::Analyzer;
 #[cfg(feature = "filter")]
 pub type AnalyzerConfig = lindera_analyzer::analyzer::AnalyzerConfig;
-pub type AnalyzerToken = lindera_analyzer::token::Token;
+pub type AnalyzerToken = lindera_filter::token::Token;
 #[cfg(feature = "filter")]
-pub type BoxCharacterFilter = lindera_analyzer::character_filter::BoxCharacterFilter;
+pub type BoxCharacterFilter = lindera_filter::character_filter::BoxCharacterFilter;
 #[cfg(feature = "filter")]
-pub type JapaneseIterationMarkCharacterFilter = lindera_analyzer::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+pub type JapaneseIterationMarkCharacterFilter =
+    lindera_filter::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
 #[cfg(feature = "filter")]
-pub type JapaneseIterationMarkCharacterFilterConfig = lindera_analyzer::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilterConfig;
+pub type JapaneseIterationMarkCharacterFilterConfig = lindera_filter::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilterConfig;
 #[cfg(feature = "filter")]
-pub type MappingCharacter = lindera_analyzer::character_filter::mapping::MappingCharacterFilter;
+pub type MappingCharacter = lindera_filter::character_filter::mapping::MappingCharacterFilter;
 #[cfg(feature = "filter")]
 pub type MappingCharacterFilterConfig =
-    lindera_analyzer::character_filter::mapping::MappingCharacterFilterConfig;
+    lindera_filter::character_filter::mapping::MappingCharacterFilterConfig;
 #[cfg(feature = "filter")]
-pub type RegexCharacterFilter = lindera_analyzer::character_filter::regex::RegexCharacterFilter;
+pub type RegexCharacterFilter = lindera_filter::character_filter::regex::RegexCharacterFilter;
 #[cfg(feature = "filter")]
 pub type RegexCharacterFilterConfig =
-    lindera_analyzer::character_filter::regex::RegexCharacterFilterConfig;
+    lindera_filter::character_filter::regex::RegexCharacterFilterConfig;
 #[cfg(feature = "filter")]
 pub type UnicodeNormalizeCharacterFilter =
-    lindera_analyzer::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter;
+    lindera_filter::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter;
 #[cfg(feature = "filter")]
 pub type UnicodeNormalizeCharacterFilterConfig =
-    lindera_analyzer::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilterConfig;
+    lindera_filter::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilterConfig;
 #[cfg(feature = "filter")]
 pub type UnicodeNormalizeKind =
-    lindera_analyzer::character_filter::unicode_normalize::UnicodeNormalizeKind;
+    lindera_filter::character_filter::unicode_normalize::UnicodeNormalizeKind;
 #[cfg(feature = "filter")]
-pub type BoxTokenFilter = lindera_analyzer::token_filter::BoxTokenFilter;
+pub type BoxTokenFilter = lindera_filter::token_filter::BoxTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseBaseFormTokenFilter =
-    lindera_analyzer::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+    lindera_filter::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseBaseFormTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
+    lindera_filter::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseCompoundWordTokenFilter =
-    lindera_analyzer::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+    lindera_filter::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseCompoundWordTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig;
+    lindera_filter::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseKanaTokenFilter =
-    lindera_analyzer::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+    lindera_filter::token_filter::japanese_kana::JapaneseKanaTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseKanaTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
+    lindera_filter::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseKatakanaStemTokenFilter =
-    lindera_analyzer::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+    lindera_filter::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseKatakanaStemTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
+    lindera_filter::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseKeepTagsTokenFilter =
-    lindera_analyzer::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+    lindera_filter::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseKeepTagsTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig;
+    lindera_filter::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseNumberTokenFilter =
-    lindera_analyzer::token_filter::japanese_number::JapaneseNumberTokenFilter;
+    lindera_filter::token_filter::japanese_number::JapaneseNumberTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseNumberTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_number::JapaneseNumberTokenFilterConfig;
+    lindera_filter::token_filter::japanese_number::JapaneseNumberTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseReadingFormTokenFilter =
-    lindera_analyzer::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter;
+    lindera_filter::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseReadingFormTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilterConfig;
+    lindera_filter::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type JapaneseStopTagsTokenFilter =
-    lindera_analyzer::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+    lindera_filter::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseStopTagsTokenFilterConfig =
-    lindera_analyzer::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilterConfig;
+    lindera_filter::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilterConfig;
 #[cfg(feature = "filter")]
-pub type KeepWordsTokenFilter = lindera_analyzer::token_filter::keep_words::KeepWordsTokenFilter;
+pub type KeepWordsTokenFilter = lindera_filter::token_filter::keep_words::KeepWordsTokenFilter;
 #[cfg(feature = "filter")]
 pub type KeepWordsTokenFilterConfig =
-    lindera_analyzer::token_filter::keep_words::KeepWordsTokenFilterConfig;
+    lindera_filter::token_filter::keep_words::KeepWordsTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type KoreanKeepTagsTokenFilter =
-    lindera_analyzer::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter;
+    lindera_filter::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter;
 #[cfg(feature = "filter")]
 pub type KoreanKeepTagsTokenFilterConfig =
-    lindera_analyzer::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilterConfig;
+    lindera_filter::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilterConfig;
 #[cfg(feature = "filter")]
 pub type KoreanReadingFormTokenFilter =
-    lindera_analyzer::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
+    lindera_filter::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
 #[cfg(feature = "filter")]
 pub type KoreanStopTagsTokenFilter =
-    lindera_analyzer::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter;
+    lindera_filter::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter;
 #[cfg(feature = "filter")]
 pub type KoreanStopTagsTokenFilterConfig =
-    lindera_analyzer::token_filter::korean_stop_tags::KoreanStopTagsTokenFilterConfig;
+    lindera_filter::token_filter::korean_stop_tags::KoreanStopTagsTokenFilterConfig;
 #[cfg(feature = "filter")]
-pub type LengthTokenFilter = lindera_analyzer::token_filter::length::LengthTokenFilter;
+pub type LengthTokenFilter = lindera_filter::token_filter::length::LengthTokenFilter;
 #[cfg(feature = "filter")]
-pub type LengthTokenFilterConfig = lindera_analyzer::token_filter::length::LengthTokenFilterConfig;
+pub type LengthTokenFilterConfig = lindera_filter::token_filter::length::LengthTokenFilterConfig;
 #[cfg(feature = "filter")]
-pub type LowercaseTokenFilter = lindera_analyzer::token_filter::lowercase::LowercaseTokenFilter;
+pub type LowercaseTokenFilter = lindera_filter::token_filter::lowercase::LowercaseTokenFilter;
 #[cfg(feature = "filter")]
-pub type MappingTokenFilter = lindera_analyzer::token_filter::mapping::MappingTokenFilter;
+pub type MappingTokenFilter = lindera_filter::token_filter::mapping::MappingTokenFilter;
 #[cfg(feature = "filter")]
-pub type MappingTokenFilterConfig =
-    lindera_analyzer::token_filter::mapping::MappingTokenFilterConfig;
+pub type MappingTokenFilterConfig = lindera_filter::token_filter::mapping::MappingTokenFilterConfig;
 #[cfg(feature = "filter")]
-pub type StopWordsTokenFilter = lindera_analyzer::token_filter::stop_words::StopWordsTokenFilter;
+pub type StopWordsTokenFilter = lindera_filter::token_filter::stop_words::StopWordsTokenFilter;
 #[cfg(feature = "filter")]
 pub type StopWordsTokenFilterConfig =
-    lindera_analyzer::token_filter::stop_words::StopWordsTokenFilterConfig;
+    lindera_filter::token_filter::stop_words::StopWordsTokenFilterConfig;
 #[cfg(feature = "filter")]
-pub type UppercaseTokenFilter = lindera_analyzer::token_filter::uppercase::UppercaseTokenFilter;
+pub type UppercaseTokenFilter = lindera_filter::token_filter::uppercase::UppercaseTokenFilter;
 
 #[cfg(test)]
 mod tests {
