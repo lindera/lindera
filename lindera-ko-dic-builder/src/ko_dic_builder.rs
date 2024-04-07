@@ -213,7 +213,7 @@ impl DictionaryBuilder for KoDicBuilder {
         for (row_id, row) in rows.iter().enumerate() {
             word_entry_map
                 .entry(row[0].to_string())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(WordEntry {
                     word_id: WordId(row_id as u32, true),
                     word_cost: i16::from_str(row[3].trim()).map_err(|_err| {
@@ -262,7 +262,7 @@ impl DictionaryBuilder for KoDicBuilder {
                 .write_u32::<LittleEndian>(joined_details_len)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             words_buffer
-                .write_all(&joined_details.as_bytes())
+                .write_all(joined_details.as_bytes())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
@@ -404,15 +404,12 @@ impl DictionaryBuilder for KoDicBuilder {
                 )
             };
 
-            word_entry_map
-                .entry(surface)
-                .or_insert_with(Vec::new)
-                .push(WordEntry {
-                    word_id: WordId(row_id as u32, true),
-                    word_cost,
-                    left_id,
-                    right_id,
-                });
+            word_entry_map.entry(surface).or_default().push(WordEntry {
+                word_id: WordId(row_id as u32, true),
+                word_cost,
+                left_id,
+                right_id,
+            });
         }
 
         let mut words_data = Vec::<u8>::new();

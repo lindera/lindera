@@ -11,4 +11,28 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+default = []  # No directories included
+ipadic = ["lindera-tokenizer/ipadic"]  # Include IPADIC dictionary (Japanese)
+ipadic-neologd = ["lindera-tokenizer/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
+unidic = ["lindera-tokenizer/unidic"]  # Include UniDic dictionary (Japanese)
+ko-dic = ["lindera-tokenizer/ko-dic"]  # Include ko-dic dictionary (Korean)
+cc-cedict = ["lindera-tokenizer/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
+compress = ["lindera-tokenizer/compress"]  # Compress dictionaries
+filter = ["lindera-analyzer/filter"]  # Include filters
+
 [dependencies]
+lindera-analyzer.workspace = true
+lindera-core.workspace = true
+lindera-dictionary.workspace = true
+lindera-filter.workspace = true
+lindera-tokenizer.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+criterion.workspace = true
+once_cell.workspace = true
+
+[[bench]]
+name = "bench"
+harness = false

@@ -8,25 +8,9 @@ use serde::{
 use lindera_core::{
     dictionary::Dictionary, dictionary::UserDictionary, mode::Mode, viterbi::Lattice, LinderaResult,
 };
-use lindera_dictionary::{
-    load_dictionary_from_config, load_user_dictionary, DictionaryConfig, UserDictionaryConfig,
-};
+use lindera_dictionary::{DictionaryConfig, DictionaryLoader, UserDictionaryConfig};
 
 use crate::token::Token;
-
-// Only the value specified by the feature flag is stored.
-pub const CONTAINED_DICTIONARIES: &[&str] = &[
-    #[cfg(feature = "ipadic")]
-    "ipadic",
-    #[cfg(feature = "ipadic-neologd")]
-    "ipadic-neologd",
-    #[cfg(feature = "unidic")]
-    "unidic",
-    #[cfg(feature = "ko-dic")]
-    "ko-dic",
-    #[cfg(feature = "cc-cedict")]
-    "cc-cedict",
-];
 
 /// Tokenizer config
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -192,10 +176,10 @@ impl Tokenizer {
     /// returns: LinderaResult<Tokenizer>
     ///
     pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
-        let dictionary = load_dictionary_from_config(config.dictionary)?;
+        let dictionary = DictionaryLoader::load_dictionary_from_config(config.dictionary)?;
 
         let user_dictionary = match config.user_dictionary {
-            Some(user_dict_conf) => Some(load_user_dictionary(user_dict_conf)?),
+            Some(user_dict_conf) => Some(DictionaryLoader::load_user_dictionary(user_dict_conf)?),
             None => None,
         };
 

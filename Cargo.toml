@@ -62,6 +62,8 @@ rand = "0.8.5"
 regex = "1.10.3"
 serde = {version="1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
+strum = {version="0.26.2", features = ["derive"] }
+strum_macros = "0.26.2"
 tar = "0.4.40"
 thiserror = "1.0.58"
 unicode-blocks = "0.1.9"

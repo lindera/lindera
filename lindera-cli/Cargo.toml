@@ -13,28 +13,20 @@ license = "MIT"
 
 [features]
 default = []  # No directories included
-ipadic = ["lindera-tokenizer/ipadic"]  # Include IPADIC dictionary (Japanese)
-ipadic-neologd = ["lindera-tokenizer/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
-unidic = ["lindera-tokenizer/unidic"]  # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera-tokenizer/ko-dic"]  # Include ko-dic dictionary (Korean)
-cc-cedict = ["lindera-tokenizer/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
-compress = ["lindera-tokenizer/compress"]  # Compress dictionaries
-filter = ["lindera-analyzer/filter"]  # Include filters
+ipadic = ["lindera/ipadic"]  # Include IPADIC dictionary (Japanese)
+ipadic-neologd = ["lindera/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
+unidic = ["lindera/unidic"]  # Include UniDic dictionary (Japanese)
+ko-dic = ["lindera/ko-dic"]  # Include ko-dic dictionary (Korean)
+cc-cedict = ["lindera/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
+compress = ["lindera/compress"]  # Compress dictionaries
+filter = ["lindera/filter"]  # Include filters
 
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 
-lindera-analyzer.workspace = true
-lindera-cc-cedict-builder.workspace = true
-lindera-core.workspace = true
-lindera-dictionary.workspace = true
-lindera-ipadic-builder.workspace = true
-lindera-ipadic-neologd-builder.workspace = true
-lindera-ko-dic-builder.workspace = true
-lindera-tokenizer.workspace = true
-lindera-unidic-builder.workspace = true
+lindera.workspace = true
 
 [[bin]]
 name = "lindera"
