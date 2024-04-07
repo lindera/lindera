@@ -5,8 +5,7 @@ fn main() -> LinderaResult<()> {
     {
         use std::path::PathBuf;
 
-        use lindera::Analyzer;
-        use lindera::AnalyzerConfig;
+        use lindera::{Analyzer, AnalyzerConfig};
 
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
