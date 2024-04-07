@@ -5,9 +5,10 @@ fn main() -> LinderaResult<()> {
     {
         use std::path::PathBuf;
 
-        use lindera::Mode;
-        use lindera::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
-        use lindera::{Tokenizer, TokenizerConfig};
+        use lindera::{
+            DictionaryConfig, DictionaryKind, Mode, Tokenizer, TokenizerConfig,
+            UserDictionaryConfig,
+        };
 
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::KoDic),

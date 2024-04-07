@@ -5,25 +5,15 @@ fn main() -> LinderaResult<()> {
     {
         use std::collections::HashSet;
 
-        use lindera::Analyzer;
-        use lindera::BoxCharacterFilter;
-        use lindera::BoxTokenFilter;
-        use lindera::DictionaryConfig;
-        use lindera::DictionaryKind;
-        use lindera::JapaneseCompoundWordTokenFilter;
-        use lindera::JapaneseCompoundWordTokenFilterConfig;
-        use lindera::JapaneseIterationMarkCharacterFilter;
-        use lindera::JapaneseIterationMarkCharacterFilterConfig;
-        use lindera::JapaneseNumberTokenFilter;
-        use lindera::JapaneseNumberTokenFilterConfig;
-        use lindera::JapaneseStopTagsTokenFilter;
-        use lindera::JapaneseStopTagsTokenFilterConfig;
-        use lindera::Mode;
-        use lindera::Tokenizer;
-        use lindera::TokenizerConfig;
-        use lindera::UnicodeNormalizeCharacterFilter;
-        use lindera::UnicodeNormalizeCharacterFilterConfig;
-        use lindera::UnicodeNormalizeKind;
+        use lindera::{
+            Analyzer, BoxCharacterFilter, BoxTokenFilter, DictionaryConfig, DictionaryKind,
+            JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+            JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+            JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
+            JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig, Mode, Tokenizer,
+            TokenizerConfig, UnicodeNormalizeCharacterFilter,
+            UnicodeNormalizeCharacterFilterConfig, UnicodeNormalizeKind,
+        };
 
         let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
 

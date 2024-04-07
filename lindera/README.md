@@ -30,10 +30,9 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::{DictionaryConfig, DictionaryKind};
-use lindera::LinderaResult;
-use lindera::Mode;
-use lindera::{Tokenizer, TokenizerConfig};
+use lindera::{
+    DictionaryConfig, DictionaryKind, LinderaResult, Mode, Tokenizer, TokenizerConfig,
+};
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {
@@ -103,10 +102,9 @@ With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
 use std::path::PathBuf;
 
-use lindera::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
-use lindera::LinderaResult;
-use lindera::Mode;
-use lindera::{Tokenizer, TokenizerConfig};
+use lindera::{
+    DictionaryConfig, DictionaryKind, LinderaResult, Mode, Tokenizer, TokenizerConfig,
+};
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {

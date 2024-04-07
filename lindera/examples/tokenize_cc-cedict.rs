@@ -3,9 +3,7 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::Mode;
-        use lindera::{DictionaryConfig, DictionaryKind};
-        use lindera::{Tokenizer, TokenizerConfig};
+        use lindera::{DictionaryConfig, DictionaryKind, Mode, Tokenizer, TokenizerConfig};
 
         let dictionary = DictionaryConfig {
             kind: Some(DictionaryKind::CcCedict),
