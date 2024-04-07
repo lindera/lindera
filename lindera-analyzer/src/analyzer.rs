@@ -442,8 +442,7 @@ mod tests {
         any(feature = "ipadic", feature = "ipadic-neologd"),
         feature = "filter"
     ))]
-    use crate::analyzer::Analyzer;
-    use crate::analyzer::AnalyzerConfig;
+    use crate::analyzer::{Analyzer, AnalyzerConfig};
 
     #[test]
     #[cfg(all(feature = "ipadic", feature = "filter",))]

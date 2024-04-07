@@ -157,12 +157,8 @@ mod tests {
         UserDictionaryConfig,
     };
 
-    #[cfg(all(
-        any(feature = "ipadic", feature = "ipadic-neologd"),
-        feature = "filter"
-    ))]
-    use crate::Analyzer;
-    use crate::AnalyzerConfig;
+    #[cfg(feature = "filter")]
+    use crate::{Analyzer, AnalyzerConfig};
 
     #[test]
     #[cfg(feature = "ipadic")]
