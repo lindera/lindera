@@ -68,7 +68,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell script
-% cargo run --features=ipadic,filter --example=analysis
+% cargo run --features=ipadic,filter --example=analyze
 ```
 
 You can see the result as follows:

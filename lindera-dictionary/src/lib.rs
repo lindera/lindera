@@ -242,7 +242,7 @@ impl DictionaryLoader {
         UserDictionary::load(&Self::read_file(path)?)
     }
 
-    pub fn load_user_dictionary(
+    pub fn load_user_dictionary_from_config(
         dictionary_config: UserDictionaryConfig,
     ) -> LinderaResult<UserDictionary> {
         match dictionary_config.path.extension() {

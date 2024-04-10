@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const KEEP_WORDS_TOKEN_FILTER_NAME: &str = "keep_words";
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -18,7 +21,13 @@ impl KeepWordsTokenFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<KeepWordsTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<KeepWordsTokenFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 

@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
 
@@ -31,7 +33,13 @@ impl UnicodeNormalizeCharacterFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<UnicodeNormalizeCharacterFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<UnicodeNormalizeCharacterFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -48,9 +56,9 @@ impl UnicodeNormalizeCharacterFilter {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let config = UnicodeNormalizeCharacterFilterConfig::from_slice(data)?;
-
-        Ok(Self::new(config))
+        Ok(Self::new(
+            UnicodeNormalizeCharacterFilterConfig::from_slice(data)?,
+        ))
     }
 }
 
@@ -110,13 +118,10 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 #[cfg(test)]
 mod tests {
 
-    use crate::character_filter::{
-        correct_offset,
-        unicode_normalize::{
-            UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
-        },
-        CharacterFilter,
+    use crate::character_filter::unicode_normalize::{
+        UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
     };
+    use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
     fn test_unicode_normalize_character_filter_config_from_slice() {

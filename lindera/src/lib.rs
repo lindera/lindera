@@ -8,15 +8,18 @@ pub type DictionaryKind = lindera_dictionary::DictionaryKind;
 pub type UserDictionaryConfig = lindera_dictionary::UserDictionaryConfig;
 pub type Tokenizer = lindera_tokenizer::tokenizer::Tokenizer;
 pub type TokenizerConfig = lindera_tokenizer::tokenizer::TokenizerConfig;
+pub type Token<'a> = lindera_tokenizer::token::Token<'a>;
 pub type DictionaryBuilderResolver = lindera_dictionary::DictionaryBuilderResolver;
+pub type DictionaryLoader = lindera_dictionary::DictionaryLoader;
 pub type Dictionary = lindera_core::dictionary::Dictionary;
 pub type UserDictionary = lindera_core::dictionary::UserDictionary;
-#[cfg(feature = "filter")]
 pub type Analyzer = lindera_analyzer::analyzer::Analyzer;
 #[cfg(feature = "filter")]
 pub type AnalyzerConfig = lindera_analyzer::analyzer::AnalyzerConfig;
-pub type AnalyzerToken = lindera_filter::token::Token;
 #[cfg(feature = "filter")]
+pub type FilteredToken = lindera_filter::token::Token;
+#[cfg(feature = "filter")]
+pub type CharacterFilterLoader = lindera_filter::character_filter::CharacterFilterLoader;
 pub type BoxCharacterFilter = lindera_filter::character_filter::BoxCharacterFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseIterationMarkCharacterFilter =
@@ -43,6 +46,7 @@ pub type UnicodeNormalizeCharacterFilterConfig =
 pub type UnicodeNormalizeKind =
     lindera_filter::character_filter::unicode_normalize::UnicodeNormalizeKind;
 #[cfg(feature = "filter")]
+pub type TokenFilterLoader = lindera_filter::token_filter::TokenFilterLoader;
 pub type BoxTokenFilter = lindera_filter::token_filter::BoxTokenFilter;
 #[cfg(feature = "filter")]
 pub type JapaneseBaseFormTokenFilter =
@@ -132,6 +136,7 @@ pub type UppercaseTokenFilter = lindera_filter::token_filter::uppercase::Upperca
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     #[cfg(any(
         feature = "ipadic",
         feature = "ipadic-neologd",
@@ -145,6 +150,7 @@ mod tests {
         path::PathBuf,
     };
 
+    #[allow(unused_imports)]
     #[cfg(any(
         feature = "ipadic",
         feature = "ipadic-neologd",

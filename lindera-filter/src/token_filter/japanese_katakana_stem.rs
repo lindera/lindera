@@ -1,10 +1,13 @@
 use std::num::NonZeroUsize;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_MIN: usize = 3;
@@ -27,7 +30,13 @@ impl JapaneseKatakanaStemTokenFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<JapaneseKatakanaStemTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<JapaneseKatakanaStemTokenFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -41,12 +50,14 @@ pub struct JapaneseKatakanaStemTokenFilter {
 }
 
 impl JapaneseKatakanaStemTokenFilter {
-    pub fn new(config: JapaneseKatakanaStemTokenFilterConfig) -> LinderaResult<Self> {
-        Ok(Self { config })
+    pub fn new(config: JapaneseKatakanaStemTokenFilterConfig) -> Self {
+        Self { config }
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Self::new(JapaneseKatakanaStemTokenFilterConfig::from_slice(data)?)
+        Ok(Self::new(
+            JapaneseKatakanaStemTokenFilterConfig::from_slice(data)?,
+        ))
     }
 }
 

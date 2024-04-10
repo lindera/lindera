@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -38,10 +41,39 @@ impl JapaneseNumberTokenFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let tmp_config = serde_json::from_slice::<JapaneseNumberTokenFilterConfig>(data)
+        let args = serde_json::from_slice::<Value>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+        Self::from_value(&args)
+    }
 
-        Ok(Self::new(tmp_config.tags))
+    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
+        let tags = if let Some(t) = value.get("tags") {
+            if t.is_array() {
+                Some(
+                    t.as_array()
+                        .ok_or_else(|| {
+                            LinderaErrorKind::Deserialize
+                                .with_error(anyhow::anyhow!("tags is required"))
+                        })?
+                        .iter()
+                        .map(|v| {
+                            v.as_str()
+                                .ok_or_else(|| {
+                                    LinderaErrorKind::Deserialize
+                                        .with_error(anyhow::anyhow!("tag must be string"))
+                                })
+                                .map(|s| s.to_string())
+                        })
+                        .collect::<LinderaResult<HashSet<String>>>()?,
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(Self::new(tags))
     }
 }
 

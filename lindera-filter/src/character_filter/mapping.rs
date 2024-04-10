@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use yada::{builder::DoubleArrayBuilder, DoubleArray};
+use serde_json::Value;
+use yada::builder::DoubleArrayBuilder;
+use yada::DoubleArray;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
 
@@ -20,7 +23,13 @@ impl MappingCharacterFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<MappingCharacterFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<MappingCharacterFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -33,7 +42,7 @@ pub struct MappingCharacterFilter {
 }
 
 impl MappingCharacterFilter {
-    pub fn new(config: MappingCharacterFilterConfig) -> Self {
+    pub fn new(config: MappingCharacterFilterConfig) -> LinderaResult<Self> {
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
         let mut keys = config.mapping.keys().collect::<Vec<_>>();
         keys.sort();
@@ -41,21 +50,17 @@ impl MappingCharacterFilter {
             keyset.push((key.as_bytes(), value as u32));
         }
 
-        let data = DoubleArrayBuilder::build(&keyset)
-            .ok_or_else(|| {
-                LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
-            })
-            .unwrap();
+        let data = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+        })?;
 
         let trie = DoubleArray::new(data);
 
-        Self { config, trie }
+        Ok(Self { config, trie })
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let config = MappingCharacterFilterConfig::from_slice(data)?;
-
-        Ok(Self::new(config))
+        Self::new(MappingCharacterFilterConfig::from_slice(data)?)
     }
 }
 
@@ -131,11 +136,8 @@ impl CharacterFilter for MappingCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::character_filter::{
-        correct_offset,
-        mapping::{MappingCharacterFilter, MappingCharacterFilterConfig},
-        CharacterFilter,
-    };
+    use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
+    use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
     fn test_mapping_character_filter_config_from_slice() {

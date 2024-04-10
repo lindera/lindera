@@ -11,8 +11,18 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+default = []
+ipadic = []
+ipadic-neologd = []
+unidic = []
+ko-dic = []
+cc-cedict = []
+filter = []
+
 [dependencies]
 anyhow.workspace = true
+csv.workspace = true
 kanaria.workspace = true
 once_cell.workspace = true
 regex.workspace = true
@@ -28,5 +38,4 @@ lindera-core.workspace = true
 lindera-dictionary.workspace = true
 lindera-ipadic-builder.workspace = true
 lindera-ko-dic-builder.workspace = true
-#lindera-tokenizer.workspace = true
 lindera-unidic-builder.workspace = true

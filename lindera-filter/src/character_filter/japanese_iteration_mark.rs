@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
 use crate::character_filter::CharacterFilter;
 
@@ -71,7 +73,13 @@ impl JapaneseIterationMarkCharacterFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<JapaneseIterationMarkCharacterFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<JapaneseIterationMarkCharacterFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -88,9 +96,9 @@ impl JapaneseIterationMarkCharacterFilter {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let config = JapaneseIterationMarkCharacterFilterConfig::from_slice(data)?;
-
-        Ok(Self::new(config))
+        Ok(Self::new(
+            JapaneseIterationMarkCharacterFilterConfig::from_slice(data)?,
+        ))
     }
 
     fn normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String {
@@ -185,14 +193,11 @@ mod tests {
 
     use once_cell::sync::Lazy;
 
-    use crate::character_filter::{
-        japanese_iteration_mark::{
-            hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon,
-            katakana_remove_dakuon, JapaneseIterationMarkCharacterFilter,
-            JapaneseIterationMarkCharacterFilterConfig,
-        },
-        CharacterFilter,
+    use crate::character_filter::japanese_iteration_mark::{
+        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
+        JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
     };
+    use crate::character_filter::CharacterFilter;
 
     fn hiragana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;

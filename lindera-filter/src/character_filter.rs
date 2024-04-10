@@ -3,9 +3,27 @@ pub mod mapping;
 pub mod regex;
 pub mod unicode_normalize;
 
+use serde_json::Value;
 use std::ops::Deref;
 
+use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
+
+use crate::character_filter::japanese_iteration_mark::{
+    JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+    JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
+};
+use crate::character_filter::mapping::{
+    MappingCharacterFilter, MappingCharacterFilterConfig, MAPPING_CHARACTER_FILTER_NAME,
+};
+use crate::character_filter::regex::{
+    RegexCharacterFilter, RegexCharacterFilterConfig, REGEX_CHARACTER_FILTER_NAME,
+};
+use crate::character_filter::unicode_normalize::{
+    UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
+    UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+};
+use crate::parse_cli_flag;
 
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;
@@ -83,6 +101,46 @@ pub fn correct_offset(offset: usize, offsets: &[usize], diffs: &[i64], text_len:
 
     // The correct offset value can be calculated by adding `diff[index]` to the given `offset`.
     (offset as i64 + diffs[index]) as usize
+}
+
+pub struct CharacterFilterLoader {}
+
+impl CharacterFilterLoader {
+    pub fn load_from_value(kind: &str, value: &Value) -> LinderaResult<BoxCharacterFilter> {
+        let character_filter = match kind {
+            JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
+                BoxCharacterFilter::from(JapaneseIterationMarkCharacterFilter::new(
+                    JapaneseIterationMarkCharacterFilterConfig::from_value(value)?,
+                ))
+            }
+            MAPPING_CHARACTER_FILTER_NAME => {
+                let config = MappingCharacterFilterConfig::from_value(value)?;
+                BoxCharacterFilter::from(MappingCharacterFilter::new(config)?)
+            }
+            REGEX_CHARACTER_FILTER_NAME => {
+                let config = RegexCharacterFilterConfig::from_value(value)?;
+                BoxCharacterFilter::from(RegexCharacterFilter::new(config)?)
+            }
+            UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
+                let config = UnicodeNormalizeCharacterFilterConfig::from_value(value)?;
+                BoxCharacterFilter::from(UnicodeNormalizeCharacterFilter::new(config))
+            }
+            _ => {
+                return Err(LinderaErrorKind::Deserialize
+                    .with_error(anyhow::anyhow!("unsupported character filter: {}", kind)));
+            }
+        };
+
+        Ok(character_filter)
+    }
+
+    pub fn load_from_cli_flag(cli_flag: &str) -> LinderaResult<BoxCharacterFilter> {
+        let (kind, args) = parse_cli_flag(cli_flag)?;
+
+        let character_filter = Self::load_from_value(kind, &args)?;
+
+        Ok(character_filter)
+    }
 }
 
 #[cfg(test)]

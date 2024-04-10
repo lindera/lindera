@@ -1,6 +1,7 @@
 use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 

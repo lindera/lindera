@@ -2,9 +2,11 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
@@ -20,6 +22,11 @@ impl KoreanKeepTagsTokenFilterConfig {
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         serde_json::from_slice::<KoreanKeepTagsTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
+        serde_json::from_value::<KoreanKeepTagsTokenFilterConfig>(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
@@ -57,10 +64,10 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{
@@ -70,7 +77,7 @@ mod tests {
     };
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     fn test_korean_keep_tags_token_filter_config_from_slice() {
         let config_str = r#"
         {
@@ -85,7 +92,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     fn test_korean_keep_tags_token_filter_from_slice() {
         let config_str = r#"
         {
@@ -100,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     fn test_korean_keep_tags_token_filter_apply() {
         let config_str = r#"
             {
