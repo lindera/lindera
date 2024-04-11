@@ -33,7 +33,10 @@ impl MappingCharacterFilterConfig {
     }
 }
 
-/// Replace characters with the specified character mappings.
+/// Replace characters with the specified character mappings,
+/// and correcting the resulting changes to the offsets.
+/// Matching is greedy (longest pattern matching at a given point wins).
+/// Replacement is allowed to be the empty string.
 ///
 #[derive(Clone)]
 pub struct MappingCharacterFilter {

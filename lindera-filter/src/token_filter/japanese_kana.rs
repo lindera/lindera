@@ -41,7 +41,9 @@ impl JapaneseKanaTokenFilterConfig {
     }
 }
 
-/// Convert only katakana to hiragana, or only hiragana to katakana.
+/// Convert only katakana to hiragana, or only hiragana to katakana,
+/// that using the specified normalization form, one of 'hiragana' (hiragana to katakana) or 'katakana' (katakana to hiragana).
+///
 #[derive(Clone, Debug)]
 pub struct JapaneseKanaTokenFilter {
     config: JapaneseKanaTokenFilterConfig,
