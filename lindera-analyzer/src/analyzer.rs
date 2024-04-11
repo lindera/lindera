@@ -1,77 +1,14 @@
-use serde::Serialize;
 use std::{fs, path::Path};
 
+use serde::Serialize;
 use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
-use lindera_filter::{
-    character_filter::{
-        correct_offset,
-        japanese_iteration_mark::{
-            JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
-        },
-        mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME},
-        regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME},
-        unicode_normalize::{
-            UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
-        },
-        BoxCharacterFilter,
-    },
-    token_filter::{
-        japanese_kana::{JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME},
-        japanese_katakana_stem::{
-            JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
-        },
-        keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME},
-        length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME},
-        lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME},
-        mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME},
-        stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME},
-        uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME},
-        BoxTokenFilter,
-    },
-};
-use lindera_tokenizer::tokenizer::Tokenizer;
-
-#[cfg(all(
-    any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
-    feature = "filter"
-))]
-use lindera_filter::token_filter::{
-    japanese_base_form::JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
-    japanese_compound_word::JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
-    japanese_keep_tags::JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
-    japanese_number::JAPANESE_NUMBER_TOKEN_FILTER_NAME,
-    japanese_reading_form::JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
-    japanese_stop_tags::JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME,
-};
-
-#[cfg(all(feature = "ko-dic", feature = "filter",))]
-use lindera_filter::token_filter::{
-    korean_keep_tags::KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
-    korean_reading_form::KOREAN_READING_FORM_TOKEN_FILTER_NAME,
-    korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
-};
-
-#[cfg(all(
-    any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"),
-    feature = "filter"
-))]
-use lindera_filter::token_filter::{
-    japanese_base_form::JapaneseBaseFormTokenFilter,
-    japanese_compound_word::JapaneseCompoundWordTokenFilter,
-    japanese_keep_tags::JapaneseKeepTagsTokenFilter, japanese_number::JapaneseNumberTokenFilter,
-    japanese_reading_form::JapaneseReadingFormTokenFilter,
-    japanese_stop_tags::JapaneseStopTagsTokenFilter,
-};
-
-#[cfg(all(feature = "ko-dic", feature = "filter",))]
-use lindera_filter::token_filter::{
-    korean_keep_tags::KoreanKeepTagsTokenFilter, korean_reading_form::KoreanReadingFormTokenFilter,
-    korean_stop_tags::KoreanStopTagsTokenFilter,
-};
-
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
+use lindera_filter::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
 use lindera_filter::token::Token;
+use lindera_filter::token_filter::{BoxTokenFilter, TokenFilterLoader};
+use lindera_tokenizer::tokenizer::Tokenizer;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct AnalyzerConfig {
@@ -114,46 +51,11 @@ impl Analyzer {
             for character_filter_setting in character_filter_settings {
                 let character_filter_name = character_filter_setting["kind"].as_str();
                 if let Some(character_filter_name) = character_filter_name {
-                    let args_value =
-                        character_filter_setting["args"]
-                            .as_object()
-                            .ok_or_else(|| {
-                                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
-                                    "character filter's arguments for {}.",
-                                    character_filter_name
-                                ))
-                            })?;
-                    let arg_bytes = serde_json::to_vec(args_value)
-                        .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-                    match character_filter_name {
-                        JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
-                            character_filters.push(BoxCharacterFilter::from(
-                                JapaneseIterationMarkCharacterFilter::from_slice(&arg_bytes)?,
-                            ));
-                        }
-                        MAPPING_CHARACTER_FILTER_NAME => {
-                            character_filters.push(BoxCharacterFilter::from(
-                                MappingCharacterFilter::from_slice(&arg_bytes)?,
-                            ));
-                        }
-                        REGEX_CHARACTER_FILTER_NAME => {
-                            character_filters.push(BoxCharacterFilter::from(
-                                RegexCharacterFilter::from_slice(&arg_bytes)?,
-                            ));
-                        }
-                        UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
-                            character_filters.push(BoxCharacterFilter::from(
-                                UnicodeNormalizeCharacterFilter::from_slice(&arg_bytes)?,
-                            ));
-                        }
-                        _ => {
-                            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
-                                "unknown character filter {}.",
-                                character_filter_name
-                            )))
-                        }
-                    }
+                    let character_filter = CharacterFilterLoader::load_from_value(
+                        character_filter_name,
+                        &character_filter_setting["args"],
+                    )?;
+                    character_filters.push(character_filter);
                 }
             }
         }
@@ -174,157 +76,10 @@ impl Analyzer {
             for token_filter_setting in token_filter_settings {
                 let token_filter_name = token_filter_setting["kind"].as_str();
                 if let Some(token_filter_name) = token_filter_name {
-                    let arg_value = token_filter_setting["args"].as_object().ok_or_else(|| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
-                            "token filter's arguments for {}.",
-                            token_filter_name
-                        ))
-                    })?;
-                    let args_bytes = serde_json::to_vec(arg_value)
-                        .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-                    match token_filter_name {
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseBaseFormTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseCompoundWordTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        JAPANESE_KANA_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseKanaTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseKatakanaStemTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseKeepTagsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseNumberTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseReadingFormTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(
-                            any(
-                                feature = "ipadic",
-                                feature = "ipadic-neologd",
-                                feature = "unidic"
-                            ),
-                            feature = "filter"
-                        ))]
-                        JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                JapaneseStopTagsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        KEEP_WORDS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                KeepWordsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
-                        KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                KoreanKeepTagsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
-                        KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                KoreanReadingFormTokenFilter::default(),
-                            ));
-                        }
-                        #[cfg(all(feature = "ko-dic", feature = "filter",))]
-                        KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                KoreanStopTagsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        LENGTH_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                LengthTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        LOWERCASE_TOKEN_FILTER_NAME => {
-                            token_filters
-                                .push(BoxTokenFilter::from(LowercaseTokenFilter::default()));
-                        }
-                        MAPPING_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                MappingTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        STOP_WORDS_TOKEN_FILTER_NAME => {
-                            token_filters.push(BoxTokenFilter::from(
-                                StopWordsTokenFilter::from_slice(&args_bytes)?,
-                            ));
-                        }
-                        UPPERCASE_TOKEN_FILTER_NAME => {
-                            token_filters
-                                .push(BoxTokenFilter::from(UppercaseTokenFilter::default()));
-                        }
-                        _ => {
-                            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
-                                "unknown token filter {}.",
-                                token_filter_name
-                            )))
-                        }
-                    }
+                    token_filters.push(TokenFilterLoader::load_from_value(
+                        token_filter_name,
+                        &token_filter_setting["args"],
+                    )?);
                 }
             }
         }

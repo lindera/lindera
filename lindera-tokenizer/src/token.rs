@@ -1,10 +1,8 @@
 use once_cell::sync::Lazy;
 use serde::Serialize;
 
-use lindera_core::{
-    dictionary::{Dictionary, UserDictionary},
-    word_entry::WordId,
-};
+use lindera_core::dictionary::{Dictionary, UserDictionary};
+use lindera_core::word_entry::WordId;
 
 static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
@@ -22,7 +20,7 @@ pub struct Token<'a> {
     /// Position, expressed in number of tokens.
     pub position: usize,
 
-    /// The length expressed in term of number of original tokens.
+    /// The length expressed in terms of number of original tokens.
     pub position_length: usize,
 
     /// The ID of the word and a flag to indicate whether the word is registered in the dictionary.

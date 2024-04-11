@@ -534,56 +534,20 @@ EOS
 ```
 
 
-## Analysis
+## Filtering
 
-Lindera has introduced an analysis framework.  
-The `analyze` command combines character filters, tokenizer and token filters for more advanced text processing.
-Settings for character filters, tokenizer, and token filters used in the analysis are described in JSON.
+Lindera introduced an analytical framework.
+Combine character filters, tokenizers, and token filters for more advanced text processing.
+Describe the character filter and token filter settings used for analysis in JSON.
 
 ```shell script
-$ echo "すもももももももものうち" | lindera analyze --config ./resources/lindera_ipadic_conf.json
+$ echo "すもももももももものうち" | lindera tokenize -t ipadic -C 'unicode_normalize:{"kind":"nfkc"}' -T 'japanese_keep_tags:{"tags":["名詞,一般"]}'
 ```
 
 ```text
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
-EOS
-```
-
-
-## Docker
-
-### Build Docker container image
-
-You can build the Docker container image like so:
-
-```shell script
-$ make docker-build
-```
-
-### Pull Docker container image from docker.io
-
-You can also use the Docker container image already registered in docker.io like so:
-
-```shell script
-$ docker pull linderamorphology/lindera:latest
-```
-
-See https://hub.docker.com/r/linderamorphology/lindera-cli/tags
-
-### Start on Docker
-
-Running a Lindera CLI on Docker like so:
-
-```shell script
-$ echo "羽田空港限定トートバッグ" | docker run --rm -i --name lindera linderamorphology/lindera:latest
-```
-
-```text
-羽田空港        名詞,固有名詞,一般,*,*,*,羽田空港,ハネダクウコウ,ハネダクーコー
-限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
 EOS
 ```
 

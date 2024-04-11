@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use yada::{builder::DoubleArrayBuilder, DoubleArray};
+use yada::builder::DoubleArrayBuilder;
+use yada::DoubleArray;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
 
@@ -20,7 +23,13 @@ impl MappingTokenFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<MappingTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
+        serde_json::from_value::<MappingTokenFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -33,12 +42,6 @@ pub struct MappingTokenFilter {
 }
 
 impl MappingTokenFilter {
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let config = MappingTokenFilterConfig::from_slice(data)?;
-
-        Self::new(config)
-    }
-
     pub fn new(config: MappingTokenFilterConfig) -> LinderaResult<Self> {
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
         let mut keys = config.mapping.keys().collect::<Vec<_>>();
@@ -54,6 +57,10 @@ impl MappingTokenFilter {
         let trie = DoubleArray::new(data);
 
         Ok(Self { config, trie })
+    }
+
+    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
+        Self::new(MappingTokenFilterConfig::from_slice(data)?)
     }
 }
 

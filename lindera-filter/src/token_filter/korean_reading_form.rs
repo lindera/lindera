@@ -1,6 +1,7 @@
 use lindera_core::LinderaResult;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str = "korean_reading_form";
 
@@ -39,17 +40,17 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     use lindera_core::word_entry::WordId;
 
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     use crate::{
         token::Token,
         token_filter::{korean_reading_form::KoreanReadingFormTokenFilter, TokenFilter},
     };
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "ko-dic-filter",))]
+    #[cfg(all(feature = "ko-dic", feature = "filter",))]
     fn test_korean_reading_form_token_filter_apply() {
         let filter = KoreanReadingFormTokenFilter::default();
 

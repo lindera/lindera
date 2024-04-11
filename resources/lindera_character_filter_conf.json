@@ -1,0 +1,17 @@
+{
+    "character_filters": [
+        {
+            "kind": "unicode_normalize",
+            "args": {
+                "kind": "nfkc"
+            }
+        },
+        {
+            "kind": "japanese_iteration_mark",
+            "args": {
+                "normalize_kanji": true,
+                "normalize_kana": true
+            }
+        }
+    ]
+}

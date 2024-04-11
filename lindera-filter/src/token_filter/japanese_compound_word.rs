@@ -1,11 +1,14 @@
 use std::{collections::HashSet, mem};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 use lindera_dictionary::DictionaryKind;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
@@ -17,7 +20,11 @@ pub struct JapaneseCompoundWordTokenFilterConfig {
 }
 
 impl JapaneseCompoundWordTokenFilterConfig {
-    pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
+    pub fn new(
+        kind: DictionaryKind,
+        tags: HashSet<String>,
+        new_tag: Option<String>,
+    ) -> LinderaResult<Self> {
         let mut formatted_tags: HashSet<String> = HashSet::new();
         for tag in tags.iter() {
             let mut formatted_tag = ["*", "*", "*", "*"];
@@ -43,22 +50,26 @@ impl JapaneseCompoundWordTokenFilterConfig {
             None
         };
 
-        Self {
+        Ok(Self {
             kind,
             tags: formatted_tags,
             new_tag: formatted_new_tag,
-        }
+        })
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         let tmp_config = serde_json::from_slice::<JapaneseCompoundWordTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Ok(Self::new(
-            tmp_config.kind,
-            tmp_config.tags,
-            tmp_config.new_tag,
-        ))
+        Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        let tmp_config =
+            serde_json::from_value::<JapaneseCompoundWordTokenFilterConfig>(value.clone())
+                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+
+        Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
     }
 }
 

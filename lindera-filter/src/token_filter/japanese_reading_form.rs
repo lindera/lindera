@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 use lindera_dictionary::DictionaryKind;
 
-use crate::{token::Token, token_filter::TokenFilter};
+use crate::token::Token;
+use crate::token_filter::TokenFilter;
 
 pub const JAPANESE_READING_FORM_TOKEN_FILTER_NAME: &str = "japanese_reading_form";
 
@@ -19,6 +21,11 @@ impl JapaneseReadingFormTokenFilterConfig {
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
         serde_json::from_slice::<JapaneseReadingFormTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
+        serde_json::from_value::<JapaneseReadingFormTokenFilterConfig>(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

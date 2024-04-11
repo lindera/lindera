@@ -1,7 +1,9 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
-use lindera_core::{error::LinderaErrorKind, LinderaResult};
+use lindera_core::error::LinderaErrorKind;
+use lindera_core::LinderaResult;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
 
@@ -22,7 +24,13 @@ impl RegexCharacterFilterConfig {
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice(data).map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+        serde_json::from_slice::<RegexCharacterFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+
+    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+        serde_json::from_value::<RegexCharacterFilterConfig>(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
 
@@ -35,18 +43,15 @@ pub struct RegexCharacterFilter {
 }
 
 impl RegexCharacterFilter {
-    pub fn new(config: RegexCharacterFilterConfig) -> Self {
-        let regex = Regex::new(&config.pattern)
-            .map_err(|err| LinderaErrorKind::Args.with_error(err))
-            .unwrap();
+    pub fn new(config: RegexCharacterFilterConfig) -> LinderaResult<Self> {
+        let regex =
+            Regex::new(&config.pattern).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
-        Self { config, regex }
+        Ok(Self { config, regex })
     }
 
     pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let config = RegexCharacterFilterConfig::from_slice(data)?;
-
-        Ok(Self::new(config))
+        Self::new(RegexCharacterFilterConfig::from_slice(data)?)
     }
 }
 
@@ -99,11 +104,8 @@ impl CharacterFilter for RegexCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::character_filter::{
-        correct_offset,
-        regex::{RegexCharacterFilter, RegexCharacterFilterConfig},
-        CharacterFilter,
-    };
+    use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
+    use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
     fn test_regex_character_filter_config_from_slice() {

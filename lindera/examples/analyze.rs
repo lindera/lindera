@@ -47,11 +47,12 @@ fn main() -> LinderaResult<()> {
 
         let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
 
-        let japanese_compound_word_token_filter_config = JapaneseCompoundWordTokenFilterConfig::new(
-            DictionaryKind::IPADIC,
-            HashSet::from_iter(vec!["名詞,数".to_string()]),
-            Some("名詞,数".to_string()),
-        );
+        let japanese_compound_word_token_filter_config =
+            JapaneseCompoundWordTokenFilterConfig::new(
+                DictionaryKind::IPADIC,
+                HashSet::from_iter(vec!["名詞,数".to_string()]),
+                Some("名詞,数".to_string()),
+            )?;
         let japanese_compound_word_token_filter =
             JapaneseCompoundWordTokenFilter::new(japanese_compound_word_token_filter_config);
         token_filters.push(BoxTokenFilter::from(japanese_compound_word_token_filter));
