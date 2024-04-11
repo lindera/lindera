@@ -5,7 +5,7 @@ use crate::token_filter::TokenFilter;
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
-/// Normalizes token text to upper case.
+/// Normalizes token text to uppercase.
 ///
 #[derive(Clone, Debug)]
 pub struct UppercaseTokenFilter {}

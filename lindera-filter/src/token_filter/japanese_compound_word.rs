@@ -73,7 +73,7 @@ impl JapaneseCompoundWordTokenFilterConfig {
     }
 }
 
-/// Compond consecutive tokens that have specified part-of-speech tags into a single token.
+/// Compound consecutive tokens that have specified part-of-speech tags into a single token.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseCompoundWordTokenFilter {

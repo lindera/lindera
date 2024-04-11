@@ -83,7 +83,10 @@ impl JapaneseIterationMarkCharacterFilterConfig {
     }
 }
 
-/// Normalizes Japanese horizontal iteration marks (odoriji) to their expanded form.
+/// Normalizes Japanese horizontal (odoriji) to their expanded form.
+/// Sequences of iteration marks are supported. In case an illegal sequence of iteration marks is encountered,
+/// the implementation emits the illegal source character as-is without considering its script.
+/// For example, with input "?ゝ", we get "??" even though the question mark isn't hiragana.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseIterationMarkCharacterFilter {
@@ -308,6 +311,13 @@ mod tests {
         m.insert('ボ', 'ボ');
         m
     });
+
+    #[test]
+    fn test_japanese_iteration_mark_character_filter_config_new() {
+        let config = JapaneseIterationMarkCharacterFilterConfig::new(true, true);
+        assert!(config.normalize_kanji);
+        assert!(config.normalize_kana);
+    }
 
     #[test]
     fn test_japanese_iteration_mark_character_filter_config_from_slice() {

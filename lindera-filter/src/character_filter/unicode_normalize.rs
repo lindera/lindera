@@ -43,7 +43,7 @@ impl UnicodeNormalizeCharacterFilterConfig {
     }
 }
 
-/// Normalize Unicode string.
+/// Unicode normalization to normalize the input text, that using the specified normalization form, one of NFC, NFD, NFKC, or NFKD.
 ///
 #[derive(Clone, Debug)]
 pub struct UnicodeNormalizeCharacterFilter {

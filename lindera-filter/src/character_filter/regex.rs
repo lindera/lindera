@@ -34,7 +34,7 @@ impl RegexCharacterFilterConfig {
     }
 }
 
-/// Replace string matched with a regular expression pattern to replacement string.
+/// Character filter that uses a regular expression for the target of replace string.
 ///
 #[derive(Clone, Debug)]
 pub struct RegexCharacterFilter {

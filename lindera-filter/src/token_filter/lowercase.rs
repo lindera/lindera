@@ -5,7 +5,7 @@ use crate::token_filter::TokenFilter;
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
-/// Normalizes token text to lower case.
+/// Normalizes token text to lowercase.
 ///
 #[derive(Clone, Debug)]
 pub struct LowercaseTokenFilter {}
