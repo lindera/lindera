@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.30.0 (2024-04-13)
+- Update README.md #387 @mosuka
+- Renew CLI #386 @mosuka
+- Renew lindera package #385 @mosuka
+- Optimize features #384 @mosuka
+
 ## 0.29.0 (2024-03-17)
 - Update dependencies #381 @mosuka
 - Download IPADIC-NEologd from self repository #380 @mosuka
