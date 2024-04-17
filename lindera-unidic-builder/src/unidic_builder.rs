@@ -10,6 +10,7 @@ use std::{
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use glob::glob;
+use lindera_dictionary_builder::{UserDictBuilder, UserDictBuilderOptions};
 use log::debug;
 use yada::{builder::DoubleArrayBuilder, DoubleArray};
 
@@ -363,60 +364,14 @@ impl DictionaryBuilder for UnidicBuilder {
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        debug!("reading {:?}", input_file);
-
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(false)
-            .from_path(input_file)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        let mut rows: Vec<StringRecord> = vec![];
-        for result in rdr.records() {
-            let record =
-                result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
-            rows.push(record);
-        }
-        rows.sort_by_key(|row| row[0].to_string());
-
-        let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
-
-        for (row_id, row) in rows.iter().enumerate() {
-            let surface = row[0].to_string();
-            let word_cost = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
-                SIMPLE_WORD_COST
-            } else {
-                row[3].parse::<i16>().map_err(|_err| {
-                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word cost"))
-                })?
-            };
-            let (left_id, right_id) = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
-                (SIMPLE_CONTEXT_ID, SIMPLE_CONTEXT_ID)
-            } else {
-                (
-                    row[1].parse::<u16>().map_err(|_err| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse left context id"))
-                    })?,
-                    row[2].parse::<u16>().map_err(|_err| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse left context id"))
-                    })?,
-                )
-            };
-
-            word_entry_map.entry(surface).or_default().push(WordEntry {
-                word_id: WordId(row_id as u32, true),
-                word_cost,
-                left_id,
-                right_id,
-            });
-        }
-
-        let mut words_data = Vec::<u8>::new();
-        let mut words_idx_data = Vec::<u8>::new();
-        for row in rows.iter() {
-            let word_detail = if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
-                vec![
+        UserDictBuilderOptions::default()
+            .simple_userdic_fields_num(SIMPLE_USERDIC_FIELDS_NUM)
+            .detailed_userdic_fields_num(DETAILED_USERDIC_FIELDS_NUM)
+            .simple_word_cost(SIMPLE_WORD_COST)
+            .simple_context_id(SIMPLE_CONTEXT_ID)
+            .flexible_csv(false)
+            .simple_userdic_details_handler(|row| {
+                Ok(vec![
                     row[1].to_string(), //Major POS classification
                     "*".to_string(),    // Middle POS classification
                     "*".to_string(),    // Small POS classification
@@ -434,64 +389,11 @@ impl DictionaryBuilder for UnidicBuilder {
                     "*".to_string(),    // Prefix of a word type
                     "*".to_string(),    // Suffix of a word form
                     "*".to_string(),    // Suffix of a word type
-                ]
-            } else if row.len() >= DETAILED_USERDIC_FIELDS_NUM {
-                let mut tmp_word_detail = Vec::new();
-                for item in row.iter().skip(4) {
-                    tmp_word_detail.push(item.to_string());
-                }
-                tmp_word_detail
-            } else {
-                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                    "user dictionary should be a CSV with {} or {}+ fields",
-                    SIMPLE_USERDIC_FIELDS_NUM,
-                    DETAILED_USERDIC_FIELDS_NUM
-                )));
-            };
-
-            let offset = words_data.len();
-            words_idx_data
-                .write_u32::<LittleEndian>(offset as u32)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_data, &word_detail)
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-        }
-
-        let mut id = 0u32;
-
-        // building double array trie
-        let mut keyset: Vec<(&[u8], u32)> = vec![];
-        for (key, word_entries) in &word_entry_map {
-            let len = word_entries.len() as u32;
-            let val = (id << 5) | len;
-            keyset.push((key.as_bytes(), val));
-            id += len;
-        }
-        let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
-        })?;
-
-        // building values
-        let mut vals_data = Vec::<u8>::new();
-        for word_entries in word_entry_map.values() {
-            for word_entry in word_entries {
-                word_entry
-                    .serialize(&mut vals_data)
-                    .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            }
-        }
-
-        let dict = PrefixDict {
-            da: DoubleArray::new(da_bytes),
-            vals_data,
-            is_system: false,
-        };
-
-        Ok(UserDictionary {
-            dict,
-            words_idx_data,
-            words_data,
-        })
+                ])
+            })
+            .builder()
+            .unwrap()
+            .build(input_file)
     }
 }
 

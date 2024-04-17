@@ -1,18 +1,18 @@
 [package]
-name = "lindera-ko-dic-builder"
+name = "lindera-dictionary-builder"
 version = "0.30.0"
 edition = "2021"
-description = "A Korean morphological dictionary builder for ko-dic."
-documentation = "https://docs.rs/lindera-ko-dic-builder"
+description = "Shared code for building Lindera dictionary files"
+documentation = "https://docs.rs/lindera-dictionary-builder"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"
-keywords = ["korean", "morphological", "dictionary", "builder", "ko-dic"]
+keywords = ["japanese", "morphological", "dictionary", "builder", "unidic"]
 categories = ["text-processing"]
 license = "MIT"
 
-[features]
-compress = ["lindera-compress"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow.workspace = true
@@ -20,12 +20,10 @@ bincode.workspace = true
 byteorder.workspace = true
 csv.workspace = true
 encoding.workspace = true
-env_logger.workspace = true
 glob.workspace = true
 log.workspace = true
 yada.workspace = true
+derive_builder.workspace = true
 
-lindera-compress = { workspace = true, optional = true }
 lindera-core.workspace = true
 lindera-decompress.workspace = true
-lindera-dictionary-builder.workspace = true

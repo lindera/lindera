@@ -30,3 +30,4 @@ yada.workspace = true
 lindera-compress = { workspace = true, optional = true }
 lindera-core.workspace = true
 lindera-decompress.workspace = true
+lindera-dictionary-builder.workspace = true
