@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io;
 use std::io::Write;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -78,14 +78,14 @@ impl DictBuilder {
 
             let file = File::open(filename)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            let reader = if encoding == UTF_8 {
-                DecodeReaderBytesBuilder::new()
-                    .utf8_passthru(true)
-                    .build(file)
+            let reader: Box<dyn Read> = if encoding == UTF_8 {
+                Box::new(file)
             } else {
-                DecodeReaderBytesBuilder::new()
-                    .encoding(Some(encoding))
-                    .build(file)
+                Box::new(
+                    DecodeReaderBytesBuilder::new()
+                        .encoding(Some(encoding))
+                        .build(file),
+                )
             };
             let mut rdr = csv::ReaderBuilder::new()
                 .has_headers(false)
