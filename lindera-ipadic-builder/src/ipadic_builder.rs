@@ -173,7 +173,7 @@ impl DictionaryBuilder for IpadicBuilder {
             .simple_word_cost(SIMPLE_WORD_COST)
             .simple_context_id(SIMPLE_CONTEXT_ID)
             .flexible_csv(true)
-            .simple_userdic_details_handler(|row| {
+            .simple_userdic_details_handler(Box::new(|row| {
                 Ok(vec![
                     row[1].to_string(), // POS
                     "*".to_string(),    // POS subcategory 1
@@ -185,38 +185,10 @@ impl DictionaryBuilder for IpadicBuilder {
                     row[2].to_string(), // Reading
                     "*".to_string(),    // Pronunciation
                 ])
-            })
+            }))
             .builder()
             .unwrap()
             .build(input_file)
-    }
-}
-
-fn user_dict_row_to_details(row: &[String]) -> LinderaResult<Vec<String>> {
-    if row.len() == SIMPLE_USERDIC_FIELDS_NUM {
-        Ok(vec![
-            row[1].to_string(), // POS
-            "*".to_string(),    // POS subcategory 1
-            "*".to_string(),    // POS subcategory 2
-            "*".to_string(),    // POS subcategory 3
-            "*".to_string(),    // Conjugation type
-            "*".to_string(),    // Conjugation form
-            row[0].to_string(), // Base form
-            row[2].to_string(), // Reading
-            "*".to_string(),    // Pronunciation
-        ])
-    } else if row.len() >= DETAILED_USERDIC_FIELDS_NUM {
-        let mut tmp_word_detail = Vec::new();
-        for item in row.iter().skip(4) {
-            tmp_word_detail.push(item.to_string());
-        }
-        Ok(tmp_word_detail)
-    } else {
-        Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-            "user dictionary should be a CSV with {} or {}+ fields",
-            SIMPLE_USERDIC_FIELDS_NUM,
-            DETAILED_USERDIC_FIELDS_NUM
-        )))
     }
 }
 

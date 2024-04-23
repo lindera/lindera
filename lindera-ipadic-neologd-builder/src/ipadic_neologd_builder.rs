@@ -174,7 +174,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
             .simple_word_cost(SIMPLE_WORD_COST)
             .simple_context_id(SIMPLE_CONTEXT_ID)
             .flexible_csv(true)
-            .simple_userdic_details_handler(|row| {
+            .simple_userdic_details_handler(Box::new(|row| {
                 Ok(vec![
                     row[1].to_string(), // POS
                     "*".to_string(),    // POS subcategory 1
@@ -186,7 +186,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
                     row[2].to_string(), // Reading
                     "*".to_string(),    // Pronunciation
                 ])
-            })
+            }))
             .builder()
             .unwrap()
             .build(input_file)

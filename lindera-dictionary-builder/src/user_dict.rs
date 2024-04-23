@@ -13,13 +13,11 @@ use log::debug;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-#[derive(Builder, Debug)]
+#[derive(Builder)]
+#[builder(pattern = "owned")]
 #[builder(name = "UserDictBuilderOptions")]
 #[builder(build_fn(name = "builder"))]
-pub struct UserDictBuilder<F>
-where
-    F: Fn(&StringRecord) -> LinderaResult<Vec<String>>,
-{
+pub struct UserDictBuilder {
     #[builder(default = "3")]
     simple_userdic_fields_num: usize,
     #[builder(default = "4")]
@@ -31,13 +29,11 @@ where
     #[builder(default = "true")]
     flexible_csv: bool,
     #[builder(setter(strip_option), default = "None")]
-    simple_userdic_details_handler: Option<F>,
+    simple_userdic_details_handler:
+        Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>,
 }
 
-impl<F> UserDictBuilder<F>
-where
-    F: Fn(&StringRecord) -> LinderaResult<Vec<String>>,
-{
+impl UserDictBuilder {
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {:?}", input_file);
 

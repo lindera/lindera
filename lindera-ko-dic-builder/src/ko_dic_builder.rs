@@ -176,7 +176,7 @@ impl DictionaryBuilder for KoDicBuilder {
             .simple_word_cost(SIMPLE_WORD_COST)
             .simple_context_id(SIMPLE_CONTEXT_ID)
             .flexible_csv(false)
-            .simple_userdic_details_handler(|row| {
+            .simple_userdic_details_handler(Box::new(|row| {
                 Ok(vec![
                     row[1].to_string(), //part-of-speech tag
                     "*".to_string(),    // meaning
@@ -187,7 +187,7 @@ impl DictionaryBuilder for KoDicBuilder {
                     "*".to_string(),    // last part-of-speech
                     "*".to_string(),    // expression
                 ])
-            })
+            }))
             .builder()
             .unwrap()
             .build(input_file)
