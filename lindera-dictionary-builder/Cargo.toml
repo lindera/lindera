@@ -25,6 +25,7 @@ log.workspace = true
 yada.workspace = true
 derive_builder.workspace = true
 encoding_rs.workspace = true
+encoding_rs_io.workspace = true
 
 lindera-core.workspace = true
 lindera-decompress.workspace = true

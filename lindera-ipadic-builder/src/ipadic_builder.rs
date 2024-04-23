@@ -1,22 +1,13 @@
 use std::{
-    collections::BTreeMap,
     fs::{self, File},
     io::{self, Write},
-    path::{Path, PathBuf},
-    str::FromStr,
-    u32,
+    path::Path,
 };
 
-use byteorder::{LittleEndian, WriteBytesExt};
-use csv::StringRecord;
-use encoding_rs::EUC_JP;
-use encoding_rs_io::DecodeReaderBytesBuilder;
-use glob::glob;
 use lindera_dictionary_builder::{
-    CostMatrixBuilder, CostMatrixBuilderOptions, UserDictBuilderOptions,
+    CostMatrixBuilderOptions, DictBuilderOptions, UserDictBuilderOptions,
 };
 use log::debug;
-use yada::builder::DoubleArrayBuilder;
 
 #[cfg(feature = "compress")]
 use lindera_compress::compress;
@@ -27,7 +18,6 @@ use lindera_core::{
     error::LinderaErrorKind,
     file_util::read_euc_file,
     unknown_dictionary::parse_unk,
-    word_entry::{WordEntry, WordId},
     LinderaResult,
 };
 use lindera_decompress::Algorithm;
@@ -155,177 +145,15 @@ impl DictionaryBuilder for IpadicBuilder {
     }
 
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        let pattern = if let Some(path) = input_dir.to_str() {
-            format!("{}/*.csv", path)
-        } else {
-            return Err(
-                LinderaErrorKind::Io.with_error(anyhow::anyhow!("Failed to convert path to &str."))
-            );
-        };
-
-        let mut filenames: Vec<PathBuf> = Vec::new();
-        for entry in
-            glob(&pattern).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?
-        {
-            match entry {
-                Ok(path) => {
-                    if let Some(filename) = path.file_name() {
-                        filenames.push(Path::new(input_dir).join(filename));
-                    } else {
-                        return Err(LinderaErrorKind::Io
-                            .with_error(anyhow::anyhow!("failed to get filename")));
-                    }
-                }
-                Err(err) => return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(err))),
-            }
-        }
-
-        let mut rows: Vec<StringRecord> = vec![];
-        for filename in filenames {
-            debug!("reading {:?}", filename);
-
-            let file = File::open(filename)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            let transcoded = DecodeReaderBytesBuilder::new()
-                .encoding(Some(EUC_JP))
-                .build(file);
-
-            let mut rdr = csv::ReaderBuilder::new()
-                .has_headers(false)
-                .from_reader(transcoded);
-
-            for result in rdr.records() {
-                let record = result
-                    .map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
-                rows.push(record);
-            }
-        }
-
-        let mut normalized_rows: Vec<Vec<String>> = Vec::new();
-        for row in rows {
-            let mut normalized_row: Vec<String> = Vec::new();
-            for column in row.iter() {
-                // yeah for EUC_JP and ambiguous unicode 8012 vs 8013
-                // same bullshit as above between for 12316 vs 65374
-                normalized_row.push(column.to_string().replace('―', "—").replace('～', "〜"));
-            }
-            normalized_rows.push(normalized_row);
-        }
-
-        normalized_rows.sort_by_key(|row| row.first().map(|s| s.to_string()));
-
-        let wtr_da_path = output_dir.join(Path::new("dict.da"));
-        let mut wtr_da = io::BufWriter::new(
-            File::create(wtr_da_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-
-        let wtr_vals_path = output_dir.join(Path::new("dict.vals"));
-        let mut wtr_vals = io::BufWriter::new(
-            File::create(wtr_vals_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-
-        let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
-
-        for (row_id, row) in normalized_rows.iter().enumerate() {
-            word_entry_map
-                .entry(row[0].to_string())
-                .or_default()
-                .push(WordEntry {
-                    word_id: WordId(row_id as u32, true),
-                    word_cost: i16::from_str(row[3].trim()).map_err(|_err| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse word_cost"))
-                    })?,
-                    left_id: u16::from_str(row[1].trim()).map_err(|_err| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse cost_id"))
-                    })?,
-                    right_id: u16::from_str(row[2].trim()).map_err(|_err| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse cost_id"))
-                    })?,
-                });
-        }
-
-        let wtr_words_path = output_dir.join(Path::new("dict.words"));
-        let mut wtr_words = io::BufWriter::new(
-            File::create(wtr_words_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-
-        let wtr_words_idx_path = output_dir.join(Path::new("dict.wordsidx"));
-        let mut wtr_words_idx = io::BufWriter::new(
-            File::create(wtr_words_idx_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-
-        let mut words_buffer = Vec::new();
-        let mut words_idx_buffer = Vec::new();
-        for row in normalized_rows.iter() {
-            let offset = words_buffer.len();
-            words_idx_buffer
-                .write_u32::<LittleEndian>(offset as u32)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-            let mut word_details = Vec::new();
-            for item in row.iter().skip(4) {
-                word_details.push(item.as_str());
-            }
-            let joined_details = word_details.join("\0");
-            let joined_details_len = u32::try_from(joined_details.as_bytes().len())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            words_buffer
-                .write_u32::<LittleEndian>(joined_details_len)
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            words_buffer
-                .write_all(joined_details.as_bytes())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-        }
-
-        compress_write(&words_buffer, COMPRESS_ALGORITHM, &mut wtr_words)?;
-        compress_write(&words_idx_buffer, COMPRESS_ALGORITHM, &mut wtr_words_idx)?;
-
-        wtr_words
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-        wtr_words_idx
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        let mut id = 0u32;
-
-        let mut keyset: Vec<(&[u8], u32)> = vec![];
-        for (key, word_entries) in &word_entry_map {
-            let len = word_entries.len() as u32;
-            let val = (id << 5) | len; // 27bit for word ID, 5bit for different parts of speech on the same surface.
-            keyset.push((key.as_bytes(), val));
-            id += len;
-        }
-
-        let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
-        })?;
-
-        compress_write(&da_bytes, COMPRESS_ALGORITHM, &mut wtr_da)?;
-
-        let mut vals_buffer = Vec::new();
-        for word_entries in word_entry_map.values() {
-            for word_entry in word_entries {
-                word_entry
-                    .serialize(&mut vals_buffer)
-                    .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            }
-        }
-
-        compress_write(&vals_buffer, COMPRESS_ALGORITHM, &mut wtr_vals)?;
-
-        wtr_vals
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(())
+        DictBuilderOptions::default()
+            .flexible_csv(false)
+            .encoding("EUC-JP")
+            .compress_algorithm(COMPRESS_ALGORITHM)
+            .normalize_details(true)
+            .skip_invalid_cost_or_id(false)
+            .builder()
+            .unwrap()
+            .build(input_dir, output_dir)
     }
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
