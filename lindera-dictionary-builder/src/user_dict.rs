@@ -96,7 +96,10 @@ impl UserDictBuilder {
                 if let Some(handler) = &self.simple_userdic_details_handler {
                     handler(row)?
                 } else {
-                    row.iter().map(|s| s.to_string()).collect::<Vec<String>>()
+                    row.iter()
+                        .skip(1)
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>()
                 }
             } else if row.len() >= self.detailed_userdic_fields_num {
                 let mut tmp_word_detail = Vec::new();
