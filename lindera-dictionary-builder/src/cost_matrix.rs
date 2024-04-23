@@ -25,7 +25,8 @@ pub struct CostMatrixBuilder {
 }
 
 impl CostMatrixBuilder {
-    pub fn build(&self, matrix_data_path: &Path, output_dir: &Path) -> LinderaResult<()> {
+    pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+        let matrix_data_path = input_dir.join("matrix.def");
         debug!("reading {:?}", matrix_data_path);
         let matrix_data = read_file_with_encoding(&matrix_data_path, &self.encoding)?;
 

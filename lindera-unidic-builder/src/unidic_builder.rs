@@ -89,13 +89,12 @@ impl DictionaryBuilder for UnidicBuilder {
     }
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        let matrix_data_path = input_dir.join("matrix.def");
         CostMatrixBuilderOptions::default()
             .encoding("UTF-8")
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
-            .build(&matrix_data_path, output_dir)
+            .build(&input_dir, output_dir)
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
