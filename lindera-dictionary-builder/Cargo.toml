@@ -11,8 +11,8 @@ keywords = ["japanese", "morphological", "dictionary", "builder", "unidic"]
 categories = ["text-processing"]
 license = "MIT"
 
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+compress = ["lindera-compress"]
 
 [dependencies]
 anyhow.workspace = true
@@ -27,5 +27,6 @@ derive_builder.workspace = true
 encoding_rs.workspace = true
 encoding_rs_io.workspace = true
 
+lindera-compress = { workspace = true, optional = true }
 lindera-core.workspace = true
 lindera-decompress.workspace = true

@@ -5,8 +5,6 @@ use lindera_dictionary_builder::{
     UnkBuilderOptions, UserDictBuilderOptions,
 };
 
-#[cfg(feature = "compress")]
-use lindera_compress::compress;
 use lindera_core::{
     character_definition::CharacterDefinitions, dictionary::UserDictionary,
     dictionary_builder::DictionaryBuilder, error::LinderaErrorKind, LinderaResult,
@@ -133,31 +131,4 @@ impl DictionaryBuilder for UnidicBuilder {
             .unwrap()
             .build(input_file)
     }
-}
-
-#[cfg(feature = "compress")]
-fn compress_write<W: Write>(
-    buffer: &[u8],
-    algorithm: Algorithm,
-    writer: &mut W,
-) -> LinderaResult<()> {
-    let compressed = compress(buffer, algorithm)
-        .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
-    bincode::serialize_into(writer, &compressed)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-    Ok(())
-}
-
-#[cfg(not(feature = "compress"))]
-fn compress_write<W: Write>(
-    buffer: &[u8],
-    _algorithm: Algorithm,
-    writer: &mut W,
-) -> LinderaResult<()> {
-    writer
-        .write_all(buffer)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-    Ok(())
 }
