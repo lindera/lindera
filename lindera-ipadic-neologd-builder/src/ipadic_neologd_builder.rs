@@ -6,16 +6,15 @@ use std::{
 };
 
 use lindera_dictionary_builder::{
-    CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions, UserDictBuilderOptions,
+    CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions, UnkBuilderOptions,
+    UserDictBuilderOptions,
 };
-use log::debug;
 
 #[cfg(feature = "compress")]
 use lindera_compress::compress;
 use lindera_core::{
     character_definition::CharacterDefinitions, dictionary::UserDictionary,
-    dictionary_builder::DictionaryBuilder, error::LinderaErrorKind, file_util::read_utf8_file,
-    unknown_dictionary::parse_unk, LinderaResult,
+    dictionary_builder::DictionaryBuilder, error::LinderaErrorKind, LinderaResult,
 };
 use lindera_decompress::Algorithm;
 
@@ -98,27 +97,12 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
         chardef: &CharacterDefinitions,
         output_dir: &Path,
     ) -> LinderaResult<()> {
-        let unk_data_path = input_dir.join("unk.def");
-        debug!("reading {:?}", unk_data_path);
-
-        let unk_data = read_utf8_file(&unk_data_path)?;
-        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, Self::UNK_FIELDS_NUM)?;
-
-        let mut unk_buffer = Vec::new();
-        bincode::serialize_into(&mut unk_buffer, &unknown_dictionary)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-
-        let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
-        let mut wtr_unk = io::BufWriter::new(
-            File::create(wtr_unk_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-        compress_write(&unk_buffer, COMPRESS_ALGORITHM, &mut wtr_unk)?;
-        wtr_unk
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(())
+        UnkBuilderOptions::default()
+            .compress_algorithm(COMPRESS_ALGORITHM)
+            .unk_fields_num(Self::UNK_FIELDS_NUM)
+            .builder()
+            .unwrap()
+            .build(input_dir, chardef, output_dir)
     }
 
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
