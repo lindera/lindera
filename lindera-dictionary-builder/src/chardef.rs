@@ -4,12 +4,9 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::anyhow;
 use derive_builder::Builder;
-use encoding_rs::Encoding;
 use lindera_core::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
 use lindera_core::error::LinderaErrorKind;
-use lindera_core::file_util::read_file;
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 use log::debug;

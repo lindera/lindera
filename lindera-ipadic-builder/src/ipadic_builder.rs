@@ -1,27 +1,26 @@
-use std::{fs, io::Write, path::Path};
-
-use lindera_dictionary_builder::{
-    build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
-    UnkBuilderOptions, UserDictBuilderOptions,
-};
+use std::{fs, path::Path};
 
 use lindera_core::{
     character_definition::CharacterDefinitions, dictionary::UserDictionary,
     dictionary_builder::DictionaryBuilder, error::LinderaErrorKind, LinderaResult,
 };
 use lindera_decompress::Algorithm;
+use lindera_dictionary_builder::{
+    build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
+    UnkBuilderOptions, UserDictBuilderOptions,
+};
 
 const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
 const SIMPLE_WORD_COST: i16 = -10000;
 const SIMPLE_CONTEXT_ID: u16 = 0;
 const DETAILED_USERDIC_FIELDS_NUM: usize = 13;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::Deflate;
+const UNK_FIELDS_NUM: usize = 11;
+const ENCODING: &'static str = "EUC-JP";
 
 pub struct IpadicBuilder {}
 
 impl IpadicBuilder {
-    const UNK_FIELDS_NUM: usize = 11;
-
     pub fn new() -> Self {
         IpadicBuilder {}
     }
@@ -57,7 +56,7 @@ impl DictionaryBuilder for IpadicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinitions> {
         CharDefBuilderOptions::default()
-            .encoding("EUC-JP")
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -71,9 +70,9 @@ impl DictionaryBuilder for IpadicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         UnkBuilderOptions::default()
-            .encoding("EUC-JP")
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
-            .unk_fields_num(Self::UNK_FIELDS_NUM)
+            .unk_fields_num(UNK_FIELDS_NUM)
             .builder()
             .unwrap()
             .build(input_dir, chardef, output_dir)
@@ -82,7 +81,7 @@ impl DictionaryBuilder for IpadicBuilder {
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         DictBuilderOptions::default()
             .flexible_csv(false)
-            .encoding("EUC-JP")
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .normalize_details(true)
             .skip_invalid_cost_or_id(false)
@@ -94,7 +93,7 @@ impl DictionaryBuilder for IpadicBuilder {
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
         CostMatrixBuilderOptions::default()
-            .encoding("EUC-JP")
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()

@@ -1,4 +1,4 @@
-use std::{fs, io::Write, path::Path};
+use std::{fs, path::Path};
 
 use lindera_dictionary_builder::{
     build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
@@ -16,12 +16,11 @@ const SIMPLE_WORD_COST: i16 = -10000;
 const SIMPLE_CONTEXT_ID: u16 = 0;
 const DETAILED_USERDIC_FIELDS_NUM: usize = 21;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::Deflate;
+const UNK_FIELDS_NUM: usize = 10;
 
 pub struct UnidicBuilder {}
 
 impl UnidicBuilder {
-    const UNK_FIELDS_NUM: usize = 10;
-
     pub fn new() -> Self {
         UnidicBuilder {}
     }
@@ -71,7 +70,7 @@ impl DictionaryBuilder for UnidicBuilder {
     ) -> LinderaResult<()> {
         UnkBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
-            .unk_fields_num(Self::UNK_FIELDS_NUM)
+            .unk_fields_num(UNK_FIELDS_NUM)
             .builder()
             .unwrap()
             .build(input_dir, chardef, output_dir)
