@@ -1,13 +1,8 @@
-use std::{
-    fs,
-    fs::File,
-    io::{self, Write},
-    path::Path,
-};
+use std::{fs, io::Write, path::Path};
 
 use lindera_dictionary_builder::{
-    CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions, UnkBuilderOptions,
-    UserDictBuilderOptions,
+    build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
+    UnkBuilderOptions, UserDictBuilderOptions,
 };
 
 #[cfg(feature = "compress")]
@@ -54,29 +49,8 @@ impl DictionaryBuilder for CcCedictBuilder {
     }
 
     fn build_user_dictionary(&self, input_file: &Path, output_file: &Path) -> LinderaResult<()> {
-        let parent_dir = match output_file.parent() {
-            Some(parent_dir) => parent_dir,
-            None => {
-                return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                    "failed to get parent directory of output file"
-                )))
-            }
-        };
-        fs::create_dir_all(parent_dir)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
         let user_dict = self.build_user_dict(input_file)?;
-
-        let mut wtr = io::BufWriter::new(
-            File::create(output_file)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-        bincode::serialize_into(&mut wtr, &user_dict)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-        wtr.flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(())
+        build_user_dictionary(user_dict, output_file)
     }
 
     fn build_chardef(

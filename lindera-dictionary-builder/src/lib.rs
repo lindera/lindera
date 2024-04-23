@@ -9,4 +9,6 @@ pub use chardef::{CharDefBuilder, CharDefBuilderOptions, CharDefBuilderOptionsEr
 pub use cost_matrix::{CostMatrixBuilder, CostMatrixBuilderOptions, CostMatrixBuilderOptionsError};
 pub use dict::{DictBuilder, DictBuilderOptions, DictBuilderOptionsError};
 pub use unk::{UnkBuilder, UnkBuilderOptions, UnkBuilderOptionsError};
-pub use user_dict::{UserDictBuilder, UserDictBuilderOptions, UserDictBuilderOptionsError};
+pub use user_dict::{
+    build_user_dictionary, UserDictBuilder, UserDictBuilderOptions, UserDictBuilderOptionsError,
+};
