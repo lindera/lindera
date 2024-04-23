@@ -1,3 +1,9 @@
+//! This library is used to build custom [lindera](https://github.com/lindera-morphology/lindera) dictionary files.
+//!
+//! Normally, you don't need to use this library.
+//! Instead, use one of the pre-built dictionaries (e.g. ipadic, unidic, ...)
+//! by enabling a feature flag for the lindera-tokenizer crate.
+
 pub mod chardef;
 pub mod cost_matrix;
 pub mod dict;
