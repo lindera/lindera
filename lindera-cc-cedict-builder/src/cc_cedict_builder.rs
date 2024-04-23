@@ -10,7 +10,7 @@ use std::{
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use glob::glob;
-use lindera_dictionary_builder::UserDictBuilderOptions;
+use lindera_dictionary_builder::{CostMatrixBuilderOptions, UserDictBuilderOptions};
 use log::{debug, warn};
 use yada::builder::DoubleArrayBuilder;
 
@@ -329,53 +329,12 @@ impl DictionaryBuilder for CcCedictBuilder {
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
-        debug!("reading {:?}", matrix_data_path);
-
-        let matrix_data = read_utf8_file(&matrix_data_path)?;
-        let mut lines = Vec::new();
-        for line in matrix_data.lines() {
-            let fields: Vec<i32> = line
-                .split_whitespace()
-                .map(i32::from_str)
-                .collect::<Result<_, _>>()
-                .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
-            lines.push(fields);
-        }
-        let mut lines_it = lines.into_iter();
-        let header = lines_it.next().ok_or_else(|| {
-            LinderaErrorKind::Content.with_error(anyhow::anyhow!("unknown error"))
-        })?;
-        let forward_size = header[0] as u32;
-        let backward_size = header[1] as u32;
-        let len = 2 + (forward_size * backward_size) as usize;
-        let mut costs = vec![i16::max_value(); len];
-        costs[0] = forward_size as i16;
-        costs[1] = backward_size as i16;
-        for fields in lines_it {
-            let forward_id = fields[0] as u32;
-            let backward_id = fields[1] as u32;
-            let cost = fields[2] as u16;
-            costs[2 + (backward_id + forward_id * backward_size) as usize] = cost as i16;
-        }
-
-        let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));
-        let mut wtr_matrix_mtx = io::BufWriter::new(
-            File::create(wtr_matrix_mtx_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-        let mut matrix_mtx_buffer = Vec::new();
-        for cost in costs {
-            matrix_mtx_buffer
-                .write_i16::<LittleEndian>(cost)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-        }
-        compress_write(&matrix_mtx_buffer, COMPRESS_ALGORITHM, &mut wtr_matrix_mtx)?;
-
-        wtr_matrix_mtx
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(())
+        CostMatrixBuilderOptions::default()
+            .encoding("UTF-8")
+            .compress_algorithm(COMPRESS_ALGORITHM)
+            .builder()
+            .unwrap()
+            .build(&matrix_data_path, output_dir)
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
