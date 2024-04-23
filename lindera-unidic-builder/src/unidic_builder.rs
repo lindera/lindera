@@ -79,10 +79,7 @@ impl DictionaryBuilder for UnidicBuilder {
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         DictBuilderOptions::default()
             .flexible_csv(false)
-            .encoding("UTF-8")
             .compress_algorithm(COMPRESS_ALGORITHM)
-            .normalize_details(false)
-            .skip_invalid_cost_or_id(false)
             .builder()
             .unwrap()
             .build(input_dir, output_dir)
@@ -90,7 +87,6 @@ impl DictionaryBuilder for UnidicBuilder {
 
     fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         CostMatrixBuilderOptions::default()
-            .encoding("UTF-8")
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()

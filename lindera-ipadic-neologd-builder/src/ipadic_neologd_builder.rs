@@ -80,7 +80,6 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
             .flexible_csv(false)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .normalize_details(true)
-            .skip_invalid_cost_or_id(false)
             .builder()
             .unwrap()
             .build(input_dir, output_dir)

@@ -79,7 +79,6 @@ impl DictionaryBuilder for CcCedictBuilder {
         DictBuilderOptions::default()
             .flexible_csv(true)
             .compress_algorithm(COMPRESS_ALGORITHM)
-            .normalize_details(false)
             .skip_invalid_cost_or_id(true)
             .builder()
             .unwrap()
