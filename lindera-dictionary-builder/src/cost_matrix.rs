@@ -5,17 +5,14 @@ use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 
-use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
 use derive_builder::Builder;
-use encoding_rs::Encoding;
 use lindera_core::error::LinderaErrorKind;
-use lindera_core::file_util::read_file;
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 use log::debug;
 
-use crate::compress::compress_write;
+use crate::utils::{compress_write, read_file_with_encoding};
 
 #[derive(Builder, Debug)]
 #[builder(name = "CostMatrixBuilderOptions")]
@@ -30,14 +27,7 @@ pub struct CostMatrixBuilder {
 impl CostMatrixBuilder {
     pub fn build(&self, matrix_data_path: &Path, output_dir: &Path) -> LinderaResult<()> {
         debug!("reading {:?}", matrix_data_path);
-
-        let encoding = Encoding::for_label_no_replacement(self.encoding.as_bytes());
-        let encoding = encoding.ok_or_else(|| {
-            LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", self.encoding))
-        })?;
-
-        let buffer = read_file(matrix_data_path)?;
-        let matrix_data = encoding.decode(&buffer).0;
+        let matrix_data = read_file_with_encoding(&matrix_data_path, &self.encoding)?;
 
         let mut lines = Vec::new();
         for line in matrix_data.lines() {

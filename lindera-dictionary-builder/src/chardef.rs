@@ -14,7 +14,7 @@ use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 use log::debug;
 
-use crate::compress::compress_write;
+use crate::utils::{compress_write, read_file_with_encoding};
 
 #[derive(Builder, Debug)]
 #[builder(name = "CharDefBuilderOptions")]
@@ -34,14 +34,7 @@ impl CharDefBuilder {
     ) -> LinderaResult<CharacterDefinitions> {
         let char_def_path = input_dir.join("char.def");
         debug!("reading {:?}", char_def_path);
-
-        let encoding = Encoding::for_label_no_replacement(self.encoding.as_bytes());
-        let encoding = encoding.ok_or_else(|| {
-            LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", self.encoding))
-        })?;
-
-        let buffer = read_file(&char_def_path)?;
-        let char_def = encoding.decode(&buffer).0;
+        let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;
 
         let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
         char_definitions_builder.parse(&char_def)?;

@@ -4,18 +4,15 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use anyhow::anyhow;
 use derive_builder::Builder;
-use encoding_rs::Encoding;
 use lindera_core::character_definition::CharacterDefinitions;
 use lindera_core::error::LinderaErrorKind;
-use lindera_core::file_util::read_file;
 use lindera_core::unknown_dictionary::parse_unk;
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 use log::debug;
 
-use crate::compress::compress_write;
+use crate::utils::{compress_write, read_file_with_encoding};
 
 #[derive(Builder, Debug)]
 #[builder(name = "UnkBuilderOptions")]
@@ -38,15 +35,7 @@ impl UnkBuilder {
     ) -> LinderaResult<()> {
         let unk_data_path = input_dir.join("unk.def");
         debug!("reading {:?}", unk_data_path);
-
-        let encoding = Encoding::for_label_no_replacement(self.encoding.as_bytes());
-        let encoding = encoding.ok_or_else(|| {
-            LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", self.encoding))
-        })?;
-
-        let buffer = read_file(&unk_data_path)?;
-        let unk_data = encoding.decode(&buffer).0;
-
+        let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, self.unk_fields_num)?;
 
         let mut unk_buffer = Vec::new();

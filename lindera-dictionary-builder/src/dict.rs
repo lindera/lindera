@@ -21,7 +21,7 @@ use lindera_core::word_entry::{WordEntry, WordId};
 use lindera_core::LinderaResult;
 use lindera_decompress::Algorithm;
 
-use crate::compress::compress_write;
+use crate::utils::compress_write;
 
 #[derive(Builder, Debug)]
 #[builder(name = "DictBuilderOptions")]
