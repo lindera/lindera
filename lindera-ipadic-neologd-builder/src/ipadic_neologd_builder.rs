@@ -6,20 +6,16 @@ use std::{
 };
 
 use lindera_dictionary_builder::{
-    CostMatrixBuilderOptions, DictBuilderOptions, UserDictBuilderOptions,
+    CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions, UserDictBuilderOptions,
 };
 use log::debug;
 
 #[cfg(feature = "compress")]
 use lindera_compress::compress;
 use lindera_core::{
-    character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder},
-    dictionary::UserDictionary,
-    dictionary_builder::DictionaryBuilder,
-    error::LinderaErrorKind,
-    file_util::read_utf8_file,
-    unknown_dictionary::parse_unk,
-    LinderaResult,
+    character_definition::CharacterDefinitions, dictionary::UserDictionary,
+    dictionary_builder::DictionaryBuilder, error::LinderaErrorKind, file_util::read_utf8_file,
+    unknown_dictionary::parse_unk, LinderaResult,
 };
 use lindera_decompress::Algorithm;
 
@@ -89,31 +85,11 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinitions> {
-        let char_def_path = input_dir.join("char.def");
-        debug!("reading {:?}", char_def_path);
-
-        let char_def = read_utf8_file(&char_def_path)?;
-        let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
-        char_definitions_builder.parse(&char_def)?;
-        let char_definitions = char_definitions_builder.build();
-
-        let mut chardef_buffer = Vec::new();
-        bincode::serialize_into(&mut chardef_buffer, &char_definitions)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-
-        let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
-        let mut wtr_chardef = io::BufWriter::new(
-            File::create(wtr_chardef_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
-
-        compress_write(&chardef_buffer, COMPRESS_ALGORITHM, &mut wtr_chardef)?;
-
-        wtr_chardef
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        Ok(char_definitions)
+        CharDefBuilderOptions::default()
+            .compress_algorithm(COMPRESS_ALGORITHM)
+            .builder()
+            .unwrap()
+            .build(input_dir, output_dir)
     }
 
     fn build_unk(
