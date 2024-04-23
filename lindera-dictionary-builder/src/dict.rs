@@ -99,7 +99,11 @@ impl DictBuilder {
             }
         }
 
-        rows.sort_by_key(|row| row[0].to_string());
+        if self.normalize_details {
+            rows.sort_by_key(|row| normalize(&row[0]));
+        } else {
+            rows.sort_by(|a, b| a[0].cmp(&b[0]))
+        }
 
         let wtr_da_path = output_dir.join(Path::new("dict.da"));
         let mut wtr_da = io::BufWriter::new(
@@ -152,16 +156,17 @@ impl DictBuilder {
                     }
                 }
             };
-
-            word_entry_map
-                .entry(row[0].to_string())
-                .or_default()
-                .push(WordEntry {
-                    word_id: WordId(row_id as u32, true),
-                    word_cost,
-                    left_id,
-                    right_id,
-                });
+            let key = if self.normalize_details {
+                normalize(&row[0])
+            } else {
+                row[0].to_string()
+            };
+            word_entry_map.entry(key).or_default().push(WordEntry {
+                word_id: WordId(row_id as u32, true),
+                word_cost,
+                left_id,
+                right_id,
+            });
         }
 
         let wtr_words_path = output_dir.join(Path::new("dict.words"));
@@ -187,7 +192,7 @@ impl DictBuilder {
             let joined_details = if self.normalize_details {
                 row.iter()
                     .skip(4)
-                    .map(|item| item.to_string().replace('―', "—").replace('～', "〜"))
+                    .map(|item| normalize(item))
                     .collect::<Vec<String>>()
                     .join("\0")
             } else {
@@ -250,4 +255,8 @@ impl DictBuilder {
 
         Ok(())
     }
+}
+
+fn normalize(text: &str) -> String {
+    text.to_string().replace('―', "—").replace('～', "〜")
 }
