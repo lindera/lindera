@@ -12,21 +12,11 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-compress = ["lindera-compress"]
+compress = ["lindera-dictionary-builder/compress"]
 
 [dependencies]
 anyhow.workspace = true
-bincode.workspace = true
-byteorder.workspace = true
-csv.workspace = true
-encoding_rs.workspace = true
-encoding_rs_io.workspace = true
-env_logger.workspace = true
-glob.workspace = true
-log.workspace = true
-serde.workspace = true
-yada.workspace = true
 
-lindera-compress = { workspace = true, optional = true }
 lindera-core.workspace = true
 lindera-decompress.workspace = true
+lindera-dictionary-builder.workspace = true

@@ -1,0 +1,32 @@
+[package]
+name = "lindera-dictionary-builder"
+version = "0.30.0"
+edition = "2021"
+description = "Shared code for building Lindera dictionary files"
+documentation = "https://docs.rs/lindera-dictionary-builder"
+homepage = "https://github.com/lindera-morphology/lindera"
+repository = "https://github.com/lindera-morphology/lindera"
+readme = "README.md"
+keywords = ["japanese", "morphological", "dictionary", "builder", "unidic"]
+categories = ["text-processing"]
+license = "MIT"
+
+[features]
+compress = ["lindera-compress"]
+
+[dependencies]
+anyhow.workspace = true
+bincode.workspace = true
+byteorder.workspace = true
+csv.workspace = true
+encoding.workspace = true
+glob.workspace = true
+log.workspace = true
+yada.workspace = true
+derive_builder.workspace = true
+encoding_rs.workspace = true
+encoding_rs_io.workspace = true
+
+lindera-compress = { workspace = true, optional = true }
+lindera-core.workspace = true
+lindera-decompress.workspace = true
