@@ -142,6 +142,19 @@ jobs:
           fi
           sleep 20
 
+      - name: Publish lindera-dictionary-builder
+        run: |
+          LINDERA_DICTIONARY_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary-builder") | .version')
+          LINDERA_DICTIONARY_BUILDER_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary-builder | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_DICTIONARY_BUILDER_VERSIONS} | grep ${LINDERA_DICTIONARY_BUILDER_VERSION} >/dev/null; then
+            echo "lindera-dictionary-builder ${LINDERA_DICTIONARY_BUILDER_VERSION} has already published"
+          else
+            pushd lindera-dictionary-builder
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+
       - name: Publish lindera-ipadic-builder
         run: |
           LINDERA_IPADIC_BUILDER_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')

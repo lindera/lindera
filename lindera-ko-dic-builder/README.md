@@ -1,13 +1,13 @@
 # Lindera ko-dic Builder
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Join the chat at https://gitter.im/lindera-morphology/lindera](https://badges.gitter.im/lindera-morphology/lindera.svg)](https://gitter.im/lindera-morphology/lindera?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Join the chat at https://gitter.im/lindera-morphology/lindera](https://badges.gitter.im/lindera-morphology/lindera.svg)](https://gitter.im/lindera-morphology/lindera?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Crates.io](https://img.shields.io/crates/v/lindera-ko-dic-builder.svg)](https://crates.io/crates/lindera-ko-dic-builder)
 
 ko-dic dictionary builder for [Lindera](https://github.com/lindera-morphology/lindera).
 
 
 ## Dictionary version
 
-This repository contains [mecab-ko-dic-2.1.1-20180720](https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/).
+This repository contains [mecab-ko-dic](https://github.com/lindera-morphology/mecab-ko-dic).
 
 
 ## Dictionary format

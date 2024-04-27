@@ -1,6 +1,7 @@
 LINDERA_CORE_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-core") | .version')
 LINDERA_DECOMPRESS_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-decompress") | .version')
 LINDERA_COMPRESS_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-compress") | .version')
+LINDERA_DICTIONARY_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary-builder") | .version')
 LINDERA_IPADIC_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-builder") | .version')
 LINDERA_IPADIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
 LINDERA_IPADIC_NEOLOGD_BUILDER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd-builder") | .version')
@@ -47,6 +48,10 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress |
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-compress | jq -r '.versions[].num' | grep $(LINDERA_COMPRESS_VERSION)),)
 	(cd lindera-compress && cargo package && cargo publish)
+	sleep 10
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary-builder | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_BUILDER_VERSION)),)
+	(cd lindera-dictionary-builder && cargo package && cargo publish)
 	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-builder | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_BUILDER_VERSION)),)

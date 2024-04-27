@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+- Reuse dictionary builder code #389 @BlueGreenMagick
+
 ## 0.30.0 (2024-04-13)
 - Update README.md #387 @mosuka
 - Renew CLI #386 @mosuka
