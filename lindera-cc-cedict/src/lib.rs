@@ -26,7 +26,10 @@ macro_rules! decompress_data {
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/char_def.bin")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/char_def.bin"
+    )),
     "char_def.bin"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -35,7 +38,10 @@ decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     CONNECTION_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/matrix.mtx")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/matrix.mtx"
+    )),
     "matrix.mtx"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -44,7 +50,10 @@ decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     CC_CEDICT_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/dict.da")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/dict.da"
+    )),
     "dict.da"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -53,7 +62,10 @@ decompress_data!(CC_CEDICT_DATA, &[], "dict.da");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     CC_CEDICT_VALS,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/dict.vals")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/dict.vals"
+    )),
     "dict.vals"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -62,7 +74,10 @@ decompress_data!(CC_CEDICT_VALS, &[], "dict.vals");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     UNKNOWN_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/unk.bin")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/unk.bin"
+    )),
     "unk.bin"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -71,7 +86,10 @@ decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/dict.wordsidx")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/dict.wordsidx"
+    )),
     "dict.wordsidx"
 );
 #[cfg(not(feature = "cc-cedict"))]
@@ -80,7 +98,10 @@ decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
     WORDS_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-cc-cedict/dict.words")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-cc-cedict/dict.words"
+    )),
     "dict.words"
 );
 #[cfg(not(feature = "cc-cedict"))]

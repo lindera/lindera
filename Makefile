@@ -16,6 +16,7 @@ LINDERA_DICTIONARY_VERSION ?= $(shell cargo metadata --no-deps --format-version=
 LINDERA_TOKENIZER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-tokenizer") | .version')
 LINDERA_FILTER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-filter") | .version')
 LINDERA_ANALYZER_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-analyzer") | .version')
+LINDERA_ASSETS_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-assets") | .version')
 LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 LINDERA_CLI_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
 
@@ -108,6 +109,10 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-filter | jq 
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-analyzer | jq -r '.versions[].num' | grep $(LINDERA_ANALYZER_VERSION)),)
 	(cd lindera-analyzer && cargo package && cargo publish)
+	sleep 10
+endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-assets | jq -r '.versions[].num' | grep $(LINDERA_ASSETS_VERSION)),)
+	(cd lindera-assets && cargo package && cargo publish)
 	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
