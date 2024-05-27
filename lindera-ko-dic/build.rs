@@ -60,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let tmp_path = Path::new(&build_dir).join(file_name.to_owned() + ".download");
 
             // Download a tarball
-            let download_url = "https://github.com/lindera-morphology/mecab-ko-dic/archive/refs/tags/2.1.1-20180720.tar.gz";
+            let download_url = "https://dlwqk3ibdg1xh.cloudfront.net/mecab-ko-dic-2.1.1-20180720.tar.gz";
             let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
 
