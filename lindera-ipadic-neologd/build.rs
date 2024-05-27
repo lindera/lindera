@@ -64,7 +64,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             // Download a tarball
             let download_url =
-                "https://github.com/lindera-morphology/mecab-ipadic-neologd/archive/refs/tags/0.0.7-20200820.tar.gz";
+                "https://dlwqk3ibdg1xh.cloudfront.net/mecab-ipadic-neologd-0.0.7-20200820.tar.gz";
             let resp = ureq::get(download_url).call()?;
             let mut dest = File::create(&tmp_path)?;
 
