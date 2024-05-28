@@ -10,12 +10,11 @@ The following products are required to build:
 
 - Rust >= 1.46.0
 
-
 ## Usage
 
 Put the following in Cargo.toml:
 
-```
+```toml
 [dependencies]
 lindera = { version = "0.30.0", features = ["ipadic"] }
 ```
@@ -25,6 +24,7 @@ lindera = { version = "0.30.0", features = ["ipadic"] }
 This example covers the basic usage of Lindera.
 
 It will:
+
 - Create a tokenizer in normal mode
 - Tokenize the input text
 - Output the tokens
@@ -68,6 +68,7 @@ The above example can be run as follows:
 ```
 
 You can see the result as follows:
+
 ```text
 日本語
 の
@@ -86,11 +87,12 @@ You can see the result as follows:
 
 You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.
 
-```
+```csv
 <surface>,<part_of_speech>,<reading>
 ```
 
 For example:
+
 ```shell
 % cat ./resources/simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
@@ -99,6 +101,7 @@ For example:
 ```
 
 With an user dictionary, `Tokenizer` will be created as follows:
+
 ```rust
 use std::path::PathBuf;
 
@@ -138,6 +141,7 @@ fn main() -> LinderaResult<()> {
 ```
 
 The above example can be by `cargo run --example`:
+
 ```shell
 % cargo run --features=ipadic --example=tokenize_ipadic_userdic
 東京スカイツリー
@@ -151,4 +155,5 @@ The above example can be by `cargo run --example`:
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera" target="_blank">lindera-tokenizer</a>
+
+- [lindera](https://docs.rs/lindera)

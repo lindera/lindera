@@ -4,11 +4,9 @@
 
 IPADIC NEologd dictionary builder for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
-
 ## Dictionary version
 
 This repository contains [mecab-ipadic-neologd](https://github.com/lindera-morphology/mecab-ipadic-neologd).
-
 
 ## Dictionary format
 
@@ -29,7 +27,6 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 10 | 原形 | Base form | |
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
-
 
 ## User dictionary format (CSV)
 
@@ -60,15 +57,14 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 12 | 発音 | Pronunciation | |
 | 13 | - | - | After 13, it can be freely expanded. |
 
-
 ## How to use IPADIC dictionary
 
 For more details about `lindera` command, please refer to the following URL:
 
 - [Lindera CLI](https://github.com/lindera-morphology/lindera/tree/main/lindera-cli)
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera-ipadic-neologd-builder" target="_blank">lindera-ipadic-neologd-builder</a>
+
+- [lindera-ipadic-neologd-builder](https://docs.rs/lindera-ipadic-neologd-builder)

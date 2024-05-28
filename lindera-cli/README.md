@@ -4,7 +4,6 @@
 
 A morphological analysis command-line interface for [Lindera](https://github.com/lindera-morphology/lindera).
 
-
 ## Install
 
 You can install binary via cargo as follows:
@@ -15,8 +14,7 @@ You can install binary via cargo as follows:
 
 Alternatively, you can download a binary from the following release page:
 
-- https://github.com/lindera-morphology/lindera/releases
-
+- [https://github.com/lindera-morphology/lindera/releases](https://github.com/lindera-morphology/lindera/releases)
 
 ## Build
 
@@ -30,7 +28,7 @@ The following products are required to build:
 
 ### Build with IPADIC (Japanese dictionary)
 
-The "ipadic" feature flag allows Lindera to include IPADIC. 
+The "ipadic" feature flag allows Lindera to include IPADIC.
 
 ```shell script
 % cargo build --release --features=ipadic
@@ -38,7 +36,7 @@ The "ipadic" feature flag allows Lindera to include IPADIC.
 
 ### Build with UniDic (Japanese dictionary)
 
-The "unidic" feature flag allows Lindera to include UniDic. 
+The "unidic" feature flag allows Lindera to include UniDic.
 
 ```shell script
 % cargo build --release --features=unidic
@@ -46,7 +44,7 @@ The "unidic" feature flag allows Lindera to include UniDic.
 
 ### Build with ko-dic (Korean dictionary)
 
-The "ko-dic" feature flag allows Lindera to include ko-dic. 
+The "ko-dic" feature flag allows Lindera to include ko-dic.
 
 ```shell script
 % cargo build --release --features=ko-dic
@@ -54,7 +52,7 @@ The "ko-dic" feature flag allows Lindera to include ko-dic.
 
 ### Build with CC-CEDICT (Chinese dictionary)
 
-The "cc-cedict" feature flag allows Lindera to include CC-CEDICT. 
+The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.
 
 ```shell script
 % cargo build --release --features=cc-cedict
@@ -68,7 +66,6 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % cargo build --release --features=compress
 ```
-
 
 ## Build dictionary
 
@@ -104,48 +101,47 @@ Instead, you will be penalized for the execution time of the program.
 % lindera build --dic-type=unidic /tmp/unidic-mecab-2.1.2 /tmp/lindera-unidic-2.1.2
 ```
 
-
 ## Build user dictionary
 
-### IPADIC (Japanese dictionary)
+### Build IPADIC (Japanese dictionary)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv)
 
-```
+```shell
 % lindera build --build-user-dic --dic-type=ipadic ./resources/ipadic_simple_userdic.csv ./resources
 ```
 
-### CC-CEDICT (Chinese dictionary)
+### Build CC-CEDICT (Chinese dictionary)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv)
-```
+
+```shell
 % lindera build --build-user-dic --dic-type=cc-cedict ./resources/cc-cedict_simple_userdic.csv ./resources
 ```
 
-### ko-dic (Korean dictionary)
+### Build ko-dic (Korean dictionary)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
 
-```
+```shell
 % lindera build --build-user-dic --dic-type=ko-dic ./resources/ko-dic_simple_userdic.csv ./resources
 ```
 
-### UniDic (Japanese dictionary)
+### Build UniDic (Japanese dictionary)
 
 For more details about user dictionary format please refer to the following URL:
 
 - [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
 
-```
+```shell
 % lindera build --build-user-dic --dic-type=unidic ./resources/unidic_simple_userdic.csv ./resources
 ```
-
 
 ## Tokenization
 
@@ -153,9 +149,9 @@ For more details about user dictionary format please refer to the following URL:
 
 For example, text can be tokenized using a prepared dictionary as follows:
 
-#### IPADIC (Japanese dictionary)
+#### Tokenize with IPADIC (Japanese dictionary)
 
-```shell script
+```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-dir=/tmp/lindera-ipadic-2.7.0-20070801
 ```
 
@@ -174,9 +170,9 @@ For example, text can be tokenized using a prepared dictionary as follows:
 EOS
 ```
 
-#### UniDic (Japanese dictionary)
+#### Tokenize with UniDic (Japanese dictionary)
 
-```shell script
+```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-dir=/tmp/lindera-unidic-2.1.2
 ```
 
@@ -195,9 +191,9 @@ EOS
 EOS
 ```
 
-#### ko-dic (Korean dictionary)
+#### Tokenize ko-dic (Korean dictionary)
 
-```shell script
+```shell
 % echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dic-dir=/tmp/lindera-ko-dic-2.1.1-20180720
 ```
 
@@ -216,9 +212,9 @@ EOS
 EOS
 ```
 
-#### CC-CEDICT (Chinese dictionary)
+#### Tokenize with CC-CEDICT (Chinese dictionary)
 
-```shell script
+```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize --dic-dir=/tmp/lindera-cc-cedict-0.1.0-20200409
 ```
 
@@ -232,16 +228,15 @@ EOS
 EOS
 ```
 
-
 ### Self-contained dictionary
 
 If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
 
-#### IPADIC (Japanese dictionary)
+#### Tokenize with self-contained IPADIC (Japanese dictionary)
 
 The following example uses the self-contained IPADIC to tokenize:
 
-```shell script
+```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=ipadic
 ```
 
@@ -262,11 +257,11 @@ EOS
 
 NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=ipadic` option.
 
-#### UniDic (Japanese dictionary)
+#### Tokenize with self-contained UniDic (Japanese dictionary)
 
 If UniDic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
-```shell script
+```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dic-type=unidic
 ```
 
@@ -289,11 +284,11 @@ EOS
 
 NOTE: To include UniDic dictionary in the binary, you must build with the `--features=unidic` option.
 
-#### ko-dic (Korean dictionary)
+#### Tokenize with self-contained ko-dic (Korean dictionary)
 
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
-```shell script
+```shell
 % echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dic-type=ko-dic
 ```
 
@@ -314,11 +309,11 @@ EOS
 
 NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=ko-dic` option.
 
-#### CC-CEDICT (Chinese dictionary)
+#### Tokenize with self-contained CC-CEDICT (Chinese dictionary)
 
 If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
-```shell script
+```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize --dic-type=cc-cedict
 ```
 
@@ -334,16 +329,15 @@ EOS
 
 NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=cc-cedict` option.
 
-
 ### User dictionary
 
 Lindera supports two types of user dictionaries, one in CSV format and the other in binary format.
 
-#### CSV format
+#### Use user dictionary (CSV format)
 
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
-```shell script
+```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dic-type=ipadic --user-dictionary=./resources/simple_userdic.csv
 ```
 
@@ -357,12 +351,12 @@ This will parse the given CSV file at runtime, build a dictionary, and then run 
 EOS
 ```
 
-#### Binary format
+#### Use user dictionary (Binary format)
 
 This will read the given pre-built user dictionary file and perform text tokenization.
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
-```shell script
+```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dic-type=ipadic --user-dictionary=./resources/ipadic_userdic.bin
 ```
 
@@ -382,7 +376,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 
 `normal` mode tokenizes faithfully based on words registered in the dictionary. (Default):
 
-```shell script
+```shell
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dic-type=ipadic --mode=normal
 ```
 
@@ -395,7 +389,7 @@ EOS
 
 `decompose` mode tokenizes a compound noun words additionally:
 
-```shell script
+```shell
 % echo "関西国際空港限定トートバッグ" | lindera tokenize --dic-type=ipadic --mode=decompose
 ```
 
@@ -414,23 +408,23 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 
 `mecab` outputs results in a format like MeCab:
 
-```shell script
+```shell
 % echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=mecab
 ```
 
 ```text
-お待ち	名詞,サ変接続,*,*,*,*,お待ち,オマチ,オマチ
-し	動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
-て	助詞,接続助詞,*,*,*,*,て,テ,テ
-おり	動詞,非自立,*,*,五段・ラ行,連用形,おる,オリ,オリ
-ます	助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
-。	記号,句点,*,*,*,*,。,。,。
+お待ち  名詞,サ変接続,*,*,*,*,お待ち,オマチ,オマチ
+し  動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
+て  助詞,接続助詞,*,*,*,*,て,テ,テ
+おり  動詞,非自立,*,*,五段・ラ行,連用形,おる,オリ,オリ
+ます  助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。  記号,句点,*,*,*,*,。,。,。
 EOS
 ```
 
 `wakati` outputs the token text separated by spaces:
 
-```shell script
+```shell
 % echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=wakati
 ```
 
@@ -440,7 +434,7 @@ EOS
 
 `json` outputs the token information in JSON format:
 
-```shell script
+```shell
 % echo "お待ちしております。" | lindera tokenize --dic-type=ipadic --output-format=json
 ```
 
@@ -533,15 +527,14 @@ EOS
 ]
 ```
 
-
 ## Filtering
 
 Lindera introduced an analytical framework.
 Combine character filters, tokenizers, and token filters for more advanced text processing.
 Describe the character filter and token filter settings used for analysis in JSON.
 
-```shell script
-$ echo "すもももももももものうち" | lindera tokenize -t ipadic -C 'unicode_normalize:{"kind":"nfkc"}' -T 'japanese_keep_tags:{"tags":["名詞,一般"]}'
+```shell
+% echo "すもももももももものうち" | lindera tokenize -t ipadic -C 'unicode_normalize:{"kind":"nfkc"}' -T 'japanese_keep_tags:{"tags":["名詞,一般"]}'
 ```
 
 ```text
@@ -551,8 +544,8 @@ $ echo "すもももももももものうち" | lindera tokenize -t ipadic -C 'u
 EOS
 ```
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera-cli" target="_blank">lindera-cli</a>
+
+- [lindera-cli](https://docs.rs/lindera-cli)
