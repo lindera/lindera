@@ -10,12 +10,11 @@ The following products are required to build:
 
 - Rust >= 1.46.0
 
-
 ## Usage
 
 Put the following in Cargo.toml:
 
-```
+```toml
 [dependencies]
 lindera_analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 ```
@@ -25,6 +24,7 @@ lindera_analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 This example covers the basic usage of Lindera Analysis Framework.
 
 It will:
+
 - Apply character filter for Unicode normalization (NFKC)
 - Tokenize the input text with IPADIC
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
@@ -72,6 +72,7 @@ The above example can be run as follows:
 ```
 
 You can see the result as follows:
+
 ```text
 text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
 token: Lindera, start: 0, end: 21, details: Some(["UNK"])
@@ -84,8 +85,8 @@ token: 利用, start: 35, end: 41, details: Some(["名詞", "サ変接続", "*",
 token: 可能, start: 41, end: 47, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 ```
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera-analyzer" target="_blank">lindera</a>
+
+- [lindera-analyzer](https://docs.rs/lindera-analyzer)

@@ -1,6 +1,6 @@
 [package]
 name = "lindera-dictionary"
-version = "0.30.0"
+version = "0.31.0"
 edition = "2021"
 description = "A Japanese morphological dictionary."
 documentation = "https://docs.rs/lindera-dictionary"

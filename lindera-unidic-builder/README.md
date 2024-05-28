@@ -4,11 +4,9 @@
 
 UniDic builder for [Lindera](https://github.com/lindera-morphology/lindera).
 
-
 ## Dictionary version
 
 This repository contains [unidic-mecab](https://github.com/lindera-morphology/unidic-mecab).
-
 
 ## Dictionary format
 
@@ -16,10 +14,10 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 表層形 | Surface |
-| 1 | 左文脈ID | Left context ID |
-| 2 | 右文脈ID | Right context ID |
-| 3 | コスト | Cost |
+| 0 | 表層形 | Surface | |
+| 1 | 左文脈ID | Left context ID | |
+| 2 | 右文脈ID | Right context ID | |
+| 3 | コスト | Cost | |
 | 4 | 品詞大分類 | Major POS classification | |
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
@@ -38,14 +36,13 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 19 | 語末変化型 | Suffix of a word form  | |
 | 20 | 語末変化形 | Suffix of a word type  | |
 
-
 ## User dictionary format (CSV)
 
 ### Simple version
 
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 表層形 | Surface |
+| 0 | 表層形 | Surface | |
 | 1 | 品詞大分類 | Major POS classification | |
 | 2 | 語彙素読み | Lexeme reading | |
 
@@ -53,10 +50,10 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
-| 0 | 表層形 | Surface |
-| 1 | 左文脈ID | Left context ID |
-| 2 | 右文脈ID | Right context ID |
-| 3 | コスト | Cost |
+| 0 | 表層形 | Surface | |
+| 1 | 左文脈ID | Left context ID | |
+| 2 | 右文脈ID | Right context ID | |
+| 3 | コスト | Cost | |
 | 4 | 品詞大分類 | Major POS classification | |
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
@@ -76,15 +73,14 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 20 | 語末変化形 | Suffix of a word type  | |
 | 21 | - | - | After 21, it can be freely expanded. |
 
-
 ## How to use IPADIC dictionary
 
 For more details about `lindera` command, please refer to the following URL:
 
 - [Lindera CLI](https://github.com/lindera-morphology/lindera/tree/main/lindera-cli)
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera-unidic-builder" target="_blank">Lindera UniDic Builder</a>
+
+- [lindera-unidic-builder](https://docs.rs/lindera-unidic-builder)

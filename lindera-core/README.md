@@ -6,8 +6,8 @@ A morphological analysis core library for [Lindera](https://github.com/lindera-m
 
 This package contains dictionary structures and the viterbi algorithm.
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera-core" target="_blank">lindera-core</a>
+
+- [lindera-core](https://docs.rs/lindera-core)

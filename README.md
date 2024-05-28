@@ -2,7 +2,6 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Join the chat at https://gitter.im/lindera-morphology/lindera](https://badges.gitter.im/lindera-morphology/lindera.svg)](https://gitter.im/lindera-morphology/lindera?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Crates.io](https://img.shields.io/crates/v/lindera.svg)](https://crates.io/crates/lindera)
 
-
 A morphological analysis library in Rust. This project fork from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
@@ -11,14 +10,13 @@ The following products are required to build:
 
 - Rust >= 1.46.0
 
-
 ## Tokenizer Usage
 
-### Basic example
+### Basic tokenizer example
 
 Put the following in Cargo.toml:
 
-```
+```toml
 [dependencies]
 lindera-tokenizer = { version = "0.24.0", features = ["ipadic"] }
 ```
@@ -26,6 +24,7 @@ lindera-tokenizer = { version = "0.24.0", features = ["ipadic"] }
 This example covers the basic usage of Lindera.
 
 It will:
+
 - Create a tokenizer in normal mode
 - Tokenize the input text
 - Output the tokens
@@ -64,11 +63,12 @@ fn main() -> LinderaResult<()> {
 
 The above example can be run as follows:
 
-```shell script
+```shell
 % cargo run --features=ipadic --example=ipadic_basic_example
 ```
 
 You can see the result as follows:
+
 ```text
 関西国際空港
 限定
@@ -79,11 +79,12 @@ You can see the result as follows:
 
 You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.
 
-```
+```csv
 <surface>,<part_of_speech>,<reading>
 ```
 
 For example:
+
 ```shell
 % cat ./resources/simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
@@ -92,6 +93,7 @@ For example:
 ```
 
 With an user dictionary, `Tokenizer` will be created as follows:
+
 ```rust
 use std::path::PathBuf;
 
@@ -131,6 +133,7 @@ fn main() -> LinderaResult<()> {
 ```
 
 The above example can be by `cargo run --example`:
+
 ```shell
 % cargo run --features=ipadic --example=ipadic_userdic_example
 東京スカイツリー
@@ -141,14 +144,13 @@ The above example can be by `cargo run --example`:
 です
 ```
 
-
 ## Anzalyzer Usage
 
-### Basic example
+### Basic analyzer example
 
 Put the following in Cargo.toml:
 
-```
+```toml
 [dependencies]
 lindera-analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 ```
@@ -156,6 +158,7 @@ lindera-analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
 This example covers the basic usage of Lindera Analysis Framework.
 
 It will:
+
 - Apply character filter for Unicode normalization (NFKC)
 - Tokenize the input text with IPADIC
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
@@ -198,11 +201,12 @@ fn main() -> LinderaResult<()> {
 
 The above example can be run as follows:
 
-```shell script
+```shell
 % cargo run --features=ipadic,filter --example=analysis_example
 ```
 
 You can see the result as follows:
+
 ```text
 text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
 token: Lindera, start: 0, end: 21, details: Some(["UNK"])
@@ -215,8 +219,8 @@ token: 利用, start: 35, end: 41, details: Some(["名詞", "サ変接続", "*",
 token: 可能, start: 41, end: 47, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 ```
 
-
 ## API reference
 
 The API reference is available. Please see following URL:
-- <a href="https://docs.rs/lindera" target="_blank">lindera</a>
+
+- [lindera](https://docs.rs/lindera)
