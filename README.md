@@ -18,7 +18,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera-tokenizer = { version = "0.24.0", features = ["ipadic"] }
+lindera-tokenizer = { version = "0.31.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -30,9 +30,9 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera_core::{mode::Mode, LinderaResult};
-use lindera_dictionary::{DictionaryConfig, DictionaryKind};
-use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
+use lindera::{
+    DictionaryConfig, DictionaryKind, LinderaResult, Mode, Tokenizer, TokenizerConfig,
+};
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {
@@ -83,6 +83,13 @@ You can give user dictionary entries along with the default system dictionary. U
 <surface>,<part_of_speech>,<reading>
 ```
 
+Put the following in Cargo.toml:
+
+```toml
+[dependencies]
+lindera-tokenizer = { version = "0.31.0", features = ["ipadic"] }
+```
+
 For example:
 
 ```shell
@@ -97,9 +104,10 @@ With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
 use std::path::PathBuf;
 
-use lindera_tokenizer::tokenizer::{Tokenizer, TokenizerConfig};
-use lindera_core::viterbi::Mode;
-use lindera_core::LinderaResult;
+use lindera::{
+    DictionaryConfig, DictionaryKind, LinderaResult, Mode, Tokenizer, TokenizerConfig,
+    UserDictionaryConfig,
+};
 
 fn main() -> LinderaResult<()> {
     let dictionary = DictionaryConfig {
@@ -152,7 +160,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera-analyzer = { version = "0.24.0", features = ["ipadic", "filter"] }
+lindera-analyzer = { version = "0.31.0", features = ["ipadic", "filter"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -164,34 +172,115 @@ It will:
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
 
 ```rust
-use std::{fs, path::PathBuf};
+use std::collections::HashSet;
 
-use lindera_analyzer::analyzer::Analyzer;
-use lindera_core::LinderaResult;
+use lindera::{
+    Analyzer, BoxCharacterFilter, BoxTokenFilter, DictionaryConfig, DictionaryKind,
+    JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+    JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+    JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
+    JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig, LinderaResult, Mode,
+    Tokenizer, TokenizerConfig, UnicodeNormalizeCharacterFilter,
+    UnicodeNormalizeCharacterFilterConfig, UnicodeNormalizeKind,
+};
 
 fn main() -> LinderaResult<()> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("lindera_ipadic_conf.json");
+    let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
 
-    let config_bytes = fs::read(path).unwrap();
+    let unicode_normalize_character_filter_config =
+            UnicodeNormalizeCharacterFilterConfig::new(UnicodeNormalizeKind::NFKC);
+    let unicode_normalize_character_filter =
+        UnicodeNormalizeCharacterFilter::new(unicode_normalize_character_filter_config);
+    character_filters.push(BoxCharacterFilter::from(unicode_normalize_character_filter));
 
-    let analyzer = Analyzer::from_slice(&config_bytes).unwrap();
+    let japanese_iteration_mark_character_filter_config =
+        JapaneseIterationMarkCharacterFilterConfig::new(true, true);
+    let japanese_iteration_mark_character_filter = JapaneseIterationMarkCharacterFilter::new(
+        japanese_iteration_mark_character_filter_config,
+    );
+    character_filters.push(BoxCharacterFilter::from(
+        japanese_iteration_mark_character_filter,
+    ));
 
-    let mut text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
+    let dictionary = DictionaryConfig {
+        kind: Some(DictionaryKind::IPADIC),
+        path: None,
+    };
+
+    let config = TokenizerConfig {
+        dictionary,
+        user_dictionary: None,
+        mode: Mode::Normal,
+    };
+
+    let tokenizer = Tokenizer::from_config(config).unwrap();
+
+    let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
+
+    let japanese_compound_word_token_filter_config =
+        JapaneseCompoundWordTokenFilterConfig::new(
+            DictionaryKind::IPADIC,
+            HashSet::from_iter(vec!["名詞,数".to_string()]),
+            Some("名詞,数".to_string()),
+        )?;
+    let japanese_compound_word_token_filter =
+        JapaneseCompoundWordTokenFilter::new(japanese_compound_word_token_filter_config);
+    token_filters.push(BoxTokenFilter::from(japanese_compound_word_token_filter));
+
+    let japanese_number_token_filter_config =
+        JapaneseNumberTokenFilterConfig::new(Some(HashSet::from_iter(vec![
+            "名詞,数".to_string()
+        ])));
+    let japanese_number_token_filter =
+        JapaneseNumberTokenFilter::new(japanese_number_token_filter_config);
+    token_filters.push(BoxTokenFilter::from(japanese_number_token_filter));
+
+    let japanese_stop_tags_token_filter_config =
+        JapaneseStopTagsTokenFilterConfig::new(HashSet::from_iter(vec![
+            "接続詞".to_string(),
+            "助詞".to_string(),
+            "助詞,格助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,格助詞,引用".to_string(),
+            "助詞,格助詞,連語".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,副助詞".to_string(),
+            "助詞,間投助詞".to_string(),
+            "助詞,並立助詞".to_string(),
+            "助詞,終助詞".to_string(),
+            "助詞,副助詞／並立助詞／終助詞".to_string(),
+            "助詞,連体化".to_string(),
+            "助詞,副詞化".to_string(),
+            "助詞,特殊".to_string(),
+            "助動詞".to_string(),
+            "記号".to_string(),
+            "記号,一般".to_string(),
+            "記号,読点".to_string(),
+            "記号,句点".to_string(),
+            "記号,空白".to_string(),
+            "記号,括弧閉".to_string(),
+            "その他,間投".to_string(),
+            "フィラー".to_string(),
+            "非言語音".to_string(),
+        ]));
+    let japanese_stop_tags_token_filter =
+        JapaneseStopTagsTokenFilter::new(japanese_stop_tags_token_filter_config);
+    token_filters.push(BoxTokenFilter::from(japanese_stop_tags_token_filter));
+
+    let analyzer = Analyzer::new(character_filters, tokenizer, token_filters);
+
+    let mut text =
+        "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
     println!("text: {}", text);
 
     // tokenize the text
-    let tokens = analyzer.analyze(&text)?;
+    let tokens = analyzer.analyze(&mut text)?;
 
     // output the tokens
     for token in tokens {
         println!(
             "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
-            token.text,
-            token.byte_start,
-            token.byte_end,
-            token.details
+            token.text, token.byte_start, token.byte_end, token.details
         );
     }
 
