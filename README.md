@@ -10,15 +10,15 @@ The following products are required to build:
 
 - Rust >= 1.46.0
 
-## Tokenizer Usage
+## Tokenization examples
 
-### Basic tokenizer example
+### Basic tokenization
 
 Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera-tokenizer = { version = "0.31.0", features = ["ipadic"] }
+lindera = { version = "0.31.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -75,7 +75,7 @@ You can see the result as follows:
 トートバッグ
 ```
 
-### User dictionary example
+### Tokenization with user dictionary
 
 You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.
 
@@ -152,15 +152,15 @@ The above example can be by `cargo run --example`:
 です
 ```
 
-## Anzalyzer Usage
+## Analysis examples
 
-### Basic analyzer example
+### Basic analysis
 
 Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera-analyzer = { version = "0.31.0", features = ["ipadic", "filter"] }
+lindera = { version = "0.31.0", features = ["ipadic", "filter"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
