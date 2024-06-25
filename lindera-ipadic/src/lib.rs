@@ -26,7 +26,10 @@ macro_rules! decompress_data {
 #[cfg(feature = "ipadic")]
 decompress_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/char_def.bin")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic/char_def.bin"
+    )),
     "char_def.bin"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -35,7 +38,10 @@ decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     CONNECTION_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/matrix.mtx")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic/matrix.mtx"
+    )),
     "matrix.mtx"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -44,7 +50,7 @@ decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     IPADIC_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.da")),
+    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ipadic/dict.da")),
     "dict.da"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -53,7 +59,10 @@ decompress_data!(IPADIC_DATA, &[], "dict.da");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     IPADIC_VALS,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.vals")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic/dict.vals"
+    )),
     "dict.vals"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -62,7 +71,7 @@ decompress_data!(IPADIC_VALS, &[], "dict.vals");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     UNKNOWN_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/unk.bin")),
+    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ipadic/unk.bin")),
     "unk.bin"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -71,7 +80,10 @@ decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.wordsidx")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic/dict.wordsidx"
+    )),
     "dict.wordsidx"
 );
 #[cfg(not(feature = "ipadic"))]
@@ -80,7 +92,10 @@ decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
 #[cfg(feature = "ipadic")]
 decompress_data!(
     WORDS_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic/dict.words")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic/dict.words"
+    )),
     "dict.words"
 );
 #[cfg(not(feature = "ipadic"))]

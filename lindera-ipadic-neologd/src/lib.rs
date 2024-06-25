@@ -27,7 +27,7 @@ macro_rules! decompress_data {
 decompress_data!(
     CHAR_DEFINITION_DATA,
     include_bytes!(concat!(
-        env!("OUT_DIR"),
+        env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/char_def.bin"
     )),
     "char_def.bin"
@@ -39,7 +39,7 @@ decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
 decompress_data!(
     CONNECTION_DATA,
     include_bytes!(concat!(
-        env!("OUT_DIR"),
+        env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/matrix.mtx"
     )),
     "matrix.mtx"
@@ -50,7 +50,10 @@ decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
 #[cfg(feature = "ipadic-neologd")]
 decompress_data!(
     IPADIC_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic-neologd/dict.da")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic-neologd/dict.da"
+    )),
     "dict.da"
 );
 #[cfg(not(feature = "ipadic-neologd"))]
@@ -60,7 +63,7 @@ decompress_data!(IPADIC_DATA, &[], "dict.da");
 decompress_data!(
     IPADIC_VALS,
     include_bytes!(concat!(
-        env!("OUT_DIR"),
+        env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/dict.vals"
     )),
     "dict.vals"
@@ -71,7 +74,10 @@ decompress_data!(IPADIC_VALS, &[], "dict.vals");
 #[cfg(feature = "ipadic-neologd")]
 decompress_data!(
     UNKNOWN_DATA,
-    include_bytes!(concat!(env!("OUT_DIR"), "/lindera-ipadic-neologd/unk.bin")),
+    include_bytes!(concat!(
+        env!("LINDERA_WORKDIR"),
+        "/lindera-ipadic-neologd/unk.bin"
+    )),
     "unk.bin"
 );
 #[cfg(not(feature = "ipadic-neologd"))]
@@ -81,7 +87,7 @@ decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
 decompress_data!(
     WORDS_IDX_DATA,
     include_bytes!(concat!(
-        env!("OUT_DIR"),
+        env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/dict.wordsidx"
     )),
     "dict.wordsidx"
@@ -93,7 +99,7 @@ decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
 decompress_data!(
     WORDS_DATA,
     include_bytes!(concat!(
-        env!("OUT_DIR"),
+        env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/dict.words"
     )),
     "dict.words"

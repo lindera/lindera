@@ -311,5 +311,17 @@ token: 可能, start: 41, end: 47, details: Some(["名詞", "形容動詞語幹"
 ## API reference
 
 The API reference is available. Please see following URL:
-
 - [lindera](https://docs.rs/lindera)
+
+## Build-time cache
+
+At build time, Lindera downloads various assets from the Internet, uses them to build dictionaries, and includes the resulting
+dictionaries in the final library (possibly compressed, depending on the feature set).
+
+By default, Lindera will use the [`OUT_DIR`](https://doc.rust-lang.org/cargo/reference/environment-variables.html?highlight=OUT_DIR#environment-variables-cargo-sets-for-build-scripts) environment variable as the location where to download the assets and build the dictionaries.
+
+This means that changing the version of Rust, the build profile or the target architecture will result in multiple copies of Lindera assets being downloaded and built.
+
+Setting the `LINDERA_CACHE` environment variable changes the behavior of Lindera: it will always download and build the dictionary files inside of the directory pointed to by the `LINDERA_CACHE` variables.
+
+This may shorten build times on CI and developer machines.

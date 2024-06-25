@@ -337,6 +337,19 @@ jobs:
           fi
           sleep 20
 
+      - name: Publish lindera-assets
+        run: |
+          LINDERA_ASSETS_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-assets") | .version')
+          LINDERA_ASSETS_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera-assets | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_ASSETS_VERSIONS} | grep ${LINDERA_ASSETS_VERSION} >/dev/null; then
+            echo "lindera-assets ${LINDERA_ASSETS_VERSION} has already published"
+          else
+            pushd lindera-assets
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+
       - name: Publish lindera
         run: |
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
