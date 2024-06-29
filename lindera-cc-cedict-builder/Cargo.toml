@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cc-cedict-builder"
-version = "0.32.0"
+version = "0.32.1"
 edition = "2021"
 description = "A Chinese morphological dictionary builder for CC-CEDICT."
 documentation = "https://docs.rs/lindera-cc-cedict-builder"

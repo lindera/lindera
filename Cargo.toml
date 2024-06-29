@@ -25,27 +25,27 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera = { version = "0.32.0", path = "lindera" }
-lindera-analyzer = { version = "0.32.0", path = "lindera-analyzer" }
-lindera-assets = { version = "0.32.0", path = "lindera-assets" }
-lindera-dictionary-builder = { version = "0.32.0", path = "lindera-dictionary-builder" }
-lindera-cc-cedict = { version = "0.32.0", path = "lindera-cc-cedict" }
-lindera-cc-cedict-builder = { version = "0.32.0", path = "lindera-cc-cedict-builder" }
-lindera-cli = { version = "0.32.0", path = "lindera-cli" }
-lindera-compress = { version = "0.32.0", path = "lindera-compress" }
-lindera-core = { version = "0.32.0", path = "lindera-core" }
-lindera-decompress = { version = "0.32.0", path = "lindera-decompress" }
-lindera-dictionary = { version = "0.32.0", path = "lindera-dictionary" }
-lindera-filter = { version = "0.32.0", path = "lindera-filter" }
-lindera-ipadic = { version = "0.32.0", path = "lindera-ipadic" }
-lindera-ipadic-builder = { version = "0.32.0", path = "lindera-ipadic-builder" }
-lindera-ipadic-neologd = { version = "0.32.0", path = "lindera-ipadic-neologd" }
-lindera-ipadic-neologd-builder = { version = "0.32.0", path = "lindera-ipadic-neologd-builder" }
-lindera-ko-dic = { version = "0.32.0", path = "lindera-ko-dic" }
-lindera-ko-dic-builder = { version = "0.32.0", path = "lindera-ko-dic-builder" }
-lindera-tokenizer = { version = "0.32.0", path = "lindera-tokenizer" }
-lindera-unidic = { version = "0.32.0", path = "lindera-unidic" }
-lindera-unidic-builder = { version = "0.32.0", path = "lindera-unidic-builder" }
+lindera = { version = "0.32.1", path = "lindera" }
+lindera-analyzer = { version = "0.32.1", path = "lindera-analyzer" }
+lindera-assets = { version = "0.32.1", path = "lindera-assets" }
+lindera-dictionary-builder = { version = "0.32.1", path = "lindera-dictionary-builder" }
+lindera-cc-cedict = { version = "0.32.1", path = "lindera-cc-cedict" }
+lindera-cc-cedict-builder = { version = "0.32.1", path = "lindera-cc-cedict-builder" }
+lindera-cli = { version = "0.32.1", path = "lindera-cli" }
+lindera-compress = { version = "0.32.1", path = "lindera-compress" }
+lindera-core = { version = "0.32.1", path = "lindera-core" }
+lindera-decompress = { version = "0.32.1", path = "lindera-decompress" }
+lindera-dictionary = { version = "0.32.1", path = "lindera-dictionary" }
+lindera-filter = { version = "0.32.1", path = "lindera-filter" }
+lindera-ipadic = { version = "0.32.1", path = "lindera-ipadic" }
+lindera-ipadic-builder = { version = "0.32.1", path = "lindera-ipadic-builder" }
+lindera-ipadic-neologd = { version = "0.32.1", path = "lindera-ipadic-neologd" }
+lindera-ipadic-neologd-builder = { version = "0.32.1", path = "lindera-ipadic-neologd-builder" }
+lindera-ko-dic = { version = "0.32.1", path = "lindera-ko-dic" }
+lindera-ko-dic-builder = { version = "0.32.1", path = "lindera-ko-dic-builder" }
+lindera-tokenizer = { version = "0.32.1", path = "lindera-tokenizer" }
+lindera-unidic = { version = "0.32.1", path = "lindera-unidic" }
+lindera-unidic-builder = { version = "0.32.1", path = "lindera-unidic-builder" }
 
 anyhow = "1.0.81"
 bincode = "1.3.3"

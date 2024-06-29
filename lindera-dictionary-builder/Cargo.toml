@@ -1,6 +1,6 @@
 [package]
 name = "lindera-dictionary-builder"
-version = "0.32.0"
+version = "0.32.1"
 edition = "2021"
 description = "Shared code for building Lindera dictionary files"
 documentation = "https://docs.rs/lindera-dictionary-builder"
