@@ -5,7 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-- 
+- Fix rename error on Windows platform #403 @mosuka
 
 ## 0.32.1 (2024-06-29)
 
