@@ -43,6 +43,10 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-core | jq -r
 	(cd lindera-core && cargo package && cargo publish)
 	sleep 10
 endif
+ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-assets | jq -r '.versions[].num' | grep $(LINDERA_ASSETS_VERSION)),)
+	(cd lindera-assets && cargo package && cargo publish)
+	sleep 10
+endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-decompress | jq -r '.versions[].num' | grep $(LINDERA_DECOMPRESS_VERSION)),)
 	(cd lindera-decompress && cargo package && cargo publish)
 	sleep 10
@@ -109,10 +113,6 @@ ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-filter | jq 
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-analyzer | jq -r '.versions[].num' | grep $(LINDERA_ANALYZER_VERSION)),)
 	(cd lindera-analyzer && cargo package && cargo publish)
-	sleep 10
-endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-assets | jq -r '.versions[].num' | grep $(LINDERA_ASSETS_VERSION)),)
-	(cd lindera-assets && cargo package && cargo publish)
 	sleep 10
 endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
