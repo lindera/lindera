@@ -33,6 +33,26 @@ fn empty_directory(dir: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(target_os = "windows")]
+fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
+    if !dst.exists() {
+        std::fs::create_dir(dst)?;
+    }
+
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if entry_path.is_dir() {
+            copy_dir_all(&entry_path, &dst_path)?;
+        } else {
+            std::fs::copy(&entry_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 /// Fetch the necessary assets and then build the dictionary using `builder`
 pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(), Box<dyn Error>> {
     use std::env;
@@ -153,7 +173,7 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
         }
 
         // Copy tmp_path to output_dir
-        std::fs::copy(&tmp_path, &output_dir).expect("Failed to copy output directory");
+        copy_dir_all(&tmp_path, &output_dir).expect("Failed to copy output directory");
 
         // remove tmp_path
         std::fs::remove_dir_all(&tmp_path).expect("Failed to copy output directory");
