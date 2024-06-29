@@ -18,6 +18,7 @@ pub struct FetchParams {
     pub download_url: &'static str,
 }
 
+#[cfg(not(target_os = "windows"))]
 fn empty_directory(dir: &Path) -> Result<(), Box<dyn Error>> {
     if dir.is_dir() {
         for entry in std::fs::read_dir(dir)? {
