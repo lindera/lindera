@@ -141,13 +141,17 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
 
     builder.build_dictionary(&input_dir, &tmp_path)?;
 
+
     #[cfg(target_os = "windows")]
     {
-        // Remove output_dir if it exists
-        std::fs::remove_dir_all(&output_dir).expect("Failed to remove output directory");
+        // Check if output_dir exists
+        if output_dir.exists() {
+            // Remove output_dir
+            std::fs::remove_dir_all(&output_dir).expect("Failed to remove output directory");
 
-        // Make output_dir
-        std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+            // Make output_dir
+            std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+        }
 
         // Copy tmp_path to output_dir
         std::fs::copy(&tmp_path, &output_dir).expect("Failed to copy output directory");
