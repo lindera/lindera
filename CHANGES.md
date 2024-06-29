@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.32.0 (2024-06-29)
+
+- Allow cache of intermediate data in $LINDERA_CACHE env var #397 @dureuill
+- Fix dependencies in README.md #396 @mosuka
+- Fix example code #394 @mosuka
+
 ## 0.31.0 (2024-05-28)
 
 - Download dictionary from AWS S3 #391 @mosuka

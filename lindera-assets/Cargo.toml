@@ -1,6 +1,6 @@
 [package]
 name = "lindera-assets"
-version = "0.31.0"
+version = "0.32.0"
 edition = "2021"
 description = "A helper crate to fetch assets and build dictionary for lindera."
 documentation = "https://docs.rs/lindera-assets"
