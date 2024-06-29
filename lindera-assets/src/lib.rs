@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::fs;
+use std::path::Path;
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
 
@@ -15,6 +17,21 @@ pub struct FetchParams {
 
     /// URL from which to fetch the asset
     pub download_url: &'static str,
+}
+
+fn empty_directory(dir: &Path) -> Result<(), Box<dyn Error>> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                fs::remove_dir_all(&path)?;
+            } else {
+                fs::remove_file(&path)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`
@@ -124,6 +141,9 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
     let _ = std::fs::remove_dir_all(&tmp_path);
 
     builder.build_dictionary(&input_dir, &tmp_path)?;
+
+    // Empty the output directory
+    empty_directory(&output_dir).expect("Failed to empty output directory");
 
     rename(tmp_path, &output_dir).expect("Failed to rename output directory");
     let _ = std::fs::remove_dir_all(&input_dir);
