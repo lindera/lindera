@@ -141,7 +141,6 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
 
     builder.build_dictionary(&input_dir, &tmp_path)?;
 
-
     #[cfg(target_os = "windows")]
     {
         // Check if output_dir exists
