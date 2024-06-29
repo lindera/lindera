@@ -3,8 +3,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Fix rename error on Windows platform #403 @mosuka
+
+## 0.32.1 (2024-06-29)
+
+- Add README.md (#402) @mosuka
+- Bump up version to 0.32.1 (#401) @mosuka
+- Resolve errors where renaming fails because the output directory is not empty (#400) @mosuka
+
 ## 0.32.0 (2024-06-29)
 
+- Bump up version to 0.32.0 (#398) @mosuka
 - Allow cache of intermediate data in $LINDERA_CACHE env var #397 @dureuill
 - Fix dependencies in README.md #396 @mosuka
 - Fix example code #394 @mosuka

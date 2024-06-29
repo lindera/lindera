@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::fs;
 use std::path::Path;
 
 use lindera_core::dictionary_builder::DictionaryBuilder;
@@ -19,16 +18,37 @@ pub struct FetchParams {
     pub download_url: &'static str,
 }
 
+#[cfg(not(target_os = "windows"))]
 fn empty_directory(dir: &Path) -> Result<(), Box<dyn Error>> {
     if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
+        for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                fs::remove_dir_all(&path)?;
+                std::fs::remove_dir_all(&path)?;
             } else {
-                fs::remove_file(&path)?;
+                std::fs::remove_file(&path)?;
             }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
+    if !dst.exists() {
+        std::fs::create_dir(dst)?;
+    }
+
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if entry_path.is_dir() {
+            copy_dir_all(&entry_path, &dst_path)?;
+        } else {
+            std::fs::copy(&entry_path, &dst_path)?;
         }
     }
     Ok(())
@@ -142,10 +162,33 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
 
     builder.build_dictionary(&input_dir, &tmp_path)?;
 
-    // Empty the output directory
-    empty_directory(&output_dir).expect("Failed to empty output directory");
+    #[cfg(target_os = "windows")]
+    {
+        // Check if output_dir exists
+        if output_dir.exists() {
+            // Remove output_dir
+            std::fs::remove_dir_all(&output_dir).expect("Failed to remove output directory");
 
-    rename(tmp_path, &output_dir).expect("Failed to rename output directory");
+            // Make output_dir
+            std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
+        }
+
+        // Copy tmp_path to output_dir
+        copy_dir_all(&tmp_path, &output_dir).expect("Failed to copy output directory");
+
+        // remove tmp_path
+        std::fs::remove_dir_all(&tmp_path).expect("Failed to copy output directory");
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Empty the output directory
+        empty_directory(&output_dir).expect("Failed to empty output directory");
+
+        // Rename tmp_path to output_dir
+        rename(tmp_path, &output_dir).expect("Failed to rename output directory");
+    }
+
     let _ = std::fs::remove_dir_all(&input_dir);
 
     Ok(())
