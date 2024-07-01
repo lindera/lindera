@@ -84,6 +84,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }}
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
 
   publish-crates:
     name: Publish crate
