@@ -72,7 +72,7 @@ thiserror = "1.0.58"
 unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.23"
 unicode-segmentation = "1.11.0"
-ureq = { version = "2.9.6", default-features = false, features = ["tls"] }
+ureq = { version = "2.9.6", default-features = false, features = ["tls", "proxy-from-env"] }
 yada = "0.5.1"
 derive_builder = "0.20.0"
 
