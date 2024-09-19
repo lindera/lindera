@@ -12,8 +12,8 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-cc-cedict = ["lindera-assets"]
-compress = ["lindera-cc-cedict-builder/compress", "lindera-decompress"]
+cc-cedict = []
+compress = ["lindera-core/compress"]
 
 [dependencies]
 bincode.workspace = true
@@ -21,9 +21,6 @@ byteorder.workspace = true
 once_cell.workspace = true
 
 lindera-core.workspace = true
-lindera-decompress = { workspace = true, optional = true }
 
 [build-dependencies]
-lindera-assets = { workspace = true, optional = true }
-
-lindera-cc-cedict-builder.workspace = true
+lindera-core.workspace = true

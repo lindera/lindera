@@ -12,27 +12,55 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []  # No directories included
-ipadic = ["lindera-tokenizer/ipadic"]  # Include IPADIC dictionary (Japanese)
-ipadic-neologd = ["lindera-tokenizer/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
-unidic = ["lindera-tokenizer/unidic"]  # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera-tokenizer/ko-dic"]  # Include ko-dic dictionary (Korean)
-cc-cedict = ["lindera-tokenizer/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
-compress = ["lindera-tokenizer/compress"]  # Compress dictionaries
-filter = ["lindera-analyzer/filter"]  # Include filters
+default = [] # No directories included
+ipadic = ["lindera-ipadic/ipadic"] # Include IPADIC dictionary (Japanese)
+ipadic-neologd = [
+    "lindera-ipadic-neologd/ipadic-neologd",
+] # Include IPADIC NEologd dictionary (Japanese)
+unidic = ["lindera-unidic/unidic"] # Include UniDic dictionary (Japanese)
+ko-dic = ["lindera-ko-dic/ko-dic"] # Include ko-dic dictionary (Korean)
+cc-cedict = [
+    "lindera-cc-cedict/cc-cedict",
+] # Include CC-CEDICT dictionary (Chinese)
+compress = [
+    "lindera-core/compress",
+    "lindera-ipadic/compress",
+    "lindera-ipadic-neologd/compress",
+    "lindera-unidic/compress",
+    "lindera-ko-dic/compress",
+    "lindera-cc-cedict/compress",
+] # Compress dictionaries
+# filter = ["lindera-analyzer/filter"]  # Include filters
 
 [dependencies]
-lindera-analyzer.workspace = true
+anyhow.workspace = true
+bincode.workspace = true
+byteorder.workspace = true
+csv.workspace = true
+kanaria.workspace = true
+once_cell.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+unicode-blocks.workspace = true
+unicode-normalization.workspace = true
+unicode-segmentation.workspace = true
+yada.workspace = true
+
 lindera-core.workspace = true
-lindera-dictionary.workspace = true
-lindera-filter.workspace = true
-lindera-tokenizer.workspace = true
+lindera-cc-cedict = { workspace = true, optional = true }
+lindera-ipadic = { workspace = true, optional = true }
+lindera-ipadic-neologd = { workspace = true, optional = true }
+lindera-ko-dic = { workspace = true, optional = true }
+lindera-unidic = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json.workspace = true
 criterion.workspace = true
 once_cell.workspace = true
 
-[[bench]]
-name = "bench"
-harness = false
+# [[bench]]
+# name = "bench"
+# harness = false

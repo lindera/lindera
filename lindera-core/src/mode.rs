@@ -2,10 +2,8 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    error::{LinderaError, LinderaErrorKind},
-    viterbi::Edge,
-};
+use crate::dictionary::viterbi::Edge;
+use crate::error::{LinderaError, LinderaErrorKind};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Penalty {

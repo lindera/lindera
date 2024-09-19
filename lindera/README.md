@@ -18,7 +18,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.31.0", features = ["ipadic"] }
+lindera = { version = "0.33.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
