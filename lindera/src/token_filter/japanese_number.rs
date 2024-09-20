@@ -288,27 +288,13 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::borrow::Cow;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::str::FromStr;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token::Token;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::japanese_number::{
-        to_arabic_numerals, JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
-    };
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::TokenFilter;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use lindera_core::dictionary::word_entry::WordId;
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_to_number_str_ipadic() {
+        use std::str::FromStr;
+
+        use crate::token_filter::japanese_number::to_arabic_numerals;
+
         {
             let s = "０";
             assert_eq!(to_arabic_numerals(s), String::from_str("0").unwrap());
@@ -846,8 +832,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_japanese_number_token_filter_config_from_slice_ipadic() {
+        use crate::token_filter::japanese_number::JapaneseNumberTokenFilterConfig;
+
         {
             let config_str = r#"
                 {
@@ -889,8 +876,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_japanese_number_token_filter_from_slice_ipadic() {
+        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
+
         {
             // test empty tags
             let config_str = r#"
@@ -919,6 +907,14 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
+        use crate::{token::Token, token_filter::TokenFilter};
+
         let config_str = r#"
             {
                 "tags": [
@@ -1077,6 +1073,14 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
+        use crate::{token::Token, token_filter::TokenFilter};
+
         let config_str = r#"
             {
             }

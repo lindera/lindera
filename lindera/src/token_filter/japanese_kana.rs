@@ -86,24 +86,11 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::borrow::Cow;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token::Token;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::japanese_kana::{
-        JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, KanaKind,
-    };
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::TokenFilter;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use lindera_core::dictionary::word_entry::WordId;
-
     #[test]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     fn test_japanese_kana_token_filter_config_from_slice_hiragana() {
+        use crate::token_filter::japanese_kana::{JapaneseKanaTokenFilterConfig, KanaKind};
+
         let config_str = r#"
         {
             "kind": "hiragana"
@@ -115,7 +102,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     fn test_japanese_kana_token_filter_config_from_slice_katakana() {
+        use crate::token_filter::japanese_kana::{JapaneseKanaTokenFilterConfig, KanaKind};
+
         let config_str = r#"
         {
             "kind": "katakana"
@@ -127,7 +117,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     fn test_japanese_kana_token_filter_from_slice_hiragana() {
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+
         let config_str = r#"
         {
             "kind": "hiragana"
@@ -139,7 +132,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     fn test_japanese_kana_token_filter_from_slice_katakana() {
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+
         let config_str = r#"
         {
             "kind": "katakana"
@@ -153,6 +149,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "hiragana"
@@ -230,6 +235,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "katakana"
@@ -339,6 +353,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "katakana"
@@ -416,6 +439,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "hiragana"
@@ -525,6 +557,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_apply_mixed_to_katakana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "katakana"
@@ -634,6 +675,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_kana_token_filter_applymixed_to_hiragana_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "hiragana"

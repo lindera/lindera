@@ -61,6 +61,6 @@ serde_json.workspace = true
 criterion.workspace = true
 once_cell.workspace = true
 
-# [[bench]]
-# name = "bench"
-# harness = false
+[[bench]]
+name = "bench"
+harness = false

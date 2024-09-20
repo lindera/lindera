@@ -82,26 +82,11 @@ impl TokenFilter for KoreanStopTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ko-dic")]
-    use std::borrow::Cow;
-
-    #[cfg(feature = "ko-dic")]
-    use lindera_core::dictionary::word_entry::WordId;
-
-    #[cfg(feature = "ko-dic")]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(feature = "ko-dic")]
-    use crate::token::Token;
-    #[cfg(feature = "ko-dic")]
-    use crate::token_filter::korean_stop_tags::{
-        KoreanStopTagsTokenFilter, KoreanStopTagsTokenFilterConfig,
-    };
-    #[cfg(feature = "ko-dic")]
-    use crate::token_filter::TokenFilter;
-
     #[test]
     #[cfg(feature = "ko-dic")]
     fn test_korean_stop_tags_token_filter_config_from_slice() {
+        use crate::token_filter::korean_stop_tags::KoreanStopTagsTokenFilterConfig;
+
         let config_str = r#"
             {
                 "tags": [
@@ -146,6 +131,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ko-dic")]
     fn test_korean_stop_tagss_token_filter_from_slice() {
+        use crate::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter;
+
         let config_str = r#"
             {
                 "tags": [
@@ -190,6 +177,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ko-dic")]
     fn test_korean_stop_tags_token_filter_apply() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "tags": [

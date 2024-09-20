@@ -47,24 +47,18 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ko-dic")]
-    use std::borrow::Cow;
-
-    #[cfg(feature = "ko-dic")]
-    use lindera_core::dictionary::word_entry::WordId;
-
-    #[cfg(feature = "ko-dic")]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(feature = "ko-dic")]
-    use crate::token::Token;
-    #[cfg(feature = "ko-dic")]
-    use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
-    #[cfg(feature = "ko-dic")]
-    use crate::token_filter::TokenFilter;
-
     #[test]
     #[cfg(feature = "ko-dic")]
     fn test_korean_reading_form_token_filter_apply() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let filter = KoreanReadingFormTokenFilter::default();
 
         let dictionary =

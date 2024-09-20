@@ -177,8 +177,10 @@ impl Segmenter {
     /// returns: LinderaResult<Segmenter>
     ///
     pub fn from_config(config: SegmenterConfig) -> LinderaResult<Self> {
+        // Load the dictionary from the config
         let dictionary = DictionaryLoader::load_dictionary_from_config(config.dictionary)?;
 
+        // Load the user dictionary from the config
         let user_dictionary = match config.user_dictionary {
             Some(user_dict_conf) => Some(DictionaryLoader::load_user_dictionary_from_config(
                 user_dict_conf,

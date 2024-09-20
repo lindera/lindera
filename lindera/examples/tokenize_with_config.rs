@@ -3,6 +3,8 @@ use lindera::core::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
+        use std::fs::File;
+        use std::io::BufReader;
         use std::path::PathBuf;
 
         use lindera::tokenizer::{Tokenizer, TokenizerConfig};
@@ -11,7 +13,10 @@ fn main() -> LinderaResult<()> {
             .join("../resources")
             .join("lindera_ipadic_conf.json");
 
-        let tokenizer_config = TokenizerConfig::from_file(&path).unwrap();
+        let file = File::open(&path).unwrap();
+        let reader = BufReader::new(file);
+
+        let tokenizer_config: TokenizerConfig = serde_json::from_reader(reader).unwrap();
 
         let tokenizer = Tokenizer::from_config(&tokenizer_config).unwrap();
 

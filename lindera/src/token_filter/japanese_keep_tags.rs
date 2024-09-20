@@ -115,26 +115,11 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::borrow::Cow;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use lindera_core::dictionary::word_entry::WordId;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token::Token;
-    #[cfg(feature = "ipadic")]
-    use crate::token_filter::japanese_keep_tags::{
-        JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
-    };
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::TokenFilter;
-
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_keep_tags_token_filter_config_from_slice_ipadic() {
+        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig;
+
         let config_str = r#"
             {
                 "tags": [
@@ -188,6 +173,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_keep_tags_token_filter_from_slice_ipadic() {
+        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+
         let config_str = r#"
             {
                 "tags": [
@@ -241,6 +228,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_keep_tags_token_filter_apply_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "tags": [

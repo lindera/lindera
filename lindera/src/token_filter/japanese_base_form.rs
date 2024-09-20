@@ -92,26 +92,12 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::borrow::Cow;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use lindera_core::dictionary::word_entry::WordId;
-
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token::Token;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::japanese_base_form::{
-        JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-    };
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::TokenFilter;
-
     #[cfg(feature = "ipadic")]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
+        use crate::dictionary::DictionaryKind;
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
+
         let config_str = r#"
         {
             "kind": "ipadic"
@@ -125,6 +111,9 @@ mod tests {
     #[cfg(feature = "unidic")]
     #[test]
     fn test_japanese_base_form_token_filter_config_from_slice_unidic() {
+        use crate::dictionary::DictionaryKind;
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
+
         let config_str = r#"
         {
             "kind": "unidic"
@@ -138,6 +127,8 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_ipadic() {
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+
         let config_str = r#"
         {
             "kind": "ipadic"
@@ -151,6 +142,8 @@ mod tests {
     #[cfg(feature = "unidic")]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_unidic() {
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+
         let config_str = r#"
             {
                 "kind": "unidic"
@@ -164,6 +157,15 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[test]
     fn test_japanese_base_form_token_filter_apply_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "ipadic"
@@ -273,6 +275,15 @@ mod tests {
     #[cfg(feature = "unidic")]
     #[test]
     fn test_japanese_base_form_token_filter_apply_unidic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "kind": "unidic"

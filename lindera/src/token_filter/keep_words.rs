@@ -62,60 +62,11 @@ impl TokenFilter for KeepWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use std::borrow::Cow;
-
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use lindera_core::dictionary::word_entry::WordId;
-
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use crate::token::Token;
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use crate::token_filter::keep_words::{KeepWordsTokenFilter, KeepWordsTokenFilterConfig};
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "cc-cedict",
-        feature = "ko-dic"
-    ))]
-    use crate::token_filter::TokenFilter;
-
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_keep_words_token_filter_config_from_slice_ipadic() {
+        use crate::token_filter::keep_words::KeepWordsTokenFilterConfig;
+
         let config_str = r#"
             {
                 "words": [
@@ -132,6 +83,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_keep_words_token_filter_from_slice_ipadic() {
+        use crate::token_filter::keep_words::KeepWordsTokenFilter;
+
         let config_str = r#"
             {
                 "words": [
@@ -148,6 +101,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_keep_words_token_filter_apply_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::keep_words::KeepWordsTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "words": [

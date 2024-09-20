@@ -7,7 +7,7 @@ use std::path::Path;
 
 use clap::{Parser, Subcommand};
 
-use lindera::character_filter::{BoxCharacterFilter, CharacterFilterLoader};
+use lindera::character_filter::CharacterFilterLoader;
 use lindera::core::error::LinderaError;
 use lindera::core::error::LinderaErrorKind;
 use lindera::core::mode::Mode;
@@ -16,9 +16,8 @@ use lindera::dictionary::{
     DictionaryBuilderResolver, DictionaryConfig, DictionaryKind, DictionaryLoader,
     UserDictionaryConfig,
 };
-use lindera::segmenter::Segmenter;
 use lindera::token::Token;
-use lindera::token_filter::{BoxTokenFilter, TokenFilterLoader};
+use lindera::token_filter::TokenFilterLoader;
 use lindera::tokenizer::Tokenizer;
 
 #[derive(Debug, Parser)]
@@ -74,9 +73,17 @@ struct TokenizeArgs {
         help = "Output format"
     )]
     output_format: String,
-    #[clap(short = 'C', long = "character-filter", help = "Character filter")]
+    #[clap(
+        short = 'C',
+        long = "character-filter",
+        help = "Specify character filter. e.g. unicode_normalize:{\"kind\":\"NFKC\"}"
+    )]
     character_filters: Option<Vec<String>>,
-    #[clap(short = 'T', long = "token-filter", help = "Token filter")]
+    #[clap(
+        short = 'T',
+        long = "token-filter",
+        help = "Specify token filter. e.g. stop_word:{\"words\":[\"a\", \"the\"]}"
+    )]
     token_filters: Option<Vec<String>>,
     #[clap(help = "Input text file path")]
     input_file: Option<PathBuf>,
@@ -205,28 +212,22 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mode = args.mode;
 
     // Tokenizer
-    let tokenizer = Segmenter::new(mode, dictionary, user_dictionary);
+    let mut tokenizer = Tokenizer::new(mode, dictionary, user_dictionary);
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;
 
     // Character flters
-    #[allow(unused_mut)]
-    let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
     for filter in args.character_filters.iter().flatten() {
         let character_filter = CharacterFilterLoader::load_from_cli_flag(filter)?;
-        character_filters.push(character_filter);
+        tokenizer.append_character_filter(character_filter);
     }
 
     // Token filters
-    #[allow(unused_mut)]
-    let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
     for filter in args.token_filters.iter().flatten() {
         let token_filter = TokenFilterLoader::load_from_cli_flag(filter)?;
-        token_filters.push(token_filter);
+        tokenizer.append_token_filter(token_filter);
     }
-
-    let analyzer = Tokenizer::new(character_filters, tokenizer, token_filters);
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
@@ -250,7 +251,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
         // let mut tokens = Vec::new();
 
-        let tokens = analyzer.tokenize(text.trim())?;
+        let tokens = tokenizer.tokenize(text.trim())?;
         // for token in tmp_tokens.iter_mut() {
         //     let token_info = serde_json::json!({
         //         "text": token.text,

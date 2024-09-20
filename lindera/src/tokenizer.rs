@@ -1,43 +1,25 @@
 use std::borrow::Cow;
-use std::{fs, path::Path};
 
-use serde::Serialize;
+use lindera_core::dictionary::{Dictionary, UserDictionary};
+use lindera_core::mode::Mode;
 use serde_json::Value;
 
 use lindera_core::error::LinderaErrorKind;
 use lindera_core::LinderaResult;
 
 use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
-use crate::segmenter::Segmenter;
+use crate::segmenter::{Segmenter, SegmenterConfig};
 use crate::token::Token;
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct TokenizerConfig {
-    inner: Value,
-}
-
-impl TokenizerConfig {
-    pub fn from_file(path: &Path) -> LinderaResult<Self> {
-        let bytes = fs::read(path).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
-
-        Self::from_slice(&bytes)
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let args = serde_json::from_slice::<Value>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-        Ok(Self { inner: args })
-    }
-}
+pub type TokenizerConfig = Value;
 
 pub struct Tokenizer {
-    /// Character filters
-    pub character_filters: Vec<BoxCharacterFilter>,
-
     /// Segmenter
     pub segmenter: Segmenter,
+
+    /// Character filters
+    pub character_filters: Vec<BoxCharacterFilter>,
 
     /// Token filters
     pub token_filters: Vec<BoxTokenFilter>,
@@ -45,40 +27,42 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
-        let value = &config.inner;
-
-        let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
-        let character_filter_settings = value["character_filters"].as_array();
-        if let Some(character_filter_settings) = character_filter_settings {
-            for character_filter_setting in character_filter_settings {
-                let character_filter_name = character_filter_setting["kind"].as_str();
-                if let Some(character_filter_name) = character_filter_name {
-                    let character_filter = CharacterFilterLoader::load_from_value(
-                        character_filter_name,
-                        &character_filter_setting["args"],
-                    )?;
-                    character_filters.push(character_filter);
-                }
-            }
-        }
-
-        let args_value = value["segmenter"].as_object().ok_or_else(|| {
+        // Load a JSON object for segmenter config from the tokenizer config.
+        let args_value = config["segmenter"].as_object().ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
         })?;
         let arg_bytes = serde_json::to_vec(args_value)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-        let segmenter_config = serde_json::from_slice(&arg_bytes)
+        // Load a segmenter config from the segmenter config JSON object.
+        let segmenter_config = serde_json::from_slice::<SegmenterConfig>(&arg_bytes)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+        // Create a segmenter from the segmenter config.
         let segmenter = Segmenter::from_config(segmenter_config)?;
 
-        let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
-        let token_filter_settings = value["token_filters"].as_array();
-        if let Some(token_filter_settings) = token_filter_settings {
+        // Create a tokenizer from the segmenter.
+        let mut tokenizer = Tokenizer::from_segmenter(segmenter);
+
+        // Load character filter settings from the tokenizer config if it is not empty.
+        if let Some(character_filter_settings) = config["character_filters"].as_array() {
+            for character_filter_setting in character_filter_settings {
+                let character_filter_name = character_filter_setting["kind"].as_str();
+                if let Some(character_filter_name) = character_filter_name {
+                    // Append a character filter to the tokenizer.
+                    tokenizer.append_character_filter(CharacterFilterLoader::load_from_value(
+                        character_filter_name,
+                        &character_filter_setting["args"],
+                    )?);
+                }
+            }
+        }
+
+        // Load token filter settings from the tokenizer config if it is not empty.
+        if let Some(token_filter_settings) = config["token_filters"].as_array() {
             for token_filter_setting in token_filter_settings {
                 let token_filter_name = token_filter_setting["kind"].as_str();
                 if let Some(token_filter_name) = token_filter_name {
-                    token_filters.push(TokenFilterLoader::load_from_value(
+                    // Append a token filter to the tokenizer.
+                    tokenizer.append_token_filter(TokenFilterLoader::load_from_value(
                         token_filter_name,
                         &token_filter_setting["args"],
                     )?);
@@ -86,19 +70,35 @@ impl Tokenizer {
             }
         }
 
-        Ok(Self::new(character_filters, segmenter, token_filters))
+        Ok(tokenizer)
     }
 
     pub fn new(
-        character_filters: Vec<BoxCharacterFilter>,
-        segmenter: Segmenter,
-        token_filters: Vec<BoxTokenFilter>,
+        mode: Mode,
+        dictionary: Dictionary,
+        user_dictionary: Option<UserDictionary>,
     ) -> Self {
+        Tokenizer::from_segmenter(Segmenter::new(mode, dictionary, user_dictionary))
+    }
+
+    pub fn from_segmenter(segmenter: Segmenter) -> Self {
         Self {
-            character_filters,
             segmenter,
-            token_filters,
+            character_filters: Vec::new(),
+            token_filters: Vec::new(),
         }
+    }
+
+    pub fn append_character_filter(&mut self, character_filter: BoxCharacterFilter) -> &mut Self {
+        self.character_filters.push(character_filter);
+
+        self
+    }
+
+    pub fn append_token_filter(&mut self, token_filter: BoxTokenFilter) -> &mut Self {
+        self.token_filters.push(token_filter);
+
+        self
     }
 
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
@@ -246,7 +246,8 @@ mod tests {
             ]
         }
         "#;
-        let result = TokenizerConfig::from_slice(config_str.as_bytes());
+
+        let result: Result<TokenizerConfig, _> = serde_json::from_slice(config_str.as_bytes());
 
         assert_eq!(true, result.is_ok());
     }
@@ -320,11 +321,13 @@ mod tests {
             ]
         }
         "#;
-        let analyzer_config = TokenizerConfig::from_slice(config_str.as_bytes()).unwrap();
 
-        let cloned_analyzer_config = analyzer_config.clone();
+        let tokenizer_config: TokenizerConfig =
+            serde_json::from_slice(config_str.as_bytes()).unwrap();
 
-        assert_eq!(analyzer_config.inner, cloned_analyzer_config.inner);
+        let cloned_tokenizer_config = tokenizer_config.clone();
+
+        assert_eq!(tokenizer_config, cloned_tokenizer_config);
     }
 
     #[test]
@@ -415,9 +418,10 @@ mod tests {
             ]
         }
         "#;
-        let analyzer_config = TokenizerConfig::from_slice(config_str.as_bytes()).unwrap();
+        let tokenizer_config: TokenizerConfig =
+            serde_json::from_slice(config_str.as_bytes()).unwrap();
 
-        let analyzer = Tokenizer::from_config(&analyzer_config).unwrap();
+        let analyzer = Tokenizer::from_config(&tokenizer_config).unwrap();
 
         {
             let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。";

@@ -108,24 +108,11 @@ fn is_katakana(text: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::dictionary::{DictionaryKind, DictionaryLoader};
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token::Token;
-    #[cfg(feature = "ipadic")]
-    use crate::token_filter::japanese_katakana_stem::{
-        JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
-    };
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use crate::token_filter::TokenFilter;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use lindera_core::dictionary::word_entry::WordId;
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    use std::borrow::Cow;
-
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_config_from_slice_ipadic() {
+        use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
+
         let config_str = r#"
             {
                 "min": 1
@@ -140,6 +127,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_config_from_slice_zero_ipadic() {
+        use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
+
         let config_str = r#"
             {
                 "min": 0
@@ -153,6 +142,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_from_slice_ipadic() {
+        use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+
         let config_str = r#"
             {
                 "min": 1
@@ -166,6 +157,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_from_slice_zero_ipadic() {
+        use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+
         let config_str = r#"
             {
                 "min": 0
@@ -179,6 +172,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
+        use std::borrow::Cow;
+
+        use lindera_core::dictionary::word_entry::WordId;
+
+        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::token::Token;
+        use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+        use crate::token_filter::TokenFilter;
+
         let config_str = r#"
             {
                 "min": 3
