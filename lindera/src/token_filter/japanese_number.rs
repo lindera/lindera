@@ -102,7 +102,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
         JAPANESE_NUMBER_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             let details = token.details();
 

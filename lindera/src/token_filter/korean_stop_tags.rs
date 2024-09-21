@@ -55,17 +55,14 @@ impl TokenFilter for KoreanStopTagsTokenFilter {
         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // Create a new vector to store the filtered tokens
         let mut filtered_tokens = Vec::with_capacity(tokens.len());
 
         // Iterate over the tokens and filter them based on the part-of-speech tags in the config.
         for mut token in tokens.drain(..) {
             // Get the part-of-speech tags.
-            let tag = match token.get_detail(0) {
-                Some(tag) => tag,
-                None => "",
-            };
+            let tag = token.get_detail(0).unwrap_or_default();
 
             // Add the token to the filtered tokens vector if the part-of-speech tag is not in the config.
             if !self.config.tags.contains(tag) {

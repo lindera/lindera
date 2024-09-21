@@ -70,7 +70,7 @@ impl TokenFilter for MappingTokenFilter {
         MAPPING_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             let mut result = String::new();
             let mut start = 0_usize;

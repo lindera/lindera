@@ -1,4 +1,4 @@
-use std::{str::FromStr, u32};
+use std::str::FromStr;
 
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -101,7 +101,7 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
                 warn!("left id and right id are not same: {:?}", e);
             }
             WordEntry {
-                word_id: WordId(std::u32::MAX, true),
+                word_id: WordId(u32::MAX, true),
                 left_id: e.left_id as u16,
                 right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,

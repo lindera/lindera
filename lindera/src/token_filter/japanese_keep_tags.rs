@@ -85,7 +85,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // Create a new vector to store the filtered tokens
         let mut filtered_tokens = Vec::with_capacity(tokens.len());
 

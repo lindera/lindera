@@ -54,6 +54,6 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
         LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", encoding_name))
     })?;
 
-    let buffer = read_file(&filepath)?;
+    let buffer = read_file(filepath)?;
     Ok(encoding.decode(&buffer).0.into_owned())
 }

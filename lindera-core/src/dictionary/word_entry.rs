@@ -8,7 +8,7 @@ pub struct WordId(pub u32, pub bool);
 
 impl WordId {
     pub fn is_unknown(&self) -> bool {
-        self.0 == std::u32::MAX
+        self.0 == u32::MAX
     }
     pub fn is_system(&self) -> bool {
         self.1
@@ -17,7 +17,7 @@ impl WordId {
 
 impl Default for WordId {
     fn default() -> Self {
-        WordId(std::u32::MAX, true)
+        WordId(u32::MAX, true)
     }
 }
 

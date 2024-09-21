@@ -155,7 +155,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // New tokens
         let mut new_tokens = Vec::new();
 

@@ -28,7 +28,7 @@ impl TokenFilter for LowercaseTokenFilter {
         LOWERCASE_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             token.text = Cow::Owned(token.text.to_lowercase());
         }

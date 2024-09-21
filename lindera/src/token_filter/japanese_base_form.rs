@@ -59,7 +59,7 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(detail) = token.get_detail(0) {
                 if detail == "UNK" {
@@ -68,21 +68,26 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
             }
 
             // Get the index of the detail that contains the base form.
-            #[allow(unused_variables)]
-            let detail_index = match self.config.kind {
+            match self.config.kind {
                 #[cfg(feature = "ipadic")]
-                DictionaryKind::IPADIC => 6,
+                DictionaryKind::IPADIC => {
+                    if let Some(detail) = token.get_detail(6) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
+                }
                 #[cfg(feature = "ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => 6,
+                DictionaryKind::IPADICNEologd => {
+                    if let Some(detail) = token.get_detail(6) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
+                }
                 #[cfg(feature = "unidic")]
-                DictionaryKind::UniDic => 10,
+                DictionaryKind::UniDic => {
+                    if let Some(detail) = token.get_detail(10) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
+                }
                 _ => continue,
-            };
-
-            // Make token text the base form.
-            #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-            if let Some(detail) = token.get_detail(detail_index) {
-                token.text = Cow::Owned(detail.to_string());
             }
         }
 

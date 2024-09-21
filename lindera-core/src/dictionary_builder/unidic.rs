@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 
+use csv::StringRecord;
+
 use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::CharacterDefinitions;
 use crate::dictionary::UserDictionary;
@@ -91,7 +93,7 @@ impl DictionaryBuilder for UnidicBuilder {
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
-            .build(&input_dir, output_dir)
+            .build(input_dir, output_dir)
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
@@ -101,7 +103,7 @@ impl DictionaryBuilder for UnidicBuilder {
             .simple_word_cost(SIMPLE_WORD_COST)
             .simple_context_id(SIMPLE_CONTEXT_ID)
             .flexible_csv(false)
-            .simple_userdic_details_handler(Box::new(|row| {
+            .simple_userdic_details_handler(Some(Box::new(|row: &StringRecord| {
                 Ok(vec![
                     row[1].to_string(), //Major POS classification
                     "*".to_string(),    // Middle POS classification
@@ -121,7 +123,7 @@ impl DictionaryBuilder for UnidicBuilder {
                     "*".to_string(),    // Suffix of a word form
                     "*".to_string(),    // Suffix of a word type
                 ])
-            }))
+            })))
             .builder()
             .unwrap()
             .build(input_file)

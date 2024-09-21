@@ -52,7 +52,7 @@ impl TokenFilter for LengthTokenFilter {
         LENGTH_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             let len = token.text.chars().count();
             if let Some(min) = self.config.min {

@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 
+use csv::StringRecord;
+
 use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::CharacterDefinitions;
 use crate::dictionary::UserDictionary;
@@ -92,7 +94,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
-            .build(&input_dir, output_dir)
+            .build(input_dir, output_dir)
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
@@ -102,7 +104,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
             .simple_word_cost(SIMPLE_WORD_COST)
             .simple_context_id(SIMPLE_CONTEXT_ID)
             .flexible_csv(true)
-            .simple_userdic_details_handler(Box::new(|row| {
+            .simple_userdic_details_handler(Some(Box::new(|row: &StringRecord| {
                 Ok(vec![
                     row[1].to_string(), // POS
                     "*".to_string(),    // POS subcategory 1
@@ -114,7 +116,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
                     row[2].to_string(), // Reading
                     "*".to_string(),    // Pronunciation
                 ])
-            }))
+            })))
             .builder()
             .unwrap()
             .build(input_file)

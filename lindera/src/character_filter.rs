@@ -28,7 +28,7 @@ use crate::parse_cli_flag;
 
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;
-    fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>;
+    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>;
 }
 
 pub struct BoxCharacterFilter(Box<dyn CharacterFilter + 'static + Send + Sync>);

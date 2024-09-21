@@ -110,8 +110,7 @@ impl Tokenizer {
 
         // Appy character filters to the text if it is not empty.
         for character_filter in &self.character_filters {
-            let (offsets, diffs, text_len) =
-                character_filter.apply(&mut normalized_text.to_mut())?;
+            let (offsets, diffs, text_len) = character_filter.apply(normalized_text.to_mut())?;
 
             if !offsets.is_empty() {
                 // Record the offsets of each character filter.

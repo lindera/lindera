@@ -18,6 +18,8 @@ use crate::dictionary::UserDictionary;
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
+type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
+
 #[derive(Builder)]
 #[builder(pattern = "owned")]
 #[builder(name = "UserDictBuilderOptions")]
@@ -34,8 +36,7 @@ pub struct UserDictBuilder {
     #[builder(default = "true")]
     flexible_csv: bool,
     #[builder(setter(strip_option), default = "None")]
-    simple_userdic_details_handler:
-        Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>,
+    simple_userdic_details_handler: StringRecordProcessor,
 }
 
 impl UserDictBuilder {

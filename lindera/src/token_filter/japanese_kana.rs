@@ -66,7 +66,7 @@ impl TokenFilter for JapaneseKanaTokenFilter {
         JAPANESE_KANA_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             match self.config.kind {
                 KanaKind::Hiragana => {

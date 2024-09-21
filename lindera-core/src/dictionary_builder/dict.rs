@@ -191,7 +191,7 @@ impl DictBuilder {
             let joined_details = if self.normalize_details {
                 row.iter()
                     .skip(4)
-                    .map(|item| normalize(item))
+                    .map(normalize)
                     .collect::<Vec<String>>()
                     .join("\0")
             } else {

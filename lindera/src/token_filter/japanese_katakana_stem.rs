@@ -67,7 +67,7 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
         let min = self.config.min.get();
 
         for token in tokens.iter_mut() {

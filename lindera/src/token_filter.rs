@@ -78,7 +78,8 @@ use crate::{LinderaErrorKind, LinderaResult};
 
 pub trait TokenFilter: 'static + Send + Sync + TokenFilterClone {
     fn name(&self) -> &'static str;
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()>;
+    // fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()>;
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()>;
 }
 
 pub struct BoxTokenFilter(Box<dyn TokenFilter + 'static + Send + Sync>);

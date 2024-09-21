@@ -58,7 +58,7 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
         JAPANESE_READING_FORM_TOKEN_FILTER_NAME
     }
 
-    fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()> {
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(detail) = token.get_detail(0) {
                 if detail == "UNK" {

@@ -1,5 +1,3 @@
-use std::u32;
-
 use crate::dictionary::character_definition::{CategoryId, CharacterDefinitions};
 use crate::dictionary::connection::ConnectionCostMatrix;
 use crate::dictionary::prefix_dict::PrefixDict;
@@ -124,7 +122,7 @@ impl Lattice {
                         left_edge: None,
                         start_index: start as u32,
                         stop_index: (start + prefix_len) as u32,
-                        path_cost: i32::max_value(),
+                        path_cost: i32::MAX,
                         kanji_only: is_kanji_only(&suffix[..prefix_len]),
                     };
                     self.add_edge_in_lattice(edge);
@@ -141,7 +139,7 @@ impl Lattice {
                     left_edge: None,
                     start_index: start as u32,
                     stop_index: (start + prefix_len) as u32,
-                    path_cost: i32::max_value(),
+                    path_cost: i32::MAX,
                     kanji_only: is_kanji_only(&suffix[..prefix_len]),
                 };
                 self.add_edge_in_lattice(edge);
@@ -212,7 +210,7 @@ impl Lattice {
                     left_edge: None,
                     start_index: start as u32,
                     stop_index: (start + unknown_word.len()) as u32,
-                    path_cost: i32::max_value(),
+                    path_cost: i32::MAX,
                     kanji_only: is_kanji_only(&unknown_word[..]),
                 };
                 self.add_edge_in_lattice(edge);

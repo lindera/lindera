@@ -71,7 +71,7 @@ impl<'a> Token<'a> {
                 }
             };
 
-            self.details = Some(tmp.into_iter().map(|x| Cow::Borrowed(x)).collect());
+            self.details = Some(tmp.into_iter().map(Cow::Borrowed).collect());
         }
 
         // convert Cow to &str.
@@ -82,7 +82,7 @@ impl<'a> Token<'a> {
     }
 
     pub fn get_detail(&mut self, index: usize) -> Option<&str> {
-        self.details().get(index).map(|x| *x).or_else(|| None)
+        self.details().get(index).copied()
     }
 
     pub fn set_detail(&mut self, index: usize, detail: Cow<'a, str>) {

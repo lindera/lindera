@@ -165,10 +165,13 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
             }
 
             // Copy tmp_path to input_dir
-            copy_dir_all(&tmp_path, &input_dir).expect("Failed to copy input directory");
+            copy_dir_all(&tmp_path, &input_dir)
+                .expect("Failed to copy files from temporary directory to input directory");
 
             // remove tmp_path
-            std::fs::remove_dir_all(&tmp_path).expect("Failed to copy input directory");
+            if tmp_path.exists() {
+                std::fs::remove_dir_all(&tmp_path).expect("Failed to remove temporary directory");
+            }
         }
         #[cfg(not(target_os = "windows"))]
         {
