@@ -6,8 +6,10 @@ use crate::dictionary_builder::DictionaryBuilder;
 pub struct FetchParams {
     /// Dictionary file name
     pub file_name: &'static str,
+
     /// MeCab directory
     pub input_dir: &'static str,
+
     /// Lindera directory
     pub output_dir: &'static str,
 
@@ -125,7 +127,6 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
         let source_path_for_build = &build_dir.join(params.file_name);
 
         // Download source file to build directory
-        // copy(&source_path, &source_path_for_build)?;
         let tmp_path = Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
 
         // Download a tarball
@@ -140,7 +141,7 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
         // Decompress a tar.gz file
         let tmp_extract_path =
             Path::new(&build_dir).join(format!("tmp-archive-{}", params.input_dir));
-        // let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
+        let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
         let _ = std::fs::remove_dir_all(&tmp_extract_path);
         std::fs::create_dir_all(&tmp_extract_path)?;
 
@@ -165,19 +166,17 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
             }
 
             // Copy tmp_path to input_dir
-            copy_dir_all(&tmp_path, &input_dir)
+            copy_dir_all(&tmp_extracted_path, &input_dir)
                 .expect("Failed to copy files from temporary directory to input directory");
 
             // remove tmp_path
-            if tmp_path.exists() {
-                std::fs::remove_dir_all(&tmp_path).expect("Failed to remove temporary directory");
-            }
+            std::fs::remove_dir_all(&tmp_extracted_path)
+                .expect("Failed to remove temporary directory");
         }
         #[cfg(not(target_os = "windows"))]
         {
             // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
             empty_directory(&input_dir).expect("Failed to empty input directory");
-            let tmp_extracted_path = &tmp_extract_path.join(params.input_dir);
             rename(tmp_extracted_path, &input_dir).expect("Failed to rename archive directory");
         }
 
