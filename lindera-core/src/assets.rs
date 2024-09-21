@@ -135,12 +135,12 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
         io::copy(&mut resp.into_reader(), &mut dest)?;
         dest.flush()?;
 
-        rename(tmp_path, source_path_for_build).expect("Failed to rename temporary file");
+        rename(tmp_path.clone(), source_path_for_build).expect("Failed to rename temporary file");
 
         // Decompress a tar.gz file
         let tmp_extract_path =
             Path::new(&build_dir).join(format!("tmp-archive-{}", params.input_dir));
-        let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
+        // let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
         let _ = std::fs::remove_dir_all(&tmp_extract_path);
         std::fs::create_dir_all(&tmp_extract_path)?;
 
@@ -154,6 +154,7 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
 
         #[cfg(target_os = "windows")]
         {
+            // Recreate input_dir to avoid conflicts when copying the directory on Windows systems (which do not support overwriting directories).
             // Check if output_dir exists
             if input_dir.exists() {
                 // Remove input_dir
@@ -169,13 +170,14 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
             // remove tmp_path
             std::fs::remove_dir_all(&tmp_path).expect("Failed to copy input directory");
         }
-
         #[cfg(not(target_os = "windows"))]
         {
-            // Empty the input directory
+            // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
             empty_directory(&input_dir).expect("Failed to empty input directory");
+            let tmp_extracted_path = &tmp_extract_path.join(params.input_dir);
             rename(tmp_extracted_path, &input_dir).expect("Failed to rename archive directory");
         }
+
         let _ = std::fs::remove_dir_all(&tmp_extract_path);
         drop(dest);
         let _ = std::fs::remove_file(source_path_for_build);
