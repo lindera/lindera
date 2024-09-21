@@ -14,7 +14,7 @@ use lindera_core::LinderaResult;
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
         #[cfg(feature = "compress")]
-        const $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
+        static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             let compressed_data = bincode::deserialize_from(&$bytes[..])
                 .expect(concat!("invalid file format ", $filename));
             decompress(compressed_data).expect(concat!("invalid file format ", $filename))
@@ -120,49 +120,53 @@ pub fn load_dictionary() -> LinderaResult<Dictionary> {
 }
 
 pub fn char_def() -> LinderaResult<CharacterDefinitions> {
-    #[allow(clippy::needless_borrow)]
-    CharacterDefinitions::load(&CHAR_DEFINITION_DATA)
+    let char_def_data = &CHAR_DEFINITION_DATA;
+    CharacterDefinitions::load(char_def_data)
 }
 
 pub fn connection() -> ConnectionCostMatrix {
+    let connection_data = &CONNECTION_DATA;
     #[cfg(feature = "compress")]
     {
-        ConnectionCostMatrix::load(&CONNECTION_DATA)
+        ConnectionCostMatrix::load(connection_data)
     }
     #[cfg(not(feature = "compress"))]
     {
-        ConnectionCostMatrix::load_static(CONNECTION_DATA)
+        ConnectionCostMatrix::load_static(connection_data)
     }
 }
 
 pub fn prefix_dict() -> PrefixDict {
-    #[allow(clippy::needless_borrow)]
-    PrefixDict::from_static_slice(&CC_CEDICT_DATA, &CC_CEDICT_VALS)
+    let cc_cedict_data = &CC_CEDICT_DATA;
+    let cc_cedict_vals = &CC_CEDICT_VALS;
+    PrefixDict::from_static_slice(cc_cedict_data, cc_cedict_vals)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
-    #[allow(clippy::needless_borrow)]
-    UnknownDictionary::load(&UNKNOWN_DATA)
+    let unknown_data = &UNKNOWN_DATA;
+    UnknownDictionary::load(unknown_data)
 }
 
 pub fn words_idx_data() -> Cow<'static, [u8]> {
+    let words_idx_data = &WORDS_IDX_DATA;
     #[cfg(feature = "compress")]
     {
-        Cow::Owned(WORDS_IDX_DATA.to_vec())
+        Cow::Owned(words_idx_data.to_vec())
     }
     #[cfg(not(feature = "compress"))]
     {
-        Cow::Borrowed(WORDS_IDX_DATA)
+        Cow::Borrowed(words_idx_data)
     }
 }
 
 pub fn words_data() -> Cow<'static, [u8]> {
+    let words_data = &WORDS_DATA;
     #[cfg(feature = "compress")]
     {
-        Cow::Owned(WORDS_DATA.to_vec())
+        Cow::Owned(words_data.to_vec())
     }
     #[cfg(not(feature = "compress"))]
     {
-        Cow::Borrowed(WORDS_DATA)
+        Cow::Borrowed(words_data)
     }
 }
