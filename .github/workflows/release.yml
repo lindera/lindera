@@ -173,19 +173,6 @@ jobs:
           fi
           sleep 20
 
-      - name: Publish lindera
-        run: |
-          LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
-          LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r 'select(.versions != null) | .versions[].num')
-          if echo ${LINDERA_VERSIONS} | grep ${LINDERA_VERSION} >/dev/null; then
-            echo "lindera ${LINDERA_VERSION} has already published"
-          else
-            pushd lindera
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
-            popd
-          fi
-          sleep 20
-
       - name: Publish lindera-unidic
         run: |
           LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
@@ -194,6 +181,19 @@ jobs:
             echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
           else
             pushd lindera-unidic
+            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            popd
+          fi
+          sleep 20
+
+      - name: Publish lindera
+        run: |
+          LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
+          LINDERA_VERSIONS=$(curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r 'select(.versions != null) | .versions[].num')
+          if echo ${LINDERA_VERSIONS} | grep ${LINDERA_VERSION} >/dev/null; then
+            echo "lindera ${LINDERA_VERSION} has already published"
+          else
+            pushd lindera
             cargo publish --token ${{ secrets.CRATES_TOKEN }}
             popd
           fi
