@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.32.2"
+version = "0.33.0"
 edition = "2021"
 description = "A morphological analysis command line interface."
 documentation = "https://docs.rs/lindera-cli"
@@ -19,7 +19,6 @@ unidic = ["lindera/unidic"]  # Include UniDic dictionary (Japanese)
 ko-dic = ["lindera/ko-dic"]  # Include ko-dic dictionary (Korean)
 cc-cedict = ["lindera/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
 compress = ["lindera/compress"]  # Compress dictionaries
-# filter = ["lindera/filter"]  # Include filters
 
 [dependencies]
 anyhow.workspace = true
@@ -27,7 +26,6 @@ clap.workspace = true
 serde_json.workspace = true
 
 lindera.workspace = true
-# lindera-core.workspace = true
 
 [[bin]]
 name = "lindera"

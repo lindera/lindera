@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.32.2"
+version = "0.33.0"
 edition = "2021"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -30,7 +30,6 @@ compress = [
     "lindera-ko-dic/compress",
     "lindera-cc-cedict/compress",
 ] # Compress dictionaries
-# filter = ["lindera-analyzer/filter"]  # Include filters
 
 [dependencies]
 anyhow.workspace = true
