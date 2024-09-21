@@ -1,11 +1,11 @@
 {
-    "tokenizer": {
+    "segmenter": {
+        "mode": "normal",
         "dictionary": {
             "kind": "ipadic"
         },
         "user_dictionary": {
             "path": "./resources/ipadic_simple_userdic.bin"
-        },
-        "mode": "normal"
+        }
     }
 }

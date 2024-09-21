@@ -1,8 +1,26 @@
+pub mod cc_cedict;
+pub mod chardef;
+pub mod cost_matrix;
+pub mod dict;
+pub mod ipadic;
+pub mod ipadic_neologd;
+pub mod ko_dic;
+pub mod unidic;
+pub mod unk;
+pub mod user_dict;
+pub mod utils;
+
+pub use chardef::CharDefBuilderOptions;
+pub use cost_matrix::CostMatrixBuilderOptions;
+pub use dict::DictBuilderOptions;
+pub use unk::UnkBuilderOptions;
+pub use user_dict::{build_user_dictionary, UserDictBuilderOptions};
+
 use std::path::Path;
 
-use crate::{
-    character_definition::CharacterDefinitions, dictionary::UserDictionary, LinderaResult,
-};
+use crate::dictionary::character_definition::CharacterDefinitions;
+use crate::dictionary::UserDictionary;
+use crate::LinderaResult;
 
 pub trait DictionaryBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;

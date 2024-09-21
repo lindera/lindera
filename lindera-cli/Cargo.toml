@@ -19,7 +19,7 @@ unidic = ["lindera/unidic"]  # Include UniDic dictionary (Japanese)
 ko-dic = ["lindera/ko-dic"]  # Include ko-dic dictionary (Korean)
 cc-cedict = ["lindera/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
 compress = ["lindera/compress"]  # Compress dictionaries
-filter = ["lindera/filter"]  # Include filters
+# filter = ["lindera/filter"]  # Include filters
 
 [dependencies]
 anyhow.workspace = true
@@ -27,6 +27,7 @@ clap.workspace = true
 serde_json.workspace = true
 
 lindera.workspace = true
+# lindera-core.workspace = true
 
 [[bin]]
 name = "lindera"

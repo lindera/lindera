@@ -12,8 +12,8 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["lindera-assets"]
-compress = ["lindera-ipadic-builder/compress", "lindera-decompress"]
+ipadic = []
+compress = ["lindera-core/compress"]
 
 [dependencies]
 bincode.workspace = true
@@ -21,9 +21,6 @@ byteorder.workspace = true
 once_cell.workspace = true
 
 lindera-core.workspace = true
-lindera-decompress = { workspace = true, optional = true }
 
 [build-dependencies]
-lindera-assets = { workspace = true, optional = true }
-
-lindera-ipadic-builder.workspace = true
+lindera-core.workspace = true

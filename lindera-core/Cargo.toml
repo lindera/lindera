@@ -11,13 +11,27 @@ keywords = ["morphological", "analysis", "library"]
 categories = ["text-processing"]
 license = "MIT"
 
+[features]
+compress = []
+
 [dependencies]
 anyhow.workspace = true
 bincode.workspace = true
 byteorder.workspace = true
+csv.workspace = true
+derive_builder.workspace = true
+encoding.workspace = true
 encoding_rs.workspace = true
+encoding_rs_io.workspace = true
+flate2 = { workspace = true }
+glob.workspace = true
 log.workspace = true
 once_cell.workspace = true
 serde.workspace = true
+tar = { workspace = true }
 thiserror.workspace = true
+ureq = { workspace = true }
 yada.workspace = true
+
+[dev-dependencies]
+rand.workspace = true
