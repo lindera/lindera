@@ -59,6 +59,38 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
     }
 
+    /// Applies the base form normalization to tokens based on the dictionary type.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. Each token's `text` will be modified to its base form according to the specified dictionary.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Filtering**:
+    ///    - For each token, if the first detail (`detail[0]`) is `"UNK"` (unknown), the token is skipped, as it does not require normalization.
+    ///
+    /// 2. **Base Form Extraction**:
+    ///    - Depending on the configured dictionary type (`IPADIC`, `IPADICNeologd`, or `UniDic`), the function determines which detail contains the base form of the token.
+    ///    - For `IPADIC` and `IPADICNeologd`, the base form is located at `detail[6]`.
+    ///    - For `UniDic`, the base form is located at `detail[10]`.
+    ///
+    /// 3. **Text Modification**:
+    ///    - Once the correct base form detail is identified, the token's `text` is replaced with the base form using `Cow::Owned`.
+    ///
+    /// # Dictionary Types:
+    ///
+    /// - **IPADIC**: Uses index `6` for base form extraction.
+    /// - **IPADICNeologd**: Also uses index `6` for base form extraction.
+    /// - **UniDic**: Uses index `10` for base form extraction.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises while processing tokens, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(detail) = token.get_detail(0) {

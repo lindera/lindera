@@ -72,13 +72,44 @@ impl CharacterFilter for MappingCharacterFilter {
         MAPPING_CHARACTER_FILTER_NAME
     }
 
+    /// Applies the configured mappings to the input text, replacing matching substrings and tracking offsets.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A mutable reference to the input text (`String`) that will be modified in place.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing:
+    /// - A vector of offsets where modifications occurred.
+    /// - A vector of differences (in bytes) for each modification.
+    /// - The final length of the modified text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Prefix Matching**:
+    ///    - The function uses a trie structure to search for common prefixes in the input text.
+    ///    - If a match is found, the corresponding replacement text is inserted into the output, and the difference in length between the original and replacement is recorded.
+    ///
+    /// 2. **Offset and Difference Tracking**:
+    ///    - If the replacement text is shorter or longer than the matched text, the offsets and differences are adjusted accordingly to maintain the correct byte positions in the modified text.
+    ///
+    /// 3. **Text Construction**:
+    ///    - The function constructs the filtered text in `filtered_text` by pushing characters or replacements into it while updating the input start position.
+    ///
+    /// # Returns
+    ///
+    /// - `offsets`: A vector of byte positions in the original text where changes occurred.
+    /// - `diffs`: A vector of byte differences at each position where changes were made.
+    /// - `text.len()`: The length of the modified text.
     fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
 
-        let mut filtered_text = String::new();
+        let mut filtered_text = String::with_capacity(text.len());
         let mut input_start = 0_usize;
         let len = text.len();
+        let mut prev_diff = 0_i64;
 
         while input_start < len {
             let suffix = &text[input_start..];
@@ -96,8 +127,6 @@ impl CharacterFilter for MappingCharacterFilter {
                     let input_offset = input_start + input_len;
 
                     if diff_len != 0 {
-                        let prev_diff = *diffs.last().unwrap_or(&0);
-
                         if diff_len > 0 {
                             // Replacement is shorter than matched surface.
                             let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
@@ -105,13 +134,14 @@ impl CharacterFilter for MappingCharacterFilter {
                             add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                         } else {
                             // Replacement is longer than matched surface.
-                            let output_offset = (input_offset as i64 + -prev_diff) as usize;
+                            let output_offset = (input_offset as i64 - prev_diff) as usize;
                             for extra_idx in 0..diff_len.unsigned_abs() as usize {
                                 let offset = output_offset + extra_idx;
                                 let diff = prev_diff - extra_idx as i64 - 1;
                                 add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                             }
                         }
+                        prev_diff += diff_len;
                     }
 
                     filtered_text.push_str(replacement_text);
@@ -120,14 +150,11 @@ impl CharacterFilter for MappingCharacterFilter {
                     input_start += input_len;
                 }
                 None => {
-                    match suffix.chars().next() {
-                        Some(c) => {
-                            filtered_text.push(c);
-
-                            // move start offset
-                            input_start += c.len_utf8();
-                        }
-                        None => break,
+                    if let Some(c) = suffix.chars().next() {
+                        filtered_text.push(c);
+                        input_start += c.len_utf8();
+                    } else {
+                        break;
                     }
                 }
             }

@@ -85,6 +85,34 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
         JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME
     }
 
+    /// Filters tokens based on part-of-speech tags and updates the token list.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The tokens will be filtered in place by keeping only those with part-of-speech tags that match the configuration.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Filtering**:
+    ///    - The function iterates over the tokens and extracts the part-of-speech tags from each token's details.
+    ///    - If the token has at least 4 details, the first 4 elements are used as the tag. Otherwise, only the first element is used.
+    ///
+    /// 2. **Tag Matching**:
+    ///    - The tags are constructed as a comma-separated string and checked against the set of tags specified in the configuration (`self.config.tags`).
+    ///
+    /// 3. **Token Retention**:
+    ///    - Only the tokens whose tags match the configuration are retained in the resulting `filtered_tokens` vector.
+    ///
+    /// 4. **Replace Tokens**:
+    ///    - After filtering, the original tokens vector is replaced with the filtered list.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during token processing or filtering, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // Create a new vector to store the filtered tokens
         let mut filtered_tokens = Vec::with_capacity(tokens.len());
@@ -93,11 +121,10 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
         for mut token in tokens.drain(..) {
             let details = token.details();
 
-            // If the length of the details is greater than or equal to 4,
-            // the tag length is 4, otherwise 1 is assigned to tags_len.
-            let tags_len = if details.len() >= 4 { 4 } else { 1 };
+            // Determine the length of the tags to consider (either 4 or 1)
+            let tags_len = details.len().min(4);
 
-            // Make a string of the part-of-speech tags.
+            // Construct the tag string from the token's details.
             let tag = details[0..tags_len].join(",");
 
             // Add the token to the filtered_tokens vector if the tag is in the set of tags.

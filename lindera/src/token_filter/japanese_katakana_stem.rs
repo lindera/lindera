@@ -67,8 +67,35 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
         JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME
     }
 
+    /// Removes prolonged sound marks from katakana tokens if they meet the specified conditions.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The `text` field of each token will be modified in place if the token is katakana and ends with a prolonged sound mark.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Processing**:
+    ///    - The function iterates over the provided list of tokens.
+    ///    - For each token, it checks whether the token's text is katakana. If not, the token is skipped.
+    ///
+    /// 2. **Prolonged Sound Mark Removal**:
+    ///    - If the token ends with a prolonged sound mark (such as `ー`) and its length exceeds the specified minimum (`min`), the prolonged sound mark is removed.
+    ///    - The token's text is updated by removing the last character (the prolonged sound mark).
+    ///
+    /// # Configurations:
+    ///
+    /// - **Minimum Length (`min`)**: The token must be longer than this value for the prolonged sound mark to be removed.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during token processing, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token>) -> LinderaResult<()> {
-        let min = self.config.min.get();
+        let min_len = self.config.min.get();
 
         for token in tokens.iter_mut() {
             // Skip if the token is not katakana
@@ -76,18 +103,16 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
                 continue;
             }
 
-            // Skip if the token is shorter than the minimum length
+            // Check if the token ends with the prolonged sound mark and is longer than the minimum length
             if token
                 .text
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
-                && token.text.chars().count() > min
+                && token.text.chars().count() > min_len
             {
-                // Remove the long sound mark
-                token.text = Cow::Owned(
-                    token.text[..token.text.len()
-                        - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8()]
-                        .to_string(),
-                );
+                // Remove the prolonged sound mark
+                let new_len =
+                    token.text.len() - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8();
+                token.text = Cow::Owned(token.text[..new_len].to_string());
             }
         }
 

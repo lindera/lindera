@@ -122,7 +122,6 @@ use crate::{LinderaErrorKind, LinderaResult};
 ///   a `LinderaResult<()>`.
 pub trait TokenFilter: 'static + Send + Sync + TokenFilterClone {
     fn name(&self) -> &'static str;
-    // fn apply<'a>(&self, tokens: &mut Vec<Token<'a>>) -> LinderaResult<()>;
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()>;
 }
 

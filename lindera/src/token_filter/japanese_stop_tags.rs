@@ -85,6 +85,37 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
         JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
+    /// Filters tokens based on part-of-speech tags and removes tokens that match the tags in the configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The function filters the tokens based on their part-of-speech tags and retains only those tokens whose tags are not in the configuration.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Filtering**:
+    ///    - The function iterates over the `tokens` vector and extracts the part-of-speech details of each token.
+    ///    - If the token has at least 4 details, the first 4 elements are used to create a tag. If it has fewer details, only the available details are used.
+    ///
+    /// 2. **Tag Matching**:
+    ///    - A tag string is created by joining the extracted part-of-speech details with commas (`,`) for comparison.
+    ///    - If the tag is **not** found in the configuration (`self.config.tags`), the token is added to the `filtered_tokens` vector.
+    ///    - If the tag is present in the configuration, the token is discarded.
+    ///
+    /// 3. **Token Replacement**:
+    ///    - Once the iteration is complete, the original `tokens` vector is replaced with the filtered tokens, i.e., only those tokens whose part-of-speech tags are not in the configuration remain.
+    ///
+    /// # Example
+    ///
+    /// Suppose you have a set of part-of-speech tags in the configuration that you want to exclude from the token list. This function will iterate through each token, check its tag, and retain only those tokens that do not match the tags in the configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `LinderaResult` error if there is an issue during processing, but typically this function is expected to complete successfully unless there are issues with the token or tag data.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // Create a new vector to store the filtered tokens
         let mut filtered_tokens = Vec::with_capacity(tokens.len());

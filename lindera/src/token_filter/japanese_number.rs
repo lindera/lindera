@@ -102,22 +102,48 @@ impl TokenFilter for JapaneseNumberTokenFilter {
         JAPANESE_NUMBER_TOKEN_FILTER_NAME
     }
 
+    /// Converts token text to Arabic numerals if the token's part-of-speech tags match the specified configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The text field of each token may be modified if it matches the criteria.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Tag Evaluation**:
+    ///    - The function iterates over the tokens and extracts the part-of-speech tags from each token's details.
+    ///    - If the token has at least 4 details, the first 4 elements are used as the tag. Otherwise, only the first element is used.
+    ///
+    /// 2. **Tag Matching**:
+    ///    - If the configuration contains specific tags (`self.config.tags`), the function checks whether the token's tag matches any of them.
+    ///    - If no tags are specified (`None`), the function applies the conversion to all tokens.
+    ///
+    /// 3. **Text Conversion**:
+    ///    - For tokens that match the criteria, the text is converted to Arabic numerals using the `to_arabic_numerals` function and stored as `Cow::Owned`.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during token processing or text conversion, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             let details = token.details();
+            let tags_len = details.len().min(4);
 
-            // If the length of the details is greater than or equal to 4,
-            // the tag length is 4, otherwise 1 is assigned to tags_len.
-            let tags_len = if details.len() >= 4 { 4 } else { 1 };
-
-            // Make a string of the part-of-speech tags.
+            // Create a part-of-speech tag string.
             let tag = details[0..tags_len].join(",");
 
-            let should_convert = match self.config.tags {
-                Some(ref tags) => tags.contains(&tag),
-                None => true, // If no tags are provided, apply to all tokens
-            };
+            // Determine whether to convert the token based on the config tags.
+            let should_convert = self
+                .config
+                .tags
+                .as_ref()
+                .map_or(true, |tags| tags.contains(&tag));
 
+            // If conversion is required, apply the Arabic numeral conversion.
             if should_convert {
                 let text = token.text.as_ref();
                 token.text = Cow::Owned(to_arabic_numerals(text));

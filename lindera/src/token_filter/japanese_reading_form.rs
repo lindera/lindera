@@ -58,6 +58,39 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
         JAPANESE_READING_FORM_TOKEN_FILTER_NAME
     }
 
+    /// Updates token text to the reading form based on the dictionary kind and details configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The text of each token may be updated based on the dictionary kind and token details.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating the success of the operation.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Detail Check**:
+    ///    - For each token in the vector, the function checks the first detail (`get_detail(0)`).
+    ///    - If the first detail is `"UNK"`, the token is skipped and no further processing is done for that token.
+    ///
+    /// 2. **Dictionary Type Handling**:
+    ///    - Depending on the `config.kind` (which determines the type of dictionary used), the function selects the appropriate index in the token's details:
+    ///        - **IPADIC** and **IPADICNEologd**: Use the detail at index 7 to get the reading form.
+    ///        - **UniDic**: Use the detail at index 6 to get the reading form.
+    ///    - If the dictionary kind does not match any of the supported types, the token is skipped.
+    ///
+    /// 3. **Text Update**:
+    ///    - If a valid detail is found at the selected `detail_index`, the function updates the token's text with the reading form found in that detail.
+    ///    - The new text is assigned using `Cow::Owned` to ensure the token owns the new text value.
+    ///
+    /// # Example
+    ///
+    /// This function is useful when you need to replace the token's surface form with its reading form based on the specific dictionary configuration (e.g., converting kanji to its phonetic representation).
+    ///
+    /// # Errors
+    ///
+    /// Returns a `LinderaResult<()>` if there is an issue during token processing or text conversion. However, under normal circumstances, it should process without errors.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             if let Some(detail) = token.get_detail(0) {

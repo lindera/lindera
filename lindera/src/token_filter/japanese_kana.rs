@@ -66,18 +66,51 @@ impl TokenFilter for JapaneseKanaTokenFilter {
         JAPANESE_KANA_TOKEN_FILTER_NAME
     }
 
+    /// Converts the text of each token from katakana to hiragana or vice versa based on the configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The `text` field of each token will be modified in place.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Iteration**:
+    ///    - The function iterates over each token in the `tokens` vector.
+    ///
+    /// 2. **Kana Conversion**:
+    ///    - Depending on the configuration (`self.config.kind`):
+    ///      - If `KanaKind::Hiragana` is selected, katakana characters in the token's text are converted to hiragana.
+    ///      - If `KanaKind::Katakana` is selected, hiragana characters in the token's text are converted to katakana.
+    ///
+    /// 3. **Text Update**:
+    ///    - The converted text is then assigned back to the token's `text` field as `Cow::Owned`.
+    ///
+    /// # KanaKind:
+    ///
+    /// - **Hiragana**: Converts any katakana in the token's text to hiragana.
+    /// - **Katakana**: Converts any hiragana in the token's text to katakana.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during the token processing or text conversion, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            match self.config.kind {
+            let converted_text = match self.config.kind {
                 KanaKind::Hiragana => {
                     // Convert katakana to hiragana.
-                    token.text = Cow::Owned(UCSStr::from_str(&token.text).hiragana().to_string());
+                    UCSStr::from_str(&token.text).hiragana().to_string()
                 }
                 KanaKind::Katakana => {
                     // Convert hiragana to katakana.
-                    token.text = Cow::Owned(UCSStr::from_str(&token.text).katakana().to_string());
+                    UCSStr::from_str(&token.text).katakana().to_string()
                 }
-            }
+            };
+
+            token.text = Cow::Owned(converted_text);
         }
 
         Ok(())
