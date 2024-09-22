@@ -16,16 +16,62 @@ pub type TokenizerConfig = Value;
 
 pub struct Tokenizer {
     /// Segmenter
+    /// The `segmenter` field is an instance of the `Segmenter` struct, which is responsible for
+    /// segmenting text into tokens. This is a core component of the tokenizer, enabling it to
+    /// break down input text into manageable and meaningful units for further processing.
     pub segmenter: Segmenter,
 
     /// Character filters
+    /// A vector of boxed character filters that will be applied to the input text
+    /// before tokenization. Each character filter is responsible for transforming
+    /// the input text in a specific way, such as normalizing characters or removing
+    /// unwanted characters.
     pub character_filters: Vec<BoxCharacterFilter>,
 
     /// Token filters
+    /// A vector of boxed token filters that will be applied to the tokens during tokenization.
+    /// Each token filter is a boxed trait object implementing the `TokenFilter` trait, allowing
+    /// for various transformations and processing steps to be applied to the tokens.
     pub token_filters: Vec<BoxTokenFilter>,
 }
 
 impl Tokenizer {
+    /// Creates a `Tokenizer` instance from the provided JSON configuration (`TokenizerConfig`).
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - A reference to a `TokenizerConfig` (which is a `serde_json::Value`). This JSON object should include settings for the segmenter, character filters, and token filters.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<Self>`, which is an instance of the `Tokenizer` on success, or an error if the configuration is invalid or cannot be parsed.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if:
+    ///   - The `segmenter` configuration is missing or cannot be deserialized.
+    ///   - The segmenter configuration in JSON is malformed or missing required fields.
+    ///   - Any character or token filter configuration is missing or contains invalid settings.
+    ///
+    /// # Detailed Process
+    ///
+    /// 1. **Loading Segmenter Configuration**:
+    ///    - The function extracts the `segmenter` section from the JSON `TokenizerConfig`.
+    ///    - It converts the segmenter configuration to a byte array using `serde_json::to_vec`.
+    ///    - The byte array is deserialized into a `SegmenterConfig` struct.
+    ///    - A `Segmenter` is created using the deserialized segmenter configuration.
+    ///
+    /// 2. **Creating the Tokenizer**:
+    ///    - A new `Tokenizer` instance is created from the segmenter.
+    ///
+    /// 3. **Loading Character Filters**:
+    ///    - If the `character_filters` section in the `TokenizerConfig` is not empty, the function iterates through the array of character filter settings.
+    ///    - For each filter, it extracts the `kind` and `args` to determine which filter to load and its arguments.
+    ///    - The corresponding character filter is loaded and appended to the tokenizer.
+    ///
+    /// 4. **Loading Token Filters**:
+    ///    - If the `token_filters` section in the `TokenizerConfig` is not empty, the function iterates through the array of token filter settings.
+    ///    - Similar to character filters, it extracts the `kind` and `args` to load and append each token filter to the tokenizer.
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
         // Load a JSON object for segmenter config from the tokenizer config.
         let args_value = config["segmenter"].as_object().ok_or_else(|| {
@@ -73,6 +119,17 @@ impl Tokenizer {
         Ok(tokenizer)
     }
 
+    /// Creates a new instance of `Tokenizer`.
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - The `Mode` in which the tokenizer will operate. This typically defines how aggressively tokens are segmented (e.g., normal or aggressive mode).
+    /// * `dictionary` - A `Dictionary` object that provides the tokenization rules and dictionary data.
+    /// * `user_dictionary` - An optional `UserDictionary` that provides additional or custom tokenization rules. If `None`, only the main dictionary will be used.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `Tokenizer` instance that is configured using the provided `mode`, `dictionary`, and `user_dictionary`.
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
@@ -81,6 +138,21 @@ impl Tokenizer {
         Tokenizer::from_segmenter(Segmenter::new(mode, dictionary, user_dictionary))
     }
 
+    /// Creates a new `Tokenizer` instance from a provided `Segmenter`.
+    ///
+    /// # Arguments
+    ///
+    /// * `segmenter` - An instance of the `Segmenter` struct, which is responsible for the core tokenization process.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `Tokenizer` instance that uses the provided `segmenter` for tokenization, with empty character and token filters.
+    ///
+    /// # Details
+    ///
+    /// - `segmenter`: The segmenter is responsible for handling the actual segmentation and tokenization of text. It is passed into the `Tokenizer` during initialization.
+    /// - `character_filters`: This is initialized as an empty vector and can be modified later to include character filters.
+    /// - `token_filters`: This is also initialized as an empty vector and can be modified later to include token filters.
     pub fn from_segmenter(segmenter: Segmenter) -> Self {
         Self {
             segmenter,
@@ -89,18 +161,78 @@ impl Tokenizer {
         }
     }
 
+    /// Appends a character filter to the tokenizer.
+    ///
+    /// # Arguments
+    ///
+    /// * `character_filter` - A `BoxCharacterFilter` that will be added to the tokenizer. This filter will be applied to the text during the tokenization process.
+    ///
+    /// # Returns
+    ///
+    /// Returns a mutable reference to `Self`, allowing for method chaining.
+    ///
+    /// # Details
+    ///
+    /// - This method adds a new character filter to the `Tokenizer`'s `character_filters` vector.
+    /// - It returns a mutable reference to `self`, allowing multiple character filters to be appended in a chain of method calls.
     pub fn append_character_filter(&mut self, character_filter: BoxCharacterFilter) -> &mut Self {
         self.character_filters.push(character_filter);
 
         self
     }
 
+    /// Appends a token filter to the tokenizer.
+    ///
+    /// # Arguments
+    ///
+    /// * `token_filter` - A `BoxTokenFilter` that will be added to the tokenizer. This filter will be applied to the tokens after they are segmented.
+    ///
+    /// # Returns
+    ///
+    /// Returns a mutable reference to `Self`, allowing for method chaining.
+    ///
+    /// # Details
+    ///
+    /// - This method adds a new token filter to the `Tokenizer`'s `token_filters` vector.
+    /// - It returns a mutable reference to `self`, allowing multiple token filters to be appended in a chain of method calls.
     pub fn append_token_filter(&mut self, token_filter: BoxTokenFilter) -> &mut Self {
         self.token_filters.push(token_filter);
 
         self
     }
 
+    /// Tokenizes the input text using the tokenizer's segmenter, character filters, and token filters.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A reference to the input text (`&str`) that will be tokenized.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing a vector of `Token`s, where each `Token` represents a segment of the tokenized text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Apply character filters**:
+    ///    - If any character filters are defined, they are applied to the input text before tokenization.
+    ///    - The `offsets`, `diffs`, and `text_len` are recorded for each character filter.
+    /// 2. **Segment the text**:
+    ///    - The `segmenter` divides the (potentially filtered) text into tokens.
+    /// 3. **Apply token filters**:
+    ///    - If any token filters are defined, they are applied to the segmented tokens.
+    /// 4. **Correct token offsets**:
+    ///    - If character filters were applied, the byte offsets of each token are corrected to account for changes introduced by those filters.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if any of the character or token filters fail during processing.
+    /// - Returns an error if the segmentation process fails.
+    ///
+    /// # Details
+    ///
+    /// - `Cow<'a, str>` is used for the `normalized_text`, allowing the function to either borrow the original text or create an owned version if the text needs modification.
+    /// - If no character filters are applied, the original `text` is used as-is for segmentation.
+    /// - Token offsets are adjusted after the tokenization process if character filters were applied to ensure the byte positions of each token are accurate relative to the original text.
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
 
@@ -152,6 +284,22 @@ impl Tokenizer {
 }
 
 impl Clone for Tokenizer {
+    /// Creates a deep clone of the `Tokenizer` instance, including all character filters, token filters, and the segmenter.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `Tokenizer` instance that is a deep clone of the current instance. All internal filters and the segmenter are cloned.
+    ///
+    /// # Details
+    ///
+    /// - **Character Filters**: Each character filter is cloned by calling its `box_clone` method, which ensures that any dynamically dispatched filters are properly cloned.
+    /// - **Token Filters**: Similarly, each token filter is cloned using the `box_clone` method to handle dynamic dispatch.
+    /// - **Segmenter**: The segmenter is cloned using its `clone` method.
+    ///
+    /// # Notes
+    ///
+    /// - This method performs deep cloning, meaning that all internal filters and segmenter instances are fully duplicated.
+    /// - The `box_clone` method is used to clone the dynamically dispatched filter objects (`BoxCharacterFilter` and `BoxTokenFilter`).
     fn clone(&self) -> Self {
         let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
         for character_filter in self.character_filters.iter() {

@@ -12,16 +12,31 @@ use crate::dictionary::{DictionaryConfig, DictionaryLoader, UserDictionaryConfig
 use crate::token::Token;
 use crate::LinderaResult;
 
-/// Segmenter config
+/// Configuration for the segmenter.
+///
+/// This struct holds the necessary configurations for the segmenter, including
+/// the segmentation mode, the dictionary configuration, and an optional user
+/// dictionary configuration.
+///
+/// # Fields
+///
+/// * `mode` - The segmentation mode to be used.
+/// * `dictionary` - The configuration for the dictionary.
+/// * `user_dictionary` - An optional configuration for a user-defined dictionary.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct SegmenterConfig {
-    /// The segmentation mode.
+    /// The segmentation mode to be used by the segmenter.
+    /// This determines how the text will be split into segments.
     pub mode: Mode,
 
-    /// The dictionary config to be used for segmentation.
+    /// Configuration for the dictionary used by the segmenter.
     pub dictionary: DictionaryConfig,
 
-    /// The user dictionary config to be used for segmentation. (Optional)
+    /// An optional configuration for the user dictionary.
+    ///
+    /// This field allows specifying a custom user dictionary configuration
+    /// which can be used to enhance or override the default dictionary
+    /// entries. If set to `None`, the default dictionary will be used.
     pub user_dictionary: Option<UserDictionaryConfig>,
 }
 
@@ -40,6 +55,24 @@ impl Default for SegmenterConfig {
     }
 }
 
+/// Implements the `Deserialize` trait for the `SegmenterConfig` struct.
+///
+/// This implementation allows `SegmenterConfig` to be deserialized from various formats
+/// using Serde. The deserialization process supports both sequence and map formats.
+///
+/// # Fields
+///
+/// - `mode`: An optional field representing the mode of the segmenter. Defaults to `Mode::Normal` if not provided.
+/// - `dictionary`: A required field representing the dictionary used by the segmenter.
+/// - `user_dictionary`: An optional field representing a user-provided dictionary.
+///
+/// # Errors
+///
+/// Deserialization will fail if:
+///
+/// - The `dictionary` field is missing.
+/// - Any field is duplicated.
+/// - An unknown field is encountered.
 impl<'de> Deserialize<'de> for SegmenterConfig {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -157,25 +190,36 @@ impl<'de> Deserialize<'de> for SegmenterConfig {
 /// Segmenter
 #[derive(Clone)]
 pub struct Segmenter {
-    /// The segmentation mode.
+    /// The segmentation mode to be used by the segmenter.
+    /// This determines how the text will be split into segments.
     pub mode: Mode,
 
-    /// The dictionary to be used for segmentation.
+    /// The dictionary used for segmenting text. This dictionary contains the necessary
+    /// data structures and algorithms to perform morphological analysis and tokenization.
     pub dictionary: Dictionary,
 
-    /// The user dictionary to be used for segmentation. (Optional)
+    /// An optional user-defined dictionary that can be used to customize the segmentation process.
+    /// If provided, this dictionary will be used in addition to the default dictionary to improve
+    /// the accuracy of segmentation for specific words or phrases.
     pub user_dictionary: Option<UserDictionary>,
 }
 
 impl Segmenter {
-    /// Create a new segmenter from the segmenter config.
+    /// A struct representing a segmenter for tokenizing text.
     ///
-    /// # Arguments
+    /// The `Segmenter` struct provides methods for creating a segmenter from a configuration,
+    /// creating a new segmenter, and segmenting text into tokens.
     ///
-    /// * `config`: The segmenter config.
+    /// # Methods
     ///
-    /// returns: LinderaResult<Segmenter>
+    /// - `from_config`: Creates a `Segmenter` from a given configuration.
+    /// - `new`: Creates a new `Segmenter` with the specified mode, dictionary, and optional user dictionary.
+    /// - `segment`: Segments the given text into tokens.
     ///
+    /// # Errors
+    ///
+    /// Methods that return `LinderaResult` may produce errors related to dictionary loading,
+    /// user dictionary loading, or tokenization process.
     pub fn from_config(config: SegmenterConfig) -> LinderaResult<Self> {
         // Load the dictionary from the config
         let dictionary = DictionaryLoader::load_dictionary_from_config(config.dictionary)?;
@@ -191,16 +235,23 @@ impl Segmenter {
         Ok(Self::new(config.mode, dictionary, user_dictionary))
     }
 
-    /// Create a new segmenter.
+    /// Creates a new instance with the specified mode, dictionary, and optional user dictionary.
     ///
     /// # Arguments
     ///
-    /// * `dictionary`: The dictionary to be used for tokenization.
-    /// * `user_dictionary`: The user dictionary to be used for tokenization. (Optional)
-    /// * `mode`: The tokenization mode.
+    /// * `mode` - The `Mode` in which the instance will operate. This typically defines how aggressively the text is segmented or processed.
+    /// * `dictionary` - A `Dictionary` object that provides the core data and rules for processing text.
+    /// * `user_dictionary` - An optional `UserDictionary` that allows for additional, user-defined tokens or rules to be used in conjunction with the main dictionary.
     ///
-    /// returns: LinderaResult<Segmenter>
+    /// # Returns
     ///
+    /// Returns a new instance of the struct with the provided mode, dictionary, and user dictionary (if any).
+    ///
+    /// # Details
+    ///
+    /// - `mode`: This defines the behavior of the instance, such as whether to process text in normal or aggressive mode.
+    /// - `dictionary`: The main dictionary containing tokenization or processing rules.
+    /// - `user_dictionary`: This is optional. If provided, it allows the user to extend or override the rules of the main dictionary with custom tokens.
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
@@ -213,6 +264,42 @@ impl Segmenter {
         }
     }
 
+    /// Segments the input text into tokens based on the dictionary and user-defined rules.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A `Cow<'a, str>` representing the input text. This can either be borrowed or owned, allowing for efficient text handling depending on the use case.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<Vec<Token<'a>>>` which contains a vector of tokens segmented from the input text. Each token represents a portion of the original text, along with metadata such as byte offsets and dictionary information.
+    ///
+    /// # Process
+    ///
+    /// 1. **Sentence Splitting**:
+    ///    - The input text is split into sentences using Japanese punctuation (`。`, `、`, `\n`, `\t`). Each sentence is processed individually.
+    ///
+    /// 2. **Lattice Processing**:
+    ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
+    ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
+    ///
+    /// 3. **Token Generation**:
+    ///    - For each segment (determined by the lattice), a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
+    ///
+    /// # Notes
+    ///
+    /// - The function ensures that each token is safely returned by converting substrings into `Cow::Owned` strings.
+    /// - Byte offsets are carefully calculated to ensure that token boundaries are correct even across multiple sentences.
+    ///
+    /// # Example Flow
+    ///
+    /// - Text is split into sentences based on punctuation.
+    /// - A lattice is created and processed for each sentence.
+    /// - Tokens are extracted from the lattice and returned in a vector.
+    ///
+    /// # Errors
+    ///
+    /// - If the lattice fails to be processed or if there is an issue with the segmentation process, the function returns an error.
     pub fn segment<'a>(&'a self, text: Cow<'a, str>) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut lattice = Lattice::default();
