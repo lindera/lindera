@@ -155,6 +155,37 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
     }
 
+    /// Merges tokens based on matching part-of-speech tags and updates the token list.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The tokens will be modified in place by merging consecutive tokens that share matching tags.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Processing**:
+    ///    - The function iterates over the list of tokens, and for each token, it checks the part-of-speech tags up to 4 elements (`tags_len`).
+    ///    - If the token's tag matches one of the tags specified in the configuration (`self.config.tags`), it attempts to merge the token with the subsequent tokens.
+    ///
+    /// 2. **Token Merging**:
+    ///    - When two consecutive tokens have matching tags, they are merged by concatenating their details into a single token.
+    ///    - If no matching tag is found for the next token, the current token is finalized and added to the new token list.
+    ///
+    /// 3. **Replacing Tokens**:
+    ///    - After processing all tokens, the original token list is replaced by the new list (`new_tokens`) that contains merged tokens where applicable.
+    ///
+    /// # Special Cases:
+    ///
+    /// - If no tags match, the original tokens are retained without modification.
+    /// - If multiple tokens match, they are merged into a single token.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during token processing, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // New tokens
         let mut new_tokens = Vec::new();

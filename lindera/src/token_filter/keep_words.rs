@@ -53,6 +53,33 @@ impl TokenFilter for KeepWordsTokenFilter {
         KEEP_WORDS_TOKEN_FILTER_NAME
     }
 
+    /// Filters tokens by retaining only those that match a predefined list of words.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. Only tokens that match the words defined in the configuration will be retained.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating the success of the operation.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Filtering**:
+    ///    - The function iterates over the provided `tokens` vector and filters out any token whose text does not match one of the words in the `config.words` set.
+    ///    - The `retain` method is used, which iterates over each token and checks if the token's text exists in the `config.words` set.
+    ///
+    /// 2. **Text Matching**:
+    ///    - For each token, the `text` field is converted to a reference using `as_ref()` and is checked for existence in the `config.words` set.
+    ///    - If the word is found in the set, the token is kept; otherwise, it is removed from the `tokens` vector.
+    ///
+    /// # Example
+    ///
+    /// This function is useful when you have a list of specific words (such as keywords or stop words) and you want to retain only the tokens that match those words.
+    ///
+    /// # Errors
+    ///
+    /// The function will return an error in the form of `LinderaResult<()>` if any issues arise during the filtering process, though normally no errors are expected in this operation.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         tokens.retain(|token| self.config.words.contains(token.text.as_ref()));
 

@@ -60,11 +60,49 @@ impl CharacterFilter for RegexCharacterFilter {
         REGEX_CHARACTER_FILTER_NAME
     }
 
+    /// Applies a regular expression-based replacement to the input text and tracks offsets and differences.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A mutable reference to the input text (`String`) that will be modified in place by replacing matched patterns.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing:
+    /// - A vector of offsets (`Vec<usize>`) where modifications occurred.
+    /// - A vector of differences (`Vec<i64>`) indicating the change in length (in bytes) at each modification point.
+    /// - The final length (`usize`) of the modified text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Regular Expression Matching**:
+    ///    - The function uses a regular expression (`regex`) to find matches in the input text.
+    ///    - For each match, the corresponding replacement text (from the configuration) is applied.
+    ///    - The replacement text can be shorter or longer than the matched text, so offsets and differences are tracked to maintain byte alignment.
+    ///
+    /// 2. **Replacement and Text Construction**:
+    ///    - The function builds a new `filtered_text` by appending non-matched portions of the original text and replacing matched portions with the replacement text.
+    ///    - As it processes each match, the text before the match is appended, followed by the replacement text, until the entire input text is processed.
+    ///
+    /// 3. **Offset and Difference Calculation**:
+    ///    - For each match, the difference between the length of the matched text and the replacement text is calculated (`diff_len`).
+    ///    - If the replacement text is shorter, the offset and the difference are recorded. If it is longer, multiple offset entries may be created to account for the expansion.
+    ///
+    /// 4. **Final Text Assignment**:
+    ///    - The newly constructed `filtered_text` replaces the original text passed by reference.
+    ///
+    /// # Errors
+    ///
+    /// If there are issues with the regular expression or the replacement process, the function returns a `LinderaResult` containing the error.
     fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
         let mut offsets: Vec<usize> = Vec::new();
         let mut diffs: Vec<i64> = Vec::new();
+        let mut filtered_text = String::with_capacity(text.len());
 
-        self.regex.find_iter(text).for_each(|mat| {
+        let mut last_match_end = 0;
+        let mut prev_diff = 0;
+
+        for mat in self.regex.find_iter(text) {
             let input_start = mat.start();
             let input_text = mat.as_str();
             let input_len = input_text.len();
@@ -73,30 +111,36 @@ impl CharacterFilter for RegexCharacterFilter {
             let diff_len = input_len as i64 - replacement_len as i64;
             let input_offset = input_start + input_len;
 
-            if diff_len != 0 {
-                let prev_diff = *diffs.last().unwrap_or(&0);
+            // Append the text before the match
+            filtered_text.push_str(&text[last_match_end..input_start]);
 
+            // Apply the replacement
+            filtered_text.push_str(replacement_text);
+
+            // Track offsets and differences
+            if diff_len != 0 {
                 if diff_len > 0 {
-                    // Replacement is shorter than matched surface.
+                    // Replacement is shorter than matched surface
                     let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
                     let diff = prev_diff + diff_len;
                     add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                 } else {
-                    // Replacement is longer than matched surface.
-                    let output_start = (input_offset as i64 + -prev_diff) as usize;
+                    // Replacement is longer than matched surface
+                    let output_start = (input_offset as i64 - prev_diff) as usize;
                     for extra_idx in 0..diff_len.unsigned_abs() as usize {
                         let offset = output_start + extra_idx;
                         let diff = prev_diff - extra_idx as i64 - 1;
                         add_offset_diff(&mut offsets, &mut diffs, offset, diff);
                     }
                 }
+                prev_diff += diff_len;
             }
-        });
 
-        let filtered_text = self
-            .regex
-            .replace_all(text, &self.config.replacement)
-            .to_string();
+            last_match_end = input_offset;
+        }
+
+        // Append the remaining text after the last match
+        filtered_text.push_str(&text[last_match_end..]);
 
         *text = filtered_text;
 

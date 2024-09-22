@@ -55,6 +55,33 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
         KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME
     }
 
+    /// Filters tokens based on part-of-speech tags, retaining only tokens that match the configured tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The tokens are filtered based on their part-of-speech tags.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating the success of the operation.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Filtering**:
+    ///    - The function iterates over each token and retrieves the first part-of-speech tag using `get_detail(0)`.
+    ///    - If the first tag is `None`, a default empty string is used instead.
+    ///    - The function then checks if the tag is present in the configured set of tags (`self.config.tags`).
+    ///
+    /// 2. **Token Retention**:
+    ///    - Tokens whose part-of-speech tags are in the configuration are retained, while others are removed from the `tokens` vector.
+    ///
+    /// # Example
+    ///
+    /// This function is useful when filtering tokens based on specific part-of-speech tags (e.g., filtering out all verbs or nouns).
+    ///
+    /// # Errors
+    ///
+    /// The function returns a `LinderaResult<()>` if any issue occurs during token filtering, but typically no errors are expected during this operation.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         // Create a new vector to store the filtered tokens
         let mut filtered_tokens = Vec::with_capacity(tokens.len());

@@ -93,6 +93,27 @@ pub struct JapaneseIterationMarkCharacterFilter {
     config: JapaneseIterationMarkCharacterFilterConfig,
 }
 
+/// A character filter for normalizing Japanese iteration marks.
+///
+/// This filter normalizes various types of Japanese iteration marks such as
+/// Kanji, Hiragana, and Katakana iteration marks based on the provided configuration.
+///
+/// # Methods
+///
+/// - `new(config: JapaneseIterationMarkCharacterFilterConfig) -> Self`
+///   - Creates a new instance of the filter with the given configuration.
+/// - `from_slice(data: &[u8]) -> LinderaResult<Self>`
+///   - Creates a new instance of the filter from a byte slice, parsing the configuration from the slice.
+/// - `normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String`
+///   - Normalizes the provided iteration marks in the text based on the filter's configuration.
+///
+/// # Normalization Rules
+///
+/// - Kanji iteration marks are replaced with the corresponding Kanji character if `normalize_kanji` is enabled.
+/// - Hiragana iteration marks are replaced with the corresponding Hiragana character without dakuon if `normalize_kana` is enabled.
+/// - Hiragana dakuon iteration marks are replaced with the corresponding Hiragana character with dakuon if `normalize_kana` is enabled.
+/// - Katakana iteration marks are replaced with the corresponding Katakana character without dakuon if `normalize_kana` is enabled.
+/// - Katakana dakuon iteration marks are replaced with the corresponding Katakana character with dakuon if `normalize_kana` is enabled.
 impl JapaneseIterationMarkCharacterFilter {
     pub fn new(config: JapaneseIterationMarkCharacterFilterConfig) -> Self {
         Self { config }
@@ -104,6 +125,41 @@ impl JapaneseIterationMarkCharacterFilter {
         ))
     }
 
+    /// Normalizes iteration marks in the text and returns the normalized string.
+    ///
+    /// # Arguments
+    ///
+    /// * `iter_marks` - A `BTreeMap` that contains the positions and corresponding iteration mark characters (`&char`) that need to be normalized.
+    /// * `text_chars` - A reference to a slice of characters (`&[char]`) representing the original text from which normalization should occur.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `String` containing the normalized version of the text, where the iteration marks have been replaced by their corresponding normalized forms.
+    ///
+    /// # Process
+    ///
+    /// 1. **Iterating through iteration marks**:
+    ///    - The function loops through the `iter_marks` to identify and process each iteration mark.
+    ///    - The position of each iteration mark is compared to the previous characters in the text to generate a normalized version.
+    ///
+    /// 2. **Character Replacement**:
+    ///    - Depending on the type of iteration mark (`KANJI_ITERATION_MARK`, `HIRAGANA_ITERATION_MARK`, etc.), the corresponding normalized character is chosen from `text_chars`.
+    ///    - For kanji iteration marks, the character at the calculated position is replaced if `normalize_kanji` is enabled in the configuration.
+    ///    - For hiragana and katakana iteration marks, the function determines whether dakuon (voiced sound mark) should be added or removed, based on the mark type and the `normalize_kana` flag.
+    ///
+    /// 3. **Handling Position Differences**:
+    ///    - The function calculates the position difference (`pos_diff`) between the first iteration mark and the number of iteration marks, ensuring that the correct character is used as the replacement.
+    ///
+    /// 4. **Final String Construction**:
+    ///    - For each character or iteration mark, the corresponding normalized form (or the original character if no normalization is required) is appended to `normalized_str`.
+    ///
+    /// # Special Cases
+    ///
+    /// - If a character for replacement is out of bounds in `text_chars`, the original iteration mark is used as the replacement to avoid panicking.
+    ///
+    /// # Errors
+    ///
+    /// This function does not return errors but instead falls back to using the iteration mark itself if the expected replacement character is out of bounds.
     fn normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String {
         let mut normalized_str = String::new();
 
@@ -154,6 +210,40 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
         JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME
     }
 
+    /// Applies iteration mark normalization to the input text and returns a filtered version of the text.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A mutable reference to the input text (`String`). The text will be modified in place after applying the iteration mark normalization.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing:
+    /// - An empty vector of offsets (`Vec<usize>`) since no specific offset tracking is required.
+    /// - An empty vector of differences (`Vec<i64>`) since no length difference tracking is needed.
+    /// - The final length (`usize`) of the modified text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Character Iteration**:
+    ///    - The function iterates through each character in the input text.
+    ///    - If the character is an iteration mark (e.g., `KANJI_ITERATION_MARK`, `HIRAGANA_ITERATION_MARK`), it is stored in a map (`iter_marks`) for normalization if the corresponding configuration is enabled (`normalize_kanji` or `normalize_kana`).
+    ///    - If a non-iteration mark character is encountered, any collected iteration marks are normalized and appended to the `filtered_text`. The non-iteration mark character is also appended.
+    ///
+    /// 2. **Normalization**:
+    ///    - When iteration marks are detected and normalization is enabled, the corresponding normalized string is generated using the `normalize` method and appended to the `filtered_text`.
+    ///
+    /// 3. **Final Text Assignment**:
+    ///    - After all characters are processed, the constructed `filtered_text` is assigned back to the original `text`.
+    ///
+    /// # Special Cases:
+    ///
+    /// - If there are no iteration marks, the original text is left mostly unchanged.
+    /// - If the text ends with iteration marks, those are normalized and appended to the final result.
+    ///
+    /// # Errors
+    ///
+    /// No specific errors are expected from this function. However, if an issue arises with the `normalize` method, an error will be returned.
     fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
         let mut filtered_text = String::with_capacity(text.len());
 
