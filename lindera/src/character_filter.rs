@@ -1,3 +1,29 @@
+/// This module defines character filters and utilities for handling text transformations
+/// in the Lindera library. It includes various character filters such as Japanese iteration
+/// mark filter, mapping filter, regex filter, and unicode normalization filter. The module
+/// also provides functionality to load character filters from configuration values or CLI flags,
+/// and utilities to manage text offsets during transformations.
+///
+/// # Modules
+/// - `japanese_iteration_mark`: Contains the Japanese iteration mark character filter.
+/// - `mapping`: Contains the mapping character filter.
+/// - `regex`: Contains the regex character filter.
+/// - `unicode_normalize`: Contains the unicode normalization character filter.
+///
+/// # Traits
+/// - `CharacterFilter`: A trait for character filters that can be applied to text.
+/// - `CharacterFilterClone`: A trait for cloning character filters.
+///
+/// # Structs
+/// - `BoxCharacterFilter`: A boxed character filter that implements `Deref` to `CharacterFilter`.
+/// - `CharacterFilterLoader`: A loader for character filters from configuration values or CLI flags.
+///
+/// # Functions
+/// - `add_offset_diff`: Adds an offset difference to the given offsets and diffs vectors.
+/// - `correct_offset`: Corrects the given offset based on the provided offsets and diffs.
+///
+/// # Tests
+/// - `test_correct_offset`: Tests the `correct_offset` function with various cases.
 pub mod japanese_iteration_mark;
 pub mod mapping;
 pub mod regex;
@@ -26,11 +52,51 @@ use crate::character_filter::unicode_normalize::{
 };
 use crate::parse_cli_flag;
 
+/// The `CharacterFilter` trait defines an interface for filters that preprocess text before tokenization.
+///
+/// # Required Methods
+///
+/// - `name(&self) -> &str`:
+///   - Returns the name of the character filter. This can be used for identification or logging purposes.
+///
+/// - `apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>`:
+///   - Applies the character filter to the provided mutable string `text`.
+///   - It returns a result containing a tuple of:
+///     - A vector of offsets (`Vec<usize>`) which represent positions in the text where modifications were made.
+///     - A vector of differences (`Vec<i64>`) which indicates the change in text length at those positions.
+///     - The final length of the modified text (`usize`).
+///
+/// # Trait Bounds
+///
+/// - `'static`: The filter must have a `'static` lifetime, meaning it does not contain any references with shorter lifetimes.
+/// - `Send` and `Sync`: These bounds ensure that the filter can be safely used in multi-threaded contexts, allowing filters to be shared or sent across threads.
+///
+/// # Cloneability
+///
+/// - This trait requires the `CharacterFilterClone` trait, which is typically used to allow cloning of trait objects that implement `CharacterFilter`. This enables dynamic dispatch of cloned filters.
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;
     fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>;
 }
 
+/// A struct that holds a boxed `CharacterFilter` trait object.
+///
+/// `BoxCharacterFilter` wraps a `Box<dyn CharacterFilter + 'static + Send + Sync>`, allowing for dynamic dispatch of character filters while ensuring they are thread-safe and have a `'static` lifetime.
+///
+/// # Fields
+///
+/// - `0: Box<dyn CharacterFilter + 'static + Send + Sync>`:
+///   - The boxed character filter trait object, which can be any type that implements the `CharacterFilter` trait. This allows for runtime polymorphism, meaning different character filter implementations can be stored in the same collection or passed around generically.
+///
+/// # Trait Bounds
+///
+/// - `CharacterFilter`: The wrapped object must implement the `CharacterFilter` trait, which defines the interface for applying filters to text.
+/// - `'static`: The wrapped object must have a `'static` lifetime, meaning it can live for the duration of the program and does not borrow from temporary data.
+/// - `Send` and `Sync`: These bounds ensure the filter can be shared between threads and sent across thread boundaries, making it safe for concurrent use.
+///
+/// # Example Usage
+///
+/// `BoxCharacterFilter` allows you to store and use different types of character filters dynamically, making it easier to apply multiple filters without needing to know their concrete types at compile time.
 pub struct BoxCharacterFilter(Box<dyn CharacterFilter + 'static + Send + Sync>);
 
 impl Deref for BoxCharacterFilter {
@@ -107,6 +173,33 @@ pub fn correct_offset(offset: usize, offsets: &[usize], diffs: &[i64], text_len:
 pub struct CharacterFilterLoader {}
 
 impl CharacterFilterLoader {
+    /// Loads a character filter based on the specified kind and configuration value.
+    ///
+    /// # Arguments
+    ///
+    /// * `kind` - A string slice representing the type of the character filter to be loaded. This string must match one of the supported filter types.
+    /// * `value` - A `serde_json::Value` that contains the configuration for the filter. The structure of this value depends on the filter type.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<BoxCharacterFilter>`, which is a boxed character filter, or an error if the filter type is unsupported or if the configuration fails to load.
+    ///
+    /// # Supported Filters
+    ///
+    /// - `JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME`: Loads a `JapaneseIterationMarkCharacterFilter`.
+    /// - `MAPPING_CHARACTER_FILTER_NAME`: Loads a `MappingCharacterFilter`.
+    /// - `REGEX_CHARACTER_FILTER_NAME`: Loads a `RegexCharacterFilter`.
+    /// - `UNICODE_NORMALIZE_CHARACTER_FILTER_NAME`: Loads a `UnicodeNormalizeCharacterFilter`.
+    ///
+    /// # Errors
+    ///
+    /// - If the `kind` does not match any of the supported filters, an error is returned.
+    /// - If the configuration (`value`) for a filter is invalid, an error is returned during deserialization.
+    ///
+    /// # Details
+    ///
+    /// - This function uses the `kind` argument to determine which specific character filter to load. It matches the `kind` string to a filter name, deserializes the `value` into the appropriate filter configuration, and then constructs the corresponding filter.
+    /// - If the `kind` does not match any supported filters, the function returns a deserialization error with an appropriate error message.
     pub fn load_from_value(kind: &str, value: &Value) -> LinderaResult<BoxCharacterFilter> {
         let character_filter = match kind {
             JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
@@ -135,6 +228,31 @@ impl CharacterFilterLoader {
         Ok(character_filter)
     }
 
+    /// Loads a character filter based on a CLI flag string.
+    ///
+    /// # Arguments
+    ///
+    /// * `cli_flag` - A string slice representing the command-line interface (CLI) flag used to specify the character filter. The flag typically contains both the filter kind and its arguments.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<BoxCharacterFilter>`, which is a boxed character filter, or an error if the CLI flag is invalid or the filter configuration cannot be loaded.
+    ///
+    /// # Process
+    ///
+    /// 1. **Parse CLI flag**:
+    ///    - The `parse_cli_flag` function is called to extract the filter kind and its arguments from the `cli_flag` string.
+    /// 2. **Load filter from parsed values**:
+    ///    - The filter kind and arguments are passed to `load_from_value`, which constructs the appropriate character filter based on the parsed values.
+    ///
+    /// # Errors
+    ///
+    /// - If the CLI flag cannot be parsed, an error is returned.
+    /// - If the filter kind or its configuration is invalid, an error is returned during the filter loading process.
+    ///
+    /// # Details
+    ///
+    /// - The CLI flag is parsed into a filter kind and arguments. These are then used to load the appropriate character filter using the `load_from_value` function.
     pub fn load_from_cli_flag(cli_flag: &str) -> LinderaResult<BoxCharacterFilter> {
         let (kind, args) = parse_cli_flag(cli_flag)?;
 
