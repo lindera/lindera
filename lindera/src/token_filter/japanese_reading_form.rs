@@ -99,21 +99,28 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
                 }
             }
 
-            let detail_index = match self.config.kind {
+            match self.config.kind {
                 #[cfg(feature = "ipadic")]
-                DictionaryKind::IPADIC => 7,
-                #[cfg(feature = "ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => 7,
-                #[cfg(feature = "unidic")]
-                DictionaryKind::UniDic => 6,
-                _ => {
-                    continue;
+                DictionaryKind::IPADIC => {
+                    if let Some(detail) = token.get_detail(7) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
                 }
-            };
-
-            // Update the token text with reading form.
-            if let Some(detail) = token.get_detail(detail_index) {
-                token.text = Cow::Owned(detail.to_string());
+                #[cfg(feature = "ipadic-neologd")]
+                DictionaryKind::IPADICNEologd => {
+                    if let Some(detail) = token.get_detail(7) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
+                }
+                #[cfg(feature = "unidic")]
+                DictionaryKind::UniDic => {
+                    if let Some(detail) = token.get_detail(6) {
+                        token.text = Cow::Owned(detail.to_string());
+                    }
+                }
+                _ => {
+                    // NOOP
+                }
             }
         }
 
