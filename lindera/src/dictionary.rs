@@ -121,23 +121,23 @@ fn read_file(path: PathBuf) -> LinderaResult<Vec<u8>> {
 }
 
 fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
-    let unidic_data_path = dir.join("dict.da");
-    let unidic_data = read_file(unidic_data_path)?;
+    let dict_da_path = dir.join("dict.da");
+    let dict_da = read_file(dict_da_path)?;
 
-    let unidic_vals_path = dir.join("dict.vals");
-    let unidic_vals = read_file(unidic_vals_path)?;
+    let dict_vals_path = dir.join("dict.vals");
+    let dict_vals = read_file(dict_vals_path)?;
 
-    let words_idx_data_path = dir.join("dict.wordsidx");
-    let words_idx_data = read_file(words_idx_data_path)?;
+    let dict_wordsidx_path = dir.join("dict.wordsidx");
+    let dict_wordsidx = read_file(dict_wordsidx_path)?;
 
-    let words_data_path = dir.join("dict.words");
-    let words_data = read_file(words_data_path)?;
+    let dict_words_path = dir.join("dict.words");
+    let dict_words = read_file(dict_words_path)?;
 
     Ok(PrefixDictionary::from_static_slice(
-        unidic_data.as_slice(),
-        unidic_vals.as_slice(),
-        words_idx_data.as_slice(),
-        words_data.as_slice(),
+        dict_da.as_slice(),
+        dict_vals.as_slice(),
+        dict_wordsidx.as_slice(),
+        dict_words.as_slice(),
     ))
 }
 
