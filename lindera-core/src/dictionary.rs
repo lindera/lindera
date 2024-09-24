@@ -1,6 +1,6 @@
 pub mod character_definition;
-pub mod connection;
-pub mod prefix_dict;
+pub mod connection_cost_matrix;
+pub mod prefix_dictionary;
 pub mod unknown_dictionary;
 pub mod viterbi;
 pub mod word_entry;
@@ -12,9 +12,9 @@ use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::dictionary::character_definition::CharacterDefinitions;
-use crate::dictionary::connection::ConnectionCostMatrix;
-use crate::dictionary::prefix_dict::PrefixDict;
+use crate::dictionary::character_definition::CharacterDefinition;
+use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
@@ -23,9 +23,9 @@ pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {
-    pub dict: PrefixDict<Vec<u8>>,
+    pub dict: PrefixDictionary<Vec<u8>>,
     pub cost_matrix: ConnectionCostMatrix,
-    pub char_definitions: CharacterDefinitions,
+    pub char_definitions: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
     pub words_idx_data: Cow<'static, [u8]>,
     pub words_data: Cow<'static, [u8]>,
@@ -63,7 +63,7 @@ impl Dictionary {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserDictionary {
-    pub dict: PrefixDict<Vec<u8>>,
+    pub dict: PrefixDictionary<Vec<u8>>,
     pub words_idx_data: Vec<u8>,
     pub words_data: Vec<u8>,
 }

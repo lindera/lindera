@@ -25,7 +25,7 @@ use crate::LinderaResult;
 #[derive(Builder, Debug)]
 #[builder(name = "DictBuilderOptions")]
 #[builder(build_fn(name = "builder"))]
-pub struct DictBuilder {
+pub struct PrefixWordDictionaryBuilder {
     #[builder(default = "true")]
     flexible_csv: bool,
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
@@ -39,7 +39,7 @@ pub struct DictBuilder {
     skip_invalid_cost_or_id: bool,
 }
 
-impl DictBuilder {
+impl PrefixWordDictionaryBuilder {
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let pattern = if let Some(path) = input_dir.to_str() {
             format!("{}/*.csv", path)

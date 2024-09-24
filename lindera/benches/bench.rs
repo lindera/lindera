@@ -4,7 +4,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
         use lindera_core::mode::Mode;
 
@@ -17,8 +17,7 @@ fn bench_constructor(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -28,7 +27,7 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
         use lindera_core::mode::Mode;
 
@@ -40,8 +39,7 @@ fn bench_constructor(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -51,7 +49,7 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "ko-dic")]
     {
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
         use lindera_core::mode::Mode;
 
@@ -63,8 +61,7 @@ fn bench_constructor(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -74,7 +71,7 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
         use lindera_core::mode::Mode;
 
@@ -86,8 +83,7 @@ fn bench_constructor(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -104,7 +100,8 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -121,8 +118,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 let user_dictionary_config = UserDictionaryConfig {
                     kind: Some(DictionaryKind::IPADIC),
@@ -130,8 +126,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 let user_dictionary =
-                    DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)
-                        .unwrap();
+                    load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -145,7 +140,8 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -162,8 +158,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 let user_dictionary_config = UserDictionaryConfig {
                     kind: Some(DictionaryKind::UniDic),
@@ -171,8 +166,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 let user_dictionary =
-                    DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)
-                        .unwrap();
+                    load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -186,7 +180,8 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -203,8 +198,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 let user_dictionary_config = UserDictionaryConfig {
                     kind: Some(DictionaryKind::KoDic),
@@ -212,8 +206,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 let user_dictionary =
-                    DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)
-                        .unwrap();
+                    load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -227,7 +220,8 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -244,8 +238,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 // Load a dictionary from the dictionary config.
-                let dictionary =
-                    DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+                let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
                 let user_dictionary_config = UserDictionaryConfig {
                     kind: Some(DictionaryKind::CcCedict),
@@ -253,8 +246,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                 };
 
                 let user_dictionary =
-                    DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)
-                        .unwrap();
+                    load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
                 // Create a tokenizer.
                 let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -268,7 +260,7 @@ fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -278,7 +270,7 @@ fn bench_tokenize(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -291,7 +283,7 @@ fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "unidic")]
     {
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -301,7 +293,7 @@ fn bench_tokenize(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -314,7 +306,7 @@ fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "ko-dic")]
     {
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -324,7 +316,7 @@ fn bench_tokenize(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -337,7 +329,7 @@ fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "cc-cedict")]
     {
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -347,7 +339,7 @@ fn bench_tokenize(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -366,7 +358,8 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -381,15 +374,14 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         let user_dictionary_config = UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: userdic_file,
         };
 
-        let user_dictionary =
-            DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config).unwrap();
+        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -407,7 +399,8 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -422,15 +415,14 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         let user_dictionary_config = UserDictionaryConfig {
             kind: Some(DictionaryKind::UniDic),
             path: userdic_file,
         };
 
-        let user_dictionary =
-            DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config).unwrap();
+        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -448,7 +440,8 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -463,15 +456,14 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         let user_dictionary_config = UserDictionaryConfig {
             kind: Some(DictionaryKind::KoDic),
             path: userdic_file,
         };
 
-        let user_dictionary =
-            DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config).unwrap();
+        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -487,7 +479,8 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -502,15 +495,14 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         let user_dictionary_config = UserDictionaryConfig {
             kind: Some(DictionaryKind::CcCedict),
             path: userdic_file,
         };
 
-        let user_dictionary =
-            DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config).unwrap();
+        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -531,7 +523,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -552,7 +544,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -574,7 +566,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -595,7 +587,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -620,7 +612,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -641,7 +633,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
@@ -668,7 +660,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -689,7 +681,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config).unwrap();
+        let dictionary = load_dictionary_from_config(dictionary_config).unwrap();
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);

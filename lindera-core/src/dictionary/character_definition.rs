@@ -41,7 +41,7 @@ pub struct CategoryData {
 pub struct CategoryId(pub usize);
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct CharacterDefinitions {
+pub struct CharacterDefinition {
     pub category_definitions: Vec<CategoryData>,
     pub category_names: Vec<String>,
     pub mapping: LookupTable<CategoryId>,
@@ -77,12 +77,12 @@ impl<T: Copy + Clone> LookupTable<T> {
     }
 }
 
-impl CharacterDefinitions {
+impl CharacterDefinition {
     pub fn categories(&self) -> &[String] {
         &self.category_names[..]
     }
 
-    pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinitions> {
+    pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinition> {
         bincode::deserialize(char_def_data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
@@ -229,7 +229,7 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    pub fn build(self) -> CharacterDefinitions {
+    pub fn build(self) -> CharacterDefinition {
         let mut category_names: Vec<String> = (0..self.category_index.len())
             .map(|_| String::new())
             .collect();
@@ -237,7 +237,7 @@ impl CharacterDefinitionsBuilder {
             category_names[category_id.0] = category_name.clone();
         }
         let mapping = self.build_lookup_table();
-        CharacterDefinitions {
+        CharacterDefinition {
             category_definitions: self.category_definition,
             category_names,
             mapping,

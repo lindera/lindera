@@ -3,6 +3,7 @@ pub mod compress;
 pub mod decompress;
 pub mod dictionary;
 pub mod dictionary_builder;
+pub mod dictionary_loader;
 pub mod error;
 pub mod mode;
 

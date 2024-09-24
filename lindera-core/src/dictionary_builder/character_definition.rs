@@ -7,7 +7,7 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::decompress::Algorithm;
-use crate::dictionary::character_definition::{CharacterDefinitions, CharacterDefinitionsBuilder};
+use crate::dictionary::character_definition::{CharacterDefinition, CharacterDefinitionsBuilder};
 use crate::dictionary_builder::utils::{compress_write, read_file_with_encoding};
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
@@ -15,19 +15,15 @@ use crate::LinderaResult;
 #[derive(Builder, Debug)]
 #[builder(name = "CharDefBuilderOptions")]
 #[builder(build_fn(name = "builder"))]
-pub struct CharDefBuilder {
+pub struct CharacterDefinitionBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
     #[builder(default = "Algorithm::Deflate")]
     compress_algorithm: Algorithm,
 }
 
-impl CharDefBuilder {
-    pub fn build(
-        &self,
-        input_dir: &Path,
-        output_dir: &Path,
-    ) -> LinderaResult<CharacterDefinitions> {
+impl CharacterDefinitionBuilder {
+    pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<CharacterDefinition> {
         let char_def_path = input_dir.join("char.def");
         debug!("reading {:?}", char_def_path);
         let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;

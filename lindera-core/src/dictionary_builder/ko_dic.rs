@@ -4,7 +4,7 @@ use std::path::Path;
 use csv::StringRecord;
 
 use crate::decompress::Algorithm;
-use crate::dictionary::character_definition::CharacterDefinitions;
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;
 use crate::dictionary_builder::DictionaryBuilder;
 use crate::dictionary_builder::{
@@ -57,7 +57,7 @@ impl DictionaryBuilder for KoDicBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-    ) -> LinderaResult<CharacterDefinitions> {
+    ) -> LinderaResult<CharacterDefinition> {
         CharDefBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
@@ -68,7 +68,7 @@ impl DictionaryBuilder for KoDicBuilder {
     fn build_unk(
         &self,
         input_dir: &Path,
-        chardef: &CharacterDefinitions,
+        chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()> {
         UnkBuilderOptions::default()

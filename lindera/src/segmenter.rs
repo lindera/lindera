@@ -8,7 +8,10 @@ use lindera_core::dictionary::viterbi::Lattice;
 use lindera_core::dictionary::{Dictionary, UserDictionary};
 use lindera_core::mode::Mode;
 
-use crate::dictionary::{DictionaryConfig, DictionaryLoader, UserDictionaryConfig};
+use crate::dictionary::{
+    load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+    UserDictionaryConfig,
+};
 use crate::token::Token;
 use crate::LinderaResult;
 
@@ -222,13 +225,11 @@ impl Segmenter {
     /// user dictionary loading, or tokenization process.
     pub fn from_config(config: SegmenterConfig) -> LinderaResult<Self> {
         // Load the dictionary from the config
-        let dictionary = DictionaryLoader::load_dictionary_from_config(config.dictionary)?;
+        let dictionary = load_dictionary_from_config(config.dictionary)?;
 
         // Load the user dictionary from the config
         let user_dictionary = match config.user_dictionary {
-            Some(user_dict_conf) => Some(DictionaryLoader::load_user_dictionary_from_config(
-                user_dict_conf,
-            )?),
+            Some(user_dict_conf) => Some(load_user_dictionary_from_config(user_dict_conf)?),
             None => None,
         };
 

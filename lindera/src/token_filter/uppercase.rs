@@ -46,15 +46,14 @@ mod tests {
 
         use lindera_core::dictionary::word_entry::WordId;
 
-        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
         use crate::token_filter::uppercase::UppercaseTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let filter = UppercaseTokenFilter::default();
 
-        let dictionary =
-            DictionaryLoader::load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![Token {
             text: Cow::Borrowed("Rust"),

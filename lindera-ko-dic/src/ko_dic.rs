@@ -4,9 +4,9 @@ use std::env;
 
 #[cfg(feature = "compress")]
 use lindera_core::decompress::decompress;
-use lindera_core::dictionary::character_definition::CharacterDefinitions;
-use lindera_core::dictionary::connection::ConnectionCostMatrix;
-use lindera_core::dictionary::prefix_dict::PrefixDict;
+use lindera_core::dictionary::character_definition::CharacterDefinition;
+use lindera_core::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use lindera_core::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_core::dictionary::Dictionary;
 use lindera_core::LinderaResult;
@@ -113,9 +113,9 @@ pub fn load_dictionary() -> LinderaResult<Dictionary> {
     })
 }
 
-pub fn char_def() -> LinderaResult<CharacterDefinitions> {
+pub fn char_def() -> LinderaResult<CharacterDefinition> {
     let char_def_data = &CHAR_DEFINITION_DATA;
-    CharacterDefinitions::load(char_def_data)
+    CharacterDefinition::load(char_def_data)
 }
 
 pub fn connection() -> ConnectionCostMatrix {
@@ -130,10 +130,10 @@ pub fn connection() -> ConnectionCostMatrix {
     }
 }
 
-pub fn prefix_dict() -> PrefixDict {
+pub fn prefix_dict() -> PrefixDictionary {
     let ko_dic_data = &KO_DIC_DATA;
     let ko_dic_vals = &KO_DIC_VALS;
-    PrefixDict::from_static_slice(ko_dic_data, ko_dic_vals)
+    PrefixDictionary::from_static_slice(ko_dic_data, ko_dic_vals)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {

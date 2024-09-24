@@ -7,7 +7,7 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::decompress::Algorithm;
-use crate::dictionary::character_definition::CharacterDefinitions;
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::dictionary_builder::utils::{compress_write, read_file_with_encoding};
 use crate::error::LinderaErrorKind;
@@ -29,7 +29,7 @@ impl UnkBuilder {
     pub fn build(
         &self,
         input_dir: &Path,
-        chardef: &CharacterDefinitions,
+        chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()> {
         let unk_data_path = input_dir.join("unk.def");

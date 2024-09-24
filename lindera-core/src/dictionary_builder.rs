@@ -1,24 +1,24 @@
 pub mod cc_cedict;
-pub mod chardef;
-pub mod cost_matrix;
-pub mod dict;
+pub mod character_definition;
+pub mod connection_cost_matrix;
+pub mod dictionary;
 pub mod ipadic;
 pub mod ipadic_neologd;
 pub mod ko_dic;
 pub mod unidic;
-pub mod unk;
+pub mod unknown_dictionary;
 pub mod user_dict;
 pub mod utils;
 
-pub use chardef::CharDefBuilderOptions;
-pub use cost_matrix::CostMatrixBuilderOptions;
-pub use dict::DictBuilderOptions;
-pub use unk::UnkBuilderOptions;
+pub use character_definition::CharDefBuilderOptions;
+pub use connection_cost_matrix::CostMatrixBuilderOptions;
+pub use dictionary::DictBuilderOptions;
+pub use unknown_dictionary::UnkBuilderOptions;
 pub use user_dict::{build_user_dictionary, UserDictBuilderOptions};
 
 use std::path::Path;
 
-use crate::dictionary::character_definition::CharacterDefinitions;
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;
 use crate::LinderaResult;
 
@@ -29,11 +29,11 @@ pub trait DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-    ) -> LinderaResult<CharacterDefinitions>;
+    ) -> LinderaResult<CharacterDefinition>;
     fn build_unk(
         &self,
         input_dir: &Path,
-        chardef: &CharacterDefinitions,
+        chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()>;
     fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;

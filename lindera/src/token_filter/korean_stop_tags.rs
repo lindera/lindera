@@ -178,7 +178,7 @@ mod tests {
 
         use lindera_core::dictionary::word_entry::WordId;
 
-        use crate::dictionary::{DictionaryKind, DictionaryLoader};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
         use crate::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -221,8 +221,7 @@ mod tests {
             "#;
         let filter = KoreanStopTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
-        let dictionary =
-            DictionaryLoader::load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+        let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {

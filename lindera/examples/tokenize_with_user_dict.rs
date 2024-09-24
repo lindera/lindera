@@ -7,7 +7,8 @@ fn main() -> LinderaResult<()> {
 
         use lindera::core::mode::Mode;
         use lindera::dictionary::{
-            DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
+            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
+            DictionaryKind, UserDictionaryConfig,
         };
         use lindera::tokenizer::Tokenizer;
 
@@ -18,15 +19,14 @@ fn main() -> LinderaResult<()> {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+        let dictionary = load_dictionary_from_config(dictionary_config)?;
 
         let user_dictionary_config = UserDictionaryConfig {
             kind: Some(DictionaryKind::IPADIC),
             path: PathBuf::from("./resources/ipadic_simple_userdic.csv"),
         };
 
-        let user_dictionary =
-            DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)?;
+        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config)?;
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));

@@ -1,6 +1,6 @@
-use crate::dictionary::character_definition::{CategoryId, CharacterDefinitions};
-use crate::dictionary::connection::ConnectionCostMatrix;
-use crate::dictionary::prefix_dict::PrefixDict;
+use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
+use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::mode::Mode;
@@ -81,9 +81,9 @@ impl Lattice {
     #[inline(never)]
     pub fn set_text(
         &mut self,
-        dict: &PrefixDict,
-        user_dict: &Option<&PrefixDict>,
-        char_definitions: &CharacterDefinitions,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&PrefixDictionary>,
+        char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
         text: &str,
         search_mode: &Mode,
@@ -172,7 +172,7 @@ impl Lattice {
     #[allow(clippy::too_many_arguments)]
     fn process_unknown_word(
         &mut self,
-        char_definitions: &CharacterDefinitions,
+        char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
         category: CategoryId,
         category_ord: usize,

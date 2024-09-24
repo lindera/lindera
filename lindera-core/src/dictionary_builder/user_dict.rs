@@ -12,7 +12,7 @@ use log::debug;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use crate::dictionary::prefix_dict::PrefixDict;
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::dictionary::UserDictionary;
 use crate::error::LinderaErrorKind;
@@ -149,7 +149,7 @@ impl UserDictBuilder {
             }
         }
 
-        let dict = PrefixDict {
+        let dict = PrefixDictionary {
             da: DoubleArray::new(da_bytes),
             vals_data,
             is_system: false,
