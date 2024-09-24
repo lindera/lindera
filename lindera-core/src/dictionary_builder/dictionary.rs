@@ -173,7 +173,6 @@ impl PrefixWordDictionaryBuilder {
             File::create(wtr_words_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-
         let wtr_words_idx_path = output_dir.join(Path::new("dict.wordsidx"));
         let mut wtr_words_idx = io::BufWriter::new(
             File::create(wtr_words_idx_path)
@@ -182,6 +181,7 @@ impl PrefixWordDictionaryBuilder {
 
         let mut words_buffer = Vec::new();
         let mut words_idx_buffer = Vec::new();
+
         for row in rows.iter() {
             let offset = words_buffer.len();
             words_idx_buffer

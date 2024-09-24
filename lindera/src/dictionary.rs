@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -128,9 +127,17 @@ fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
     let unidic_vals_path = dir.join("dict.vals");
     let unidic_vals = read_file(unidic_vals_path)?;
 
+    let words_idx_data_path = dir.join("dict.wordsidx");
+    let words_idx_data = read_file(words_idx_data_path)?;
+
+    let words_data_path = dir.join("dict.words");
+    let words_data = read_file(words_data_path)?;
+
     Ok(PrefixDictionary::from_static_slice(
         unidic_data.as_slice(),
         unidic_vals.as_slice(),
+        words_idx_data.as_slice(),
+        words_data.as_slice(),
     ))
 }
 
@@ -155,24 +162,12 @@ fn unknown_dict(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
     UnknownDictionary::load(data.as_slice())
 }
 
-fn words_idx_data(dir: PathBuf) -> LinderaResult<Vec<u8>> {
-    let path = dir.join("dict.wordsidx");
-    read_file(path)
-}
-
-fn words_data(dir: PathBuf) -> LinderaResult<Vec<u8>> {
-    let path = dir.join("dict.words");
-    read_file(path)
-}
-
 pub fn load_dictionary_from_path(path: PathBuf) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
         dict: prefix_dict(path.clone())?,
         cost_matrix: connection(path.clone())?,
         char_definitions: char_def(path.clone())?,
         unknown_dictionary: unknown_dict(path.clone())?,
-        words_idx_data: Cow::Owned(words_idx_data(path.clone())?),
-        words_data: Cow::Owned(words_data(path)?),
     })
 }
 

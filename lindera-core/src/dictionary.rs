@@ -5,7 +5,7 @@ pub mod unknown_dictionary;
 pub mod viterbi;
 pub mod word_entry;
 
-use std::borrow::Cow;
+
 use std::str;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -27,27 +27,27 @@ pub struct Dictionary {
     pub cost_matrix: ConnectionCostMatrix,
     pub char_definitions: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
-    pub words_idx_data: Cow<'static, [u8]>,
-    pub words_data: Cow<'static, [u8]>,
 }
 
 impl Dictionary {
     pub fn word_details(&self, word_id: usize) -> Vec<&str> {
-        if 4 * word_id >= self.words_idx_data.len() {
+        if 4 * word_id >= self.dict.words_idx_data.len() {
             return vec![];
         }
 
-        let idx: usize =
-            match LittleEndian::read_u32(&self.words_idx_data[4 * word_id..][..4]).try_into() {
-                Ok(value) => value,
-                Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
-            };
-        let data = &self.words_data[idx..];
+        let idx: usize = match LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4])
+            .try_into()
+        {
+            Ok(value) => value,
+            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+        };
+        let data = &self.dict.words_data[idx..];
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,
             Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
         };
-        let joined_details_bytes: &[u8] = &self.words_data[idx + 4..idx + 4 + joined_details_len];
+        let joined_details_bytes: &[u8] =
+            &self.dict.words_data[idx + 4..idx + 4 + joined_details_len];
 
         let mut details = Vec::new();
         for bytes in joined_details_bytes.split(|&b| b == 0) {
@@ -64,8 +64,6 @@ impl Dictionary {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserDictionary {
     pub dict: PrefixDictionary<Vec<u8>>,
-    pub words_idx_data: Vec<u8>,
-    pub words_data: Vec<u8>,
 }
 
 impl UserDictionary {
@@ -75,11 +73,11 @@ impl UserDictionary {
     }
 
     pub fn word_details(&self, word_id: usize) -> Vec<&str> {
-        if 4 * word_id >= self.words_idx_data.len() {
+        if 4 * word_id >= self.dict.words_idx_data.len() {
             return UNK.to_vec(); // return empty vector if conversion fails
         }
-        let idx = LittleEndian::read_u32(&self.words_idx_data[4 * word_id..][..4]);
-        let data = &self.words_data[idx as usize..];
+        let idx = LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4]);
+        let data = &self.dict.words_data[idx as usize..];
         match bincode::deserialize(data) {
             Ok(details) => details,
             Err(_) => UNK.to_vec(), // return empty vector if conversion fails

@@ -15,18 +15,26 @@ where
 pub struct PrefixDictionary<Data = Vec<u8>> {
     #[serde(with = "DoubleArrayDef")]
     pub da: DoubleArray<Vec<u8>>,
-
     pub vals_data: Data,
+    pub words_idx_data: Vec<u8>,
+    pub words_data: Vec<u8>,
     pub is_system: bool,
 }
 
 impl PrefixDictionary<&[u8]> {
-    pub fn from_static_slice(da_data: &[u8], vals_data: &[u8]) -> PrefixDictionary {
+    pub fn from_static_slice(
+        da_data: &[u8],
+        vals_data: &[u8],
+        words_idx_data: &[u8],
+        words_data: &[u8],
+    ) -> PrefixDictionary {
         let da = DoubleArray::new(da_data.to_vec());
 
         PrefixDictionary {
             da,
             vals_data: vals_data.to_vec(),
+            words_idx_data: words_idx_data.to_vec(),
+            words_data: words_data.to_vec(),
             is_system: true,
         }
     }

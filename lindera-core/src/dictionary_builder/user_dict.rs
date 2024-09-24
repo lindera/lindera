@@ -152,14 +152,12 @@ impl UserDictBuilder {
         let dict = PrefixDictionary {
             da: DoubleArray::new(da_bytes),
             vals_data,
+            words_idx_data,
+            words_data,
             is_system: false,
         };
 
-        Ok(UserDictionary {
-            dict,
-            words_idx_data,
-            words_data,
-        })
+        Ok(UserDictionary { dict })
     }
 }
 

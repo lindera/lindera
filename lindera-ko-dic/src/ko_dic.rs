@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 #[cfg(feature = "ko-dic")]
 use std::env;
 
@@ -108,8 +107,6 @@ pub fn load_dictionary() -> LinderaResult<Dictionary> {
         cost_matrix: connection(),
         char_definitions: char_def()?,
         unknown_dictionary: unknown_dict()?,
-        words_idx_data: words_idx_data(),
-        words_data: words_data(),
     })
 }
 
@@ -133,34 +130,12 @@ pub fn connection() -> ConnectionCostMatrix {
 pub fn prefix_dict() -> PrefixDictionary {
     let ko_dic_data = &KO_DIC_DATA;
     let ko_dic_vals = &KO_DIC_VALS;
-    PrefixDictionary::from_static_slice(ko_dic_data, ko_dic_vals)
+    let words_idx_data = &WORDS_IDX_DATA;
+    let words_data = &WORDS_DATA;
+    PrefixDictionary::from_static_slice(ko_dic_data, ko_dic_vals, words_idx_data, words_data)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
     let unknown_data = &UNKNOWN_DATA;
     UnknownDictionary::load(unknown_data)
-}
-
-pub fn words_idx_data() -> Cow<'static, [u8]> {
-    let words_idx_data = &WORDS_IDX_DATA;
-    #[cfg(feature = "compress")]
-    {
-        Cow::Owned(words_idx_data.to_vec())
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        Cow::Borrowed(words_idx_data)
-    }
-}
-
-pub fn words_data() -> Cow<'static, [u8]> {
-    let words_data = &WORDS_DATA;
-    #[cfg(feature = "compress")]
-    {
-        Cow::Owned(words_data.to_vec())
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        Cow::Borrowed(words_data)
-    }
 }
