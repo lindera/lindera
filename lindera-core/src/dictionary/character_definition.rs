@@ -229,7 +229,7 @@ impl CharacterDefinitionsBuilder {
         Ok(())
     }
 
-    pub fn build(self) -> CharacterDefinition {
+    pub fn load(self) -> CharacterDefinition {
         let mut category_names: Vec<String> = (0..self.category_index.len())
             .map(|_| String::new())
             .collect();

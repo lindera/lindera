@@ -30,7 +30,7 @@ impl CharacterDefinitionBuilder {
 
         let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
         char_definitions_builder.parse(&char_def)?;
-        let char_definitions = char_definitions_builder.build();
+        let char_definitions = char_definitions_builder.load();
 
         let mut chardef_buffer = Vec::new();
         bincode::serialize_into(&mut chardef_buffer, &char_definitions)
