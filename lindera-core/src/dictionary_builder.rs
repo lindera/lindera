@@ -7,14 +7,14 @@ pub mod ko_dic;
 pub mod prefix_dictionary;
 pub mod unidic;
 pub mod unknown_dictionary;
-pub mod user_dict;
+pub mod user_dictionary;
 pub mod utils;
 
 pub use character_definition::CharDefBuilderOptions;
 pub use connection_cost_matrix::CostMatrixBuilderOptions;
 pub use prefix_dictionary::DictBuilderOptions;
 pub use unknown_dictionary::UnkBuilderOptions;
-pub use user_dict::{build_user_dictionary, UserDictBuilderOptions};
+pub use user_dictionary::{build_user_dictionary, UserDictBuilderOptions};
 
 use std::path::Path;
 

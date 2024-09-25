@@ -24,7 +24,7 @@ type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<V
 #[builder(pattern = "owned")]
 #[builder(name = "UserDictBuilderOptions")]
 #[builder(build_fn(name = "builder"))]
-pub struct UserDictBuilder {
+pub struct UserDictionaryBuilder {
     #[builder(default = "3")]
     simple_userdic_fields_num: usize,
     #[builder(default = "4")]
@@ -39,7 +39,7 @@ pub struct UserDictBuilder {
     simple_userdic_details_handler: StringRecordProcessor,
 }
 
-impl UserDictBuilder {
+impl UserDictionaryBuilder {
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {:?}", input_file);
 
