@@ -22,7 +22,7 @@ type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<V
 
 #[derive(Builder)]
 #[builder(pattern = "owned")]
-#[builder(name = "UserDictBuilderOptions")]
+#[builder(name = UserDictionaryBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
 pub struct UserDictionaryBuilder {
     #[builder(default = "3")]

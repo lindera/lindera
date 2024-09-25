@@ -8,8 +8,8 @@ use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;
 use crate::dictionary_builder::DictionaryBuilder;
 use crate::dictionary_builder::{
-    build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
-    UnkBuilderOptions, UserDictBuilderOptions,
+    build_user_dictionary, CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions,
+    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions, UserDictionaryBuilderOptions,
 };
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
@@ -58,7 +58,7 @@ impl DictionaryBuilder for UnidicBuilder {
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinition> {
-        CharDefBuilderOptions::default()
+        CharacterDefinitionBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -71,7 +71,7 @@ impl DictionaryBuilder for UnidicBuilder {
         chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()> {
-        UnkBuilderOptions::default()
+        UnknownDictionaryBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .unk_fields_num(UNK_FIELDS_NUM)
             .builder()
@@ -80,7 +80,7 @@ impl DictionaryBuilder for UnidicBuilder {
     }
 
     fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        DictBuilderOptions::default()
+        PrefixDictionaryBuilderOptions::default()
             .flexible_csv(false)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
@@ -88,8 +88,12 @@ impl DictionaryBuilder for UnidicBuilder {
             .build(input_dir, output_dir)
     }
 
-    fn build_connection_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        CostMatrixBuilderOptions::default()
+    fn build_connection_cost_matrix(
+        &self,
+        input_dir: &Path,
+        output_dir: &Path,
+    ) -> LinderaResult<()> {
+        ConnectionCostMatrixBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -97,7 +101,7 @@ impl DictionaryBuilder for UnidicBuilder {
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        UserDictBuilderOptions::default()
+        UserDictionaryBuilderOptions::default()
             .simple_userdic_fields_num(SIMPLE_USERDIC_FIELDS_NUM)
             .detailed_userdic_fields_num(DETAILED_USERDIC_FIELDS_NUM)
             .simple_word_cost(SIMPLE_WORD_COST)

@@ -23,7 +23,7 @@ use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "DictBuilderOptions")]
+#[builder(name = PrefixDictionaryBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
 pub struct PrefixDictionaryBuilder {
     #[builder(default = "true")]

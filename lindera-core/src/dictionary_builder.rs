@@ -10,11 +10,11 @@ pub mod unknown_dictionary;
 pub mod user_dictionary;
 pub mod utils;
 
-pub use character_definition::CharDefBuilderOptions;
-pub use connection_cost_matrix::CostMatrixBuilderOptions;
-pub use prefix_dictionary::DictBuilderOptions;
-pub use unknown_dictionary::UnkBuilderOptions;
-pub use user_dictionary::{build_user_dictionary, UserDictBuilderOptions};
+pub use character_definition::CharacterDefinitionBuilderOptions;
+pub use connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
+pub use prefix_dictionary::PrefixDictionaryBuilderOptions;
+pub use unknown_dictionary::UnknownDictionaryBuilderOptions;
+pub use user_dictionary::{build_user_dictionary, UserDictionaryBuilderOptions};
 
 use std::path::Path;
 
@@ -37,6 +37,10 @@ pub trait DictionaryBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()>;
     fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
-    fn build_connection_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
+    fn build_connection_cost_matrix(
+        &self,
+        input_dir: &Path,
+        output_dir: &Path,
+    ) -> LinderaResult<()>;
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary>;
 }

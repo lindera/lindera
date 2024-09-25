@@ -13,7 +13,7 @@ use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "CharDefBuilderOptions")]
+#[builder(name = CharacterDefinitionBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
 pub struct CharacterDefinitionBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]

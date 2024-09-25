@@ -14,7 +14,7 @@ use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "UnkBuilderOptions")]
+#[builder(name = UnknownDictionaryBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
 pub struct UnknownDictionaryBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]

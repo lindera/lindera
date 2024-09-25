@@ -14,7 +14,7 @@ use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "CostMatrixBuilderOptions")]
+#[builder(name = ConnectionCostMatrixBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
 pub struct ConnectionCostMatrixBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
