@@ -138,7 +138,7 @@ pub fn prefix_dict() -> PrefixDictionary {
     let cc_cedict_vals = &CC_CEDICT_VALS;
     let words_idx_data = &WORDS_IDX_DATA;
     let words_data = &WORDS_DATA;
-    PrefixDictionary::from_static_slice(cc_cedict_data, cc_cedict_vals, words_idx_data, words_data)
+    PrefixDictionary::load(cc_cedict_data, cc_cedict_vals, words_idx_data, words_data)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {

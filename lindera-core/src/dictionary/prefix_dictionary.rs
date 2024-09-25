@@ -22,7 +22,7 @@ pub struct PrefixDictionary<Data = Vec<u8>> {
 }
 
 impl PrefixDictionary<&[u8]> {
-    pub fn from_static_slice(
+    pub fn load(
         da_data: &[u8],
         vals_data: &[u8],
         words_idx_data: &[u8],

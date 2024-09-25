@@ -13,7 +13,7 @@ impl PrefixDictionaryLoader {
         let words_idx_data = read_file(input_dir.join("words_idx.bin").as_path())?;
         let words_data = read_file(input_dir.join("words.bin").as_path())?;
 
-        Ok(PrefixDictionary::from_static_slice(
+        Ok(PrefixDictionary::load(
             da_data.as_slice(),
             vals_data.as_slice(),
             words_idx_data.as_slice(),

@@ -132,7 +132,7 @@ pub fn prefix_dict() -> PrefixDictionary {
     let ko_dic_vals = &KO_DIC_VALS;
     let words_idx_data = &WORDS_IDX_DATA;
     let words_data = &WORDS_DATA;
-    PrefixDictionary::from_static_slice(ko_dic_data, ko_dic_vals, words_idx_data, words_data)
+    PrefixDictionary::load(ko_dic_data, ko_dic_vals, words_idx_data, words_data)
 }
 
 pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {

@@ -40,13 +40,6 @@ pub struct CategoryData {
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Copy, PartialOrd, Ord, Eq, PartialEq)]
 pub struct CategoryId(pub usize);
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct CharacterDefinition {
-    pub category_definitions: Vec<CategoryData>,
-    pub category_names: Vec<String>,
-    pub mapping: LookupTable<CategoryId>,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LookupTable<T: Copy + Clone> {
     boundaries: Vec<u32>,
@@ -75,6 +68,13 @@ impl<T: Copy + Clone> LookupTable<T> {
             .unwrap_or_else(|val| val - 1);
         &self.values[idx][..]
     }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CharacterDefinition {
+    pub category_definitions: Vec<CategoryData>,
+    pub category_names: Vec<String>,
+    pub mapping: LookupTable<CategoryId>,
 }
 
 impl CharacterDefinition {

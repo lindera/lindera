@@ -133,7 +133,7 @@ fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
     let dict_words_path = dir.join("dict.words");
     let dict_words = read_file(dict_words_path)?;
 
-    Ok(PrefixDictionary::from_static_slice(
+    Ok(PrefixDictionary::load(
         dict_da.as_slice(),
         dict_vals.as_slice(),
         dict_wordsidx.as_slice(),
