@@ -40,10 +40,10 @@ impl DictionaryBuilder for KoDicBuilder {
         fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-        let chardef = self.build_chardef(input_dir, output_dir).unwrap();
-        self.build_unk(input_dir, &chardef, output_dir).unwrap();
-        self.build_dict(input_dir, output_dir).unwrap();
-        self.build_cost_matrix(input_dir, output_dir).unwrap();
+        let chardef = self.build_character_definition(input_dir, output_dir).unwrap();
+        self.build_unknown_dictionary(input_dir, &chardef, output_dir).unwrap();
+        self.build_prefix_dictionary(input_dir, output_dir).unwrap();
+        self.build_connection_cost_matrix(input_dir, output_dir).unwrap();
 
         Ok(())
     }
@@ -53,7 +53,7 @@ impl DictionaryBuilder for KoDicBuilder {
         build_user_dictionary(user_dict, output_file)
     }
 
-    fn build_chardef(
+    fn build_character_definition(
         &self,
         input_dir: &Path,
         output_dir: &Path,
@@ -65,7 +65,7 @@ impl DictionaryBuilder for KoDicBuilder {
             .build(input_dir, output_dir)
     }
 
-    fn build_unk(
+    fn build_unknown_dictionary(
         &self,
         input_dir: &Path,
         chardef: &CharacterDefinition,
@@ -79,7 +79,7 @@ impl DictionaryBuilder for KoDicBuilder {
             .build(input_dir, chardef, output_dir)
     }
 
-    fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+    fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         DictBuilderOptions::default()
             .flexible_csv(false)
             .compress_algorithm(COMPRESS_ALGORITHM)
@@ -88,7 +88,7 @@ impl DictionaryBuilder for KoDicBuilder {
             .build(input_dir, output_dir)
     }
 
-    fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+    fn build_connection_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         CostMatrixBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()

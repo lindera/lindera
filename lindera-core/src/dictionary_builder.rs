@@ -25,18 +25,18 @@ use crate::LinderaResult;
 pub trait DictionaryBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
     fn build_user_dictionary(&self, input_path: &Path, output_path: &Path) -> LinderaResult<()>;
-    fn build_chardef(
+    fn build_character_definition(
         &self,
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinition>;
-    fn build_unk(
+    fn build_unknown_dictionary(
         &self,
         input_dir: &Path,
         chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()>;
-    fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
-    fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
+    fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
+    fn build_connection_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary>;
 }
