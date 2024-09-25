@@ -16,7 +16,7 @@ use crate::LinderaResult;
 #[derive(Builder, Debug)]
 #[builder(name = "UnkBuilderOptions")]
 #[builder(build_fn(name = "builder"))]
-pub struct UnkBuilder {
+pub struct UnknownDictionaryBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
     #[builder(default = "Algorithm::Deflate")]
@@ -25,7 +25,7 @@ pub struct UnkBuilder {
     unk_fields_num: usize,
 }
 
-impl UnkBuilder {
+impl UnknownDictionaryBuilder {
     pub fn build(
         &self,
         input_dir: &Path,

@@ -1,10 +1,10 @@
 pub mod cc_cedict;
 pub mod character_definition;
 pub mod connection_cost_matrix;
-pub mod dictionary;
 pub mod ipadic;
 pub mod ipadic_neologd;
 pub mod ko_dic;
+pub mod prefix_dictionary;
 pub mod unidic;
 pub mod unknown_dictionary;
 pub mod user_dict;
@@ -12,7 +12,7 @@ pub mod utils;
 
 pub use character_definition::CharDefBuilderOptions;
 pub use connection_cost_matrix::CostMatrixBuilderOptions;
-pub use dictionary::DictBuilderOptions;
+pub use prefix_dictionary::DictBuilderOptions;
 pub use unknown_dictionary::UnkBuilderOptions;
 pub use user_dict::{build_user_dictionary, UserDictBuilderOptions};
 
