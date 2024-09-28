@@ -9,8 +9,8 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::decompress::Algorithm;
-use crate::dictionary_builder::utils::{compress_write, read_file_with_encoding};
 use crate::error::LinderaErrorKind;
+use crate::util::{compress_write, read_file_with_encoding};
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]

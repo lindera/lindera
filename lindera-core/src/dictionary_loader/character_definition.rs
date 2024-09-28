@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::dictionary::character_definition::CharacterDefinition;
-use crate::dictionary_builder::utils::read_file;
+use crate::util::read_file;
 use crate::LinderaResult;
 
 pub struct CharacterDefinitionLoader {}

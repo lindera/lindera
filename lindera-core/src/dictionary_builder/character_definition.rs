@@ -13,8 +13,8 @@ use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::{
     CategoryData, CategoryId, CharacterDefinition, LookupTable,
 };
-use crate::dictionary_builder::utils::{compress_write, read_file_with_encoding};
 use crate::error::LinderaErrorKind;
+use crate::util::{compress_write, read_file_with_encoding};
 use crate::LinderaResult;
 
 const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";

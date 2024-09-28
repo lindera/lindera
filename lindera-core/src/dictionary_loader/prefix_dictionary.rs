@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
-use crate::dictionary_builder::utils::read_file;
+use crate::util::read_file;
 use crate::LinderaResult;
 
 pub struct PrefixDictionaryLoader {}

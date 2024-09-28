@@ -8,7 +8,6 @@ pub mod prefix_dictionary;
 pub mod unidic;
 pub mod unknown_dictionary;
 pub mod user_dictionary;
-pub mod utils;
 
 pub use character_definition::CharacterDefinitionBuilderOptions;
 pub use connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
