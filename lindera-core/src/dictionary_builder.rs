@@ -9,13 +9,13 @@ pub mod unidic;
 pub mod unknown_dictionary;
 pub mod user_dictionary;
 
+use std::path::Path;
+
 pub use character_definition::CharacterDefinitionBuilderOptions;
 pub use connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
 pub use prefix_dictionary::PrefixDictionaryBuilderOptions;
 pub use unknown_dictionary::UnknownDictionaryBuilderOptions;
 pub use user_dictionary::{build_user_dictionary, UserDictionaryBuilderOptions};
-
-use std::path::Path;
 
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;

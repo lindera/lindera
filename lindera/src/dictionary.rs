@@ -1,7 +1,7 @@
-use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use lindera_core::util::read_file;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -116,22 +116,18 @@ pub fn resolve_builder(
     }
 }
 
-fn read_file(path: PathBuf) -> LinderaResult<Vec<u8>> {
-    fs::read(path).map_err(|e| LinderaErrorKind::Io.with_error(e))
-}
-
-fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
+fn load_prefix_dictionary(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
     let dict_da_path = dir.join("dict.da");
-    let dict_da = read_file(dict_da_path)?;
+    let dict_da = read_file(dict_da_path.as_path())?;
 
     let dict_vals_path = dir.join("dict.vals");
-    let dict_vals = read_file(dict_vals_path)?;
+    let dict_vals = read_file(dict_vals_path.as_path())?;
 
     let dict_wordsidx_path = dir.join("dict.wordsidx");
-    let dict_wordsidx = read_file(dict_wordsidx_path)?;
+    let dict_wordsidx = read_file(dict_wordsidx_path.as_path())?;
 
     let dict_words_path = dir.join("dict.words");
-    let dict_words = read_file(dict_words_path)?;
+    let dict_words = read_file(dict_words_path.as_path())?;
 
     Ok(PrefixDictionary::load(
         dict_da.as_slice(),
@@ -141,33 +137,33 @@ fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
     ))
 }
 
-fn connection(dir: PathBuf) -> LinderaResult<ConnectionCostMatrix> {
+fn load_connection_cost_matrix(dir: PathBuf) -> LinderaResult<ConnectionCostMatrix> {
     let path = dir.join("matrix.mtx");
-    let data = read_file(path)?;
+    let data = read_file(path.as_path())?;
 
     Ok(ConnectionCostMatrix::load(data.as_slice()))
 }
 
-fn char_def(dir: PathBuf) -> LinderaResult<CharacterDefinition> {
+fn load_character_definition(dir: PathBuf) -> LinderaResult<CharacterDefinition> {
     let path = dir.join("char_def.bin");
-    let data = read_file(path)?;
+    let data = read_file(path.as_path())?;
 
     CharacterDefinition::load(data.as_slice())
 }
 
-fn unknown_dict(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
+fn load_unknown_dictionary(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
     let path = dir.join("unk.bin");
-    let data = read_file(path)?;
+    let data = read_file(path.as_path())?;
 
     UnknownDictionary::load(data.as_slice())
 }
 
 pub fn load_dictionary_from_path(path: PathBuf) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        prefix_dictionary: prefix_dict(path.clone())?,
-        connection_cost_matrix: connection(path.clone())?,
-        character_definition: char_def(path.clone())?,
-        unknown_dictionary: unknown_dict(path.clone())?,
+        prefix_dictionary: load_prefix_dictionary(path.clone())?,
+        connection_cost_matrix: load_connection_cost_matrix(path.clone())?,
+        character_definition: load_character_definition(path.clone())?,
+        unknown_dictionary: load_unknown_dictionary(path.clone())?,
     })
 }
 
@@ -227,7 +223,7 @@ pub fn load_user_dictionary_from_csv(
 }
 
 pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDictionary> {
-    UserDictionary::load(&read_file(path)?)
+    UserDictionary::load(&read_file(path.as_path())?)
 }
 
 pub fn load_user_dictionary_from_config(
