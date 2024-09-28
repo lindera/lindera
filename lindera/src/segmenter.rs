@@ -315,14 +315,14 @@ impl Segmenter {
             }
 
             lattice.set_text(
-                &self.dictionary.dict,
+                &self.dictionary.prefix_dictionary,
                 &self.user_dictionary.as_ref().map(|d| &d.dict),
-                &self.dictionary.char_definitions,
+                &self.dictionary.character_definition,
                 &self.dictionary.unknown_dictionary,
                 sentence,
                 &self.mode,
             );
-            lattice.calculate_path_costs(&self.dictionary.cost_matrix, &self.mode);
+            lattice.calculate_path_costs(&self.dictionary.connection_cost_matrix, &self.mode);
 
             let offsets = lattice.tokens_offset();
 

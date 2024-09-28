@@ -22,31 +22,33 @@ pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {
-    pub dict: PrefixDictionary<Vec<u8>>,
-    pub cost_matrix: ConnectionCostMatrix,
-    pub char_definitions: CharacterDefinition,
+    pub prefix_dictionary: PrefixDictionary<Vec<u8>>,
+    pub connection_cost_matrix: ConnectionCostMatrix,
+    pub character_definition: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
 }
 
 impl Dictionary {
     pub fn word_details(&self, word_id: usize) -> Vec<&str> {
-        if 4 * word_id >= self.dict.words_idx_data.len() {
+        if 4 * word_id >= self.prefix_dictionary.words_idx_data.len() {
             return vec![];
         }
 
-        let idx: usize = match LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4])
-            .try_into()
+        let idx: usize = match LittleEndian::read_u32(
+            &self.prefix_dictionary.words_idx_data[4 * word_id..][..4],
+        )
+        .try_into()
         {
             Ok(value) => value,
             Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
         };
-        let data = &self.dict.words_data[idx..];
+        let data = &self.prefix_dictionary.words_data[idx..];
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,
             Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
         };
         let joined_details_bytes: &[u8] =
-            &self.dict.words_data[idx + 4..idx + 4 + joined_details_len];
+            &self.prefix_dictionary.words_data[idx + 4..idx + 4 + joined_details_len];
 
         let mut details = Vec::new();
         for bytes in joined_details_bytes.split(|&b| b == 0) {

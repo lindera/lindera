@@ -101,21 +101,21 @@ decompress_data!(
 #[cfg(not(feature = "ko-dic"))]
 decompress_data!(WORDS_DATA, &[], "dict.words");
 
-pub fn load_dictionary() -> LinderaResult<Dictionary> {
+pub fn load() -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        dict: prefix_dict(),
-        cost_matrix: connection(),
-        char_definitions: char_def()?,
-        unknown_dictionary: unknown_dict()?,
+        prefix_dictionary: load_prefix_dictionary(),
+        connection_cost_matrix: load_connection_cost_matrix(),
+        character_definition: load_character_definition()?,
+        unknown_dictionary: load_unknown_dictionary()?,
     })
 }
 
-pub fn char_def() -> LinderaResult<CharacterDefinition> {
+fn load_character_definition() -> LinderaResult<CharacterDefinition> {
     let char_def_data = &CHAR_DEFINITION_DATA;
     CharacterDefinition::load(char_def_data)
 }
 
-pub fn connection() -> ConnectionCostMatrix {
+fn load_connection_cost_matrix() -> ConnectionCostMatrix {
     let connection_data = &CONNECTION_DATA;
     #[cfg(feature = "compress")]
     {
@@ -127,7 +127,7 @@ pub fn connection() -> ConnectionCostMatrix {
     }
 }
 
-pub fn prefix_dict() -> PrefixDictionary {
+fn load_prefix_dictionary() -> PrefixDictionary {
     let ko_dic_data = &KO_DIC_DATA;
     let ko_dic_vals = &KO_DIC_VALS;
     let words_idx_data = &WORDS_IDX_DATA;
@@ -135,7 +135,7 @@ pub fn prefix_dict() -> PrefixDictionary {
     PrefixDictionary::load(ko_dic_data, ko_dic_vals, words_idx_data, words_data)
 }
 
-pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
+fn load_unknown_dictionary() -> LinderaResult<UnknownDictionary> {
     let unknown_data = &UNKNOWN_DATA;
     UnknownDictionary::load(unknown_data)
 }

@@ -1,15 +1,14 @@
 #[cfg(feature = "ipadic")]
 use std::env;
 
+#[cfg(feature = "compress")]
+use lindera_core::decompress::decompress;
 use lindera_core::dictionary::character_definition::CharacterDefinition;
 use lindera_core::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_core::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_core::dictionary::Dictionary;
 use lindera_core::LinderaResult;
-
-#[cfg(feature = "compress")]
-use lindera_core::decompress::decompress;
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
@@ -102,21 +101,21 @@ decompress_data!(
 #[cfg(not(feature = "ipadic"))]
 decompress_data!(WORDS_DATA, &[], "dict.words");
 
-pub fn load_dictionary() -> LinderaResult<Dictionary> {
+pub fn load() -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        dict: prefix_dict(),
-        cost_matrix: connection(),
-        char_definitions: char_def()?,
-        unknown_dictionary: unknown_dict()?,
+        prefix_dictionary: load_prefix_dictionary(),
+        connection_cost_matrix: load_connection_cost_matrix(),
+        character_definition: load_character_definition()?,
+        unknown_dictionary: load_unknown_dictionary()?,
     })
 }
 
-pub fn char_def() -> LinderaResult<CharacterDefinition> {
+fn load_character_definition() -> LinderaResult<CharacterDefinition> {
     let char_def_data = &CHAR_DEFINITION_DATA;
     CharacterDefinition::load(char_def_data)
 }
 
-pub fn connection() -> ConnectionCostMatrix {
+fn load_connection_cost_matrix() -> ConnectionCostMatrix {
     let connection_data = &CONNECTION_DATA;
     #[cfg(feature = "compress")]
     {
@@ -128,7 +127,7 @@ pub fn connection() -> ConnectionCostMatrix {
     }
 }
 
-pub fn prefix_dict() -> PrefixDictionary {
+fn load_prefix_dictionary() -> PrefixDictionary {
     let ipadic_data = &IPADIC_DATA;
     let ipadic_vals = &IPADIC_VALS;
     let words_idx_data = &WORDS_IDX_DATA;
@@ -136,7 +135,7 @@ pub fn prefix_dict() -> PrefixDictionary {
     PrefixDictionary::load(ipadic_data, ipadic_vals, words_idx_data, words_data)
 }
 
-pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
+fn load_unknown_dictionary() -> LinderaResult<UnknownDictionary> {
     let unknown_data = &UNKNOWN_DATA;
     UnknownDictionary::load(unknown_data)
 }

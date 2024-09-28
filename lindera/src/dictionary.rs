@@ -164,9 +164,9 @@ fn unknown_dict(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
 
 pub fn load_dictionary_from_path(path: PathBuf) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        dict: prefix_dict(path.clone())?,
-        cost_matrix: connection(path.clone())?,
-        char_definitions: char_def(path.clone())?,
+        prefix_dictionary: prefix_dict(path.clone())?,
+        connection_cost_matrix: connection(path.clone())?,
+        character_definition: char_def(path.clone())?,
         unknown_dictionary: unknown_dict(path.clone())?,
     })
 }
@@ -175,19 +175,19 @@ pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictiona
     // The dictionary specified by the feature flag will be loaded.
     match kind {
         #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => lindera_ipadic::ipadic::load_dictionary()
+        DictionaryKind::IPADIC => lindera_ipadic::ipadic::load()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[cfg(feature = "ipadic-neologd")]
-        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load_dictionary()
+        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => lindera_unidic::unidic::load_dictionary()
+        DictionaryKind::UniDic => lindera_unidic::unidic::load()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load_dictionary()
+        DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load_dictionary()
+        DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load()
             .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
         #[allow(unreachable_patterns)]
         _ => Err(LinderaErrorKind::Args
