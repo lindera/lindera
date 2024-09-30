@@ -7,7 +7,7 @@ use crate::LinderaResult;
 pub struct UnknownDictionaryLoader {}
 
 impl UnknownDictionaryLoader {
-    pub fn load(&self, input_dir: &Path) -> LinderaResult<UnknownDictionary> {
+    pub fn load(input_dir: &Path) -> LinderaResult<UnknownDictionary> {
         let path = input_dir.join("unk.bin");
         let data = read_file(path.as_path())?;
 

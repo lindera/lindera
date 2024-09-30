@@ -7,7 +7,7 @@ use crate::LinderaResult;
 pub struct PrefixDictionaryLoader {}
 
 impl PrefixDictionaryLoader {
-    pub fn load(&self, input_dir: &Path) -> LinderaResult<PrefixDictionary> {
+    pub fn load(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
         let da_data = read_file(input_dir.join("da.bin").as_path())?;
         let vals_data = read_file(input_dir.join("vals.bin").as_path())?;
         let words_idx_data = read_file(input_dir.join("words_idx.bin").as_path())?;

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use lindera_core::util::read_file;
@@ -6,10 +6,6 @@ use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use lindera_core::dictionary::character_definition::CharacterDefinition;
-use lindera_core::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use lindera_core::dictionary::prefix_dictionary::PrefixDictionary;
-use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_core::dictionary::{Dictionary, UserDictionary};
 use lindera_core::dictionary_builder::cc_cedict::CcCedictBuilder;
 use lindera_core::dictionary_builder::ipadic::IpadicBuilder;
@@ -17,6 +13,10 @@ use lindera_core::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
 use lindera_core::dictionary_builder::ko_dic::KoDicBuilder;
 use lindera_core::dictionary_builder::unidic::UnidicBuilder;
 use lindera_core::dictionary_builder::DictionaryBuilder;
+use lindera_core::dictionary_loader::character_definition::CharacterDefinitionLoader;
+use lindera_core::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
+use lindera_core::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
+use lindera_core::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_core::error::{LinderaError, LinderaErrorKind};
 use lindera_core::LinderaResult;
 
@@ -116,54 +116,12 @@ pub fn resolve_builder(
     }
 }
 
-fn load_prefix_dictionary(dir: PathBuf) -> LinderaResult<PrefixDictionary> {
-    let dict_da_path = dir.join("dict.da");
-    let dict_da = read_file(dict_da_path.as_path())?;
-
-    let dict_vals_path = dir.join("dict.vals");
-    let dict_vals = read_file(dict_vals_path.as_path())?;
-
-    let dict_wordsidx_path = dir.join("dict.wordsidx");
-    let dict_wordsidx = read_file(dict_wordsidx_path.as_path())?;
-
-    let dict_words_path = dir.join("dict.words");
-    let dict_words = read_file(dict_words_path.as_path())?;
-
-    Ok(PrefixDictionary::load(
-        dict_da.as_slice(),
-        dict_vals.as_slice(),
-        dict_wordsidx.as_slice(),
-        dict_words.as_slice(),
-    ))
-}
-
-fn load_connection_cost_matrix(dir: PathBuf) -> LinderaResult<ConnectionCostMatrix> {
-    let path = dir.join("matrix.mtx");
-    let data = read_file(path.as_path())?;
-
-    Ok(ConnectionCostMatrix::load(data.as_slice()))
-}
-
-fn load_character_definition(dir: PathBuf) -> LinderaResult<CharacterDefinition> {
-    let path = dir.join("char_def.bin");
-    let data = read_file(path.as_path())?;
-
-    CharacterDefinition::load(data.as_slice())
-}
-
-fn load_unknown_dictionary(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
-    let path = dir.join("unk.bin");
-    let data = read_file(path.as_path())?;
-
-    UnknownDictionary::load(data.as_slice())
-}
-
-pub fn load_dictionary_from_path(path: PathBuf) -> LinderaResult<Dictionary> {
+pub fn load_dictionary_from_path(path: &Path) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        prefix_dictionary: load_prefix_dictionary(path.clone())?,
-        connection_cost_matrix: load_connection_cost_matrix(path.clone())?,
-        character_definition: load_character_definition(path.clone())?,
-        unknown_dictionary: load_unknown_dictionary(path.clone())?,
+        prefix_dictionary: PrefixDictionaryLoader::load(path)?,
+        connection_cost_matrix: ConnectionCostMatrixLoader::load(path)?,
+        character_definition: CharacterDefinitionLoader::load(path)?,
+        unknown_dictionary: UnknownDictionaryLoader::load(path)?,
     })
 }
 
@@ -203,7 +161,7 @@ pub fn load_dictionary_from_config(
             match dictionary_config.path {
                 Some(path) => {
                     // load external dictionary from path
-                    load_dictionary_from_path(path)
+                    load_dictionary_from_path(path.as_path())
                 }
                 None => Err(LinderaErrorKind::Args
                     .with_error(anyhow::anyhow!("Dictionary must be specified"))),

@@ -7,7 +7,7 @@ use crate::LinderaResult;
 pub struct CharacterDefinitionLoader {}
 
 impl CharacterDefinitionLoader {
-    pub fn load(&self, input_dir: &Path) -> LinderaResult<CharacterDefinition> {
+    pub fn load(input_dir: &Path) -> LinderaResult<CharacterDefinition> {
         let path = input_dir.join("char_def.bin");
         let data = read_file(path.as_path())?;
 

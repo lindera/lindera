@@ -7,7 +7,7 @@ use crate::LinderaResult;
 pub struct ConnectionCostMatrixLoader {}
 
 impl ConnectionCostMatrixLoader {
-    pub fn load(&self, dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
+    pub fn load(dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
         let path = dir.join("matrix.mtx");
         let data = read_file(path.as_path())?;
 
