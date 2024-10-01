@@ -50,7 +50,7 @@ decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
 
 #[cfg(feature = "ipadic-neologd")]
 decompress_data!(
-    IPADIC_DATA,
+    DA_DATA,
     include_bytes!(concat!(
         env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/dict.da"
@@ -62,7 +62,7 @@ decompress_data!(IPADIC_DATA, &[], "dict.da");
 
 #[cfg(feature = "ipadic-neologd")]
 decompress_data!(
-    IPADIC_VALS,
+    VALS_DATA,
     include_bytes!(concat!(
         env!("LINDERA_WORKDIR"),
         "/lindera-ipadic-neologd/dict.vals"
@@ -110,39 +110,14 @@ decompress_data!(WORDS_DATA, &[], "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        prefix_dictionary: load_prefix_dictionary(),
-        connection_cost_matrix: load_connection_cost_matrix(),
-        character_definition: load_character_definition()?,
-        unknown_dictionary: load_unknown_dictionary()?,
+        prefix_dictionary: PrefixDictionary::load(
+            &DA_DATA,
+            &VALS_DATA,
+            &WORDS_IDX_DATA,
+            &WORDS_DATA,
+        ),
+        connection_cost_matrix: ConnectionCostMatrix::load_static(&CONNECTION_DATA),
+        character_definition: CharacterDefinition::load(&CHAR_DEFINITION_DATA)?,
+        unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
     })
-}
-
-fn load_character_definition() -> LinderaResult<CharacterDefinition> {
-    let char_def_data = &CHAR_DEFINITION_DATA;
-    CharacterDefinition::load(char_def_data)
-}
-
-fn load_connection_cost_matrix() -> ConnectionCostMatrix {
-    let connection_data = &CONNECTION_DATA;
-    #[cfg(feature = "compress")]
-    {
-        ConnectionCostMatrix::load(connection_data)
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        ConnectionCostMatrix::load_static(connection_data)
-    }
-}
-
-fn load_prefix_dictionary() -> PrefixDictionary {
-    let ipadic_data = &IPADIC_DATA;
-    let ipadic_vals = &IPADIC_VALS;
-    let words_idx_data = &WORDS_IDX_DATA;
-    let words_data = &WORDS_DATA;
-    PrefixDictionary::load(ipadic_data, ipadic_vals, words_idx_data, words_data)
-}
-
-fn load_unknown_dictionary() -> LinderaResult<UnknownDictionary> {
-    let unknown_data = &UNKNOWN_DATA;
-    UnknownDictionary::load(unknown_data)
 }
