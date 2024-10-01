@@ -57,7 +57,7 @@ decompress_data!(
     "dict.da"
 );
 #[cfg(not(feature = "cc-cedict"))]
-decompress_data!(CC_CEDICT_DATA, &[], "dict.da");
+decompress_data!(DA_DATA, &[], "dict.da");
 
 #[cfg(feature = "cc-cedict")]
 decompress_data!(
@@ -69,7 +69,7 @@ decompress_data!(
     "dict.vals"
 );
 #[cfg(not(feature = "cc-cedict"))]
-decompress_data!(CC_CEDICT_VALS, &[], "dict.vals");
+decompress_data!(VALS_DATA, &[], "dict.vals");
 
 #[cfg(feature = "cc-cedict")]
 decompress_data!(

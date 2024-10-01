@@ -54,7 +54,7 @@ decompress_data!(
     "dict.da"
 );
 #[cfg(not(feature = "ko-dic"))]
-decompress_data!(KO_DIC_DATA, &[], "dict.da");
+decompress_data!(DA_DATA, &[], "dict.da");
 
 #[cfg(feature = "ko-dic")]
 decompress_data!(
@@ -66,7 +66,7 @@ decompress_data!(
     "dict.vals"
 );
 #[cfg(not(feature = "ko-dic"))]
-decompress_data!(KO_DIC_VALS, &[], "dict.vals");
+decompress_data!(VALS_DATA, &[], "dict.vals");
 
 #[cfg(feature = "ko-dic")]
 decompress_data!(

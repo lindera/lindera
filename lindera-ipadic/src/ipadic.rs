@@ -54,7 +54,7 @@ decompress_data!(
     "dict.da"
 );
 #[cfg(not(feature = "ipadic"))]
-decompress_data!(IPADIC_DATA, &[], "dict.da");
+decompress_data!(DA_DATA, &[], "dict.da");
 
 #[cfg(feature = "ipadic")]
 decompress_data!(
@@ -66,7 +66,7 @@ decompress_data!(
     "dict.vals"
 );
 #[cfg(not(feature = "ipadic"))]
-decompress_data!(IPADIC_VALS, &[], "dict.vals");
+decompress_data!(VALS_DATA, &[], "dict.vals");
 
 #[cfg(feature = "ipadic")]
 decompress_data!(
