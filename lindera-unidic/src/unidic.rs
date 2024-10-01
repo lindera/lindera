@@ -1,12 +1,11 @@
-use std::borrow::Cow;
 #[cfg(feature = "unidic")]
 use std::env;
 
 #[cfg(feature = "compress")]
 use lindera_core::decompress::decompress;
-use lindera_core::dictionary::character_definition::CharacterDefinitions;
-use lindera_core::dictionary::connection::ConnectionCostMatrix;
-use lindera_core::dictionary::prefix_dict::PrefixDict;
+use lindera_core::dictionary::character_definition::CharacterDefinition;
+use lindera_core::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use lindera_core::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_core::dictionary::Dictionary;
 use lindera_core::LinderaResult;
@@ -50,16 +49,16 @@ decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
 
 #[cfg(feature = "unidic")]
 decompress_data!(
-    UNIDIC_DATA,
+    DA_DATA,
     include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-unidic/dict.da")),
     "dict.da"
 );
 #[cfg(not(feature = "unidic"))]
-decompress_data!(UNIDIC_DATA, &[], "dict.da");
+decompress_data!(DA_DATA, &[], "dict.da");
 
 #[cfg(feature = "unidic")]
 decompress_data!(
-    UNIDIC_VALS,
+    VALS_DATA,
     include_bytes!(concat!(
         env!("LINDERA_WORKDIR"),
         "/lindera-unidic/dict.vals"
@@ -67,7 +66,7 @@ decompress_data!(
     "dict.vals"
 );
 #[cfg(not(feature = "unidic"))]
-decompress_data!(UNIDIC_VALS, &[], "dict.vals");
+decompress_data!(VALS_DATA, &[], "dict.vals");
 
 #[cfg(feature = "unidic")]
 decompress_data!(
@@ -102,65 +101,16 @@ decompress_data!(
 #[cfg(not(feature = "unidic"))]
 decompress_data!(WORDS_DATA, &[], "dict.words");
 
-pub fn load_dictionary() -> LinderaResult<Dictionary> {
+pub fn load() -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        dict: prefix_dict(),
-        cost_matrix: connection(),
-        char_definitions: char_def()?,
-        unknown_dictionary: unknown_dict()?,
-        words_idx_data: words_idx_data(),
-        words_data: words_data(),
+        prefix_dictionary: PrefixDictionary::load(
+            &DA_DATA,
+            &VALS_DATA,
+            &WORDS_IDX_DATA,
+            &WORDS_DATA,
+        ),
+        connection_cost_matrix: ConnectionCostMatrix::load_static(&CONNECTION_DATA),
+        character_definition: CharacterDefinition::load(&CHAR_DEFINITION_DATA)?,
+        unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
     })
-}
-
-pub fn char_def() -> LinderaResult<CharacterDefinitions> {
-    let char_def_data = &CHAR_DEFINITION_DATA;
-    CharacterDefinitions::load(char_def_data)
-}
-
-pub fn connection() -> ConnectionCostMatrix {
-    let connection_data = &CONNECTION_DATA;
-    #[cfg(feature = "compress")]
-    {
-        ConnectionCostMatrix::load(connection_data)
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        ConnectionCostMatrix::load_static(connection_data)
-    }
-}
-
-pub fn prefix_dict() -> PrefixDict {
-    let unidic_data = &UNIDIC_DATA;
-    let unidic_vals = &UNIDIC_VALS;
-    PrefixDict::from_static_slice(unidic_data, unidic_vals)
-}
-
-pub fn unknown_dict() -> LinderaResult<UnknownDictionary> {
-    let unknown_data = &UNKNOWN_DATA;
-    UnknownDictionary::load(unknown_data)
-}
-
-pub fn words_idx_data() -> Cow<'static, [u8]> {
-    let words_idx_data = &WORDS_IDX_DATA;
-    #[cfg(feature = "compress")]
-    {
-        Cow::Owned(words_idx_data.to_vec())
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        Cow::Borrowed(words_idx_data)
-    }
-}
-
-pub fn words_data() -> Cow<'static, [u8]> {
-    let words_data = &WORDS_DATA;
-    #[cfg(feature = "compress")]
-    {
-        Cow::Owned(words_data.to_vec())
-    }
-    #[cfg(not(feature = "compress"))]
-    {
-        Cow::Borrowed(words_data)
-    }
 }

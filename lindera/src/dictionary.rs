@@ -1,16 +1,11 @@
-use std::borrow::Cow;
-use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use lindera_core::util::read_file;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use lindera_core::dictionary::character_definition::CharacterDefinitions;
-use lindera_core::dictionary::connection::ConnectionCostMatrix;
-use lindera_core::dictionary::prefix_dict::PrefixDict;
-use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_core::dictionary::{Dictionary, UserDictionary};
 use lindera_core::dictionary_builder::cc_cedict::CcCedictBuilder;
 use lindera_core::dictionary_builder::ipadic::IpadicBuilder;
@@ -18,6 +13,10 @@ use lindera_core::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
 use lindera_core::dictionary_builder::ko_dic::KoDicBuilder;
 use lindera_core::dictionary_builder::unidic::UnidicBuilder;
 use lindera_core::dictionary_builder::DictionaryBuilder;
+use lindera_core::dictionary_loader::character_definition::CharacterDefinitionLoader;
+use lindera_core::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
+use lindera_core::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
+use lindera_core::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_core::error::{LinderaError, LinderaErrorKind};
 use lindera_core::LinderaResult;
 
@@ -105,163 +104,103 @@ pub struct UserDictionaryConfig {
     pub kind: Option<DictionaryKind>,
 }
 
-pub struct DictionaryBuilderResolver {}
+pub fn resolve_builder(
+    dictionary_type: DictionaryKind,
+) -> LinderaResult<Box<dyn DictionaryBuilder>> {
+    match dictionary_type {
+        DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::new())),
+        DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::new())),
+        DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::new())),
+        DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::new())),
+        DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::new())),
+    }
+}
 
-impl DictionaryBuilderResolver {
-    pub fn resolve_builder(
-        dictionary_type: DictionaryKind,
-    ) -> LinderaResult<Box<dyn DictionaryBuilder>> {
-        match dictionary_type {
-            DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::new())),
-            DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::new())),
-            DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::new())),
-            DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::new())),
-            DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::new())),
+pub fn load_dictionary_from_path(path: &Path) -> LinderaResult<Dictionary> {
+    Ok(Dictionary {
+        prefix_dictionary: PrefixDictionaryLoader::load(path)?,
+        connection_cost_matrix: ConnectionCostMatrixLoader::load(path)?,
+        character_definition: CharacterDefinitionLoader::load(path)?,
+        unknown_dictionary: UnknownDictionaryLoader::load(path)?,
+    })
+}
+
+pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
+    // The dictionary specified by the feature flag will be loaded.
+    match kind {
+        #[cfg(feature = "ipadic")]
+        DictionaryKind::IPADIC => lindera_ipadic::ipadic::load()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[cfg(feature = "ipadic-neologd")]
+        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[cfg(feature = "unidic")]
+        DictionaryKind::UniDic => lindera_unidic::unidic::load()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[cfg(feature = "ko-dic")]
+        DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[cfg(feature = "cc-cedict")]
+        DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load()
+            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        #[allow(unreachable_patterns)]
+        _ => Err(LinderaErrorKind::Args
+            .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
+    }
+}
+
+pub fn load_dictionary_from_config(
+    dictionary_config: DictionaryConfig,
+) -> LinderaResult<Dictionary> {
+    match dictionary_config.kind {
+        Some(kind) => {
+            // The dictionary specified by the feature flag will be loaded.
+            load_dictionary_from_kind(kind)
+        }
+        None => {
+            match dictionary_config.path {
+                Some(path) => {
+                    // load external dictionary from path
+                    load_dictionary_from_path(path.as_path())
+                }
+                None => Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("Dictionary must be specified"))),
+            }
         }
     }
 }
 
-pub struct DictionaryLoader {}
+pub fn load_user_dictionary_from_csv(
+    kind: DictionaryKind,
+    path: PathBuf,
+) -> LinderaResult<UserDictionary> {
+    let builder = resolve_builder(kind)?;
+    builder
+        .build_user_dict(path.as_path())
+        .map_err(|err| LinderaErrorKind::DictionaryBuildError.with_error(err))
+}
 
-impl DictionaryLoader {
-    fn read_file(path: PathBuf) -> LinderaResult<Vec<u8>> {
-        fs::read(path).map_err(|e| LinderaErrorKind::Io.with_error(e))
-    }
+pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDictionary> {
+    UserDictionary::load(&read_file(path.as_path())?)
+}
 
-    pub fn prefix_dict(dir: PathBuf) -> LinderaResult<PrefixDict> {
-        let unidic_data_path = dir.join("dict.da");
-        let unidic_data = Self::read_file(unidic_data_path)?;
-
-        let unidic_vals_path = dir.join("dict.vals");
-        let unidic_vals = Self::read_file(unidic_vals_path)?;
-
-        Ok(PrefixDict::from_static_slice(
-            unidic_data.as_slice(),
-            unidic_vals.as_slice(),
-        ))
-    }
-
-    pub fn connection(dir: PathBuf) -> LinderaResult<ConnectionCostMatrix> {
-        let path = dir.join("matrix.mtx");
-        let data = Self::read_file(path)?;
-
-        Ok(ConnectionCostMatrix::load(data.as_slice()))
-    }
-
-    pub fn char_def(dir: PathBuf) -> LinderaResult<CharacterDefinitions> {
-        let path = dir.join("char_def.bin");
-        let data = Self::read_file(path)?;
-
-        CharacterDefinitions::load(data.as_slice())
-    }
-
-    pub fn unknown_dict(dir: PathBuf) -> LinderaResult<UnknownDictionary> {
-        let path = dir.join("unk.bin");
-        let data = Self::read_file(path)?;
-
-        UnknownDictionary::load(data.as_slice())
-    }
-
-    pub fn words_idx_data(dir: PathBuf) -> LinderaResult<Vec<u8>> {
-        let path = dir.join("dict.wordsidx");
-        Self::read_file(path)
-    }
-
-    pub fn words_data(dir: PathBuf) -> LinderaResult<Vec<u8>> {
-        let path = dir.join("dict.words");
-        Self::read_file(path)
-    }
-
-    pub fn load_dictionary(path: PathBuf) -> LinderaResult<Dictionary> {
-        Ok(Dictionary {
-            dict: Self::prefix_dict(path.clone())?,
-            cost_matrix: Self::connection(path.clone())?,
-            char_definitions: Self::char_def(path.clone())?,
-            unknown_dictionary: Self::unknown_dict(path.clone())?,
-            words_idx_data: Cow::Owned(Self::words_idx_data(path.clone())?),
-            words_data: Cow::Owned(Self::words_data(path)?),
-        })
-    }
-
-    pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
-        // The dictionary specified by the feature flag will be loaded.
-        match kind {
-            #[cfg(feature = "ipadic")]
-            DictionaryKind::IPADIC => lindera_ipadic::ipadic::load_dictionary()
-                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-            #[cfg(feature = "ipadic-neologd")]
-            DictionaryKind::IPADICNEologd => {
-                lindera_ipadic_neologd::ipadic_neologd::load_dictionary()
-                    .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e))
-            }
-            #[cfg(feature = "unidic")]
-            DictionaryKind::UniDic => lindera_unidic::unidic::load_dictionary()
-                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-            #[cfg(feature = "ko-dic")]
-            DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load_dictionary()
-                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-            #[cfg(feature = "cc-cedict")]
-            DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load_dictionary()
-                .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
-            #[allow(unreachable_patterns)]
-            _ => Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
-        }
-    }
-
-    pub fn load_dictionary_from_config(
-        dictionary_config: DictionaryConfig,
-    ) -> LinderaResult<Dictionary> {
-        match dictionary_config.kind {
-            Some(kind) => {
-                // The dictionary specified by the feature flag will be loaded.
-                Self::load_dictionary_from_kind(kind)
-            }
-            None => {
-                match dictionary_config.path {
-                    Some(path) => {
-                        // load external dictionary from path
-                        Self::load_dictionary(path)
-                    }
-                    None => Err(LinderaErrorKind::Args
-                        .with_error(anyhow::anyhow!("Dictionary must be specified"))),
-                }
-            }
-        }
-    }
-
-    pub fn load_user_dictionary_from_csv(
-        kind: DictionaryKind,
-        path: PathBuf,
-    ) -> LinderaResult<UserDictionary> {
-        let builder = DictionaryBuilderResolver::resolve_builder(kind)?;
-        builder
-            .build_user_dict(path.as_path())
-            .map_err(|err| LinderaErrorKind::DictionaryBuildError.with_error(err))
-    }
-
-    pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDictionary> {
-        UserDictionary::load(&Self::read_file(path)?)
-    }
-
-    pub fn load_user_dictionary_from_config(
-        dictionary_config: UserDictionaryConfig,
-    ) -> LinderaResult<UserDictionary> {
-        match dictionary_config.path.extension() {
-            Some(ext) => match ext.to_str() {
-                Some("csv") => match dictionary_config.kind {
-                    Some(kind) => Self::load_user_dictionary_from_csv(kind, dictionary_config.path),
-                    None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                        "Dictionary type must be specified if CSV file specified"
-                    ))),
-                },
-                Some("bin") => Self::load_user_dictionary_from_bin(dictionary_config.path),
-                _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                    "Invalid user dictionary source file extension"
+pub fn load_user_dictionary_from_config(
+    dictionary_config: UserDictionaryConfig,
+) -> LinderaResult<UserDictionary> {
+    match dictionary_config.path.extension() {
+        Some(ext) => match ext.to_str() {
+            Some("csv") => match dictionary_config.kind {
+                Some(kind) => load_user_dictionary_from_csv(kind, dictionary_config.path),
+                None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                    "Dictionary type must be specified if CSV file specified"
                 ))),
             },
-            None => Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("Invalid user dictionary source file"))),
-        }
+            Some("bin") => load_user_dictionary_from_bin(dictionary_config.path),
+            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                "Invalid user dictionary source file extension"
+            ))),
+        },
+        None => Err(LinderaErrorKind::Args
+            .with_error(anyhow::anyhow!("Invalid user dictionary source file"))),
     }
 }

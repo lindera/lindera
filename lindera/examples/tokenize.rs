@@ -4,7 +4,7 @@ fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -14,7 +14,7 @@ fn main() -> LinderaResult<()> {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+        let dictionary = load_dictionary_from_config(dictionary_config)?;
 
         // Create a tokenizer.
         let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);

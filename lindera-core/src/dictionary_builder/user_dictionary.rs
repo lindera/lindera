@@ -12,7 +12,7 @@ use log::debug;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use crate::dictionary::prefix_dict::PrefixDict;
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::dictionary::UserDictionary;
 use crate::error::LinderaErrorKind;
@@ -22,9 +22,9 @@ type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<V
 
 #[derive(Builder)]
 #[builder(pattern = "owned")]
-#[builder(name = "UserDictBuilderOptions")]
+#[builder(name = UserDictionaryBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
-pub struct UserDictBuilder {
+pub struct UserDictionaryBuilder {
     #[builder(default = "3")]
     simple_userdic_fields_num: usize,
     #[builder(default = "4")]
@@ -39,7 +39,7 @@ pub struct UserDictBuilder {
     simple_userdic_details_handler: StringRecordProcessor,
 }
 
-impl UserDictBuilder {
+impl UserDictionaryBuilder {
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {:?}", input_file);
 
@@ -149,17 +149,15 @@ impl UserDictBuilder {
             }
         }
 
-        let dict = PrefixDict {
+        let dict = PrefixDictionary {
             da: DoubleArray::new(da_bytes),
             vals_data,
+            words_idx_data,
+            words_data,
             is_system: false,
         };
 
-        Ok(UserDictionary {
-            dict,
-            words_idx_data,
-            words_data,
-        })
+        Ok(UserDictionary { dict })
     }
 }
 

@@ -12,27 +12,35 @@ where
     T: Deref<Target = [u8]>;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct PrefixDict<Data = Vec<u8>> {
+pub struct PrefixDictionary<Data = Vec<u8>> {
     #[serde(with = "DoubleArrayDef")]
     pub da: DoubleArray<Vec<u8>>,
-
     pub vals_data: Data,
+    pub words_idx_data: Vec<u8>,
+    pub words_data: Vec<u8>,
     pub is_system: bool,
 }
 
-impl PrefixDict<&[u8]> {
-    pub fn from_static_slice(da_data: &[u8], vals_data: &[u8]) -> PrefixDict {
+impl PrefixDictionary<&[u8]> {
+    pub fn load(
+        da_data: &[u8],
+        vals_data: &[u8],
+        words_idx_data: &[u8],
+        words_data: &[u8],
+    ) -> PrefixDictionary {
         let da = DoubleArray::new(da_data.to_vec());
 
-        PrefixDict {
+        PrefixDictionary {
             da,
             vals_data: vals_data.to_vec(),
+            words_idx_data: words_idx_data.to_vec(),
+            words_data: words_data.to_vec(),
             is_system: true,
         }
     }
 }
 
-impl<D: Deref<Target = [u8]>> PrefixDict<D> {
+impl<D: Deref<Target = [u8]>> PrefixDictionary<D> {
     pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
         self.da
             .common_prefix_search(s)

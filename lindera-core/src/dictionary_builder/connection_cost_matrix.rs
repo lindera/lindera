@@ -9,21 +9,21 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::decompress::Algorithm;
-use crate::dictionary_builder::utils::{compress_write, read_file_with_encoding};
 use crate::error::LinderaErrorKind;
+use crate::util::{compress_write, read_file_with_encoding};
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "CostMatrixBuilderOptions")]
+#[builder(name = ConnectionCostMatrixBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
-pub struct CostMatrixBuilder {
+pub struct ConnectionCostMatrixBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
     #[builder(default = "Algorithm::Deflate")]
     compress_algorithm: Algorithm,
 }
 
-impl CostMatrixBuilder {
+impl ConnectionCostMatrixBuilder {
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
         debug!("reading {:?}", matrix_data_path);

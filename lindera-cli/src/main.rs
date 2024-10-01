@@ -13,8 +13,8 @@ use lindera::core::error::LinderaErrorKind;
 use lindera::core::mode::Mode;
 use lindera::core::LinderaResult;
 use lindera::dictionary::{
-    DictionaryBuilderResolver, DictionaryConfig, DictionaryKind, DictionaryLoader,
-    UserDictionaryConfig,
+    load_dictionary_from_config, load_user_dictionary_from_config, resolve_builder,
+    DictionaryConfig, DictionaryKind, UserDictionaryConfig,
 };
 use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
@@ -202,11 +202,11 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     };
 
     // Dictionary
-    let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_conf)?;
+    let dictionary = load_dictionary_from_config(dictionary_conf)?;
 
     // User dictionary
     let user_dictionary = match user_dictionary_conf {
-        Some(ud_conf) => Some(DictionaryLoader::load_user_dictionary_from_config(ud_conf)?),
+        Some(ud_conf) => Some(load_user_dictionary_from_config(ud_conf)?),
         None => None,
     };
     let mode = args.mode;
@@ -249,19 +249,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             break;
         }
 
-        // let mut tokens = Vec::new();
-
         let tokens = tokenizer.tokenize(text.trim())?;
-        // for token in tmp_tokens.iter_mut() {
-        //     let token_info = serde_json::json!({
-        //         "text": token.text,
-        //         "details": token.details(),
-        //         "byte_start": token.byte_start,
-        //         "byte_end": token.byte_end,
-        //         "word_id": token.word_id,
-        //     });
-        //     tokens.push(token_info);
-        // }
 
         match output_format {
             Format::Mecab => {
@@ -280,7 +268,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 }
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
-    let builder = DictionaryBuilderResolver::resolve_builder(args.dic_type)?;
+    let builder = resolve_builder(args.dic_type)?;
 
     if args.build_user_dic {
         let output_file = if let Some(filename) = args.src_path.file_name() {

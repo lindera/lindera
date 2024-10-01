@@ -14,7 +14,7 @@ fn main() -> LinderaResult<()> {
         };
         use lindera::character_filter::BoxCharacterFilter;
         use lindera::core::mode::Mode;
-        use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
         use lindera::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
         };
@@ -34,7 +34,7 @@ fn main() -> LinderaResult<()> {
         };
 
         // Load a dictionary from the dictionary config.
-        let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+        let dictionary = load_dictionary_from_config(dictionary_config)?;
 
         // Create a tokenizer.
         let mut tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);

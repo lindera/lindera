@@ -18,14 +18,14 @@ use yada::builder::DoubleArrayBuilder;
 
 use crate::decompress::Algorithm;
 use crate::dictionary::word_entry::{WordEntry, WordId};
-use crate::dictionary_builder::utils::compress_write;
 use crate::error::LinderaErrorKind;
+use crate::util::compress_write;
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
-#[builder(name = "DictBuilderOptions")]
+#[builder(name = PrefixDictionaryBuilderOptions)]
 #[builder(build_fn(name = "builder"))]
-pub struct DictBuilder {
+pub struct PrefixDictionaryBuilder {
     #[builder(default = "true")]
     flexible_csv: bool,
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
@@ -39,7 +39,7 @@ pub struct DictBuilder {
     skip_invalid_cost_or_id: bool,
 }
 
-impl DictBuilder {
+impl PrefixDictionaryBuilder {
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let pattern = if let Some(path) = input_dir.to_str() {
             format!("{}/*.csv", path)
@@ -104,15 +104,14 @@ impl DictBuilder {
             rows.sort_by(|a, b| a[0].cmp(&b[0]))
         }
 
-        let wtr_da_path = output_dir.join(Path::new("dict.da"));
-        let mut wtr_da = io::BufWriter::new(
-            File::create(wtr_da_path)
+        let dict_vals_path = output_dir.join(Path::new("dict.vals"));
+        let mut dict_vals_writer = io::BufWriter::new(
+            File::create(dict_vals_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
-
-        let wtr_vals_path = output_dir.join(Path::new("dict.vals"));
-        let mut wtr_vals = io::BufWriter::new(
-            File::create(wtr_vals_path)
+        let dict_da_path = output_dir.join(Path::new("dict.da"));
+        let mut dict_da_writer = io::BufWriter::new(
+            File::create(dict_da_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
@@ -168,23 +167,23 @@ impl DictBuilder {
             });
         }
 
-        let wtr_words_path = output_dir.join(Path::new("dict.words"));
-        let mut wtr_words = io::BufWriter::new(
-            File::create(wtr_words_path)
+        let dict_words_path = output_dir.join(Path::new("dict.words"));
+        let mut dict_words_writer = io::BufWriter::new(
+            File::create(dict_words_path)
+                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+        );
+        let dict_wordsidx_path = output_dir.join(Path::new("dict.wordsidx"));
+        let mut dict_wordsidx_writer = io::BufWriter::new(
+            File::create(dict_wordsidx_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
-        let wtr_words_idx_path = output_dir.join(Path::new("dict.wordsidx"));
-        let mut wtr_words_idx = io::BufWriter::new(
-            File::create(wtr_words_idx_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut dict_words_buffer = Vec::new();
+        let mut dict_wordsidx_buffer = Vec::new();
 
-        let mut words_buffer = Vec::new();
-        let mut words_idx_buffer = Vec::new();
         for row in rows.iter() {
-            let offset = words_buffer.len();
-            words_idx_buffer
+            let offset = dict_words_buffer.len();
+            dict_wordsidx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
@@ -199,25 +198,30 @@ impl DictBuilder {
             };
             let joined_details_len = u32::try_from(joined_details.as_bytes().len())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            words_buffer
+
+            dict_words_buffer
                 .write_u32::<LittleEndian>(joined_details_len)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            words_buffer
+            dict_words_buffer
                 .write_all(joined_details.as_bytes())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
-        compress_write(&words_buffer, self.compress_algorithm, &mut wtr_words)?;
         compress_write(
-            &words_idx_buffer,
+            &dict_words_buffer,
             self.compress_algorithm,
-            &mut wtr_words_idx,
+            &mut dict_words_writer,
+        )?;
+        compress_write(
+            &dict_wordsidx_buffer,
+            self.compress_algorithm,
+            &mut dict_wordsidx_writer,
         )?;
 
-        wtr_words
+        dict_words_writer
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-        wtr_words_idx
+        dict_wordsidx_writer
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
@@ -231,24 +235,32 @@ impl DictBuilder {
             id += len;
         }
 
-        let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
+        let dict_da_buffer = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
             LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
         })?;
 
-        compress_write(&da_bytes, self.compress_algorithm, &mut wtr_da)?;
+        compress_write(
+            &dict_da_buffer,
+            self.compress_algorithm,
+            &mut dict_da_writer,
+        )?;
 
-        let mut vals_buffer = Vec::new();
+        let mut dict_vals_buffer = Vec::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
                 word_entry
-                    .serialize(&mut vals_buffer)
+                    .serialize(&mut dict_vals_buffer)
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
             }
         }
 
-        compress_write(&vals_buffer, self.compress_algorithm, &mut wtr_vals)?;
+        compress_write(
+            &dict_vals_buffer,
+            self.compress_algorithm,
+            &mut dict_vals_writer,
+        )?;
 
-        wtr_vals
+        dict_vals_writer
             .flush()
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 

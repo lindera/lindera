@@ -4,12 +4,12 @@ use std::path::Path;
 use csv::StringRecord;
 
 use crate::decompress::Algorithm;
-use crate::dictionary::character_definition::CharacterDefinitions;
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;
 use crate::dictionary_builder::DictionaryBuilder;
 use crate::dictionary_builder::{
-    build_user_dictionary, CharDefBuilderOptions, CostMatrixBuilderOptions, DictBuilderOptions,
-    UnkBuilderOptions, UserDictBuilderOptions,
+    build_user_dictionary, CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions,
+    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions, UserDictionaryBuilderOptions,
 };
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
@@ -40,10 +40,10 @@ impl DictionaryBuilder for KoDicBuilder {
         fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-        let chardef = self.build_chardef(input_dir, output_dir).unwrap();
-        self.build_unk(input_dir, &chardef, output_dir).unwrap();
-        self.build_dict(input_dir, output_dir).unwrap();
-        self.build_cost_matrix(input_dir, output_dir).unwrap();
+        let chardef = self.build_character_definition(input_dir, output_dir)?;
+        self.build_unknown_dictionary(input_dir, &chardef, output_dir)?;
+        self.build_prefix_dictionary(input_dir, output_dir)?;
+        self.build_connection_cost_matrix(input_dir, output_dir)?;
 
         Ok(())
     }
@@ -53,25 +53,25 @@ impl DictionaryBuilder for KoDicBuilder {
         build_user_dictionary(user_dict, output_file)
     }
 
-    fn build_chardef(
+    fn build_character_definition(
         &self,
         input_dir: &Path,
         output_dir: &Path,
-    ) -> LinderaResult<CharacterDefinitions> {
-        CharDefBuilderOptions::default()
+    ) -> LinderaResult<CharacterDefinition> {
+        CharacterDefinitionBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
             .build(input_dir, output_dir)
     }
 
-    fn build_unk(
+    fn build_unknown_dictionary(
         &self,
         input_dir: &Path,
-        chardef: &CharacterDefinitions,
+        chardef: &CharacterDefinition,
         output_dir: &Path,
     ) -> LinderaResult<()> {
-        UnkBuilderOptions::default()
+        UnknownDictionaryBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .unk_fields_num(UNK_FIELDS_NUM)
             .builder()
@@ -79,8 +79,8 @@ impl DictionaryBuilder for KoDicBuilder {
             .build(input_dir, chardef, output_dir)
     }
 
-    fn build_dict(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        DictBuilderOptions::default()
+    fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+        PrefixDictionaryBuilderOptions::default()
             .flexible_csv(false)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
@@ -88,8 +88,12 @@ impl DictionaryBuilder for KoDicBuilder {
             .build(input_dir, output_dir)
     }
 
-    fn build_cost_matrix(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
-        CostMatrixBuilderOptions::default()
+    fn build_connection_cost_matrix(
+        &self,
+        input_dir: &Path,
+        output_dir: &Path,
+    ) -> LinderaResult<()> {
+        ConnectionCostMatrixBuilderOptions::default()
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -97,7 +101,7 @@ impl DictionaryBuilder for KoDicBuilder {
     }
 
     fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        UserDictBuilderOptions::default()
+        UserDictionaryBuilderOptions::default()
             .simple_userdic_fields_num(SIMPLE_USERDIC_FIELDS_NUM)
             .detailed_userdic_fields_num(DETAILED_USERDIC_FIELDS_NUM)
             .simple_word_cost(SIMPLE_WORD_COST)
