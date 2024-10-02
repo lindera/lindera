@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use crate::core::LinderaResult;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
@@ -44,9 +44,7 @@ mod tests {
     fn test_uppercase_token_filter_apply() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::uppercase::UppercaseTokenFilter;
         use crate::token_filter::TokenFilter;

@@ -2,11 +2,10 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
@@ -145,9 +144,7 @@ mod tests {
     fn test_korean_keep_tags_token_filter_apply() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter;
         use crate::token_filter::TokenFilter;

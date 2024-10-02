@@ -1,16 +1,16 @@
 use std::borrow::Cow;
 
-use lindera_core::dictionary::{Dictionary, UserDictionary};
-use lindera_core::mode::Mode;
 use serde_json::Value;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
+use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 
 use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
+use crate::error::LinderaErrorKind;
+use crate::mode::Mode;
 use crate::segmenter::{Segmenter, SegmenterConfig};
 use crate::token::Token;
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
+use crate::LinderaResult;
 
 pub type TokenizerConfig = Value;
 

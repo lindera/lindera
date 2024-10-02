@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use crate::core::LinderaResult;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
@@ -45,9 +45,7 @@ mod tests {
     fn test_lowercase_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::lowercase::LowercaseTokenFilter;
         use crate::token_filter::TokenFilter;

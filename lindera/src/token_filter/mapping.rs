@@ -5,11 +5,10 @@ use serde::{Deserialize, Serialize};
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
 
@@ -161,9 +160,7 @@ mod tests {
     fn test_mapping_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::mapping::MappingTokenFilter;
         use crate::token_filter::TokenFilter;

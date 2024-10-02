@@ -1,15 +1,15 @@
 #[cfg(feature = "ipadic-neologd")]
 use std::env;
 
-use lindera_core::dictionary::character_definition::CharacterDefinition;
-use lindera_core::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use lindera_core::dictionary::prefix_dictionary::PrefixDictionary;
-use lindera_core::dictionary::unknown_dictionary::UnknownDictionary;
-use lindera_core::dictionary::Dictionary;
-use lindera_core::LinderaResult;
+use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
+use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
+use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_dictionary::dictionary::Dictionary;
+use lindera_dictionary::LinderaResult;
 
 #[cfg(feature = "compress")]
-use lindera_core::decompress::decompress;
+use lindera_dictionary::decompress::decompress;
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {

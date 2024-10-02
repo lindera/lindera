@@ -1,4 +1,4 @@
-use lindera::core::LinderaResult;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]

@@ -13,14 +13,14 @@ license = "MIT"
 
 [features]
 unidic = []
-compress = ["lindera-core/compress"]
+compress = ["lindera-dictionary/compress"]
 
 [dependencies]
 bincode.workspace = true
 byteorder.workspace = true
 once_cell.workspace = true
 
-lindera-core.workspace = true
+lindera-dictionary.workspace = true
 
 [build-dependencies]
-lindera-core.workspace = true
+lindera-dictionary.workspace = true

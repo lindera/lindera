@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "lindera-core",
+    "lindera-dictionary",
     "lindera-cc-cedict",
     "lindera-ipadic",
     "lindera-ipadic-neologd",
@@ -12,7 +12,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera-core = { version = "0.33.0", path = "lindera-core" }
+lindera-dictionary = { version = "0.33.0", path = "lindera-dictionary" }
 lindera-cc-cedict = { version = "0.33.0", path = "lindera-cc-cedict" }
 lindera-ipadic = { version = "0.33.0", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "0.33.0", path = "lindera-ipadic-neologd" }

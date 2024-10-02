@@ -8,17 +8,17 @@ use std::path::Path;
 use clap::{Parser, Subcommand};
 
 use lindera::character_filter::CharacterFilterLoader;
-use lindera::core::error::LinderaError;
-use lindera::core::error::LinderaErrorKind;
-use lindera::core::mode::Mode;
-use lindera::core::LinderaResult;
 use lindera::dictionary::{
     load_dictionary_from_config, load_user_dictionary_from_config, resolve_builder,
     DictionaryConfig, DictionaryKind, UserDictionaryConfig,
 };
+use lindera::error::LinderaError;
+use lindera::error::LinderaErrorKind;
+use lindera::mode::Mode;
 use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
 use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
 #[derive(Debug, Parser)]
 #[clap(name = "linera", author, about, version)]

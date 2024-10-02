@@ -5,10 +5,9 @@ use serde_json::Value;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
 use crate::character_filter::{add_offset_diff, CharacterFilter};
+use crate::error::LinderaErrorKind;
+use crate::LinderaResult;
 
 pub const MAPPING_CHARACTER_FILTER_NAME: &str = "mapping";
 

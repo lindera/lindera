@@ -23,7 +23,7 @@ cc-cedict = [
     "lindera-cc-cedict/cc-cedict",
 ] # Include CC-CEDICT dictionary (Chinese)
 compress = [
-    "lindera-core/compress",
+    "lindera-dictionary/compress",
     "lindera-ipadic/compress",
     "lindera-ipadic-neologd/compress",
     "lindera-unidic/compress",
@@ -48,7 +48,7 @@ unicode-normalization.workspace = true
 unicode-segmentation.workspace = true
 yada.workspace = true
 
-lindera-core.workspace = true
+lindera-dictionary.workspace = true
 lindera-cc-cedict = { workspace = true, optional = true }
 lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }

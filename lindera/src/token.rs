@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use serde::Serialize;
 
-use lindera_core::dictionary::{Dictionary, UserDictionary, UNK};
-use lindera_core::viterbi::WordId;
+use crate::dictionary::WordId;
+use lindera_dictionary::dictionary::{Dictionary, UserDictionary, UNK};
 
 #[derive(Serialize, Clone)]
 pub struct Token<'a> {

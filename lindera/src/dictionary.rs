@@ -1,24 +1,28 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use lindera_core::util::read_file;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use lindera_core::dictionary::{Dictionary, UserDictionary};
-use lindera_core::dictionary_builder::cc_cedict::CcCedictBuilder;
-use lindera_core::dictionary_builder::ipadic::IpadicBuilder;
-use lindera_core::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
-use lindera_core::dictionary_builder::ko_dic::KoDicBuilder;
-use lindera_core::dictionary_builder::unidic::UnidicBuilder;
-use lindera_core::dictionary_builder::DictionaryBuilder;
-use lindera_core::dictionary_loader::character_definition::CharacterDefinitionLoader;
-use lindera_core::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
-use lindera_core::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
-use lindera_core::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
-use lindera_core::error::{LinderaError, LinderaErrorKind};
-use lindera_core::LinderaResult;
+use lindera_dictionary::dictionary_builder::cc_cedict::CcCedictBuilder;
+use lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder;
+use lindera_dictionary::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
+use lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder;
+use lindera_dictionary::dictionary_builder::unidic::UnidicBuilder;
+use lindera_dictionary::dictionary_builder::DictionaryBuilder;
+use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
+use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
+use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
+use lindera_dictionary::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
+use lindera_dictionary::util::read_file;
+pub use lindera_dictionary::viterbi::WordId;
+
+use crate::error::{LinderaError, LinderaErrorKind};
+use crate::LinderaResult;
+
+pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
+pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
 
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {

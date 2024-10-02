@@ -1,10 +1,10 @@
-use lindera::core::LinderaResult;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.

@@ -1,9 +1,9 @@
 [package]
-name = "lindera-core"
+name = "lindera-dictionary"
 version = "0.33.0"
 edition = "2021"
 description = "A morphological analysis library."
-documentation = "https://docs.rs/lindera-core"
+documentation = "https://docs.rs/lindera-dictionary"
 homepage = "https://github.com/lindera-morphology/lindera"
 repository = "https://github.com/lindera-morphology/lindera"
 readme = "README.md"

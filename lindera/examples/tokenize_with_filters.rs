@@ -1,4 +1,4 @@
-use lindera::core::LinderaResult;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
@@ -13,8 +13,8 @@ fn main() -> LinderaResult<()> {
             UnicodeNormalizeKind,
         };
         use lindera::character_filter::BoxCharacterFilter;
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
         };
