@@ -184,7 +184,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
@@ -269,7 +269,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
@@ -386,7 +386,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
@@ -471,7 +471,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
@@ -588,7 +588,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_mixed_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;
@@ -705,7 +705,7 @@ mod tests {
     fn test_japanese_kana_token_filter_applymixed_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;

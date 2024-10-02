@@ -44,7 +44,7 @@ mod tests {
     fn test_uppercase_token_filter_apply() {
         use std::borrow::Cow;
 
-        use lindera_core::dictionary::word_entry::WordId;
+        use lindera_core::viterbi::WordId;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use crate::token::Token;

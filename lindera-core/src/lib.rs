@@ -7,5 +7,6 @@ pub mod dictionary_loader;
 pub mod error;
 pub mod mode;
 pub mod util;
+pub mod viterbi;
 
 pub type LinderaResult<T> = Result<T, crate::error::LinderaError>;

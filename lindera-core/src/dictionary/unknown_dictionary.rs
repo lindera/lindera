@@ -4,8 +4,8 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::dictionary::character_definition::CategoryId;
-use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::error::LinderaErrorKind;
+use crate::viterbi::{WordEntry, WordId};
 use crate::LinderaResult;
 
 #[derive(Serialize, Deserialize, Clone)]
