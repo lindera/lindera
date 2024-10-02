@@ -17,9 +17,9 @@ use log::{debug, warn};
 use yada::builder::DoubleArrayBuilder;
 
 use crate::decompress::Algorithm;
-use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
+use crate::viterbi::{WordEntry, WordId};
 use crate::LinderaResult;
 
 #[derive(Builder, Debug)]

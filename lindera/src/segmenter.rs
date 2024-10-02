@@ -4,9 +4,9 @@ use std::fmt;
 use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use lindera_core::dictionary::viterbi::Lattice;
 use lindera_core::dictionary::{Dictionary, UserDictionary};
 use lindera_core::mode::Mode;
+use lindera_core::viterbi::Lattice;
 
 use crate::dictionary::{
     load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,

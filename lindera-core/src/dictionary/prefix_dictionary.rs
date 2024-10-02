@@ -3,7 +3,7 @@ use std::ops::Deref;
 use serde::{Deserialize, Serialize};
 use yada::DoubleArray;
 
-use crate::dictionary::word_entry::WordEntry;
+use crate::viterbi::WordEntry;
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "DoubleArray")]

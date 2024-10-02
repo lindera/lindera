@@ -13,9 +13,9 @@ use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
-use crate::dictionary::word_entry::{WordEntry, WordId};
 use crate::dictionary::UserDictionary;
 use crate::error::LinderaErrorKind;
+use crate::viterbi::{WordEntry, WordId};
 use crate::LinderaResult;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
