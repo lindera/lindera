@@ -129,10 +129,10 @@ impl<'a> Token<'a> {
             let tmp = if self.word_id.is_unknown() {
                 UNK.to_vec()
             } else if self.word_id.is_system() {
-                self.dictionary.word_details(self.word_id.0 as usize)
+                self.dictionary.word_details(self.word_id.id as usize)
             } else {
                 match self.user_dictionary {
-                    Some(user_dictionary) => user_dictionary.word_details(self.word_id.0 as usize),
+                    Some(user_dictionary) => user_dictionary.word_details(self.word_id.id as usize),
                     None => UNK.to_vec(),
                 }
             };

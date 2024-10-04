@@ -204,7 +204,10 @@ mod tests {
                 byte_end: 12,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(321702, true),
+                word_id: WordId {
+                    id: 321702,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -225,7 +228,10 @@ mod tests {
                 byte_end: 18,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(374175, true),
+                word_id: WordId {
+                    id: 374175,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -246,7 +252,10 @@ mod tests {
                 byte_end: 36,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(4294967295, true),
+                word_id: WordId {
+                    id: 4294967295,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![Cow::Borrowed("UNK")]),
@@ -287,7 +296,10 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(171030, true),
+                word_id: WordId {
+                    id: 171030,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -308,7 +320,10 @@ mod tests {
                 byte_end: 9,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(298064, true),
+                word_id: WordId {
+                    id: 298064,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -329,7 +344,10 @@ mod tests {
                 byte_end: 21,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(28502, true),
+                word_id: WordId {
+                    id: 28502,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -350,7 +368,10 @@ mod tests {
                 byte_end: 24,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(202045, true),
+                word_id: WordId {
+                    id: 202045,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -402,7 +423,10 @@ mod tests {
                 byte_end: 12,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(321702, true),
+                word_id: WordId {
+                    id: 321702,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -423,7 +447,10 @@ mod tests {
                 byte_end: 18,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(374175, true),
+                word_id: WordId {
+                    id: 374175,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -444,7 +471,10 @@ mod tests {
                 byte_end: 36,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(4294967295, true),
+                word_id: WordId {
+                    id: 4294967295,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![Cow::Borrowed("UNK")]),
@@ -485,7 +515,10 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(171030, true),
+                word_id: WordId {
+                    id: 171030,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -506,7 +539,10 @@ mod tests {
                 byte_end: 9,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(298064, true),
+                word_id: WordId {
+                    id: 298064,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -527,7 +563,10 @@ mod tests {
                 byte_end: 21,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(28502, true),
+                word_id: WordId {
+                    id: 28502,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -548,7 +587,10 @@ mod tests {
                 byte_end: 24,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(202045, true),
+                word_id: WordId {
+                    id: 202045,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -600,7 +642,10 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(250023, true),
+                word_id: WordId {
+                    id: 250023,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -621,7 +666,10 @@ mod tests {
                 byte_end: 9,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(364736, true),
+                word_id: WordId {
+                    id: 364736,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -642,7 +690,10 @@ mod tests {
                 byte_end: 21,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(927, true),
+                word_id: WordId {
+                    id: 927,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -663,7 +714,10 @@ mod tests {
                 byte_end: 24,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(202045, true),
+                word_id: WordId {
+                    id: 202045,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -715,7 +769,10 @@ mod tests {
                 byte_end: 9,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(151151, true),
+                word_id: WordId {
+                    id: 151151,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -736,7 +793,10 @@ mod tests {
                 byte_end: 18,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(166998, true),
+                word_id: WordId {
+                    id: 166998,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -757,7 +817,10 @@ mod tests {
                 byte_end: 21,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(383791, true),
+                word_id: WordId {
+                    id: 383791,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

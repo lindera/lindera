@@ -160,7 +160,10 @@ impl PrefixDictionaryBuilder {
                 row[0].to_string()
             };
             word_entry_map.entry(key).or_default().push(WordEntry {
-                word_id: WordId(row_id as u32, true),
+                word_id: WordId {
+                    id: row_id as u32,
+                    is_system: true,
+                },
                 word_cost,
                 left_id,
                 right_id,

@@ -153,7 +153,10 @@ mod tests {
                 byte_end: 9,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(36165, true),
+                word_id: WordId {
+                    id: 36165,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -174,7 +177,10 @@ mod tests {
                 byte_end: 12,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(73246, true),
+                word_id: WordId {
+                    id: 73246,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -195,7 +201,10 @@ mod tests {
                 byte_end: 18,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(74990, true),
+                word_id: WordId {
+                    id: 74990,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -216,7 +225,10 @@ mod tests {
                 byte_end: 21,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(73246, true),
+                word_id: WordId {
+                    id: 73246,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -237,7 +249,10 @@ mod tests {
                 byte_end: 27,
                 position: 4,
                 position_length: 1,
-                word_id: WordId(74990, true),
+                word_id: WordId {
+                    id: 74990,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -258,7 +273,10 @@ mod tests {
                 byte_end: 30,
                 position: 5,
                 position_length: 1,
-                word_id: WordId(55831, true),
+                word_id: WordId {
+                    id: 55831,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -279,7 +297,10 @@ mod tests {
                 byte_end: 36,
                 position: 6,
                 position_length: 1,
-                word_id: WordId(8029, true),
+                word_id: WordId {
+                    id: 8029,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

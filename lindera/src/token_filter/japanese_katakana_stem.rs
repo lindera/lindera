@@ -219,7 +219,10 @@ mod tests {
                 byte_end: 9,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(94843, true),
+                word_id: WordId {
+                    id: 94843,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -240,7 +243,10 @@ mod tests {
                 byte_end: 21,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(100137, true),
+                word_id: WordId {
+                    id: 100137,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

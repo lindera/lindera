@@ -60,7 +60,10 @@ mod tests {
             byte_end: 4,
             position: 0,
             position_length: 1,
-            word_id: WordId(4294967295, true),
+            word_id: WordId {
+                id: 4294967295,
+                is_system: true,
+            },
             dictionary: &dictionary,
             user_dictionary: None,
             details: Some(vec![Cow::Borrowed("UNK")]),
