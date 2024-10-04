@@ -16,13 +16,13 @@ use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCos
 use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
 use lindera_dictionary::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_dictionary::util::read_file;
-pub use lindera_dictionary::viterbi::WordId;
 
 use crate::error::{LinderaError, LinderaErrorKind};
 use crate::LinderaResult;
 
 pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
+pub type WordId = lindera_dictionary::viterbi::WordId;
 
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
