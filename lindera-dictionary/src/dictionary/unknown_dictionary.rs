@@ -101,7 +101,10 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
                 warn!("left id and right id are not same: {:?}", e);
             }
             WordEntry {
-                word_id: WordId(u32::MAX, true),
+                word_id: WordId {
+                    id: u32::MAX,
+                    is_system: true,
+                },
                 left_id: e.left_id as u16,
                 right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,

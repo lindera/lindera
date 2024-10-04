@@ -84,7 +84,10 @@ impl UserDictionaryBuilder {
             };
 
             word_entry_map.entry(surface).or_default().push(WordEntry {
-                word_id: WordId(row_id as u32, false),
+                word_id: WordId {
+                    id: row_id as u32,
+                    is_system: false,
+                },
                 word_cost,
                 left_id,
                 right_id,

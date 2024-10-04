@@ -5,8 +5,8 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
-        use lindera_core::mode::Mode;
 
         c.bench_function("bench-constructor-ipadic", |b| {
             b.iter(|| {
@@ -28,8 +28,8 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "unidic")]
     {
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
-        use lindera_core::mode::Mode;
 
         c.bench_function("bench-constructor-unidic", |b| {
             b.iter(|| {
@@ -50,8 +50,8 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ko-dic")]
     {
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
-        use lindera_core::mode::Mode;
 
         c.bench_function("bench-constructor-ko-dic", |b| {
             b.iter(|| {
@@ -72,8 +72,8 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "cc-cedict")]
     {
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
-        use lindera_core::mode::Mode;
 
         c.bench_function("bench-constructor-cc-cedict", |b| {
             b.iter(|| {
@@ -98,11 +98,11 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-simple-userdic-ipadic", |b| {
@@ -138,11 +138,11 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-simple-userdic-unidic", |b| {
@@ -178,11 +178,11 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-simple-userdic-ko-dic", |b| {
@@ -218,11 +218,11 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-simple-userdic-cc-cedict", |b| {
@@ -259,8 +259,8 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -282,8 +282,8 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -305,8 +305,8 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "ko-dic")]
     {
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -328,8 +328,8 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         // Create a dictionary config.
@@ -356,11 +356,11 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -397,11 +397,11 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -438,11 +438,11 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -477,11 +477,11 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
     {
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{
             load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
             DictionaryKind, UserDictionaryConfig,
         };
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -522,8 +522,8 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -565,8 +565,8 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -611,8 +611,8 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(
@@ -659,8 +659,8 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::core::mode::Mode;
         use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::mode::Mode;
         use lindera::tokenizer::Tokenizer;
 
         let mut long_text_file = BufReader::new(

@@ -3,8 +3,8 @@ use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
+use crate::error::LinderaErrorKind;
+use crate::LinderaResult;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
 

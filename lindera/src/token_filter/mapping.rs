@@ -5,11 +5,10 @@ use serde::{Deserialize, Serialize};
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
 
@@ -161,9 +160,7 @@ mod tests {
     fn test_mapping_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::mapping::MappingTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -186,7 +183,10 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(312630, true),
+                word_id: WordId {
+                    id: 312630,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -207,7 +207,10 @@ mod tests {
                 byte_end: 9,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(383791, true),
+                word_id: WordId {
+                    id: 383791,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

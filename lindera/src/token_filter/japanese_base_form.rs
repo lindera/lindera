@@ -4,12 +4,11 @@ use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
 use crate::dictionary::DictionaryKind;
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
@@ -196,9 +195,7 @@ mod tests {
     fn test_japanese_base_form_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -219,7 +216,10 @@ mod tests {
                 byte_end: 12,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(321702, true),
+                word_id: WordId {
+                    id: 321702,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -240,7 +240,10 @@ mod tests {
                 byte_end: 15,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(53041, true),
+                word_id: WordId {
+                    id: 53041,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -261,7 +264,10 @@ mod tests {
                 byte_end: 21,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(3222, true),
+                word_id: WordId {
+                    id: 3222,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -282,7 +288,10 @@ mod tests {
                 byte_end: 27,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(68730, true),
+                word_id: WordId {
+                    id: 68730,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -313,9 +322,7 @@ mod tests {
     fn test_japanese_base_form_token_filter_apply_unidic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -336,7 +343,10 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(618177, true),
+                word_id: WordId {
+                    id: 618177,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -365,7 +375,10 @@ mod tests {
                 byte_end: 12,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(587348, true),
+                word_id: WordId {
+                    id: 587348,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -394,7 +407,10 @@ mod tests {
                 byte_end: 15,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(106480, true),
+                word_id: WordId {
+                    id: 106480,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -423,7 +439,10 @@ mod tests {
                 byte_end: 21,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(6075, true),
+                word_id: WordId {
+                    id: 6075,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -452,7 +471,10 @@ mod tests {
                 byte_end: 27,
                 position: 4,
                 position_length: 1,
-                word_id: WordId(140895, true),
+                word_id: WordId {
+                    id: 140895,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

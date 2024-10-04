@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
 
@@ -151,9 +150,7 @@ mod tests {
     fn test_length_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::length::LengthTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -175,7 +172,10 @@ mod tests {
                 byte_end: 9,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(36165, true),
+                word_id: WordId {
+                    id: 36165,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -196,7 +196,10 @@ mod tests {
                 byte_end: 12,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(73246, true),
+                word_id: WordId {
+                    id: 73246,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -217,7 +220,10 @@ mod tests {
                 byte_end: 18,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(74990, true),
+                word_id: WordId {
+                    id: 74990,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -238,7 +244,10 @@ mod tests {
                 byte_end: 21,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(73246, true),
+                word_id: WordId {
+                    id: 73246,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -259,7 +268,10 @@ mod tests {
                 byte_end: 27,
                 position: 4,
                 position_length: 1,
-                word_id: WordId(74990, true),
+                word_id: WordId {
+                    id: 74990,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -280,7 +292,10 @@ mod tests {
                 byte_end: 30,
                 position: 5,
                 position_length: 1,
-                word_id: WordId(55831, true),
+                word_id: WordId {
+                    id: 55831,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -301,7 +316,10 @@ mod tests {
                 byte_end: 36,
                 position: 6,
                 position_length: 1,
-                word_id: WordId(8029, true),
+                word_id: WordId {
+                    id: 8029,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

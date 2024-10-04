@@ -4,12 +4,11 @@ use std::{collections::HashSet, mem};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
 use crate::dictionary::DictionaryKind;
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::LinderaResult;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
@@ -284,9 +283,7 @@ mod tests {
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use lindera_core::viterbi::WordId;
-
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
         use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
         use crate::token_filter::TokenFilter;
@@ -312,7 +309,10 @@ mod tests {
                 byte_end: 3,
                 position: 0,
                 position_length: 1,
-                word_id: WordId(391174, true),
+                word_id: WordId {
+                    id: 391174,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -333,7 +333,10 @@ mod tests {
                 byte_end: 6,
                 position: 1,
                 position_length: 1,
-                word_id: WordId(391171, true),
+                word_id: WordId {
+                    id: 391171,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -354,7 +357,10 @@ mod tests {
                 byte_end: 9,
                 position: 2,
                 position_length: 1,
-                word_id: WordId(391171, true),
+                word_id: WordId {
+                    id: 391171,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -375,7 +381,10 @@ mod tests {
                 byte_end: 12,
                 position: 3,
                 position_length: 1,
-                word_id: WordId(137904, true),
+                word_id: WordId {
+                    id: 137904,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -396,7 +405,10 @@ mod tests {
                 byte_end: 15,
                 position: 4,
                 position_length: 1,
-                word_id: WordId(287427, true),
+                word_id: WordId {
+                    id: 287427,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -417,7 +429,10 @@ mod tests {
                 byte_end: 18,
                 position: 5,
                 position_length: 1,
-                word_id: WordId(80582, true),
+                word_id: WordId {
+                    id: 80582,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -438,7 +453,10 @@ mod tests {
                 byte_end: 24,
                 position: 6,
                 position_length: 1,
-                word_id: WordId(228047, true),
+                word_id: WordId {
+                    id: 228047,
+                    is_system: true,
+                },
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

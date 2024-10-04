@@ -33,9 +33,6 @@ use std::ops::Deref;
 
 use serde_json::Value;
 
-use lindera_core::error::LinderaErrorKind;
-use lindera_core::LinderaResult;
-
 use crate::character_filter::japanese_iteration_mark::{
     JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
     JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
@@ -50,7 +47,9 @@ use crate::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
     UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
 };
+use crate::error::LinderaErrorKind;
 use crate::parse_cli_flag;
+use crate::LinderaResult;
 
 /// The `CharacterFilter` trait defines an interface for filters that preprocess text before tokenization.
 ///
