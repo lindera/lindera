@@ -16,6 +16,7 @@
 /// - `length`: Contains the length token filter.
 /// - `lowercase`: Contains the lowercase token filter.
 /// - `mapping`: Contains the mapping token filter.
+/// - `remove_diacritical_mark`: Contains the remove diacritical mark token filter.
 /// - `stop_words`: Contains the stop words token filter.
 /// - `uppercase`: Contains the uppercase token filter.
 ///
@@ -46,6 +47,7 @@ pub mod korean_stop_tags;
 pub mod length;
 pub mod lowercase;
 pub mod mapping;
+pub mod remove_diacritical_mark;
 pub mod stop_words;
 pub mod uppercase;
 
@@ -102,6 +104,10 @@ use crate::token_filter::length::{
 use crate::token_filter::lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME};
 use crate::token_filter::mapping::{
     MappingTokenFilter, MappingTokenFilterConfig, MAPPING_TOKEN_FILTER_NAME,
+};
+use crate::token_filter::remove_diacritical_mark::{
+    RemoveDiacriticalMarkTokenFilter, RemoveDiacriticalMarkTokenFilterConfig,
+    REMOVE_DIACRITICAL_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::stop_words::{
     StopWordsTokenFilter, StopWordsTokenFilterConfig, STOP_WORDS_TOKEN_FILTER_NAME,
@@ -238,6 +244,10 @@ impl TokenFilterLoader {
             MAPPING_TOKEN_FILTER_NAME => {
                 let config = MappingTokenFilterConfig::from_value(value)?;
                 BoxTokenFilter::from(MappingTokenFilter::new(config)?)
+            }
+            REMOVE_DIACRITICAL_TOKEN_FILTER_NAME => {
+                let config = RemoveDiacriticalMarkTokenFilterConfig::from_value(value)?;
+                BoxTokenFilter::from(RemoveDiacriticalMarkTokenFilter::new(config))
             }
             STOP_WORDS_TOKEN_FILTER_NAME => {
                 let config = StopWordsTokenFilterConfig::from_value(value)?;

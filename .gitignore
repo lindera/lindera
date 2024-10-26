@@ -9,9 +9,6 @@ Cargo.lock
 
 lindera-ipadic-2.7.0-20070801
 mecab-ipadic-neologd-0.0.7
-# mecab-ipadic-*-*
-# unidic-mecab-*_src
-# mecab-ko-dic-*-*
 CC-CEDICT-MeCab-master
 
 flamegraph.svg
