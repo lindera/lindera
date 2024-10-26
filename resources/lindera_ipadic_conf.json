@@ -80,6 +80,12 @@
             "args": {
                 "min": 3
             }
+        },
+        {
+            "kind": "remove_diacritical_mark",
+            "args": {
+                "japanese": false
+            }
         }
     ]
 }
