@@ -18,7 +18,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.33.0", features = ["ipadic"] }
+lindera = { version = "0.34.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -30,10 +30,10 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::core::LinderaResult;
-use lindera::core::mode::Mode;
-use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+use lindera::dictionary::{DictionaryConfig, DictionaryKind};
+use lindera::mode::Mode;
 use lindera::tokenizer::Tokenizer;
+use lindera::{dictionary, LinderaResult};
 
 fn main() -> LinderaResult<()> {
     // Create a dictionary config.
@@ -43,10 +43,10 @@ fn main() -> LinderaResult<()> {
     };
 
     // Load a dictionary from the dictionary config.
-    let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+    let dictionary = dictionary::load_dictionary_from_config(dictionary_config).unwrap();
 
-    // create tokenizer
-    let tokenizer = Tokenizer::from_config(config)?;
+    // Create the tokenizer.
+    let tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
 
     // Tokenize a text.
     let text = "関西国際空港限定トートバッグ";
@@ -90,7 +90,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.33.0", features = ["ipadic"] }
+lindera = { version = "0.34.0", features = ["ipadic"] }
 ```
 
 For example:
@@ -106,13 +106,10 @@ With an user dictionary, `Tokenizer` will be created as follows:
 
 ```rust
 use std::path::PathBuf;
-
-use lindera::core::LinderaResult;
-use lindera::core::mode::Mode;
-use lindera::dictionary::{
-    DictionaryConfig, DictionaryKind, DictionaryLoader, UserDictionaryConfig,
-};
+use lindera::dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
+use lindera::mode::Mode;
 use lindera::tokenizer::Tokenizer;
+use lindera::{dictionary, LinderaResult};
 
 fn main() -> LinderaResult<()> {
     // Create a dictionary config.
@@ -122,7 +119,7 @@ fn main() -> LinderaResult<()> {
     };
 
     // Load a dictionary from the dictionary config.
-    let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+    let dictionary = dictionary::load_dictionary_from_config(dictionary_config)?;
 
     let user_dictionary_config = UserDictionaryConfig {
         kind: Some(DictionaryKind::IPADIC),
@@ -130,7 +127,7 @@ fn main() -> LinderaResult<()> {
     };
 
     let user_dictionary =
-        DictionaryLoader::load_user_dictionary_from_config(user_dictionary_config)?;
+        dictionary::load_user_dictionary_from_config(user_dictionary_config)?;
 
     // Create a tokenizer.
     let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
@@ -169,7 +166,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.33.0", features = ["ipadic"] }
+lindera = { version = "0.34.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -191,9 +188,9 @@ use lindera::character_filter::unicode_normalize::{
     UnicodeNormalizeKind,
 };
 use lindera::character_filter::BoxCharacterFilter;
-use lindera::core::LinderaResult;
-use lindera::core::mode::Mode;
-use lindera::dictionary::{DictionaryConfig, DictionaryKind, DictionaryLoader};
+use lindera::{dictionary, LinderaResult};
+use lindera::mode::Mode;
+use lindera::dictionary::{DictionaryConfig, DictionaryKind};
 use lindera::token_filter::japanese_compound_word::{
     JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
 };
@@ -214,7 +211,7 @@ fn main() -> LinderaResult<()> {
     };
 
     // Load a dictionary from the dictionary config.
-    let dictionary = DictionaryLoader::load_dictionary_from_config(dictionary_config)?;
+    let dictionary = dictionary::load_dictionary_from_config(dictionary_config)?;
 
     // Create a tokenizer.
     let mut tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
