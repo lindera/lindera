@@ -14,15 +14,15 @@ pub const REMOVE_DIACRITICAL_TOKEN_FILTER_NAME: &str = "remove_diacritical_mark"
 
 fn get_normalize_kind(text: &str) -> UnicodeNormalizeKind {
     if text.nfc().eq(text.chars()) {
-        return UnicodeNormalizeKind::NFC;
+        UnicodeNormalizeKind::NFC
     } else if text.nfd().eq(text.chars()) {
-        return UnicodeNormalizeKind::NFD;
+        UnicodeNormalizeKind::NFD
     } else if text.nfkc().eq(text.chars()) {
-        return UnicodeNormalizeKind::NFKC;
+        UnicodeNormalizeKind::NFKC
     } else if text.nfkd().eq(text.chars()) {
-        return UnicodeNormalizeKind::NFKD;
+        UnicodeNormalizeKind::NFKD
     } else {
-        return UnicodeNormalizeKind::NFD;
+        UnicodeNormalizeKind::NFD
     }
 }
 
@@ -66,7 +66,7 @@ impl RemoveDiacriticalMarkTokenFilter {
     }
 
     fn is_diacritic(&self, x: char) -> bool {
-        '\u{0300}' <= x && x <= '\u{036f}'
+        ('\u{0300}'..='\u{036f}').contains(&x)
     }
 
     fn is_japanese_diacritic(&self, x: char) -> bool {

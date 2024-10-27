@@ -1,4 +1,14 @@
 {
+    "segmenter": {
+        "mode": "normal",
+        "dictionary": {
+            "kind": "ipadic"
+        },
+        "user_dictionary": {
+            "path": "./resources/ipadic_simple_userdic.bin"
+        }
+
+    },
     "character_filters": [
         {
             "kind": "unicode_normalize",
@@ -14,16 +24,6 @@
             }
         }
     ],
-    "segmenter": {
-        "mode": "normal",
-        "dictionary": {
-            "kind": "ipadic"
-        },
-        "user_dictionary": {
-            "path": "./resources/ipadic_simple_userdic.bin"
-        }
-
-    },
     "token_filters": [
         {
             "kind": "japanese_compound_word",
