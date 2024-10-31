@@ -1,10 +1,13 @@
 use std::borrow::Cow;
+use std::env;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
-use serde_json::Value;
-
-use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
+use serde_json::{json, Value};
 
 use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
+use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
 use crate::segmenter::{Segmenter, SegmenterConfig};
@@ -13,6 +16,137 @@ use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
 use crate::LinderaResult;
 
 pub type TokenizerConfig = Value;
+
+fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
+    let mut input_read = File::open(file_path)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    let mut buffer = Vec::new();
+    input_read
+        .read_to_end(&mut buffer)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    let tokenizer_config: TokenizerConfig = serde_yaml::from_slice::<TokenizerConfig>(&buffer)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    Ok(tokenizer_config)
+}
+
+fn has_key(value: &Value, key: &str) -> bool {
+    value
+        .as_object()
+        .map(|obj| obj.contains_key(key))
+        .unwrap_or(false)
+}
+
+pub struct TokenizerConfigBuilder {
+    config: TokenizerConfig,
+}
+
+impl Default for TokenizerConfigBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TokenizerConfigBuilder {
+    pub fn new() -> Self {
+        let mut config = match env::var("LINDERA_CONFIG_PATH") {
+            Ok(config_path) => {
+                let config_file = Path::new(&config_path);
+                yaml_to_config(config_file).unwrap_or(TokenizerConfig::Null)
+            }
+            Err(_) => TokenizerConfig::Null,
+        };
+
+        if config.is_null() {
+            config = json!({
+                "segmenter": {},
+                "character_filters": [],
+                "token_filters": []
+            });
+        } else {
+            if !has_key(&config, "segmenter") {
+                config["segmenter"] = json!({});
+            }
+            if !has_key(&config, "character_filters") {
+                config["character_filters"] = json!([]);
+            }
+            if !has_key(&config, "token_filters") {
+                config["token_filters"] = json!([]);
+            }
+        }
+
+        TokenizerConfigBuilder { config }
+    }
+
+    pub fn from_file(file_path: &Path) -> LinderaResult<Self> {
+        let mut config = yaml_to_config(file_path).unwrap_or(TokenizerConfig::Null);
+
+        if config.is_null() {
+            config = json!({
+                "segmenter": {},
+                "character_filters": [],
+                "token_filters": []
+            });
+        } else {
+            if !has_key(&config, "segmenter") {
+                config["segmenter"] = json!({});
+            }
+            if !has_key(&config, "character_filters") {
+                config["character_filters"] = json!([]);
+            }
+            if !has_key(&config, "token_filters") {
+                config["token_filters"] = json!([]);
+            }
+        }
+
+        Ok(TokenizerConfigBuilder { config })
+    }
+
+    pub fn set_segmenter_mode(&mut self, mode: &Mode) -> &mut Self {
+        self.config["segmenter"] = json!({ "mode": mode.as_str() });
+        self
+    }
+
+    pub fn set_segmenter_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
+        self.config["segmenter"]["dictionary"] = json!({ "kind": kind });
+        self
+    }
+
+    pub fn set_segmenter_dictionary_path(&mut self, path: &Path) -> &mut Self {
+        self.config["segmenter"]["dictionary"] = json!({ "path": path });
+        self
+    }
+
+    pub fn set_segmenter_user_dictionary_path(&mut self, path: &Path) -> &mut Self {
+        self.config["segmenter"]["user_dictionary"] = json!({ "path": path });
+        self
+    }
+
+    pub fn set_segmenter_user_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
+        self.config["segmenter"]["user_dictionary"] = json!({ "kind": kind });
+        self
+    }
+
+    pub fn append_character_filter(&mut self, kind: &str, args: &Value) -> &mut Self {
+        if let Some(array) = self.config["character_filters"].as_array_mut() {
+            array.push(json!({ "kind": kind, "args": args }));
+        }
+        self
+    }
+
+    pub fn append_token_filter(&mut self, kind: &str, args: &Value) -> &mut Self {
+        if let Some(array) = self.config["token_filters"].as_array_mut() {
+            array.push(json!({ "kind": kind, "args": args }));
+        }
+        self
+    }
+
+    pub fn build(self) -> TokenizerConfig {
+        self.config
+    }
+}
 
 pub struct Tokenizer {
     /// Segmenter
@@ -36,6 +170,29 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
+    /// Creates a new `Tokenizer` instance from a provided `Segmenter`.
+    ///
+    /// # Arguments
+    ///
+    /// * `segmenter` - An instance of the `Segmenter` struct, which is responsible for the core tokenization process.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `Tokenizer` instance that uses the provided `segmenter` for tokenization, with empty character and token filters.
+    ///
+    /// # Details
+    ///
+    /// - `segmenter`: The segmenter is responsible for handling the actual segmentation and tokenization of text. It is passed into the `Tokenizer` during initialization.
+    /// - `character_filters`: This is initialized as an empty vector and can be modified later to include character filters.
+    /// - `token_filters`: This is also initialized as an empty vector and can be modified later to include token filters.
+    pub fn new(segmenter: Segmenter) -> Self {
+        Self {
+            segmenter,
+            character_filters: Vec::new(),
+            token_filters: Vec::new(),
+        }
+    }
+
     /// Creates a `Tokenizer` instance from the provided JSON configuration (`TokenizerConfig`).
     ///
     /// # Arguments
@@ -49,7 +206,7 @@ impl Tokenizer {
     /// # Errors
     ///
     /// - Returns an error if:
-    ///   - The `segmenter` configuration is missing or cannot be deserialized.
+    ///   - The `segmenter` configuration is missing or cannot be deserialized.``
     ///   - The segmenter configuration in JSON is malformed or missing required fields.
     ///   - Any character or token filter configuration is missing or contains invalid settings.
     ///
@@ -86,7 +243,7 @@ impl Tokenizer {
         let segmenter = Segmenter::from_config(segmenter_config)?;
 
         // Create a tokenizer from the segmenter.
-        let mut tokenizer = Tokenizer::from_segmenter(segmenter);
+        let mut tokenizer = Tokenizer::new(segmenter);
 
         // Load character filter settings from the tokenizer config if it is not empty.
         if let Some(character_filter_settings) = config["character_filters"].as_array() {
@@ -117,48 +274,6 @@ impl Tokenizer {
         }
 
         Ok(tokenizer)
-    }
-
-    /// Creates a new instance of `Tokenizer`.
-    ///
-    /// # Arguments
-    ///
-    /// * `mode` - The `Mode` in which the tokenizer will operate. This typically defines how aggressively tokens are segmented (e.g., normal or aggressive mode).
-    /// * `dictionary` - A `Dictionary` object that provides the tokenization rules and dictionary data.
-    /// * `user_dictionary` - An optional `UserDictionary` that provides additional or custom tokenization rules. If `None`, only the main dictionary will be used.
-    ///
-    /// # Returns
-    ///
-    /// Returns a new `Tokenizer` instance that is configured using the provided `mode`, `dictionary`, and `user_dictionary`.
-    pub fn new(
-        mode: Mode,
-        dictionary: Dictionary,
-        user_dictionary: Option<UserDictionary>,
-    ) -> Self {
-        Tokenizer::from_segmenter(Segmenter::new(mode, dictionary, user_dictionary))
-    }
-
-    /// Creates a new `Tokenizer` instance from a provided `Segmenter`.
-    ///
-    /// # Arguments
-    ///
-    /// * `segmenter` - An instance of the `Segmenter` struct, which is responsible for the core tokenization process.
-    ///
-    /// # Returns
-    ///
-    /// Returns a new `Tokenizer` instance that uses the provided `segmenter` for tokenization, with empty character and token filters.
-    ///
-    /// # Details
-    ///
-    /// - `segmenter`: The segmenter is responsible for handling the actual segmentation and tokenization of text. It is passed into the `Tokenizer` during initialization.
-    /// - `character_filters`: This is initialized as an empty vector and can be modified later to include character filters.
-    /// - `token_filters`: This is also initialized as an empty vector and can be modified later to include token filters.
-    pub fn from_segmenter(segmenter: Segmenter) -> Self {
-        Self {
-            segmenter,
-            character_filters: Vec::new(),
-            token_filters: Vec::new(),
-        }
     }
 
     /// Appends a character filter to the tokenizer.
@@ -322,79 +437,20 @@ impl Clone for Tokenizer {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "ipadic")]
-    use crate::tokenizer::{Tokenizer, TokenizerConfig};
+    use crate::tokenizer::Tokenizer;
 
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenizer_config_from_slice() {
-        let config_str = r#"
-        {
-            "character_filters": [
-                {
-                    "kind": "unicode_normalize",
-                    "args": {
-                        "kind": "nfkc"
-                    }
-                },
-                {
-                    "kind": "mapping",
-                    "args": {
-                        "mapping": {
-                            "リンデラ": "Lindera"
-                        }
-                    }
-                }
-            ],
-            "segmenter": {
-                "dictionary": {
-                    "kind": "ipadic"
-                },
-                "mode": "normal"
-            },
-            "token_filters": [
-                {
-                    "kind": "japanese_stop_tags",
-                    "args": {
-                        "tags": [
-                            "接続詞",
-                            "助詞",
-                            "助詞,格助詞",
-                            "助詞,格助詞,一般",
-                            "助詞,格助詞,引用",
-                            "助詞,格助詞,連語",
-                            "助詞,係助詞",
-                            "助詞,副助詞",
-                            "助詞,間投助詞",
-                            "助詞,並立助詞",
-                            "助詞,終助詞",
-                            "助詞,副助詞／並立助詞／終助詞",
-                            "助詞,連体化",
-                            "助詞,副詞化",
-                            "助詞,特殊",
-                            "助動詞",
-                            "記号",
-                            "記号,一般",
-                            "記号,読点",
-                            "記号,句点",
-                            "記号,空白",
-                            "記号,括弧閉",
-                            "その他,間投",
-                            "フィラー",
-                            "非言語音"
-                        ]
-                    }
-                },
-                {
-                    "kind": "japanese_katakana_stem",
-                    "args": {
-                        "min": 3
-                    }
-                }
-            ]
-        }
-        "#;
+        use std::path::PathBuf;
 
-        let result: Result<TokenizerConfig, _> = serde_json::from_slice(config_str.as_bytes());
+        use crate::tokenizer::yaml_to_config;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("lindera.yml");
+
+        let result = yaml_to_config(&config_file);
 
         assert_eq!(true, result.is_ok());
     }
@@ -402,75 +458,15 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenizer_config_clone() {
-        let config_str = r#"
-        {
-            "character_filters": [
-                {
-                    "kind": "unicode_normalize",
-                    "args": {
-                        "kind": "nfkc"
-                    }
-                },
-                {
-                    "kind": "mapping",
-                    "args": {
-                        "mapping": {
-                            "リンデラ": "Lindera"
-                        }
-                    }
-                }
-            ],
-            "segmenter": {
-                "dictionary": {
-                    "kind": "ipadic"
-                },
-                "mode": "normal"
-            },
-            "token_filters": [
-                {
-                    "kind": "japanese_stop_tags",
-                    "args": {
-                        "tags": [
-                            "接続詞",
-                            "助詞",
-                            "助詞,格助詞",
-                            "助詞,格助詞,一般",
-                            "助詞,格助詞,引用",
-                            "助詞,格助詞,連語",
-                            "助詞,係助詞",
-                            "助詞,副助詞",
-                            "助詞,間投助詞",
-                            "助詞,並立助詞",
-                            "助詞,終助詞",
-                            "助詞,副助詞／並立助詞／終助詞",
-                            "助詞,連体化",
-                            "助詞,副詞化",
-                            "助詞,特殊",
-                            "助動詞",
-                            "記号",
-                            "記号,一般",
-                            "記号,読点",
-                            "記号,句点",
-                            "記号,空白",
-                            "記号,括弧閉",
-                            "その他,間投",
-                            "フィラー",
-                            "非言語音"
-                        ]
-                    }
-                },
-                {
-                    "kind": "japanese_katakana_stem",
-                    "args": {
-                        "min": 3
-                    }
-                }
-            ]
-        }
-        "#;
+        use std::path::PathBuf;
 
-        let tokenizer_config: TokenizerConfig =
-            serde_json::from_slice(config_str.as_bytes()).unwrap();
+        use crate::tokenizer::yaml_to_config;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("lindera.yml");
+
+        let tokenizer_config = yaml_to_config(&config_file).unwrap();
 
         let cloned_tokenizer_config = tokenizer_config.clone();
 
@@ -481,94 +477,18 @@ mod tests {
     #[cfg(feature = "ipadic")]
     fn test_tokenize_ipadic() {
         use std::borrow::Cow;
+        use std::path::PathBuf;
 
-        let config_str = r#"
-        {
-            "character_filters": [
-                {
-                    "kind": "unicode_normalize",
-                    "args": {
-                        "kind": "nfkc"
-                    }
-                },
-                {
-                    "kind": "japanese_iteration_mark",
-                    "args": {
-                        "normalize_kanji": true,
-                        "normalize_kana": true
-                    }
-                },
-                {
-                    "kind": "mapping",
-                    "args": {
-                        "mapping": {
-                            "リンデラ": "Lindera"
-                        }
-                    }
-                }
-            ],
-            "segmenter": {
-                "dictionary": {
-                    "kind": "ipadic"
-                },
-                "mode": "normal"
-            },
-            "token_filters": [
-                {
-                    "kind": "japanese_compound_word",
-                    "args": {
-                        "kind": "ipadic",
-                        "tags": [
-                            "名詞,数",
-                            "名詞,接尾,助数詞"
-                        ]
-                    }
-                },
-                {
-                    "kind": "japanese_stop_tags",
-                    "args": {
-                        "tags": [
-                            "接続詞",
-                            "助詞",
-                            "助詞,格助詞",
-                            "助詞,格助詞,一般",
-                            "助詞,格助詞,引用",
-                            "助詞,格助詞,連語",
-                            "助詞,係助詞",
-                            "助詞,副助詞",
-                            "助詞,間投助詞",
-                            "助詞,並立助詞",
-                            "助詞,終助詞",
-                            "助詞,副助詞／並立助詞／終助詞",
-                            "助詞,連体化",
-                            "助詞,副詞化",
-                            "助詞,特殊",
-                            "助動詞",
-                            "記号",
-                            "記号,一般",
-                            "記号,読点",
-                            "記号,句点",
-                            "記号,空白",
-                            "記号,括弧閉",
-                            "その他,間投",
-                            "フィラー",
-                            "非言語音"
-                        ]
-                    }
-                },
-                {
-                    "kind": "japanese_katakana_stem",
-                    "args": {
-                        "min": 3
-                    }
-                }
-            ]
-        }
-        "#;
-        let tokenizer_config: TokenizerConfig =
-            serde_json::from_slice(config_str.as_bytes()).unwrap();
+        use crate::tokenizer::TokenizerConfigBuilder;
 
-        let analyzer = Tokenizer::from_config(&tokenizer_config).unwrap();
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("lindera.yml");
+
+        let config_builder = TokenizerConfigBuilder::from_file(&config_file).unwrap();
+        let config = config_builder.build();
+
+        let analyzer = Tokenizer::from_config(&config).unwrap();
 
         {
             let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。";

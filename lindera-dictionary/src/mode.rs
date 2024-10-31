@@ -57,10 +57,18 @@ impl Mode {
             Mode::Decompose(_penalty) => true,
         }
     }
+
     pub fn penalty_cost(&self, edge: &Edge) -> i32 {
         match self {
             Mode::Normal => 0i32,
             Mode::Decompose(penalty) => penalty.penalty(edge),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Mode::Normal => "normal",
+            Mode::Decompose(_penalty) => "decompose",
         }
     }
 }

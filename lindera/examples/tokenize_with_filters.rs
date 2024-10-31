@@ -13,7 +13,7 @@ fn main() -> LinderaResult<()> {
             UnicodeNormalizeKind,
         };
         use lindera::character_filter::BoxCharacterFilter;
-        use lindera::dictionary::{load_dictionary_from_config, DictionaryConfig, DictionaryKind};
+        use lindera::dictionary::DictionaryKind;
         use lindera::mode::Mode;
         use lindera::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
@@ -25,19 +25,14 @@ fn main() -> LinderaResult<()> {
             JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
         };
         use lindera::token_filter::BoxTokenFilter;
-        use lindera::tokenizer::Tokenizer;
+        use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 
-        // Create a dictionary config.
-        let dictionary_config = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        // Load a dictionary from the dictionary config.
-        let dictionary = load_dictionary_from_config(dictionary_config)?;
+        let mut config_builder = TokenizerConfigBuilder::new();
+        config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
+        config_builder.set_segmenter_mode(&Mode::Normal);
 
         // Create a tokenizer.
-        let mut tokenizer = Tokenizer::new(Mode::Normal, dictionary, None);
+        let mut tokenizer = Tokenizer::from_config(&config_builder.build())?;
 
         // Append a unicode normalize character filter to the tokenizer.
         let unicode_normalize_character_filter_config =
