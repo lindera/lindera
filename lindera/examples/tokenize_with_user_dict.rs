@@ -5,31 +5,20 @@ fn main() -> LinderaResult<()> {
     {
         use std::path::PathBuf;
 
-        use lindera::dictionary::{
-            load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
-            DictionaryKind, UserDictionaryConfig,
-        };
+        use lindera::dictionary::DictionaryKind;
         use lindera::mode::Mode;
-        use lindera::tokenizer::Tokenizer;
+        use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 
-        // Create a dictionary config.
-        let dictionary_config = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
-        // Load a dictionary from the dictionary config.
-        let dictionary = load_dictionary_from_config(dictionary_config)?;
-
-        let user_dictionary_config = UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: PathBuf::from("./resources/ipadic_simple_userdic.csv"),
-        };
-
-        let user_dictionary = load_user_dictionary_from_config(user_dictionary_config)?;
+        let mut config_builder = TokenizerConfigBuilder::new();
+        config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
+        config_builder.set_segmenter_mode(&Mode::Normal);
+        config_builder.set_segmenter_user_dictionary_path(
+            PathBuf::from("./resources/ipadic_simple_userdic.csv").as_path(),
+        );
+        config_builder.set_segmenter_user_dictionary_kind(&DictionaryKind::IPADIC);
 
         // Create a tokenizer.
-        let tokenizer = Tokenizer::new(Mode::Normal, dictionary, Some(user_dictionary));
+        let tokenizer = Tokenizer::from_config(&config_builder.build())?;
 
         // Tokenize a text.
         let text = "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です";

@@ -1,23 +1,17 @@
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-use std::path::Path;
 
 use clap::{Parser, Subcommand};
 
 use lindera::character_filter::CharacterFilterLoader;
-use lindera::dictionary::{
-    load_dictionary_from_config, load_user_dictionary_from_config, resolve_builder,
-    DictionaryConfig, DictionaryKind, UserDictionaryConfig,
-};
-use lindera::error::LinderaError;
-use lindera::error::LinderaErrorKind;
+use lindera::dictionary::{resolve_builder, DictionaryKind};
+use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
-use lindera::tokenizer::Tokenizer;
+use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 use lindera::LinderaResult;
 
 #[derive(Debug, Parser)]
@@ -186,33 +180,30 @@ fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
 }
 
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
+    let mut config_builder = TokenizerConfigBuilder::new();
+
     // Dictionary config
-    let dictionary_conf = DictionaryConfig {
-        kind: args.dic_type.clone(),
-        path: args.dic_dir,
-    };
+    if let Some(ref dic_type) = args.dic_type {
+        config_builder.set_segmenter_dictionary_kind(dic_type);
+    }
+    if let Some(dic_dir) = args.dic_dir {
+        config_builder.set_segmenter_dictionary_path(dic_dir.as_path());
+    }
 
     // User dictionary config
-    let user_dictionary_conf = match args.user_dic_file {
-        Some(path) => Some(UserDictionaryConfig {
-            kind: args.dic_type,
-            path,
-        }),
-        None => None,
-    };
+    if let Some(user_dic_file) = args.user_dic_file {
+        config_builder.set_segmenter_user_dictionary_path(user_dic_file.as_path());
+    }
+    if let Some(ref dic_type) = args.dic_type {
+        config_builder.set_segmenter_user_dictionary_kind(dic_type);
+    }
 
-    // Dictionary
-    let dictionary = load_dictionary_from_config(dictionary_conf)?;
-
-    // User dictionary
-    let user_dictionary = match user_dictionary_conf {
-        Some(ud_conf) => Some(load_user_dictionary_from_config(ud_conf)?),
-        None => None,
-    };
-    let mode = args.mode;
+    // Mode
+    config_builder.set_segmenter_mode(&args.mode);
 
     // Tokenizer
-    let mut tokenizer = Tokenizer::new(mode, dictionary, user_dictionary);
+    let mut tokenizer = Tokenizer::from_config(&config_builder.build())
+        .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;

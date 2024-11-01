@@ -3,22 +3,17 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
-        use std::fs::File;
-        use std::io::BufReader;
         use std::path::PathBuf;
 
-        use lindera::tokenizer::{Tokenizer, TokenizerConfig};
+        use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
-            .join("lindera_ipadic_conf.json");
+            .join("lindera.yml");
 
-        let file = File::open(&path).unwrap();
-        let reader = BufReader::new(file);
+        let config_builder = TokenizerConfigBuilder::from_file(&path)?;
 
-        let tokenizer_config: TokenizerConfig = serde_json::from_reader(reader).unwrap();
-
-        let tokenizer = Tokenizer::from_config(&tokenizer_config).unwrap();
+        let tokenizer = Tokenizer::from_config(&config_builder.build())?;
 
         let mut text =
             "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
