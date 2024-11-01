@@ -50,6 +50,8 @@ impl Default for TokenizerConfigBuilder {
 }
 
 impl TokenizerConfigBuilder {
+    // Creates a new `TokenizerConfigBuilder` instance.
+    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
     pub fn new() -> Self {
         let mut config = match env::var("LINDERA_CONFIG_PATH") {
             Ok(config_path) => {
@@ -80,6 +82,7 @@ impl TokenizerConfigBuilder {
         TokenizerConfigBuilder { config }
     }
 
+    // Creates a new `TokenizerConfigBuilder` instance from a YAML file.
     pub fn from_file(file_path: &Path) -> LinderaResult<Self> {
         let mut config = yaml_to_config(file_path).unwrap_or(TokenizerConfig::Null);
 
@@ -105,27 +108,27 @@ impl TokenizerConfigBuilder {
     }
 
     pub fn set_segmenter_mode(&mut self, mode: &Mode) -> &mut Self {
-        self.config["segmenter"] = json!({ "mode": mode.as_str() });
+        self.config["segmenter"]["mode"] = json!(mode.as_str());
         self
     }
 
     pub fn set_segmenter_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
-        self.config["segmenter"]["dictionary"] = json!({ "kind": kind });
+        self.config["segmenter"]["dictionary"]["kind"] = json!(kind.as_str());
         self
     }
 
     pub fn set_segmenter_dictionary_path(&mut self, path: &Path) -> &mut Self {
-        self.config["segmenter"]["dictionary"] = json!({ "path": path });
+        self.config["segmenter"]["dictionary"]["path"] = json!(path);
         self
     }
 
     pub fn set_segmenter_user_dictionary_path(&mut self, path: &Path) -> &mut Self {
-        self.config["segmenter"]["user_dictionary"] = json!({ "path": path });
+        self.config["segmenter"]["user_dictionary"]["path"] = json!(path);
         self
     }
 
     pub fn set_segmenter_user_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
-        self.config["segmenter"]["user_dictionary"] = json!({ "kind": kind });
+        self.config["segmenter"]["user_dictionary"]["kind"] = json!(kind.as_str());
         self
     }
 
