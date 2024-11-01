@@ -8,10 +8,10 @@ pub struct PrefixDictionaryLoader {}
 
 impl PrefixDictionaryLoader {
     pub fn load(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
-        let da_data = read_file(input_dir.join("da.bin").as_path())?;
-        let vals_data = read_file(input_dir.join("vals.bin").as_path())?;
-        let words_idx_data = read_file(input_dir.join("words_idx.bin").as_path())?;
-        let words_data = read_file(input_dir.join("words.bin").as_path())?;
+        let da_data = read_file(input_dir.join("dict.da").as_path())?;
+        let vals_data = read_file(input_dir.join("dict.vals").as_path())?;
+        let words_idx_data = read_file(input_dir.join("dict.wordsidx").as_path())?;
+        let words_data = read_file(input_dir.join("dict.words").as_path())?;
 
         Ok(PrefixDictionary::load(
             da_data.as_slice(),

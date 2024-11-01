@@ -43,13 +43,17 @@ struct ListArgs {}
     version
 )]
 struct TokenizeArgs {
-    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
+    #[clap(short = 'k', long = "dictionary-kind", help = "Kind of dictionary")]
     dic_type: Option<DictionaryKind>,
-    #[clap(short = 'd', long = "dic-dir", help = "Dictionary directory path")]
+    #[clap(
+        short = 'd',
+        long = "dictionary-path",
+        help = "Dictionary directory path"
+    )]
     dic_dir: Option<PathBuf>,
     #[clap(
         short = 'u',
-        long = "user-dic-file",
+        long = "user-dictionary-path",
         help = "User dictionary file path"
     )]
     user_dic_file: Option<PathBuf>,
@@ -68,13 +72,13 @@ struct TokenizeArgs {
     )]
     output_format: String,
     #[clap(
-        short = 'C',
+        short = 'c',
         long = "character-filter",
         help = "Specify character filter. e.g. unicode_normalize:{\"kind\":\"NFKC\"}"
     )]
     character_filters: Option<Vec<String>>,
     #[clap(
-        short = 'T',
+        short = 't',
         long = "token-filter",
         help = "Specify token filter. e.g. stop_word:{\"words\":[\"a\", \"the\"]}"
     )]
@@ -86,9 +90,13 @@ struct TokenizeArgs {
 #[derive(Debug, clap::Args)]
 #[clap(author, about = "Build a morphological analysis dictionary", version)]
 struct BuildArgs {
-    #[clap(short = 'u', long = "build-user-dic", help = "Build user dictionary")]
+    #[clap(
+        short = 'u',
+        long = "build-user-dictionary",
+        help = "Build user dictionary flag"
+    )]
     build_user_dic: bool,
-    #[clap(short = 't', long = "dic-type", help = "Dictionary type")]
+    #[clap(short = 'k', long = "dictionary-kind", help = "Kind of dictionary")]
     dic_type: DictionaryKind,
     #[clap(help = "Dictionary source path")]
     src_path: PathBuf,
@@ -201,9 +209,11 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Mode
     config_builder.set_segmenter_mode(&args.mode);
 
+    let config = config_builder.build();
+
     // Tokenizer
-    let mut tokenizer = Tokenizer::from_config(&config_builder.build())
-        .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+    let mut tokenizer =
+        Tokenizer::from_config(&config).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;
