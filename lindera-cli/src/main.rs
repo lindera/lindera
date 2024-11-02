@@ -190,20 +190,23 @@ fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mut config_builder = TokenizerConfigBuilder::new();
 
-    // Dictionary config
+    // Set kind of dictionary
     if let Some(ref dic_type) = args.dic_type {
         config_builder.set_segmenter_dictionary_kind(dic_type);
     }
+    // Set dictionary directory path
     if let Some(dic_dir) = args.dic_dir {
         config_builder.set_segmenter_dictionary_path(dic_dir.as_path());
     }
 
-    // User dictionary config
+    // Set user dictionary file path
     if let Some(user_dic_file) = args.user_dic_file {
         config_builder.set_segmenter_user_dictionary_path(user_dic_file.as_path());
-    }
-    if let Some(ref dic_type) = args.dic_type {
-        config_builder.set_segmenter_user_dictionary_kind(dic_type);
+
+        // If user dictionary file path is specified, set kind of user dictionary or not
+        if let Some(ref dic_type) = args.dic_type {
+            config_builder.set_segmenter_user_dictionary_kind(dic_type);
+        }
     }
 
     // Mode
