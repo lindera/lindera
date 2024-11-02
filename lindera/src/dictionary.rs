@@ -76,7 +76,7 @@ impl FromStr for DictionaryKind {
             "unidic" => Ok(DictionaryKind::UniDic),
             "ko-dic" => Ok(DictionaryKind::KoDic),
             "cc-cedict" => Ok(DictionaryKind::CcCedict),
-            _ => Err(LinderaErrorKind::DictionaryKindError
+            _ => Err(LinderaErrorKind::Dictionary
                 .with_error(anyhow::anyhow!("Invalid dictionary kind: {}", input))),
         }
     }
@@ -133,20 +133,23 @@ pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictiona
     // The dictionary specified by the feature flag will be loaded.
     match kind {
         #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => lindera_ipadic::ipadic::load()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        DictionaryKind::IPADIC => {
+            lindera_ipadic::ipadic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
+        }
         #[cfg(feature = "ipadic-neologd")]
         DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
         #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => lindera_unidic::unidic::load()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        DictionaryKind::UniDic => {
+            lindera_unidic::unidic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
+        }
         #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+        DictionaryKind::KoDic => {
+            lindera_ko_dic::ko_dic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
+        }
         #[cfg(feature = "cc-cedict")]
         DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load()
-            .map_err(|e| LinderaErrorKind::DictionaryNotFound.with_error(e)),
+            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
         #[allow(unreachable_patterns)]
         _ => Err(LinderaErrorKind::Args
             .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
@@ -181,7 +184,7 @@ pub fn load_user_dictionary_from_csv(
     let builder = resolve_builder(kind)?;
     builder
         .build_user_dict(path.as_path())
-        .map_err(|err| LinderaErrorKind::DictionaryBuildError.with_error(err))
+        .map_err(|err| LinderaErrorKind::Build.with_error(err))
 }
 
 pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDictionary> {

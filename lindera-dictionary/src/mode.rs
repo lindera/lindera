@@ -79,10 +79,7 @@ impl FromStr for Mode {
         match mode {
             "normal" => Ok(Mode::Normal),
             "decompose" => Ok(Mode::Decompose(Penalty::default())),
-            _ => {
-                Err(LinderaErrorKind::ModeError
-                    .with_error(anyhow::anyhow!("Invalid mode: {}", mode)))
-            }
+            _ => Err(LinderaErrorKind::Mode.with_error(anyhow::anyhow!("Invalid mode: {}", mode))),
         }
     }
 }

@@ -12,13 +12,14 @@ pub enum LinderaErrorKind {
     Parse,
     Serialize,
     Compress,
-    DictionaryNotFound,
-    DictionaryLoadError,
-    DictionaryBuildError,
-    DictionaryKindError,
-    DictionarySourceTypeError,
-    ModeError,
-    MissingTokenDetail,
+    Decompress,
+    NotFound,
+    Load,
+    Build,
+    Dictionary,
+    Source,
+    Mode,
+    Token,
 }
 
 impl LinderaErrorKind {
