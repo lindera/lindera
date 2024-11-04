@@ -39,6 +39,7 @@ fn has_key(value: &Value, key: &str) -> bool {
         .unwrap_or(false)
 }
 
+// #[derive(Clone)]
 pub struct TokenizerConfigBuilder {
     config: TokenizerConfig,
 }
@@ -146,8 +147,8 @@ impl TokenizerConfigBuilder {
         self
     }
 
-    pub fn build(self) -> TokenizerConfig {
-        self.config
+    pub fn build(&self) -> &TokenizerConfig {
+        &self.config
     }
 }
 
