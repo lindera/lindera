@@ -146,8 +146,8 @@ impl TokenizerConfigBuilder {
         self
     }
 
-    pub fn build(self) -> TokenizerConfig {
-        self.config
+    pub fn build(&self) -> &TokenizerConfig {
+        &self.config
     }
 }
 
