@@ -1,25 +1,60 @@
 use std::borrow::Cow;
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
 
-/// Normalizes token text to lowercase.
-///
-#[derive(Clone, Debug)]
-pub struct LowercaseTokenFilter {}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LowercaseTokenFilterConfig {}
 
-impl LowercaseTokenFilter {
+impl LowercaseTokenFilterConfig {
     pub fn new() -> Self {
         Self {}
     }
+
+    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
+        serde_json::from_slice::<LowercaseTokenFilterConfig>(data)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
 }
 
-impl Default for LowercaseTokenFilter {
+impl TokenFilterConfig for LowercaseTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+}
+
+impl Default for LowercaseTokenFilterConfig {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Normalizes token text to lowercase.
+///
+#[derive(Clone, Debug)]
+pub struct LowercaseTokenFilter {
+    #[allow(dead_code)]
+    config: LowercaseTokenFilterConfig,
+}
+
+impl LowercaseTokenFilter {
+    pub fn new(config: LowercaseTokenFilterConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
+        Ok(Self::new(LowercaseTokenFilterConfig::from_slice(data)?))
     }
 }
 
@@ -50,7 +85,11 @@ mod tests {
         use crate::token_filter::lowercase::LowercaseTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let filter = LowercaseTokenFilter::default();
+        let config_str = r#"
+            {}
+            "#;
+
+        let filter = LowercaseTokenFilter::from_slice(config_str.as_bytes()).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
@@ -23,9 +24,14 @@ impl KoreanKeepTagsTokenFilterConfig {
         serde_json::from_slice::<KoreanKeepTagsTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<KoreanKeepTagsTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for KoreanKeepTagsTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

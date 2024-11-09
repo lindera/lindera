@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -82,31 +83,8 @@ impl FromStr for DictionaryKind {
     }
 }
 
-/// Dictionary config
-///
-/// Use this if you want to use a dictionary when tokenizing.
-///
-/// Either `kind` or `path` must be specified.
-///
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct DictionaryConfig {
-    /// Specify the kind of dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT) if a self-contained dictionary is used for tokenization.
-    pub kind: Option<DictionaryKind>,
-    /// Specifies the path to a pre-built external dictionary if one is used.
-    pub path: Option<PathBuf>,
-}
-
-/// User dictionary config
-///
-/// Use this if you want to use a user dictionary when tokenizing.
-///
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct UserDictionaryConfig {
-    /// Path to the user dictionary file.
-    pub path: PathBuf,
-    /// If the user dictionary was in CSV format, specify the dictionary type (IPADIC, UniDic, ko-dic or CC-CEDICT).
-    pub kind: Option<DictionaryKind>,
-}
+pub type DictionaryConfig = Value;
+pub type UserDictionaryConfig = Value;
 
 pub fn resolve_builder(
     dictionary_type: DictionaryKind,
@@ -157,21 +135,31 @@ pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictiona
 }
 
 pub fn load_dictionary_from_config(
-    dictionary_config: DictionaryConfig,
+    dictionary_config: &DictionaryConfig,
 ) -> LinderaResult<Dictionary> {
-    match dictionary_config.kind {
-        Some(kind) => {
-            // The dictionary specified by the feature flag will be loaded.
+    match dictionary_config.get("kind") {
+        Some(kind_value) => {
+            let kind = DictionaryKind::from_str(kind_value.as_str().ok_or_else(|| {
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
+            })?)?;
+
+            // Load contained dictionary from kind value in config.
             load_dictionary_from_kind(kind)
         }
         None => {
-            match dictionary_config.path {
-                Some(path) => {
+            match dictionary_config.get("path") {
+                Some(path_value) => {
+                    let path = PathBuf::from(path_value.as_str().ok_or_else(|| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("path field must be a string"))
+                    })?);
+
                     // load external dictionary from path
                     load_dictionary_from_path(path.as_path())
                 }
-                None => Err(LinderaErrorKind::Args
-                    .with_error(anyhow::anyhow!("Dictionary must be specified"))),
+                None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                    "kind field or path field must be specified"
+                ))),
             }
         }
     }
@@ -192,22 +180,42 @@ pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDiction
 }
 
 pub fn load_user_dictionary_from_config(
-    dictionary_config: UserDictionaryConfig,
+    dictionary_config: &UserDictionaryConfig,
 ) -> LinderaResult<UserDictionary> {
-    match dictionary_config.path.extension() {
-        Some(ext) => match ext.to_str() {
-            Some("csv") => match dictionary_config.kind {
-                Some(kind) => load_user_dictionary_from_csv(kind, dictionary_config.path),
-                None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                    "Dictionary type must be specified if CSV file specified"
-                ))),
-            },
-            Some("bin") => load_user_dictionary_from_bin(dictionary_config.path),
-            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                "Invalid user dictionary source file extension"
-            ))),
-        },
-        None => Err(LinderaErrorKind::Args
-            .with_error(anyhow::anyhow!("Invalid user dictionary source file"))),
+    match dictionary_config.get("path") {
+        Some(path_value) => {
+            let path = PathBuf::from(path_value.as_str().ok_or_else(|| {
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
+            })?);
+
+            match path.extension() {
+                Some(ext) => match ext.to_str() {
+                    Some("csv") => match dictionary_config.get("kind") {
+                        Some(kind_value) => {
+                            let kind = DictionaryKind::from_str(kind_value.as_str().ok_or_else(
+                                || {
+                                    LinderaErrorKind::Parse
+                                        .with_error(anyhow::anyhow!("kind field must be a string"))
+                                },
+                            )?)?;
+
+                            load_user_dictionary_from_csv(kind, path)
+                        }
+                        None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                            "kind field must be specified if CSV file specified"
+                        ))),
+                    },
+                    Some("bin") => load_user_dictionary_from_bin(path),
+                    _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                        "Invalid user dictionary source file extension"
+                    ))),
+                },
+                None => Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("Invalid user dictionary source file"))),
+            }
+        }
+        None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "path field must be specified in user dictionary config"
+        ))),
     }
 }

@@ -1,194 +1,17 @@
 use std::borrow::Cow;
-use std::fmt;
 
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use lindera_dictionary::mode::Mode;
 
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::viterbi::Lattice;
+use serde_json::Value;
 
-use crate::dictionary::{
-    load_dictionary_from_config, load_user_dictionary_from_config, DictionaryConfig,
-    UserDictionaryConfig,
-};
-use crate::mode::Mode;
+use crate::dictionary::{load_dictionary_from_config, load_user_dictionary_from_config};
+use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::LinderaResult;
 
-/// Configuration for the segmenter.
-///
-/// This struct holds the necessary configurations for the segmenter, including
-/// the segmentation mode, the dictionary configuration, and an optional user
-/// dictionary configuration.
-///
-/// # Fields
-///
-/// * `mode` - The segmentation mode to be used.
-/// * `dictionary` - The configuration for the dictionary.
-/// * `user_dictionary` - An optional configuration for a user-defined dictionary.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct SegmenterConfig {
-    /// The segmentation mode to be used by the segmenter.
-    /// This determines how the text will be split into segments.
-    pub mode: Mode,
-
-    /// Configuration for the dictionary used by the segmenter.
-    pub dictionary: DictionaryConfig,
-
-    /// An optional configuration for the user dictionary.
-    ///
-    /// This field allows specifying a custom user dictionary configuration
-    /// which can be used to enhance or override the default dictionary
-    /// entries. If set to `None`, the default dictionary will be used.
-    pub user_dictionary: Option<UserDictionaryConfig>,
-}
-
-impl Default for SegmenterConfig {
-    /// Return default Segmenter config
-    /// default mode is Mode::Normal
-    fn default() -> Self {
-        Self {
-            mode: Mode::Normal,
-            dictionary: DictionaryConfig {
-                kind: None,
-                path: None,
-            },
-            user_dictionary: None,
-        }
-    }
-}
-
-/// Implements the `Deserialize` trait for the `SegmenterConfig` struct.
-///
-/// This implementation allows `SegmenterConfig` to be deserialized from various formats
-/// using Serde. The deserialization process supports both sequence and map formats.
-///
-/// # Fields
-///
-/// - `mode`: An optional field representing the mode of the segmenter. Defaults to `Mode::Normal` if not provided.
-/// - `dictionary`: A required field representing the dictionary used by the segmenter.
-/// - `user_dictionary`: An optional field representing a user-provided dictionary.
-///
-/// # Errors
-///
-/// Deserialization will fail if:
-///
-/// - The `dictionary` field is missing.
-/// - Any field is duplicated.
-/// - An unknown field is encountered.
-impl<'de> Deserialize<'de> for SegmenterConfig {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        enum Field {
-            Mode,
-            Dictionary,
-            UserDictionary,
-        }
-
-        impl<'de> Deserialize<'de> for Field {
-            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                struct FieldVisitor;
-
-                impl<'de> Visitor<'de> for FieldVisitor {
-                    type Value = Field;
-
-                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                        formatter.write_str("`mode`, `dictionary`, or `user_dictionary`")
-                    }
-
-                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
-                    where
-                        E: de::Error,
-                    {
-                        match value {
-                            "mode" => Ok(Field::Mode),
-                            "dictionary" => Ok(Field::Dictionary),
-                            "user_dictionary" => Ok(Field::UserDictionary),
-                            _ => Err(de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-
-                deserializer.deserialize_identifier(FieldVisitor)
-            }
-        }
-
-        struct DurationVisitor;
-
-        impl<'de> Visitor<'de> for DurationVisitor {
-            type Value = SegmenterConfig;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("struct SegmenterrConfig")
-            }
-
-            fn visit_seq<V>(self, mut seq: V) -> Result<SegmenterConfig, V::Error>
-            where
-                V: SeqAccess<'de>,
-            {
-                let mode = seq.next_element()?.unwrap_or(Mode::Normal);
-                let dictionary = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let user_dictionary = seq.next_element()?.unwrap_or(None);
-
-                Ok(SegmenterConfig {
-                    mode,
-                    dictionary,
-                    user_dictionary,
-                })
-            }
-
-            fn visit_map<V>(self, mut map: V) -> Result<SegmenterConfig, V::Error>
-            where
-                V: MapAccess<'de>,
-            {
-                let mut mode = None;
-                let mut dictionary = None;
-                let mut user_dictionary = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Mode => {
-                            if mode.is_some() {
-                                return Err(de::Error::duplicate_field("mode"));
-                            }
-                            mode = Some(map.next_value()?);
-                        }
-                        Field::Dictionary => {
-                            if dictionary.is_some() {
-                                return Err(de::Error::duplicate_field("dictionary"));
-                            }
-                            dictionary = Some(map.next_value()?);
-                        }
-                        Field::UserDictionary => {
-                            if user_dictionary.is_some() {
-                                return Err(de::Error::duplicate_field("user_dictionary"));
-                            }
-                            user_dictionary = Some(map.next_value()?);
-                        }
-                    }
-                }
-                let mode = mode.unwrap_or(Mode::Normal);
-                let dictionary =
-                    dictionary.ok_or_else(|| de::Error::missing_field("dictionary"))?;
-                Ok(SegmenterConfig {
-                    mode,
-                    dictionary,
-                    user_dictionary,
-                })
-            }
-        }
-
-        const FIELDS: &[&str] = &["mode", "dictionary", "user_dictionary"];
-        deserializer.deserialize_struct("SegmenterConfig", FIELDS, DurationVisitor)
-    }
-}
+pub type SegmenterConfig = Value;
 
 /// Segmenter
 #[derive(Clone)]
@@ -208,34 +31,6 @@ pub struct Segmenter {
 }
 
 impl Segmenter {
-    /// A struct representing a segmenter for tokenizing text.
-    ///
-    /// The `Segmenter` struct provides methods for creating a segmenter from a configuration,
-    /// creating a new segmenter, and segmenting text into tokens.
-    ///
-    /// # Methods
-    ///
-    /// - `from_config`: Creates a `Segmenter` from a given configuration.
-    /// - `new`: Creates a new `Segmenter` with the specified mode, dictionary, and optional user dictionary.
-    /// - `segment`: Segments the given text into tokens.
-    ///
-    /// # Errors
-    ///
-    /// Methods that return `LinderaResult` may produce errors related to dictionary loading,
-    /// user dictionary loading, or tokenization process.
-    pub fn from_config(config: SegmenterConfig) -> LinderaResult<Self> {
-        // Load the dictionary from the config
-        let dictionary = load_dictionary_from_config(config.dictionary)?;
-
-        // Load the user dictionary from the config
-        let user_dictionary = match config.user_dictionary {
-            Some(user_dict_conf) => Some(load_user_dictionary_from_config(user_dict_conf)?),
-            None => None,
-        };
-
-        Ok(Self::new(config.mode, dictionary, user_dictionary))
-    }
-
     /// Creates a new instance with the specified mode, dictionary, and optional user dictionary.
     ///
     /// # Arguments
@@ -263,6 +58,48 @@ impl Segmenter {
             dictionary,
             user_dictionary,
         }
+    }
+
+    /// A struct representing a segmenter for tokenizing text.
+    ///
+    /// The `Segmenter` struct provides methods for creating a segmenter from a configuration,
+    /// creating a new segmenter, and segmenting text into tokens.
+    ///
+    /// # Methods
+    ///
+    /// - `from_config`: Creates a `Segmenter` from a given configuration.
+    /// - `new`: Creates a new `Segmenter` with the specified mode, dictionary, and optional user dictionary.
+    /// - `segment`: Segments the given text into tokens.
+    ///
+    /// # Errors
+    ///
+    /// Methods that return `LinderaResult` may produce errors related to dictionary loading,
+    /// user dictionary loading, or tokenization process.
+    pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
+        // Load the dictionary from the config
+        let dictionary =
+            load_dictionary_from_config(config.get("dictionary").ok_or_else(|| {
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("dictionary field is missing"))
+            })?)?;
+
+        // Load the user dictionary from the config
+        let user_dictionary = config
+            .get("user_dictionary")
+            .map(|user_dict_conf| load_user_dictionary_from_config(user_dict_conf))
+            .transpose()?;
+
+        // Load the mode from the config
+        let mode: Mode = config.get("mode").map_or_else(
+            || Ok(Mode::Normal),
+            |v| {
+                serde_json::from_value(v.clone()).map_err(|e| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("mode field is invalid: {}", e))
+                })
+            },
+        )?;
+
+        Ok(Self::new(mode, dictionary, user_dictionary))
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -395,15 +232,6 @@ mod tests {
         feature = "ko-dic",
         feature = "cc-cedict"
     ))]
-    use crate::dictionary::{DictionaryConfig, DictionaryKind, UserDictionaryConfig};
-
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
-    ))]
     use crate::segmenter::{Segmenter, SegmenterConfig};
 
     #[test]
@@ -418,8 +246,8 @@ mod tests {
         }
         "#;
 
-        let config: SegmenterConfig = serde_json::from_str(config_str).unwrap();
-        assert_eq!(config.dictionary.kind, Some(DictionaryKind::IPADIC));
+        let result: Result<SegmenterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
@@ -441,8 +269,8 @@ mod tests {
         }
         "#;
 
-        let config: SegmenterConfig = serde_json::from_str(config_str).unwrap();
-        assert_eq!(config.dictionary.kind, Some(DictionaryKind::IPADIC));
+        let result: Result<SegmenterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
@@ -450,18 +278,17 @@ mod tests {
     fn test_segment_ipadic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "日本語の形態素解析を行うことができます。テスト。",
@@ -711,18 +538,18 @@ mod tests {
     fn test_segment_unidic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "unidic"
+            },
+            "mode": "normal"
+        }
+        "#;
+        let config: serde_json::Value =
+            serde_json::from_str::<serde_json::Value>(config_str).unwrap();
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("日本語の形態素解析を行うことができます。"))
             .unwrap();
@@ -1124,18 +951,17 @@ mod tests {
     fn test_segment_ko_dic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: None,
-        };
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "ko-dic"
+            },
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("한국어의형태해석을실시할수있습니다."))
             .unwrap();
@@ -1297,18 +1123,17 @@ mod tests {
     fn test_segment_cc_cedict() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: None,
-        };
+        let config_str = r#"
+        {
+            "dictionary": {
+                "kind": "cc-cedict"
+            },
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("可以进行中文形态学分析。"))
             .unwrap();
@@ -1434,27 +1259,22 @@ mod tests {
     fn test_segment_with_simple_userdic_ipadic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_simple_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "kind": "ipadic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -1592,27 +1412,22 @@ mod tests {
     fn test_segment_with_simple_userdic_unidic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("unidic_simple_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "unidic"
+            },
+            "user_dictionary": {
+                "kind": "unidic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -1866,27 +1681,22 @@ mod tests {
     fn test_segment_with_simple_userdic_ko_dic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ko-dic_simple_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ko-dic"
+            },
+            "user_dictionary": {
+                "kind": "ko-dic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("하네다공항한정토트백."))
             .unwrap();
@@ -1955,27 +1765,22 @@ mod tests {
     fn test_segment_with_simple_userdic_cc_cedict() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("cc-cedict_simple_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "cc-cedict"
+            },
+            "user_dictionary": {
+                "kind": "cc-cedict",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("羽田机场限定托特包。"))
             .unwrap();
@@ -2072,27 +1877,21 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_ipadic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_simple_userdic.bin");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -2230,27 +2029,21 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_unidic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("unidic_simple_userdic.bin");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::UniDic),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "unidic"
+            },
+            "user_dictionary": {
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -2504,27 +2297,21 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_ko_dic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ko-dic_simple_userdic.bin");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::KoDic),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ko-dic"
+            },
+            "user_dictionary": {
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("하네다공항한정토트백."))
             .unwrap();
@@ -2593,27 +2380,21 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_cc_cedict() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("cc-cedict_simple_userdic.bin");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::CcCedict),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "cc-cedict"
+            },
+            "user_dictionary": {
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("羽田机场限定托特包。"))
             .unwrap();
@@ -2710,27 +2491,22 @@ mod tests {
     fn test_segment_with_detailed_userdic_ipadic() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_detailed_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "kind": "ipadic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -2868,27 +2644,22 @@ mod tests {
     fn test_mixed_user_dict() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_mixed_userdic.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "kind": "ipadic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed(
                 "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
@@ -3025,54 +2796,44 @@ mod tests {
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "failed to parse word cost")]
     fn test_user_dict_invalid_word_cost() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_userdic_invalid_word_cost.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "kind": "ipadic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        Segmenter::from_config(config).unwrap();
+        Segmenter::from_config(&config).unwrap();
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13+ fields")]
     fn test_user_dict_number_of_fields_is_11() {
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
-
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_userdic_insufficient_number_of_fields.csv");
 
-        let user_dictionary = Some(UserDictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: userdic_file,
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "user_dictionary": {
+                "kind": "ipadic",
+                "path": userdic_file.to_str().unwrap()
+            },
+            "mode": "normal"
         });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary,
-            mode: Mode::Normal,
-        };
-
-        Segmenter::from_config(config).unwrap();
+        Segmenter::from_config(&config).unwrap();
     }
 
     #[test]
@@ -3080,18 +2841,15 @@ mod tests {
     fn test_segment_with_nomal_mode() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
+            "mode": "normal"
+        });
 
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("羽田空港限定トートバッグ"))
             .unwrap();
@@ -3156,18 +2914,21 @@ mod tests {
     fn test_segment_with_decompose_mode() {
         use std::borrow::Cow;
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "mode": {
+                "decompose": {
+                    "kanji_penalty_length_threshold": 2,
+                    "kanji_penalty_length_penalty": 3000,
+                    "other_penalty_length_threshold": 7,
+                    "other_penalty_length_penalty": 1700
+                }
+            }
+        });
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Decompose(Penalty::default()),
-        };
-
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
             .segment(Cow::Borrowed("羽田空港限定トートバッグ"))
             .unwrap();
@@ -3265,18 +3026,15 @@ mod tests {
         let mut large_text = String::new();
         let _size = large_file.read_to_string(&mut large_text).unwrap();
 
-        let dictionary = DictionaryConfig {
-            kind: Some(DictionaryKind::IPADIC),
-            path: None,
-        };
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
 
-        let config = SegmenterConfig {
-            dictionary,
-            user_dictionary: None,
-            mode: Mode::Normal,
-        };
+            "mode": "normal"
+        });
 
-        let segmenter = Segmenter::from_config(config).unwrap();
+        let segmenter = Segmenter::from_config(&config).unwrap();
 
         let tokens = segmenter
             .segment(Cow::Borrowed(large_text.as_str()))

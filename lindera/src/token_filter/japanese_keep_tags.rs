@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_keep_tags";
@@ -39,8 +39,13 @@ impl JapaneseKeepTagsTokenFilterConfig {
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
         Self::from_value(&args)
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
+impl TokenFilterConfig for JapaneseKeepTagsTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
         let tags = value["tags"]
             .as_array()
             .ok_or_else(|| {

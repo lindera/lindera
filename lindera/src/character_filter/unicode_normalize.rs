@@ -6,7 +6,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
-use crate::character_filter::{add_offset_diff, CharacterFilter};
+use crate::character_filter::{add_offset_diff, CharacterFilter, CharacterFilterConfig};
 
 pub const UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str = "unicode_normalize";
 
@@ -36,9 +36,14 @@ impl UnicodeNormalizeCharacterFilterConfig {
         serde_json::from_slice::<UnicodeNormalizeCharacterFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<UnicodeNormalizeCharacterFilterConfig>(value.clone())
+impl CharacterFilterConfig for UnicodeNormalizeCharacterFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

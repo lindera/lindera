@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const KEEP_WORDS_TOKEN_FILTER_NAME: &str = "keep_words";
@@ -23,9 +23,14 @@ impl KeepWordsTokenFilterConfig {
         serde_json::from_slice::<KeepWordsTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<KeepWordsTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for KeepWordsTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

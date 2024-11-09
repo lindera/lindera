@@ -10,7 +10,7 @@ use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilte
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
-use crate::segmenter::{Segmenter, SegmenterConfig};
+use crate::segmenter::Segmenter;
 use crate::token::Token;
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
 use crate::LinderaResult;
@@ -234,15 +234,20 @@ impl Tokenizer {
     ///    - Similar to character filters, it extracts the `kind` and `args` to load and append each token filter to the tokenizer.
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
         // Load a JSON object for segmenter config from the tokenizer config.
-        let args_value = config["segmenter"].as_object().ok_or_else(|| {
+        // let args_value = config["segmenter"].as_object().ok_or_else(|| {
+        //     LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
+        // })?;
+        // let arg_bytes = serde_json::to_vec(args_value)
+        //     .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+        // // Load a segmenter config from the segmenter config JSON object.
+        // let segmenter_config = serde_json::from_slice::<SegmenterConfig>(&arg_bytes)
+        //     .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+        // // Create a segmenter from the segmenter config.
+        // let segmenter = Segmenter::from_config(segmenter_config)?;
+
+        let segmenter_config = config.get("segmenter").ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
         })?;
-        let arg_bytes = serde_json::to_vec(args_value)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        // Load a segmenter config from the segmenter config JSON object.
-        let segmenter_config = serde_json::from_slice::<SegmenterConfig>(&arg_bytes)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        // Create a segmenter from the segmenter config.
         let segmenter = Segmenter::from_config(segmenter_config)?;
 
         // Create a tokenizer from the segmenter.

@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
@@ -45,8 +45,13 @@ impl JapaneseNumberTokenFilterConfig {
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
         Self::from_value(&args)
     }
+}
 
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
+impl TokenFilterConfig for JapaneseNumberTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
         let tags = if let Some(t) = value.get("tags") {
             if t.is_array() {
                 Some(

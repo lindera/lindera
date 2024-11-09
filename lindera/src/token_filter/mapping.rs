@@ -2,12 +2,13 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
@@ -26,9 +27,14 @@ impl MappingTokenFilterConfig {
         serde_json::from_slice::<MappingTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<MappingTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for MappingTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

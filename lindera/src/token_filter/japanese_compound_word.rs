@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 use std::{collections::HashSet, mem};
 
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
@@ -63,13 +64,56 @@ impl JapaneseCompoundWordTokenFilterConfig {
 
         Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        let tmp_config =
-            serde_json::from_value::<JapaneseCompoundWordTokenFilterConfig>(value.clone())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+impl TokenFilterConfig for JapaneseCompoundWordTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        let kind = DictionaryKind::from_str(
+            value
+                .get("kind")
+                .ok_or_else(|| {
+                    LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("kind is required"))
+                })?
+                .as_str()
+                .ok_or_else(|| {
+                    LinderaErrorKind::Deserialize
+                        .with_error(anyhow::anyhow!("kind must be a string"))
+                })?,
+        )
+        .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
 
-        Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
+        let tags = value["tags"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("tag must be string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        let new_tag = value
+            .get("new_tag")
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("new_tag must be a string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .transpose()?;
+
+        JapaneseCompoundWordTokenFilterConfig::new(kind, tags, new_tag)
     }
 }
 

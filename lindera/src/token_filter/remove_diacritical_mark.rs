@@ -7,7 +7,7 @@ use unicode_normalization::UnicodeNormalization;
 use crate::character_filter::unicode_normalize::UnicodeNormalizeKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const REMOVE_DIACRITICAL_TOKEN_FILTER_NAME: &str = "remove_diacritical_mark";
@@ -40,9 +40,14 @@ impl RemoveDiacriticalMarkTokenFilterConfig {
         serde_json::from_slice::<RemoveDiacriticalMarkTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<RemoveDiacriticalMarkTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for RemoveDiacriticalMarkTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

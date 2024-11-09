@@ -7,7 +7,7 @@ use serde_json::Value;
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
@@ -26,9 +26,14 @@ impl JapaneseBaseFormTokenFilterConfig {
         serde_json::from_slice::<JapaneseBaseFormTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<JapaneseBaseFormTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for JapaneseBaseFormTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

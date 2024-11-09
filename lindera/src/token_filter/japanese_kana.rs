@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
@@ -35,9 +35,14 @@ impl JapaneseKanaTokenFilterConfig {
         serde_json::from_slice::<JapaneseKanaTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<JapaneseKanaTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for JapaneseKanaTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

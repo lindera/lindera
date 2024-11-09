@@ -93,7 +93,8 @@ use crate::token_filter::korean_keep_tags::{
     KoreanKeepTagsTokenFilter, KoreanKeepTagsTokenFilterConfig, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::korean_reading_form::{
-    KoreanReadingFormTokenFilter, KOREAN_READING_FORM_TOKEN_FILTER_NAME,
+    KoreanReadingFormTokenFilter, KoreanReadingFormTokenFilterConfig,
+    KOREAN_READING_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::korean_stop_tags::{
     KoreanStopTagsTokenFilter, KoreanStopTagsTokenFilterConfig, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
@@ -101,7 +102,9 @@ use crate::token_filter::korean_stop_tags::{
 use crate::token_filter::length::{
     LengthTokenFilter, LengthTokenFilterConfig, LENGTH_TOKEN_FILTER_NAME,
 };
-use crate::token_filter::lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME};
+use crate::token_filter::lowercase::{
+    LowercaseTokenFilter, LowercaseTokenFilterConfig, LOWERCASE_TOKEN_FILTER_NAME,
+};
 use crate::token_filter::mapping::{
     MappingTokenFilter, MappingTokenFilterConfig, MAPPING_TOKEN_FILTER_NAME,
 };
@@ -112,8 +115,42 @@ use crate::token_filter::remove_diacritical_mark::{
 use crate::token_filter::stop_words::{
     StopWordsTokenFilter, StopWordsTokenFilterConfig, STOP_WORDS_TOKEN_FILTER_NAME,
 };
-use crate::token_filter::uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME};
+use crate::token_filter::uppercase::{
+    UppercaseTokenFilter, UppercaseTokenFilterConfig, UPPERCASE_TOKEN_FILTER_NAME,
+};
 use crate::{LinderaErrorKind, LinderaResult};
+
+pub trait TokenFilterConfig: 'static + Send + Sync + TokenFilterConfigClone {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized;
+}
+
+pub struct BoxTokenFilterConfig(Box<dyn TokenFilterConfig + 'static + Send + Sync>);
+
+impl Deref for BoxTokenFilterConfig {
+    type Target = dyn TokenFilterConfig;
+
+    fn deref(&self) -> &dyn TokenFilterConfig {
+        &*self.0
+    }
+}
+
+impl<T: TokenFilterConfig> From<T> for BoxTokenFilterConfig {
+    fn from(character_filter: T) -> BoxTokenFilterConfig {
+        BoxTokenFilterConfig(Box::new(character_filter))
+    }
+}
+
+pub trait TokenFilterConfigClone {
+    fn box_clone(&self) -> BoxTokenFilterConfig;
+}
+
+impl<T: TokenFilterConfig + Clone + 'static> TokenFilterConfigClone for T {
+    fn box_clone(&self) -> BoxTokenFilterConfig {
+        BoxTokenFilterConfig::from(self.clone())
+    }
+}
 
 /// A trait for token filters that can be applied to a vector of tokens.
 ///
@@ -164,6 +201,11 @@ impl<T: TokenFilter + Clone + 'static> TokenFilterClone for T {
     fn box_clone(&self) -> BoxTokenFilter {
         BoxTokenFilter::from(self.clone())
     }
+}
+
+pub struct TokenFilterSetting {
+    pub name: String,
+    pub args: BoxTokenFilterConfig,
 }
 
 pub struct TokenFilterLoader {}
@@ -230,7 +272,8 @@ impl TokenFilterLoader {
                 BoxTokenFilter::from(KoreanKeepTagsTokenFilter::new(config))
             }
             KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                BoxTokenFilter::from(KoreanReadingFormTokenFilter::new())
+                let config = KoreanReadingFormTokenFilterConfig::from_value(value)?;
+                BoxTokenFilter::from(KoreanReadingFormTokenFilter::new(config))
             }
             KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
                 let config = KoreanStopTagsTokenFilterConfig::from_value(value)?;
@@ -240,7 +283,10 @@ impl TokenFilterLoader {
                 let config = LengthTokenFilterConfig::from_value(value)?;
                 BoxTokenFilter::from(LengthTokenFilter::new(config))
             }
-            LOWERCASE_TOKEN_FILTER_NAME => BoxTokenFilter::from(LowercaseTokenFilter::new()),
+            LOWERCASE_TOKEN_FILTER_NAME => {
+                let config = LowercaseTokenFilterConfig::from_value(value)?;
+                BoxTokenFilter::from(LowercaseTokenFilter::new(config))
+            }
             MAPPING_TOKEN_FILTER_NAME => {
                 let config = MappingTokenFilterConfig::from_value(value)?;
                 BoxTokenFilter::from(MappingTokenFilter::new(config)?)
@@ -253,7 +299,10 @@ impl TokenFilterLoader {
                 let config = StopWordsTokenFilterConfig::from_value(value)?;
                 BoxTokenFilter::from(StopWordsTokenFilter::new(config))
             }
-            UPPERCASE_TOKEN_FILTER_NAME => BoxTokenFilter::from(UppercaseTokenFilter::new()),
+            UPPERCASE_TOKEN_FILTER_NAME => {
+                let config = UppercaseTokenFilterConfig::from_value(value)?;
+                BoxTokenFilter::from(UppercaseTokenFilter::new(config))
+            }
             _ => {
                 return Err(LinderaErrorKind::Deserialize
                     .with_error(anyhow::anyhow!("unsupported token filter: {}", kind)));

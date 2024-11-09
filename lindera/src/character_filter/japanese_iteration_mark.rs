@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::character_filter::CharacterFilter;
+use crate::character_filter::{CharacterFilter, CharacterFilterConfig};
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
@@ -75,10 +75,24 @@ impl JapaneseIterationMarkCharacterFilterConfig {
         serde_json::from_slice::<JapaneseIterationMarkCharacterFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<JapaneseIterationMarkCharacterFilterConfig>(value.clone())
+impl CharacterFilterConfig for JapaneseIterationMarkCharacterFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+    }
+}
+
+impl Default for JapaneseIterationMarkCharacterFilterConfig {
+    fn default() -> Self {
+        Self {
+            normalize_kanji: true,
+            normalize_kana: true,
+        }
     }
 }
 

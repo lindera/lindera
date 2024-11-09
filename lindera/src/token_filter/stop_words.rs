@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
@@ -23,9 +24,14 @@ impl StopWordsTokenFilterConfig {
         serde_json::from_slice::<StopWordsTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<StopWordsTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for StopWordsTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }

@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::TokenFilter;
+use crate::token_filter::{TokenFilter, TokenFilterConfig};
 use crate::LinderaResult;
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
@@ -22,9 +23,14 @@ impl LengthTokenFilterConfig {
         serde_json::from_slice::<LengthTokenFilterConfig>(data)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
+}
 
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<LengthTokenFilterConfig>(value.clone())
+impl TokenFilterConfig for LengthTokenFilterConfig {
+    fn from_value(value: &Value) -> LinderaResult<Self>
+    where
+        Self: Sized,
+    {
+        serde_json::from_value(value.clone())
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
     }
 }
