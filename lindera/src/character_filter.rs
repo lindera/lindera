@@ -34,59 +34,16 @@ use std::ops::Deref;
 use serde_json::Value;
 
 use crate::character_filter::japanese_iteration_mark::{
-    JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
-    JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
+    JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
 };
-use crate::character_filter::mapping::{
-    MappingCharacterFilter, MappingCharacterFilterConfig, MAPPING_CHARACTER_FILTER_NAME,
-};
-use crate::character_filter::regex::{
-    RegexCharacterFilter, RegexCharacterFilterConfig, REGEX_CHARACTER_FILTER_NAME,
-};
+use crate::character_filter::mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME};
+use crate::character_filter::regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME};
 use crate::character_filter::unicode_normalize::{
-    UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
-    UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+    UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
 };
 use crate::error::LinderaErrorKind;
 use crate::parse_cli_flag;
 use crate::LinderaResult;
-
-pub trait CharacterFilterConfig: 'static + Send + Sync + CharacterFilterConfigClone {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized;
-}
-
-pub struct BoxCharacterFilterConfig(Box<dyn CharacterFilterConfig + 'static + Send + Sync>);
-
-impl Deref for BoxCharacterFilterConfig {
-    type Target = dyn CharacterFilterConfig;
-
-    fn deref(&self) -> &dyn CharacterFilterConfig {
-        &*self.0
-    }
-}
-
-impl<T: CharacterFilterConfig> From<T> for BoxCharacterFilterConfig {
-    fn from(character_filter: T) -> BoxCharacterFilterConfig {
-        BoxCharacterFilterConfig(Box::new(character_filter))
-    }
-}
-
-pub trait CharacterFilterConfigClone {
-    fn box_clone(&self) -> BoxCharacterFilterConfig;
-}
-
-impl<T: CharacterFilterConfig + Clone + 'static> CharacterFilterConfigClone for T {
-    fn box_clone(&self) -> BoxCharacterFilterConfig {
-        BoxCharacterFilterConfig::from(self.clone())
-    }
-}
-
-pub struct CharacterFilterSetting {
-    pub kind: String,
-    pub args: BoxCharacterFilterConfig,
-}
 
 /// The `CharacterFilter` trait defines an interface for filters that preprocess text before tokenization.
 ///
@@ -239,21 +196,16 @@ impl CharacterFilterLoader {
     pub fn load_from_value(kind: &str, value: &Value) -> LinderaResult<BoxCharacterFilter> {
         let character_filter = match kind {
             JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
-                BoxCharacterFilter::from(JapaneseIterationMarkCharacterFilter::new(
-                    JapaneseIterationMarkCharacterFilterConfig::from_value(value)?,
-                ))
+                BoxCharacterFilter::from(JapaneseIterationMarkCharacterFilter::from_config(value)?)
             }
             MAPPING_CHARACTER_FILTER_NAME => {
-                let config = MappingCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(MappingCharacterFilter::new(config)?)
+                BoxCharacterFilter::from(MappingCharacterFilter::from_config(value)?)
             }
             REGEX_CHARACTER_FILTER_NAME => {
-                let config = RegexCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(RegexCharacterFilter::new(config)?)
+                BoxCharacterFilter::from(RegexCharacterFilter::from_config(value)?)
             }
             UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
-                let config = UnicodeNormalizeCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(UnicodeNormalizeCharacterFilter::new(config))
+                BoxCharacterFilter::from(UnicodeNormalizeCharacterFilter::from_config(value)?)
             }
             _ => {
                 return Err(LinderaErrorKind::Deserialize

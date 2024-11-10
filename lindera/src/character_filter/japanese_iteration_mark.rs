@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::character_filter::{CharacterFilter, CharacterFilterConfig};
+use crate::character_filter::CharacterFilter;
 use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
 
@@ -14,6 +13,8 @@ const HIRAGANA_ITERATION_MARK: char = 'ゝ';
 const HIRAGANA_DAKUON_ITERATION_MARK: char = 'ゞ';
 const KATAKANA_ITERATION_MARK: char = 'ヽ';
 const KATAKANA_DAKUON_ITERATION_MARK: char = 'ヾ';
+
+pub type JapaneseIterationMarkCharacterFilterConfig = Value;
 
 fn hiragana_add_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
@@ -57,13 +58,13 @@ fn katakana_remove_dakuon(c: &char) -> char {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseIterationMarkCharacterFilterConfig {
+#[derive(Clone, Debug)]
+pub struct JapaneseIterationMarkCharacterFilter {
     pub normalize_kanji: bool,
     pub normalize_kana: bool,
 }
 
-impl JapaneseIterationMarkCharacterFilterConfig {
+impl JapaneseIterationMarkCharacterFilter {
     pub fn new(normalize_kanji: bool, normalize_kana: bool) -> Self {
         Self {
             normalize_kanji,
@@ -71,71 +72,17 @@ impl JapaneseIterationMarkCharacterFilterConfig {
         }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<JapaneseIterationMarkCharacterFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+    pub fn from_config(config: &JapaneseIterationMarkCharacterFilterConfig) -> LinderaResult<Self> {
+        let normalize_kanji = config
+            .get("normalize_kanji")
+            .map_or(Ok(false), |v| v.as_bool().ok_or(LinderaErrorKind::Args))
+            .unwrap_or(false);
+        let normalize_kana = config
+            .get("normalize_kana")
+            .map_or(Ok(false), |v| v.as_bool().ok_or(LinderaErrorKind::Args))
+            .unwrap_or(false);
 
-impl CharacterFilterConfig for JapaneseIterationMarkCharacterFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        serde_json::from_value(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl Default for JapaneseIterationMarkCharacterFilterConfig {
-    fn default() -> Self {
-        Self {
-            normalize_kanji: true,
-            normalize_kana: true,
-        }
-    }
-}
-
-/// Normalizes Japanese horizontal (odoriji) to their expanded form.
-/// Sequences of iteration marks are supported. In case an illegal sequence of iteration marks is encountered,
-/// the implementation emits the illegal source character as-is without considering its script.
-/// For example, with input "?ゝ", we get "??" even though the question mark isn't hiragana.
-///
-#[derive(Clone, Debug)]
-pub struct JapaneseIterationMarkCharacterFilter {
-    config: JapaneseIterationMarkCharacterFilterConfig,
-}
-
-/// A character filter for normalizing Japanese iteration marks.
-///
-/// This filter normalizes various types of Japanese iteration marks such as
-/// Kanji, Hiragana, and Katakana iteration marks based on the provided configuration.
-///
-/// # Methods
-///
-/// - `new(config: JapaneseIterationMarkCharacterFilterConfig) -> Self`
-///   - Creates a new instance of the filter with the given configuration.
-/// - `from_slice(data: &[u8]) -> LinderaResult<Self>`
-///   - Creates a new instance of the filter from a byte slice, parsing the configuration from the slice.
-/// - `normalize(&self, iter_marks: &BTreeMap<usize, &char>, text_chars: &[char]) -> String`
-///   - Normalizes the provided iteration marks in the text based on the filter's configuration.
-///
-/// # Normalization Rules
-///
-/// - Kanji iteration marks are replaced with the corresponding Kanji character if `normalize_kanji` is enabled.
-/// - Hiragana iteration marks are replaced with the corresponding Hiragana character without dakuon if `normalize_kana` is enabled.
-/// - Hiragana dakuon iteration marks are replaced with the corresponding Hiragana character with dakuon if `normalize_kana` is enabled.
-/// - Katakana iteration marks are replaced with the corresponding Katakana character without dakuon if `normalize_kana` is enabled.
-/// - Katakana dakuon iteration marks are replaced with the corresponding Katakana character with dakuon if `normalize_kana` is enabled.
-impl JapaneseIterationMarkCharacterFilter {
-    pub fn new(config: JapaneseIterationMarkCharacterFilterConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(
-            JapaneseIterationMarkCharacterFilterConfig::from_slice(data)?,
-        ))
+        Ok(Self::new(normalize_kanji, normalize_kana))
     }
 
     /// Normalizes iteration marks in the text and returns the normalized string.
@@ -186,24 +133,24 @@ impl JapaneseIterationMarkCharacterFilter {
         for (iter_mark_pos, iter_mark) in iter_marks.iter() {
             let iter_mark_index = *iter_mark_pos - pos_diff;
             match *(*iter_mark) {
-                KANJI_ITERATION_MARK if self.config.normalize_kanji => {
+                KANJI_ITERATION_MARK if self.normalize_kanji => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     normalized_str.push(*replacement);
                 }
-                HIRAGANA_ITERATION_MARK if self.config.normalize_kana => {
+                HIRAGANA_ITERATION_MARK if self.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     normalized_str.push(hiragana_remove_dakuon(replacement));
                 }
-                HIRAGANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
+                HIRAGANA_DAKUON_ITERATION_MARK if self.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     let replacement = hiragana_add_dakuon(replacement);
                     normalized_str.push(replacement);
                 }
-                KATAKANA_ITERATION_MARK if self.config.normalize_kana => {
+                KATAKANA_ITERATION_MARK if self.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     normalized_str.push(katakana_remove_dakuon(replacement));
                 }
-                KATAKANA_DAKUON_ITERATION_MARK if self.config.normalize_kana => {
+                KATAKANA_DAKUON_ITERATION_MARK if self.normalize_kana => {
                     let replacement = text_chars.get(iter_mark_index).unwrap_or(iter_mark);
                     let replacement = katakana_add_dakuon(replacement);
                     normalized_str.push(replacement);
@@ -264,14 +211,14 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
         let mut iter_marks = BTreeMap::new();
         for (i, c) in text_chars.iter().enumerate() {
             match c {
-                &KANJI_ITERATION_MARK if self.config.normalize_kanji => {
+                &KANJI_ITERATION_MARK if self.normalize_kanji => {
                     iter_marks.insert(i, c);
                 }
                 &HIRAGANA_ITERATION_MARK
                 | &HIRAGANA_DAKUON_ITERATION_MARK
                 | &KATAKANA_ITERATION_MARK
                 | &KATAKANA_DAKUON_ITERATION_MARK
-                    if self.config.normalize_kana =>
+                    if self.normalize_kana =>
                 {
                     iter_marks.insert(i, c);
                 }
@@ -419,14 +366,20 @@ mod tests {
     });
 
     #[test]
-    fn test_japanese_iteration_mark_character_filter_config_new() {
-        let config = JapaneseIterationMarkCharacterFilterConfig::new(true, true);
-        assert!(config.normalize_kanji);
-        assert!(config.normalize_kana);
+    fn test_japanese_iteration_mark_character_filter_config() {
+        let config_str = r#"
+        {
+            "normalize_kanji": true,
+            "normalize_kana": true
+        }
+        "#;
+        let result: Result<JapaneseIterationMarkCharacterFilterConfig, _> =
+            serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_japanese_iteration_mark_character_filter_config_from_slice() {
+    fn test_japanese_iteration_mark_character_filter_from_config() {
         let config_str = r#"
         {
             "normalize_kanji": true,
@@ -434,20 +387,9 @@ mod tests {
         }
         "#;
         let config =
-            JapaneseIterationMarkCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-        assert!(config.normalize_kanji);
-        assert!(config.normalize_kana);
-    }
+            serde_json::from_str::<JapaneseIterationMarkCharacterFilterConfig>(config_str).unwrap();
 
-    #[test]
-    fn test_japanese_iteration_mark_character_filter_from_slice() {
-        let config_str = r#"
-        {
-            "normalize_kanji": true,
-            "normalize_kana": true
-        }
-        "#;
-        let result = JapaneseIterationMarkCharacterFilter::from_slice(config_str.as_bytes());
+        let result = JapaneseIterationMarkCharacterFilter::from_config(&config);
         assert!(result.is_ok());
     }
 
@@ -459,8 +401,11 @@ mod tests {
             "normalize_kana": true
         }
         "#;
-        let filter =
-            JapaneseIterationMarkCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+
+        let config =
+            serde_json::from_str::<JapaneseIterationMarkCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = JapaneseIterationMarkCharacterFilter::from_config(&config).unwrap();
 
         {
             let original_text = "ここは騒々しい";

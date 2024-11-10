@@ -85,7 +85,7 @@ impl Segmenter {
         // Load the user dictionary from the config
         let user_dictionary = config
             .get("user_dictionary")
-            .map(|user_dict_conf| load_user_dictionary_from_config(user_dict_conf))
+            .map(load_user_dictionary_from_config)
             .transpose()?;
 
         // Load the mode from the config
@@ -286,7 +286,7 @@ mod tests {
             "mode": "normal"
         }
         "#;
-        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
@@ -546,8 +546,7 @@ mod tests {
             "mode": "normal"
         }
         "#;
-        let config: serde_json::Value =
-            serde_json::from_str::<serde_json::Value>(config_str).unwrap();
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
@@ -959,7 +958,7 @@ mod tests {
             "mode": "normal"
         }
         "#;
-        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
@@ -1131,7 +1130,7 @@ mod tests {
             "mode": "normal"
         }
         "#;
-        let config = serde_json::from_str::<serde_json::Value>(config_str).unwrap();
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
         let mut tokens = segmenter
