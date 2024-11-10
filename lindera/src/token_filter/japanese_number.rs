@@ -1,58 +1,31 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::{TokenFilter, TokenFilterConfig};
+use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseNumberTokenFilterConfig {
+pub type JapaneseNumberTokenFilterConfig = Value;
+
+/// Convert tokens representing Japanese numerals, including Kanji numerals, to Arabic numerals.
+///
+#[derive(Clone, Debug)]
+pub struct JapaneseNumberTokenFilter {
     tags: Option<HashSet<String>>,
 }
 
-impl JapaneseNumberTokenFilterConfig {
+impl JapaneseNumberTokenFilter {
     pub fn new(tags: Option<HashSet<String>>) -> Self {
-        match tags {
-            Some(tags) => {
-                let mut formatted_tags: HashSet<String> = HashSet::new();
-                for tag in tags.iter() {
-                    let mut formatted_tag = ["*", "*", "*", "*"];
-
-                    let tag_array: Vec<&str> = tag.split(',').collect();
-                    for (i, j) in tag_array.iter().enumerate() {
-                        formatted_tag[i] = j;
-                    }
-
-                    formatted_tags.insert(formatted_tag.join(","));
-                }
-
-                Self {
-                    tags: Some(formatted_tags),
-                }
-            }
-            None => Self { tags: None },
-        }
+        Self { tags }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let args = serde_json::from_slice::<Value>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        Self::from_value(&args)
-    }
-}
-
-impl TokenFilterConfig for JapaneseNumberTokenFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        let tags = if let Some(t) = value.get("tags") {
+    pub fn from_config(config: &JapaneseNumberTokenFilterConfig) -> LinderaResult<Self> {
+        let tags = if let Some(t) = config.get("tags") {
             if t.is_array() {
                 Some(
                     t.as_array()
@@ -67,7 +40,15 @@ impl TokenFilterConfig for JapaneseNumberTokenFilterConfig {
                                     LinderaErrorKind::Deserialize
                                         .with_error(anyhow::anyhow!("tag must be string"))
                                 })
-                                .map(|s| s.to_string())
+                                .map(|s| {
+                                    let mut tag = s.split(',').collect::<Vec<&str>>();
+                                    if tag.len() < 4 {
+                                        tag.resize(4, "*");
+                                    } else {
+                                        tag.truncate(4);
+                                    }
+                                    tag.join(",")
+                                })
                         })
                         .collect::<LinderaResult<HashSet<String>>>()?,
                 )
@@ -79,25 +60,6 @@ impl TokenFilterConfig for JapaneseNumberTokenFilterConfig {
         };
 
         Ok(Self::new(tags))
-    }
-}
-
-/// Convert tokens representing Japanese numerals, including Kanji numerals, to Arabic numerals.
-///
-#[derive(Clone, Debug)]
-pub struct JapaneseNumberTokenFilter {
-    config: JapaneseNumberTokenFilterConfig,
-}
-
-impl JapaneseNumberTokenFilter {
-    pub fn new(config: JapaneseNumberTokenFilterConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(JapaneseNumberTokenFilterConfig::from_slice(
-            data,
-        )?))
     }
 }
 
@@ -141,11 +103,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
             let tag = details[0..tags_len].join(",");
 
             // Determine whether to convert the token based on the config tags.
-            let should_convert = self
-                .config
-                .tags
-                .as_ref()
-                .map_or(true, |tags| tags.contains(&tag));
+            let should_convert = self.tags.as_ref().map_or(true, |tags| tags.contains(&tag));
 
             // If conversion is required, apply the Arabic numeral conversion.
             if should_convert {
@@ -160,6 +118,12 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 
 fn adjust_digits(num: &str, base: &str, digit: &str) -> String {
     let zero_str = format!("{}{}", base, digit);
+
+    // If the number is less than the base, return the number as is.
+    if zero_str.len() < num.len() {
+        return num.to_owned();
+    }
+
     let zero_len = zero_str.len() - num.len();
     let zeros = &zero_str[0..zero_len];
 
@@ -318,6 +282,9 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::token_filter::japanese_number::{
+        JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
+    };
 
     #[test]
     fn test_to_number_str_ipadic() {
@@ -862,30 +829,25 @@ mod tests {
     }
 
     #[test]
-    fn test_japanese_number_token_filter_config_from_slice_ipadic() {
-        use crate::token_filter::japanese_number::JapaneseNumberTokenFilterConfig;
-
+    fn test_japanese_number_token_filter_config() {
         {
             let config_str = r#"
                 {
                     "tags": null
                 }
                 "#;
-            let config =
-                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-            assert!(config.tags.is_none());
+            let result: Result<JapaneseNumberTokenFilterConfig, _> =
+                serde_json::from_str(config_str);
+            assert_eq!(result.is_ok(), true);
         }
-
         {
             let config_str = r#"
                 {
                 }
                 "#;
-            let config =
-                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-            assert!(config.tags.is_none());
+            let result: Result<JapaneseNumberTokenFilterConfig, _> =
+                serde_json::from_str(config_str);
+            assert_eq!(result.is_ok(), true);
         }
 
         {
@@ -896,26 +858,22 @@ mod tests {
                     ]
                 }
                 "#;
-            let config =
-                JapaneseNumberTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-            assert!(config.tags.is_some());
-
-            assert!(config.tags.unwrap().contains("名詞,数,*,*"));
+            let result: Result<JapaneseNumberTokenFilterConfig, _> =
+                serde_json::from_str(config_str);
+            assert_eq!(result.is_ok(), true);
         }
     }
 
     #[test]
-    fn test_japanese_number_token_filter_from_slice_ipadic() {
-        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
-
+    fn test_japanese_number_token_filter() {
         {
             // test empty tags
             let config_str = r#"
                 {
                 }
                 "#;
-            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
+            let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+            let result = JapaneseNumberTokenFilter::from_config(&config);
 
             assert_eq!(true, result.is_ok());
         }
@@ -928,7 +886,8 @@ mod tests {
                     ]
                 }
                 "#;
-            let result = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes());
+            let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+            let result = JapaneseNumberTokenFilter::from_config(&config);
 
             assert_eq!(true, result.is_ok());
         }
@@ -940,7 +899,6 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
-        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
@@ -950,7 +908,8 @@ mod tests {
                 ]
             }
             "#;
-        let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseNumberTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -1115,15 +1074,14 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
-        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
             {
             }
             "#;
-        let filter = JapaneseNumberTokenFilter::from_slice(config_str.as_bytes()).unwrap();
-
+        let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseNumberTokenFilter::from_config(&config).unwrap();
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
         {

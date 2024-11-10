@@ -57,30 +57,25 @@ use std::ops::Deref;
 use crate::parse_cli_flag;
 use crate::token::Token;
 use crate::token_filter::japanese_base_form::{
-    JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-    JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
+    JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_compound_word::{
-    JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
-    JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
+    JapaneseCompoundWordTokenFilter, JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_kana::{
-    JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, JAPANESE_KANA_TOKEN_FILTER_NAME,
+    JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_katakana_stem::{
-    JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
-    JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+    JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_keep_tags::{
-    JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
-    JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
+    JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_number::{
-    JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig, JAPANESE_NUMBER_TOKEN_FILTER_NAME,
+    JapaneseNumberTokenFilter, JAPANESE_NUMBER_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_reading_form::{
-    JapaneseReadingFormTokenFilter, JapaneseReadingFormTokenFilterConfig,
-    JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
+    JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_stop_tags::{
     JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
@@ -232,32 +227,25 @@ impl TokenFilterLoader {
         //   error in creating the token filter from the provided `value`.
         let token_filter = match kind {
             JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
-                let config = JapaneseBaseFormTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseBaseFormTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseBaseFormTokenFilter::from_config(value)?)
             }
             JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
-                let config = JapaneseCompoundWordTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseCompoundWordTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseCompoundWordTokenFilter::from_config(value)?)
             }
             JAPANESE_KANA_TOKEN_FILTER_NAME => {
-                let config = JapaneseKanaTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKanaTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKanaTokenFilter::from_config(value)?)
             }
             JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
-                let config = JapaneseKatakanaStemTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKatakanaStemTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKatakanaStemTokenFilter::from_config(value)?)
             }
             JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                let config = JapaneseKeepTagsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKeepTagsTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKeepTagsTokenFilter::from_config(value)?)
             }
             JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
-                let config = JapaneseNumberTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseNumberTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseNumberTokenFilter::from_config(value)?)
             }
             JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
-                let config = JapaneseReadingFormTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseReadingFormTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseReadingFormTokenFilter::from_config(value)?)
             }
             JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
                 let config = JapaneseStopTagsTokenFilterConfig::from_value(value)?;

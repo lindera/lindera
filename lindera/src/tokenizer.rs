@@ -698,7 +698,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("百三十四円"));
+                assert_eq!(token.text, Cow::Borrowed("134円"));
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
@@ -706,8 +706,8 @@ mod tests {
                 assert_eq!(
                     token.details,
                     Some(vec![
-                        Cow::Borrowed("複合語"),
-                        Cow::Borrowed("*"),
+                        Cow::Borrowed("名詞"),
+                        Cow::Borrowed("数"),
                         Cow::Borrowed("*"),
                         Cow::Borrowed("*"),
                         Cow::Borrowed("*"),
