@@ -18,7 +18,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.34.0", features = ["ipadic"] }
+lindera = { version = "0.37.0", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -36,8 +36,6 @@ use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
     let mut config_builder = TokenizerConfigBuilder::new();
     config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
     config_builder.set_segmenter_mode(&Mode::Normal);
@@ -109,8 +107,6 @@ use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 use lindera::{dictionary, LinderaResult};
 
 fn main() -> LinderaResult<()> {
-    // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
     let mut config_builder = TokenizerConfigBuilder::new();
     config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
     config_builder.set_segmenter_mode(&Mode::Normal);
@@ -175,8 +171,6 @@ use lindera::mode::Mode;
 use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
 
 fn main() -> LinderaResult<()> {
-    // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
     let mut config_builder = TokenizerConfigBuilder::new();
     config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
     config_builder.set_segmenter_mode(&Mode::Normal);
@@ -275,6 +269,114 @@ token: "ユーザー", start: 63, end: 75, details: Some(["名詞", "一般", "*
 token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
 token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
 token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
+```
+
+## Configuration file
+
+Lindera is able to read YAML format configuration files.
+Specify the path to the following file in the environment variable LINDERA_CONFIG_PATH. You can use it easily without having to code the behavior of the tokenizer in Rust code.
+
+```yaml
+segmenter:
+  mode: "normal"
+  dictionary:
+    kind: "ipadic"
+  user_dictionary:
+    path: "./resources/ipadic_simple.csv"
+    kind: "ipadic"
+
+character_filters:
+  - kind: "unicode_normalize"
+    args:
+      kind: "nfkc"
+  - kind: "japanese_iteration_mark"
+    args:
+      normalize_kanji: true
+      normalize_kana: true
+  - kind: mapping
+    args:
+       mapping:
+         リンデラ: Lindera
+
+token_filters:
+  - kind: "japanese_compound_word"
+    args:
+      kind: "ipadic"
+      tags:
+        - "名詞,数"
+        - "名詞,接尾,助数詞"
+      new_tag: "名詞,数"
+  - kind: "japanese_number"
+    args:
+      tags:
+        - "名詞,数"
+  - kind: "japanese_stop_tags"
+    args:
+      tags:
+        - "接続詞"
+        - "助詞"
+        - "助詞,格助詞"
+        - "助詞,格助詞,一般"
+        - "助詞,格助詞,引用"
+        - "助詞,格助詞,連語"
+        - "助詞,係助詞"
+        - "助詞,副助詞"
+        - "助詞,間投助詞"
+        - "助詞,並立助詞"
+        - "助詞,終助詞"
+        - "助詞,副助詞／並立助詞／終助詞"
+        - "助詞,連体化"
+        - "助詞,副詞化"
+        - "助詞,特殊"
+        - "助動詞"
+        - "記号"
+        - "記号,一般"
+        - "記号,読点"
+        - "記号,句点"
+        - "記号,空白"
+        - "記号,括弧閉"
+        - "その他,間投"
+        - "フィラー"
+        - "非言語音"
+  - kind: "japanese_katakana_stem"
+    args:
+      min: 3
+  - kind: "remove_diacritical_mark"
+    args:
+      japanese: false
+```
+
+```shell
+% export LINDERA_CONFIG_PATH=./resources/lindera.yml
+```
+
+```rust
+use lindera::dictionary::DictionaryKind;
+use lindera::mode::Mode;
+use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    // Creates a new `TokenizerConfigBuilder` instance.
+    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
+    let mut config_builder = TokenizerConfigBuilder::new();
+
+    // Create the tokenizer.
+    let tokenizer = Tokenizer::from_config(&config_builder.build())?;
+
+    // Tokenize a text.
+    let text = "関西国際空港限定トートバッグ";
+    let mut tokens = tokenizer.tokenize(text)?;
+
+    // Print the text and tokens.
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.text.as_ref(), details);
+    }
+
+    Ok(())
+}
 ```
 
 ## API reference
