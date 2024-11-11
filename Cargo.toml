@@ -44,7 +44,7 @@ serde_yaml = "0.9.34"
 strum = { version = "0.26.2", features = ["derive"] }
 strum_macros = "0.26.2"
 tar = "0.4.43"
-thiserror = "1.0.66"
+thiserror = "2.0.3"
 unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.24"
 unicode-segmentation = "1.11.0"
