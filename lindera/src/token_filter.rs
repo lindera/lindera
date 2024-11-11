@@ -100,38 +100,6 @@ use crate::token_filter::stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FIL
 use crate::token_filter::uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME};
 use crate::{LinderaErrorKind, LinderaResult};
 
-pub trait TokenFilterConfig: 'static + Send + Sync + TokenFilterConfigClone {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized;
-}
-
-pub struct BoxTokenFilterConfig(Box<dyn TokenFilterConfig + 'static + Send + Sync>);
-
-impl Deref for BoxTokenFilterConfig {
-    type Target = dyn TokenFilterConfig;
-
-    fn deref(&self) -> &dyn TokenFilterConfig {
-        &*self.0
-    }
-}
-
-impl<T: TokenFilterConfig> From<T> for BoxTokenFilterConfig {
-    fn from(character_filter: T) -> BoxTokenFilterConfig {
-        BoxTokenFilterConfig(Box::new(character_filter))
-    }
-}
-
-pub trait TokenFilterConfigClone {
-    fn box_clone(&self) -> BoxTokenFilterConfig;
-}
-
-impl<T: TokenFilterConfig + Clone + 'static> TokenFilterConfigClone for T {
-    fn box_clone(&self) -> BoxTokenFilterConfig {
-        BoxTokenFilterConfig::from(self.clone())
-    }
-}
-
 /// A trait for token filters that can be applied to a vector of tokens.
 ///
 /// This trait requires the implementor to be `'static`, `Send`, `Sync`, and
@@ -181,11 +149,6 @@ impl<T: TokenFilter + Clone + 'static> TokenFilterClone for T {
     fn box_clone(&self) -> BoxTokenFilter {
         BoxTokenFilter::from(self.clone())
     }
-}
-
-pub struct TokenFilterSetting {
-    pub name: String,
-    pub args: BoxTokenFilterConfig,
 }
 
 pub struct TokenFilterLoader {}
