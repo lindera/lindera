@@ -1,57 +1,46 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::{TokenFilter, TokenFilterConfig};
+use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct KoreanKeepTagsTokenFilterConfig {
-    tags: HashSet<String>,
-}
-
-impl KoreanKeepTagsTokenFilterConfig {
-    pub fn new(tags: HashSet<String>) -> Self {
-        Self { tags }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<KoreanKeepTagsTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl TokenFilterConfig for KoreanKeepTagsTokenFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        serde_json::from_value(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type KoreanKeepTagsTokenFilterConfig = Value;
 
 /// Keep only tokens with the specified part-of-speech tag.
 ///
 #[derive(Clone, Debug)]
 pub struct KoreanKeepTagsTokenFilter {
-    config: KoreanKeepTagsTokenFilterConfig,
+    tags: HashSet<String>,
 }
 
 impl KoreanKeepTagsTokenFilter {
-    pub fn new(config: KoreanKeepTagsTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(tags: HashSet<String>) -> Self {
+        Self { tags }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(KoreanKeepTagsTokenFilterConfig::from_slice(
-            data,
-        )?))
+    pub fn from_config(config: &KoreanKeepTagsTokenFilterConfig) -> LinderaResult<Self> {
+        let tags: HashSet<String> = config["tags"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("tag must be string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        Ok(Self::new(tags))
     }
 }
 
@@ -97,7 +86,7 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
             let tag = token.get_detail(0).unwrap_or_default();
 
             // Add the token to the filtered_tokens vector if the tag is in the set of tags.
-            if self.config.tags.contains(tag) {
+            if self.tags.contains(tag) {
                 filtered_tokens.push(token);
             }
         }
@@ -111,11 +100,12 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_korean_keep_tags_token_filter_config_from_slice() {
-        use crate::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilterConfig;
+    use crate::token_filter::korean_keep_tags::{
+        KoreanKeepTagsTokenFilter, KoreanKeepTagsTokenFilterConfig,
+    };
 
+    #[test]
+    fn test_korean_keep_tags_token_filter_config() {
         let config_str = r#"
         {
             "tags": [
@@ -123,16 +113,12 @@ mod tests {
             ]
         }
         "#;
-        let config = KoreanKeepTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.tags.len(), 1);
+        let result: Result<KoreanKeepTagsTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
-    fn test_korean_keep_tags_token_filter_from_slice() {
-        use crate::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter;
-
+    fn test_korean_keep_tags_token_filter() {
         let config_str = r#"
         {
             "tags": [
@@ -140,7 +126,8 @@ mod tests {
             ]
         }
         "#;
-        let result = KoreanKeepTagsTokenFilter::from_slice(config_str.as_bytes());
+        let config: KoreanKeepTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = KoreanKeepTagsTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -152,7 +139,6 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -162,7 +148,8 @@ mod tests {
                 ]
             }
             "#;
-        let filter = KoreanKeepTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: KoreanKeepTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = KoreanKeepTagsTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
 

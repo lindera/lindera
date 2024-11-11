@@ -1,54 +1,37 @@
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::{TokenFilter, TokenFilterConfig};
+use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct LengthTokenFilterConfig {
-    min: Option<usize>,
-    max: Option<usize>,
-}
-
-impl LengthTokenFilterConfig {
-    pub fn new(min: Option<usize>, max: Option<usize>) -> Self {
-        Self { min, max }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<LengthTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl TokenFilterConfig for LengthTokenFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        serde_json::from_value(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type LengthTokenFilterConfig = Value;
 
 /// Keep only tokens with the specified number of characters of text.
 ///
 #[derive(Clone, Debug)]
 pub struct LengthTokenFilter {
-    config: LengthTokenFilterConfig,
+    min: Option<usize>,
+    max: Option<usize>,
 }
 
 impl LengthTokenFilter {
-    pub fn new(config: LengthTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(min: Option<usize>, max: Option<usize>) -> Self {
+        Self { min, max }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(LengthTokenFilterConfig::from_slice(data)?))
+    pub fn from_config(config: &LengthTokenFilterConfig) -> LinderaResult<Self> {
+        let min: Option<usize> = config
+            .get("min")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
+        let max: Option<usize> = config
+            .get("max")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
+
+        Ok(Self::new(min, max))
     }
 }
 
@@ -60,12 +43,12 @@ impl TokenFilter for LengthTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             let len = token.text.chars().count();
-            if let Some(min) = self.config.min {
+            if let Some(min) = self.min {
                 if len < min {
                     return false;
                 }
             }
-            if let Some(max) = self.config.max {
+            if let Some(max) = self.max {
                 if len > max {
                     return false;
                 }
@@ -79,76 +62,65 @@ impl TokenFilter for LengthTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    use crate::token_filter::length::{LengthTokenFilter, LengthTokenFilterConfig};
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_length_token_filter_config_from_slice() {
-        use crate::token_filter::length::LengthTokenFilterConfig;
-
+    fn test_length_token_filter_confige() {
         let config_str = r#"
             {
                 "min": 1,
                 "max": 3
             }
             "#;
-        let config = LengthTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.min.unwrap(), 1);
-        assert_eq!(config.max.unwrap(), 3);
+        let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
 
         let config_str = r#"
             {
                 "min": 1
             }
             "#;
-        let config = LengthTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.min.unwrap(), 1);
-        assert_eq!(config.max, None);
+        let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
 
         let config_str = r#"
             {
                 "max": 2
             }
             "#;
-        let config = LengthTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.min, None);
-        assert_eq!(config.max.unwrap(), 2);
+        let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_length_token_filter_from_slice() {
-        use crate::token_filter::length::LengthTokenFilter;
-
+    fn test_length_token_filter() {
         let config_str = r#"
             {
                 "min": 1,
                 "max": 3
             }
             "#;
-        let result = LengthTokenFilter::from_slice(config_str.as_bytes());
-
-        assert_eq!(result.is_ok(), true);
+        let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = LengthTokenFilter::from_config(&config);
+        assert_eq!(true, result.is_ok());
 
         let config_str = r#"
             {
                 "min": 1
             }
             "#;
-        let result = LengthTokenFilter::from_slice(config_str.as_bytes());
-
-        assert_eq!(result.is_ok(), true);
+        let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = LengthTokenFilter::from_config(&config);
+        assert_eq!(true, result.is_ok());
 
         let config_str = r#"
             {
                 "max": 2
             }
             "#;
-        let result = LengthTokenFilter::from_slice(config_str.as_bytes());
-
-        assert_eq!(result.is_ok(), true);
+        let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = LengthTokenFilter::from_config(&config);
+        assert_eq!(true, result.is_ok());
     }
 
     #[test]
@@ -158,7 +130,6 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::length::LengthTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -167,7 +138,8 @@ mod tests {
                 "max": 3
             }
             "#;
-        let filter = LengthTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = LengthTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

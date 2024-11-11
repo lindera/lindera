@@ -1,62 +1,33 @@
 use std::borrow::Cow;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::{TokenFilter, TokenFilterConfig};
+use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str = "korean_reading_form";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct KoreanReadingFormTokenFilterConfig {}
-
-impl KoreanReadingFormTokenFilterConfig {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<KoreanReadingFormTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl TokenFilterConfig for KoreanReadingFormTokenFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        serde_json::from_value(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl Default for KoreanReadingFormTokenFilterConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub type KoreanReadingFormTokenFilterConfig = Value;
 
 /// Replace the text of a token with the reading of the text as registered in the morphological dictionary.
 ///
 #[derive(Clone, Debug)]
-pub struct KoreanReadingFormTokenFilter {
-    #[allow(dead_code)]
-    config: KoreanReadingFormTokenFilterConfig,
-}
+pub struct KoreanReadingFormTokenFilter {}
 
 impl KoreanReadingFormTokenFilter {
-    pub fn new(config: KoreanReadingFormTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(KoreanReadingFormTokenFilterConfig::from_slice(
-            data,
-        )?))
+    pub fn from_config(_config: &KoreanReadingFormTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
+    }
+}
+
+impl Default for KoreanReadingFormTokenFilter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -94,11 +65,7 @@ mod tests {
         use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let config_str = r#"
-            {}
-            "#;
-
-        let filter = KoreanReadingFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let filter = KoreanReadingFormTokenFilter::new();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
 

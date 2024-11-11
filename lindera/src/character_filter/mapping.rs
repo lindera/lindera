@@ -208,6 +208,7 @@ mod tests {
             let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
 
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
+
             let original_text = "ｱｲｳｴｵ";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();

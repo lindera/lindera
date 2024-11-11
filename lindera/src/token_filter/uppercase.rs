@@ -1,60 +1,33 @@
 use std::borrow::Cow;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::token_filter::{TokenFilter, TokenFilterConfig};
+use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct UppercaseTokenFilterConfig {}
-
-impl UppercaseTokenFilterConfig {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<UppercaseTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl TokenFilterConfig for UppercaseTokenFilterConfig {
-    fn from_value(value: &Value) -> LinderaResult<Self>
-    where
-        Self: Sized,
-    {
-        serde_json::from_value(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-impl Default for UppercaseTokenFilterConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub type UppercaseTokenFilterConfig = Value;
 
 /// Normalizes token text to uppercase.
 ///
 #[derive(Clone, Debug)]
-pub struct UppercaseTokenFilter {
-    #[allow(dead_code)]
-    config: UppercaseTokenFilterConfig,
-}
+pub struct UppercaseTokenFilter {}
 
 impl UppercaseTokenFilter {
-    pub fn new(config: UppercaseTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(UppercaseTokenFilterConfig::from_slice(data)?))
+    pub fn from_config(_config: &UppercaseTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
+    }
+}
+
+impl Default for UppercaseTokenFilter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -84,11 +57,7 @@ mod tests {
         use crate::token_filter::uppercase::UppercaseTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let config_str = r#"
-        {}
-        "#;
-
-        let filter = UppercaseTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let filter = UppercaseTokenFilter::new();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
