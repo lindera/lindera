@@ -1,15 +1,18 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use kanaria::string::UCSStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::error::LinderaErrorKind;
+use crate::error::{LinderaError, LinderaErrorKind};
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
+
+pub type JapaneseKanaTokenFilterConfig = Value;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum KanaKind {
@@ -21,24 +24,23 @@ pub enum KanaKind {
     Katakana,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseKanaTokenFilterConfig {
-    kind: KanaKind,
+impl KanaKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            KanaKind::Hiragana => "hiragana",
+            KanaKind::Katakana => "katakana",
+        }
+    }
 }
 
-impl JapaneseKanaTokenFilterConfig {
-    pub fn new(kind: KanaKind) -> Self {
-        Self { kind }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<JapaneseKanaTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<JapaneseKanaTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+impl FromStr for KanaKind {
+    type Err = LinderaError;
+    fn from_str(kind: &str) -> Result<Self, Self::Err> {
+        match kind {
+            "hiragana" => Ok(KanaKind::Hiragana),
+            "katakana" => Ok(KanaKind::Katakana),
+            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid kana kind"))),
+        }
     }
 }
 
@@ -47,16 +49,28 @@ impl JapaneseKanaTokenFilterConfig {
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseKanaTokenFilter {
-    config: JapaneseKanaTokenFilterConfig,
+    // config: JapaneseKanaTokenFilterConfig,
+    kind: KanaKind,
 }
 
 impl JapaneseKanaTokenFilter {
-    pub fn new(config: JapaneseKanaTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(kind: KanaKind) -> Self {
+        Self { kind }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(JapaneseKanaTokenFilterConfig::from_slice(data)?))
+    pub fn from_config(config: &JapaneseKanaTokenFilterConfig) -> LinderaResult<Self> {
+        let kind = config
+            .get("kind")
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing kind config."))
+            })?
+            .as_str()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("invalid kind config."))
+            })?;
+        let kind = KanaKind::from_str(kind)?;
+
+        Ok(Self::new(kind))
     }
 }
 
@@ -98,7 +112,7 @@ impl TokenFilter for JapaneseKanaTokenFilter {
     /// If any issue arises during the token processing or text conversion, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let converted_text = match self.config.kind {
+            let converted_text = match self.kind {
                 KanaKind::Hiragana => {
                     // Convert katakana to hiragana.
                     UCSStr::from_str(&token.text).hiragana().to_string()
@@ -120,45 +134,46 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 mod tests {
     #[test]
     #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    fn test_japanese_kana_token_filter_config_from_slice_hiragana() {
-        use crate::token_filter::japanese_kana::{JapaneseKanaTokenFilterConfig, KanaKind};
+    fn test_japanese_kana_token_filter_config_hiragana() {
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
         let config_str = r#"
         {
             "kind": "hiragana"
         }
         "#;
-        let config = JapaneseKanaTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, KanaKind::Hiragana);
+        let result: Result<JapaneseKanaTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
     #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    fn test_japanese_kana_token_filter_config_from_slice_katakana() {
-        use crate::token_filter::japanese_kana::{JapaneseKanaTokenFilterConfig, KanaKind};
+    fn test_japanese_kana_token_filter_config_katakana() {
+        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
         let config_str = r#"
         {
             "kind": "katakana"
         }
         "#;
-        let config = JapaneseKanaTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, KanaKind::Katakana);
+        let result: Result<JapaneseKanaTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
     #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-    fn test_japanese_kana_token_filter_from_slice_hiragana() {
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+    fn test_japanese_kana_token_filter_hiragana() {
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
 
         let config_str = r#"
         {
             "kind": "hiragana"
         }
         "#;
-        let result = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes());
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = JapaneseKanaTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -166,14 +181,17 @@ mod tests {
     #[test]
     #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
     fn test_japanese_kana_token_filter_from_slice_katakana() {
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
 
         let config_str = r#"
         {
             "kind": "katakana"
         }
         "#;
-        let result = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes());
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = JapaneseKanaTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -185,7 +203,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -193,7 +213,8 @@ mod tests {
                 "kind": "hiragana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -277,7 +298,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -285,7 +308,8 @@ mod tests {
                 "kind": "katakana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -404,7 +428,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -412,7 +438,8 @@ mod tests {
                 "kind": "katakana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -496,7 +523,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -504,7 +533,8 @@ mod tests {
                 "kind": "hiragana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -623,7 +653,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -631,7 +663,8 @@ mod tests {
                 "kind": "katakana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -750,7 +783,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_kana::JapaneseKanaTokenFilter;
+        use crate::token_filter::japanese_kana::{
+            JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -758,7 +793,8 @@ mod tests {
                 "kind": "hiragana"
             }
             "#;
-        let filter = JapaneseKanaTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

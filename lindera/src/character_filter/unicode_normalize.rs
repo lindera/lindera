@@ -1,14 +1,18 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::error::LinderaErrorKind;
+use crate::error::{LinderaError, LinderaErrorKind};
 use crate::LinderaResult;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
 
 pub const UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str = "unicode_normalize";
+
+pub type UnicodeNormalizeCharacterFilterConfig = Value;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum UnicodeNormalizeKind {
@@ -22,24 +26,30 @@ pub enum UnicodeNormalizeKind {
     NFKD,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct UnicodeNormalizeCharacterFilterConfig {
-    pub kind: UnicodeNormalizeKind,
+impl UnicodeNormalizeKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            UnicodeNormalizeKind::NFC => "nfc",
+            UnicodeNormalizeKind::NFD => "nfd",
+            UnicodeNormalizeKind::NFKC => "nfkc",
+            UnicodeNormalizeKind::NFKD => "nfkd",
+        }
+    }
 }
 
-impl UnicodeNormalizeCharacterFilterConfig {
-    pub fn new(kind: UnicodeNormalizeKind) -> Self {
-        Self { kind }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<UnicodeNormalizeCharacterFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<UnicodeNormalizeCharacterFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
+impl FromStr for UnicodeNormalizeKind {
+    type Err = LinderaError;
+    fn from_str(kind: &str) -> Result<Self, Self::Err> {
+        match kind {
+            "nfc" => Ok(UnicodeNormalizeKind::NFC),
+            "nfd" => Ok(UnicodeNormalizeKind::NFD),
+            "nfkc" => Ok(UnicodeNormalizeKind::NFKC),
+            "nfkd" => Ok(UnicodeNormalizeKind::NFKD),
+            _ => {
+                Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("Invalid normalization kind")))
+            }
+        }
     }
 }
 
@@ -47,18 +57,27 @@ impl UnicodeNormalizeCharacterFilterConfig {
 ///
 #[derive(Clone, Debug)]
 pub struct UnicodeNormalizeCharacterFilter {
-    config: UnicodeNormalizeCharacterFilterConfig,
+    kind: UnicodeNormalizeKind,
 }
 
 impl UnicodeNormalizeCharacterFilter {
-    pub fn new(config: UnicodeNormalizeCharacterFilterConfig) -> Self {
-        Self { config }
+    pub fn new(kind: UnicodeNormalizeKind) -> Self {
+        Self { kind }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(
-            UnicodeNormalizeCharacterFilterConfig::from_slice(data)?,
-        ))
+    pub fn from_config(config: &UnicodeNormalizeCharacterFilterConfig) -> LinderaResult<Self> {
+        let kind = config
+            .get("kind")
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing kind config."))
+            })?
+            .as_str()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("invalid kind config."))
+            })?;
+        let kind = UnicodeNormalizeKind::from_str(kind)?;
+
+        Ok(Self::new(kind))
     }
 }
 
@@ -110,7 +129,7 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
         for c in text.graphemes(true) {
             let input_len = c.len();
-            let replacement_text = match self.config.kind {
+            let replacement_text = match self.kind {
                 UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
                 UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
                 UnicodeNormalizeKind::NFKC => c.nfkc().collect::<String>(),
@@ -159,27 +178,28 @@ mod tests {
     use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
-    fn test_unicode_normalize_character_filter_config_from_slice() {
+    fn test_unicode_normalize_character_filter_config() {
+        let config_str = r#"
+        {
+            "kind": "nfkc"
+        }
+        "#;
+        let result: Result<UnicodeNormalizeCharacterFilterConfig, _> =
+            serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
+    }
+
+    #[test]
+    fn test_unicode_normalize_character_filter() {
         let config_str = r#"
         {
             "kind": "nfkc"
         }
         "#;
         let config =
-            UnicodeNormalizeCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
 
-        assert_eq!(config.kind, super::UnicodeNormalizeKind::NFKC);
-    }
-
-    #[test]
-    fn test_unicode_normalize_character_filter_from_slice() {
-        let config_str = r#"
-        {
-            "kind": "nfkc"
-        }
-        "#;
-        let result = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes());
-
+        let result = UnicodeNormalizeCharacterFilter::from_config(&config);
         assert_eq!(true, result.is_ok());
     }
 
@@ -190,7 +210,10 @@ mod tests {
             "kind": "nfc"
         }
         "#;
-        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config =
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = UnicodeNormalizeCharacterFilter::from_config(&config).unwrap();
 
         {
             let original_text = "ＡＢＣＤＥ";
@@ -336,7 +359,10 @@ mod tests {
             "kind": "nfd"
         }
         "#;
-        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config =
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = UnicodeNormalizeCharacterFilter::from_config(&config).unwrap();
 
         {
             let original_text = "ＡＢＣＤＥ";
@@ -482,7 +508,10 @@ mod tests {
             "kind": "nfkc"
         }
         "#;
-        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config =
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = UnicodeNormalizeCharacterFilter::from_config(&config).unwrap();
 
         {
             let original_text = "ＡＢＣＤＥ";
@@ -628,7 +657,10 @@ mod tests {
             "kind": "nfkd"
         }
         "#;
-        let filter = UnicodeNormalizeCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config =
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = UnicodeNormalizeCharacterFilter::from_config(&config).unwrap();
 
         {
             let original_text = "ＡＢＣＤＥ";

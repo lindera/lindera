@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
@@ -11,42 +10,18 @@ use crate::LinderaResult;
 
 pub const MAPPING_CHARACTER_FILTER_NAME: &str = "mapping";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct MappingCharacterFilterConfig {
-    pub mapping: HashMap<String, String>,
-}
+pub type MappingCharacterFilterConfig = Value;
 
-impl MappingCharacterFilterConfig {
-    pub fn new(map: HashMap<String, String>) -> Self {
-        Self { mapping: map }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<MappingCharacterFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<MappingCharacterFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
-/// Replace characters with the specified character mappings,
-/// and correcting the resulting changes to the offsets.
-/// Matching is greedy (longest pattern matching at a given point wins).
-/// Replacement is allowed to be the empty string.
-///
 #[derive(Clone)]
 pub struct MappingCharacterFilter {
-    config: MappingCharacterFilterConfig,
+    mapping: HashMap<String, String>,
     trie: DoubleArray<Vec<u8>>,
 }
 
 impl MappingCharacterFilter {
-    pub fn new(config: MappingCharacterFilterConfig) -> LinderaResult<Self> {
+    pub fn new(mapping: HashMap<String, String>) -> LinderaResult<Self> {
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
-        let mut keys = config.mapping.keys().collect::<Vec<_>>();
+        let mut keys = mapping.keys().collect::<Vec<_>>();
         keys.sort();
         for (value, key) in keys.into_iter().enumerate() {
             keyset.push((key.as_bytes(), value as u32));
@@ -58,11 +33,21 @@ impl MappingCharacterFilter {
 
         let trie = DoubleArray::new(data);
 
-        Ok(Self { config, trie })
+        Ok(Self { mapping, trie })
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Self::new(MappingCharacterFilterConfig::from_slice(data)?)
+    pub fn from_config(config: &MappingCharacterFilterConfig) -> LinderaResult<Self> {
+        let mapping = config
+            .get("mapping")
+            .and_then(Value::as_object)
+            .ok_or_else(|| {
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("mapping must be an object."))
+            })?
+            .iter()
+            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+            .collect::<HashMap<String, String>>();
+
+        Self::new(mapping)
     }
 }
 
@@ -120,7 +105,7 @@ impl CharacterFilter for MappingCharacterFilter {
             {
                 Some(input_len) => {
                     let input_text = &text[input_start..input_start + input_len];
-                    let replacement_text = &self.config.mapping[input_text];
+                    let replacement_text = &self.mapping[input_text];
                     let replacement_len = replacement_text.len();
                     let diff_len = input_len as i64 - replacement_len as i64;
                     let input_offset = input_start + input_len;
@@ -171,7 +156,7 @@ mod tests {
     use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
-    fn test_mapping_character_filter_config_from_slice() {
+    fn test_mapping_character_filter_config() {
         let config_str = r#"
         {
             "mapping": {
@@ -183,12 +168,12 @@ mod tests {
             }
         }
         "#;
-        let config = MappingCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-        assert_eq!("ア", config.mapping.get("ｱ").unwrap());
+        let result: Result<MappingCharacterFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_mapping_character_filter_from_slice() {
+    fn test_mapping_character_filter_from_config() {
         let config_str = r#"
         {
             "mapping": {
@@ -200,7 +185,9 @@ mod tests {
             }
         }
         "#;
-        let result = MappingCharacterFilter::from_slice(config_str.as_bytes());
+        let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+        let result = MappingCharacterFilter::from_config(&config);
         assert_eq!(true, result.is_ok());
     }
 
@@ -218,7 +205,10 @@ mod tests {
                 }
             }
             "#;
-            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+            let filter = MappingCharacterFilter::from_config(&config).unwrap();
+
             let original_text = "ｱｲｳｴｵ";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
@@ -246,7 +236,9 @@ mod tests {
                 }
             }
             "#;
-            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+            let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
@@ -271,7 +263,9 @@ mod tests {
                 }
             }
             "#;
-            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+            let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
@@ -296,7 +290,9 @@ mod tests {
                 }
             }
             "#;
-            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+            let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "Rust製形態素解析器リンデラで日本語を形態素解析する。";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
@@ -334,7 +330,9 @@ mod tests {
                 }
             }
             "#;
-            let filter = MappingCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+
+            let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "１０㍑";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();

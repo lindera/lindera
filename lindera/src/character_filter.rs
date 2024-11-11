@@ -34,18 +34,12 @@ use std::ops::Deref;
 use serde_json::Value;
 
 use crate::character_filter::japanese_iteration_mark::{
-    JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
-    JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
+    JapaneseIterationMarkCharacterFilter, JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME,
 };
-use crate::character_filter::mapping::{
-    MappingCharacterFilter, MappingCharacterFilterConfig, MAPPING_CHARACTER_FILTER_NAME,
-};
-use crate::character_filter::regex::{
-    RegexCharacterFilter, RegexCharacterFilterConfig, REGEX_CHARACTER_FILTER_NAME,
-};
+use crate::character_filter::mapping::{MappingCharacterFilter, MAPPING_CHARACTER_FILTER_NAME};
+use crate::character_filter::regex::{RegexCharacterFilter, REGEX_CHARACTER_FILTER_NAME};
 use crate::character_filter::unicode_normalize::{
-    UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
-    UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
+    UnicodeNormalizeCharacterFilter, UNICODE_NORMALIZE_CHARACTER_FILTER_NAME,
 };
 use crate::error::LinderaErrorKind;
 use crate::parse_cli_flag;
@@ -202,21 +196,16 @@ impl CharacterFilterLoader {
     pub fn load_from_value(kind: &str, value: &Value) -> LinderaResult<BoxCharacterFilter> {
         let character_filter = match kind {
             JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME => {
-                BoxCharacterFilter::from(JapaneseIterationMarkCharacterFilter::new(
-                    JapaneseIterationMarkCharacterFilterConfig::from_value(value)?,
-                ))
+                BoxCharacterFilter::from(JapaneseIterationMarkCharacterFilter::from_config(value)?)
             }
             MAPPING_CHARACTER_FILTER_NAME => {
-                let config = MappingCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(MappingCharacterFilter::new(config)?)
+                BoxCharacterFilter::from(MappingCharacterFilter::from_config(value)?)
             }
             REGEX_CHARACTER_FILTER_NAME => {
-                let config = RegexCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(RegexCharacterFilter::new(config)?)
+                BoxCharacterFilter::from(RegexCharacterFilter::from_config(value)?)
             }
             UNICODE_NORMALIZE_CHARACTER_FILTER_NAME => {
-                let config = UnicodeNormalizeCharacterFilterConfig::from_value(value)?;
-                BoxCharacterFilter::from(UnicodeNormalizeCharacterFilter::new(config))
+                BoxCharacterFilter::from(UnicodeNormalizeCharacterFilter::from_config(value)?)
             }
             _ => {
                 return Err(LinderaErrorKind::Deserialize

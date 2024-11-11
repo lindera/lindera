@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
@@ -9,41 +9,38 @@ use crate::LinderaResult;
 
 pub const STOP_WORDS_TOKEN_FILTER_NAME: &str = "stop_words";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct StopWordsTokenFilterConfig {
-    words: HashSet<String>,
-}
-
-impl StopWordsTokenFilterConfig {
-    pub fn new(words: HashSet<String>) -> Self {
-        Self { words }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<StopWordsTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<StopWordsTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type StopWordsTokenFilterConfig = Value;
 
 /// Remove the tokens of the specified text.
 ///
 #[derive(Clone, Debug)]
 pub struct StopWordsTokenFilter {
-    config: StopWordsTokenFilterConfig,
+    words: HashSet<String>,
 }
 
 impl StopWordsTokenFilter {
-    pub fn new(config: StopWordsTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(words: HashSet<String>) -> Self {
+        Self { words }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(StopWordsTokenFilterConfig::from_slice(data)?))
+    pub fn from_config(config: &StopWordsTokenFilterConfig) -> LinderaResult<Self> {
+        let words: HashSet<String> = config["words"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("words is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("words must be string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        Ok(Self::new(words))
     }
 }
 
@@ -53,7 +50,7 @@ impl TokenFilter for StopWordsTokenFilter {
     }
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        tokens.retain(|token| !self.config.words.contains(token.text.as_ref()));
+        tokens.retain(|token| !self.words.contains(token.text.as_ref()));
 
         Ok(())
     }
@@ -61,12 +58,10 @@ impl TokenFilter for StopWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    use crate::token_filter::stop_words::{StopWordsTokenFilter, StopWordsTokenFilterConfig};
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_stop_words_token_filter_config_from_slice() {
-        use crate::token_filter::stop_words::StopWordsTokenFilterConfig;
-
+    fn test_stop_words_token_filter_config() {
         let config_str = r#"
             {
                 "words": [
@@ -75,16 +70,12 @@ mod tests {
                 ]
             }
             "#;
-        let config = StopWordsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.words.len(), 2);
+        let result: Result<StopWordsTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_stop_words_token_filter_from_slice() {
-        use crate::token_filter::stop_words::StopWordsTokenFilter;
-
+    fn test_stop_words_token_filter_from() {
         let config_str = r#"
             {
                 "words": [
@@ -93,7 +84,8 @@ mod tests {
                 ]
             }
             "#;
-        let result = StopWordsTokenFilter::from_slice(config_str.as_bytes());
+        let config: StopWordsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = StopWordsTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -105,7 +97,6 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::stop_words::StopWordsTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -116,7 +107,8 @@ mod tests {
                 ]
             }
             "#;
-        let filter = StopWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: StopWordsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = StopWordsTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

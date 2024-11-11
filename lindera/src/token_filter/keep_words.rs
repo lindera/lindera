@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
@@ -9,41 +8,39 @@ use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const KEEP_WORDS_TOKEN_FILTER_NAME: &str = "keep_words";
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct KeepWordsTokenFilterConfig {
-    words: HashSet<String>,
-}
 
-impl KeepWordsTokenFilterConfig {
-    pub fn new(words: HashSet<String>) -> Self {
-        Self { words }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<KeepWordsTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<KeepWordsTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type KeepWordsTokenFilterConfig = Value;
 
 /// Keep only the tokens of the specified text.
 ///
 #[derive(Clone, Debug)]
 pub struct KeepWordsTokenFilter {
-    config: KeepWordsTokenFilterConfig,
+    words: HashSet<String>,
 }
 
 impl KeepWordsTokenFilter {
-    pub fn new(config: KeepWordsTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(words: HashSet<String>) -> Self {
+        Self { words }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(KeepWordsTokenFilterConfig::from_slice(data)?))
+    pub fn from_config(config: &KeepWordsTokenFilterConfig) -> LinderaResult<Self> {
+        let words: HashSet<String> = config["words"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("words is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("words must be string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        Ok(Self::new(words))
     }
 }
 
@@ -80,7 +77,7 @@ impl TokenFilter for KeepWordsTokenFilter {
     ///
     /// The function will return an error in the form of `LinderaResult<()>` if any issues arise during the filtering process, though normally no errors are expected in this operation.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        tokens.retain(|token| self.config.words.contains(token.text.as_ref()));
+        tokens.retain(|token| self.words.contains(token.text.as_ref()));
 
         Ok(())
     }
@@ -88,11 +85,10 @@ impl TokenFilter for KeepWordsTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_keep_words_token_filter_config_from_slice_ipadic() {
-        use crate::token_filter::keep_words::KeepWordsTokenFilterConfig;
+    use crate::token_filter::keep_words::{KeepWordsTokenFilter, KeepWordsTokenFilterConfig};
 
+    #[test]
+    fn test_keep_words_token_filter_config() {
         let config_str = r#"
             {
                 "words": [
@@ -101,16 +97,12 @@ mod tests {
                 ]
             }
             "#;
-        let config = KeepWordsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.words.len(), 2);
+        let result: Result<KeepWordsTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_keep_words_token_filter_from_slice_ipadic() {
-        use crate::token_filter::keep_words::KeepWordsTokenFilter;
-
+    fn test_keep_words_token_filter() {
         let config_str = r#"
             {
                 "words": [
@@ -119,7 +111,8 @@ mod tests {
                 ]
             }
             "#;
-        let result = KeepWordsTokenFilter::from_slice(config_str.as_bytes());
+        let config: KeepWordsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = KeepWordsTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -131,7 +124,6 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::keep_words::KeepWordsTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -142,7 +134,8 @@ mod tests {
                 ]
             }
             "#;
-        let filter = KeepWordsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: KeepWordsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = KeepWordsTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
 
@@ -12,39 +12,20 @@ use crate::LinderaResult;
 
 pub const MAPPING_TOKEN_FILTER_NAME: &str = "mapping";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct MappingTokenFilterConfig {
-    pub mapping: HashMap<String, String>,
-}
-
-impl MappingTokenFilterConfig {
-    pub fn new(map: HashMap<String, String>) -> Self {
-        Self { mapping: map }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<MappingTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &serde_json::Value) -> LinderaResult<Self> {
-        serde_json::from_value::<MappingTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type MappingTokenFilterConfig = Value;
 
 /// Replace characters with the specified character mappings.
 ///
 #[derive(Clone)]
 pub struct MappingTokenFilter {
-    config: MappingTokenFilterConfig,
+    mapping: HashMap<String, String>,
     trie: DoubleArray<Vec<u8>>,
 }
 
 impl MappingTokenFilter {
-    pub fn new(config: MappingTokenFilterConfig) -> LinderaResult<Self> {
+    pub fn new(mapping: HashMap<String, String>) -> LinderaResult<Self> {
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
-        let mut keys = config.mapping.keys().collect::<Vec<_>>();
+        let mut keys = mapping.keys().collect::<Vec<_>>();
         keys.sort();
         for (value, key) in keys.into_iter().enumerate() {
             keyset.push((key.as_bytes(), value as u32));
@@ -56,11 +37,21 @@ impl MappingTokenFilter {
 
         let trie = DoubleArray::new(data);
 
-        Ok(Self { config, trie })
+        Ok(Self { mapping, trie })
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Self::new(MappingTokenFilterConfig::from_slice(data)?)
+    pub fn from_config(config: &MappingTokenFilterConfig) -> LinderaResult<Self> {
+        let mapping = config
+            .get("mapping")
+            .and_then(Value::as_object)
+            .ok_or_else(|| {
+                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("mapping must be an object."))
+            })?
+            .iter()
+            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+            .collect::<HashMap<String, String>>();
+
+        Self::new(mapping)
     }
 }
 
@@ -85,7 +76,7 @@ impl TokenFilter for MappingTokenFilter {
                 {
                     Some(prefix_len) => {
                         let surface = &token.text[start..start + prefix_len];
-                        let replacement = &self.config.mapping[surface];
+                        let replacement = &self.mapping[surface];
 
                         result.push_str(replacement);
 
@@ -115,11 +106,10 @@ impl TokenFilter for MappingTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    use crate::token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig};
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_mapping_token_filter_config_from_slice() {
-        use crate::token_filter::mapping::MappingTokenFilterConfig;
+    fn test_mapping_token_filter_config() {
         let config_str = r#"
         {
             "mapping": {
@@ -131,15 +121,12 @@ mod tests {
             }
         }
         "#;
-        let config = MappingTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-        assert_eq!("ア", config.mapping.get("ｱ").unwrap());
+        let result: Result<MappingTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_mapping_token_filter_from_slice() {
-        use crate::token_filter::mapping::MappingTokenFilter;
-
+    fn test_mapping_token_filter() {
         let config_str = r#"
         {
             "mapping": {
@@ -151,7 +138,9 @@ mod tests {
             }
         }
         "#;
-        let result = MappingTokenFilter::from_slice(config_str.as_bytes());
+        let config = serde_json::from_str::<MappingTokenFilterConfig>(config_str).unwrap();
+
+        let result = MappingTokenFilter::from_config(&config);
         assert_eq!(true, result.is_ok());
     }
 
@@ -162,7 +151,6 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::mapping::MappingTokenFilter;
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -172,7 +160,9 @@ mod tests {
             }
         }
         "#;
-        let filter = MappingTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config = serde_json::from_str::<MappingTokenFilterConfig>(config_str).unwrap();
+
+        let filter = MappingTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

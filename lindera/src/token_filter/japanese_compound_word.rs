@@ -1,7 +1,7 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 use std::{collections::HashSet, mem};
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::dictionary::DictionaryKind;
@@ -12,136 +12,186 @@ use crate::LinderaResult;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseCompoundWordTokenFilterConfig {
-    kind: DictionaryKind,
-    tags: HashSet<String>,
-    new_tag: Option<String>,
-}
-
-impl JapaneseCompoundWordTokenFilterConfig {
-    pub fn new(
-        kind: DictionaryKind,
-        tags: HashSet<String>,
-        new_tag: Option<String>,
-    ) -> LinderaResult<Self> {
-        let mut formatted_tags: HashSet<String> = HashSet::new();
-        for tag in tags.iter() {
-            let mut formatted_tag = ["*", "*", "*", "*"];
-
-            let tag_array: Vec<&str> = tag.split(',').collect();
-            for (i, j) in tag_array.iter().enumerate() {
-                formatted_tag[i] = j;
-            }
-
-            formatted_tags.insert(formatted_tag.join(","));
-        }
-
-        let formatted_new_tag = if let Some(new_tag_str) = new_tag {
-            let mut formatted_tag = ["*", "*", "*", "*"];
-
-            let tag_array: Vec<&str> = new_tag_str.split(',').collect();
-            for (i, j) in tag_array.iter().enumerate() {
-                formatted_tag[i] = j;
-            }
-
-            Some(formatted_tag.join(","))
-        } else {
-            None
-        };
-
-        Ok(Self {
-            kind,
-            tags: formatted_tags,
-            new_tag: formatted_new_tag,
-        })
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let tmp_config = serde_json::from_slice::<JapaneseCompoundWordTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-        Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        let tmp_config =
-            serde_json::from_value::<JapaneseCompoundWordTokenFilterConfig>(value.clone())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-
-        Self::new(tmp_config.kind, tmp_config.tags, tmp_config.new_tag)
-    }
-}
+pub type JapaneseCompoundWordTokenFilterConfig = Value;
 
 /// Compound consecutive tokens that have specified part-of-speech tags into a single token.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseCompoundWordTokenFilter {
-    config: JapaneseCompoundWordTokenFilterConfig,
+    kind: DictionaryKind,
+    tags: HashSet<String>,
+    new_tag: Option<String>,
 }
 
 impl JapaneseCompoundWordTokenFilter {
-    pub fn new(config: JapaneseCompoundWordTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
+        Self {
+            kind,
+            tags,
+            new_tag,
+        }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(
-            JapaneseCompoundWordTokenFilterConfig::from_slice(data)?,
-        ))
+    pub fn from_config(config: &JapaneseCompoundWordTokenFilterConfig) -> LinderaResult<Self> {
+        let kind = DictionaryKind::from_str(
+            config
+                .get("kind")
+                .ok_or_else(|| {
+                    LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("kind is required"))
+                })?
+                .as_str()
+                .ok_or_else(|| {
+                    LinderaErrorKind::Deserialize
+                        .with_error(anyhow::anyhow!("kind must be a string"))
+                })?,
+        )?;
+
+        let tags: HashSet<String> = config["tags"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("tag must be string"))
+                    })
+                    .map(|s| {
+                        let mut tag = s.split(',').collect::<Vec<&str>>();
+                        if tag.len() < 4 {
+                            tag.resize(4, "*");
+                        } else {
+                            tag.truncate(4);
+                        }
+                        tag.join(",")
+                    })
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        let new_tag = config
+            .get("new_tag")
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("new_tag must be a string"))
+                    })
+                    .map(|s| {
+                        let mut tag = s.split(',').collect::<Vec<&str>>();
+                        if tag.len() < 4 {
+                            tag.resize(4, "*");
+                        } else {
+                            tag.truncate(4);
+                        }
+                        tag.join(",")
+                    })
+            })
+            .transpose()?;
+
+        Ok(Self::new(kind, tags, new_tag))
     }
 
     // Concatenate two tokens into one.
-    fn concat_token(&self, token1: &mut Token, token2: &Token) {
+    fn concat_token<'a>(&self, token1: &mut Token<'a>, token2: &Token<'a>) {
         token1.text = Cow::Owned(format!("{}{}", token1.text, token2.text));
         token1.byte_end = token2.byte_end;
         token1.position_length += token2.position_length;
 
-        let details = match self.config.kind {
+        let details = match self.kind {
             #[cfg(feature = "ipadic")]
-            DictionaryKind::IPADIC => vec![
-                Cow::Borrowed("複合語"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-            ],
+            DictionaryKind::IPADIC => {
+                // Make details for the new token based on the new_tag.
+                match &self.new_tag {
+                    Some(new_tag) => {
+                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
+                        if details.len() < 9 {
+                            details.resize(9, "*");
+                        } else {
+                            details.truncate(9);
+                        }
+                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
+                    }
+                    None => {
+                        vec![
+                            Cow::Borrowed("複合語"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                        ]
+                    }
+                }
+            }
             #[cfg(feature = "ipadic-neologd")]
-            DictionaryKind::IPADICNEologd => vec![
-                Cow::Borrowed("複合語"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-            ],
+            DictionaryKind::IPADICNEologd => {
+                // Make details for the new token based on the new_tag.
+                match &self.new_tag {
+                    Some(new_tag) => {
+                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
+                        if details.len() < 9 {
+                            details.resize(9, "*");
+                        } else {
+                            details.truncate(9);
+                        }
+                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
+                    }
+                    None => {
+                        vec![
+                            Cow::Borrowed("複合語"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                        ]
+                    }
+                }
+            }
             #[cfg(feature = "unidic")]
-            DictionaryKind::UniDic => vec![
-                Cow::Borrowed("複合語"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-                Cow::Borrowed("*"),
-            ],
+            DictionaryKind::UniDic => {
+                // Make details for the new token based on the new_tag.
+                match &self.new_tag {
+                    Some(new_tag) => {
+                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
+                        if details.len() < 17 {
+                            details.resize(17, "*");
+                        } else {
+                            details.truncate(17);
+                        }
+                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
+                    }
+                    None => {
+                        vec![
+                            Cow::Borrowed("複合語"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                            Cow::Borrowed("*"),
+                        ]
+                    }
+                }
+            }
             _ => vec![],
         };
 
@@ -202,7 +252,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
             let current_tag = current_details[0..current_tags_len].join(",");
 
             // If the tag matches, merge the tokens
-            if self.config.tags.contains(&current_tag) {
+            if self.tags.contains(&current_tag) {
                 // Clone the current token as it will be modified
                 let mut merged_token = current.clone();
 
@@ -213,7 +263,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
                     let next_tag = next_details[0..next_tags_len].join(",");
 
                     // If the next tag matches, merge the tokens; otherwise, break the loop
-                    if self.config.tags.contains(&next_tag) {
+                    if self.tags.contains(&next_tag) {
                         // Concatenate the current token and the next token.
                         self.concat_token(&mut merged_token, next);
                         i += 1; // Move to the next token
@@ -239,41 +289,44 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
 mod tests {
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_compound_word_token_filter_config_from_slice_ipadic() {
+    fn test_japanese_compound_word_token_filter_config_ipadic() {
         use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig;
 
         let config_str = r#"
-            {
-                "kind": "ipadic",
-                "tags": [
-                    "名詞,数",
-                    "名詞,接尾,助数詞"
-                ],
-                "new_tag": "複合語"
-            }
-            "#;
-        let config =
-            JapaneseCompoundWordTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.tags.len(), 2);
+        {
+            "kind": "ipadic",
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let result: Result<JapaneseCompoundWordTokenFilterConfig, _> =
+            serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_compound_word_token_filter_from_slice_ipadic() {
-        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+    fn test_japanese_compound_word_token_filter_ipadic() {
+        use crate::token_filter::japanese_compound_word::{
+            JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+        };
 
         let config_str = r#"
-            {
-                "kind": "ipadic",
-                "tags": [
-                    "名詞,数",
-                    "名詞,接尾,助数詞"
-                ],
-                "new_tag": "複合語"
-            }
-            "#;
-        let result = JapaneseCompoundWordTokenFilter::from_slice(config_str.as_bytes());
+        {
+            "kind": "ipadic",
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let config: JapaneseCompoundWordTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let result = JapaneseCompoundWordTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -285,20 +338,24 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+        use crate::token_filter::japanese_compound_word::{
+            JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
-            {
-                "kind": "ipadic",
-                "tags": [
-                    "名詞,数",
-                    "名詞,接尾,助数詞"
-                ],
-                "new_tag": "複合語"
-            }
-            "#;
-        let filter = JapaneseCompoundWordTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        {
+            "kind": "ipadic",
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let config: JapaneseCompoundWordTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseCompoundWordTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

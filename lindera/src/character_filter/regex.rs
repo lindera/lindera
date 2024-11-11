@@ -1,5 +1,4 @@
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::character_filter::{add_offset_diff, CharacterFilter};
@@ -8,49 +7,50 @@ use crate::LinderaResult;
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct RegexCharacterFilterConfig {
-    pub pattern: String,
-    pub replacement: String,
-}
-
-impl RegexCharacterFilterConfig {
-    pub fn new(pattern: String, replacement: String) -> Self {
-        Self {
-            pattern,
-            replacement,
-        }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<RegexCharacterFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<RegexCharacterFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type RegexCharacterFilterConfig = Value;
 
 /// Character filter that uses a regular expression for the target of replace string.
 ///
 #[derive(Clone, Debug)]
 pub struct RegexCharacterFilter {
-    config: RegexCharacterFilterConfig,
+    replacement: String,
     regex: Regex,
 }
 
 impl RegexCharacterFilter {
-    pub fn new(config: RegexCharacterFilterConfig) -> LinderaResult<Self> {
-        let regex =
-            Regex::new(&config.pattern).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+    pub fn new(pattern: &str, replacement: &str) -> LinderaResult<Self> {
+        let regex = Regex::new(pattern).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
-        Ok(Self { config, regex })
+        Ok(Self {
+            replacement: replacement.to_string(),
+            regex,
+        })
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Self::new(RegexCharacterFilterConfig::from_slice(data)?)
+    pub fn from_config(config: &RegexCharacterFilterConfig) -> LinderaResult<Self> {
+        let pattern = config
+            .get("pattern")
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing pattern config."))
+            })?
+            .as_str()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("invalid pattern config."))
+            })?;
+
+        let replacement = config
+            .get("replacement")
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize
+                    .with_error(anyhow::anyhow!("missing replacement config."))
+            })?
+            .as_str()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize
+                    .with_error(anyhow::anyhow!("invalid replacement config."))
+            })?;
+
+        Self::new(pattern, replacement)
     }
 }
 
@@ -105,7 +105,7 @@ impl CharacterFilter for RegexCharacterFilter {
             let input_start = mat.start();
             let input_text = mat.as_str();
             let input_len = input_text.len();
-            let replacement_text = self.config.replacement.as_str();
+            let replacement_text = self.replacement.as_str();
             let replacement_len = replacement_text.len();
             let diff_len = input_len as i64 - replacement_len as i64;
             let input_offset = input_start + input_len;
@@ -153,27 +153,28 @@ mod tests {
     use crate::character_filter::{correct_offset, CharacterFilter};
 
     #[test]
-    fn test_regex_character_filter_config_from_slice() {
+    fn test_regex_character_filter_config() {
         let config_str = r#"
         {
             "pattern": "リンデラ",
             "replacement": "Lindera"
         }
         "#;
-        let config = RegexCharacterFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-        assert_eq!("リンデラ", config.pattern);
-        assert_eq!("Lindera", config.replacement);
+        let result: Result<RegexCharacterFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_regex_character_filter_from_slice() {
+    fn test_regex_character_filter_from_config() {
         let config_str = r#"
         {
             "pattern": "リンデラ",
             "replacement": "Lindera"
         }
         "#;
-        let result = RegexCharacterFilterConfig::from_slice(config_str.as_bytes());
+        let config: RegexCharacterFilterConfig = serde_json::from_str(config_str).unwrap();
+
+        let result = RegexCharacterFilter::from_config(&config);
         assert_eq!(true, result.is_ok());
     }
 
@@ -186,7 +187,9 @@ mod tests {
                 "replacement": "Lindera"
             }
             "#;
-            let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config: RegexCharacterFilterConfig = serde_json::from_str(config_str).unwrap();
+
+            let filter = RegexCharacterFilter::from_config(&config).unwrap();
             let original_text = "リンデラは形態素解析器です。";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
@@ -210,7 +213,9 @@ mod tests {
                 "replacement": " "
             }
             "#;
-            let filter = RegexCharacterFilter::from_slice(config_str.as_bytes()).unwrap();
+            let config: RegexCharacterFilterConfig = serde_json::from_str(config_str).unwrap();
+
+            let filter = RegexCharacterFilter::from_config(&config).unwrap();
             let original_text = "a     b     c";
             let mut text = original_text.to_string();
             let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();

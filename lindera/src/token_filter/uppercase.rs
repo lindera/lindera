@@ -1,10 +1,14 @@
 use std::borrow::Cow;
 
+use serde_json::Value;
+
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const UPPERCASE_TOKEN_FILTER_NAME: &str = "uppercase";
+
+pub type UppercaseTokenFilterConfig = Value;
 
 /// Normalizes token text to uppercase.
 ///
@@ -14,6 +18,10 @@ pub struct UppercaseTokenFilter {}
 impl UppercaseTokenFilter {
     pub fn new() -> Self {
         Self {}
+    }
+
+    pub fn from_config(_config: &UppercaseTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
     }
 }
 
@@ -49,7 +57,7 @@ mod tests {
         use crate::token_filter::uppercase::UppercaseTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let filter = UppercaseTokenFilter::default();
+        let filter = UppercaseTokenFilter::new();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

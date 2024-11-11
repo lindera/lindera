@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::LinderaErrorKind;
@@ -10,38 +9,22 @@ use crate::LinderaResult;
 
 pub const JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_keep_tags";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseKeepTagsTokenFilterConfig {
+pub type JapaneseKeepTagsTokenFilterConfig = Value;
+
+/// Keep only tokens with the specified part-of-speech tag.
+///
+#[derive(Clone, Debug)]
+pub struct JapaneseKeepTagsTokenFilter {
     tags: HashSet<String>,
 }
 
-impl JapaneseKeepTagsTokenFilterConfig {
+impl JapaneseKeepTagsTokenFilter {
     pub fn new(tags: HashSet<String>) -> Self {
-        let mut formatted_tags: HashSet<String> = HashSet::new();
-        for tag in tags.iter() {
-            let mut formatted_tag = ["*", "*", "*", "*"];
-
-            let tag_array: Vec<&str> = tag.split(',').collect();
-            for (i, j) in tag_array.iter().enumerate() {
-                formatted_tag[i] = j;
-            }
-
-            formatted_tags.insert(formatted_tag.join(","));
-        }
-
-        Self {
-            tags: formatted_tags,
-        }
+        Self { tags }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        let args = serde_json::from_slice::<Value>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        Self::from_value(&args)
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        let tags = value["tags"]
+    pub fn from_config(config: &JapaneseKeepTagsTokenFilterConfig) -> LinderaResult<Self> {
+        let tags: HashSet<String> = config["tags"]
             .as_array()
             .ok_or_else(|| {
                 LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
@@ -53,29 +36,19 @@ impl JapaneseKeepTagsTokenFilterConfig {
                         LinderaErrorKind::Deserialize
                             .with_error(anyhow::anyhow!("tag must be string"))
                     })
-                    .map(|s| s.to_string())
+                    .map(|s| {
+                        let mut tag = s.split(',').collect::<Vec<&str>>();
+                        if tag.len() < 4 {
+                            tag.resize(4, "*");
+                        } else {
+                            tag.truncate(4);
+                        }
+                        tag.join(",")
+                    })
             })
             .collect::<LinderaResult<HashSet<String>>>()?;
+
         Ok(Self::new(tags))
-    }
-}
-
-/// Keep only tokens with the specified part-of-speech tag.
-///
-#[derive(Clone, Debug)]
-pub struct JapaneseKeepTagsTokenFilter {
-    config: JapaneseKeepTagsTokenFilterConfig,
-}
-
-impl JapaneseKeepTagsTokenFilter {
-    pub fn new(config: JapaneseKeepTagsTokenFilterConfig) -> Self {
-        Self { config }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(JapaneseKeepTagsTokenFilterConfig::from_slice(
-            data,
-        )?))
     }
 }
 
@@ -127,7 +100,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
             let tag = details[0..tags_len].join(",");
 
             // Add the token to the filtered_tokens vector if the tag is in the set of tags.
-            if self.config.tags.contains(&tag) {
+            if self.tags.contains(&tag) {
                 filtered_tokens.push(token);
             }
         }
@@ -142,8 +115,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_japanese_keep_tags_token_filter_config_from_slice_ipadic() {
+    fn test_japanese_keep_tags_token_filter_config() {
         use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig;
 
         let config_str = r#"
@@ -191,15 +163,16 @@ mod tests {
                 ]
             }
             "#;
-        let config = JapaneseKeepTagsTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.tags.len(), 39);
+        let result: Result<JapaneseKeepTagsTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_japanese_keep_tags_token_filter_from_slice_ipadic() {
-        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+    fn test_japanese_keep_tags_token_filter() {
+        use crate::token_filter::japanese_keep_tags::{
+            JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
+        };
 
         let config_str = r#"
             {
@@ -246,7 +219,8 @@ mod tests {
                 ]
             }
             "#;
-        let result = JapaneseKeepTagsTokenFilter::from_slice(config_str.as_bytes());
+        let config: JapaneseKeepTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = JapaneseKeepTagsTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -258,7 +232,9 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+        use crate::token_filter::japanese_keep_tags::{
+            JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
@@ -306,7 +282,8 @@ mod tests {
                 ]
             }
             "#;
-        let filter = JapaneseKeepTagsTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: JapaneseKeepTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseKeepTagsTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

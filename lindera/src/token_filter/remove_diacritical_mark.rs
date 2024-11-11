@@ -1,16 +1,16 @@
 use std::borrow::Cow;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::character_filter::unicode_normalize::UnicodeNormalizeKind;
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const REMOVE_DIACRITICAL_TOKEN_FILTER_NAME: &str = "remove_diacritical_mark";
+
+pub type RemoveDiacriticalMarkTokenFilterConfig = Value;
 
 fn get_normalize_kind(text: &str) -> UnicodeNormalizeKind {
     if text.nfc().eq(text.chars()) {
@@ -26,43 +26,24 @@ fn get_normalize_kind(text: &str) -> UnicodeNormalizeKind {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct RemoveDiacriticalMarkTokenFilterConfig {
-    pub japanese: bool,
-}
-
-impl RemoveDiacriticalMarkTokenFilterConfig {
-    pub fn new(japanese: bool) -> Self {
-        Self { japanese }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<RemoveDiacriticalMarkTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<RemoveDiacriticalMarkTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
-
 /// Removes diacritics from token text.
 ///
 #[derive(Clone, Debug)]
 pub struct RemoveDiacriticalMarkTokenFilter {
-    config: RemoveDiacriticalMarkTokenFilterConfig,
+    japanese: bool,
 }
 
 impl RemoveDiacriticalMarkTokenFilter {
-    pub fn new(config: RemoveDiacriticalMarkTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(japanese: bool) -> Self {
+        Self { japanese }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(
-            RemoveDiacriticalMarkTokenFilterConfig::from_slice(data)?,
-        ))
+    pub fn from_config(config: &RemoveDiacriticalMarkTokenFilterConfig) -> LinderaResult<Self> {
+        let japanese = config
+            .get("japanese")
+            .map_or(false, |v| v.as_bool().unwrap_or(false));
+
+        Ok(Self::new(japanese))
     }
 
     fn is_diacritic(&self, x: char) -> bool {
@@ -88,7 +69,7 @@ impl RemoveDiacriticalMarkTokenFilter {
                 continue;
             }
 
-            if self.config.japanese && self.is_japanese_diacritic(x) {
+            if self.japanese && self.is_japanese_diacritic(x) {
                 continue;
             }
 
@@ -125,32 +106,29 @@ mod tests {
     };
 
     #[test]
-    fn test_remove_diacritical_mark_token_filter_config_new() {
-        let config = RemoveDiacriticalMarkTokenFilterConfig::new(true);
-        assert!(config.japanese);
-    }
-
-    #[test]
-    fn test_remove_diacritical_mark_token_filter_config_from_slice() {
+    fn test_remove_diacritical_mark_token_filter_config() {
         let config_str = r#"
         {
             "japanese": true
         }
         "#;
-        let config =
-            RemoveDiacriticalMarkTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-        assert!(config.japanese);
+        let result: Result<RemoveDiacriticalMarkTokenFilterConfig, _> =
+            serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
     #[test]
-    fn test_japanese_iteration_mark_character_filter_from_slice() {
+    fn test_remove_diacritical_mark_token_filter() {
         let config_str = r#"
         {
             "japanese": true
         }
         "#;
-        let result = RemoveDiacriticalMarkTokenFilter::from_slice(config_str.as_bytes());
-        assert!(result.is_ok());
+        let config: RemoveDiacriticalMarkTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let result = RemoveDiacriticalMarkTokenFilter::from_config(&config);
+
+        assert_eq!(true, result.is_ok());
     }
 
     #[test]
@@ -167,7 +145,9 @@ mod tests {
             "japanese": false
         }
         "#;
-        let filter = RemoveDiacriticalMarkTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: RemoveDiacriticalMarkTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let filter = RemoveDiacriticalMarkTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -238,7 +218,9 @@ mod tests {
             "japanese": true
         }
         "#;
-        let filter = RemoveDiacriticalMarkTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        let config: RemoveDiacriticalMarkTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let filter = RemoveDiacriticalMarkTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

@@ -1,10 +1,14 @@
 use std::borrow::Cow;
 
+use serde_json::Value;
+
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const LOWERCASE_TOKEN_FILTER_NAME: &str = "lowercase";
+
+pub type LowercaseTokenFilterConfig = Value;
 
 /// Normalizes token text to lowercase.
 ///
@@ -14,6 +18,10 @@ pub struct LowercaseTokenFilter {}
 impl LowercaseTokenFilter {
     pub fn new() -> Self {
         Self {}
+    }
+
+    pub fn from_config(_config: &LowercaseTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
     }
 }
 
@@ -50,7 +58,7 @@ mod tests {
         use crate::token_filter::lowercase::LowercaseTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let filter = LowercaseTokenFilter::default();
+        let filter = LowercaseTokenFilter::new();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 

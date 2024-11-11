@@ -1,7 +1,7 @@
 #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
 use std::borrow::Cow;
+use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::dictionary::DictionaryKind;
@@ -12,44 +12,34 @@ use crate::LinderaResult;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct JapaneseBaseFormTokenFilterConfig {
-    kind: DictionaryKind,
-}
-
-impl JapaneseBaseFormTokenFilterConfig {
-    pub fn new(kind: DictionaryKind) -> Self {
-        Self { kind }
-    }
-
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        serde_json::from_slice::<JapaneseBaseFormTokenFilterConfig>(data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-
-    pub fn from_value(value: &Value) -> LinderaResult<Self> {
-        serde_json::from_value::<JapaneseBaseFormTokenFilterConfig>(value.clone())
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))
-    }
-}
+pub type JapaneseBaseFormTokenFilterConfig = Value;
 
 /// Replace the term text with the base form registered in the morphological dictionary.
 /// This acts as a lemmatizer for verbs and adjectives.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseBaseFormTokenFilter {
-    config: JapaneseBaseFormTokenFilterConfig,
+    kind: DictionaryKind,
 }
 
 impl JapaneseBaseFormTokenFilter {
-    pub fn new(config: JapaneseBaseFormTokenFilterConfig) -> Self {
-        Self { config }
+    pub fn new(kind: DictionaryKind) -> Self {
+        Self { kind }
     }
 
-    pub fn from_slice(data: &[u8]) -> LinderaResult<Self> {
-        Ok(Self::new(JapaneseBaseFormTokenFilterConfig::from_slice(
-            data,
-        )?))
+    pub fn from_config(config: &JapaneseBaseFormTokenFilterConfig) -> LinderaResult<Self> {
+        let kind = config
+            .get("kind")
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing kind config."))
+            })?
+            .as_str()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("invalid kind config."))
+            })?;
+        let kind = DictionaryKind::from_str(kind)?;
+
+        Ok(Self::new(kind))
     }
 }
 
@@ -99,7 +89,7 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
             }
 
             // Get the index of the detail that contains the base form.
-            match self.config.kind {
+            match self.kind {
                 #[cfg(feature = "ipadic")]
                 DictionaryKind::IPADIC => {
                     if let Some(detail) = token.get_detail(6) {
@@ -128,10 +118,8 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_base_form_token_filter_config_from_slice_ipadic() {
-        use crate::dictionary::DictionaryKind;
+    fn test_japanese_base_form_token_filter_config_ipadic() {
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
 
         let config_str = r#"
@@ -139,15 +127,12 @@ mod tests {
             "kind": "ipadic"
         }
         "#;
-        let config = JapaneseBaseFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, DictionaryKind::IPADIC);
+        let result: Result<JapaneseBaseFormTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
-    #[cfg(feature = "unidic")]
     #[test]
-    fn test_japanese_base_form_token_filter_config_from_slice_unidic() {
-        use crate::dictionary::DictionaryKind;
+    fn test_japanese_base_form_token_filter_config_funidic() {
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
 
         let config_str = r#"
@@ -155,37 +140,40 @@ mod tests {
             "kind": "unidic"
         }
         "#;
-        let config = JapaneseBaseFormTokenFilterConfig::from_slice(config_str.as_bytes()).unwrap();
-
-        assert_eq!(config.kind, DictionaryKind::UniDic);
+        let result: Result<JapaneseBaseFormTokenFilterConfig, _> = serde_json::from_str(config_str);
+        assert_eq!(result.is_ok(), true);
     }
 
-    #[cfg(feature = "ipadic")]
     #[test]
-    fn test_japanese_base_form_token_filter_from_slice_ipadic() {
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+    fn test_japanese_base_form_token_filter_ipadic() {
+        use crate::token_filter::japanese_base_form::{
+            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
+        };
 
         let config_str = r#"
         {
             "kind": "ipadic"
         }
         "#;
-        let result = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes());
+        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = JapaneseBaseFormTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
 
-    #[cfg(feature = "unidic")]
     #[test]
     fn test_japanese_base_form_token_filter_from_slice_unidic() {
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use crate::token_filter::japanese_base_form::{
+            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
+        };
 
         let config_str = r#"
-            {
-                "kind": "unidic"
-            }
-            "#;
-        let result = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes());
+        {
+            "kind": "unidic"
+        }
+        "#;
+        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let result = JapaneseBaseFormTokenFilter::from_config(&config);
 
         assert_eq!(true, result.is_ok());
     }
@@ -197,15 +185,18 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use crate::token_filter::japanese_base_form::{
+            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
-            {
-                "kind": "ipadic"
-            }
-            "#;
-        let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        {
+            "kind": "ipadic"
+        }
+        "#;
+        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
 
@@ -324,15 +315,18 @@ mod tests {
 
         use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
         use crate::token::Token;
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use crate::token_filter::japanese_base_form::{
+            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
+        };
         use crate::token_filter::TokenFilter;
 
         let config_str = r#"
-            {
-                "kind": "unidic"
-            }
-            "#;
-        let filter = JapaneseBaseFormTokenFilter::from_slice(config_str.as_bytes()).unwrap();
+        {
+            "kind": "unidic"
+        }
+        "#;
+        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::from_config(&config).unwrap();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
 

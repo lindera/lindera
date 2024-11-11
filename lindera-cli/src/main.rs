@@ -216,7 +216,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
     // Tokenizer
     let mut tokenizer =
-        Tokenizer::from_config(&config).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+        Tokenizer::from_config(config).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;

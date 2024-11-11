@@ -57,61 +57,46 @@ use std::ops::Deref;
 use crate::parse_cli_flag;
 use crate::token::Token;
 use crate::token_filter::japanese_base_form::{
-    JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-    JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
+    JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_compound_word::{
-    JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
-    JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
+    JapaneseCompoundWordTokenFilter, JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_kana::{
-    JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig, JAPANESE_KANA_TOKEN_FILTER_NAME,
+    JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_katakana_stem::{
-    JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
-    JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+    JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_keep_tags::{
-    JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
-    JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
+    JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_number::{
-    JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig, JAPANESE_NUMBER_TOKEN_FILTER_NAME,
+    JapaneseNumberTokenFilter, JAPANESE_NUMBER_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_reading_form::{
-    JapaneseReadingFormTokenFilter, JapaneseReadingFormTokenFilterConfig,
-    JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
+    JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::japanese_stop_tags::{
-    JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
-    JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME,
+    JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME,
 };
-use crate::token_filter::keep_words::{
-    KeepWordsTokenFilter, KeepWordsTokenFilterConfig, KEEP_WORDS_TOKEN_FILTER_NAME,
-};
+use crate::token_filter::keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME};
 use crate::token_filter::korean_keep_tags::{
-    KoreanKeepTagsTokenFilter, KoreanKeepTagsTokenFilterConfig, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
+    KoreanKeepTagsTokenFilter, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::korean_reading_form::{
     KoreanReadingFormTokenFilter, KOREAN_READING_FORM_TOKEN_FILTER_NAME,
 };
 use crate::token_filter::korean_stop_tags::{
-    KoreanStopTagsTokenFilter, KoreanStopTagsTokenFilterConfig, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
+    KoreanStopTagsTokenFilter, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
 };
-use crate::token_filter::length::{
-    LengthTokenFilter, LengthTokenFilterConfig, LENGTH_TOKEN_FILTER_NAME,
-};
+use crate::token_filter::length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME};
 use crate::token_filter::lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME};
-use crate::token_filter::mapping::{
-    MappingTokenFilter, MappingTokenFilterConfig, MAPPING_TOKEN_FILTER_NAME,
-};
+use crate::token_filter::mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME};
 use crate::token_filter::remove_diacritical_mark::{
-    RemoveDiacriticalMarkTokenFilter, RemoveDiacriticalMarkTokenFilterConfig,
-    REMOVE_DIACRITICAL_TOKEN_FILTER_NAME,
+    RemoveDiacriticalMarkTokenFilter, REMOVE_DIACRITICAL_TOKEN_FILTER_NAME,
 };
-use crate::token_filter::stop_words::{
-    StopWordsTokenFilter, StopWordsTokenFilterConfig, STOP_WORDS_TOKEN_FILTER_NAME,
-};
+use crate::token_filter::stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME};
 use crate::token_filter::uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME};
 use crate::{LinderaErrorKind, LinderaResult};
 
@@ -190,70 +175,59 @@ impl TokenFilterLoader {
         //   error in creating the token filter from the provided `value`.
         let token_filter = match kind {
             JAPANESE_BASE_FORM_TOKEN_FILTER_NAME => {
-                let config = JapaneseBaseFormTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseBaseFormTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseBaseFormTokenFilter::from_config(value)?)
             }
             JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME => {
-                let config = JapaneseCompoundWordTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseCompoundWordTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseCompoundWordTokenFilter::from_config(value)?)
             }
             JAPANESE_KANA_TOKEN_FILTER_NAME => {
-                let config = JapaneseKanaTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKanaTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKanaTokenFilter::from_config(value)?)
             }
             JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME => {
-                let config = JapaneseKatakanaStemTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKatakanaStemTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKatakanaStemTokenFilter::from_config(value)?)
             }
             JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                let config = JapaneseKeepTagsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseKeepTagsTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseKeepTagsTokenFilter::from_config(value)?)
             }
             JAPANESE_NUMBER_TOKEN_FILTER_NAME => {
-                let config = JapaneseNumberTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseNumberTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseNumberTokenFilter::from_config(value)?)
             }
             JAPANESE_READING_FORM_TOKEN_FILTER_NAME => {
-                let config = JapaneseReadingFormTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseReadingFormTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseReadingFormTokenFilter::from_config(value)?)
             }
             JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME => {
-                let config = JapaneseStopTagsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(JapaneseStopTagsTokenFilter::new(config))
+                BoxTokenFilter::from(JapaneseStopTagsTokenFilter::from_config(value)?)
             }
             KEEP_WORDS_TOKEN_FILTER_NAME => {
-                let config = KeepWordsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(KeepWordsTokenFilter::new(config))
+                BoxTokenFilter::from(KeepWordsTokenFilter::from_config(value)?)
             }
             KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
-                let config = KoreanKeepTagsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(KoreanKeepTagsTokenFilter::new(config))
+                BoxTokenFilter::from(KoreanKeepTagsTokenFilter::from_config(value)?)
             }
             KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
-                BoxTokenFilter::from(KoreanReadingFormTokenFilter::new())
+                BoxTokenFilter::from(KoreanReadingFormTokenFilter::from_config(value)?)
             }
             KOREAN_STOP_TAGS_TOKEN_FILTER_NAME => {
-                let config = KoreanStopTagsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(KoreanStopTagsTokenFilter::new(config))
+                BoxTokenFilter::from(KoreanStopTagsTokenFilter::from_config(value)?)
             }
             LENGTH_TOKEN_FILTER_NAME => {
-                let config = LengthTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(LengthTokenFilter::new(config))
+                BoxTokenFilter::from(LengthTokenFilter::from_config(value)?)
             }
-            LOWERCASE_TOKEN_FILTER_NAME => BoxTokenFilter::from(LowercaseTokenFilter::new()),
+            LOWERCASE_TOKEN_FILTER_NAME => {
+                BoxTokenFilter::from(LowercaseTokenFilter::from_config(value)?)
+            }
             MAPPING_TOKEN_FILTER_NAME => {
-                let config = MappingTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(MappingTokenFilter::new(config)?)
+                BoxTokenFilter::from(MappingTokenFilter::from_config(value)?)
             }
             REMOVE_DIACRITICAL_TOKEN_FILTER_NAME => {
-                let config = RemoveDiacriticalMarkTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(RemoveDiacriticalMarkTokenFilter::new(config))
+                BoxTokenFilter::from(RemoveDiacriticalMarkTokenFilter::from_config(value)?)
             }
             STOP_WORDS_TOKEN_FILTER_NAME => {
-                let config = StopWordsTokenFilterConfig::from_value(value)?;
-                BoxTokenFilter::from(StopWordsTokenFilter::new(config))
+                BoxTokenFilter::from(StopWordsTokenFilter::from_config(value)?)
             }
-            UPPERCASE_TOKEN_FILTER_NAME => BoxTokenFilter::from(UppercaseTokenFilter::new()),
+            UPPERCASE_TOKEN_FILTER_NAME => {
+                BoxTokenFilter::from(UppercaseTokenFilter::from_config(value)?)
+            }
             _ => {
                 return Err(LinderaErrorKind::Deserialize
                     .with_error(anyhow::anyhow!("unsupported token filter: {}", kind)));

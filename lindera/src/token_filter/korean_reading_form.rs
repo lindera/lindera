@@ -1,10 +1,14 @@
 use std::borrow::Cow;
 
+use serde_json::Value;
+
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 use crate::LinderaResult;
 
 pub const KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str = "korean_reading_form";
+
+pub type KoreanReadingFormTokenFilterConfig = Value;
 
 /// Replace the text of a token with the reading of the text as registered in the morphological dictionary.
 ///
@@ -14,6 +18,10 @@ pub struct KoreanReadingFormTokenFilter {}
 impl KoreanReadingFormTokenFilter {
     pub fn new() -> Self {
         Self {}
+    }
+
+    pub fn from_config(_config: &KoreanReadingFormTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
     }
 }
 
@@ -57,7 +65,7 @@ mod tests {
         use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
         use crate::token_filter::TokenFilter;
 
-        let filter = KoreanReadingFormTokenFilter::default();
+        let filter = KoreanReadingFormTokenFilter::new();
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
 
