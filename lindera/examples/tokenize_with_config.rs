@@ -11,9 +11,9 @@ fn main() -> LinderaResult<()> {
             .join("../resources")
             .join("lindera.yml");
 
-        let config_builder = TokenizerBuilder::from_file(&path)?;
+        let builder = TokenizerBuilder::from_file(&path)?;
 
-        let tokenizer = config_builder.build()?;
+        let tokenizer = builder.build()?;
 
         let mut text =
             "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
