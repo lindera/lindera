@@ -167,16 +167,16 @@ pub fn load_dictionary_from_config(
 
 pub fn load_user_dictionary_from_csv(
     kind: DictionaryKind,
-    path: PathBuf,
+    path: &Path,
 ) -> LinderaResult<UserDictionary> {
     let builder = resolve_builder(kind)?;
     builder
-        .build_user_dict(path.as_path())
+        .build_user_dict(path)
         .map_err(|err| LinderaErrorKind::Build.with_error(err))
 }
 
-pub fn load_user_dictionary_from_bin(path: PathBuf) -> LinderaResult<UserDictionary> {
-    UserDictionary::load(&read_file(path.as_path())?)
+pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionary> {
+    UserDictionary::load(&read_file(path)?)
 }
 
 pub fn load_user_dictionary_from_config(
@@ -199,13 +199,13 @@ pub fn load_user_dictionary_from_config(
                                 },
                             )?)?;
 
-                            load_user_dictionary_from_csv(kind, path)
+                            load_user_dictionary_from_csv(kind, path.as_path())
                         }
                         None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
                             "kind field must be specified if CSV file specified"
                         ))),
                     },
-                    Some("bin") => load_user_dictionary_from_bin(path),
+                    Some("bin") => load_user_dictionary_from_bin(path.as_path()),
                     _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
                         "Invalid user dictionary source file extension"
                     ))),

@@ -32,79 +32,53 @@ fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
     Ok(tokenizer_config)
 }
 
-fn has_key(value: &Value, key: &str) -> bool {
-    value
-        .as_object()
-        .map(|obj| obj.contains_key(key))
-        .unwrap_or(false)
+/// Returns the default configuration as a `serde_json::Value`.
+fn empty_config() -> Value {
+    json!({
+        "segmenter": {},
+        "character_filters": [],
+        "token_filters": []
+    })
 }
 
-pub struct TokenizerConfigBuilder {
+/// Ensures that the configuration contains the required keys with default values if absent.
+fn ensure_keys(mut config: Value) -> Value {
+    if config.get("segmenter").is_none() {
+        config["segmenter"] = json!({});
+    }
+    if config.get("character_filters").is_none() {
+        config["character_filters"] = json!([]);
+    }
+    if config.get("token_filters").is_none() {
+        config["token_filters"] = json!([]);
+    }
+    config
+}
+
+pub struct TokenizerBuilder {
     config: TokenizerConfig,
 }
 
-impl Default for TokenizerConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl TokenizerConfigBuilder {
-    // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
-    pub fn new() -> Self {
-        let mut config = match env::var("LINDERA_CONFIG_PATH") {
-            Ok(config_path) => {
-                let config_file = Path::new(&config_path);
-                yaml_to_config(config_file).unwrap_or(TokenizerConfig::Null)
-            }
-            Err(_) => TokenizerConfig::Null,
-        };
-
-        if config.is_null() {
-            config = json!({
-                "segmenter": {},
-                "character_filters": [],
-                "token_filters": []
-            });
+impl TokenizerBuilder {
+    pub fn new() -> LinderaResult<Self> {
+        if let Ok(config_path) = env::var("LINDERA_CONFIG_PATH") {
+            Self::from_file(Path::new(&config_path)).map_err(|e| {
+                LinderaErrorKind::Parse
+                    .with_error(anyhow::anyhow!("failed to load config file: {}", e))
+            })
         } else {
-            if !has_key(&config, "segmenter") {
-                config["segmenter"] = json!({});
-            }
-            if !has_key(&config, "character_filters") {
-                config["character_filters"] = json!([]);
-            }
-            if !has_key(&config, "token_filters") {
-                config["token_filters"] = json!([]);
-            }
+            Ok(Self {
+                config: empty_config(),
+            })
         }
-
-        TokenizerConfigBuilder { config }
     }
 
-    // Creates a new `TokenizerConfigBuilder` instance from a YAML file.
     pub fn from_file(file_path: &Path) -> LinderaResult<Self> {
-        let mut config = yaml_to_config(file_path).unwrap_or(TokenizerConfig::Null);
+        let config = yaml_to_config(file_path).unwrap_or_else(|_| empty_config());
 
-        if config.is_null() {
-            config = json!({
-                "segmenter": {},
-                "character_filters": [],
-                "token_filters": []
-            });
-        } else {
-            if !has_key(&config, "segmenter") {
-                config["segmenter"] = json!({});
-            }
-            if !has_key(&config, "character_filters") {
-                config["character_filters"] = json!([]);
-            }
-            if !has_key(&config, "token_filters") {
-                config["token_filters"] = json!([]);
-            }
-        }
-
-        Ok(TokenizerConfigBuilder { config })
+        Ok(TokenizerBuilder {
+            config: ensure_keys(config),
+        })
     }
 
     pub fn set_segmenter_mode(&mut self, mode: &Mode) -> &mut Self {
@@ -146,8 +120,11 @@ impl TokenizerConfigBuilder {
         self
     }
 
-    pub fn build(&self) -> &TokenizerConfig {
-        &self.config
+    pub fn build(&self) -> LinderaResult<Tokenizer> {
+        Tokenizer::from_config(&self.config).map_err(|err| {
+            LinderaErrorKind::Parse
+                .with_error(anyhow::anyhow!("failed to build tokenizer: {}", err))
+        })
     }
 }
 
@@ -196,55 +173,7 @@ impl Tokenizer {
         }
     }
 
-    /// Creates a `Tokenizer` instance from the provided JSON configuration (`TokenizerConfig`).
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - A reference to a `TokenizerConfig` (which is a `serde_json::Value`). This JSON object should include settings for the segmenter, character filters, and token filters.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `LinderaResult<Self>`, which is an instance of the `Tokenizer` on success, or an error if the configuration is invalid or cannot be parsed.
-    ///
-    /// # Errors
-    ///
-    /// - Returns an error if:
-    ///   - The `segmenter` configuration is missing or cannot be deserialized.``
-    ///   - The segmenter configuration in JSON is malformed or missing required fields.
-    ///   - Any character or token filter configuration is missing or contains invalid settings.
-    ///
-    /// # Detailed Process
-    ///
-    /// 1. **Loading Segmenter Configuration**:
-    ///    - The function extracts the `segmenter` section from the JSON `TokenizerConfig`.
-    ///    - It converts the segmenter configuration to a byte array using `serde_json::to_vec`.
-    ///    - The byte array is deserialized into a `SegmenterConfig` struct.
-    ///    - A `Segmenter` is created using the deserialized segmenter configuration.
-    ///
-    /// 2. **Creating the Tokenizer**:
-    ///    - A new `Tokenizer` instance is created from the segmenter.
-    ///
-    /// 3. **Loading Character Filters**:
-    ///    - If the `character_filters` section in the `TokenizerConfig` is not empty, the function iterates through the array of character filter settings.
-    ///    - For each filter, it extracts the `kind` and `args` to determine which filter to load and its arguments.
-    ///    - The corresponding character filter is loaded and appended to the tokenizer.
-    ///
-    /// 4. **Loading Token Filters**:
-    ///    - If the `token_filters` section in the `TokenizerConfig` is not empty, the function iterates through the array of token filter settings.
-    ///    - Similar to character filters, it extracts the `kind` and `args` to load and append each token filter to the tokenizer.
     pub fn from_config(config: &TokenizerConfig) -> LinderaResult<Self> {
-        // Load a JSON object for segmenter config from the tokenizer config.
-        // let args_value = config["segmenter"].as_object().ok_or_else(|| {
-        //     LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
-        // })?;
-        // let arg_bytes = serde_json::to_vec(args_value)
-        //     .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        // // Load a segmenter config from the segmenter config JSON object.
-        // let segmenter_config = serde_json::from_slice::<SegmenterConfig>(&arg_bytes)
-        //     .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
-        // // Create a segmenter from the segmenter config.
-        // let segmenter = Segmenter::from_config(segmenter_config)?;
-
         let segmenter_config = config.get("segmenter").ok_or_else(|| {
             LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing segmenter config."))
         })?;
@@ -445,8 +374,6 @@ impl Clone for Tokenizer {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "ipadic")]
-    use crate::tokenizer::Tokenizer;
-
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenizer_config_from_slice() {
@@ -487,20 +414,19 @@ mod tests {
         use std::borrow::Cow;
         use std::path::PathBuf;
 
-        use crate::tokenizer::TokenizerConfigBuilder;
+        use crate::tokenizer::TokenizerBuilder;
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("lindera.yml");
 
-        let config_builder = TokenizerConfigBuilder::from_file(&config_file).unwrap();
-        let config = config_builder.build();
+        let builder = TokenizerBuilder::from_file(&config_file).unwrap();
 
-        let analyzer = Tokenizer::from_config(&config).unwrap();
+        let tokenizer = builder.build().unwrap();
 
         {
             let text = "ﾘﾝﾃﾞﾗは形態素解析ｴﾝｼﾞﾝです。";
-            let mut tokens = analyzer.tokenize(text).unwrap();
+            let mut tokens = tokenizer.tokenize(text).unwrap();
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
@@ -590,7 +516,7 @@ mod tests {
 
         {
             let text = "１０㌎のｶﾞｿﾘﾝ";
-            let mut tokens = analyzer.tokenize(text).unwrap();
+            let mut tokens = tokenizer.tokenize(text).unwrap();
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
@@ -672,7 +598,7 @@ mod tests {
 
         {
             let text = "お釣りは百三十四円です。";
-            let mut tokens = analyzer.tokenize(text).unwrap();
+            let mut tokens = tokenizer.tokenize(text).unwrap();
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
@@ -722,7 +648,7 @@ mod tests {
 
         {
             let text = "ここは騒々しい";
-            let mut tokens = analyzer.tokenize(text).unwrap();
+            let mut tokens = tokenizer.tokenize(text).unwrap();
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();

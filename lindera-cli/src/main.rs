@@ -11,7 +11,7 @@ use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
-use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
+use lindera::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 #[derive(Debug, Parser)]
@@ -188,35 +188,34 @@ fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
 }
 
 fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
-    let mut config_builder = TokenizerConfigBuilder::new();
+    let mut builder = TokenizerBuilder::new()?;
 
     // Set kind of dictionary
     if let Some(ref dic_type) = args.dic_type {
-        config_builder.set_segmenter_dictionary_kind(dic_type);
+        builder.set_segmenter_dictionary_kind(dic_type);
     }
     // Set dictionary directory path
     if let Some(dic_dir) = args.dic_dir {
-        config_builder.set_segmenter_dictionary_path(dic_dir.as_path());
+        builder.set_segmenter_dictionary_path(dic_dir.as_path());
     }
 
     // Set user dictionary file path
     if let Some(user_dic_file) = args.user_dic_file {
-        config_builder.set_segmenter_user_dictionary_path(user_dic_file.as_path());
+        builder.set_segmenter_user_dictionary_path(user_dic_file.as_path());
 
         // If user dictionary file path is specified, set kind of user dictionary or not
         if let Some(ref dic_type) = args.dic_type {
-            config_builder.set_segmenter_user_dictionary_kind(dic_type);
+            builder.set_segmenter_user_dictionary_kind(dic_type);
         }
     }
 
     // Mode
-    config_builder.set_segmenter_mode(&args.mode);
-
-    let config = config_builder.build();
+    builder.set_segmenter_mode(&args.mode);
 
     // Tokenizer
-    let mut tokenizer =
-        Tokenizer::from_config(config).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+    let mut tokenizer = builder
+        .build()
+        .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // output format
     let output_format = Format::from_str(args.output_format.as_str())?;

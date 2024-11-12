@@ -21,43 +21,37 @@ pub struct JapaneseNumberTokenFilter {
 
 impl JapaneseNumberTokenFilter {
     pub fn new(tags: Option<HashSet<String>>) -> Self {
+        let tags = tags.map(|t| {
+            t.into_iter()
+                .map(|s| {
+                    let mut tag_parts: Vec<&str> = s.split(',').collect();
+                    tag_parts.resize(4, "*");
+                    tag_parts.join(",")
+                })
+                .collect()
+        });
+
         Self { tags }
     }
 
     pub fn from_config(config: &JapaneseNumberTokenFilterConfig) -> LinderaResult<Self> {
-        let tags = if let Some(t) = config.get("tags") {
-            if t.is_array() {
-                Some(
-                    t.as_array()
-                        .ok_or_else(|| {
-                            LinderaErrorKind::Deserialize
-                                .with_error(anyhow::anyhow!("tags is required"))
-                        })?
-                        .iter()
-                        .map(|v| {
-                            v.as_str()
-                                .ok_or_else(|| {
-                                    LinderaErrorKind::Deserialize
-                                        .with_error(anyhow::anyhow!("tag must be string"))
-                                })
-                                .map(|s| {
-                                    let mut tag = s.split(',').collect::<Vec<&str>>();
-                                    if tag.len() < 4 {
-                                        tag.resize(4, "*");
-                                    } else {
-                                        tag.truncate(4);
-                                    }
-                                    tag.join(",")
-                                })
-                        })
-                        .collect::<LinderaResult<HashSet<String>>>()?,
-                )
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let tags = config
+            .get("tags")
+            .and_then(|t| t.as_array())
+            .map_or(Ok(None), |array| {
+                array
+                    .iter()
+                    .map(|v| {
+                        v.as_str()
+                            .ok_or_else(|| {
+                                LinderaErrorKind::Deserialize
+                                    .with_error(anyhow::anyhow!("tag must be a string"))
+                            })
+                            .map(|s| s.to_string())
+                    })
+                    .collect::<LinderaResult<HashSet<String>>>()
+                    .map(Some)
+            })?;
 
         Ok(Self::new(tags))
     }

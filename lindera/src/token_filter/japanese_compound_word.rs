@@ -25,6 +25,21 @@ pub struct JapaneseCompoundWordTokenFilter {
 
 impl JapaneseCompoundWordTokenFilter {
     pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
+        let tags: HashSet<String> = tags
+            .into_iter()
+            .map(|v| {
+                let mut tag_parts: Vec<&str> = v.split(',').collect();
+                tag_parts.resize(4, "*");
+                tag_parts.join(",")
+            })
+            .collect();
+
+        let new_tag = new_tag.map(|v| {
+            let mut tag_parts: Vec<&str> = v.split(',').collect();
+            tag_parts.resize(4, "*");
+            tag_parts.join(",")
+        });
+
         Self {
             kind,
             tags,
@@ -58,15 +73,7 @@ impl JapaneseCompoundWordTokenFilter {
                         LinderaErrorKind::Deserialize
                             .with_error(anyhow::anyhow!("tag must be string"))
                     })
-                    .map(|s| {
-                        let mut tag = s.split(',').collect::<Vec<&str>>();
-                        if tag.len() < 4 {
-                            tag.resize(4, "*");
-                        } else {
-                            tag.truncate(4);
-                        }
-                        tag.join(",")
-                    })
+                    .map(|s| s.to_string())
             })
             .collect::<LinderaResult<HashSet<String>>>()?;
 
@@ -78,15 +85,7 @@ impl JapaneseCompoundWordTokenFilter {
                         LinderaErrorKind::Deserialize
                             .with_error(anyhow::anyhow!("new_tag must be a string"))
                     })
-                    .map(|s| {
-                        let mut tag = s.split(',').collect::<Vec<&str>>();
-                        if tag.len() < 4 {
-                            tag.resize(4, "*");
-                        } else {
-                            tag.truncate(4);
-                        }
-                        tag.join(",")
-                    })
+                    .map(|s| s.to_string())
             })
             .transpose()?;
 
