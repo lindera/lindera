@@ -3,16 +3,20 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::dictionary::DictionaryKind;
+        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
         use lindera::mode::Mode;
-        use lindera::tokenizer::{Tokenizer, TokenizerConfigBuilder};
+        use lindera::segmenter::Segmenter;
+        use lindera::tokenizer::Tokenizer;
 
-        let mut config_builder = TokenizerConfigBuilder::new();
-        config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
-        config_builder.set_segmenter_mode(&Mode::Normal);
+        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+        let segmenter = Segmenter::new(
+            Mode::Normal,
+            dictionary,
+            None, // Assuming no user dictionary is provided
+        );
 
         // Create a tokenizer.
-        let tokenizer = Tokenizer::from_config(&config_builder.build())?;
+        let tokenizer = Tokenizer::new(segmenter);
 
         // Tokenize a text.
         let text = "関西国際空港限定トートバッグ";

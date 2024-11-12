@@ -2,9 +2,9 @@ segmenter:
   mode: "normal"
   dictionary:
     kind: "ipadic"
-  user_dictionary:
-    path: "./resources/ipadic_simple.csv"
-    kind: "ipadic"
+  # user_dictionary:
+  #   path: "./resources/ipadic_simple.csv"
+  #   kind: "ipadic"
 
 character_filters:
   - kind: "unicode_normalize"
