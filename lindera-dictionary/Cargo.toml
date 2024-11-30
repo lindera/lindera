@@ -27,10 +27,10 @@ flate2 = { workspace = true }
 glob.workspace = true
 log.workspace = true
 once_cell.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
-reqwest.workspace = true
 yada.workspace = true
 
 [dev-dependencies]
