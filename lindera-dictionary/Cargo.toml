@@ -30,7 +30,7 @@ once_cell.workspace = true
 serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
-ureq = { workspace = true }
+reqwest.workspace = true
 yada.workspace = true
 
 [dev-dependencies]

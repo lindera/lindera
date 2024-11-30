@@ -1,6 +1,9 @@
 use std::error::Error;
 use std::path::Path;
 
+use log::debug;
+use reqwest::Client;
+
 use crate::dictionary_builder::DictionaryBuilder;
 
 pub struct FetchParams {
@@ -57,7 +60,10 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`
-pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(), Box<dyn Error>> {
+pub async fn fetch(
+    params: FetchParams,
+    builder: impl DictionaryBuilder,
+) -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs::{create_dir, rename, File};
     use std::io::{self, Cursor, Read, Write};
@@ -130,12 +136,22 @@ pub fn fetch(params: FetchParams, builder: impl DictionaryBuilder) -> Result<(),
         let tmp_path = Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
 
         // Download a tarball
-        let resp = ureq::get(params.download_url).call()?;
-        let mut dest = File::create(&tmp_path)?;
+        let client = Client::builder()
+            .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
+            .build()?;
 
-        io::copy(&mut resp.into_reader(), &mut dest)?;
+        debug!("Downloading {}", params.download_url);
+        let mut dest = File::create(tmp_path.as_path())?;
+        let resp = client.get(params.download_url).send().await?;
+
+        debug!("Status: {}", resp.status());
+
+        let content = resp.bytes().await?;
+        io::copy(&mut content.as_ref(), &mut dest)?;
         dest.flush()?;
 
+        debug!("Content-Length: {}", content.len());
+        debug!("Downloaded to {}", tmp_path.display());
         rename(tmp_path.clone(), source_path_for_build).expect("Failed to rename temporary file");
 
         // Decompress a tar.gz file
