@@ -1,7 +1,8 @@
 use std::error::Error;
 
 #[cfg(feature = "ipadic")]
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     lindera_dictionary::assets::fetch(
         lindera_dictionary::assets::FetchParams {
             file_name: "mecab-ipadic-2.7.0-20070801.tar.gz",
@@ -12,6 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder::new(),
     )
+    .await
 }
 
 #[cfg(not(feature = "ipadic"))]

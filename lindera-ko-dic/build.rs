@@ -1,7 +1,8 @@
 use std::error::Error;
 
 #[cfg(feature = "ko-dic")]
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     lindera_dictionary::assets::fetch(
         lindera_dictionary::assets::FetchParams {
             file_name: "mecab-ko-dic-2.1.1-20180720.tar.gz",
@@ -12,6 +13,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder::new(),
     )
+    .await
 }
 
 #[cfg(not(feature = "ko-dic"))]
