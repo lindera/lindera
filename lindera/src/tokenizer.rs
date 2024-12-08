@@ -65,8 +65,6 @@ fn ensure_keys(mut config: Value) -> Value {
         config["token_filters"] = json!([]);
     }
 
-    println!("config: {:?}", config);
-
     config
 }
 
