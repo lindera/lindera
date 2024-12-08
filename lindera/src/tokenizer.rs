@@ -711,7 +711,23 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     #[should_panic(expected = "No such file or directory")]
+    fn test_create_tokenizer_builder_from_non_existent_file() {
+        use std::path::PathBuf;
+
+        use crate::tokenizer::TokenizerBuilder;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("non_existent_file.yml");
+
+        TokenizerBuilder::from_file(&config_file).unwrap();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    #[should_panic(expected = "The system cannot find the file specified.")]
     fn test_create_tokenizer_builder_from_non_existent_file() {
         use std::path::PathBuf;
 
