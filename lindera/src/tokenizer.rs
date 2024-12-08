@@ -26,10 +26,20 @@ fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
         .read_to_end(&mut buffer)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-    let tokenizer_config: TokenizerConfig = serde_yaml::from_slice::<TokenizerConfig>(&buffer)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-    Ok(tokenizer_config)
+    match serde_yaml::from_slice::<serde_yaml::Value>(&buffer) {
+        Ok(value) => {
+            // Check if the value is a mapping.
+            match value {
+                serde_yaml::Value::Mapping(_) => {
+                    Ok(serde_json::to_value(value).map_err(|err| {
+                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                    })?)
+                }
+                _ => Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("Invalid YAML"))),
+            }
+        }
+        Err(err) => Err(LinderaErrorKind::Deserialize.with_error(err)),
+    }
 }
 
 /// Returns the default configuration as a `serde_json::Value`.
@@ -46,15 +56,19 @@ fn ensure_keys(mut config: Value) -> Value {
     if config.get("segmenter").is_none() {
         config["segmenter"] = json!({});
     }
+
     if config.get("character_filters").is_none() {
         config["character_filters"] = json!([]);
     }
+
     if config.get("token_filters").is_none() {
         config["token_filters"] = json!([]);
     }
+
     config
 }
 
+#[derive(Debug)]
 pub struct TokenizerBuilder {
     config: TokenizerConfig,
 }
@@ -62,10 +76,7 @@ pub struct TokenizerBuilder {
 impl TokenizerBuilder {
     pub fn new() -> LinderaResult<Self> {
         if let Ok(config_path) = env::var("LINDERA_CONFIG_PATH") {
-            Self::from_file(Path::new(&config_path)).map_err(|e| {
-                LinderaErrorKind::Parse
-                    .with_error(anyhow::anyhow!("failed to load config file: {}", e))
-            })
+            Self::from_file(Path::new(&config_path))
         } else {
             Ok(Self {
                 config: empty_config(),
@@ -74,7 +85,9 @@ impl TokenizerBuilder {
     }
 
     pub fn from_file(file_path: &Path) -> LinderaResult<Self> {
-        let config = yaml_to_config(file_path).unwrap_or_else(|_| empty_config());
+        let config = yaml_to_config(file_path)?;
+
+        println!("config: {:?}", config);
 
         Ok(TokenizerBuilder {
             config: ensure_keys(config),
@@ -695,5 +708,49 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    #[should_panic(expected = "No such file or directory")]
+    fn test_create_tokenizer_builder_from_non_existent_file() {
+        use std::path::PathBuf;
+
+        use crate::tokenizer::TokenizerBuilder;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("non_existent_file.yml");
+
+        TokenizerBuilder::from_file(&config_file).unwrap();
+    }
+
+    #[test]
+    #[cfg(windows)]
+    #[should_panic(expected = "The system cannot find the file specified.")]
+    fn test_create_tokenizer_builder_from_non_existent_file() {
+        use std::path::PathBuf;
+
+        use crate::tokenizer::TokenizerBuilder;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("non_existent_file.yml");
+
+        TokenizerBuilder::from_file(&config_file).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid YAML")]
+    fn test_create_tokenizer_builder_from_invalid_file() {
+        use std::path::PathBuf;
+
+        use crate::tokenizer::TokenizerBuilder;
+
+        let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("invalid.yml");
+
+        TokenizerBuilder::from_file(&config_file).unwrap();
     }
 }
