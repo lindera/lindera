@@ -22,6 +22,9 @@ ko-dic = ["lindera-ko-dic/ko-dic"] # Include ko-dic dictionary (Korean)
 cc-cedict = [
     "lindera-cc-cedict/cc-cedict",
 ] # Include CC-CEDICT dictionary (Chinese)
+cjk = ["ipadic", "ko-dic", "cc-cedict"] # Include CJK dictionaries
+cjk2 = ["unidic", "ko-dic", "cc-cedict"] # Include CJK dictionaries
+cjk3 = ["ipadic-neologd", "ko-dic", "cc-cedict"] # Include CJK dictionaries
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic/compress",
