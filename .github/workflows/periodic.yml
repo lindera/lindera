@@ -55,7 +55,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run check
-        run: cargo check --target "${{ matrix.platform.target }}" --all-features"
+        run: cargo check --target "${{ matrix.platform.target }}" --all-features
 
   test:
     name: Test
