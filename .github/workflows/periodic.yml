@@ -52,6 +52,7 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
       - name: Run check
