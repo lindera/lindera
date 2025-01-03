@@ -7,30 +7,104 @@ on:
       - "v*.*.*"
 
 jobs:
-  release:
-    name: Build
+  format:
+    name: Format
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
-        include:
-          - os: ubuntu-latest
+        platform:
+          - runner: ubuntu-latest
+        toolchain: [stable]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run format
+        run: cargo fmt --all -- --check
+
+  check:
+    name: Check
+    needs: [format]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: macOS-latest
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
+
+      - name: Run check
+        run: cargo check --target "${{ matrix.platform.target }}" --all-features
+
+  test:
+    name: Test
+    needs: [check]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: macOS-latest
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test --target "${{ matrix.platform.target }}" --all-features
+
+  release:
+    name: Build
+    needs: [test]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: .zip
             extension: ""
-          - os: windows-latest
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            archive: .zip
+            extension: ""
+          - runner: windows-latest
             target: x86_64-pc-windows-msvc
             archive: .zip
             extension: .exe
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            archive: .zip
-            extension: ""
         toolchain: [stable]
-        feature: [ipadic, ko-dic, cc-cedict]
-    runs-on: ${{ matrix.os }}
+        feature: [cjk, cjk2, cjk3]
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
@@ -57,33 +131,33 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.platform.runner }}
 
       - name: Add msbuild to PATH
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform.runner == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
 
       - name: Compile
-        run: cargo build --release --features=${{ matrix.feature }} --target=${{ matrix.target }} --target-dir=target/${{ matrix.feature }}
+        run: cargo build --release --features="${{ matrix.feature }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.feature }}
 
       - name: Create artifact for Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+        if: matrix.platform.runner == 'ubuntu-latest'
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
-        if: matrix.os == 'windows-latest'
-        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} -Path target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+        if: matrix.platform.runner == 'windows-latest'
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for OSX
-        if: matrix.os == 'macos-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }} target/${{ matrix.feature }}/${{ matrix.target }}/release/lindera${{ matrix.extension }}
+        if: matrix.platform.runner == 'macos-latest'
+        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: lindera-${{ matrix.feature }}-${{ matrix.target }}-${{ github.ref_name }}${{ matrix.archive }}
+          files: lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
@@ -92,12 +166,14 @@ jobs:
 
   publish-crates:
     name: Publish crate
+    needs: [release]
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
         toolchain: [stable]
-    needs: [release]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
