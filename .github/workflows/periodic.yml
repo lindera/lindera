@@ -68,7 +68,6 @@ jobs:
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
         toolchain: [stable, beta, nightly]
-        features: ["cjk,compress"]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -82,4 +81,4 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test --target "${{ matrix.platform.target }}" --features "${{ matrix.features }}"
+        run: cargo test --target "${{ matrix.platform.target }}" --all-features
