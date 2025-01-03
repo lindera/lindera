@@ -12,7 +12,6 @@ jobs:
       matrix:
         platform:
           - runner: ubuntu-latest
-            target: x86_64
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
