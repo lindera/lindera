@@ -13,9 +13,10 @@ jobs:
     name: Format
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        platform:
+          - runner: ubuntu-latest
         toolchain: [stable]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
@@ -26,17 +27,23 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
 
-      - name: Check format
+      - name: Run format
         run: cargo fmt --all -- --check
 
   check:
     name: Check
+    needs: [fmt]
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        toolchain: [stable]
-        features: ["ipadic", "ko-dic", "cc-cedict"]
-    runs-on: ${{ matrix.os }}
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: macOS-latest
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
@@ -45,19 +52,26 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
       - name: Run check
-        run: cargo check --features "${{ matrix.features }}"
+        run: cargo check --target "${{ matrix.platform.target }}" --all-features
 
   test:
     name: Test
+    needs: [check]
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        toolchain: [stable]
-        features: ["ipadic", "ko-dic", "cc-cedict"]
-    runs-on: ${{ matrix.os }}
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: macOS-latest
+            target: aarch64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v4
@@ -66,7 +80,8 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test --features "${{ matrix.features }}"
+        run: cargo test --target "${{ matrix.platform.target }}" --all-features
