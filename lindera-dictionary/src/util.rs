@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -57,3 +58,7 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
     let buffer = read_file(filepath)?;
     Ok(encoding.decode(&buffer).0.into_owned())
 }
+
+// note: Cow is only used as an enum over Vec<u8> and &'static [u8]
+//	copy-on-write capability is not used
+pub type Data = Cow<'static, [u8]>;

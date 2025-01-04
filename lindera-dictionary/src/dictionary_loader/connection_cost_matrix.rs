@@ -23,6 +23,6 @@ impl ConnectionCostMatrixLoader {
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
 
-        Ok(ConnectionCostMatrix::load(data.as_slice()))
+        Ok(ConnectionCostMatrix::load(data))
     }
 }

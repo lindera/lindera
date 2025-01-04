@@ -1,20 +1,15 @@
-use std::borrow::Cow;
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 use yada::DoubleArray;
 
-use crate::viterbi::WordEntry;
+use crate::{util::Data, viterbi::WordEntry};
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "DoubleArray")]
 struct DoubleArrayDef<T>(pub T)
 where
     T: Deref<Target = [u8]>;
-
-// note: Cow is only used as an enum over Vec<u8> and &'static [u8]
-//	copy-on-write capability is not used
-type Data = Cow<'static, [u8]>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PrefixDictionary {
@@ -28,37 +23,20 @@ pub struct PrefixDictionary {
 
 impl PrefixDictionary {
     pub fn load(
-        da_data: Vec<u8>,
-        vals_data: Vec<u8>,
-        words_idx_data: Vec<u8>,
-        words_data: Vec<u8>,
+        da_data: impl Into<Data>,
+        vals_data: impl Into<Data>,
+        words_idx_data: impl Into<Data>,
+        words_data: impl Into<Data>,
         is_system: bool,
     ) -> PrefixDictionary {
-        let da = DoubleArray::new(Cow::Owned(da_data));
+        let da = DoubleArray::new(da_data.into());
 
         PrefixDictionary {
             da,
-            vals_data: Cow::Owned(vals_data),
-            words_idx_data: Cow::Owned(words_idx_data),
-            words_data: Cow::Owned(words_data),
+            vals_data: vals_data.into(),
+            words_idx_data: words_idx_data.into(),
+            words_data: words_data.into(),
             is_system,
-        }
-    }
-
-    pub fn load_static(
-        da_data: &'static [u8],
-        vals_data: &'static [u8],
-        words_idx_data: &'static [u8],
-        words_data: &'static [u8],
-    ) -> PrefixDictionary {
-        let da = DoubleArray::new(Cow::Borrowed(da_data));
-
-        PrefixDictionary {
-            da,
-            vals_data: Cow::Borrowed(vals_data),
-            words_idx_data: Cow::Borrowed(words_idx_data),
-            words_data: Cow::Borrowed(words_data),
-            is_system: true,
         }
     }
 

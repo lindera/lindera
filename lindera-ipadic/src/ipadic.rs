@@ -103,13 +103,14 @@ decompress_data!(WORDS_DATA, &[], "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        prefix_dictionary: PrefixDictionary::load_static(
+        prefix_dictionary: PrefixDictionary::load(
             DA_DATA,
             VALS_DATA,
             WORDS_IDX_DATA,
             WORDS_DATA,
+            true,
         ),
-        connection_cost_matrix: ConnectionCostMatrix::load_static(CONNECTION_DATA),
+        connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
         character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
         unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
     })
