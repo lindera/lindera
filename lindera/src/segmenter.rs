@@ -1168,13 +1168,13 @@ mod tests {
             assert_eq!(
                 token.details(),
                 vec![
-                    "*", 
-                    "*", 
-                    "*", 
-                    "*", 
-                    "jin4 xing2", 
-                    "進行", 
-                    "进行", 
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "jin4 xing2",
+                    "進行",
+                    "进行",
                     "to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/"
                 ]
             );
@@ -1848,14 +1848,14 @@ mod tests {
             assert_eq!(
                 token.details(),
                 vec![
-                    "*", 
-                    "*", 
-                    "*", 
-                    "*", 
-                    "bao1", 
-                    "包", 
-                    "包", 
-                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]", 
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "bao1",
+                    "包",
+                    "包",
+                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]",
                     "隻|只[zhi1]/"
                 ]
             );
@@ -2462,14 +2462,14 @@ mod tests {
             assert_eq!(
                 token.details(),
                 vec![
-                    "*", 
-                    "*", 
-                    "*", 
-                    "*", 
-                    "bao1", 
-                    "包", 
-                    "包", 
-                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]", 
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "bao1",
+                    "包",
+                    "包",
+                    "to cover/to wrap/to hold/to include/to take charge of/to contract (to or for)/package/wrapper/container/bag/to hold or embrace/bundle/packet/CL:個|个[ge4]",
                     "隻|只[zhi1]/"
                 ]
             );

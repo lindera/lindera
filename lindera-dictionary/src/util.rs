@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::Deref;
@@ -74,15 +73,10 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
     Ok(encoding.decode(&buffer).0.into_owned())
 }
 
-#[derive(Serialize, Deserialize)]
 pub enum Data {
-    // serde is only used for user dict, which only uses the Vec variant, so this should be ok
-    // we should probably customize this and call unreachable! to be safe
-    #[serde(skip)]
     Static(&'static [u8]),
     Vec(Vec<u8>),
     #[cfg(feature = "memmap")]
-    #[serde(skip)]
     Map(Mmap),
 }
 
@@ -90,29 +84,69 @@ impl Deref for Data {
     type Target = [u8];
     fn deref(&self) -> &Self::Target {
         match self {
-            Data::Static(s) => s.deref(),
-            Data::Vec(v) => v.deref(),
+            Data::Static(s) => s,
+            Data::Vec(v) => v,
             #[cfg(feature = "memmap")]
-            Data::Map(m) => m.deref(),
+            Data::Map(m) => m,
         }
     }
 }
 
-impl Into<Data> for &'static [u8] {
-    fn into(self) -> Data {
-        Data::Static(self)
+impl From<&'static [u8]> for Data {
+    fn from(s: &'static [u8]) -> Self {
+        Self::Static(s)
     }
 }
 
-impl Into<Data> for Vec<u8> {
-    fn into(self) -> Data {
-        Data::Vec(self)
+impl<T: Deref<Target = [u8]>> From<&'static T> for Data {
+    fn from(t: &'static T) -> Self {
+        Self::Static(t)
+    }
+}
+
+impl From<Vec<u8>> for Data {
+    fn from(v: Vec<u8>) -> Self {
+        Self::Vec(v)
     }
 }
 
 #[cfg(feature = "memmap")]
-impl Into<Data> for Mmap {
-    fn into(self) -> Data {
-        Data::Map(self)
+impl From<Mmap> for Data {
+    fn from(m: Mmap) -> Self {
+        Self::Map(m)
+    }
+}
+
+impl Clone for Data {
+    fn clone(&self) -> Self {
+        match self {
+            Data::Static(s) => Data::Static(s),
+            Data::Vec(v) => Data::Vec(v.clone()),
+            #[cfg(feature = "memmap")]
+            Data::Map(m) => Data::Vec(m.to_vec()),
+        }
+    }
+}
+
+impl Serialize for Data {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Static(s) => serializer.serialize_bytes(s),
+            Self::Vec(v) => serializer.serialize_bytes(v),
+            #[cfg(feature = "memmap")]
+            Self::Map(m) => serializer.serialize_bytes(m),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Data {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Vec::<u8>::deserialize(deserializer).map(Self::Vec)
     }
 }

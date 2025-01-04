@@ -5,7 +5,7 @@ use serde::Serialize;
 use crate::dictionary::WordId;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary, UNK};
 
-#[derive(Serialize, Clone)]
+#[derive(Clone)]
 pub struct Token<'a> {
     /// The text content of the token, which is a copy-on-write string slice.
     /// This allows for efficient handling of both owned and borrowed string data.

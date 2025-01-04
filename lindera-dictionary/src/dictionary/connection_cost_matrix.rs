@@ -2,6 +2,7 @@ use crate::util::Data;
 
 use byteorder::{ByteOrder, LittleEndian};
 
+#[derive(Clone)]
 pub struct ConnectionCostMatrix {
     costs_data: Data,
     backward_size: u32,
