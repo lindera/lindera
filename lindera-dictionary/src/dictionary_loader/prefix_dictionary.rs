@@ -5,6 +5,8 @@ use crate::decompress::decompress;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
+#[cfg(feature = "memmap")]
+use crate::util::memmap_file;
 use crate::util::read_file;
 use crate::LinderaResult;
 
@@ -46,6 +48,21 @@ impl PrefixDictionaryLoader {
             words_data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
+
+        Ok(PrefixDictionary::load(
+            da_data,
+            vals_data,
+            words_idx_data,
+            words_data,
+            true,
+        ))
+    }
+
+    pub fn load_memmap(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
+        let da_data = memmap_file(input_dir.join("dict.da").as_path())?;
+        let vals_data = memmap_file(input_dir.join("dict.vals").as_path())?;
+        let words_idx_data = memmap_file(input_dir.join("dict.wordsidx").as_path())?;
+        let words_data = memmap_file(input_dir.join("dict.words").as_path())?;
 
         Ok(PrefixDictionary::load(
             da_data,

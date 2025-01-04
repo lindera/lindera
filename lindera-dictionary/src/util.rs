@@ -3,6 +3,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
+#[cfg(feature = "memmap")]
+use memmap2::Mmap;
+
 use anyhow::anyhow;
 use encoding_rs::Encoding;
 
@@ -47,6 +50,15 @@ pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
         .read_to_end(&mut buffer)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     Ok(buffer)
+}
+
+#[cfg(feature = "memmap")]
+pub fn memmap_file(filename: &Path) -> LinderaResult<&'static [u8]> {
+    let file = File::open(filename)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mmap = unsafe { Mmap::map(&file) }
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    Ok(Box::leak(Box::new(mmap)))
 }
 
 pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaResult<String> {

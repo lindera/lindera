@@ -12,7 +12,9 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
+default = []
 compress = []
+memmap = ["dep:memmap2"]
 
 [dependencies]
 anyhow.workspace = true
@@ -32,6 +34,7 @@ serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
 yada.workspace = true
+memmap2 = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand.workspace = true

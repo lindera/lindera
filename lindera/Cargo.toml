@@ -33,6 +33,7 @@ compress = [
     "lindera-ko-dic/compress",
     "lindera-cc-cedict/compress",
 ] # Compress dictionaries
+memmap = ["lindera-dictionary/memmap"]
 
 [dependencies]
 anyhow.workspace = true
