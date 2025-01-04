@@ -58,6 +58,7 @@ impl PrefixDictionaryLoader {
         ))
     }
 
+    #[cfg(feature = "memmap")]
     pub fn load_memmap(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
         let da_data = memmap_file(input_dir.join("dict.da").as_path())?;
         let vals_data = memmap_file(input_dir.join("dict.vals").as_path())?;
