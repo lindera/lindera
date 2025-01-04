@@ -18,7 +18,6 @@ use crate::LinderaResult;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
-#[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {
     pub prefix_dictionary: PrefixDictionary,
     pub connection_cost_matrix: ConnectionCostMatrix,
@@ -60,7 +59,7 @@ impl Dictionary {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct UserDictionary {
     pub dict: PrefixDictionary,
 }

@@ -11,7 +11,7 @@ struct DoubleArrayDef<T>(pub T)
 where
     T: Deref<Target = [u8]>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct PrefixDictionary {
     #[serde(with = "DoubleArrayDef")]
     pub da: DoubleArray<Data>,

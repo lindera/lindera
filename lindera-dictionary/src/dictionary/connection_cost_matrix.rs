@@ -1,9 +1,7 @@
 use crate::util::Data;
 
 use byteorder::{ByteOrder, LittleEndian};
-use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Serialize, Deserialize)]
 pub struct ConnectionCostMatrix {
     costs_data: Data,
     backward_size: u32,

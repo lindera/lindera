@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []
+default = ["memmap"]
 compress = []
 memmap = ["dep:memmap2"]
 
