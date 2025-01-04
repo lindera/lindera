@@ -20,7 +20,7 @@ pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Dictionary {
-    pub prefix_dictionary: PrefixDictionary<Vec<u8>>,
+    pub prefix_dictionary: PrefixDictionary,
     pub connection_cost_matrix: ConnectionCostMatrix,
     pub character_definition: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
@@ -62,7 +62,7 @@ impl Dictionary {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct UserDictionary {
-    pub dict: PrefixDictionary<Vec<u8>>,
+    pub dict: PrefixDictionary,
 }
 
 impl UserDictionary {

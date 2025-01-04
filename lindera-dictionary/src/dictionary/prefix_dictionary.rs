@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
@@ -11,36 +12,56 @@ struct DoubleArrayDef<T>(pub T)
 where
     T: Deref<Target = [u8]>;
 
+// note: Cow is only used as an enum over Vec<u8> and &'static [u8]
+//	copy-on-write capability is not used
+type Data = Cow<'static, [u8]>;
+
 #[derive(Clone, Serialize, Deserialize)]
-pub struct PrefixDictionary<Data = Vec<u8>> {
+pub struct PrefixDictionary {
     #[serde(with = "DoubleArrayDef")]
-    pub da: DoubleArray<Vec<u8>>,
+    pub da: DoubleArray<Data>,
     pub vals_data: Data,
-    pub words_idx_data: Vec<u8>,
-    pub words_data: Vec<u8>,
+    pub words_idx_data: Data,
+    pub words_data: Data,
     pub is_system: bool,
 }
 
-impl PrefixDictionary<&[u8]> {
+impl PrefixDictionary {
     pub fn load(
-        da_data: &[u8],
-        vals_data: &[u8],
-        words_idx_data: &[u8],
-        words_data: &[u8],
+        da_data: Vec<u8>,
+        vals_data: Vec<u8>,
+        words_idx_data: Vec<u8>,
+        words_data: Vec<u8>,
+        is_system: bool,
     ) -> PrefixDictionary {
-        let da = DoubleArray::new(da_data.to_vec());
+        let da = DoubleArray::new(Cow::Owned(da_data));
 
         PrefixDictionary {
             da,
-            vals_data: vals_data.to_vec(),
-            words_idx_data: words_idx_data.to_vec(),
-            words_data: words_data.to_vec(),
+            vals_data: Cow::Owned(vals_data),
+            words_idx_data: Cow::Owned(words_idx_data),
+            words_data: Cow::Owned(words_data),
+            is_system,
+        }
+    }
+
+    pub fn load_static(
+        da_data: &'static [u8],
+        vals_data: &'static [u8],
+        words_idx_data: &'static [u8],
+        words_data: &'static [u8],
+    ) -> PrefixDictionary {
+        let da = DoubleArray::new(Cow::Borrowed(da_data));
+
+        PrefixDictionary {
+            da,
+            vals_data: Cow::Borrowed(vals_data),
+            words_idx_data: Cow::Borrowed(words_idx_data),
+            words_data: Cow::Borrowed(words_data),
             is_system: true,
         }
     }
-}
 
-impl<D: Deref<Target = [u8]>> PrefixDictionary<D> {
     pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
         self.da
             .common_prefix_search(s)

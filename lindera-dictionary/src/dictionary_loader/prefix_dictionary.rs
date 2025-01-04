@@ -48,10 +48,11 @@ impl PrefixDictionaryLoader {
         }
 
         Ok(PrefixDictionary::load(
-            da_data.as_slice(),
-            vals_data.as_slice(),
-            words_idx_data.as_slice(),
-            words_data.as_slice(),
+            da_data,
+            vals_data,
+            words_idx_data,
+            words_data,
+            true,
         ))
     }
 }

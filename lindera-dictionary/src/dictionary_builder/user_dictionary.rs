@@ -10,7 +10,6 @@ use csv::StringRecord;
 use derive_builder::Builder;
 use log::debug;
 use yada::builder::DoubleArrayBuilder;
-use yada::DoubleArray;
 
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::UserDictionary;
@@ -152,13 +151,7 @@ impl UserDictionaryBuilder {
             }
         }
 
-        let dict = PrefixDictionary {
-            da: DoubleArray::new(da_bytes),
-            vals_data,
-            words_idx_data,
-            words_data,
-            is_system: false,
-        };
+        let dict = PrefixDictionary::load(da_bytes, vals_data, words_idx_data, words_data, false);
 
         Ok(UserDictionary { dict })
     }
