@@ -5,6 +5,8 @@ use crate::decompress::decompress;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
+#[cfg(feature = "memmap")]
+use crate::util::memmap_file;
 use crate::util::read_file;
 use crate::LinderaResult;
 
@@ -23,6 +25,13 @@ impl ConnectionCostMatrixLoader {
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
 
-        Ok(ConnectionCostMatrix::load(data.as_slice()))
+        Ok(ConnectionCostMatrix::load(data))
+    }
+
+    #[cfg(feature = "memmap")]
+    pub fn load_memmap(input_dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
+        let data = memmap_file(input_dir.join("matrix.mtx").as_path())?;
+
+        Ok(ConnectionCostMatrix::load(data))
     }
 }

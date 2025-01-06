@@ -3,7 +3,7 @@ use std::ops::Deref;
 use serde::{Deserialize, Serialize};
 use yada::DoubleArray;
 
-use crate::viterbi::WordEntry;
+use crate::{util::Data, viterbi::WordEntry};
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "DoubleArray")]
@@ -12,35 +12,34 @@ where
     T: Deref<Target = [u8]>;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct PrefixDictionary<Data = Vec<u8>> {
+pub struct PrefixDictionary {
     #[serde(with = "DoubleArrayDef")]
-    pub da: DoubleArray<Vec<u8>>,
+    pub da: DoubleArray<Data>,
     pub vals_data: Data,
-    pub words_idx_data: Vec<u8>,
-    pub words_data: Vec<u8>,
+    pub words_idx_data: Data,
+    pub words_data: Data,
     pub is_system: bool,
 }
 
-impl PrefixDictionary<&[u8]> {
+impl PrefixDictionary {
     pub fn load(
-        da_data: &[u8],
-        vals_data: &[u8],
-        words_idx_data: &[u8],
-        words_data: &[u8],
+        da_data: impl Into<Data>,
+        vals_data: impl Into<Data>,
+        words_idx_data: impl Into<Data>,
+        words_data: impl Into<Data>,
+        is_system: bool,
     ) -> PrefixDictionary {
-        let da = DoubleArray::new(da_data.to_vec());
+        let da = DoubleArray::new(da_data.into());
 
         PrefixDictionary {
             da,
-            vals_data: vals_data.to_vec(),
-            words_idx_data: words_idx_data.to_vec(),
-            words_data: words_data.to_vec(),
-            is_system: true,
+            vals_data: vals_data.into(),
+            words_idx_data: words_idx_data.into(),
+            words_data: words_data.into(),
+            is_system,
         }
     }
-}
 
-impl<D: Deref<Target = [u8]>> PrefixDictionary<D> {
     pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
         self.da
             .common_prefix_search(s)

@@ -1,5 +1,6 @@
 #[cfg(feature = "ipadic-neologd")]
 use std::env;
+use std::ops::Deref;
 
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
@@ -109,18 +110,34 @@ decompress_data!(
 decompress_data!(WORDS_DATA, &[], "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
-    let da_data = &DA_DATA;
-    let vals_data = &VALS_DATA;
-    let words_idx_data = &WORDS_IDX_DATA;
-    let words_data = &WORDS_DATA;
-    let connection_data = &CONNECTION_DATA;
-    let char_definition = &CHAR_DEFINITION_DATA;
-    let unknown_data = &UNKNOWN_DATA;
-
-    Ok(Dictionary {
-        prefix_dictionary: PrefixDictionary::load(da_data, vals_data, words_idx_data, words_data),
-        connection_cost_matrix: ConnectionCostMatrix::load_static(connection_data),
-        character_definition: CharacterDefinition::load(char_definition)?,
-        unknown_dictionary: UnknownDictionary::load(unknown_data)?,
-    })
+    #[cfg(feature = "compress")]
+    {
+        Ok(Dictionary {
+            prefix_dictionary: PrefixDictionary::load(
+                DA_DATA.deref(),
+                VALS_DATA.deref(),
+                WORDS_IDX_DATA.deref(),
+                WORDS_DATA.deref(),
+                true,
+            ),
+            connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA.deref()),
+            character_definition: CharacterDefinition::load(&CHAR_DEFINITION_DATA)?,
+            unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
+        })
+    }
+    #[cfg(not(feature = "compress"))]
+    {
+        Ok(Dictionary {
+            prefix_dictionary: PrefixDictionary::load(
+                DA_DATA,
+                VALS_DATA,
+                WORDS_IDX_DATA,
+                WORDS_DATA,
+                true,
+            ),
+            connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
+            character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
+            unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
+        })
+    }
 }

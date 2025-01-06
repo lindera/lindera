@@ -107,6 +107,16 @@ pub fn load_dictionary_from_path(path: &Path) -> LinderaResult<Dictionary> {
     })
 }
 
+#[cfg(feature = "memmap")]
+pub fn load_dictionary_from_path_memmap(path: &Path) -> LinderaResult<Dictionary> {
+    Ok(Dictionary {
+        prefix_dictionary: PrefixDictionaryLoader::load_memmap(path)?,
+        connection_cost_matrix: ConnectionCostMatrixLoader::load_memmap(path)?,
+        character_definition: CharacterDefinitionLoader::load(path)?,
+        unknown_dictionary: UnknownDictionaryLoader::load(path)?,
+    })
+}
+
 pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
     // The dictionary specified by the feature flag will be loaded.
     match kind {
@@ -155,7 +165,22 @@ pub fn load_dictionary_from_config(
                     })?);
 
                     // load external dictionary from path
-                    load_dictionary_from_path(path.as_path())
+                    if dictionary_config
+                        .get("memmap")
+                        .is_some_and(|x| x.as_bool().is_some_and(|b| b))
+                    {
+                        #[cfg(feature = "memmap")]
+                        {
+                            load_dictionary_from_path_memmap(path.as_path())
+                        }
+                        #[cfg(not(feature = "memmap"))]
+                        {
+                            // note: warn about this?
+                            load_dictionary_from_path(path.as_path())
+                        }
+                    } else {
+                        load_dictionary_from_path(path.as_path())
+                    }
                 }
                 None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
                     "kind field or path field must be specified"

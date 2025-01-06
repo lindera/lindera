@@ -51,6 +51,7 @@ unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.24"
 unicode-segmentation = "1.11.0"
 yada = "0.5.1"
+memmap2 = "0.9.5"
 
 
 [profile.release]
