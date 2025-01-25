@@ -1,9 +1,8 @@
 use std::borrow::Cow;
 
-use serde::Serialize;
+use lindera_dictionary::dictionary::UNK;
 
-use crate::dictionary::WordId;
-use lindera_dictionary::dictionary::{Dictionary, UserDictionary, UNK};
+use crate::dictionary::{Dictionary, UserDictionary, WordId};
 
 #[derive(Clone)]
 pub struct Token<'a> {

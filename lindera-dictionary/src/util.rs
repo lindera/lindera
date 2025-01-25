@@ -3,7 +3,6 @@ use std::io::{Read, Write};
 use std::ops::Deref;
 use std::path::Path;
 
-use flate2::Status;
 #[cfg(feature = "memmap")]
 use memmap2::Mmap;
 
