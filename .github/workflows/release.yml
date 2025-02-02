@@ -146,7 +146,7 @@ jobs:
 
       - name: Create artifact for Windows
         if: matrix.platform.runner == 'windows-latest'
-        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for OSX
         if: matrix.platform.runner == 'macos-latest'
