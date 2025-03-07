@@ -23,5 +23,8 @@ once_cell.workspace = true
 lindera-dictionary.workspace = true
 
 [build-dependencies]
-lindera-dictionary.workspace = true
 tokio.workspace = true
+
+[builddependencies.lindera-dictionary]
+workspace = true
+features = ["build_rs"]
