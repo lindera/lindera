@@ -1,3 +1,4 @@
+#[cfg(feature = "build_rs")]
 pub mod assets;
 pub mod compress;
 pub mod decompress;
