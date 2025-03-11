@@ -15,6 +15,7 @@ license = "MIT"
 default = []
 compress = []
 memmap = ["dep:memmap2"]
+build_rs = ["dep:reqwest"]
 
 [dependencies]
 anyhow.workspace = true
@@ -29,12 +30,15 @@ flate2 = { workspace = true }
 glob.workspace = true
 log.workspace = true
 once_cell.workspace = true
-reqwest.workspace = true
 serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
 yada.workspace = true
 memmap2 = { workspace = true, optional = true }
+
+[dependencies.reqwest]
+workspace = true
+optional = true
 
 [dev-dependencies]
 rand.workspace = true
