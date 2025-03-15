@@ -38,16 +38,15 @@ mod tests {
     use crate::decompress::decompress;
 
     use super::*;
-    // use lindera_decompress::decompress;
     use rand::prelude::*;
 
     #[test]
     fn compress_decompress() {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut buf = Vec::new();
 
         for _i in 0..10000 {
-            buf.push(rng.gen())
+            buf.push(rng.random())
         }
         for _i in 0..10000 {
             buf.push(0)
