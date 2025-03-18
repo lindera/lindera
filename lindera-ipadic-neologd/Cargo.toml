@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic-neologd"
-version = "0.32.2"
+version = "0.32.3"
 edition = "2021"
 description = "A Japanese morphological dictionary for IPADIC NEologd."
 documentation = "https://docs.rs/lindera-ipadic-neologd"
