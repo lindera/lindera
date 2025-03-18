@@ -1,6 +1,6 @@
 [package]
 name = "lindera-unidic"
-version = "0.32.2"
+version = "0.32.3"
 edition = "2021"
 description = "A Japanese morphological dictionary for UniDic."
 documentation = "https://docs.rs/lindera-unidic"
