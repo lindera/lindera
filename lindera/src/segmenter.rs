@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use lindera_dictionary::mode::Mode;
 
@@ -89,15 +90,16 @@ impl Segmenter {
             .transpose()?;
 
         // Load the mode from the config
-        let mode: Mode = config.get("mode").map_or_else(
-            || Ok(Mode::Normal),
-            |v| {
-                serde_json::from_value(v.clone()).map_err(|e| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("mode field is invalid: {}", e))
-                })
-            },
-        )?;
+        let mode =
+            config
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .map_or(Ok(Mode::Normal), |mode_str| {
+                    Mode::from_str(mode_str).map_err(|e| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!(format!("mode field is invalid: {}", e)))
+                    })
+                })?;
 
         Ok(Self::new(mode, dictionary, user_dictionary))
     }
@@ -2917,14 +2919,15 @@ mod tests {
             "dictionary": {
                 "kind": "ipadic"
             },
-            "mode": {
-                "decompose": {
-                    "kanji_penalty_length_threshold": 2,
-                    "kanji_penalty_length_penalty": 3000,
-                    "other_penalty_length_threshold": 7,
-                    "other_penalty_length_penalty": 1700
-                }
-            }
+            "mode": "decompose"
+            // "mode": {
+            //     "decompose": {
+            //         "kanji_penalty_length_threshold": 2,
+            //         "kanji_penalty_length_penalty": 3000,
+            //         "other_penalty_length_threshold": 7,
+            //         "other_penalty_length_penalty": 1700
+            //     }
+            // }
         });
 
         let segmenter = Segmenter::from_config(&config).unwrap();

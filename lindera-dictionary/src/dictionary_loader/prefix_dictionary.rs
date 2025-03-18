@@ -1,7 +1,14 @@
 use std::path::Path;
 
 #[cfg(feature = "compress")]
+use bincode::config::standard;
+#[cfg(feature = "compress")]
+use bincode::serde::decode_from_slice;
+
+#[cfg(feature = "compress")]
 use crate::decompress::decompress;
+#[cfg(feature = "compress")]
+use crate::decompress::CompressedData;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
@@ -22,29 +29,33 @@ impl PrefixDictionaryLoader {
 
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(da_data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice(&da_data, standard())
+                    .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
             da_data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(vals_data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice(&vals_data, standard())
+                    .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
             vals_data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(words_idx_data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice(&words_idx_data, standard())
+                    .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
             words_idx_data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(words_data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice(&words_data, standard())
+                    .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
             words_data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }
