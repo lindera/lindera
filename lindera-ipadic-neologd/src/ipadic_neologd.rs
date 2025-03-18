@@ -2,6 +2,15 @@
 use std::env;
 use std::ops::Deref;
 
+#[cfg(feature = "compress")]
+use bincode::config::standard;
+#[cfg(feature = "compress")]
+use bincode::serde::decode_from_slice;
+
+#[cfg(feature = "compress")]
+use lindera_dictionary::decompress::decompress;
+#[cfg(feature = "compress")]
+use lindera_dictionary::decompress::CompressedData;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
@@ -9,19 +18,18 @@ use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::LinderaResult;
 
-#[cfg(feature = "compress")]
-use lindera_dictionary::decompress::decompress;
-
 macro_rules! decompress_data {
-    ($name: ident, $bytes: expr, $filename: literal) => {
+    ($name:ident, $bytes:expr, $filename:literal) => {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-            let compressed_data = bincode::deserialize_from(&$bytes[..])
-                .expect(concat!("invalid file format ", $filename));
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice($bytes, standard())
+                    .expect(concat!("invalid file format ", $filename));
             decompress(compressed_data).expect(concat!("invalid file format ", $filename))
         });
+
         #[cfg(not(feature = "compress"))]
-        const $name: &'static [u8] = $bytes;
+        static $name: once_cell::sync::Lazy<&'static [u8]> = once_cell::sync::Lazy::new(|| $bytes);
     };
 }
 
@@ -129,15 +137,15 @@ pub fn load() -> LinderaResult<Dictionary> {
     {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
-                DA_DATA,
-                VALS_DATA,
-                WORDS_IDX_DATA,
-                WORDS_DATA,
+                *DA_DATA,
+                *VALS_DATA,
+                *WORDS_IDX_DATA,
+                *WORDS_DATA,
                 true,
             ),
-            connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
-            character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
-            unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
+            connection_cost_matrix: ConnectionCostMatrix::load(*CONNECTION_DATA),
+            character_definition: CharacterDefinition::load(&CHAR_DEFINITION_DATA)?,
+            unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
         })
     }
 }

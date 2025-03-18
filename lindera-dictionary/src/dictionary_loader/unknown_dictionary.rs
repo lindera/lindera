@@ -1,7 +1,14 @@
 use std::path::Path;
 
 #[cfg(feature = "compress")]
+use bincode::config::standard;
+#[cfg(feature = "compress")]
+use bincode::serde::decode_from_slice;
+
+#[cfg(feature = "compress")]
 use crate::decompress::decompress;
+#[cfg(feature = "compress")]
+use crate::decompress::CompressedData;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
@@ -17,8 +24,9 @@ impl UnknownDictionaryLoader {
 
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _): (CompressedData, usize) =
+                decode_from_slice(&data, standard())
+                    .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
             data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }

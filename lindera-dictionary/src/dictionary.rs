@@ -3,8 +3,11 @@ pub mod connection_cost_matrix;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
 
+use std::borrow::Cow;
 use std::str;
 
+use bincode::config::standard;
+use bincode::serde::decode_from_slice;
 use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -27,7 +30,7 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    pub fn word_details(&self, word_id: usize) -> Vec<&str> {
+    pub fn word_details<'a>(&'a self, word_id: usize) -> Vec<Cow<'a, str>> {
         if 4 * word_id >= self.prefix_dictionary.words_idx_data.len() {
             return vec![];
         }
@@ -38,24 +41,26 @@ impl Dictionary {
         .try_into()
         {
             Ok(value) => value,
-            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            Err(_) => return UNK.iter().map(|s| Cow::Borrowed(*s)).collect(), // return empty vector if conversion fails
         };
+
         let data = &self.prefix_dictionary.words_data[idx..];
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,
-            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            Err(_) => return UNK.iter().map(|s| Cow::Borrowed(*s)).collect(),
         };
+
         let joined_details_bytes: &[u8] =
             &self.prefix_dictionary.words_data[idx + 4..idx + 4 + joined_details_len];
 
         let mut details = Vec::new();
         for bytes in joined_details_bytes.split(|&b| b == 0) {
-            let detail = match str::from_utf8(bytes) {
-                Ok(s) => s,
-                Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            match str::from_utf8(bytes) {
+                Ok(s) => details.push(Cow::Borrowed(s)),
+                Err(_) => return UNK.iter().map(|s| Cow::Borrowed(*s)).collect(),
             };
-            details.push(detail);
         }
+
         details
     }
 }
@@ -67,19 +72,22 @@ pub struct UserDictionary {
 
 impl UserDictionary {
     pub fn load(user_dict_data: &[u8]) -> LinderaResult<UserDictionary> {
-        bincode::deserialize(user_dict_data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
+        let (dict, _): (UserDictionary, _) = decode_from_slice(user_dict_data, standard())
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+        Ok(dict)
     }
 
-    pub fn word_details(&self, word_id: usize) -> Vec<&str> {
+    pub fn word_details<'a>(&'a self, word_id: usize) -> Vec<Cow<'a, str>> {
         if 4 * word_id >= self.dict.words_idx_data.len() {
-            return UNK.to_vec(); // return empty vector if conversion fails
+            return UNK.iter().map(|s| Cow::Borrowed(*s)).collect();
         }
+
         let idx = LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4]);
         let data = &self.dict.words_data[idx as usize..];
-        match bincode::deserialize(data) {
-            Ok(details) => details,
-            Err(_) => UNK.to_vec(), // return empty vector if conversion fails
+
+        match decode_from_slice::<Vec<String>, _>(data, standard()) {
+            Ok((details, _)) => details.into_iter().map(Cow::Owned).collect(), // `Vec<Cow<'a, str>>`
+            Err(_) => UNK.iter().map(|s| Cow::Borrowed(*s)).collect(),
         }
     }
 }

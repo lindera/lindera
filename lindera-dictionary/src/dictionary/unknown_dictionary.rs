@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use bincode::config::standard;
+use bincode::serde::decode_from_slice;
 use log::warn;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +18,8 @@ pub struct UnknownDictionary {
 
 impl UnknownDictionary {
     pub fn load(unknown_data: &[u8]) -> LinderaResult<UnknownDictionary> {
-        bincode::deserialize(unknown_data)
+        decode_from_slice::<UnknownDictionary, _>(unknown_data, standard())
+            .map(|(result, _)| result)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 

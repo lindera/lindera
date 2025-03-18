@@ -1,8 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
-use std::io;
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use byteorder::{LittleEndian, WriteBytesExt};
@@ -16,6 +15,9 @@ use crate::dictionary::UserDictionary;
 use crate::error::LinderaErrorKind;
 use crate::viterbi::{WordEntry, WordId};
 use crate::LinderaResult;
+
+use bincode::config::standard;
+use bincode::serde::encode_to_vec;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
 
@@ -123,8 +125,10 @@ impl UserDictionaryBuilder {
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_data, &word_detail)
+
+            let encoded = encode_to_vec(&word_detail, standard())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            words_data.extend(encoded);
         }
 
         let mut id = 0u32;
@@ -145,9 +149,9 @@ impl UserDictionaryBuilder {
         let mut vals_data = Vec::<u8>::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
-                word_entry
-                    .serialize(&mut vals_data)
+                let encoded = encode_to_vec(word_entry, standard())
                     .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                vals_data.extend(encoded);
             }
         }
 
@@ -158,23 +162,25 @@ impl UserDictionaryBuilder {
 }
 
 pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> LinderaResult<()> {
-    let parent_dir = match output_file.parent() {
-        Some(parent_dir) => parent_dir,
-        None => {
-            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                "failed to get parent directory of output file"
-            )))
-        }
-    };
+    let parent_dir = output_file.parent().ok_or_else(|| {
+        LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+            "failed to get parent directory of output file"
+        ))
+    })?;
+
     fs::create_dir_all(parent_dir)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-    let mut wtr = io::BufWriter::new(
-        File::create(output_file)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-    );
-    bincode::serialize_into(&mut wtr, &user_dict)
+    let file = File::create(output_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut wtr = BufWriter::new(file);
+
+    let encoded = encode_to_vec(&user_dict, standard())
         .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+
+    wtr.write_all(&encoded)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
     wtr.flush()
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 

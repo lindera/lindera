@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
+use bincode::config::standard;
+use bincode::serde::encode_to_vec;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_builder::Builder;
 use encoding_rs::UTF_16LE;
@@ -202,21 +204,21 @@ impl CharacterDefinitionBuilder {
         debug!("reading {:?}", char_def_path);
         let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;
 
-        // let mut char_definitions_builder = CharacterDefinitionsBuilder::default();
         self.parse(&char_def)?;
         let char_definitions = self.get_character_definition().clone();
 
-        let mut chardef_buffer = Vec::new();
-        bincode::serialize_into(&mut chardef_buffer, &char_definitions)
+        // Encode to `Vec<u8>`
+        let encoded_data = encode_to_vec(&char_definitions, standard())
             .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
-        let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
-        let mut wtr_chardef = io::BufWriter::new(
-            File::create(wtr_chardef_path)
+        let wtr_chardef_path = output_dir.join("char_def.bin");
+        let mut wtr_chardef = BufWriter::new(
+            File::create(&wtr_chardef_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
-        compress_write(&chardef_buffer, self.compress_algorithm, &mut wtr_chardef)?;
+        // Compress `encoded_data` and write it to `wtr_chardef`
+        compress_write(&encoded_data, self.compress_algorithm, &mut wtr_chardef)?;
 
         wtr_chardef
             .flush()

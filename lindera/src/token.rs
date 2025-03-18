@@ -123,27 +123,25 @@ impl<'a> Token<'a> {
     /// - The first time this method is called, it fetches the details from the dictionary (or user dictionary), but on subsequent calls, it returns the cached details in `self.details`.
     /// - If the token is unknown and no details can be retrieved, a default value (`UNK`) is used.
     pub fn details(&mut self) -> Vec<&str> {
-        // set details if it is not set yet.
         if self.details.is_none() {
-            let tmp = if self.word_id.is_unknown() {
-                UNK.to_vec()
+            let details: Vec<Cow<str>> = if self.word_id.is_unknown() {
+                UNK.iter().map(|&s| Cow::Borrowed(s)).collect()
             } else if self.word_id.is_system() {
                 self.dictionary.word_details(self.word_id.id as usize)
             } else {
-                match self.user_dictionary {
-                    Some(user_dictionary) => user_dictionary.word_details(self.word_id.id as usize),
-                    None => UNK.to_vec(),
-                }
+                self.user_dictionary.map_or_else(
+                    || UNK.iter().map(|&s| Cow::Borrowed(s)).collect(),
+                    |dict| dict.word_details(self.word_id.id as usize),
+                )
             };
 
-            self.details = Some(tmp.into_iter().map(Cow::Borrowed).collect());
+            self.details = Some(details);
         }
 
-        // convert Cow to &str.
-        self.details
-            .as_ref()
-            .map(|vec| vec.iter().map(|x| x.as_ref()).collect())
-            .unwrap_or_else(|| UNK.to_vec())
+        self.details.as_ref().map_or_else(
+            || UNK.to_vec(),
+            |vec| vec.iter().map(|x| x.as_ref()).collect(),
+        )
     }
 
     /// Retrieves the token's detail at the specified index, if available.
