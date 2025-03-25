@@ -94,6 +94,14 @@ impl TokenizerBuilder {
         })
     }
 
+     pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
+        println!("config: {:?}", config);
+
+        Ok(TokenizerBuilder {
+            config: ensure_keys(config),
+        })
+    }
+
     pub fn set_segmenter_mode(&mut self, mode: &Mode) -> &mut Self {
         self.config["segmenter"]["mode"] = json!(mode.as_str());
         self
