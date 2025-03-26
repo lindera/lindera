@@ -87,8 +87,6 @@ impl TokenizerBuilder {
     pub fn from_file(file_path: &Path) -> LinderaResult<Self> {
         let config = yaml_to_config(file_path)?;
 
-        println!("config: {:?}", config);
-
         Ok(TokenizerBuilder {
             config: ensure_keys(config),
         })
