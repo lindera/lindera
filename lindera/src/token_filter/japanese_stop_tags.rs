@@ -417,11 +417,6 @@ mod tests {
 
         filter.apply(&mut tokens).unwrap();
 
-        for token in &tokens {
-            // let details = token.details();
-            println!("{:?}", token.text);
-        }
-
         assert_eq!(tokens.len(), 4);
         assert_eq!(&tokens[0].text, "すもも");
         assert_eq!(&tokens[1].text, "もも");
