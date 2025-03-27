@@ -12,14 +12,14 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "0.40.0", path = "lindera-dictionary" }
-lindera-cc-cedict = { version = "0.40.0", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "0.40.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "0.40.0", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "0.40.0", path = "lindera-ko-dic" }
-lindera-unidic = { version = "0.40.0", path = "lindera-unidic" }
-lindera = { version = "0.40.0", path = "lindera" }
-lindera-cli = { version = "0.40.0", path = "lindera-cli" }
+lindera-dictionary = { version = "0.40.1", path = "lindera-dictionary" }
+lindera-cc-cedict = { version = "0.40.1", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "0.40.1", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "0.40.1", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "0.40.1", path = "lindera-ko-dic" }
+lindera-unidic = { version = "0.40.1", path = "lindera-unidic" }
+lindera = { version = "0.40.1", path = "lindera" }
+lindera-cli = { version = "0.40.1", path = "lindera-cli" }
 
 anyhow = "1.0.95"
 bincode = "1.3.3"
