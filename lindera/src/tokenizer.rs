@@ -1,17 +1,19 @@
-use std::{borrow::Cow, env, fs::File, io::Read, path::Path};
+use std::borrow::Cow;
+use std::env;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::{
-    character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader},
-    dictionary::DictionaryKind,
-    error::LinderaErrorKind,
-    mode::Mode,
-    segmenter::Segmenter,
-    token::Token,
-    token_filter::{BoxTokenFilter, TokenFilterLoader},
-    LinderaResult,
-};
+use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
+use crate::dictionary::DictionaryKind;
+use crate::error::LinderaErrorKind;
+use crate::mode::Mode;
+use crate::segmenter::Segmenter;
+use crate::token::Token;
+use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
+use crate::LinderaResult;
 
 pub type TokenizerConfig = Value;
 
@@ -426,7 +428,8 @@ mod tests {
     #[test]
     #[cfg(feature = "ipadic")]
     fn test_tokenize_ipadic() {
-        use std::{borrow::Cow, path::PathBuf};
+        use std::borrow::Cow;
+        use std::path::PathBuf;
 
         use crate::tokenizer::TokenizerBuilder;
 
