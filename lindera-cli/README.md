@@ -342,7 +342,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/simple_userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.csv
 ```
 
 ```text
@@ -361,7 +361,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.bin
 ```
 
 ```text

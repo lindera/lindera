@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
+use bincode::config::standard;
+use bincode::serde::encode_to_vec;
 use derive_builder::Builder;
 use log::debug;
 
@@ -37,17 +39,18 @@ impl UnknownDictionaryBuilder {
         let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, self.unk_fields_num)?;
 
-        let mut unk_buffer = Vec::new();
-        bincode::serialize_into(&mut unk_buffer, &unknown_dictionary)
+        // Encode to `Vec<u8>`
+        let encoded_data = encode_to_vec(&unknown_dictionary, standard())
             .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
-        let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
-        let mut wtr_unk = io::BufWriter::new(
-            File::create(wtr_unk_path)
+        let wtr_unk_path = output_dir.join("unk.bin");
+        let mut wtr_unk = BufWriter::new(
+            File::create(&wtr_unk_path)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
-        compress_write(&unk_buffer, self.compress_algorithm, &mut wtr_unk)?;
+        // Compress `encoded_data` and write it to `wtr_unk`
+        compress_write(&encoded_data, self.compress_algorithm, &mut wtr_unk)?;
 
         wtr_unk
             .flush()

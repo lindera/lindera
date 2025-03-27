@@ -223,7 +223,6 @@ pub fn load_user_dictionary_from_config(
                                         .with_error(anyhow::anyhow!("kind field must be a string"))
                                 },
                             )?)?;
-
                             load_user_dictionary_from_csv(kind, path.as_path())
                         }
                         None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(

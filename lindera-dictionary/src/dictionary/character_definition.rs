@@ -1,3 +1,5 @@
+use bincode::config::standard;
+use bincode::serde::decode_from_slice;
 use serde::{Deserialize, Serialize};
 
 use crate::error::LinderaErrorKind;
@@ -56,7 +58,8 @@ impl CharacterDefinition {
     }
 
     pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinition> {
-        bincode::deserialize(char_def_data)
+        decode_from_slice::<CharacterDefinition, _>(char_def_data, standard())
+            .map(|(result, _)| result)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 
