@@ -93,6 +93,7 @@ impl TokenizerBuilder {
     }
 
     pub fn from_config(config: TokenizerConfig) -> LinderaResult<Self> {
+        
         Ok(TokenizerBuilder {
             config: ensure_keys(config),
         })
