@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cc-cedict"
-version = "0.40.0"
+version = "0.40.2"
 edition = "2021"
 description = "A Japanese morphological dictionary for CC-CEDICT."
 documentation = "https://docs.rs/lindera-cc-cedict"
@@ -23,5 +23,8 @@ once_cell.workspace = true
 lindera-dictionary.workspace = true
 
 [build-dependencies]
-lindera-dictionary.workspace = true
 tokio.workspace = true
+
+[build-dependencies.lindera-dictionary]
+workspace = true
+features = ["build_rs"]
