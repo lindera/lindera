@@ -22,7 +22,7 @@ lindera = { version = "0.40.2", path = "lindera" }
 lindera-cli = { version = "0.40.2", path = "lindera-cli" }
 
 anyhow = "1.0.97"
-bincode = "1.3.3"
+bincode = "2.0.1"
 byteorder = "1.5.0"
 clap = { version = "4.5.34", features = ["derive", "cargo"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
