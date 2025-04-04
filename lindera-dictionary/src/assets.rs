@@ -1,8 +1,11 @@
 use std::error::Error;
 use std::path::Path;
 
-use log::debug;
-use reqwest::Client;
+use log::{debug, error, warn};
+use rand::rng;
+use rand::seq::SliceRandom;
+use reqwest::{self, Client};
+use tokio::time::{sleep, Duration};
 
 use crate::dictionary_builder::DictionaryBuilder;
 
@@ -19,8 +22,8 @@ pub struct FetchParams {
     /// Dummy input for docs.rs
     pub dummy_input: &'static str,
 
-    /// URL from which to fetch the asset
-    pub download_url: &'static str,
+    /// URLs from which to fetch the asset
+    pub download_urls: &'static [&'static str],
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -57,6 +60,51 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
         }
     }
     Ok(())
+}
+
+async fn download_with_retry(
+    client: &reqwest::Client,
+    download_urls: Vec<&str>,
+    max_rounds: usize,
+) -> Result<reqwest::Response, Box<dyn Error>> {
+    if download_urls.is_empty() {
+        return Err("No download URLs provided".into());
+    }
+
+    for round in 0..max_rounds {
+        let mut urls = download_urls.clone();
+        urls.shuffle(&mut rng());
+
+        debug!(
+            "Round {}/{}: Trying {} URLs",
+            round + 1,
+            max_rounds,
+            urls.len()
+        );
+
+        for url in urls {
+            debug!("Attempting to download from {}", url);
+            match client.get(url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    debug!("Download successful from {}", url);
+                    return Ok(resp);
+                }
+                Ok(resp) => {
+                    warn!("Download failed from {}: HTTP {}", url, resp.status());
+                    // drop response and continue
+                }
+                Err(e) => {
+                    warn!("Request error from {}: {}", url, e);
+                    // continue to next url
+                }
+            }
+        }
+
+        sleep(Duration::from_secs(1)).await;
+    }
+
+    error!("All {} attempts failed", max_rounds);
+    Err("Failed to download from all sources".into())
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`
@@ -140,9 +188,9 @@ pub async fn fetch(
             .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
             .build()?;
 
-        debug!("Downloading {}", params.download_url);
+        debug!("Downloading {:?}", params.download_urls);
         let mut dest = File::create(tmp_path.as_path())?;
-        let resp = client.get(params.download_url).send().await?;
+        let resp = download_with_retry(&client, params.download_urls.to_vec(), 3).await?;
 
         debug!("Status: {}", resp.status());
 
