@@ -9,6 +9,8 @@ use tokio::time::{sleep, Duration};
 
 use crate::dictionary_builder::DictionaryBuilder;
 
+const MAX_ROUND: usize = 3;
+
 pub struct FetchParams {
     /// Dictionary file name
     pub file_name: &'static str,
@@ -190,7 +192,7 @@ pub async fn fetch(
 
         debug!("Downloading {:?}", params.download_urls);
         let mut dest = File::create(tmp_path.as_path())?;
-        let resp = download_with_retry(&client, params.download_urls.to_vec(), 3).await?;
+        let resp = download_with_retry(&client, params.download_urls.to_vec(), MAX_ROUND).await?;
 
         debug!("Status: {}", resp.status());
 
