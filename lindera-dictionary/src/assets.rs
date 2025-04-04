@@ -4,7 +4,7 @@ use std::path::Path;
 use log::{debug, error, warn};
 use rand::rng;
 use rand::seq::SliceRandom;
-use reqwest::{self, Client};
+use reqwest::{Client, Response};
 use tokio::time::{sleep, Duration};
 
 use crate::dictionary_builder::DictionaryBuilder;
@@ -65,10 +65,10 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 async fn download_with_retry(
-    client: &reqwest::Client,
+    client: &Client,
     download_urls: Vec<&str>,
     max_rounds: usize,
-) -> Result<reqwest::Response, Box<dyn Error>> {
+) -> Result<Response, Box<dyn Error>> {
     if download_urls.is_empty() {
         return Err("No download URLs provided".into());
     }
