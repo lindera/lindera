@@ -30,9 +30,11 @@ flate2 = { workspace = true }
 glob.workspace = true
 log.workspace = true
 once_cell.workspace = true
+rand.workspace = true
 serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
+tokio.workspace = true
 yada.workspace = true
 memmap2 = { workspace = true, optional = true }
 
