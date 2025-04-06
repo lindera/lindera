@@ -93,7 +93,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.34.0", features = ["ipadic"] }
+lindera = { version = "0.40.0", features = ["ipadic"] }
 ```
 
 For example:
