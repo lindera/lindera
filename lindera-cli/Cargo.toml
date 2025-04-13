@@ -1,6 +1,6 @@
 [package]
 name = "lindera-cli"
-version = "0.40.2"
+version = "0.41.0"
 edition = "2021"
 description = "A morphological analysis command line interface."
 documentation = "https://docs.rs/lindera-cli"
@@ -12,13 +12,15 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []  # No directories included
-ipadic = ["lindera/ipadic"]  # Include IPADIC dictionary (Japanese)
-ipadic-neologd = ["lindera/ipadic-neologd"]  # Include IPADIC NEologd dictionary (Japanese)
-unidic = ["lindera/unidic"]  # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera/ko-dic"]  # Include ko-dic dictionary (Korean)
-cc-cedict = ["lindera/cc-cedict"]  # Include CC-CEDICT dictionary (Chinese)
-compress = ["lindera/compress"]  # Compress dictionaries
+default = [] # No directories included
+ipadic = ["lindera/ipadic"] # Include IPADIC dictionary (Japanese)
+ipadic-neologd = [
+    "lindera/ipadic-neologd",
+] # Include IPADIC NEologd dictionary (Japanese)
+unidic = ["lindera/unidic"] # Include UniDic dictionary (Japanese)
+ko-dic = ["lindera/ko-dic"] # Include ko-dic dictionary (Korean)
+cc-cedict = ["lindera/cc-cedict"] # Include CC-CEDICT dictionary (Chinese)
+compress = ["lindera/compress"] # Compress dictionaries
 cjk = ["lindera/cjk"] # Include CJK dictionaries
 cjk2 = ["lindera/cjk2"] # Include CJK dictionaries
 cjk3 = ["lindera/cjk3"] # Include CJK dictionaries
