@@ -9,8 +9,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             input_dir: "mecab-ko-dic-2.1.1-20180720",
             output_dir: "lindera-ko-dic",
             download_urls: &[
-                "https://lindera.s3.ap-northeast-1.amazonaws.com/mecab-ko-dic-2.1.1-20180720.tar.gz",
-                "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+                ("https://lindera.s3.ap-northeast-1.amazonaws.com/mecab-ko-dic-2.1.1-20180720.tar.gz", "https://lindera.s3.ap-northeast-1.amazonaws.com/mecab-ko-dic-2.1.1-20180720.tar.gz.md5"),
+                ("https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz", "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz.md5")
             ],
             dummy_input: "테스트,1785,3543,4721,NNG,행위,F,테스트,*,*,*,*\n",
         },

@@ -9,8 +9,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             input_dir: "CC-CEDICT-MeCab-0.1.0-20200409",
             output_dir: "lindera-cc-cedict",
             download_urls: &[
-                "https://lindera.s3.ap-northeast-1.amazonaws.com/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz",
-                "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
+                ("https://lindera.s3.ap-northeast-1.amazonaws.com/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz", "https://lindera.s3.ap-northeast-1.amazonaws.com/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz.md5"),
+                ("https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz", "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz.md5"),
             ],
             dummy_input: "测试,0,0,-1131,*,*,*,*,ce4 shi4,測試,测试,to test (machinery etc)/to test (students)/test/quiz/exam/beta (software)/\n",
         },

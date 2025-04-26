@@ -9,8 +9,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             input_dir: "unidic-mecab-2.1.2",
             output_dir: "lindera-unidic",
             download_urls: &[
-                "https://lindera.s3.ap-northeast-1.amazonaws.com/unidic-mecab-2.1.2.tar.gz",
-                "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
+                ("https://lindera.s3.ap-northeast-1.amazonaws.com/unidic-mecab-2.1.2.tar.gz", "https://lindera.s3.ap-northeast-1.amazonaws.com/unidic-mecab-2.1.2.tar.gz.md5"),
+                ("https://Lindera.dev/unidic-mecab-2.1.2.tar.gz", "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz.md5"),
             ],
             dummy_input: "テスト,5131,5131,767,名詞,普通名詞,サ変可能,*,*,*,テスト,テスト-test,テスト,テスト,テスト,テスト,外,*,*,*,*\n",
         },
