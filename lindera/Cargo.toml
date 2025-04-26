@@ -53,7 +53,7 @@ unicode-normalization.workspace = true
 unicode-segmentation.workspace = true
 yada.workspace = true
 
-lindera-dictionary.workspace = true
+lindera-dictionary = { workspace = true, default-features = false }
 lindera-cc-cedict = { workspace = true, optional = true }
 lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }

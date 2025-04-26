@@ -12,7 +12,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "0.41.0", path = "lindera-dictionary" }
+lindera-dictionary = { version = "0.41.0", path = "lindera-dictionary", default-features = false }
 lindera-cc-cedict = { version = "0.41.0", path = "lindera-cc-cedict" }
 lindera-ipadic = { version = "0.41.0", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "0.41.0", path = "lindera-ipadic-neologd" }
