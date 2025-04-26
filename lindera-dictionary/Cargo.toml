@@ -12,7 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = []
+default = ["build_rs"]
 compress = []
 memmap = ["dep:memmap2"]
 build_rs = ["dep:reqwest"]
@@ -32,16 +32,13 @@ log.workspace = true
 md5.workspace = true
 once_cell.workspace = true
 rand.workspace = true
+reqwest = { workspace = true, optional = true }
 serde.workspace = true
 tar = { workspace = true }
 thiserror.workspace = true
 tokio.workspace = true
 yada.workspace = true
 memmap2 = { workspace = true, optional = true }
-
-[dependencies.reqwest]
-workspace = true
-optional = true
 
 [dev-dependencies]
 rand.workspace = true
