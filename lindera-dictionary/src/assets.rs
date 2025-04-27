@@ -1,8 +1,11 @@
-use std::error::Error;
 use std::path::Path;
+use std::{error::Error, time::Duration};
 
-use log::debug;
-use rand::rng;
+use log::{debug, error, warn};
+use md5::Context;
+use rand::{rng, seq::SliceRandom};
+use reqwest::Client;
+use tokio::time::sleep;
 
 use crate::dictionary_builder::DictionaryBuilder;
 
@@ -21,8 +24,11 @@ pub struct FetchParams {
     /// Dummy input for docs.rs
     pub dummy_input: &'static str,
 
-    /// URLs from which to fetch the asset, with their MD5 checksums
-    pub download_urls: &'static [(&'static str, &'static str)],
+    /// URLs from which to fetch the asset
+    pub download_urls: &'static [&'static str],
+
+    /// MD5 hash of the file
+    pub md5_hash: &'static str,
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -61,11 +67,77 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+async fn download_with_retry(
+    client: &Client,
+    download_urls: Vec<&str>,
+    max_rounds: usize,
+    expected_md5: &str,
+) -> Result<Vec<u8>, Box<dyn Error>> {
+    if download_urls.is_empty() {
+        return Err("No download URLs provided".into());
+    }
+
+    for round in 0..max_rounds {
+        let mut urls = download_urls.clone();
+        urls.shuffle(&mut rng());
+
+        debug!(
+            "Round {}/{}: Trying {} URLs",
+            round + 1,
+            max_rounds,
+            urls.len()
+        );
+
+        for url in urls {
+            debug!("Attempting to download from {}", url);
+            match client.get(url).send().await {
+                Ok(resp) if resp.status().is_success() => {
+                    debug!("HTTP download successful from {}", url);
+
+                    let content = resp.bytes().await?;
+
+                    // Calculate MD5 hash
+                    let mut context = Context::new();
+                    context.consume(&content);
+                    let actual_md5 = format!("{:x}", context.compute());
+
+                    debug!("Expected MD5: {}", expected_md5);
+                    debug!("Actual   MD5: {}", actual_md5);
+
+                    if actual_md5 == expected_md5 {
+                        debug!("MD5 check passed from {}", url);
+                        return Ok(content.to_vec());
+                    } else {
+                        warn!(
+                            "MD5 mismatch from {}! Expected {}, got {}",
+                            url, expected_md5, actual_md5
+                        );
+                        // continue to next url
+                    }
+                }
+                Ok(resp) => {
+                    warn!("HTTP download failed from {}: HTTP {}", url, resp.status());
+                    // continue to next url
+                }
+                Err(e) => {
+                    warn!("Request error from {}: {}", url, e);
+                    // continue to next url
+                }
+            }
+        }
+
+        sleep(Duration::from_secs(1)).await;
+    }
+
+    error!("All {} attempts failed", max_rounds);
+    Err("Failed to download a valid file from all sources".into())
+}
+
 /// Fetch the necessary assets and then build the dictionary using `builder`
 pub async fn fetch(
     params: FetchParams,
     builder: impl DictionaryBuilder,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs::{create_dir, rename, File};
     use std::io::{self, Cursor, Read, Write};
@@ -74,9 +146,6 @@ pub async fn fetch(
     use encoding::all::UTF_8;
     use encoding::{EncoderTrap, Encoding};
     use flate2::read::GzDecoder;
-    use md5::Context;
-    use rand::seq::SliceRandom;
-    use reqwest::Client;
     use tar::Archive;
 
     println!("cargo:rerun-if-changed=build.rs");
@@ -145,93 +214,22 @@ pub async fn fetch(
             .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
             .build()?;
 
-        let mut last_error = None;
-        let mut round = 0;
+        debug!("Downloading {:?}", params.download_urls);
+        let mut dest = File::create(tmp_path.as_path())?;
+        let content = download_with_retry(
+            &client,
+            params.download_urls.to_vec(),
+            MAX_ROUND,
+            params.md5_hash,
+        )
+        .await?;
 
-        while round < MAX_ROUND {
-            let mut download_urls = params.download_urls.to_vec();
-            download_urls.shuffle(&mut rng());
+        io::copy(&mut Cursor::new(content.as_slice()), &mut dest)?;
+        dest.flush()?;
 
-            for (file_url, md5_url) in &download_urls {
-                debug!(
-                    "Round {}: Downloading dictionary from {}",
-                    round + 1,
-                    file_url
-                );
-
-                let mut dest = File::create(&tmp_path)?;
-                let resp = client.get(*file_url).send().await;
-
-                if let Ok(resp) = resp {
-                    if resp.status().is_success() {
-                        let content = resp.bytes().await?;
-                        io::copy(&mut content.as_ref(), &mut dest)?;
-                        dest.flush()?;
-
-                        debug!("Content-Length: {}", content.len());
-                        debug!("Downloaded to {}", tmp_path.display());
-
-                        // Download and verify MD5 checksum
-                        debug!("Downloading md5 file from {}", md5_url);
-                        let md5_resp = client.get(*md5_url).send().await?;
-
-                        if !md5_resp.status().is_success() {
-                            debug!("Failed to download md5: {}", md5_resp.status());
-                            last_error =
-                                Some(format!("MD5 download failed: {}", md5_resp.status()));
-                            continue;
-                        }
-
-                        let md5_text = md5_resp.text().await?.trim().to_string();
-
-                        // Calculate MD5 checksum of the downloaded file
-                        let mut file = File::open(&tmp_path)?;
-                        let mut buf = Vec::new();
-                        file.read_to_end(&mut buf)?;
-
-                        let mut context = Context::new();
-                        context.consume(&buf);
-                        let file_md5 = format!("{:x}", context.compute());
-
-                        debug!("Downloaded file MD5: {}", file_md5);
-                        debug!("Expected MD5 from .md5 file: {}", md5_text);
-
-                        if file_md5 == md5_text {
-                            debug!("Checksum matched!");
-                            rename(&tmp_path, source_path_for_build)
-                                .expect("Failed to rename temporary file");
-                            last_error = None;
-                            break;
-                        } else {
-                            debug!("Checksum mismatch, trying next...");
-                            last_error = Some("Checksum mismatch".to_string());
-                            continue;
-                        }
-                    } else {
-                        debug!("Failed with status: {}", resp.status());
-                        last_error = Some(format!("Download failed: {}", resp.status()));
-                        continue;
-                    }
-                } else {
-                    debug!("Download request failed");
-                    last_error = Some("Request error".to_string());
-                    continue;
-                }
-            }
-
-            if last_error.is_none() {
-                break; // Exit the loop if download was successful
-            }
-
-            round += 1;
-
-            // Suffle the download URLs for the next round
-            download_urls.shuffle(&mut rng());
-        }
-
-        if let Some(error) = last_error {
-            return Err(error.into());
-        }
+        debug!("Content-Length: {}", content.len());
+        debug!("Downloaded to {}", tmp_path.display());
+        rename(tmp_path.clone(), source_path_for_build).expect("Failed to rename temporary file");
 
         // Decompress a tar.gz file
         let tmp_extract_path =
@@ -276,6 +274,7 @@ pub async fn fetch(
         }
 
         let _ = std::fs::remove_dir_all(&tmp_extract_path);
+        drop(dest);
         let _ = std::fs::remove_file(source_path_for_build);
     }
 

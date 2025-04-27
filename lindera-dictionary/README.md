@@ -1,8 +1,8 @@
-# Lindera Core
+# Lindera Dictionary
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Crates.io](https://img.shields.io/crates/v/lindera-core.svg)](https://crates.io/crates/lindera-core)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Crates.io](https://img.shields.io/crates/v/lindera-dictionary.svg)](https://crates.io/crates/lindera-dictionary)
 
-A morphological analysis core library for [Lindera](https://github.com/lindera-morphology/lindera). This project fork from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
+A morphological analysis dictionary library for [Lindera](https://github.com/lindera-morphology/lindera).
 
 This package contains dictionary structures and the viterbi algorithm.
 
@@ -60,7 +60,6 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 11 | 読み | Reading | |
 | 12 | 発音 | Pronunciation | |
 | 13 | - | - | After 13, it can be freely expanded. |
-
 
 ### IPADIC NEologd
 
@@ -296,4 +295,4 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 The API reference is available. Please see following URL:
 
-- [lindera-core](https://docs.rs/lindera-core)
+- [lindera-dictionary](https://docs.rs/lindera-dictionary)
