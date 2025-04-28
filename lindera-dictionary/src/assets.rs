@@ -3,7 +3,9 @@ use std::{error::Error, time::Duration};
 
 use log::{debug, error, warn};
 use md5::Context;
-use rand::{rng, seq::SliceRandom};
+use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
 use reqwest::Client;
 use tokio::time::sleep;
 
@@ -79,7 +81,8 @@ async fn download_with_retry(
 
     for round in 0..max_rounds {
         let mut urls = download_urls.clone();
-        urls.shuffle(&mut rng());
+        let mut rng = SmallRng::seed_from_u64(0);
+        urls.shuffle(&mut rng);
 
         debug!(
             "Round {}/{}: Trying {} URLs",
