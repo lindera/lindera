@@ -1,7 +1,7 @@
 use std::error::Error;
 
 #[cfg(feature = "cc-cedict")]
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     lindera_dictionary::assets::fetch(
         lindera_dictionary::assets::FetchParams {
