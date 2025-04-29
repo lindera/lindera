@@ -35,15 +35,14 @@ pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedD
 
 #[cfg(test)]
 mod tests {
-    use rand::{rngs::SmallRng, Rng, SeedableRng};
-
     use crate::decompress::decompress;
 
     use super::*;
+    use rand::prelude::*;
 
     #[test]
     fn compress_decompress() {
-        let mut rng = SmallRng::seed_from_u64(0);
+        let mut rng = rand::rng();
         let mut buf = Vec::new();
 
         for _i in 0..10000 {
