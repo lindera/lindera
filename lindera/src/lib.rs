@@ -13,6 +13,12 @@ use crate::error::LinderaErrorKind;
 
 pub type LinderaResult<T> = lindera_dictionary::LinderaResult<T>;
 
+const VERERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub fn get_version() -> &'static str {
+    VERERSION
+}
+
 fn parse_cli_flag(cli_flag: &str) -> LinderaResult<(&str, Value)> {
     let (kind, json) = cli_flag.split_once(':').unwrap_or((cli_flag, ""));
 
