@@ -13,9 +13,15 @@ use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
 use lindera::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
+use lindera_cli::get_version;
 
 #[derive(Debug, Parser)]
-#[clap(name = "linera", author, about, version)]
+#[clap(
+    name = "linera",
+    author,
+    about = "A morphological analysis command line interface",
+    version = get_version(),
+)]
 struct Args {
     #[clap(subcommand)]
     command: Commands,
@@ -32,7 +38,7 @@ enum Commands {
 #[clap(
     author,
     about = "List a contained morphological analysis dictionaries",
-    version
+    version = get_version(),
 )]
 struct ListArgs {}
 
@@ -40,7 +46,7 @@ struct ListArgs {}
 #[clap(
     author,
     about = "Tokenize text using a morphological analysis dictionary",
-    version
+    version = get_version(),
 )]
 struct TokenizeArgs {
     #[clap(short = 'k', long = "dictionary-kind", help = "Kind of dictionary")]
@@ -88,7 +94,10 @@ struct TokenizeArgs {
 }
 
 #[derive(Debug, clap::Args)]
-#[clap(author, about = "Build a morphological analysis dictionary", version)]
+#[clap(author,
+    about = "Build a morphological analysis dictionary",
+    version = get_version(),
+)]
 struct BuildArgs {
     #[clap(
         short = 'u',
