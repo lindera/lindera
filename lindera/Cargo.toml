@@ -27,11 +27,11 @@ cjk2 = ["unidic", "ko-dic", "cc-cedict"] # Include CJK dictionaries
 cjk3 = ["ipadic-neologd", "ko-dic", "cc-cedict"] # Include CJK dictionaries
 compress = [
     "lindera-dictionary/compress",
-    "lindera-ipadic/compress",
-    "lindera-ipadic-neologd/compress",
-    "lindera-unidic/compress",
-    "lindera-ko-dic/compress",
-    "lindera-cc-cedict/compress",
+    "lindera-ipadic?/compress",
+    "lindera-ipadic-neologd?/compress",
+    "lindera-unidic?/compress",
+    "lindera-ko-dic?/compress",
+    "lindera-cc-cedict?/compress",
 ] # Compress dictionaries
 memmap = ["lindera-dictionary/memmap"]
 
