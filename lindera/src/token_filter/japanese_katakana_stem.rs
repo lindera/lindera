@@ -130,7 +130,7 @@ mod tests {
             "#;
         let result: Result<JapaneseKatakanaStemTokenFilterConfig, _> =
             serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -145,7 +145,7 @@ mod tests {
         let result: Result<JapaneseKatakanaStemTokenFilterConfig, _> =
             serde_json::from_str(config_str);
 
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -163,7 +163,7 @@ mod tests {
             serde_json::from_str(config_str).unwrap();
         let result = JapaneseKatakanaStemTokenFilter::from_config(&config);
 
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -182,7 +182,7 @@ mod tests {
             serde_json::from_str(config_str).unwrap();
         let result = JapaneseKatakanaStemTokenFilter::from_config(&config);
 
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
     }
 
     #[test]

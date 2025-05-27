@@ -97,7 +97,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
             let tag = details[0..tags_len].join(",");
 
             // Determine whether to convert the token based on the config tags.
-            let should_convert = self.tags.as_ref().map_or(true, |tags| tags.contains(&tag));
+            let should_convert = self.tags.as_ref().is_none_or(|tags| tags.contains(&tag));
 
             // If conversion is required, apply the Arabic numeral conversion.
             if should_convert {
@@ -832,7 +832,7 @@ mod tests {
                 "#;
             let result: Result<JapaneseNumberTokenFilterConfig, _> =
                 serde_json::from_str(config_str);
-            assert_eq!(result.is_ok(), true);
+            assert!(result.is_ok());
         }
         {
             let config_str = r#"
@@ -841,7 +841,7 @@ mod tests {
                 "#;
             let result: Result<JapaneseNumberTokenFilterConfig, _> =
                 serde_json::from_str(config_str);
-            assert_eq!(result.is_ok(), true);
+            assert!(result.is_ok());
         }
 
         {
@@ -854,7 +854,7 @@ mod tests {
                 "#;
             let result: Result<JapaneseNumberTokenFilterConfig, _> =
                 serde_json::from_str(config_str);
-            assert_eq!(result.is_ok(), true);
+            assert!(result.is_ok());
         }
     }
 
@@ -869,7 +869,7 @@ mod tests {
             let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
             let result = JapaneseNumberTokenFilter::from_config(&config);
 
-            assert_eq!(true, result.is_ok());
+            assert!(result.is_ok());
         }
 
         {
@@ -883,7 +883,7 @@ mod tests {
             let config: JapaneseNumberTokenFilterConfig = serde_json::from_str(config_str).unwrap();
             let result = JapaneseNumberTokenFilter::from_config(&config);
 
-            assert_eq!(true, result.is_ok());
+            assert!(result.is_ok());
         }
     }
 

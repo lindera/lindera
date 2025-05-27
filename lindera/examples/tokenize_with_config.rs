@@ -15,11 +15,11 @@ fn main() -> LinderaResult<()> {
 
         let tokenizer = builder.build()?;
 
-        let mut text =
+        let text =
             "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
         println!("text: {}", text);
 
-        let tokens = tokenizer.tokenize(&mut text)?;
+        let tokens = tokenizer.tokenize(&text)?;
 
         for token in tokens {
             println!(

@@ -199,7 +199,7 @@ impl PrefixDictionaryBuilder {
             } else {
                 row.iter().skip(4).collect::<Vec<&str>>().join("\0")
             };
-            let joined_details_len = u32::try_from(joined_details.as_bytes().len())
+            let joined_details_len = u32::try_from(joined_details.len())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
             dict_words_buffer

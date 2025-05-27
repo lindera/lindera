@@ -392,7 +392,6 @@ impl Clone for Tokenizer {
 mod tests {
     #[cfg(feature = "ipadic")]
     #[test]
-    #[cfg(feature = "ipadic")]
     fn test_tokenizer_config_from_slice() {
         use std::path::PathBuf;
 
@@ -404,7 +403,7 @@ mod tests {
 
         let result = yaml_to_config(&config_file);
 
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
     }
 
     #[test]
