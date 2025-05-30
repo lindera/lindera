@@ -17,7 +17,7 @@ use lindera_cli::get_version;
 
 #[derive(Debug, Parser)]
 #[clap(
-    name = "linera",
+    name = env!("CARGO_BIN_NAME"),
     author,
     about = "A morphological analysis command line interface",
     version = get_version(),
