@@ -169,7 +169,7 @@ mod tests {
         }
         "#;
         let result: Result<MappingCharacterFilterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -188,7 +188,7 @@ mod tests {
         let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
 
         let result = MappingCharacterFilter::from_config(&config);
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
     }
 
     #[test]

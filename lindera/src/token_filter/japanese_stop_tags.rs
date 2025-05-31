@@ -157,7 +157,7 @@ mod tests {
             }
             "#;
         let result: Result<JapaneseStopTagsTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
         let config: JapaneseStopTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let result = JapaneseStopTagsTokenFilter::from_config(&config);
 
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
     }
 
     #[test]

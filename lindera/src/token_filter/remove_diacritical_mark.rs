@@ -41,7 +41,7 @@ impl RemoveDiacriticalMarkTokenFilter {
     pub fn from_config(config: &RemoveDiacriticalMarkTokenFilterConfig) -> LinderaResult<Self> {
         let japanese = config
             .get("japanese")
-            .map_or(false, |v| v.as_bool().unwrap_or(false));
+            .is_some_and(|v| v.as_bool().unwrap_or(false));
 
         Ok(Self::new(japanese))
     }
@@ -114,7 +114,7 @@ mod tests {
         "#;
         let result: Result<RemoveDiacriticalMarkTokenFilterConfig, _> =
             serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod tests {
             serde_json::from_str(config_str).unwrap();
         let result = RemoveDiacriticalMarkTokenFilter::from_config(&config);
 
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
     }
 
     #[test]

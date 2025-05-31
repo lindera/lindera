@@ -73,7 +73,7 @@ mod tests {
             }
             "#;
         let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
 
         let config_str = r#"
             {
@@ -81,7 +81,7 @@ mod tests {
             }
             "#;
         let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
 
         let config_str = r#"
             {
@@ -89,7 +89,7 @@ mod tests {
             }
             "#;
         let result: Result<LengthTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -102,7 +102,7 @@ mod tests {
             "#;
         let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let result = LengthTokenFilter::from_config(&config);
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
 
         let config_str = r#"
             {
@@ -111,7 +111,7 @@ mod tests {
             "#;
         let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let result = LengthTokenFilter::from_config(&config);
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
 
         let config_str = r#"
             {
@@ -120,7 +120,7 @@ mod tests {
             "#;
         let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let result = LengthTokenFilter::from_config(&config);
-        assert_eq!(true, result.is_ok());
+        assert!(result.is_ok());
     }
 
     #[test]

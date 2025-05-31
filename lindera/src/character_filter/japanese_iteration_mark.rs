@@ -258,21 +258,21 @@ mod tests {
     fn hiragana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;
         // か…ぢ
-        (codepoint >= 0x304b && codepoint <= 0x3062 && codepoint % 2 == 0) ||
+        ((0x304b..=0x3062).contains(&codepoint) && codepoint % 2 == 0) ||
         // つ…ど
-        (codepoint >= 0x3064 && codepoint <= 0x3069 && codepoint % 2 == 1) ||
+        ((0x3064..=0x3069).contains(&codepoint) && codepoint % 2 == 1) ||
         // は…ぽ
-        (codepoint >= 0x306f && codepoint <= 0x307d && codepoint % 3 == 1)
+        ((0x306f..=0x307d).contains(&codepoint) && codepoint % 3 == 1)
     }
 
     fn katakana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;
         // カ…ヂ
-        (codepoint >= 0x30ab && codepoint <= 0x30c2 && codepoint % 2 == 0) ||
+        ((0x30ab..=0x30c2).contains(&codepoint) && codepoint % 2 == 0) ||
         // ツ…ド
-        (codepoint >= 0x30c4 && codepoint <= 0x30c9 && codepoint % 2 == 1) ||
+        ((0x30c4..=0x30c9).contains(&codepoint) && codepoint % 2 == 1) ||
         // ハ…ポ
-        (codepoint >= 0x30cf && codepoint <= 0x30dd && codepoint % 3 == 1)
+        ((0x30cf..=0x30dd).contains(&codepoint) && codepoint % 3 == 1)
     }
 
     static HIRAGANA_DAKUON_MAP: Lazy<HashMap<char, char>> = Lazy::new(|| {
@@ -375,7 +375,7 @@ mod tests {
         "#;
         let result: Result<JapaneseIterationMarkCharacterFilterConfig, _> =
             serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]

@@ -247,7 +247,7 @@ mod tests {
         "#;
 
         let result: Result<SegmenterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -270,7 +270,7 @@ mod tests {
         "#;
 
         let result: Result<SegmenterConfig, _> = serde_json::from_str(config_str);
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
     }
 
     #[test]
