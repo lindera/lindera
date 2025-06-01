@@ -28,34 +28,6 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
-  # check:
-  #   name: Check
-  #   needs: [format]
-  #   strategy:
-  #     matrix:
-  #       platform:
-  #         - runner: ubuntu-latest
-  #           target: x86_64-unknown-linux-gnu
-  #         - runner: macOS-latest
-  #           target: aarch64-apple-darwin
-  #         - runner: windows-latest
-  #           target: x86_64-pc-windows-msvc
-  #       toolchain: [stable]
-  #   runs-on: ${{ matrix.platform.runner }}
-  #   steps:
-  #     - name: Run checkout
-  #       uses: actions/checkout@v4
-
-  #     - name: Install toolchain
-  #       uses: dtolnay/rust-toolchain@v1
-  #       with:
-  #         toolchain: ${{ matrix.toolchain }}
-  #         target: ${{ matrix.platform.target }}
-  #         components: rustfmt, clippy
-
-  #     - name: Run check
-  #       run: cargo check --target "${{ matrix.platform.target }}" --all-features
-
   test:
     name: Test
     needs: [format]

@@ -12,19 +12,19 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "0.43.0", path = "lindera-dictionary", default-features = false }
-lindera-cc-cedict = { version = "0.43.0", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "0.43.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "0.43.0", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "0.43.0", path = "lindera-ko-dic" }
-lindera-unidic = { version = "0.43.0", path = "lindera-unidic" }
-lindera = { version = "0.43.0", path = "lindera" }
-lindera-cli = { version = "0.43.0", path = "lindera-cli" }
+lindera-dictionary = { version = "0.43.1", path = "lindera-dictionary", default-features = false }
+lindera-cc-cedict = { version = "0.43.1", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "0.43.1", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "0.43.1", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "0.43.1", path = "lindera-ko-dic" }
+lindera-unidic = { version = "0.43.1", path = "lindera-unidic" }
+lindera = { version = "0.43.1", path = "lindera" }
+lindera-cli = { version = "0.43.1", path = "lindera-cli" }
 
 anyhow = "1.0.98"
 bincode = "1.3.3"
 byteorder = "1.5.0"
-clap = { version = "4.5.38", features = ["derive", "cargo"] }
+clap = { version = "4.5.39", features = ["derive", "cargo"] }
 criterion = { version = "0.6.0", default-features = false, features = [
     "html_reports",
 ] }
@@ -44,7 +44,7 @@ rand = { version = "0.9.1", default-features = false, features = [
     "small_rng",
 ] } # Specify `default-features` and `features` to support WebAssembly
 regex = "1.11.1"
-reqwest = { version = "0.12.15", features = [
+reqwest = { version = "0.12.18", features = [
     "rustls-tls",
 ], default-features = false } # use rustls-tls instead of native-tls which avoids the need to link openssl
 serde = { version = "1.0.219", features = ["derive"] }
@@ -54,7 +54,7 @@ strum = { version = "0.27.1", features = ["derive"] }
 strum_macros = "0.27.1"
 tar = "0.4.44"
 thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = [
+tokio = { version = "1.45.1", features = [
     "rt",
     "macros",
     "time",
