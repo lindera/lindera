@@ -1,11 +1,11 @@
 [package]
 name = "lindera-cc-cedict"
-version = "0.43.0"
+version = "0.43.1"
 edition = "2021"
 description = "A Japanese morphological dictionary for CC-CEDICT."
 documentation = "https://docs.rs/lindera-cc-cedict"
-homepage = "https://github.com/lindera-morphology/lindera"
-repository = "https://github.com/lindera-morphology/lindera"
+homepage = "https://github.com/lindera/lindera"
+repository = "https://github.com/lindera/lindera"
 readme = "README.md"
 keywords = ["chinese", "morphological", "dictionary", "cc-cedict"]
 categories = ["text-processing"]

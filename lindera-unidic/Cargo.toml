@@ -1,11 +1,11 @@
 [package]
 name = "lindera-unidic"
-version = "0.43.0"
+version = "0.43.1"
 edition = "2021"
 description = "A Japanese morphological dictionary for UniDic."
 documentation = "https://docs.rs/lindera-unidic"
-homepage = "https://github.com/lindera-morphology/lindera"
-repository = "https://github.com/lindera-morphology/lindera"
+homepage = "https://github.com/lindera/lindera"
+repository = "https://github.com/lindera/lindera"
 readme = "README.md"
 keywords = ["japanese", "morphological", "dictionary", "unidic"]
 categories = ["text-processing"]

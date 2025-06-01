@@ -1,11 +1,11 @@
 [package]
 name = "lindera-ko-dic"
-version = "0.43.0"
+version = "0.43.1"
 edition = "2021"
 description = "A Japanese morphological dictionary for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic"
-homepage = "https://github.com/lindera-morphology/lindera"
-repository = "https://github.com/lindera-morphology/lindera"
+homepage = "https://github.com/lindera/lindera"
+repository = "https://github.com/lindera/lindera"
 readme = "README.md"
 keywords = ["korean", "morphological", "dictionary", "ko-dic"]
 categories = ["text-processing"]
