@@ -78,7 +78,7 @@ impl UserDictionary {
         }
         let idx = LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4]);
         let data = &self.dict.words_data[idx as usize..];
-        
+
         // Parse the data in the same format as main Dictionary
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,

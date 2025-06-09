@@ -16,8 +16,9 @@ macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-            let (compressed_data, _) = bincode::serde::decode_from_slice(&$bytes[..], bincode::config::legacy())
-                .expect(concat!("invalid file format ", $filename));
+            let (compressed_data, _) =
+                bincode::serde::decode_from_slice(&$bytes[..], bincode::config::legacy())
+                    .expect(concat!("invalid file format ", $filename));
             decompress(compressed_data).expect(concat!("invalid file format ", $filename))
         });
         #[cfg(not(feature = "compress"))]

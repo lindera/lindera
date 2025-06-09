@@ -123,12 +123,12 @@ impl UserDictionaryBuilder {
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            
+
             // Store word details as null-separated string (like main dictionary)
             let joined_details = word_detail.join("\0");
             let joined_details_len = u32::try_from(joined_details.len())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-            
+
             words_data
                 .write_u32::<LittleEndian>(joined_details_len)
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
