@@ -38,7 +38,7 @@ impl UnknownDictionaryBuilder {
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, self.unk_fields_num)?;
 
         let mut unk_buffer = Vec::new();
-        bincode::serialize_into(&mut unk_buffer, &unknown_dictionary)
+        bincode::serde::encode_into_std_write(&unknown_dictionary, &mut unk_buffer, bincode::config::legacy())
             .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));

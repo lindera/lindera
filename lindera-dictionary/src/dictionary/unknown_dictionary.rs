@@ -16,7 +16,8 @@ pub struct UnknownDictionary {
 
 impl UnknownDictionary {
     pub fn load(unknown_data: &[u8]) -> LinderaResult<UnknownDictionary> {
-        bincode::deserialize(unknown_data)
+        bincode::serde::decode_from_slice(unknown_data, bincode::config::legacy())
+            .map(|(result, _len)| result)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 
