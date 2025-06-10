@@ -207,8 +207,12 @@ impl CharacterDefinitionBuilder {
         let char_definitions = self.get_character_definition().clone();
 
         let mut chardef_buffer = Vec::new();
-        bincode::serialize_into(&mut chardef_buffer, &char_definitions)
-            .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        bincode::serde::encode_into_std_write(
+            &char_definitions,
+            &mut chardef_buffer,
+            bincode::config::legacy(),
+        )
+        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
 
         let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
         let mut wtr_chardef = io::BufWriter::new(

@@ -24,7 +24,7 @@ pub fn compress_write<W: Write>(
 ) -> LinderaResult<()> {
     let compressed = compress(buffer, algorithm)
         .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
-    bincode::serialize_into(writer, &compressed)
+    bincode::serde::encode_into_std_write(&compressed, writer, bincode::config::legacy())
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     Ok(())

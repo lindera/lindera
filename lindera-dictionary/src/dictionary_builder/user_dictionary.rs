@@ -123,7 +123,17 @@ impl UserDictionaryBuilder {
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            bincode::serialize_into(&mut words_data, &word_detail)
+
+            // Store word details as null-separated string (like main dictionary)
+            let joined_details = word_detail.join("\0");
+            let joined_details_len = u32::try_from(joined_details.len())
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+
+            words_data
+                .write_u32::<LittleEndian>(joined_details_len)
+                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            words_data
+                .write_all(joined_details.as_bytes())
                 .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
         }
 
@@ -173,7 +183,7 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
         File::create(output_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     );
-    bincode::serialize_into(&mut wtr, &user_dict)
+    bincode::serde::encode_into_std_write(&user_dict, &mut wtr, bincode::config::legacy())
         .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
     wtr.flush()
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;

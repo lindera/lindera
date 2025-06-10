@@ -19,8 +19,11 @@ impl ConnectionCostMatrixLoader {
 
         #[cfg(feature = "compress")]
         {
-            let compressed_data = bincode::deserialize_from(data.as_slice())
-                .map_err(|err| LinderaErrorKind::Deserialize.with_error(err))?;
+            let (compressed_data, _) =
+                bincode::serde::decode_from_slice(data.as_slice(), bincode::config::legacy())
+                    .map_err(|err| {
+                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                    })?;
             data = decompress(compressed_data)
                 .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
         }

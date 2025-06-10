@@ -56,7 +56,8 @@ impl CharacterDefinition {
     }
 
     pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinition> {
-        bincode::deserialize(char_def_data)
+        bincode::serde::decode_from_slice(char_def_data, bincode::config::legacy())
+            .map(|(result, _len)| result)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
     }
 
