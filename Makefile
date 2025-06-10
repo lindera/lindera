@@ -7,25 +7,25 @@ LINDERA_UNIDIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | 
 LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 LINDERA_CLI_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
 
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := help
 
-clean:
+clean: ## Clean the project
 	cargo clean
 
-format:
+format: ## Format the project
 	cargo fmt
 
-build:
+build: ## Build the project
 	cargo build --release
 
-test:
+test: ## Test the project
 	cargo test
 
-tag:
+tag: ## Make a tag
 	git tag v$(LINDERA_VERSION)
 	git push origin v$(LINDERA_VERSION)
 
-publish:
+publish: ## Publish package to crates.io
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
 	(cd lindera-dictionary && cargo package && cargo publish)
 	sleep 10
@@ -57,3 +57,7 @@ endif
 ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
 	(cd lindera-cli && cargo package && cargo publish)
 endif
+
+help: ## Show help
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
