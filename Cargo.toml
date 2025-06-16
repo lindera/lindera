@@ -44,7 +44,7 @@ rand = { version = "0.9.1", default-features = false, features = [
     "small_rng",
 ] } # Specify `default-features` and `features` to support WebAssembly
 regex = "1.11.1"
-reqwest = { version = "0.12.19", features = [
+reqwest = { version = "0.12.20", features = [
     "rustls-tls",
 ], default-features = false } # use rustls-tls instead of native-tls which avoids the need to link openssl
 serde = { version = "1.0.219", features = ["derive"] }
