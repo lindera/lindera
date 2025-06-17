@@ -75,26 +75,26 @@ jobs:
             archive: .zip
             extension: .exe
         toolchain: [stable]
-        include:
-          - features: "default"
+        features:
+          - value: "default"
             package_name: "lindera"
             package_description: "Lindera (no dictionary)"
-          - features: "ipadic"
+          - value: "ipadic"
             package_name: "lindera-ipadic"
             package_description: "Lindera with Japanese dictionary (IPADIC)"
-          - features: "ipadic-neologd"
+          - value: "ipadic-neologd"
             package_name: "lindera-ipadic-nelneologd"
             package_description: "Lindera with Japanese dictionary (IPADIC-NEologd)"
-          - features: "unidic"
+          - value: "unidic"
             package_name: "lindera-unidic"
             package_description: "Lindera with Japanese dictionary (UniDic)"
-          - features: "ko-dic"
+          - value: "ko-dic"
             package_name: "lindera-ko-dic"
             package_description: "Lindera with Korean dictionary (ko-dic)"
-          - features: "cc-cedict"
+          - value: "cc-cedict"
             package_name: "lindera-cc-cedict"
             package_description: "Lindera with Chinese dictionary (CC-CEDICT)"
-          - features: "cjk"
+          - value: "cjk"
             package_name: "lindera-cjk"
             package_description: "Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
 
@@ -132,26 +132,26 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Compile
-        run: cargo build --release --features="${{ matrix.features }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features }}
+        run: cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
 
       - name: Create artifact for Linux
         if: matrix.platform.runner == 'ubuntu-latest'
-        run: zip --junk-paths ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
         if: matrix.platform.runner == 'windows-latest'
-        run: powershell Compress-Archive -DestinationPath ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: powershell Compress-Archive -DestinationPath ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for OSX
         if: matrix.platform.runner == 'macos-latest'
-        run: zip --junk-paths ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: lindera-${{ matrix.features }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
+          files: ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
