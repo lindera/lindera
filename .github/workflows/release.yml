@@ -75,7 +75,29 @@ jobs:
             archive: .zip
             extension: .exe
         toolchain: [stable]
-        feature: [cjk, cjk2, cjk3]
+        include:
+          - features: "default"
+            package_name: "lindera"
+            package_description: "Lindera (no dictionary)"
+          - features: "ipadic"
+            package_name: "lindera-ipadic"
+            package_description: "Lindera with Japanese dictionary (IPADIC)"
+          - features: "ipadic-neologd"
+            package_name: "lindera-ipadic-nelneologd"
+            package_description: "Lindera with Japanese dictionary (IPADIC-NEologd)"
+          - features: "unidic"
+            package_name: "lindera-unidic"
+            package_description: "Lindera with Japanese dictionary (UniDic)"
+          - features: "ko-dic"
+            package_name: "lindera-ko-dic"
+            package_description: "Lindera with Korean dictionary (ko-dic)"
+          - features: "cc-cedict"
+            package_name: "lindera-cc-cedict"
+            package_description: "Lindera with Chinese dictionary (CC-CEDICT)"
+          - features: "cjk"
+            package_name: "lindera-cjk"
+            package_description: "Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
+
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -110,26 +132,26 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Compile
-        run: cargo build --release --features="${{ matrix.feature }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.feature }}
+        run: cargo build --release --features="${{ matrix.features }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features }}
 
       - name: Create artifact for Linux
         if: matrix.platform.runner == 'ubuntu-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
         if: matrix.platform.runner == 'windows-latest'
-        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: powershell Compress-Archive -DestinationPath ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for OSX
         if: matrix.platform.runner == 'macos-latest'
-        run: zip --junk-paths lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.feature }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths ${{ matrix.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: lindera-${{ matrix.feature }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
+          files: lindera-${{ matrix.features }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           draft: false
@@ -164,10 +186,12 @@ jobs:
             echo "lindera-dictionary ${LINDERA_DICTIONARY_VERSION} has already published"
           else
             pushd lindera-dictionary
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-cc-cedict
         run: |
@@ -177,10 +201,12 @@ jobs:
             echo "lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION} has already published"
           else
             pushd lindera-cc-cedict
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-ipadic
         run: |
@@ -190,10 +216,12 @@ jobs:
             echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already published"
           else
             pushd lindera-ipadic
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-ipadic-neologd
         run: |
@@ -203,10 +231,12 @@ jobs:
             echo "lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION} has already published"
           else
             pushd lindera-ipadic-neologd
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-ko-dic
         run: |
@@ -216,10 +246,12 @@ jobs:
             echo "lindera-ko-dic ${LINDERA_KO_DIC_VERSION} has already published"
           else
             pushd lindera-ko-dic
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-unidic
         run: |
@@ -229,10 +261,12 @@ jobs:
             echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
           else
             pushd lindera-unidic
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera
         run: |
@@ -242,10 +276,12 @@ jobs:
             echo "lindera ${LINDERA_VERSION} has already published"
           else
             pushd lindera
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
           sleep 20
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
       - name: Publish lindera-cli
         run: |
@@ -255,6 +291,8 @@ jobs:
             echo "lindera-cli ${LINDERA_CLI_VERSION} has already published"
           else
             pushd lindera-cli
-            cargo publish --token ${{ secrets.CRATES_TOKEN }}
+            cargo publish
             popd
           fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
