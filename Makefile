@@ -15,6 +15,9 @@ clean: ## Clean the project
 format: ## Format the project
 	cargo fmt
 
+lint: ## Lint the project
+	cargo clippy --all-targets --all-features -- -D warnings
+
 build: ## Build the project
 	cargo build --release
 
