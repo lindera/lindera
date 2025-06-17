@@ -75,7 +75,6 @@ jobs:
             archive: .zip
             extension: .exe
         toolchain: [stable]
-        # feature: [cjk, cjk2, cjk3]
         include:
           - features: "default"
             package_name: "lindera"
