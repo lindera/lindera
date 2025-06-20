@@ -7,6 +7,8 @@ LINDERA_UNIDIC_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | 
 LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 LINDERA_CLI_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
 
+USER_AGENT ?= $(shell curl --version | head -n1 | awk '{print $1"/"$2}')
+
 .DEFAULT_GOAL := help
 
 clean: ## Clean the project
@@ -29,35 +31,35 @@ tag: ## Make a tag
 	git push origin v$(LINDERA_VERSION)
 
 publish: ## Publish package to crates.io
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num' | grep $(LINDERA_DICTIONARY_VERSION)),)
 	(cd lindera-dictionary && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r '.versions[].num' | grep $(LINDERA_CC_CEDICT_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r '.versions[].num' | grep $(LINDERA_CC_CEDICT_VERSION)),)
 	(cd lindera-cc-cedict && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_VERSION)),)
 	(cd lindera-ipadic && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_NEOLOGD_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r '.versions[].num' | grep $(LINDERA_IPADIC_NEOLOGD_VERSION)),)
 	(cd lindera-ipadic-neologd && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-ko-dic | jq -r '.versions[].num' | grep $(LINDERA_KO_DIC_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-ko-dic | jq -r '.versions[].num' | grep $(LINDERA_KO_DIC_VERSION)),)
 	(cd lindera-ko-dic && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-unidic | jq -r '.versions[].num' | grep $(LINDERA_UNIDIC_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-unidic | jq -r '.versions[].num' | grep $(LINDERA_UNIDIC_VERSION)),)
 	(cd lindera-unidic && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num' | grep $(LINDERA_VERSION)),)
 	(cd lindera && cargo package && cargo publish)
 	sleep 10
 endif
-ifeq ($(shell curl -s -XGET https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
+ifeq ($(shell curl -s -XGET -H "User-Agent: $(USER_AGENT) (your-email@example.com)" https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num' | grep $(LINDERA_CLI_VERSION)),)
 	(cd lindera-cli && cargo package && cargo publish)
 endif
 
