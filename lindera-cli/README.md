@@ -72,37 +72,45 @@ Instead, you will be penalized for the execution time of the program.
 ### IPADIC (Japanese dictionary)
 
 ```shell script
-% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "https://github.com/lindera-morphology/mecab-ipadic/archive/refs/tags/2.7.0-20070801.tar.gz"
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
 % lindera build --dictionary-kind=ipadic /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
 % ls -al /tmp/lindera-ipadic-2.7.0-20070801
+% (cd /tmp && zip -r lindera-ipadic-2.7.0-20070801.zip lindera-ipadic-2.7.0-20070801/)
+% tar -czf /tmp/lindera-ipadic-2.7.0-20070801.tar.gz -C /tmp lindera-ipadic-2.7.0-20070801
 ```
 
 ### CC-CEDICT (Chinese dictionary)
 
 ```shell script
-% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://github.com/lindera-morphology/CC-CEDICT-MeCab/archive/refs/tags/0.1.0-20200409.tar.gz"
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
 % lindera build --dictionary-kind=cc-cedict /tmp/CC-CEDICT-MeCab-0.1.0-20200409 /tmp/lindera-cc-cedict-0.1.0-20200409
 % ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
+% (cd /tmp && zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
+% tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
 ```
 
 ### ko-dic (Korean dictionary)
 
 ```shell script
-% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://github.com/lindera-morphology/mecab-ko-dic/archive/refs/tags/2.1.1-20180720.tar.gz"
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
 % lindera build --dictionary-kind=ko-dic /tmp/mecab-ko-dic-2.1.1-20180720 /tmp/lindera-ko-dic-2.1.1-20180720
 % ls -al /tmp/lindera-ko-dic-2.1.1-20180720
+% (cd /tmp && zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
+% tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
 ```
 
 ### UniDic (Japanese dictionary)
 
 ```shell script
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://github.com/lindera-morphology/unidic-mecab/archive/refs/tags/2.1.2.tar.gz"
+% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
 % tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
 % lindera build --dictionary-kind=unidic /tmp/unidic-mecab-2.1.2 /tmp/lindera-unidic-2.1.2
 % ls -al /tmp/lindera-unidic-2.1.2
+% (cd /tmp && zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
+% tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
 ```
 
 ## Build user dictionary
