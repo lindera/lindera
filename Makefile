@@ -21,7 +21,7 @@ lint: ## Lint the project
 	cargo clippy --all-targets --all-features -- -D warnings
 
 build: ## Build the project
-	cargo build --release
+	cargo build --release --all-features
 
 test: ## Test the project
 	cargo test
