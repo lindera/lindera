@@ -12,10 +12,10 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = ["build_rs"]
-compress = []
-memmap = ["dep:memmap2"]
 build_rs = ["dep:reqwest"]
+compress = []
+mmap = ["dep:memmap2"]
+default = ["compress", "mmap"]
 
 [dependencies]
 anyhow.workspace = true

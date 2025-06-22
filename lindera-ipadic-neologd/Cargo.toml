@@ -14,6 +14,7 @@ license = "MIT"
 [features]
 ipadic-neologd = []
 compress = ["lindera-dictionary/compress"]
+default = ["compress"]
 
 [dependencies]
 bincode.workspace = true

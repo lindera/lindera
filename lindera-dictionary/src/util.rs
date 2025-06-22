@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use std::ops::Deref;
 use std::path::Path;
 
-#[cfg(feature = "memmap")]
+#[cfg(feature = "mmap")]
 use memmap2::Mmap;
 
 use anyhow::anyhow;
@@ -53,8 +53,8 @@ pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
     Ok(buffer)
 }
 
-#[cfg(feature = "memmap")]
-pub fn memmap_file(filename: &Path) -> LinderaResult<Mmap> {
+#[cfg(feature = "mmap")]
+pub fn mmap_file(filename: &Path) -> LinderaResult<Mmap> {
     let file = File::open(filename)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let mmap = unsafe { Mmap::map(&file) }
@@ -75,7 +75,7 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
 pub enum Data {
     Static(&'static [u8]),
     Vec(Vec<u8>),
-    #[cfg(feature = "memmap")]
+    #[cfg(feature = "mmap")]
     Map(Mmap),
 }
 
@@ -85,7 +85,7 @@ impl Deref for Data {
         match self {
             Data::Static(s) => s,
             Data::Vec(v) => v,
-            #[cfg(feature = "memmap")]
+            #[cfg(feature = "mmap")]
             Data::Map(m) => m,
         }
     }
@@ -109,7 +109,7 @@ impl From<Vec<u8>> for Data {
     }
 }
 
-#[cfg(feature = "memmap")]
+#[cfg(feature = "mmap")]
 impl From<Mmap> for Data {
     fn from(m: Mmap) -> Self {
         Self::Map(m)
@@ -121,7 +121,7 @@ impl Clone for Data {
         match self {
             Data::Static(s) => Data::Static(s),
             Data::Vec(v) => Data::Vec(v.clone()),
-            #[cfg(feature = "memmap")]
+            #[cfg(feature = "mmap")]
             Data::Map(m) => Data::Vec(m.to_vec()),
         }
     }
@@ -135,7 +135,7 @@ impl Serialize for Data {
         match self {
             Self::Static(s) => serializer.serialize_bytes(s),
             Self::Vec(v) => serializer.serialize_bytes(v),
-            #[cfg(feature = "memmap")]
+            #[cfg(feature = "mmap")]
             Self::Map(m) => serializer.serialize_bytes(m),
         }
     }

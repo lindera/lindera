@@ -5,8 +5,8 @@ use crate::decompress::decompress;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
-#[cfg(feature = "memmap")]
-use crate::util::memmap_file;
+#[cfg(feature = "mmap")]
+use crate::util::mmap_file;
 use crate::util::read_file;
 use crate::LinderaResult;
 
@@ -70,12 +70,12 @@ impl PrefixDictionaryLoader {
         ))
     }
 
-    #[cfg(feature = "memmap")]
-    pub fn load_memmap(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
-        let da_data = memmap_file(input_dir.join("dict.da").as_path())?;
-        let vals_data = memmap_file(input_dir.join("dict.vals").as_path())?;
-        let words_idx_data = memmap_file(input_dir.join("dict.wordsidx").as_path())?;
-        let words_data = memmap_file(input_dir.join("dict.words").as_path())?;
+    #[cfg(feature = "mmap")]
+    pub fn load_mmap(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
+        let da_data = mmap_file(input_dir.join("dict.da").as_path())?;
+        let vals_data = mmap_file(input_dir.join("dict.vals").as_path())?;
+        let words_idx_data = mmap_file(input_dir.join("dict.wordsidx").as_path())?;
+        let words_data = mmap_file(input_dir.join("dict.words").as_path())?;
 
         Ok(PrefixDictionary::load(
             da_data,
