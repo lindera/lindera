@@ -12,19 +12,30 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = [] # No directories included
-ipadic = ["lindera-ipadic/ipadic"] # Include IPADIC dictionary (Japanese)
+ipadic = ["lindera-ipadic/ipadic"] # Include Japanese dictionary (IPADIC)
 ipadic-neologd = [
     "lindera-ipadic-neologd/ipadic-neologd",
-] # Include IPADIC NEologd dictionary (Japanese)
-unidic = ["lindera-unidic/unidic"] # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera-ko-dic/ko-dic"] # Include ko-dic dictionary (Korean)
+] # Include Japanese dictionary (IPADIC NEologd)
+unidic = ["lindera-unidic/unidic"] # Include Japanese dictionary (UniDic)
+ko-dic = ["lindera-ko-dic/ko-dic"] # Include Korean dictionary (ko-dic)
 cc-cedict = [
     "lindera-cc-cedict/cc-cedict",
-] # Include CC-CEDICT dictionary (Chinese)
-cjk = ["ipadic", "ko-dic", "cc-cedict"] # Include CJK dictionaries
-cjk2 = ["unidic", "ko-dic", "cc-cedict"] # Include CJK dictionaries
-cjk3 = ["ipadic-neologd", "ko-dic", "cc-cedict"] # Include CJK dictionaries
+] # Include Chinese dictionary (CC-CEDICT)
+cjk = [
+    "ipadic",
+    "ko-dic",
+    "cc-cedict",
+] # Include CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
+cjk2 = [
+    "unidic",
+    "ko-dic",
+    "cc-cedict",
+] # Include CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
+cjk3 = [
+    "ipadic-neologd",
+    "ko-dic",
+    "cc-cedict",
+] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",
@@ -33,7 +44,8 @@ compress = [
     "lindera-ko-dic?/compress",
     "lindera-cc-cedict?/compress",
 ] # Compress dictionaries
-memmap = ["lindera-dictionary/memmap"]
+mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
+default = ["compress", "mmap"]
 
 [dependencies]
 anyhow.workspace = true
@@ -53,12 +65,13 @@ unicode-normalization.workspace = true
 unicode-segmentation.workspace = true
 yada.workspace = true
 
-lindera-dictionary = { workspace = true, default-features = false }
-lindera-cc-cedict = { workspace = true, optional = true }
+lindera-dictionary = { workspace = true }
 lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }
-lindera-ko-dic = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
+lindera-ko-dic = { workspace = true, optional = true }
+lindera-cc-cedict = { workspace = true, optional = true }
+
 
 [dev-dependencies]
 serde_json.workspace = true

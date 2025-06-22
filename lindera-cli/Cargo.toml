@@ -12,18 +12,21 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-default = [] # No directories included
-ipadic = ["lindera/ipadic"] # Include IPADIC dictionary (Japanese)
+ipadic = ["lindera/ipadic"] # Include Japanese dictionary (IPADIC)
 ipadic-neologd = [
     "lindera/ipadic-neologd",
-] # Include IPADIC NEologd dictionary (Japanese)
-unidic = ["lindera/unidic"] # Include UniDic dictionary (Japanese)
-ko-dic = ["lindera/ko-dic"] # Include ko-dic dictionary (Korean)
-cc-cedict = ["lindera/cc-cedict"] # Include CC-CEDICT dictionary (Chinese)
+] # Include Japanese dictionary (IPADIC NEologd)
+unidic = ["lindera/unidic"] # Include Japanese dictionary (UniDic)
+ko-dic = ["lindera/ko-dic"] # Include Korean dictionary (ko-dic)
+cc-cedict = ["lindera/cc-cedict"] # Include Chinese dictionary (CC-CEDICT)
+cjk = ["lindera/cjk"] # Include CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
+cjk2 = ["lindera/cjk2"] # Include CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
+cjk3 = [
+    "lindera/cjk3",
+] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
 compress = ["lindera/compress"] # Compress dictionaries
-cjk = ["lindera/cjk"] # Include CJK dictionaries
-cjk2 = ["lindera/cjk2"] # Include CJK dictionaries
-cjk3 = ["lindera/cjk3"] # Include CJK dictionaries
+mmap = ["lindera/mmap"] # Use memory-mapped file
+default = ["compress", "mmap"]
 
 [dependencies]
 anyhow.workspace = true
