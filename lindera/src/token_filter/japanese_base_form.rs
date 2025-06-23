@@ -81,35 +81,35 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
     ///
     /// If any issue arises while processing tokens, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        for token in tokens.iter_mut() {
-            if let Some(detail) = token.get_detail(0) {
-                if detail == "UNK" {
-                    continue;
-                }
-            }
+        macro_rules! apply_base_form {
+            ($($feature:literal => $kind:path => $index:expr),* $(,)?) => {
+                for token in tokens.iter_mut() {
+                    if let Some(detail) = token.get_detail(0) {
+                        if detail == "UNK" {
+                            continue;
+                        }
+                    }
 
-            // Get the index of the detail that contains the base form.
-            match self.kind {
-                #[cfg(feature = "ipadic")]
-                DictionaryKind::IPADIC => {
-                    if let Some(detail) = token.get_detail(6) {
-                        token.text = Cow::Owned(detail.to_string());
+                    // Get the index of the detail that contains the base form.
+                    match self.kind {
+                        $(
+                            #[cfg(feature = $feature)]
+                            $kind => {
+                                if let Some(detail) = token.get_detail($index) {
+                                    token.text = Cow::Owned(detail.to_string());
+                                }
+                            }
+                        )*
+                        _ => continue,
                     }
                 }
-                #[cfg(feature = "ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => {
-                    if let Some(detail) = token.get_detail(6) {
-                        token.text = Cow::Owned(detail.to_string());
-                    }
-                }
-                #[cfg(feature = "unidic")]
-                DictionaryKind::UniDic => {
-                    if let Some(detail) = token.get_detail(10) {
-                        token.text = Cow::Owned(detail.to_string());
-                    }
-                }
-                _ => continue,
-            }
+            };
+        }
+
+        apply_base_form! {
+            "ipadic" => DictionaryKind::IPADIC => 6,
+            "ipadic-neologd" => DictionaryKind::IPADICNEologd => 6,
+            "unidic" => DictionaryKind::UniDic => 10,
         }
 
         Ok(())
@@ -118,6 +118,8 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    // テストマクロは lib.rs で定義されているため、直接使用できます
+    // use crate::test_macros::*; は不要
     #[test]
     fn test_japanese_base_form_token_filter_config_ipadic() {
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;

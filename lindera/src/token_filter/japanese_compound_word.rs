@@ -20,6 +20,7 @@ pub type JapaneseCompoundWordTokenFilterConfig = Value;
 pub struct JapaneseCompoundWordTokenFilter {
     kind: DictionaryKind,
     tags: HashSet<String>,
+    #[allow(dead_code)]
     new_tag: Option<String>,
 }
 

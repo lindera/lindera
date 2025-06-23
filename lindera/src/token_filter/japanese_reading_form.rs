@@ -89,28 +89,28 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
                 }
             }
 
-            match self.kind {
-                #[cfg(feature = "ipadic")]
-                DictionaryKind::IPADIC => {
-                    if let Some(detail) = token.get_detail(7) {
-                        token.text = Cow::Owned(detail.to_string());
+            macro_rules! apply_reading_form {
+                ($($feature:literal => $kind:path => $index:expr),* $(,)?) => {
+                    match self.kind {
+                        $(
+                            #[cfg(feature = $feature)]
+                            $kind => {
+                                if let Some(detail) = token.get_detail($index) {
+                                    token.text = Cow::Owned(detail.to_string());
+                                }
+                            }
+                        )*
+                        _ => {
+                            // NOOP
+                        }
                     }
-                }
-                #[cfg(feature = "ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => {
-                    if let Some(detail) = token.get_detail(7) {
-                        token.text = Cow::Owned(detail.to_string());
-                    }
-                }
-                #[cfg(feature = "unidic")]
-                DictionaryKind::UniDic => {
-                    if let Some(detail) = token.get_detail(6) {
-                        token.text = Cow::Owned(detail.to_string());
-                    }
-                }
-                _ => {
-                    // NOOP
-                }
+                };
+            }
+
+            apply_reading_form! {
+                "ipadic" => DictionaryKind::IPADIC => 7,
+                "ipadic-neologd" => DictionaryKind::IPADICNEologd => 7,
+                "unidic" => DictionaryKind::UniDic => 6,
             }
         }
 

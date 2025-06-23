@@ -26,89 +26,38 @@ macro_rules! decompress_data {
     };
 }
 
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
+macro_rules! cc_cedict_data {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "cc-cedict")]
+        decompress_data!(
+            $name,
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
+            $filename
+        );
+        #[cfg(not(feature = "cc-cedict"))]
+        decompress_data!($name, &[], $filename);
+    };
+}
+
+cc_cedict_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/char_def.bin"
-    )),
+    "/lindera-cc-cedict/char_def.bin",
     "char_def.bin"
 );
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
+cc_cedict_data!(
     CONNECTION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/matrix.mtx"
-    )),
+    "/lindera-cc-cedict/matrix.mtx",
     "matrix.mtx"
 );
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
-    DA_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/dict.da"
-    )),
-    "dict.da"
-);
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(DA_DATA, &[], "dict.da");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
-    VALS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/dict.vals"
-    )),
-    "dict.vals"
-);
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(VALS_DATA, &[], "dict.vals");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
-    UNKNOWN_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/unk.bin"
-    )),
-    "unk.bin"
-);
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
+cc_cedict_data!(DA_DATA, "/lindera-cc-cedict/dict.da", "dict.da");
+cc_cedict_data!(VALS_DATA, "/lindera-cc-cedict/dict.vals", "dict.vals");
+cc_cedict_data!(UNKNOWN_DATA, "/lindera-cc-cedict/unk.bin", "unk.bin");
+cc_cedict_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/dict.wordsidx"
-    )),
+    "/lindera-cc-cedict/dict.wordsidx",
     "dict.wordsidx"
 );
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
-
-#[cfg(feature = "cc-cedict")]
-decompress_data!(
-    WORDS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-cc-cedict/dict.words"
-    )),
-    "dict.words"
-);
-#[cfg(not(feature = "cc-cedict"))]
-decompress_data!(WORDS_DATA, &[], "dict.words");
+cc_cedict_data!(WORDS_DATA, "/lindera-cc-cedict/dict.words", "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     #[cfg(feature = "compress")]

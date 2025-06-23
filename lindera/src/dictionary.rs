@@ -117,31 +117,29 @@ pub fn load_dictionary_from_path_mmap(path: &Path) -> LinderaResult<Dictionary> 
     })
 }
 
-pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
-    // The dictionary specified by the feature flag will be loaded.
-    match kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => {
-            lindera_ipadic::ipadic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
+macro_rules! load_dictionary_impl {
+    ($($feature:literal => $kind:path => $loader:path),* $(,)?) => {
+        pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
+            // The dictionary specified by the feature flag will be loaded.
+            match kind {
+                $(
+                    #[cfg(feature = $feature)]
+                    $kind => $loader().map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
+                )*
+                #[allow(unreachable_patterns)]
+                _ => Err(LinderaErrorKind::Args
+                    .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
+            }
         }
-        #[cfg(feature = "ipadic-neologd")]
-        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => {
-            lindera_unidic::unidic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
-        }
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => {
-            lindera_ko_dic::ko_dic::load().map_err(|e| LinderaErrorKind::NotFound.with_error(e))
-        }
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[allow(unreachable_patterns)]
-        _ => Err(LinderaErrorKind::Args
-            .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
-    }
+    };
+}
+
+load_dictionary_impl! {
+    "ipadic" => DictionaryKind::IPADIC => lindera_ipadic::ipadic::load,
+    "ipadic-neologd" => DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load,
+    "unidic" => DictionaryKind::UniDic => lindera_unidic::unidic::load,
+    "ko-dic" => DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load,
+    "cc-cedict" => DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load,
 }
 
 pub fn load_dictionary_from_config(

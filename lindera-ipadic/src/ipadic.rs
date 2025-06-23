@@ -26,83 +26,34 @@ macro_rules! decompress_data {
     };
 }
 
-#[cfg(feature = "ipadic")]
-decompress_data!(
+macro_rules! ipadic_data {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "ipadic")]
+        decompress_data!(
+            $name,
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
+            $filename
+        );
+        #[cfg(not(feature = "ipadic"))]
+        decompress_data!($name, &[], $filename);
+    };
+}
+
+ipadic_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic/char_def.bin"
-    )),
+    "/lindera-ipadic/char_def.bin",
     "char_def.bin"
 );
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
-    CONNECTION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic/matrix.mtx"
-    )),
-    "matrix.mtx"
-);
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
-    DA_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ipadic/dict.da")),
-    "dict.da"
-);
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(DA_DATA, &[], "dict.da");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
-    VALS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic/dict.vals"
-    )),
-    "dict.vals"
-);
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(VALS_DATA, &[], "dict.vals");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
-    UNKNOWN_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ipadic/unk.bin")),
-    "unk.bin"
-);
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
+ipadic_data!(CONNECTION_DATA, "/lindera-ipadic/matrix.mtx", "matrix.mtx");
+ipadic_data!(DA_DATA, "/lindera-ipadic/dict.da", "dict.da");
+ipadic_data!(VALS_DATA, "/lindera-ipadic/dict.vals", "dict.vals");
+ipadic_data!(UNKNOWN_DATA, "/lindera-ipadic/unk.bin", "unk.bin");
+ipadic_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic/dict.wordsidx"
-    )),
+    "/lindera-ipadic/dict.wordsidx",
     "dict.wordsidx"
 );
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
-
-#[cfg(feature = "ipadic")]
-decompress_data!(
-    WORDS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic/dict.words"
-    )),
-    "dict.words"
-);
-#[cfg(not(feature = "ipadic"))]
-decompress_data!(WORDS_DATA, &[], "dict.words");
+ipadic_data!(WORDS_DATA, "/lindera-ipadic/dict.words", "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     #[cfg(feature = "compress")]
