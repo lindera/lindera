@@ -227,7 +227,6 @@ mod tests {
 
     #[cfg(any(
         feature = "ipadic",
-        feature = "ipadic-neologd",
         feature = "unidic",
         feature = "ko-dic",
         feature = "cc-cedict"

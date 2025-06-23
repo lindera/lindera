@@ -26,83 +26,34 @@ macro_rules! decompress_data {
     };
 }
 
-#[cfg(feature = "ko-dic")]
-decompress_data!(
+macro_rules! ko_dic_data {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "ko-dic")]
+        decompress_data!(
+            $name,
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
+            $filename
+        );
+        #[cfg(not(feature = "ko-dic"))]
+        decompress_data!($name, &[], $filename);
+    };
+}
+
+ko_dic_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ko-dic/char_def.bin"
-    )),
+    "/lindera-ko-dic/char_def.bin",
     "char_def.bin"
 );
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
-    CONNECTION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ko-dic/matrix.mtx"
-    )),
-    "matrix.mtx"
-);
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
-    DA_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ko-dic/dict.da")),
-    "dict.da"
-);
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(DA_DATA, &[], "dict.da");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
-    VALS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ko-dic/dict.vals"
-    )),
-    "dict.vals"
-);
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(VALS_DATA, &[], "dict.vals");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
-    UNKNOWN_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-ko-dic/unk.bin")),
-    "unk.bin"
-);
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
+ko_dic_data!(CONNECTION_DATA, "/lindera-ko-dic/matrix.mtx", "matrix.mtx");
+ko_dic_data!(DA_DATA, "/lindera-ko-dic/dict.da", "dict.da");
+ko_dic_data!(VALS_DATA, "/lindera-ko-dic/dict.vals", "dict.vals");
+ko_dic_data!(UNKNOWN_DATA, "/lindera-ko-dic/unk.bin", "unk.bin");
+ko_dic_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ko-dic/dict.wordsidx"
-    )),
+    "/lindera-ko-dic/dict.wordsidx",
     "dict.wordsidx"
 );
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
-
-#[cfg(feature = "ko-dic")]
-decompress_data!(
-    WORDS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ko-dic/dict.words"
-    )),
-    "dict.words"
-);
-#[cfg(not(feature = "ko-dic"))]
-decompress_data!(WORDS_DATA, &[], "dict.words");
+ko_dic_data!(WORDS_DATA, "/lindera-ko-dic/dict.words", "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     #[cfg(feature = "compress")]

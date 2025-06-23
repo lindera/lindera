@@ -27,89 +27,42 @@ macro_rules! decompress_data {
     };
 }
 
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
+macro_rules! ipadic_neologd_data {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "ipadic-neologd")]
+        decompress_data!(
+            $name,
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
+            $filename
+        );
+        #[cfg(not(feature = "ipadic-neologd"))]
+        decompress_data!($name, &[], $filename);
+    };
+}
+
+ipadic_neologd_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/char_def.bin"
-    )),
+    "/lindera-ipadic-neologd/char_def.bin",
     "char_def.bin"
 );
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
+ipadic_neologd_data!(
     CONNECTION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/matrix.mtx"
-    )),
+    "/lindera-ipadic-neologd/matrix.mtx",
     "matrix.mtx"
 );
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
-    DA_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/dict.da"
-    )),
-    "dict.da"
-);
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(DA_DATA, &[], "dict.da");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
-    VALS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/dict.vals"
-    )),
-    "dict.vals"
-);
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(VALS_DATA, &[], "dict.vals");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
-    UNKNOWN_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/unk.bin"
-    )),
-    "unk.bin"
-);
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
+ipadic_neologd_data!(DA_DATA, "/lindera-ipadic-neologd/dict.da", "dict.da");
+ipadic_neologd_data!(VALS_DATA, "/lindera-ipadic-neologd/dict.vals", "dict.vals");
+ipadic_neologd_data!(UNKNOWN_DATA, "/lindera-ipadic-neologd/unk.bin", "unk.bin");
+ipadic_neologd_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/dict.wordsidx"
-    )),
+    "/lindera-ipadic-neologd/dict.wordsidx",
     "dict.wordsidx"
 );
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
-
-#[cfg(feature = "ipadic-neologd")]
-decompress_data!(
+ipadic_neologd_data!(
     WORDS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-ipadic-neologd/dict.words"
-    )),
+    "/lindera-ipadic-neologd/dict.words",
     "dict.words"
 );
-#[cfg(not(feature = "ipadic-neologd"))]
-decompress_data!(WORDS_DATA, &[], "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     #[cfg(feature = "compress")]

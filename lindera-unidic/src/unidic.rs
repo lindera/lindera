@@ -26,83 +26,34 @@ macro_rules! decompress_data {
     };
 }
 
-#[cfg(feature = "unidic")]
-decompress_data!(
+macro_rules! unidic_data {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "unidic")]
+        decompress_data!(
+            $name,
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
+            $filename
+        );
+        #[cfg(not(feature = "unidic"))]
+        decompress_data!($name, &[], $filename);
+    };
+}
+
+unidic_data!(
     CHAR_DEFINITION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-unidic/char_def.bin"
-    )),
+    "/lindera-unidic/char_def.bin",
     "char_def.bin"
 );
-#[cfg(not(feature = "unidic"))]
-decompress_data!(CHAR_DEFINITION_DATA, &[], "char_def.bin");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
-    CONNECTION_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-unidic/matrix.mtx"
-    )),
-    "matrix.mtx"
-);
-#[cfg(not(feature = "unidic"))]
-decompress_data!(CONNECTION_DATA, &[], "matrix.mtx");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
-    DA_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-unidic/dict.da")),
-    "dict.da"
-);
-#[cfg(not(feature = "unidic"))]
-decompress_data!(DA_DATA, &[], "dict.da");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
-    VALS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-unidic/dict.vals"
-    )),
-    "dict.vals"
-);
-#[cfg(not(feature = "unidic"))]
-decompress_data!(VALS_DATA, &[], "dict.vals");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
-    UNKNOWN_DATA,
-    include_bytes!(concat!(env!("LINDERA_WORKDIR"), "/lindera-unidic/unk.bin")),
-    "unk.bin"
-);
-#[cfg(not(feature = "unidic"))]
-decompress_data!(UNKNOWN_DATA, &[], "unk.bin");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
+unidic_data!(CONNECTION_DATA, "/lindera-unidic/matrix.mtx", "matrix.mtx");
+unidic_data!(DA_DATA, "/lindera-unidic/dict.da", "dict.da");
+unidic_data!(VALS_DATA, "/lindera-unidic/dict.vals", "dict.vals");
+unidic_data!(UNKNOWN_DATA, "/lindera-unidic/unk.bin", "unk.bin");
+unidic_data!(
     WORDS_IDX_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-unidic/dict.wordsidx"
-    )),
+    "/lindera-unidic/dict.wordsidx",
     "dict.wordsidx"
 );
-#[cfg(not(feature = "unidic"))]
-decompress_data!(WORDS_IDX_DATA, &[], "dict.wordsidx");
-
-#[cfg(feature = "unidic")]
-decompress_data!(
-    WORDS_DATA,
-    include_bytes!(concat!(
-        env!("LINDERA_WORKDIR"),
-        "/lindera-unidic/dict.words"
-    )),
-    "dict.words"
-);
-#[cfg(not(feature = "unidic"))]
-decompress_data!(WORDS_DATA, &[], "dict.words");
+unidic_data!(WORDS_DATA, "/lindera-unidic/dict.words", "dict.words");
 
 pub fn load() -> LinderaResult<Dictionary> {
     #[cfg(feature = "compress")]
