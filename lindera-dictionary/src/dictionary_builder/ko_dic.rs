@@ -20,6 +20,7 @@ const SIMPLE_CONTEXT_ID: u16 = 0;
 const DETAILED_USERDIC_FIELDS_NUM: usize = 12;
 const COMPRESS_ALGORITHM: Algorithm = Algorithm::Deflate;
 const UNK_FIELDS_NUM: usize = 12;
+const ENCODING: &str = "UTF-8";
 
 pub struct KoDicBuilder {}
 
@@ -59,6 +60,7 @@ impl DictionaryBuilder for KoDicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinition> {
         CharacterDefinitionBuilderOptions::default()
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -72,6 +74,7 @@ impl DictionaryBuilder for KoDicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         UnknownDictionaryBuilderOptions::default()
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .unk_fields_num(UNK_FIELDS_NUM)
             .builder()
@@ -82,6 +85,7 @@ impl DictionaryBuilder for KoDicBuilder {
     fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         PrefixDictionaryBuilderOptions::default()
             .flexible_csv(false)
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()
@@ -94,6 +98,7 @@ impl DictionaryBuilder for KoDicBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         ConnectionCostMatrixBuilderOptions::default()
+            .encoding(ENCODING)
             .compress_algorithm(COMPRESS_ALGORITHM)
             .builder()
             .unwrap()

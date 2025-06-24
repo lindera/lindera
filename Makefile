@@ -24,7 +24,7 @@ build: ## Build the project
 	cargo build --release --all-features
 
 test: ## Test the project
-	cargo test
+	cargo test --all-targets --all-features
 
 tag: ## Make a tag
 	git tag v$(LINDERA_VERSION)
