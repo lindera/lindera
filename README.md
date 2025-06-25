@@ -384,6 +384,8 @@ token_filters:
 ```
 
 ```rust
+use std::path::PathBuf;
+
 use lindera::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 

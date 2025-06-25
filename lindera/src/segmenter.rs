@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use lindera_dictionary::mode::Mode;
 
@@ -92,10 +93,15 @@ impl Segmenter {
         let mode: Mode = config.get("mode").map_or_else(
             || Ok(Mode::Normal),
             |v| {
-                serde_json::from_value(v.clone()).map_err(|e| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("mode field is invalid: {}", e))
-                })
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Parse.with_error(anyhow::anyhow!("mode must be a string"))
+                    })
+                    .and_then(|s| Mode::from_str(s))
+                    .map_err(|e| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("mode field is invalid: {}", e))
+                    })
             },
         )?;
 
