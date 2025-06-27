@@ -102,7 +102,7 @@ async fn download_with_retry(
                     // Calculate MD5 hash
                     let mut context = Context::new();
                     context.consume(&content);
-                    let actual_md5 = format!("{:x}", context.compute());
+                    let actual_md5 = format!("{:x}", context.finalize());
 
                     debug!("Expected MD5: {}", expected_md5);
                     debug!("Actual   MD5: {}", actual_md5);
