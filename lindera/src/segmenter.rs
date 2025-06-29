@@ -89,6 +89,7 @@ impl Segmenter {
             .map(load_user_dictionary_from_config)
             .transpose()?;
 
+        // Load the mode from the config
         let mode: Mode = config.get("mode").map_or_else(
             || Ok(Mode::Normal),
             |v| {
