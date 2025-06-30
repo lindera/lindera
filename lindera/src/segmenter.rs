@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::str::FromStr;
 
 use lindera_dictionary::mode::Mode;
 
@@ -92,10 +93,17 @@ impl Segmenter {
         let mode: Mode = config.get("mode").map_or_else(
             || Ok(Mode::Normal),
             |v| {
-                serde_json::from_value(v.clone()).map_err(|e| {
-                    LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("mode field is invalid: {}", e))
-                })
+                if let Some(s) = v.as_str() {
+                    Mode::from_str(s).map_err(|e| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("mode field is invalid string: {}", e))
+                    })
+                } else {
+                    serde_json::from_value::<Mode>(v.clone()).map_err(|e| {
+                        LinderaErrorKind::Parse
+                            .with_error(anyhow::anyhow!("mode field is invalid object: {}", e))
+                    })
+                }
             },
         )?;
 
@@ -2927,6 +2935,101 @@ mod tests {
         });
 
         let segmenter = Segmenter::from_config(&config).unwrap();
+        let mut tokens = segmenter
+            .segment(Cow::Borrowed("羽田空港限定トートバッグ"))
+            .unwrap();
+        let mut tokens_iter = tokens.iter_mut();
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.text, "羽田");
+            assert_eq!(token.byte_start, 0);
+            assert_eq!(token.byte_end, 6);
+            assert_eq!(token.position, 0);
+            assert_eq!(token.position_length, 1);
+            assert_eq!(
+                token.details(),
+                vec![
+                    "名詞",
+                    "固有名詞",
+                    "人名",
+                    "姓",
+                    "*",
+                    "*",
+                    "羽田",
+                    "ハタ",
+                    "ハタ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.text, "空港");
+            assert_eq!(token.byte_start, 6);
+            assert_eq!(token.byte_end, 12);
+            assert_eq!(token.position, 1);
+            assert_eq!(token.position_length, 1);
+            assert_eq!(
+                token.details(),
+                vec![
+                    "名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "空港",
+                    "クウコウ",
+                    "クーコー"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.text, "限定");
+            assert_eq!(token.byte_start, 12);
+            assert_eq!(token.byte_end, 18);
+            assert_eq!(token.position, 2);
+            assert_eq!(token.position_length, 1);
+            assert_eq!(
+                token.details(),
+                vec![
+                    "名詞",
+                    "サ変接続",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "限定",
+                    "ゲンテイ",
+                    "ゲンテイ"
+                ]
+            );
+        }
+        {
+            let token = tokens_iter.next().unwrap();
+            assert_eq!(token.text, "トートバッグ");
+            assert_eq!(token.byte_start, 18);
+            assert_eq!(token.byte_end, 36);
+            assert_eq!(token.position, 3);
+            assert_eq!(token.position_length, 1);
+            assert_eq!(token.details(), vec!["UNK"]);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "ipadic")]
+    fn test_segment_with_decompose_mode_default_penalty() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": {
+                "kind": "ipadic"
+            },
+            "mode": "decompose"
+        });
+
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
         let mut tokens = segmenter
             .segment(Cow::Borrowed("羽田空港限定トートバッグ"))
             .unwrap();
