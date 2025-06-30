@@ -4,11 +4,11 @@ use std::str::FromStr;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str = "japanese_base_form";
 
@@ -185,12 +185,12 @@ mod tests {
     fn test_japanese_base_form_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::{
             JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
         {
@@ -315,12 +315,12 @@ mod tests {
     fn test_japanese_base_form_token_filter_apply_unidic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::{
             JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
         {

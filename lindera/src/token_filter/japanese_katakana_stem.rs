@@ -3,10 +3,10 @@ use std::num::NonZeroUsize;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str = "japanese_katakana_stem";
 const DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK: char = '\u{30FC}';
@@ -190,12 +190,12 @@ mod tests {
     fn test_japanese_katakana_stem_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {

@@ -5,14 +5,14 @@ use std::str::FromStr;
 
 use clap::{Parser, Subcommand};
 
+use lindera::LinderaResult;
 use lindera::character_filter::CharacterFilterLoader;
-use lindera::dictionary::{resolve_builder, DictionaryKind};
+use lindera::dictionary::{DictionaryKind, resolve_builder};
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
 use lindera::token_filter::TokenFilterLoader;
 use lindera::tokenizer::TokenizerBuilder;
-use lindera::LinderaResult;
 use lindera_cli::get_version;
 
 #[derive(Debug, Parser)]

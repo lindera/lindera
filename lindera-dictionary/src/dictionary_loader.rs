@@ -5,8 +5,8 @@ pub mod unknown_dictionary;
 
 use std::path::Path;
 
-use crate::dictionary::{Dictionary, UserDictionary};
 use crate::LinderaResult;
+use crate::dictionary::{Dictionary, UserDictionary};
 
 pub trait DictionaryLoader {
     fn load_dictionary(&self, input_dir: &Path) -> LinderaResult<Dictionary>;

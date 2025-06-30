@@ -3,10 +3,10 @@ use std::borrow::Cow;
 use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 
+use crate::LinderaResult;
 use crate::character_filter::unicode_normalize::UnicodeNormalizeKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const REMOVE_DIACRITICAL_TOKEN_FILTER_NAME: &str = "remove_diacritical_mark";
 
@@ -136,7 +136,7 @@ mod tests {
     fn test_remove_diacritical_token_filter_apply() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 
@@ -209,7 +209,7 @@ mod tests {
     fn test_remove_diacritical_token_filter_apply_japanese() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 

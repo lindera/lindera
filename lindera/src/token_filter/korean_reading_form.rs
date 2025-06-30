@@ -2,9 +2,9 @@ use std::borrow::Cow;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str = "korean_reading_form";
 
@@ -60,10 +60,10 @@ mod tests {
     fn test_korean_reading_form_token_filter_apply() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
-        use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
         use crate::token_filter::TokenFilter;
+        use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
 
         let filter = KoreanReadingFormTokenFilter::new();
 

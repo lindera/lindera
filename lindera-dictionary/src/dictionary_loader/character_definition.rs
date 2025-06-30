@@ -1,12 +1,12 @@
 use std::path::Path;
 
+use crate::LinderaResult;
 #[cfg(feature = "compress")]
 use crate::decompress::decompress;
 use crate::dictionary::character_definition::CharacterDefinition;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
 use crate::util::read_file;
-use crate::LinderaResult;
 
 pub struct CharacterDefinitionLoader {}
 

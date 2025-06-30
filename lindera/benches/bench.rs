@@ -1,11 +1,11 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 #[allow(unused_variables)]
 fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::dictionary::DictionaryKind;
+        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -27,8 +27,8 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::dictionary::DictionaryKind;
+        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -50,8 +50,8 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "ko-dic")]
     {
-        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::dictionary::DictionaryKind;
+        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -73,8 +73,8 @@ fn bench_constructor(c: &mut Criterion) {
 
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::dictionary::DictionaryKind;
+        use lindera::dictionary::load_dictionary_from_kind;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -102,7 +102,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -135,7 +135,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -168,7 +168,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -201,7 +201,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -234,7 +234,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -256,7 +256,7 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -278,7 +278,7 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "ko-dic")]
     {
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -300,7 +300,7 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -328,7 +328,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -362,7 +362,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -396,7 +396,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -428,7 +428,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -466,7 +466,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -508,7 +508,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -553,7 +553,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -600,7 +600,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;

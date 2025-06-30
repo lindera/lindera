@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
+use crate::error::LinderaErrorKind;
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct CategoryData {

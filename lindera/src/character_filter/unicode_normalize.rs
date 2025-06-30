@@ -5,10 +5,10 @@ use serde_json::Value;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::error::{LinderaError, LinderaErrorKind};
 use crate::LinderaResult;
+use crate::error::{LinderaError, LinderaErrorKind};
 
-use crate::character_filter::{add_offset_diff, CharacterFilter};
+use crate::character_filter::{CharacterFilter, add_offset_diff};
 
 pub const UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str = "unicode_normalize";
 
@@ -175,7 +175,7 @@ mod tests {
     use crate::character_filter::unicode_normalize::{
         UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
     };
-    use crate::character_filter::{correct_offset, CharacterFilter};
+    use crate::character_filter::{CharacterFilter, correct_offset};
 
     #[test]
     fn test_unicode_normalize_character_filter_config() {

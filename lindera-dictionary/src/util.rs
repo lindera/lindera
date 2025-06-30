@@ -10,11 +10,11 @@ use anyhow::anyhow;
 use encoding_rs::Encoding;
 use serde::{Deserialize, Serialize};
 
+use crate::LinderaResult;
 #[cfg(feature = "compress")]
 use crate::compress::compress;
 use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
-use crate::LinderaResult;
 
 #[cfg(feature = "compress")]
 pub fn compress_write<W: Write>(

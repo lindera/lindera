@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::LinderaResult;
 #[cfg(feature = "compress")]
 use crate::decompress::decompress;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
@@ -8,7 +9,6 @@ use crate::error::LinderaErrorKind;
 #[cfg(feature = "mmap")]
 use crate::util::mmap_file;
 use crate::util::read_file;
-use crate::LinderaResult;
 
 pub struct ConnectionCostMatrixLoader {}
 

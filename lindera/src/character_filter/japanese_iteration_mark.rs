@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::character_filter::CharacterFilter;
 use crate::error::LinderaErrorKind;
-use crate::LinderaResult;
 
 pub const JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str = "japanese_iteration_mark";
 
@@ -249,11 +249,11 @@ mod tests {
 
     use once_cell::sync::Lazy;
 
-    use crate::character_filter::japanese_iteration_mark::{
-        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
-        JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
-    };
     use crate::character_filter::CharacterFilter;
+    use crate::character_filter::japanese_iteration_mark::{
+        JapaneseIterationMarkCharacterFilter, JapaneseIterationMarkCharacterFilterConfig,
+        hiragana_add_dakuon, hiragana_remove_dakuon, katakana_add_dakuon, katakana_remove_dakuon,
+    };
 
     fn hiragana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;

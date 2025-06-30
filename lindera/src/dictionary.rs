@@ -6,20 +6,20 @@ use serde_json::Value;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
+use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_builder::cc_cedict::CcCedictBuilder;
 use lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder;
 use lindera_dictionary::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
 use lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder;
 use lindera_dictionary::dictionary_builder::unidic::UnidicBuilder;
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
 use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
 use lindera_dictionary::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_dictionary::util::read_file;
 
-use crate::error::{LinderaError, LinderaErrorKind};
 use crate::LinderaResult;
+use crate::error::{LinderaError, LinderaErrorKind};
 
 pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;

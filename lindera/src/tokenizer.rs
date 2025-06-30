@@ -4,16 +4,16 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::character_filter::{correct_offset, BoxCharacterFilter, CharacterFilterLoader};
+use crate::LinderaResult;
+use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, correct_offset};
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
 use crate::segmenter::Segmenter;
 use crate::token::Token;
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
-use crate::LinderaResult;
 
 pub type TokenizerConfig = Value;
 

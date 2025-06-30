@@ -1,9 +1,9 @@
 use regex::Regex;
 use serde_json::Value;
 
-use crate::character_filter::{add_offset_diff, CharacterFilter};
-use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
+use crate::character_filter::{CharacterFilter, add_offset_diff};
+use crate::error::LinderaErrorKind;
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
 
@@ -150,7 +150,7 @@ impl CharacterFilter for RegexCharacterFilter {
 #[cfg(test)]
 mod tests {
     use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
-    use crate::character_filter::{correct_offset, CharacterFilter};
+    use crate::character_filter::{CharacterFilter, correct_offset};
 
     #[test]
     fn test_regex_character_filter_config() {
