@@ -3,18 +3,18 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "ipadic")]
     {
+        use lindera::character_filter::BoxCharacterFilter;
         use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
         use lindera::character_filter::unicode_normalize::{
             UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
         };
-        use lindera::character_filter::BoxCharacterFilter;
-        use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
+        use lindera::token_filter::BoxTokenFilter;
         use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
         use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
         use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-        use lindera::token_filter::BoxTokenFilter;
         use lindera::tokenizer::Tokenizer;
 
         let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
@@ -90,7 +90,7 @@ fn main() -> LinderaResult<()> {
         let tokens = tokenizer.tokenize(text)?;
 
         // Print the text and tokens.
-        println!("text: {}", text);
+        println!("text: {text}");
         for token in tokens {
             println!(
                 "token: {:?}, start: {:?}, end: {:?}, details: {:?}",

@@ -9,13 +9,13 @@ use derive_builder::Builder;
 use encoding_rs::UTF_16LE;
 use log::debug;
 
+use crate::LinderaResult;
 use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::{
     CategoryData, CategoryId, CharacterDefinition, LookupTable,
 };
 use crate::error::LinderaErrorKind;
 use crate::util::{compress_write, read_file_with_encoding};
-use crate::LinderaResult;
 
 const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
 
@@ -199,7 +199,7 @@ impl CharacterDefinitionBuilder {
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinition> {
         let char_def_path = input_dir.join("char.def");
-        debug!("reading {:?}", char_def_path);
+        debug!("reading {char_def_path:?}");
         let char_def = read_file_with_encoding(&char_def_path, &self.encoding)?;
 
         // let mut char_definitions_builder = CharacterDefinitionsBuilder::default();

@@ -3,10 +3,10 @@ use std::path::Path;
 
 use log::{debug, error, warn};
 use md5::Context;
-use rand::{rngs::SmallRng, seq::SliceRandom, SeedableRng};
+use rand::{SeedableRng, rngs::SmallRng, seq::SliceRandom};
 use reqwest::Client;
-use tokio::time::sleep;
 use tokio::time::Duration;
+use tokio::time::sleep;
 
 use crate::dictionary_builder::DictionaryBuilder;
 
@@ -92,10 +92,10 @@ async fn download_with_retry(
         );
 
         for url in urls {
-            debug!("Attempting to download from {}", url);
+            debug!("Attempting to download from {url}");
             match client.get(url).send().await {
                 Ok(resp) if resp.status().is_success() => {
-                    debug!("HTTP download successful from {}", url);
+                    debug!("HTTP download successful from {url}");
 
                     let content = resp.bytes().await?;
 
@@ -104,17 +104,14 @@ async fn download_with_retry(
                     context.consume(&content);
                     let actual_md5 = format!("{:x}", context.finalize());
 
-                    debug!("Expected MD5: {}", expected_md5);
-                    debug!("Actual   MD5: {}", actual_md5);
+                    debug!("Expected MD5: {expected_md5}");
+                    debug!("Actual   MD5: {actual_md5}");
 
                     if actual_md5 == expected_md5 {
-                        debug!("MD5 check passed from {}", url);
+                        debug!("MD5 check passed from {url}");
                         return Ok(content.to_vec());
                     } else {
-                        warn!(
-                            "MD5 mismatch from {}! Expected {}, got {}",
-                            url, expected_md5, actual_md5
-                        );
+                        warn!("MD5 mismatch from {url}, Expected {expected_md5}, got {actual_md5}");
                         // continue to next url
                     }
                 }
@@ -123,7 +120,7 @@ async fn download_with_retry(
                     // continue to next url
                 }
                 Err(e) => {
-                    warn!("Request error from {}: {}", url, e);
+                    warn!("Request error from {url}: {e}");
                     // continue to next url
                 }
             }
@@ -132,7 +129,7 @@ async fn download_with_retry(
         sleep(Duration::from_secs(1)).await;
     }
 
-    error!("All {} attempts failed", max_rounds);
+    error!("All {max_rounds} attempts failed");
     Err("Failed to download a valid file from all sources".into())
 }
 
@@ -142,7 +139,7 @@ pub async fn fetch(
     builder: impl DictionaryBuilder,
 ) -> Result<(), Box<dyn Error>> {
     use std::env;
-    use std::fs::{create_dir, rename, File};
+    use std::fs::{File, create_dir, rename};
     use std::io::{self, Cursor, Read, Write};
     use std::path::{Path, PathBuf};
 

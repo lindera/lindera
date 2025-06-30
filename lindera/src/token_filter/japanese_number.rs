@@ -3,10 +3,10 @@ use std::collections::HashSet;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str = "japanese_number";
 
@@ -111,7 +111,7 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 }
 
 fn adjust_digits(num: &str, base: &str, digit: &str) -> String {
-    let zero_str = format!("{}{}", base, digit);
+    let zero_str = format!("{base}{digit}");
 
     // If the number is less than the base, return the number as is.
     if zero_str.len() < num.len() {
@@ -892,7 +892,7 @@ mod tests {
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
@@ -972,29 +972,32 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<Token> = vec![
-                Token {
-                    text: Cow::Borrowed("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四"),
-                    byte_start: 0,
-                    byte_end: 129,
-                    position: 0,
-                    position_length: 1,
-                    word_id: WordId{id:102657, is_system:true},
-                    dictionary: &dictionary,
-                    user_dictionary: None,
-                    details: Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("数"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                    ]),
+            let mut tokens: Vec<Token> = vec![Token {
+                text: Cow::Borrowed(
+                    "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四",
+                ),
+                byte_start: 0,
+                byte_end: 129,
+                position: 0,
+                position_length: 1,
+                word_id: WordId {
+                    id: 102657,
+                    is_system: true,
                 },
-            ];
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("数"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                ]),
+            }];
 
             filter.apply(&mut tokens).unwrap();
 
@@ -1067,7 +1070,7 @@ mod tests {
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
@@ -1143,29 +1146,32 @@ mod tests {
         }
 
         {
-            let mut tokens: Vec<Token> = vec![
-                Token {
-                    text: Cow::Borrowed("一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四"),
-                    byte_start: 0,
-                    byte_end: 129,
-                    position: 0,
-                    position_length: 1,
-                    word_id: WordId{id:102657, is_system:true},
-                    dictionary: &dictionary,
-                    user_dictionary: None,
-                    details: Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("数"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                    ]),
+            let mut tokens: Vec<Token> = vec![Token {
+                text: Cow::Borrowed(
+                    "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四",
+                ),
+                byte_start: 0,
+                byte_end: 129,
+                position: 0,
+                position_length: 1,
+                word_id: WordId {
+                    id: 102657,
+                    is_system: true,
                 },
-            ];
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("数"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                ]),
+            }];
 
             filter.apply(&mut tokens).unwrap();
 

@@ -1,7 +1,7 @@
 [package]
 name = "lindera-ko-dic"
-version = "0.44.0"
-edition = "2021"
+version = "0.44.1"
+edition = "2024"
 description = "A Japanese morphological dictionary for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic"
 homepage = "https://github.com/lindera/lindera"
