@@ -16,7 +16,7 @@ fn main() -> LinderaResult<()> {
         let tokenizer = builder.build()?;
 
         let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
-        println!("text: {}", text);
+        println!("text: {text}");
 
         let tokens = tokenizer.tokenize(&text)?;
 

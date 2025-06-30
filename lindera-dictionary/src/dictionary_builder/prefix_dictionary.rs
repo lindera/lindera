@@ -16,11 +16,11 @@ use glob::glob;
 use log::{debug, warn};
 use yada::builder::DoubleArrayBuilder;
 
+use crate::LinderaResult;
 use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
 use crate::viterbi::{WordEntry, WordId};
-use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
 #[builder(name = PrefixDictionaryBuilderOptions)]
@@ -42,7 +42,7 @@ pub struct PrefixDictionaryBuilder {
 impl PrefixDictionaryBuilder {
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let pattern = if let Some(path) = input_dir.to_str() {
-            format!("{}/*.csv", path)
+            format!("{path}/*.csv")
         } else {
             return Err(
                 LinderaErrorKind::Io.with_error(anyhow::anyhow!("Failed to convert path to &str."))
@@ -73,7 +73,7 @@ impl PrefixDictionaryBuilder {
 
         let mut rows: Vec<StringRecord> = vec![];
         for filename in filenames {
-            debug!("reading {:?}", filename);
+            debug!("reading {filename:?}");
 
             let file = File::open(filename)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -122,7 +122,7 @@ impl PrefixDictionaryBuilder {
                 Ok(wc) => wc,
                 Err(_err) => {
                     if self.skip_invalid_cost_or_id {
-                        warn!("failed to parse word_cost: {:?}", row);
+                        warn!("failed to parse word_cost: {row:?}");
                         continue;
                     } else {
                         return Err(LinderaErrorKind::Parse
@@ -134,7 +134,7 @@ impl PrefixDictionaryBuilder {
                 Ok(lid) => lid,
                 Err(_err) => {
                     if self.skip_invalid_cost_or_id {
-                        warn!("failed to parse left_id: {:?}", row);
+                        warn!("failed to parse left_id: {row:?}");
                         continue;
                     } else {
                         return Err(LinderaErrorKind::Parse
@@ -146,7 +146,7 @@ impl PrefixDictionaryBuilder {
                 Ok(rid) => rid,
                 Err(_err) => {
                     if self.skip_invalid_cost_or_id {
-                        warn!("failed to parse right_id: {:?}", row);
+                        warn!("failed to parse right_id: {row:?}");
                         continue;
                     } else {
                         return Err(LinderaErrorKind::Parse

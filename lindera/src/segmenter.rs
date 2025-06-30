@@ -7,10 +7,10 @@ use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::dictionary::{load_dictionary_from_config, load_user_dictionary_from_config};
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
-use crate::LinderaResult;
 
 pub type SegmenterConfig = Value;
 

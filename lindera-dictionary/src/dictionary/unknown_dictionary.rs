@@ -3,10 +3,10 @@ use std::str::FromStr;
 use log::warn;
 use serde::{Deserialize, Serialize};
 
+use crate::LinderaResult;
 use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
 use crate::viterbi::{WordEntry, WordId};
-use crate::LinderaResult;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UnknownDictionary {
@@ -99,7 +99,7 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
             // Do not perform strict checks on left context id and right context id in unk.def.
             // Just output a warning.
             if e.left_id != e.right_id {
-                warn!("left id and right id are not same: {:?}", e);
+                warn!("left id and right id are not same: {e:?}");
             }
             WordEntry {
                 word_id: WordId {

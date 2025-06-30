@@ -4,11 +4,11 @@ use std::{collections::HashSet, mem};
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
@@ -336,12 +336,12 @@ mod tests {
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
         {

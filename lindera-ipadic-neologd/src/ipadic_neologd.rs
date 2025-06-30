@@ -3,12 +3,12 @@ use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
 
+use lindera_dictionary::LinderaResult;
+use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
-use lindera_dictionary::dictionary::Dictionary;
-use lindera_dictionary::LinderaResult;
 
 #[cfg(feature = "compress")]
 use lindera_dictionary::decompress::decompress;

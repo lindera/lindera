@@ -2,10 +2,10 @@ use std::collections::HashSet;
 
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const KEEP_WORDS_TOKEN_FILTER_NAME: &str = "keep_words";
 
@@ -122,7 +122,7 @@ mod tests {
     fn test_keep_words_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 

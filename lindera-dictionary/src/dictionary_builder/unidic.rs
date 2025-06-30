@@ -3,16 +3,17 @@ use std::path::Path;
 
 use csv::StringRecord;
 
+use crate::LinderaResult;
 use crate::decompress::Algorithm;
-use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::UserDictionary;
+use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary_builder::DictionaryBuilder;
 use crate::dictionary_builder::{
-    build_user_dictionary, CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions,
+    CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions,
     PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions, UserDictionaryBuilderOptions,
+    build_user_dictionary,
 };
 use crate::error::LinderaErrorKind;
-use crate::LinderaResult;
 
 const SIMPLE_USERDIC_FIELDS_NUM: usize = 3;
 const SIMPLE_WORD_COST: i16 = -10000;

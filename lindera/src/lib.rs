@@ -48,7 +48,7 @@ mod tests {
             #[test]
             #[cfg(feature = $feature)]
             fn $test_name() {
-                use $crate::dictionary::{load_dictionary_from_kind, DictionaryKind};
+                use $crate::dictionary::{DictionaryKind, load_dictionary_from_kind};
 
                 let dictionary = load_dictionary_from_kind($dict_kind).unwrap();
                 $test_body(dictionary);
@@ -63,7 +63,7 @@ mod tests {
             #[cfg(feature = $feature)]
             fn $test_name() {
                 use std::borrow::Cow;
-                use $crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+                use $crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
                 use $crate::token::Token;
                 use $crate::token_filter::TokenFilter;
 

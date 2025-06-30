@@ -5,10 +5,10 @@ use kanaria::string::UCSStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const JAPANESE_KANA_TOKEN_FILTER_NAME: &str = "japanese_kana";
 
@@ -201,12 +201,12 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {
@@ -296,12 +296,12 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {
@@ -426,12 +426,12 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {
@@ -521,12 +521,12 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {
@@ -651,12 +651,12 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_mixed_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {
@@ -781,12 +781,12 @@ mod tests {
     fn test_japanese_kana_token_filter_applymixed_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
+        use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
         };
-        use crate::token_filter::TokenFilter;
 
         let config_str = r#"
             {

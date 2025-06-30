@@ -1,7 +1,7 @@
 use std::io::Write;
 
-use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 use flate2::Compression;
+use flate2::write::{DeflateEncoder, GzEncoder, ZlibEncoder};
 
 use crate::decompress::{Algorithm, CompressedData};
 
@@ -35,7 +35,7 @@ pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedD
 
 #[cfg(test)]
 mod tests {
-    use rand::{rngs::SmallRng, Rng, SeedableRng};
+    use rand::{Rng, SeedableRng, rngs::SmallRng};
 
     use crate::decompress::decompress;
 

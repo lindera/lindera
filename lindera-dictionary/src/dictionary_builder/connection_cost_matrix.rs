@@ -8,10 +8,10 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use derive_builder::Builder;
 use log::debug;
 
+use crate::LinderaResult;
 use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
 use crate::util::{compress_write, read_file_with_encoding};
-use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
 #[builder(name = ConnectionCostMatrixBuilderOptions)]
@@ -26,7 +26,7 @@ pub struct ConnectionCostMatrixBuilder {
 impl ConnectionCostMatrixBuilder {
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         let matrix_data_path = input_dir.join("matrix.def");
-        debug!("reading {:?}", matrix_data_path);
+        debug!("reading {matrix_data_path:?}");
         let matrix_data = read_file_with_encoding(&matrix_data_path, &self.encoding)?;
 
         let mut lines = Vec::new();

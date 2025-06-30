@@ -1,8 +1,8 @@
 use serde_json::Value;
 
+use crate::LinderaResult;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
-use crate::LinderaResult;
 
 pub const LENGTH_TOKEN_FILTER_NAME: &str = "length";
 
@@ -128,7 +128,7 @@ mod tests {
     fn test_length_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{load_dictionary_from_kind, DictionaryKind, WordId};
+        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 

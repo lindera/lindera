@@ -6,7 +6,7 @@ fn main() -> LinderaResult<()> {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -33,7 +33,7 @@ fn main() -> LinderaResult<()> {
         let mut tokens = tokenizer.tokenize(text)?;
 
         // Print the text and tokens.
-        println!("text:\t{}", text);
+        println!("text:\t{text}");
         for token in tokens.iter_mut() {
             let details = token.details().join(",");
             println!("token:\t{}\t{}", token.text.as_ref(), details);

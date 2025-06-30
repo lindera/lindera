@@ -15,11 +15,11 @@ pub use character_definition::CharacterDefinitionBuilderOptions;
 pub use connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
 pub use prefix_dictionary::PrefixDictionaryBuilderOptions;
 pub use unknown_dictionary::UnknownDictionaryBuilderOptions;
-pub use user_dictionary::{build_user_dictionary, UserDictionaryBuilderOptions};
+pub use user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary};
 
-use crate::dictionary::character_definition::CharacterDefinition;
-use crate::dictionary::UserDictionary;
 use crate::LinderaResult;
+use crate::dictionary::UserDictionary;
+use crate::dictionary::character_definition::CharacterDefinition;
 
 pub trait DictionaryBuilder {
     fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;

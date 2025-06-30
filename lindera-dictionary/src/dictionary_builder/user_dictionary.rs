@@ -11,11 +11,11 @@ use derive_builder::Builder;
 use log::debug;
 use yada::builder::DoubleArrayBuilder;
 
-use crate::dictionary::prefix_dictionary::PrefixDictionary;
+use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::error::LinderaErrorKind;
 use crate::viterbi::{WordEntry, WordId};
-use crate::LinderaResult;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
 
@@ -40,7 +40,7 @@ pub struct UserDictionaryBuilder {
 
 impl UserDictionaryBuilder {
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        debug!("reading {:?}", input_file);
+        debug!("reading {input_file:?}");
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
@@ -173,7 +173,7 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
         None => {
             return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
                 "failed to get parent directory of output file"
-            )))
+            )));
         }
     };
     fs::create_dir_all(parent_dir)

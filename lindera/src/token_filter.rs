@@ -57,47 +57,47 @@ use std::ops::Deref;
 use crate::parse_cli_flag;
 use crate::token::Token;
 use crate::token_filter::japanese_base_form::{
-    JapaneseBaseFormTokenFilter, JAPANESE_BASE_FORM_TOKEN_FILTER_NAME,
+    JAPANESE_BASE_FORM_TOKEN_FILTER_NAME, JapaneseBaseFormTokenFilter,
 };
 use crate::token_filter::japanese_compound_word::{
-    JapaneseCompoundWordTokenFilter, JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME,
+    JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME, JapaneseCompoundWordTokenFilter,
 };
 use crate::token_filter::japanese_kana::{
-    JapaneseKanaTokenFilter, JAPANESE_KANA_TOKEN_FILTER_NAME,
+    JAPANESE_KANA_TOKEN_FILTER_NAME, JapaneseKanaTokenFilter,
 };
 use crate::token_filter::japanese_katakana_stem::{
-    JapaneseKatakanaStemTokenFilter, JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME,
+    JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME, JapaneseKatakanaStemTokenFilter,
 };
 use crate::token_filter::japanese_keep_tags::{
-    JapaneseKeepTagsTokenFilter, JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME,
+    JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME, JapaneseKeepTagsTokenFilter,
 };
 use crate::token_filter::japanese_number::{
-    JapaneseNumberTokenFilter, JAPANESE_NUMBER_TOKEN_FILTER_NAME,
+    JAPANESE_NUMBER_TOKEN_FILTER_NAME, JapaneseNumberTokenFilter,
 };
 use crate::token_filter::japanese_reading_form::{
-    JapaneseReadingFormTokenFilter, JAPANESE_READING_FORM_TOKEN_FILTER_NAME,
+    JAPANESE_READING_FORM_TOKEN_FILTER_NAME, JapaneseReadingFormTokenFilter,
 };
 use crate::token_filter::japanese_stop_tags::{
-    JapaneseStopTagsTokenFilter, JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME,
+    JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME, JapaneseStopTagsTokenFilter,
 };
-use crate::token_filter::keep_words::{KeepWordsTokenFilter, KEEP_WORDS_TOKEN_FILTER_NAME};
+use crate::token_filter::keep_words::{KEEP_WORDS_TOKEN_FILTER_NAME, KeepWordsTokenFilter};
 use crate::token_filter::korean_keep_tags::{
-    KoreanKeepTagsTokenFilter, KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME,
+    KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME, KoreanKeepTagsTokenFilter,
 };
 use crate::token_filter::korean_reading_form::{
-    KoreanReadingFormTokenFilter, KOREAN_READING_FORM_TOKEN_FILTER_NAME,
+    KOREAN_READING_FORM_TOKEN_FILTER_NAME, KoreanReadingFormTokenFilter,
 };
 use crate::token_filter::korean_stop_tags::{
-    KoreanStopTagsTokenFilter, KOREAN_STOP_TAGS_TOKEN_FILTER_NAME,
+    KOREAN_STOP_TAGS_TOKEN_FILTER_NAME, KoreanStopTagsTokenFilter,
 };
-use crate::token_filter::length::{LengthTokenFilter, LENGTH_TOKEN_FILTER_NAME};
-use crate::token_filter::lowercase::{LowercaseTokenFilter, LOWERCASE_TOKEN_FILTER_NAME};
-use crate::token_filter::mapping::{MappingTokenFilter, MAPPING_TOKEN_FILTER_NAME};
+use crate::token_filter::length::{LENGTH_TOKEN_FILTER_NAME, LengthTokenFilter};
+use crate::token_filter::lowercase::{LOWERCASE_TOKEN_FILTER_NAME, LowercaseTokenFilter};
+use crate::token_filter::mapping::{MAPPING_TOKEN_FILTER_NAME, MappingTokenFilter};
 use crate::token_filter::remove_diacritical_mark::{
-    RemoveDiacriticalMarkTokenFilter, REMOVE_DIACRITICAL_TOKEN_FILTER_NAME,
+    REMOVE_DIACRITICAL_TOKEN_FILTER_NAME, RemoveDiacriticalMarkTokenFilter,
 };
-use crate::token_filter::stop_words::{StopWordsTokenFilter, STOP_WORDS_TOKEN_FILTER_NAME};
-use crate::token_filter::uppercase::{UppercaseTokenFilter, UPPERCASE_TOKEN_FILTER_NAME};
+use crate::token_filter::stop_words::{STOP_WORDS_TOKEN_FILTER_NAME, StopWordsTokenFilter};
+use crate::token_filter::uppercase::{UPPERCASE_TOKEN_FILTER_NAME, UppercaseTokenFilter};
 use crate::{LinderaErrorKind, LinderaResult};
 
 /// A trait for token filters that can be applied to a vector of tokens.

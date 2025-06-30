@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use serde_json::Value;
-use yada::builder::DoubleArrayBuilder;
 use yada::DoubleArray;
+use yada::builder::DoubleArrayBuilder;
 
-use crate::character_filter::{add_offset_diff, CharacterFilter};
-use crate::error::LinderaErrorKind;
 use crate::LinderaResult;
+use crate::character_filter::{CharacterFilter, add_offset_diff};
+use crate::error::LinderaErrorKind;
 
 pub const MAPPING_CHARACTER_FILTER_NAME: &str = "mapping";
 
@@ -153,7 +153,7 @@ impl CharacterFilter for MappingCharacterFilter {
 #[cfg(test)]
 mod tests {
     use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
-    use crate::character_filter::{correct_offset, CharacterFilter};
+    use crate::character_filter::{CharacterFilter, correct_offset};
 
     #[test]
     fn test_mapping_character_filter_config() {

@@ -6,12 +6,12 @@ use std::path::Path;
 use derive_builder::Builder;
 use log::debug;
 
+use crate::LinderaResult;
 use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::error::LinderaErrorKind;
 use crate::util::{compress_write, read_file_with_encoding};
-use crate::LinderaResult;
 
 #[derive(Builder, Debug)]
 #[builder(name = UnknownDictionaryBuilderOptions)]
@@ -33,7 +33,7 @@ impl UnknownDictionaryBuilder {
         output_dir: &Path,
     ) -> LinderaResult<()> {
         let unk_data_path = input_dir.join("unk.def");
-        debug!("reading {:?}", unk_data_path);
+        debug!("reading {unk_data_path:?}");
         let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, self.unk_fields_num)?;
 
