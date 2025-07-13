@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use serde::{Deserialize, Serialize};
 
-use crate::{LinderaResult, decompress::Algorithm, error::LinderaErrorKind};
+use crate::decompress::Algorithm;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {

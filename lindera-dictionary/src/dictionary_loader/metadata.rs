@@ -18,9 +18,6 @@ use crate::util::read_file;
 /// // Normal loading
 /// let metadata = MetadataLoader::load(Path::new("/path/to/dictionary"))?;
 ///
-/// // Use default values if file doesn't exist
-/// let metadata = MetadataLoader::load_or_default(Path::new("/path/to/dictionary"))?;
-///
 /// // Memory-mapped loading (when mmap feature is enabled)
 /// #[cfg(feature = "mmap")]
 /// let metadata = MetadataLoader::load_mmap(Path::new("/path/to/dictionary"))?;
@@ -71,28 +68,6 @@ impl MetadataLoader {
 
         Ok(metadata)
     }
-
-    /// Loads metadata file, returning default values if the file doesn't exist.
-    ///
-    /// This method provides backward compatibility for older dictionary directories
-    /// that don't have metadata files.
-    ///
-    /// # Arguments
-    ///
-    /// * `input_dir` - Path to the directory containing the metadata file
-    ///
-    /// # Returns
-    ///
-    /// The loaded Metadata object, or default Metadata if the file doesn't exist
-    pub fn load_or_default(input_dir: &Path) -> LinderaResult<Metadata> {
-        match Self::load(input_dir) {
-            Ok(metadata) => Ok(metadata),
-            Err(_) => {
-                // Return default values if file doesn't exist
-                Ok(Metadata::default())
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -130,20 +105,6 @@ mod tests {
         std::fs::remove_dir_all(&temp_path).ok();
     }
 
-    #[test]
-    fn test_metadata_load_or_default() {
-        let temp_path = std::env::temp_dir().join("lindera_test_nonexistent");
-
-        // Test when file doesn't exist
-        let metadata = MetadataLoader::load_or_default(&temp_path).unwrap();
-
-        assert_eq!(metadata.encoding, "UTF-8");
-        assert_eq!(metadata.simple_word_cost, -10000);
-        assert_eq!(metadata.simple_context_id, 0);
-        assert_eq!(metadata.simple_userdic_fields_num, 3);
-        assert_eq!(metadata.detailed_userdic_fields_num, 13);
-        assert_eq!(metadata.unk_fields_num, 11);
-    }
     #[test]
     fn test_metadata_load_nonexistent_file() {
         let temp_path = std::env::temp_dir().join("lindera_test_nonexistent");
