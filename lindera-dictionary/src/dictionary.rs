@@ -1,5 +1,6 @@
 pub mod character_definition;
 pub mod connection_cost_matrix;
+pub mod metadata;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
 

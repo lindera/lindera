@@ -20,11 +20,11 @@ format: ## Format the project
 lint: ## Lint the project
 	cargo clippy --all-targets --all-features -- -D warnings
 
-build: ## Build the project
-	cargo build --release --all-features
-
 test: ## Test the project
 	cargo test --all-targets --all-features
+
+build: ## Build the project
+	cargo build --release --all-features
 
 tag: ## Make a tag
 	git tag v$(LINDERA_VERSION)

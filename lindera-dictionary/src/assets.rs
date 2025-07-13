@@ -8,6 +8,7 @@ use reqwest::Client;
 use tokio::time::Duration;
 use tokio::time::sleep;
 
+use crate::dictionary::metadata::Metadata;
 use crate::dictionary_builder::DictionaryBuilder;
 
 const MAX_ROUND: usize = 3;
@@ -136,6 +137,7 @@ async fn download_with_retry(
 /// Fetch the necessary assets and then build the dictionary using `builder`
 pub async fn fetch(
     params: FetchParams,
+    metadata: &Metadata,
     builder: impl DictionaryBuilder,
 ) -> Result<(), Box<dyn Error>> {
     use std::env;
@@ -281,7 +283,7 @@ pub async fn fetch(
     let tmp_path = build_dir.join(format!("tmp-output-{}", params.output_dir));
     let _ = std::fs::remove_dir_all(&tmp_path);
 
-    builder.build_dictionary(&input_dir, &tmp_path)?;
+    builder.build_dictionary(metadata, &input_dir, &tmp_path)?;
 
     #[cfg(target_os = "windows")]
     {
