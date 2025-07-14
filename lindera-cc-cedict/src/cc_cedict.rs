@@ -5,7 +5,7 @@ use std::ops::Deref;
 
 use lindera_dictionary::LinderaResult;
 #[cfg(feature = "compress")]
-use lindera_dictionary::decompress::{decompress, CompressedData};
+use lindera_dictionary::decompress::{CompressedData, decompress};
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
@@ -18,7 +18,10 @@ macro_rules! decompress_data {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             // First check if this is compressed data by attempting to decode as CompressedData
-            match bincode::serde::decode_from_slice::<CompressedData, _>(&$bytes[..], bincode::config::legacy()) {
+            match bincode::serde::decode_from_slice::<CompressedData, _>(
+                &$bytes[..],
+                bincode::config::legacy(),
+            ) {
                 Ok((compressed_data, _)) => {
                     // Successfully decoded as CompressedData, now decompress it
                     match decompress(compressed_data) {
@@ -53,7 +56,7 @@ macro_rules! cc_cedict_data {
     };
 }
 
-// メタデータ専用マクロ（圧縮・解凍処理をスキップ）
+// Metadata-specific macro (skips compression/decompression processing)
 macro_rules! cc_cedict_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "cc-cedict")]
@@ -90,7 +93,7 @@ cc_cedict_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(&METADATA_DATA, Metadata::cc_cedict);
+    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::cc_cedict);
 
     #[cfg(feature = "compress")]
     {

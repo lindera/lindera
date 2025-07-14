@@ -66,9 +66,12 @@ impl Metadata {
         // If JSON fails, try to decompress as bincode-encoded compressed data
         #[cfg(feature = "compress")]
         {
-            use crate::decompress::{decompress, CompressedData};
-            
-            if let Ok((compressed_data, _)) = bincode::serde::decode_from_slice::<CompressedData, _>(data, bincode::config::legacy()) {
+            use crate::decompress::{CompressedData, decompress};
+
+            if let Ok((compressed_data, _)) = bincode::serde::decode_from_slice::<CompressedData, _>(
+                data,
+                bincode::config::legacy(),
+            ) {
                 if let Ok(decompressed) = decompress(compressed_data) {
                     // Try to parse the decompressed data as JSON
                     if let Ok(metadata) = serde_json::from_slice(&decompressed) {
@@ -87,15 +90,17 @@ impl Metadata {
         }
 
         // If all attempts fail, return an error
-        Err(crate::error::LinderaErrorKind::Deserialize
-            .with_error(anyhow::anyhow!("Failed to deserialize metadata from any supported format")))
+        Err(
+            crate::error::LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                "Failed to deserialize metadata from any supported format"
+            )),
+        )
     }
 
     /// Load metadata with fallback to default values.
     /// This is used when feature flags are disabled and data might be empty.
     pub fn load_or_default(data: &[u8], default_fn: fn() -> Self) -> Self {
         if data.is_empty() {
-            eprintln!("Metadata::load_or_default: データが空です、デフォルト値を使用します");
             default_fn()
         } else {
             match Self::load(data) {

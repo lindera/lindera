@@ -12,14 +12,17 @@ use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 #[cfg(feature = "compress")]
-use lindera_dictionary::decompress::{decompress, CompressedData};
+use lindera_dictionary::decompress::{CompressedData, decompress};
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             // First check if this is compressed data by attempting to decode as CompressedData
-            match bincode::serde::decode_from_slice::<CompressedData, _>(&$bytes[..], bincode::config::legacy()) {
+            match bincode::serde::decode_from_slice::<CompressedData, _>(
+                &$bytes[..],
+                bincode::config::legacy(),
+            ) {
                 Ok((compressed_data, _)) => {
                     // Successfully decoded as CompressedData, now decompress it
                     match decompress(compressed_data) {
@@ -54,7 +57,7 @@ macro_rules! ipadic_neologd_data {
     };
 }
 
-// メタデータ専用マクロ（圧縮・解凍処理をスキップ）
+// Metadata-specific macro (skips compression/decompression processing)
 macro_rules! ipadic_neologd_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "ipadic-neologd")]
@@ -95,7 +98,7 @@ ipadic_neologd_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(&METADATA_DATA, Metadata::ipadic_neologd);
+    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::ipadic_neologd);
 
     #[cfg(feature = "compress")]
     {
