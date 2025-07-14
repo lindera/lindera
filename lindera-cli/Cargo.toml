@@ -26,7 +26,7 @@ cjk3 = [
 ] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
 compress = ["lindera/compress"] # Compress dictionaries
 mmap = ["lindera/mmap"] # Use memory-mapped file
-default = ["compress", "mmap"]
+default = ["lindera/default"]
 
 [dependencies]
 anyhow.workspace = true

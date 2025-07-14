@@ -1,14 +1,49 @@
-use std::io::Read;
+use std::{io::Read, str::FromStr};
 
 use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+use crate::error::{LinderaError, LinderaErrorKind};
+
+#[derive(Debug, Clone, EnumIter, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(u32)] // explicit representation for consistency
+#[serde(rename_all = "lowercase")]
 pub enum Algorithm {
-    Deflate,
-    Zlib,
-    Gzip,
-    Raw,
+    Deflate = 0,
+    Zlib = 1,
+    Gzip = 2,
+    Raw = 3,
+}
+
+impl Algorithm {
+    pub fn variants() -> Vec<Algorithm> {
+        Algorithm::iter().collect::<Vec<_>>()
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Algorithm::Deflate => "deflate",
+            Algorithm::Zlib => "zlib",
+            Algorithm::Gzip => "gzip",
+            Algorithm::Raw => "raw",
+        }
+    }
+}
+
+impl FromStr for Algorithm {
+    type Err = LinderaError;
+    fn from_str(input: &str) -> Result<Algorithm, Self::Err> {
+        match input {
+            "deflate" => Ok(Algorithm::Deflate),
+            "zlib" => Ok(Algorithm::Zlib),
+            "gzip" => Ok(Algorithm::Gzip),
+            "raw" => Ok(Algorithm::Raw),
+            _ => Err(LinderaErrorKind::Algorithm
+                .with_error(anyhow::anyhow!("Invalid algorithm: {}", input))),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

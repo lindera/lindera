@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 
 use lindera::LinderaResult;
 use lindera::character_filter::CharacterFilterLoader;
-use lindera::dictionary::{DictionaryKind, resolve_builder};
+use lindera::dictionary::{DictionaryKind, resolve_builder, resolve_metadata};
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
@@ -280,6 +280,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 }
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
+    let metadata = resolve_metadata(args.dic_type.clone())?;
     let builder = resolve_builder(args.dic_type)?;
 
     if args.build_user_dic {
@@ -290,8 +291,8 @@ fn build(args: BuildArgs) -> LinderaResult<()> {
         } else {
             return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!("failed to get filename")));
         };
-        builder.build_user_dictionary(&args.src_path, &output_file)
+        builder.build_user_dictionary(&metadata, &args.src_path, &output_file)
     } else {
-        builder.build_dictionary(&args.src_path, &args.dest_path)
+        builder.build_dictionary(&metadata, &args.src_path, &args.dest_path)
     }
 }
