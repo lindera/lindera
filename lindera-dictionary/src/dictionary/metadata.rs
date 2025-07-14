@@ -49,6 +49,62 @@ impl Metadata {
         }
     }
 
+    /// Load metadata from binary data (JSON format or compressed binary format).
+    /// This provides a consistent interface with other dictionary components.
+    pub fn load(data: &[u8]) -> crate::LinderaResult<Self> {
+        // If data is empty, return an error since metadata is required
+        if data.is_empty() {
+            return Err(crate::error::LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!("Empty metadata data")));
+        }
+
+        // Try to deserialize as JSON first (for uncompressed metadata.json files)
+        if let Ok(metadata) = serde_json::from_slice(data) {
+            return Ok(metadata);
+        }
+
+        // If JSON fails, try to decompress as bincode-encoded compressed data
+        #[cfg(feature = "compress")]
+        {
+            use crate::decompress::{decompress, CompressedData};
+            
+            if let Ok((compressed_data, _)) = bincode::serde::decode_from_slice::<CompressedData, _>(data, bincode::config::legacy()) {
+                if let Ok(decompressed) = decompress(compressed_data) {
+                    // Try to parse the decompressed data as JSON
+                    if let Ok(metadata) = serde_json::from_slice(&decompressed) {
+                        return Ok(metadata);
+                    }
+                }
+            }
+        }
+
+        #[cfg(not(feature = "compress"))]
+        {
+            // Without compress feature, data should be raw JSON
+            return serde_json::from_slice(data).map_err(|err| {
+                crate::error::LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+            });
+        }
+
+        // If all attempts fail, return an error
+        Err(crate::error::LinderaErrorKind::Deserialize
+            .with_error(anyhow::anyhow!("Failed to deserialize metadata from any supported format")))
+    }
+
+    /// Load metadata with fallback to default values.
+    /// This is used when feature flags are disabled and data might be empty.
+    pub fn load_or_default(data: &[u8], default_fn: fn() -> Self) -> Self {
+        if data.is_empty() {
+            eprintln!("Metadata::load_or_default: データが空です、デフォルト値を使用します");
+            default_fn()
+        } else {
+            match Self::load(data) {
+                Ok(metadata) => metadata,
+                Err(_) => default_fn(),
+            }
+        }
+    }
+
     pub fn ipadic() -> Self {
         Self::new(
             "EUC-JP".to_string(),

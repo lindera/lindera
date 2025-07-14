@@ -12,6 +12,7 @@ use lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder;
 use lindera_dictionary::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
 use lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder;
 use lindera_dictionary::dictionary_builder::unidic::UnidicBuilder;
+use lindera_dictionary::dictionary_loader::MetadataLoader;
 use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
 use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
@@ -115,6 +116,7 @@ pub fn load_dictionary_from_path(path: &Path) -> LinderaResult<Dictionary> {
         connection_cost_matrix: ConnectionCostMatrixLoader::load(path)?,
         character_definition: CharacterDefinitionLoader::load(path)?,
         unknown_dictionary: UnknownDictionaryLoader::load(path)?,
+        metadata: MetadataLoader::load(path)?,
     })
 }
 
@@ -125,6 +127,7 @@ pub fn load_dictionary_from_path_mmap(path: &Path) -> LinderaResult<Dictionary> 
         connection_cost_matrix: ConnectionCostMatrixLoader::load_mmap(path)?,
         character_definition: CharacterDefinitionLoader::load(path)?,
         unknown_dictionary: UnknownDictionaryLoader::load(path)?,
+        metadata: MetadataLoader::load(path)?, // Metadata is small, so normal loading is sufficient
     })
 }
 

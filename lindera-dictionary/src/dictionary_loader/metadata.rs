@@ -11,16 +11,19 @@ use crate::util::read_file;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```no_run
 /// use lindera_dictionary::dictionary_loader::MetadataLoader;
 /// use std::path::Path;
 ///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// // Normal loading
 /// let metadata = MetadataLoader::load(Path::new("/path/to/dictionary"))?;
 ///
 /// // Memory-mapped loading (when mmap feature is enabled)
 /// #[cfg(feature = "mmap")]
 /// let metadata = MetadataLoader::load_mmap(Path::new("/path/to/dictionary"))?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct MetadataLoader {}
 

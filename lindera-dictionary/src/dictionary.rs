@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use crate::dictionary::metadata::Metadata;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::error::LinderaErrorKind;
@@ -25,6 +26,7 @@ pub struct Dictionary {
     pub connection_cost_matrix: ConnectionCostMatrix,
     pub character_definition: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
+    pub metadata: Metadata,
 }
 
 impl Dictionary {

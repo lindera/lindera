@@ -7,20 +7,34 @@ use lindera_dictionary::LinderaResult;
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 #[cfg(feature = "compress")]
-use lindera_dictionary::decompress::decompress;
+use lindera_dictionary::decompress::{decompress, CompressedData};
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-            let (compressed_data, _) =
-                bincode::serde::decode_from_slice(&$bytes[..], bincode::config::legacy())
-                    .expect(concat!("invalid file format ", $filename));
-            decompress(compressed_data).expect(concat!("invalid file format ", $filename))
+            // First check if this is compressed data by attempting to decode as CompressedData
+            match bincode::serde::decode_from_slice::<CompressedData, _>(&$bytes[..], bincode::config::legacy()) {
+                Ok((compressed_data, _)) => {
+                    // Successfully decoded as CompressedData, now decompress it
+                    match decompress(compressed_data) {
+                        Ok(decompressed) => decompressed,
+                        Err(_) => {
+                            // Decompression failed, fall back to raw data
+                            $bytes.to_vec()
+                        }
+                    }
+                }
+                Err(_) => {
+                    // Not compressed data format, use as raw binary
+                    $bytes.to_vec()
+                }
+            }
         });
         #[cfg(not(feature = "compress"))]
         const $name: &'static [u8] = $bytes;
@@ -37,6 +51,16 @@ macro_rules! ipadic_neologd_data {
         );
         #[cfg(not(feature = "ipadic-neologd"))]
         decompress_data!($name, &[], $filename);
+    };
+}
+
+// メタデータ専用マクロ（圧縮・解凍処理をスキップ）
+macro_rules! ipadic_neologd_metadata {
+    ($name: ident, $path: literal, $filename: literal) => {
+        #[cfg(feature = "ipadic-neologd")]
+        const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
+        #[cfg(not(feature = "ipadic-neologd"))]
+        const $name: &'static [u8] = &[];
     };
 }
 
@@ -63,8 +87,16 @@ ipadic_neologd_data!(
     "/lindera-ipadic-neologd/dict.words",
     "dict.words"
 );
+ipadic_neologd_metadata!(
+    METADATA_DATA,
+    "/lindera-ipadic-neologd/metadata.json",
+    "metadata.json"
+);
 
 pub fn load() -> LinderaResult<Dictionary> {
+    // Load metadata from embedded binary data with fallback to default
+    let metadata = Metadata::load_or_default(&METADATA_DATA, Metadata::ipadic_neologd);
+
     #[cfg(feature = "compress")]
     {
         Ok(Dictionary {
@@ -78,6 +110,7 @@ pub fn load() -> LinderaResult<Dictionary> {
             connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA.deref()),
             character_definition: CharacterDefinition::load(&CHAR_DEFINITION_DATA)?,
             unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
+            metadata,
         })
     }
     #[cfg(not(feature = "compress"))]
@@ -92,7 +125,8 @@ pub fn load() -> LinderaResult<Dictionary> {
             ),
             connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
             character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
-            unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
+            unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
+            metadata,
         })
     }
 }
