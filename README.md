@@ -6,10 +6,6 @@ A morphological analysis library in Rust. This project fork from [kuromoji-rs](h
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
 
-The following products are required to build:
-
-- Rust >= 1.46.0
-
 ## Tokenization examples
 
 ### Basic tokenization
@@ -18,7 +14,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.37.0", features = ["ipadic"] }
+lindera = { version = "0.44.1", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -93,7 +89,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.40.0", features = ["ipadic"] }
+lindera = { version = "0.44.1", features = ["ipadic"] }
 ```
 
 For example:
@@ -169,7 +165,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.34.0", features = ["ipadic"] }
+lindera = { version = "0.44.1", features = ["ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
