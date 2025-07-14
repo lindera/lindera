@@ -113,6 +113,17 @@ Instead, you will be penalized for the execution time of the program.
 % tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
 ```
 
+### IPADIC NEologd (Japanese dictionary)
+
+```shell script
+% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
+% lindera build --dictionary-kind=ipadic-neologd /tmp/mecab-ipadic-neologd-0.0.7-20200820 /tmp/lindera-ipadic-neologd-0.0.7-20200820
+% ls -al /tmp/lindera-ipadic-neologd-0.0.7-20200820
+% (cd /tmp && zip -r lindera-ipadic-neologd-0.0.7-20200820.zip lindera-ipadic-neologd-0.0.7-20200820/)
+% tar -czf /tmp/lindera-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp lindera-ipadic-neologd-0.0.7-20200820
+```
+
 ## Build user dictionary
 
 ### Build IPADIC (Japanese dictionary)
@@ -189,10 +200,32 @@ EOS
 ```
 
 ```text
+日本    名詞,固有名詞,地名,国,*,*,ニッポン,日本,日本,ニッポン,日本,ニッポン,固,*,*,*,*
+語      名詞,普通名詞,一般,*,*,*,ゴ,語,語,ゴ,語,ゴ,漢,*,*,*,*
+の      助詞,格助詞,*,*,*,*,ノ,の,の,ノ,の,ノ,和,*,*,*,*
+形態    名詞,普通名詞,一般,*,*,*,ケイタイ,形態,形態,ケータイ,形態,ケータイ,漢,*,*,*,*
+素      接尾辞,名詞的,一般,*,*,*,ソ,素,素,ソ,素,ソ,漢,*,*,*,*
+解析    名詞,普通名詞,サ変可能,*,*,*,カイセキ,解析,解析,カイセキ,解析,カイセキ,漢,*,*,*,*
+を      助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+行う    動詞,一般,*,*,五段-ワア行,連体形-一般,オコナウ,行う,行う,オコナウ,行う,オコナウ,和,*,*,*,*
+こと    名詞,普通名詞,一般,*,*,*,コト,事,こと,コト,こと,コト,和,コ濁,基本形,*,*
+が      助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+でき    動詞,非自立可能,*,*,上一段-カ行,連用形-一般,デキル,出来る,でき,デキ,できる,デキル,和,*,*,*,*
+ます    助動詞,*,*,*,助動詞-マス,終止形-一般,マス,ます,ます,マス,ます,マス,和,*,*,*,*
+。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+```
+
+#### Tokenize with IPADIC Neologd (Japanese dictionary)
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-path=/tmp/lindera-ipadic-neologd-0.0.7-20200820
+```
+
+```text
 日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
-形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
-解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
 を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
 行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
 こと    名詞,非自立,一般,*,*,*,こと,コト,コト
@@ -296,6 +329,30 @@ EOS
 
 NOTE: To include UniDic dictionary in the binary, you must build with the `--features=unidic` option.
 
+#### Tokenize with self-contained IPADIC NEologd (Japanese dictionary)
+
+If IPADIC NEologd were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-kind=ipadic-neologd
+```
+
+```text
+日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=ipadic-neologd` option.
+
 #### Tokenize with self-contained ko-dic (Korean dictionary)
 
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
@@ -350,7 +407,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/simple_userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.csv
 ```
 
 ```text
@@ -369,7 +426,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.bin
 ```
 
 ```text
@@ -453,8 +510,9 @@ EOS
 ```json
 [
   {
-    "text": "お待ち",
-    "detail": [
+    "byte_end": 9,
+    "byte_start": 0,
+    "details": [
       "名詞",
       "サ変接続",
       "*",
@@ -464,11 +522,17 @@ EOS
       "お待ち",
       "オマチ",
       "オマチ"
-    ]
+    ],
+    "text": "お待ち",
+    "word_id": {
+      "id": 14695,
+      "is_system": true
+    }
   },
   {
-    "text": "し",
-    "detail": [
+    "byte_end": 12,
+    "byte_start": 9,
+    "details": [
       "動詞",
       "自立",
       "*",
@@ -478,11 +542,17 @@ EOS
       "する",
       "シ",
       "シ"
-    ]
+    ],
+    "text": "し",
+    "word_id": {
+      "id": 30760,
+      "is_system": true
+    }
   },
   {
-    "text": "て",
-    "detail": [
+    "byte_end": 15,
+    "byte_start": 12,
+    "details": [
       "助詞",
       "接続助詞",
       "*",
@@ -492,11 +562,17 @@ EOS
       "て",
       "テ",
       "テ"
-    ]
+    ],
+    "text": "て",
+    "word_id": {
+      "id": 46600,
+      "is_system": true
+    }
   },
   {
-    "text": "おり",
-    "detail": [
+    "byte_end": 21,
+    "byte_start": 15,
+    "details": [
       "動詞",
       "非自立",
       "*",
@@ -506,11 +582,17 @@ EOS
       "おる",
       "オリ",
       "オリ"
-    ]
+    ],
+    "text": "おり",
+    "word_id": {
+      "id": 14236,
+      "is_system": true
+    }
   },
   {
-    "text": "ます",
-    "detail": [
+    "byte_end": 27,
+    "byte_start": 21,
+    "details": [
       "助動詞",
       "*",
       "*",
@@ -520,11 +602,17 @@ EOS
       "ます",
       "マス",
       "マス"
-    ]
+    ],
+    "text": "ます",
+    "word_id": {
+      "id": 68730,
+      "is_system": true
+    }
   },
   {
-    "text": "。",
-    "detail": [
+    "byte_end": 30,
+    "byte_start": 27,
+    "details": [
       "記号",
       "句点",
       "*",
@@ -534,7 +622,12 @@ EOS
       "。",
       "。",
       "。"
-    ]
+    ],
+    "text": "。",
+    "word_id": {
+      "id": 98,
+      "is_system": true
+    }
   }
 ]
 ```
