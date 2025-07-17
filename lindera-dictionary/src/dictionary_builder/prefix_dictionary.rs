@@ -479,7 +479,7 @@ mod tests {
     fn test_new_with_schema() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema.clone());
-        
+
         assert_eq!(builder.schema.name, "IPADIC");
         assert_eq!(builder.schema.version, "2.7.0");
         assert_eq!(builder.flexible_csv, true);
@@ -492,15 +492,17 @@ mod tests {
     fn test_get_common_field_value_empty() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "",     // Empty surface
-            "123",  // LeftContextId
-            "456",  // RightContextId
-            "789",  // Cost
+            "",    // Empty surface
+            "123", // LeftContextId
+            "456", // RightContextId
+            "789", // Cost
         ]);
 
-        let surface = builder.get_common_field_value(&record, &FieldType::Surface).unwrap();
+        let surface = builder
+            .get_common_field_value(&record, &FieldType::Surface)
+            .unwrap();
         assert_eq!(surface, None);
     }
 
@@ -508,12 +510,14 @@ mod tests {
     fn test_get_common_field_value_out_of_bounds() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface only
+            "surface_form", // Surface only
         ]);
 
-        let left_id = builder.get_common_field_value(&record, &FieldType::LeftContextId).unwrap();
+        let left_id = builder
+            .get_common_field_value(&record, &FieldType::LeftContextId)
+            .unwrap();
         assert_eq!(left_id, None);
     }
 
@@ -521,12 +525,12 @@ mod tests {
     fn test_parse_word_cost() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "789",           // Cost
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "789",          // Cost
         ]);
 
         let cost = builder.parse_word_cost(&record).unwrap();
@@ -537,12 +541,12 @@ mod tests {
     fn test_parse_word_cost_invalid() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "invalid",       // Invalid cost
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "invalid",      // Invalid cost
         ]);
 
         let result = builder.parse_word_cost(&record);
@@ -554,12 +558,12 @@ mod tests {
         let schema = DictionarySchema::ipadic();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.skip_invalid_cost_or_id = true;
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "invalid",       // Invalid cost
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "invalid",      // Invalid cost
         ]);
 
         let cost = builder.parse_word_cost(&record).unwrap();
@@ -570,12 +574,12 @@ mod tests {
     fn test_parse_left_id() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "789",           // Cost
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "789",          // Cost
         ]);
 
         let left_id = builder.parse_left_id(&record).unwrap();
@@ -586,12 +590,12 @@ mod tests {
     fn test_parse_right_id() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "789",           // Cost
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "789",          // Cost
         ]);
 
         let right_id = builder.parse_right_id(&record).unwrap();
@@ -610,7 +614,7 @@ mod tests {
     fn test_get_encoding() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let encoding = builder.get_encoding().unwrap();
         assert_eq!(encoding.name(), "UTF-8");
     }
@@ -620,7 +624,7 @@ mod tests {
         let schema = DictionarySchema::ipadic();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.encoding = "INVALID-ENCODING".into();
-        
+
         let result = builder.get_encoding();
         assert!(result.is_err());
     }
@@ -629,23 +633,48 @@ mod tests {
     fn test_get_common_field_value() {
         let schema = DictionarySchema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
-        
+
         let record = StringRecord::from(vec![
-            "surface_form",  // Surface
-            "123",           // LeftContextId
-            "456",           // RightContextId
-            "789",           // Cost
-            "名詞",          // MajorPos
+            "surface_form", // Surface
+            "123",          // LeftContextId
+            "456",          // RightContextId
+            "789",          // Cost
+            "名詞",         // MajorPos
         ]);
 
         // Test common fields
-        assert_eq!(builder.get_common_field_value(&record, &FieldType::Surface).unwrap(), Some("surface_form".to_string()));
-        assert_eq!(builder.get_common_field_value(&record, &FieldType::LeftContextId).unwrap(), Some("123".to_string()));
-        assert_eq!(builder.get_common_field_value(&record, &FieldType::RightContextId).unwrap(), Some("456".to_string()));
-        assert_eq!(builder.get_common_field_value(&record, &FieldType::Cost).unwrap(), Some("789".to_string()));
-        
+        assert_eq!(
+            builder
+                .get_common_field_value(&record, &FieldType::Surface)
+                .unwrap(),
+            Some("surface_form".to_string())
+        );
+        assert_eq!(
+            builder
+                .get_common_field_value(&record, &FieldType::LeftContextId)
+                .unwrap(),
+            Some("123".to_string())
+        );
+        assert_eq!(
+            builder
+                .get_common_field_value(&record, &FieldType::RightContextId)
+                .unwrap(),
+            Some("456".to_string())
+        );
+        assert_eq!(
+            builder
+                .get_common_field_value(&record, &FieldType::Cost)
+                .unwrap(),
+            Some("789".to_string())
+        );
+
         // Test case where field is out of bounds - should return None, not an error
         let short_record = StringRecord::from(vec!["surface_form", "123"]);
-        assert_eq!(builder.get_common_field_value(&short_record, &FieldType::Cost).unwrap(), None);
+        assert_eq!(
+            builder
+                .get_common_field_value(&short_record, &FieldType::Cost)
+                .unwrap(),
+            None
+        );
     }
 }
