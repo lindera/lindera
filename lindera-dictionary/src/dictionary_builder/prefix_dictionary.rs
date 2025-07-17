@@ -18,6 +18,7 @@ use yada::builder::DoubleArrayBuilder;
 
 use crate::LinderaResult;
 use crate::decompress::Algorithm;
+use crate::dictionary_builder::dictionary_schema::DictionarySchema;
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
 use crate::viterbi::{WordEntry, WordId};
@@ -37,9 +38,23 @@ pub struct PrefixDictionaryBuilder {
     normalize_details: bool,
     #[builder(default = "false")]
     skip_invalid_cost_or_id: bool,
+    #[builder(default = "DictionarySchema::ipadic()")]
+    schema: DictionarySchema,
 }
 
 impl PrefixDictionaryBuilder {
+    /// Create a new builder with the specified schema
+    pub fn new(schema: DictionarySchema) -> Self {
+        Self {
+            flexible_csv: true,
+            encoding: "UTF-8".into(),
+            compress_algorithm: Algorithm::Deflate,
+            normalize_details: false,
+            skip_invalid_cost_or_id: false,
+            schema,
+        }
+    }
+
     /// Main method for building the dictionary
     pub fn build(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         // 1. Load CSV data
@@ -166,9 +181,23 @@ impl PrefixDictionaryBuilder {
             }
 
             let key = if self.normalize_details {
-                normalize(&row[0])
+                if let Some(surface) = self.get_common_field_value(
+                    row,
+                    &crate::dictionary_builder::dictionary_schema::FieldType::Surface,
+                )? {
+                    normalize(&surface)
+                } else {
+                    continue;
+                }
             } else {
-                row[0].to_string()
+                if let Some(surface) = self.get_common_field_value(
+                    row,
+                    &crate::dictionary_builder::dictionary_schema::FieldType::Surface,
+                )? {
+                    surface
+                } else {
+                    continue;
+                }
             };
 
             word_entry_map.entry(key).or_default().push(WordEntry {
@@ -185,51 +214,117 @@ impl PrefixDictionaryBuilder {
         Ok(word_entry_map)
     }
 
-    /// Parse word cost
+    /// Get common field value by type
+    fn get_common_field_value(
+        &self,
+        row: &StringRecord,
+        field_type: &crate::dictionary_builder::dictionary_schema::FieldType,
+    ) -> LinderaResult<Option<String>> {
+        let index = self
+            .schema
+            .get_common_field_index(field_type)
+            .ok_or_else(|| {
+                LinderaErrorKind::Content
+                    .with_error(anyhow!("Field type {:?} not found", field_type))
+            })?;
+
+        if index >= row.len() {
+            return Ok(None);
+        }
+
+        let value = row[index].trim();
+        Ok(if value.is_empty() {
+            None
+        } else {
+            Some(value.to_string())
+        })
+    }
+
+    /// Get field value by name
+    fn get_field_value_by_name(
+        &self,
+        row: &StringRecord,
+        name: &str,
+    ) -> LinderaResult<Option<String>> {
+        let field = self.schema.get_field_by_name(name).ok_or_else(|| {
+            LinderaErrorKind::Content.with_error(anyhow!("Field '{}' not found", name))
+        })?;
+
+        if field.index >= row.len() {
+            return Ok(None);
+        }
+
+        let value = row[field.index].trim();
+        Ok(if value.is_empty() {
+            None
+        } else {
+            Some(value.to_string())
+        })
+    }
+
+    /// Parse word cost using schema
     fn parse_word_cost(&self, row: &StringRecord) -> LinderaResult<Option<i16>> {
-        match i16::from_str(row[3].trim()) {
-            Ok(wc) => Ok(Some(wc)),
-            Err(_err) => {
-                if self.skip_invalid_cost_or_id {
-                    warn!("failed to parse word_cost: {row:?}");
-                    Ok(None)
-                } else {
-                    Err(LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse word_cost")))
+        let cost_str = self.get_common_field_value(
+            row,
+            &crate::dictionary_builder::dictionary_schema::FieldType::Cost,
+        )?;
+        match cost_str {
+            Some(s) => match i16::from_str(&s) {
+                Ok(cost) => Ok(Some(cost)),
+                Err(_) => {
+                    if self.skip_invalid_cost_or_id {
+                        Ok(None)
+                    } else {
+                        Err(LinderaErrorKind::Content
+                            .with_error(anyhow!("Invalid cost value: {}", s)))
+                    }
                 }
-            }
+            },
+            None => Ok(None),
         }
     }
 
-    /// Parse left ID
+    /// Parse left ID using schema
     fn parse_left_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        match u16::from_str(row[1].trim()) {
-            Ok(lid) => Ok(Some(lid)),
-            Err(_err) => {
-                if self.skip_invalid_cost_or_id {
-                    warn!("failed to parse left_id: {row:?}");
-                    Ok(None)
-                } else {
-                    Err(LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse left_id")))
+        let left_id_str = self.get_common_field_value(
+            row,
+            &crate::dictionary_builder::dictionary_schema::FieldType::LeftContextId,
+        )?;
+        match left_id_str {
+            Some(s) => match u16::from_str(&s) {
+                Ok(id) => Ok(Some(id)),
+                Err(_) => {
+                    if self.skip_invalid_cost_or_id {
+                        Ok(None)
+                    } else {
+                        Err(LinderaErrorKind::Content
+                            .with_error(anyhow!("Invalid left context ID: {}", s)))
+                    }
                 }
-            }
+            },
+            None => Ok(None),
         }
     }
 
-    /// Parse right ID
+    /// Parse right ID using schema
     fn parse_right_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        match u16::from_str(row[2].trim()) {
-            Ok(rid) => Ok(Some(rid)),
-            Err(_err) => {
-                if self.skip_invalid_cost_or_id {
-                    warn!("failed to parse right_id: {row:?}");
-                    Ok(None)
-                } else {
-                    Err(LinderaErrorKind::Parse
-                        .with_error(anyhow::anyhow!("failed to parse right_id")))
+        let right_id_str = self.get_common_field_value(
+            row,
+            &crate::dictionary_builder::dictionary_schema::FieldType::RightContextId,
+        )?;
+        match right_id_str {
+            Some(s) => match u16::from_str(&s) {
+                Ok(id) => Ok(Some(id)),
+                Err(_) => {
+                    if self.skip_invalid_cost_or_id {
+                        Ok(None)
+                    } else {
+                        Err(LinderaErrorKind::Content
+                            .with_error(anyhow!("Invalid right context ID: {}", s)))
+                    }
                 }
-            }
+            },
+            None => Ok(None),
         }
     }
 
