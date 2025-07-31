@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::path::Path;
 
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use md5::Context;
 use rand::{SeedableRng, rngs::SmallRng, seq::SliceRandom};
 use reqwest::Client;
@@ -208,30 +208,69 @@ pub async fn fetch(
         // Source file path for build package
         let source_path_for_build = &build_dir.join(params.file_name);
 
-        // Download source file to build directory
-        let tmp_path = Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
+        // Check if source file already exists and is valid
+        let need_download = if source_path_for_build.exists() {
+            debug!(
+                "Found existing source file: {}",
+                source_path_for_build.display()
+            );
 
-        // Download a tarball
-        let client = Client::builder()
-            .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
-            .build()?;
+            // Verify MD5 hash
+            let mut file = File::open(source_path_for_build)?;
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer)?;
 
-        debug!("Downloading {:?}", params.download_urls);
-        let mut dest = File::create(tmp_path.as_path())?;
-        let content = download_with_retry(
-            &client,
-            params.download_urls.to_vec(),
-            MAX_ROUND,
-            params.md5_hash,
-        )
-        .await?;
+            let mut context = Context::new();
+            context.consume(&buffer);
+            let actual_md5 = format!("{:x}", context.finalize());
 
-        io::copy(&mut Cursor::new(content.as_slice()), &mut dest)?;
-        dest.flush()?;
+            if actual_md5 == params.md5_hash {
+                debug!("MD5 check passed for cached file. Skipping download.");
+                false
+            } else {
+                warn!(
+                    "MD5 mismatch for cached file. Expected: {}, Actual: {}",
+                    params.md5_hash, actual_md5
+                );
+                // Remove invalid file
+                std::fs::remove_file(source_path_for_build)?;
+                true
+            }
+        } else {
+            debug!("Source file not found. Will download.");
+            true
+        };
 
-        debug!("Content-Length: {}", content.len());
-        debug!("Downloaded to {}", tmp_path.display());
-        rename(tmp_path.clone(), source_path_for_build).expect("Failed to rename temporary file");
+        if need_download {
+            // Download source file to build directory
+            let tmp_path = Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
+
+            // Download a tarball
+            let client = Client::builder()
+                .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
+                .build()?;
+
+            debug!("Downloading {:?}", params.download_urls);
+            let mut dest = File::create(tmp_path.as_path())?;
+            let content = download_with_retry(
+                &client,
+                params.download_urls.to_vec(),
+                MAX_ROUND,
+                params.md5_hash,
+            )
+            .await?;
+
+            io::copy(&mut Cursor::new(content.as_slice()), &mut dest)?;
+            dest.flush()?;
+            drop(dest);
+
+            debug!("Content-Length: {}", content.len());
+            debug!("Downloaded to {}", tmp_path.display());
+            rename(tmp_path.clone(), source_path_for_build)
+                .expect("Failed to rename temporary file");
+
+            info!("Source file cached at: {}", source_path_for_build.display());
+        }
 
         // Decompress a tar.gz file
         let tmp_extract_path =
@@ -276,8 +315,6 @@ pub async fn fetch(
         }
 
         let _ = std::fs::remove_dir_all(&tmp_extract_path);
-        drop(dest);
-        let _ = std::fs::remove_file(source_path_for_build);
     }
 
     let tmp_path = build_dir.join(format!("tmp-output-{}", params.output_dir));
