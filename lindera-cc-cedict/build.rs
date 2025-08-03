@@ -4,7 +4,6 @@ use std::error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::assets::{FetchParams, fetch};
-    use lindera_dictionary::dictionary::metadata::Metadata;
     use lindera_dictionary::dictionary_builder::cc_cedict::CcCedictBuilder;
 
     let fetch_params = FetchParams {
@@ -16,11 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "aba9748b70f37feede97b70c5d37f8a0",
     };
 
-    let metadata = Metadata::cc_cedict();
+    let builder = CcCedictBuilder::default();
 
-    let buildder = CcCedictBuilder::default();
-
-    fetch(fetch_params, &metadata, buildder).await
+    fetch(fetch_params, builder).await
 }
 
 #[cfg(not(feature = "cc-cedict"))]

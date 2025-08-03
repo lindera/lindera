@@ -4,7 +4,6 @@ use std::error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::assets::{FetchParams, fetch};
-    use lindera_dictionary::dictionary::metadata::Metadata;
     use lindera_dictionary::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
 
     let fetch_params = FetchParams {
@@ -16,11 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "3561f0e76980a842dc828b460a8cae96",
     };
 
-    let metadata = Metadata::ipadic_neologd();
+    let builder = IpadicNeologdBuilder::default();
 
-    let buildder = IpadicNeologdBuilder::new();
-
-    fetch(fetch_params, &metadata, buildder).await
+    fetch(fetch_params, builder).await
 }
 
 #[cfg(not(feature = "ipadic-neologd"))]

@@ -4,7 +4,6 @@ use std::error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::assets::{FetchParams, fetch};
-    use lindera_dictionary::dictionary::metadata::Metadata;
     use lindera_dictionary::dictionary_builder::unidic::UnidicBuilder;
 
     let fetch_params = FetchParams {
@@ -16,11 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "f4502a563e1da44747f61dcd2b269e35",
     };
 
-    let metadata = Metadata::unidic();
+    let builder = UnidicBuilder::default();
 
-    let builder = UnidicBuilder::new();
-
-    fetch(fetch_params, &metadata, builder).await
+    fetch(fetch_params, builder).await
 }
 
 #[cfg(not(feature = "unidic"))]
