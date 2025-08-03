@@ -212,7 +212,11 @@ impl<'a> Token<'a> {
     /// ```
     pub fn get(&mut self, field_name: &str) -> Option<&str> {
         // Get field index from schema
-        let index = self.dictionary.metadata.schema.get_field_index(field_name)?;
+        let index = self
+            .dictionary
+            .metadata
+            .schema
+            .get_field_index(field_name)?;
 
         // Handle common fields
         match index {

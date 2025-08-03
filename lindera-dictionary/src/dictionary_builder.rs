@@ -24,50 +24,27 @@ pub use crate::dictionary::schema::Schema;
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
-use crate::dictionary::metadata::Metadata;
 
 pub trait DictionaryBuilder {
-    fn build_dictionary(
-        &self,
-        metadata: &Metadata,
-        input_dir: &Path,
-        output_dir: &Path,
-    ) -> LinderaResult<()>;
-    fn build_user_dictionary(
-        &self,
-        metadata: &Metadata,
-        input_path: &Path,
-        output_path: &Path,
-    ) -> LinderaResult<()>;
-    fn build_metadata(&self, metadata: &Metadata, output_dir: &Path) -> LinderaResult<()>;
+    fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
+    fn build_metadata(&self, output_dir: &Path) -> LinderaResult<()>;
     fn build_character_definition(
         &self,
-        metadata: &Metadata,
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<CharacterDefinition>;
     fn build_unknown_dictionary(
         &self,
-        metadata: &Metadata,
         input_dir: &Path,
         output_dir: &Path,
         chardef: &CharacterDefinition,
     ) -> LinderaResult<()>;
-    fn build_prefix_dictionary(
-        &self,
-        metadata: &Metadata,
-        input_dir: &Path,
-        output_dir: &Path,
-    ) -> LinderaResult<()>;
+    fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()>;
     fn build_connection_cost_matrix(
         &self,
-        metadata: &Metadata,
         input_dir: &Path,
         output_dir: &Path,
     ) -> LinderaResult<()>;
-    fn build_user_dict(
-        &self,
-        metadata: &Metadata,
-        input_file: &Path,
-    ) -> LinderaResult<UserDictionary>;
+    fn build_user_dictionary(&self, input_path: &Path, output_path: &Path) -> LinderaResult<()>;
+    fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary>;
 }

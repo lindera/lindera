@@ -88,24 +88,14 @@ impl FromStr for DictionaryKind {
 pub type DictionaryConfig = Value;
 pub type UserDictionaryConfig = Value;
 
-pub fn resolve_metadata(dictionary_type: DictionaryKind) -> LinderaResult<Metadata> {
-    match dictionary_type {
-        DictionaryKind::IPADIC => Ok(Metadata::ipadic()),
-        DictionaryKind::IPADICNEologd => Ok(Metadata::ipadic_neologd()),
-        DictionaryKind::UniDic => Ok(Metadata::unidic()),
-        DictionaryKind::KoDic => Ok(Metadata::ko_dic()),
-        DictionaryKind::CcCedict => Ok(Metadata::cc_cedict()),
-    }
-}
-
 pub fn resolve_builder(
     dictionary_type: DictionaryKind,
 ) -> LinderaResult<Box<dyn DictionaryBuilder>> {
     match dictionary_type {
-        DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::new())),
-        DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::new())),
-        DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::new())),
-        DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::new())),
+        DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::default())),
+        DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::default())),
+        DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::default())),
+        DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::default())),
         DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::default())),
     }
 }
@@ -206,14 +196,10 @@ pub fn load_user_dictionary_from_csv(
     kind: DictionaryKind,
     path: &Path,
 ) -> LinderaResult<UserDictionary> {
-    // Resolve the metadata for the specified dictionary kind.
-    let metadata = resolve_metadata(kind.clone())?;
-
     // Resolve the builder for the specified dictionary kind.
     let builder = resolve_builder(kind)?;
-    builder
-        .build_user_dict(&metadata, path)
-        .map_err(|err| LinderaErrorKind::Build.with_error(err))
+    builder.build_user_dict(path)
+    // .map_err(|err| LinderaErrorKind::Build.with_error(err))
 }
 
 pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionary> {

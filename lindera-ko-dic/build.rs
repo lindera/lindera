@@ -4,7 +4,6 @@ use std::error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::assets::{FetchParams, fetch};
-    use lindera_dictionary::dictionary::metadata::Metadata;
     use lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder;
 
     let fetch_params = FetchParams {
@@ -16,11 +15,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "b996764e91c96bc89dc32ea208514a96",
     };
 
-    let metadata = Metadata::ko_dic();
+    let builder = KoDicBuilder::default();
 
-    let builder = KoDicBuilder::new();
-
-    fetch(fetch_params, &metadata, builder).await
+    fetch(fetch_params, builder).await
 }
 
 #[cfg(not(feature = "ko-dic"))]
