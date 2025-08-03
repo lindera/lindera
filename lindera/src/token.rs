@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 
 use lindera_dictionary::dictionary::UNK;
 
@@ -188,5 +189,79 @@ impl<'a> Token<'a> {
         if let Some(details) = self.details.as_mut() {
             details[index] = detail;
         }
+    }
+
+    /// Retrieves the token's detail by field name.
+    ///
+    /// # Arguments
+    ///
+    /// * `field_name` - The name of the field to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Option<&str>` containing the value of the specified field.
+    /// If the field name is not found or the schema is not available, `None` is returned.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use lindera::token::Token;
+    /// # let mut token: Token = unimplemented!();
+    /// let base_form = token.get("base_form");
+    /// let pos = token.get("major_pos");
+    /// ```
+    pub fn get(&mut self, field_name: &str) -> Option<&str> {
+        // Get field index from schema
+        let index = self.dictionary.metadata.schema.get_field_index(field_name)?;
+
+        // Handle common fields
+        match index {
+            0 => Some(self.text.as_ref()), // surface
+            1..=3 => None, // left_context_id, right_context_id, cost are not stored in token
+            _ => {
+                // For custom fields (index >= 4), get from details
+                // details array doesn't include the first 4 common fields
+                self.get_detail(index - 4)
+            }
+        }
+    }
+
+    /// Returns all token fields as a map.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `HashMap<String, String>` containing all available fields and their values.
+    /// The map always includes the "surface" field, and includes other fields based on
+    /// the dictionary schema.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use lindera::token::Token;
+    /// # let mut token: Token = unimplemented!();
+    /// let fields = token.as_map();
+    /// println!("Surface: {}", fields.get("surface").unwrap_or(&"".to_string()));
+    /// println!("POS: {}", fields.get("major_pos").unwrap_or(&"UNK".to_string()));
+    /// ```
+    pub fn as_map(&mut self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+
+        // Always include surface
+        map.insert("surface".to_string(), self.text.to_string());
+
+        // Get schema info first
+        let schema_fields = self.dictionary.metadata.schema.custom_fields.clone();
+
+        // Then get details
+        let details = self.details();
+
+        // Add each custom field from the schema
+        for (i, field_name) in schema_fields.iter().enumerate() {
+            if let Some(value) = details.get(i) {
+                map.insert(field_name.clone(), value.to_string());
+            }
+        }
+
+        map
     }
 }

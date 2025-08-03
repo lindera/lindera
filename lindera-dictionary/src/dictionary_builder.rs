@@ -1,7 +1,6 @@
 pub mod cc_cedict;
 pub mod character_definition;
 pub mod connection_cost_matrix;
-pub mod dictionary_schema;
 pub mod ipadic;
 pub mod ipadic_neologd;
 pub mod ko_dic;
@@ -15,10 +14,12 @@ use std::path::Path;
 
 pub use character_definition::CharacterDefinitionBuilderOptions;
 pub use connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
-pub use dictionary_schema::DictionarySchema;
 pub use prefix_dictionary::PrefixDictionaryBuilderOptions;
 pub use unknown_dictionary::UnknownDictionaryBuilderOptions;
 pub use user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary};
+
+// Re-export DictionarySchema from its new location
+pub use crate::dictionary::schema::Schema;
 
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;

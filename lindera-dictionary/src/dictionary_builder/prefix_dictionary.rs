@@ -18,7 +18,7 @@ use yada::builder::DoubleArrayBuilder;
 
 use crate::LinderaResult;
 use crate::decompress::Algorithm;
-use crate::dictionary_builder::dictionary_schema::DictionarySchema;
+use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
 use crate::viterbi::{WordEntry, WordId};
@@ -38,13 +38,13 @@ pub struct PrefixDictionaryBuilder {
     normalize_details: bool,
     #[builder(default = "false")]
     skip_invalid_cost_or_id: bool,
-    #[builder(default = "DictionarySchema::ipadic()")]
-    schema: DictionarySchema,
+    #[builder(default = "Schema::ipadic()")]
+    schema: Schema,
 }
 
 impl PrefixDictionaryBuilder {
     /// Create a new builder with the specified schema
-    pub fn new(schema: DictionarySchema) -> Self {
+    pub fn new(schema: Schema) -> Self {
         Self {
             flexible_csv: true,
             encoding: "UTF-8".into(),
@@ -181,23 +181,19 @@ impl PrefixDictionaryBuilder {
             }
 
             let key = if self.normalize_details {
-                if let Some(surface) = self.get_common_field_value(
-                    row,
-                    &crate::dictionary_builder::dictionary_schema::FieldType::Surface,
-                )? {
+                if let Some(surface) = self
+                    .get_common_field_value(row, crate::dictionary::schema::CommonField::Surface)?
+                {
                     normalize(&surface)
                 } else {
                     continue;
                 }
+            } else if let Some(surface) =
+                self.get_common_field_value(row, crate::dictionary::schema::CommonField::Surface)?
+            {
+                surface
             } else {
-                if let Some(surface) = self.get_common_field_value(
-                    row,
-                    &crate::dictionary_builder::dictionary_schema::FieldType::Surface,
-                )? {
-                    surface
-                } else {
-                    continue;
-                }
+                continue;
             };
 
             word_entry_map.entry(key).or_default().push(WordEntry {
@@ -218,15 +214,9 @@ impl PrefixDictionaryBuilder {
     fn get_common_field_value(
         &self,
         row: &StringRecord,
-        field_type: &crate::dictionary_builder::dictionary_schema::FieldType,
+        field: crate::dictionary::schema::CommonField,
     ) -> LinderaResult<Option<String>> {
-        let index = self
-            .schema
-            .get_common_field_index(field_type)
-            .ok_or_else(|| {
-                LinderaErrorKind::Content
-                    .with_error(anyhow!("Field type {:?} not found", field_type))
-            })?;
+        let index = self.schema.get_common_field_index(field);
 
         if index >= row.len() {
             return Ok(None);
@@ -242,10 +232,8 @@ impl PrefixDictionaryBuilder {
 
     /// Parse word cost using schema
     fn parse_word_cost(&self, row: &StringRecord) -> LinderaResult<Option<i16>> {
-        let cost_str = self.get_common_field_value(
-            row,
-            &crate::dictionary_builder::dictionary_schema::FieldType::Cost,
-        )?;
+        let cost_str =
+            self.get_common_field_value(row, crate::dictionary::schema::CommonField::Cost)?;
         match cost_str {
             Some(s) => match i16::from_str(&s) {
                 Ok(cost) => Ok(Some(cost)),
@@ -264,10 +252,8 @@ impl PrefixDictionaryBuilder {
 
     /// Parse left ID using schema
     fn parse_left_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        let left_id_str = self.get_common_field_value(
-            row,
-            &crate::dictionary_builder::dictionary_schema::FieldType::LeftContextId,
-        )?;
+        let left_id_str = self
+            .get_common_field_value(row, crate::dictionary::schema::CommonField::LeftContextId)?;
         match left_id_str {
             Some(s) => match u16::from_str(&s) {
                 Ok(id) => Ok(Some(id)),
@@ -286,10 +272,8 @@ impl PrefixDictionaryBuilder {
 
     /// Parse right ID using schema
     fn parse_right_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        let right_id_str = self.get_common_field_value(
-            row,
-            &crate::dictionary_builder::dictionary_schema::FieldType::RightContextId,
-        )?;
+        let right_id_str = self
+            .get_common_field_value(row, crate::dictionary::schema::CommonField::RightContextId)?;
         match right_id_str {
             Some(s) => match u16::from_str(&s) {
                 Ok(id) => Ok(Some(id)),
@@ -472,12 +456,12 @@ fn normalize(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dictionary_builder::dictionary_schema::{DictionarySchema, FieldType};
+    use crate::dictionary::schema::{CommonField, Schema};
     use csv::StringRecord;
 
     #[test]
     fn test_new_with_schema() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema.clone());
 
         assert_eq!(builder.schema.name, "IPADIC");
@@ -490,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_get_common_field_value_empty() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -501,14 +485,14 @@ mod tests {
         ]);
 
         let surface = builder
-            .get_common_field_value(&record, &FieldType::Surface)
+            .get_common_field_value(&record, CommonField::Surface)
             .unwrap();
         assert_eq!(surface, None);
     }
 
     #[test]
     fn test_get_common_field_value_out_of_bounds() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -516,14 +500,14 @@ mod tests {
         ]);
 
         let left_id = builder
-            .get_common_field_value(&record, &FieldType::LeftContextId)
+            .get_common_field_value(&record, CommonField::LeftContextId)
             .unwrap();
         assert_eq!(left_id, None);
     }
 
     #[test]
     fn test_parse_word_cost() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -539,7 +523,7 @@ mod tests {
 
     #[test]
     fn test_parse_word_cost_invalid() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -555,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_parse_word_cost_skip_invalid() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.skip_invalid_cost_or_id = true;
 
@@ -572,7 +556,7 @@ mod tests {
 
     #[test]
     fn test_parse_left_id() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -588,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_parse_right_id() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -612,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_get_encoding() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let encoding = builder.get_encoding().unwrap();
@@ -621,7 +605,7 @@ mod tests {
 
     #[test]
     fn test_get_encoding_invalid() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.encoding = "INVALID-ENCODING".into();
 
@@ -631,7 +615,7 @@ mod tests {
 
     #[test]
     fn test_get_common_field_value() {
-        let schema = DictionarySchema::ipadic();
+        let schema = Schema::ipadic();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -645,25 +629,25 @@ mod tests {
         // Test common fields
         assert_eq!(
             builder
-                .get_common_field_value(&record, &FieldType::Surface)
+                .get_common_field_value(&record, CommonField::Surface)
                 .unwrap(),
             Some("surface_form".to_string())
         );
         assert_eq!(
             builder
-                .get_common_field_value(&record, &FieldType::LeftContextId)
+                .get_common_field_value(&record, CommonField::LeftContextId)
                 .unwrap(),
             Some("123".to_string())
         );
         assert_eq!(
             builder
-                .get_common_field_value(&record, &FieldType::RightContextId)
+                .get_common_field_value(&record, CommonField::RightContextId)
                 .unwrap(),
             Some("456".to_string())
         );
         assert_eq!(
             builder
-                .get_common_field_value(&record, &FieldType::Cost)
+                .get_common_field_value(&record, CommonField::Cost)
                 .unwrap(),
             Some("789".to_string())
         );
@@ -672,7 +656,7 @@ mod tests {
         let short_record = StringRecord::from(vec!["surface_form", "123"]);
         assert_eq!(
             builder
-                .get_common_field_value(&short_record, &FieldType::Cost)
+                .get_common_field_value(&short_record, CommonField::Cost)
                 .unwrap(),
             None
         );

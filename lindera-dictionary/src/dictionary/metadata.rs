@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::decompress::Algorithm;
+use crate::dictionary::schema::Schema;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
@@ -11,6 +12,8 @@ pub struct Metadata {
     pub simple_context_id: u16,
     pub detailed_userdic_fields_num: usize,
     pub unk_fields_num: usize,
+    pub schema: Schema,
+    pub name: String,
 }
 
 impl Default for Metadata {
@@ -24,11 +27,14 @@ impl Default for Metadata {
             0,
             13,
             11,
+            Schema::ipadic(),
+            "IPADIC".to_string(),
         )
     }
 }
 
 impl Metadata {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         encoding: String,
         compress_algorithm: Algorithm,
@@ -37,6 +43,8 @@ impl Metadata {
         simple_context_id: u16,
         detailed_userdic_fields_num: usize,
         unk_fields_num: usize,
+        schema: Schema,
+        name: String,
     ) -> Self {
         Self {
             encoding,
@@ -46,6 +54,8 @@ impl Metadata {
             simple_context_id,
             detailed_userdic_fields_num,
             unk_fields_num,
+            schema,
+            name,
         }
     }
 
@@ -119,6 +129,8 @@ impl Metadata {
             0,
             13,
             11,
+            Schema::ipadic(),
+            "IPADIC".to_string(),
         )
     }
 
@@ -131,6 +143,8 @@ impl Metadata {
             0,
             13,
             11,
+            Schema::ipadic(),
+            "IPADIC-NEologd".to_string(),
         )
     }
 
@@ -143,6 +157,8 @@ impl Metadata {
             0,
             21,
             10,
+            Schema::unidic(),
+            "UniDic".to_string(),
         )
     }
 
@@ -155,6 +171,8 @@ impl Metadata {
             0,
             12,
             12,
+            Schema::ko_dic(),
+            "KO-DIC".to_string(),
         )
     }
 
@@ -167,6 +185,77 @@ impl Metadata {
             0,
             12,
             10,
+            Schema::cc_cedict(),
+            "CC-CEDICT".to_string(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_metadata_dictionary_names() {
+        let ipadic = Metadata::ipadic();
+        assert_eq!(ipadic.name, "IPADIC");
+        assert_eq!(ipadic.schema.name, "IPADIC");
+
+        let ipadic_neologd = Metadata::ipadic_neologd();
+        assert_eq!(ipadic_neologd.name, "IPADIC-NEologd");
+        assert_eq!(ipadic_neologd.schema.name, "IPADIC");
+
+        let unidic = Metadata::unidic();
+        assert_eq!(unidic.name, "UniDic");
+        assert_eq!(unidic.schema.name, "UniDic");
+
+        let ko_dic = Metadata::ko_dic();
+        assert_eq!(ko_dic.name, "KO-DIC");
+        assert_eq!(ko_dic.schema.name, "KO-DIC");
+
+        let cc_cedict = Metadata::cc_cedict();
+        assert_eq!(cc_cedict.name, "CC-CEDICT");
+        assert_eq!(cc_cedict.schema.name, "CC-CEDICT");
+    }
+
+    #[test]
+    fn test_metadata_default() {
+        let metadata = Metadata::default();
+        assert_eq!(metadata.name, "IPADIC");
+        assert_eq!(metadata.schema.name, "IPADIC");
+    }
+
+    #[test]
+    fn test_metadata_new() {
+        let schema = Schema::unidic();
+        let metadata = Metadata::new(
+            "UTF-8".to_string(),
+            Algorithm::Deflate,
+            3,
+            -10000,
+            0,
+            21,
+            10,
+            schema.clone(),
+            "TestDict".to_string(),
+        );
+        assert_eq!(metadata.name, "TestDict");
+        assert_eq!(metadata.schema.name, schema.name);
+    }
+
+    #[test]
+    fn test_metadata_serialization() {
+        let metadata = Metadata::ipadic();
+
+        // Test serialization
+        let serialized = serde_json::to_string(&metadata).unwrap();
+        assert!(serialized.contains("IPADIC"));
+        assert!(serialized.contains("schema"));
+        assert!(serialized.contains("name"));
+
+        // Test deserialization
+        let deserialized: Metadata = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.name, "IPADIC");
+        assert_eq!(deserialized.schema.name, "IPADIC");
     }
 }

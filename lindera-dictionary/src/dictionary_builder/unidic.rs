@@ -10,8 +10,8 @@ use crate::dictionary::metadata::Metadata;
 use crate::dictionary_builder::metadata::MetadataBuilder;
 use crate::dictionary_builder::{
     CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions, DictionaryBuilder,
-    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions, UserDictionaryBuilderOptions,
-    build_user_dictionary,
+    Schema, PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions,
+    UserDictionaryBuilderOptions, build_user_dictionary,
 };
 use crate::error::LinderaErrorKind;
 
@@ -102,6 +102,7 @@ impl DictionaryBuilder for UnidicBuilder {
             .flexible_csv(false)
             .encoding(metadata.encoding.clone())
             .compress_algorithm(metadata.compress_algorithm)
+            .schema(Schema::unidic())
             .builder()
             .unwrap()
             .build(input_dir, output_dir)

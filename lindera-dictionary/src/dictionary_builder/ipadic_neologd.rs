@@ -10,8 +10,8 @@ use crate::dictionary::metadata::Metadata;
 use crate::dictionary_builder::metadata::MetadataBuilder;
 use crate::dictionary_builder::{
     CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions, DictionaryBuilder,
-    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions, UserDictionaryBuilderOptions,
-    build_user_dictionary,
+    Schema, PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions,
+    UserDictionaryBuilderOptions, build_user_dictionary,
 };
 use crate::error::LinderaErrorKind;
 
@@ -103,6 +103,7 @@ impl DictionaryBuilder for IpadicNeologdBuilder {
             .encoding(metadata.encoding.clone())
             .compress_algorithm(metadata.compress_algorithm)
             .normalize_details(true)
+            .schema(Schema::ipadic())
             .builder()
             .unwrap()
             .build(input_dir, output_dir)
