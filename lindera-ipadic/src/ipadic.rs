@@ -4,44 +4,13 @@ use std::env;
 use std::ops::Deref;
 
 use lindera_dictionary::LinderaResult;
-#[cfg(feature = "compress")]
-use lindera_dictionary::decompress::{CompressedData, decompress};
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
-
-macro_rules! decompress_data {
-    ($name: ident, $bytes: expr, $filename: literal) => {
-        #[cfg(feature = "compress")]
-        static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
-            // First check if this is compressed data by attempting to decode as CompressedData
-            match bincode::serde::decode_from_slice::<CompressedData, _>(
-                &$bytes[..],
-                bincode::config::legacy(),
-            ) {
-                Ok((compressed_data, _)) => {
-                    // Successfully decoded as CompressedData, now decompress it
-                    match decompress(compressed_data) {
-                        Ok(decompressed) => decompressed,
-                        Err(_) => {
-                            // Decompression failed, fall back to raw data
-                            $bytes.to_vec()
-                        }
-                    }
-                }
-                Err(_) => {
-                    // Not compressed data format, use as raw binary
-                    $bytes.to_vec()
-                }
-            }
-        });
-        #[cfg(not(feature = "compress"))]
-        const $name: &'static [u8] = $bytes;
-    };
-}
+use lindera_dictionary::decompress_data;
 
 macro_rules! ipadic_data {
     ($name: ident, $path: literal, $filename: literal) => {

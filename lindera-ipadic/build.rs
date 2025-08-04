@@ -4,6 +4,7 @@ use std::error::Error;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::assets::{FetchParams, fetch};
+    // TODO: Phase 2 - Use local IpadicBuilder after refactoring build process
     use lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder;
 
     let fetch_params = FetchParams {

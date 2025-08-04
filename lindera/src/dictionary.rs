@@ -7,11 +7,16 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-use lindera_dictionary::dictionary_builder::cc_cedict::CcCedictBuilder;
-use lindera_dictionary::dictionary_builder::ipadic::IpadicBuilder;
-use lindera_dictionary::dictionary_builder::ipadic_neologd::IpadicNeologdBuilder;
-use lindera_dictionary::dictionary_builder::ko_dic::KoDicBuilder;
-use lindera_dictionary::dictionary_builder::unidic::UnidicBuilder;
+#[cfg(feature = "ipadic")]
+use lindera_ipadic::IpadicBuilder;
+#[cfg(feature = "ipadic-neologd")]
+use lindera_ipadic_neologd::IpadicNeologdBuilder;
+#[cfg(feature = "unidic")]
+use lindera_unidic::UnidicBuilder;
+#[cfg(feature = "ko-dic")]
+use lindera_ko_dic::KoDicBuilder;
+#[cfg(feature = "cc-cedict")]
+use lindera_cc_cedict::CcCedictBuilder;
 use lindera_dictionary::dictionary_loader::MetadataLoader;
 use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
 use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
@@ -92,11 +97,31 @@ pub fn resolve_builder(
     dictionary_type: DictionaryKind,
 ) -> LinderaResult<Box<dyn DictionaryBuilder>> {
     match dictionary_type {
+        #[cfg(feature = "ipadic")]
         DictionaryKind::IPADIC => Ok(Box::new(IpadicBuilder::default())),
+        #[cfg(not(feature = "ipadic"))]
+        DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("IPADIC feature is not enabled"))),
+        #[cfg(feature = "ipadic-neologd")]
         DictionaryKind::IPADICNEologd => Ok(Box::new(IpadicNeologdBuilder::default())),
+        #[cfg(not(feature = "ipadic-neologd"))]
+        DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("IPADIC-NEologd feature is not enabled"))),
+        #[cfg(feature = "unidic")]
         DictionaryKind::UniDic => Ok(Box::new(UnidicBuilder::default())),
+        #[cfg(not(feature = "unidic"))]
+        DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("UniDic feature is not enabled"))),
+        #[cfg(feature = "ko-dic")]
         DictionaryKind::KoDic => Ok(Box::new(KoDicBuilder::default())),
+        #[cfg(not(feature = "ko-dic"))]
+        DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("KO-DIC feature is not enabled"))),
+        #[cfg(feature = "cc-cedict")]
         DictionaryKind::CcCedict => Ok(Box::new(CcCedictBuilder::default())),
+        #[cfg(not(feature = "cc-cedict"))]
+        DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("CC-CEDICT feature is not enabled"))),
     }
 }
 
