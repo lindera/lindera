@@ -12,7 +12,7 @@ use crate::util::read_file;
 /// # Examples
 ///
 /// ```no_run
-/// use lindera_dictionary::dictionary_loader::MetadataLoader;
+/// use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
 /// use std::path::Path;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {

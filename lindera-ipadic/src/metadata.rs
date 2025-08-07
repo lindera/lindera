@@ -19,6 +19,9 @@ impl IpadicMetadata {
             11,
             IpadicSchema::default(),
             "IPADIC".to_string(),
+            false,              // flexible_csv
+            false,              // skip_invalid_cost_or_id
+            true,               // normalize_details is true for IPAdic
         )
     }
 }

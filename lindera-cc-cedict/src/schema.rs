@@ -1,21 +1,9 @@
-use lindera_dictionary::dictionary_builder::Schema;
+use lindera_dictionary::dictionary::schema::Schema;
 
 pub struct CcCedictSchema;
 
 impl CcCedictSchema {
-    pub fn new() -> Schema {
-        Schema::cc_cedict()
-    }
-}
-
-impl Default for CcCedictSchema {
-    fn default() -> Self {
-        Self
-    }
-}
-
-impl From<CcCedictSchema> for Schema {
-    fn from(_: CcCedictSchema) -> Self {
+    pub fn default() -> Schema {
         Schema::cc_cedict()
     }
 }

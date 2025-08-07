@@ -1,4 +1,4 @@
-pub mod cc_cedict;
+pub mod loader;
 
 #[cfg(feature = "cc-cedict")]
 pub mod builder;
@@ -6,10 +6,6 @@ pub mod builder;
 pub mod metadata;
 #[cfg(feature = "cc-cedict")]
 pub mod schema;
-
-// Re-export for convenient access
-#[cfg(feature = "cc-cedict")]
-pub use builder::CcCedictBuilder;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -1,21 +1,9 @@
-use lindera_dictionary::dictionary_builder::Schema;
+use lindera_dictionary::dictionary::schema::Schema;
 
 pub struct KoDicSchema;
 
 impl KoDicSchema {
-    pub fn new() -> Schema {
-        Schema::ko_dic()
-    }
-}
-
-impl Default for KoDicSchema {
-    fn default() -> Self {
-        Self
-    }
-}
-
-impl From<KoDicSchema> for Schema {
-    fn from(_: KoDicSchema) -> Self {
+    pub fn default() -> Schema {
         Schema::ko_dic()
     }
 }

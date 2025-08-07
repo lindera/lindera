@@ -6,15 +6,15 @@ use lindera_dictionary::LinderaResult;
 use lindera_dictionary::dictionary::UserDictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::metadata::Metadata;
-use lindera_dictionary::dictionary_builder::{
-    metadata::MetadataBuilder,
-    CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions, DictionaryBuilder,
-    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions,
-    UserDictionaryBuilderOptions, build_user_dictionary,
-};
+use lindera_dictionary::dictionary_builder::DictionaryBuilder;
+use lindera_dictionary::dictionary_builder::character_definition::CharacterDefinitionBuilderOptions;
+use lindera_dictionary::dictionary_builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
+use lindera_dictionary::dictionary_builder::prefix_dictionary::PrefixDictionaryBuilderOptions;
+use lindera_dictionary::dictionary_builder::unknown_dictionary::UnknownDictionaryBuilderOptions;
+use lindera_dictionary::dictionary_builder::user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary};
+use lindera_dictionary::dictionary_builder::metadata::MetadataBuilder;
 use lindera_dictionary::error::LinderaErrorKind;
 
-use crate::schema::CcCedictSchema;
 use crate::metadata::CcCedictMetadata;
 
 pub struct CcCedictBuilder {
@@ -29,7 +29,7 @@ impl CcCedictBuilder {
 
 impl Default for CcCedictBuilder {
     fn default() -> Self {
-        Self::new(CcCedictMetadata::default().into())
+        Self::new(CcCedictMetadata::default())
     }
 }
 
@@ -81,11 +81,12 @@ impl DictionaryBuilder for CcCedictBuilder {
 
     fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         PrefixDictionaryBuilderOptions::default()
-            .flexible_csv(true)
+            .flexible_csv(self.metadata.flexible_csv)
             .encoding(self.metadata.encoding.clone())
             .compress_algorithm(self.metadata.compress_algorithm)
-            .skip_invalid_cost_or_id(true)
-            .schema(CcCedictSchema::default().into())
+            .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
+            .normalize_details(self.metadata.normalize_details)
+            .schema(self.metadata.schema.clone())
             .builder()
             .unwrap()
             .build(input_dir, output_dir)

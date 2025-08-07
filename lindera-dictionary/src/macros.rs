@@ -8,7 +8,7 @@ macro_rules! decompress_data {
         #[cfg(feature = "compress")]
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             use $crate::decompress::{CompressedData, decompress};
-            
+
             // First check if this is compressed data by attempting to decode as CompressedData
             match bincode::serde::decode_from_slice::<CompressedData, _>(
                 &$bytes[..],

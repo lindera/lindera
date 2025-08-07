@@ -14,6 +14,9 @@ pub struct Metadata {
     pub unk_fields_num: usize,
     pub schema: Schema,
     pub name: String,
+    pub flexible_csv: bool,
+    pub skip_invalid_cost_or_id: bool,
+    pub normalize_details: bool,
 }
 
 impl Default for Metadata {
@@ -29,6 +32,9 @@ impl Default for Metadata {
             11,
             Schema::ipadic(),
             "IPADIC".to_string(),
+            false,
+            false,
+            false,
         )
     }
 }
@@ -45,6 +51,9 @@ impl Metadata {
         unk_fields_num: usize,
         schema: Schema,
         name: String,
+        flexible_csv: bool,
+        skip_invalid_cost_or_id: bool,
+        normalize_details: bool,
     ) -> Self {
         Self {
             encoding,
@@ -56,6 +65,9 @@ impl Metadata {
             unk_fields_num,
             schema,
             name,
+            flexible_csv,
+            skip_invalid_cost_or_id,
+            normalize_details,
         }
     }
 
@@ -120,103 +132,12 @@ impl Metadata {
         }
     }
 
-    pub fn ipadic() -> Self {
-        Self::new(
-            "EUC-JP".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            13,
-            11,
-            Schema::ipadic(),
-            "IPADIC".to_string(),
-        )
-    }
-
-    pub fn ipadic_neologd() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            13,
-            11,
-            Schema::ipadic(),
-            "IPADIC-NEologd".to_string(),
-        )
-    }
-
-    pub fn unidic() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            21,
-            10,
-            Schema::unidic(),
-            "UniDic".to_string(),
-        )
-    }
-
-    pub fn ko_dic() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            12,
-            12,
-            Schema::ko_dic(),
-            "KO-DIC".to_string(),
-        )
-    }
-
-    pub fn cc_cedict() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            12,
-            10,
-            Schema::cc_cedict(),
-            "CC-CEDICT".to_string(),
-        )
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_metadata_dictionary_names() {
-        let ipadic = Metadata::ipadic();
-        assert_eq!(ipadic.name, "IPADIC");
-        assert_eq!(ipadic.schema.name, "IPADIC");
-
-        let ipadic_neologd = Metadata::ipadic_neologd();
-        assert_eq!(ipadic_neologd.name, "IPADIC-NEologd");
-        assert_eq!(ipadic_neologd.schema.name, "IPADIC");
-
-        let unidic = Metadata::unidic();
-        assert_eq!(unidic.name, "UniDic");
-        assert_eq!(unidic.schema.name, "UniDic");
-
-        let ko_dic = Metadata::ko_dic();
-        assert_eq!(ko_dic.name, "KO-DIC");
-        assert_eq!(ko_dic.schema.name, "KO-DIC");
-
-        let cc_cedict = Metadata::cc_cedict();
-        assert_eq!(cc_cedict.name, "CC-CEDICT");
-        assert_eq!(cc_cedict.schema.name, "CC-CEDICT");
-    }
 
     #[test]
     fn test_metadata_default() {
@@ -238,6 +159,9 @@ mod tests {
             10,
             schema.clone(),
             "TestDict".to_string(),
+            false,
+            false,
+            false,
         );
         assert_eq!(metadata.name, "TestDict");
         assert_eq!(metadata.schema.name, schema.name);
@@ -245,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_metadata_serialization() {
-        let metadata = Metadata::ipadic();
+        let metadata = Metadata::default();
 
         // Test serialization
         let serialized = serde_json::to_string(&metadata).unwrap();

@@ -1,4 +1,4 @@
-pub mod unidic;
+pub mod loader;
 
 #[cfg(feature = "unidic")]
 pub mod builder;
@@ -6,10 +6,6 @@ pub mod builder;
 pub mod metadata;
 #[cfg(feature = "unidic")]
 pub mod schema;
-
-// Re-export for convenient access
-#[cfg(feature = "unidic")]
-pub use builder::UnidicBuilder;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

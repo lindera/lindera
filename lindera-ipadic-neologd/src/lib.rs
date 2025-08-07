@@ -1,4 +1,4 @@
-pub mod ipadic_neologd;
+pub mod loader;
 
 #[cfg(feature = "ipadic-neologd")]
 pub mod builder;
@@ -7,9 +7,6 @@ pub mod metadata;
 #[cfg(feature = "ipadic-neologd")]
 pub mod schema;
 
-// Re-export for convenient access
-#[cfg(feature = "ipadic-neologd")]
-pub use builder::IpadicNeologdBuilder;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

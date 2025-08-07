@@ -6,15 +6,15 @@ use lindera_dictionary::LinderaResult;
 use lindera_dictionary::dictionary::UserDictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::metadata::Metadata;
-use lindera_dictionary::dictionary_builder::{
-    metadata::MetadataBuilder,
-    CharacterDefinitionBuilderOptions, ConnectionCostMatrixBuilderOptions, DictionaryBuilder,
-    PrefixDictionaryBuilderOptions, UnknownDictionaryBuilderOptions,
-    UserDictionaryBuilderOptions, build_user_dictionary,
-};
+use lindera_dictionary::dictionary_builder::DictionaryBuilder;
+use lindera_dictionary::dictionary_builder::character_definition::CharacterDefinitionBuilderOptions;
+use lindera_dictionary::dictionary_builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
+use lindera_dictionary::dictionary_builder::prefix_dictionary::PrefixDictionaryBuilderOptions;
+use lindera_dictionary::dictionary_builder::unknown_dictionary::UnknownDictionaryBuilderOptions;
+use lindera_dictionary::dictionary_builder::user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary};
+use lindera_dictionary::dictionary_builder::metadata::MetadataBuilder;
 use lindera_dictionary::error::LinderaErrorKind;
 
-use crate::schema::IpadicSchema;
 use crate::metadata::IpadicMetadata;
 
 pub struct IpadicBuilder {
@@ -81,11 +81,12 @@ impl DictionaryBuilder for IpadicBuilder {
 
     fn build_prefix_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         PrefixDictionaryBuilderOptions::default()
-            .flexible_csv(false)
+            .flexible_csv(self.metadata.flexible_csv)
             .encoding(self.metadata.encoding.clone())
             .compress_algorithm(self.metadata.compress_algorithm)
-            .normalize_details(true)
-            .schema(IpadicSchema::default())
+            .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
+            .normalize_details(self.metadata.normalize_details)
+            .schema(self.metadata.schema.clone())
             .builder()
             .unwrap()
             .build(input_dir, output_dir)

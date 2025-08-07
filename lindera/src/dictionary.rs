@@ -6,23 +6,23 @@ use serde_json::Value;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(feature = "ipadic")]
-use lindera_ipadic::IpadicBuilder;
-#[cfg(feature = "ipadic-neologd")]
-use lindera_ipadic_neologd::IpadicNeologdBuilder;
-#[cfg(feature = "unidic")]
-use lindera_unidic::UnidicBuilder;
-#[cfg(feature = "ko-dic")]
-use lindera_ko_dic::KoDicBuilder;
 #[cfg(feature = "cc-cedict")]
-use lindera_cc_cedict::CcCedictBuilder;
-use lindera_dictionary::dictionary_loader::MetadataLoader;
+use lindera_cc_cedict::builder::CcCedictBuilder;
+use lindera_dictionary::dictionary_builder::DictionaryBuilder;
+use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
 use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
 use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
 use lindera_dictionary::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_dictionary::util::read_file;
+#[cfg(feature = "ipadic")]
+use lindera_ipadic::builder::IpadicBuilder;
+#[cfg(feature = "ipadic-neologd")]
+use lindera_ipadic_neologd::builder::IpadicNeologdBuilder;
+#[cfg(feature = "ko-dic")]
+use lindera_ko_dic::builder::KoDicBuilder;
+#[cfg(feature = "unidic")]
+use lindera_unidic::builder::UnidicBuilder;
 
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
@@ -125,21 +125,28 @@ pub fn resolve_builder(
     }
 }
 
-pub fn load_dictionary_from_path(path: &Path) -> LinderaResult<Dictionary> {
+pub fn load_dictionary_from_path(path: &Path, use_mmap: bool) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
-        prefix_dictionary: PrefixDictionaryLoader::load(path)?,
-        connection_cost_matrix: ConnectionCostMatrixLoader::load(path)?,
-        character_definition: CharacterDefinitionLoader::load(path)?,
-        unknown_dictionary: UnknownDictionaryLoader::load(path)?,
-        metadata: MetadataLoader::load(path)?,
-    })
-}
-
-#[cfg(feature = "mmap")]
-pub fn load_dictionary_from_path_mmap(path: &Path) -> LinderaResult<Dictionary> {
-    Ok(Dictionary {
-        prefix_dictionary: PrefixDictionaryLoader::load_mmap(path)?,
-        connection_cost_matrix: ConnectionCostMatrixLoader::load_mmap(path)?,
+        prefix_dictionary: {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                PrefixDictionaryLoader::load_mmap(path)?
+            } else {
+                PrefixDictionaryLoader::load(path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            PrefixDictionaryLoader::load(path)?
+        },
+        connection_cost_matrix: {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                ConnectionCostMatrixLoader::load_mmap(path)?
+            } else {
+                ConnectionCostMatrixLoader::load(path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            ConnectionCostMatrixLoader::load(path)?
+        },
         character_definition: CharacterDefinitionLoader::load(path)?,
         unknown_dictionary: UnknownDictionaryLoader::load(path)?,
         metadata: MetadataLoader::load(path)?, // Metadata is small, so normal loading is sufficient
@@ -164,11 +171,11 @@ macro_rules! load_dictionary_impl {
 }
 
 load_dictionary_impl! {
-    "ipadic" => DictionaryKind::IPADIC => lindera_ipadic::ipadic::load,
-    "ipadic-neologd" => DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::ipadic_neologd::load,
-    "unidic" => DictionaryKind::UniDic => lindera_unidic::unidic::load,
-    "ko-dic" => DictionaryKind::KoDic => lindera_ko_dic::ko_dic::load,
-    "cc-cedict" => DictionaryKind::CcCedict => lindera_cc_cedict::cc_cedict::load,
+    "ipadic" => DictionaryKind::IPADIC => lindera_ipadic::loader::load,
+    "ipadic-neologd" => DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::loader::load,
+    "unidic" => DictionaryKind::UniDic => lindera_unidic::loader::load,
+    "ko-dic" => DictionaryKind::KoDic => lindera_ko_dic::loader::load,
+    "cc-cedict" => DictionaryKind::CcCedict => lindera_cc_cedict::loader::load,
 }
 
 pub fn load_dictionary_from_config(
@@ -179,7 +186,6 @@ pub fn load_dictionary_from_config(
             let kind = DictionaryKind::from_str(kind_value.as_str().ok_or_else(|| {
                 LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
             })?)?;
-
             // Load contained dictionary from kind value in config.
             load_dictionary_from_kind(kind)
         }
@@ -192,22 +198,13 @@ pub fn load_dictionary_from_config(
                     })?);
 
                     // load external dictionary from path
-                    if dictionary_config
-                        .get("mmap")
-                        .is_some_and(|x| x.as_bool().is_some_and(|b| b))
-                    {
-                        #[cfg(feature = "mmap")]
-                        {
-                            load_dictionary_from_path_mmap(path.as_path())
-                        }
-                        #[cfg(not(feature = "mmap"))]
-                        {
-                            // note: warn about this?
-                            load_dictionary_from_path(path.as_path())
-                        }
-                    } else {
-                        load_dictionary_from_path(path.as_path())
-                    }
+                    // Use mmap by default if feature is enabled, unless explicitly disabled
+                    let use_mmap = cfg!(feature = "mmap")
+                        && !dictionary_config
+                            .get("disable_mmap")
+                            .is_some_and(|x| x.as_bool().is_some_and(|b| b));
+
+                    load_dictionary_from_path(path.as_path(), use_mmap)
                 }
                 None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
                     "kind field or path field must be specified"
@@ -224,7 +221,6 @@ pub fn load_user_dictionary_from_csv(
     // Resolve the builder for the specified dictionary kind.
     let builder = resolve_builder(kind)?;
     builder.build_user_dict(path)
-    // .map_err(|err| LinderaErrorKind::Build.with_error(err))
 }
 
 pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionary> {
@@ -250,7 +246,6 @@ pub fn load_user_dictionary_from_config(
                                         .with_error(anyhow::anyhow!("kind field must be a string"))
                                 },
                             )?)?;
-
                             load_user_dictionary_from_csv(kind, path.as_path())
                         }
                         None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(

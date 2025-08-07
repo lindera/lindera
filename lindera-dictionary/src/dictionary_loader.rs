@@ -4,8 +4,6 @@ pub mod metadata;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
 
-pub use metadata::MetadataLoader;
-
 use std::path::Path;
 
 use crate::LinderaResult;
