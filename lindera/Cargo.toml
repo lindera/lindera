@@ -36,6 +36,9 @@ cjk3 = [
     "ko-dic",
     "cc-cedict",
 ] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
+embed-ipadic = [
+    "lindera-ipadic/embed-ipadic",
+] # Embed IPADIC dictionary in the binary
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",

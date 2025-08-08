@@ -24,7 +24,7 @@ impl Default for Metadata {
     fn default() -> Self {
         // Default metadata values can be adjusted as needed
         Metadata::new(
-            "UTF-8".to_string(),
+            "EUC-JP".to_string(),
             Algorithm::Deflate,
             3,
             -10000,
