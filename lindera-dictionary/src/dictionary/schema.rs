@@ -134,107 +134,6 @@ impl Schema {
 
         Ok(())
     }
-
-    /// IPADIC dictionary schema
-    pub fn ipadic() -> Self {
-        Self::new(
-            "IPADIC".to_string(),
-            "2.7.0".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_type".to_string(),
-                "conjugation_form".to_string(),
-                "base_form".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ],
-        )
-    }
-
-    /// IPADIC NEologd dictionary schema
-    pub fn ipadic_neologd() -> Self {
-        Self::new(
-            "IPADIC-NEologd".to_string(),
-            "2.7.0".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_type".to_string(),
-                "conjugation_form".to_string(),
-                "base_form".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ],
-        )
-    }
-
-    /// UniDic dictionary schema (21 fields)
-    pub fn unidic() -> Self {
-        Self::new(
-            "UniDic".to_string(),
-            "2.1.2".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_form".to_string(),
-                "conjugation_type".to_string(),
-                "lexeme_reading".to_string(),
-                "lexeme".to_string(),
-                "orthography_appearance".to_string(),
-                "pronunciation_appearance".to_string(),
-                "orthography_basic".to_string(),
-                "pronunciation_basic".to_string(),
-                "word_type".to_string(),
-                "prefix_form".to_string(),
-                "prefix_type".to_string(),
-                "suffix_form".to_string(),
-                "suffix_type".to_string(),
-            ],
-        )
-    }
-
-    /// CC-CEDICT dictionary schema
-    pub fn cc_cedict() -> Self {
-        Self::new(
-            "CC-CEDICT".to_string(),
-            "1.0.0".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "pinyin".to_string(),
-                "traditional".to_string(),
-                "simplified".to_string(),
-                "definition".to_string(),
-            ],
-        )
-    }
-
-    /// KO-DIC dictionary schema
-    pub fn ko_dic() -> Self {
-        Self::new(
-            "KO-DIC".to_string(),
-            "1.0.0".to_string(),
-            vec![
-                "pos_tag".to_string(),
-                "meaning".to_string(),
-                "presence_absence".to_string(),
-                "reading".to_string(),
-                "type".to_string(),
-                "first_pos".to_string(),
-                "last_pos".to_string(),
-                "expression".to_string(),
-            ],
-        )
-    }
 }
 
 // Helper methods for backward compatibility
@@ -276,6 +175,90 @@ pub enum FieldType {
     RightContextId,
     Cost,
     Custom,
+}
+
+impl Schema {
+    /// Default IPADIC dictionary schema for backward compatibility
+    pub fn ipadic() -> Self {
+        Self::new(
+            "IPADIC".to_string(),
+            "2.7.0".to_string(),
+            vec![
+                "major_pos".to_string(),
+                "middle_pos".to_string(),
+                "small_pos".to_string(),
+                "fine_pos".to_string(),
+                "conjugation_type".to_string(),
+                "conjugation_form".to_string(),
+                "base_form".to_string(),
+                "reading".to_string(),
+                "pronunciation".to_string(),
+            ],
+        )
+    }
+
+    /// UniDic dictionary schema for backward compatibility  
+    pub fn unidic() -> Self {
+        Self::new(
+            "UniDic".to_string(),
+            "2.1.2".to_string(),
+            vec![
+                "major_pos".to_string(),
+                "middle_pos".to_string(),
+                "small_pos".to_string(),
+                "fine_pos".to_string(),
+                "conjugation_form".to_string(),
+                "conjugation_type".to_string(),
+                "lexeme_reading".to_string(),
+                "lexeme".to_string(),
+                "orthography_appearance".to_string(),
+                "pronunciation_appearance".to_string(),
+                "orthography_basic".to_string(),
+                "pronunciation_basic".to_string(),
+                "word_type".to_string(),
+                "prefix_form".to_string(),
+                "prefix_type".to_string(),
+                "suffix_form".to_string(),
+                "suffix_type".to_string(),
+            ],
+        )
+    }
+
+    /// CC-CEDICT dictionary schema for backward compatibility
+    pub fn cc_cedict() -> Self {
+        Self::new(
+            "CC-CEDICT".to_string(),
+            "1.0.0".to_string(),
+            vec![
+                "major_pos".to_string(),
+                "middle_pos".to_string(),
+                "small_pos".to_string(),
+                "fine_pos".to_string(),
+                "pinyin".to_string(),
+                "traditional".to_string(),
+                "simplified".to_string(),
+                "definition".to_string(),
+            ],
+        )
+    }
+
+    /// KO-DIC dictionary schema for backward compatibility
+    pub fn ko_dic() -> Self {
+        Self::new(
+            "KO-DIC".to_string(),
+            "1.0.0".to_string(),
+            vec![
+                "pos_tag".to_string(),
+                "meaning".to_string(),
+                "presence_absence".to_string(),
+                "reading".to_string(),
+                "type".to_string(),
+                "first_pos".to_string(),
+                "last_pos".to_string(),
+                "expression".to_string(),
+            ],
+        )
+    }
 }
 
 #[cfg(test)]

@@ -19,9 +19,10 @@ impl KoDicMetadata {
             12,
             KoDicSchema::default(),
             "KO-DIC".to_string(),
-            false,              // flexible_csv
-            false,              // skip_invalid_cost_or_id
-            false,              // normalize_details
+            false, // flexible_csv
+            false, // skip_invalid_cost_or_id
+            false, // normalize_details
+            vec![Some(1), None, None, Some(2), None, None, None, None],
         )
     }
 }

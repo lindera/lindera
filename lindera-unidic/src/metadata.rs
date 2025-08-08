@@ -19,9 +19,28 @@ impl UnidicMetadata {
             10,
             UnidicSchema::default(),
             "UniDic".to_string(),
-            false,              // flexible_csv
-            false,              // skip_invalid_cost_or_id
-            false,              // normalize_details
+            false, // flexible_csv
+            false, // skip_invalid_cost_or_id
+            false, // normalize_details
+            vec![
+                Some(1),
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(2),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            ],
         )
     }
 }

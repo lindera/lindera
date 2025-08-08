@@ -17,6 +17,7 @@ pub struct Metadata {
     pub flexible_csv: bool,
     pub skip_invalid_cost_or_id: bool,
     pub normalize_details: bool,
+    pub userdic_field_indices: Vec<Option<usize>>,
 }
 
 impl Default for Metadata {
@@ -35,6 +36,17 @@ impl Default for Metadata {
             false,
             false,
             false,
+            vec![
+                Some(1),
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(0),
+                Some(2),
+                None,
+            ],
         )
     }
 }
@@ -54,6 +66,7 @@ impl Metadata {
         flexible_csv: bool,
         skip_invalid_cost_or_id: bool,
         normalize_details: bool,
+        userdic_field_indices: Vec<Option<usize>>,
     ) -> Self {
         Self {
             encoding,
@@ -68,6 +81,7 @@ impl Metadata {
             flexible_csv,
             skip_invalid_cost_or_id,
             normalize_details,
+            userdic_field_indices,
         }
     }
 
@@ -131,13 +145,11 @@ impl Metadata {
             }
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_metadata_default() {
@@ -162,6 +174,7 @@ mod tests {
             false,
             false,
             false,
+            vec![Some(1), None, None, None, None, None, Some(2), None],
         );
         assert_eq!(metadata.name, "TestDict");
         assert_eq!(metadata.schema.name, schema.name);

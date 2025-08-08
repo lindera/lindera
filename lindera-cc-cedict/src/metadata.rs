@@ -19,9 +19,10 @@ impl CcCedictMetadata {
             10,
             CcCedictSchema::default(),
             "CC-CEDICT".to_string(),
-            true,               // flexible_csv is true for CC-CEDICT
-            true,               // skip_invalid_cost_or_id is true for CC-CEDICT
-            false,              // normalize_details
+            true,  // flexible_csv is true for CC-CEDICT
+            true,  // skip_invalid_cost_or_id is true for CC-CEDICT
+            false, // normalize_details
+            vec![Some(1), None, None, None, Some(2), None, None, None],
         )
     }
 }
