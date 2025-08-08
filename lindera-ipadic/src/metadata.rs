@@ -23,15 +23,15 @@ impl IpadicMetadata {
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic
             vec![
-                Some(1),
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(0),
-                Some(2),
-                None,
+                Some(1), // Major POS classification
+                None,    // Middle POS classification
+                None,    // Small POS classification
+                None,    // Fine POS classification
+                None,    // Conjugation type
+                None,    // Conjugation form
+                None,    // Base form
+                Some(2), // Reading
+                None,    // Pronunciation
             ],
         )
     }

@@ -22,7 +22,16 @@ impl KoDicMetadata {
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
-            vec![Some(1), None, None, Some(2), None, None, None, None],
+            vec![
+                Some(1), // POS
+                None,    // Meaning
+                None,    // Presence or absence
+                Some(2), // Reading
+                None,    // Type
+                None,    // First part-of-speech
+                None,    // Last part-of-speech
+                None,    // Expression
+            ],
         )
     }
 }

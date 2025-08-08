@@ -22,7 +22,16 @@ impl CcCedictMetadata {
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
             false, // normalize_details
-            vec![Some(1), None, None, None, Some(2), None, None, None],
+            vec![
+                Some(1), // Major POS classification
+                None,    // Middle POS classification
+                None,    // Small POS classification
+                None,    // Fine POS classification
+                Some(2), // Pinyin
+                None,    // Traditional
+                None,    // Simplified
+                None,    // definition
+            ],
         )
     }
 }

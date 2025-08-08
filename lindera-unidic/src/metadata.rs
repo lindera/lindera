@@ -23,23 +23,23 @@ impl UnidicMetadata {
             false, // skip_invalid_cost_or_id
             false, // normalize_details
             vec![
-                Some(1),
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(2),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                Some(1), // Major POS classification
+                None,    // Middle POS classification
+                None,    // Small POS classification
+                None,    // Fine POS classification
+                None,    // Conjugation form
+                None,    // Conjugation type
+                Some(2), // Lexeme reading
+                None,    // Lexeme
+                None,    // Orthography appearance type
+                None,    // Pronunciation appearance type
+                None,    // Orthography basic type
+                None,    // Pronunciation basic type
+                None,    // Word type
+                None,    // Prefix of a word form
+                None,    // Prefix of a word type
+                None,    // Suffix of a word form
+                None,    // Suffix of a word type
             ],
         )
     }
