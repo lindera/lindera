@@ -13,7 +13,7 @@ license = "MIT"
 
 [features]
 ipadic = []
-embed-ipadic = ["ipadic"]                  # Embed IPADIC dictionary in the binary
+embedded-ipadic = ["ipadic"]               # Embed IPADIC dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

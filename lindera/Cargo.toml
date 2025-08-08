@@ -36,8 +36,9 @@ cjk3 = [
     "ko-dic",
     "cc-cedict",
 ] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
-embed-ipadic = [
-    "lindera-ipadic/embed-ipadic",
+embedded-ipadic = [
+    "ipadic",
+    "lindera-ipadic/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary
 compress = [
     "lindera-dictionary/compress",
@@ -80,6 +81,10 @@ lindera-cc-cedict = { workspace = true, optional = true }
 serde_json.workspace = true
 criterion.workspace = true
 once_cell.workspace = true
+
+[[example]]
+name = "test_features"
+required-features = ["embedded-ipadic"]
 
 [[bench]]
 name = "bench"

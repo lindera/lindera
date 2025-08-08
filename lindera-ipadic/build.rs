@@ -1,6 +1,6 @@
 use std::error::Error;
 
-#[cfg(feature = "embed-ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::{
@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     fetch(fetch_params, builder).await
 }
 
-#[cfg(not(feature = "embed-ipadic"))]
+#[cfg(not(feature = "embedded-ipadic"))]
 fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
