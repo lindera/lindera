@@ -3,9 +3,12 @@ pub mod metadata;
 #[cfg(feature = "unidic")]
 pub mod schema;
 
+#[cfg(feature = "embedded-unidic")]
+pub mod embedded;
+
 #[cfg(feature = "unidic")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(feature = "unidic")]
+#[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 #[cfg(feature = "unidic")]
 use metadata::UnidicMetadata;
@@ -15,7 +18,7 @@ pub fn create_builder() -> DictionaryBuilder {
     DictionaryBuilder::new(UnidicMetadata::default())
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
 pub fn create_loader() -> DictionaryLoader {
     DictionaryLoader::new(
         "UniDic".to_string(),
@@ -28,6 +31,24 @@ pub fn create_loader() -> DictionaryLoader {
         "LINDERA_UNIDIC_PATH".to_string(),
     )
 }
+
+#[cfg(feature = "embedded-unidic")]
+pub fn create_loader() -> EmbeddedLoader {
+    EmbeddedLoader
+}
+
+#[cfg(feature = "embedded-unidic")]
+pub struct EmbeddedLoader;
+
+#[cfg(feature = "embedded-unidic")]
+impl EmbeddedLoader {
+    pub fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
+        embedded::load()
+    }
+}
+
+#[cfg(feature = "embedded-unidic")]
+use lindera_dictionary::LinderaResult;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

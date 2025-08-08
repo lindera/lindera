@@ -10,6 +10,7 @@ impl UnidicMetadata {
     /// Create default UniDic metadata
     pub fn default() -> Metadata {
         Metadata::new(
+            "UniDic".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -17,11 +18,10 @@ impl UnidicMetadata {
             0,
             21,
             10,
-            UnidicSchema::default(),
-            "UniDic".to_string(),
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
+            UnidicSchema::default(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

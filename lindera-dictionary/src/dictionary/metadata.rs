@@ -5,6 +5,7 @@ use crate::dictionary::schema::Schema;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
+    pub name: String,
     pub encoding: String,
     pub compress_algorithm: Algorithm,
     pub simple_userdic_fields_num: usize,
@@ -12,11 +13,10 @@ pub struct Metadata {
     pub simple_context_id: u16,
     pub detailed_userdic_fields_num: usize,
     pub unk_fields_num: usize,
-    pub schema: Schema,
-    pub name: String,
     pub flexible_csv: bool,
     pub skip_invalid_cost_or_id: bool,
     pub normalize_details: bool,
+    pub schema: Schema,
     pub userdic_field_indices: Vec<Option<usize>>,
 }
 
@@ -24,6 +24,7 @@ impl Default for Metadata {
     fn default() -> Self {
         // Default metadata values can be adjusted as needed
         Metadata::new(
+            "IPADIC".to_string(),
             "EUC-JP".to_string(),
             Algorithm::Deflate,
             3,
@@ -31,11 +32,10 @@ impl Default for Metadata {
             0,
             13,
             11,
+            false,
+            false,
+            false,
             Schema::ipadic(),
-            "IPADIC".to_string(),
-            false,
-            false,
-            false,
             vec![
                 Some(1),
                 None,
@@ -54,6 +54,7 @@ impl Default for Metadata {
 impl Metadata {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        name: String,
         encoding: String,
         compress_algorithm: Algorithm,
         simple_userdic_fields_num: usize,
@@ -61,11 +62,10 @@ impl Metadata {
         simple_context_id: u16,
         detailed_userdic_fields_num: usize,
         unk_fields_num: usize,
-        schema: Schema,
-        name: String,
         flexible_csv: bool,
         skip_invalid_cost_or_id: bool,
         normalize_details: bool,
+        schema: Schema,
         userdic_field_indices: Vec<Option<usize>>,
     ) -> Self {
         Self {
@@ -162,6 +162,7 @@ mod tests {
     fn test_metadata_new() {
         let schema = Schema::unidic();
         let metadata = Metadata::new(
+            "TestDict".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -169,11 +170,10 @@ mod tests {
             0,
             21,
             10,
+            false,
+            false,
+            false,
             schema.clone(),
-            "TestDict".to_string(),
-            false,
-            false,
-            false,
             vec![Some(1), None, None, None, None, None, Some(2), None],
         );
         assert_eq!(metadata.name, "TestDict");

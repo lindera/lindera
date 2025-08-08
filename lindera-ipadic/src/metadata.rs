@@ -10,6 +10,7 @@ impl IpadicMetadata {
     /// Create default IPADIC metadata
     pub fn default() -> Metadata {
         Metadata::new(
+            "IPADIC".to_string(),
             "EUC-JP".to_string(),
             Algorithm::Deflate,
             3,
@@ -17,11 +18,10 @@ impl IpadicMetadata {
             0,
             13,
             11,
-            IpadicSchema::default(),
-            "IPADIC".to_string(),
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic
+            IpadicSchema::default(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

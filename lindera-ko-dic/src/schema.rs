@@ -6,7 +6,7 @@ impl KoDicSchema {
     pub fn default() -> Schema {
         Schema::new(
             "KO-DIC".to_string(),
-            "1.0.0".to_string(),
+            "2.1.1-20180720".to_string(),
             vec![
                 "pos_tag".to_string(),
                 "meaning".to_string(),

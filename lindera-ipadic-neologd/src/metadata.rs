@@ -10,6 +10,7 @@ impl IpadicNeologdMetadata {
     /// Create default IPADIC NEologd metadata
     pub fn default() -> Metadata {
         Metadata::new(
+            "IPADIC-NEologd".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -17,11 +18,10 @@ impl IpadicNeologdMetadata {
             0,
             13,
             11,
-            IpadicNeologdSchema::default(),
-            "IPADIC-NEologd".to_string(),
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic-NEologd
+            IpadicNeologdSchema::default(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

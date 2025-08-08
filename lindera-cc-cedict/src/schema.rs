@@ -6,7 +6,7 @@ impl CcCedictSchema {
     pub fn default() -> Schema {
         Schema::new(
             "CC-CEDICT".to_string(),
-            "1.0.0".to_string(),
+            "0.1.0-20200409".to_string(),
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

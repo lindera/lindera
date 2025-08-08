@@ -10,6 +10,7 @@ impl KoDicMetadata {
     /// Create default Ko-Dic metadata
     pub fn default() -> Metadata {
         Metadata::new(
+            "KO-DIC".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -17,11 +18,10 @@ impl KoDicMetadata {
             0,
             12,
             12,
-            KoDicSchema::default(),
-            "KO-DIC".to_string(),
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
+            KoDicSchema::default(),
             vec![
                 Some(1), // POS
                 None,    // Meaning

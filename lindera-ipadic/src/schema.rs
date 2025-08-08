@@ -8,7 +8,7 @@ impl IpadicSchema {
     pub fn default() -> Schema {
         Schema::new(
             "IPADIC".to_string(),
-            "2.7.0".to_string(),
+            "2.7.0-20070801".to_string(),
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

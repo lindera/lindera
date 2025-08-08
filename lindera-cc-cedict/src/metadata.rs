@@ -10,6 +10,7 @@ impl CcCedictMetadata {
     /// Create default CC-CEDICT metadata
     pub fn default() -> Metadata {
         Metadata::new(
+            "CC-CEDICT".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -17,11 +18,10 @@ impl CcCedictMetadata {
             0,
             12,
             10,
-            CcCedictSchema::default(),
-            "CC-CEDICT".to_string(),
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
             false, // normalize_details
+            CcCedictSchema::default(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

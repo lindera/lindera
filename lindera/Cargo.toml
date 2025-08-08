@@ -40,6 +40,22 @@ embedded-ipadic = [
     "ipadic",
     "lindera-ipadic/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary
+embedded-unidic = [
+    "unidic",
+    "lindera-unidic/embedded-unidic",
+] # Embed UniDic dictionary in the binary
+embedded-ko-dic = [
+    "ko-dic",
+    "lindera-ko-dic/embedded-ko-dic",
+] # Embed Ko-Dic dictionary in the binary
+embedded-cc-cedict = [
+    "cc-cedict",
+    "lindera-cc-cedict/embedded-cc-cedict",
+] # Embed CC-CEDICT dictionary in the binary
+embedded-ipadic-neologd = [
+    "ipadic-neologd",
+    "lindera-ipadic-neologd/embedded-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",
@@ -85,6 +101,9 @@ once_cell.workspace = true
 [[example]]
 name = "test_features"
 required-features = ["embedded-ipadic"]
+
+[[example]]
+name = "test_all_embedded_features"
 
 [[bench]]
 name = "bench"

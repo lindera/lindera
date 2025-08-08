@@ -13,6 +13,7 @@ license = "MIT"
 
 [features]
 unidic = []
+embedded-unidic = ["unidic"]                # Embed UniDic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

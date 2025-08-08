@@ -3,9 +3,12 @@ pub mod metadata;
 #[cfg(feature = "cc-cedict")]
 pub mod schema;
 
+#[cfg(feature = "embedded-cc-cedict")]
+pub mod embedded;
+
 #[cfg(feature = "cc-cedict")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(feature = "cc-cedict")]
+#[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 #[cfg(feature = "cc-cedict")]
 use metadata::CcCedictMetadata;
@@ -15,7 +18,7 @@ pub fn create_builder() -> DictionaryBuilder {
     DictionaryBuilder::new(CcCedictMetadata::default())
 }
 
-#[cfg(feature = "cc-cedict")]
+#[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
 pub fn create_loader() -> DictionaryLoader {
     DictionaryLoader::new(
         "CC-CEDICT".to_string(),
@@ -28,6 +31,24 @@ pub fn create_loader() -> DictionaryLoader {
         "LINDERA_CC_CEDICT_PATH".to_string(),
     )
 }
+
+#[cfg(feature = "embedded-cc-cedict")]
+pub fn create_loader() -> EmbeddedLoader {
+    EmbeddedLoader
+}
+
+#[cfg(feature = "embedded-cc-cedict")]
+pub struct EmbeddedLoader;
+
+#[cfg(feature = "embedded-cc-cedict")]
+impl EmbeddedLoader {
+    pub fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
+        embedded::load()
+    }
+}
+
+#[cfg(feature = "embedded-cc-cedict")]
+use lindera_dictionary::LinderaResult;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

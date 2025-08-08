@@ -8,7 +8,7 @@ impl IpadicNeologdSchema {
     pub fn default() -> Schema {
         Schema::new(
             "IPADIC-NEologd".to_string(),
-            "2.7.0".to_string(),
+            "0.0.7-20200820".to_string(),
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

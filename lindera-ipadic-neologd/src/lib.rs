@@ -3,9 +3,12 @@ pub mod metadata;
 #[cfg(feature = "ipadic-neologd")]
 pub mod schema;
 
+#[cfg(feature = "embedded-ipadic-neologd")]
+pub mod embedded;
+
 #[cfg(feature = "ipadic-neologd")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(feature = "ipadic-neologd")]
+#[cfg(all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")))]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 #[cfg(feature = "ipadic-neologd")]
 use metadata::IpadicNeologdMetadata;
@@ -15,7 +18,7 @@ pub fn create_builder() -> DictionaryBuilder {
     DictionaryBuilder::new(IpadicNeologdMetadata::default())
 }
 
-#[cfg(feature = "ipadic-neologd")]
+#[cfg(all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")))]
 pub fn create_loader() -> DictionaryLoader {
     DictionaryLoader::new(
         "IPADIC-NEologd".to_string(),
@@ -28,6 +31,24 @@ pub fn create_loader() -> DictionaryLoader {
         "LINDERA_IPADIC_NEOLOGD_PATH".to_string(),
     )
 }
+
+#[cfg(feature = "embedded-ipadic-neologd")]
+pub fn create_loader() -> EmbeddedLoader {
+    EmbeddedLoader
+}
+
+#[cfg(feature = "embedded-ipadic-neologd")]
+pub struct EmbeddedLoader;
+
+#[cfg(feature = "embedded-ipadic-neologd")]
+impl EmbeddedLoader {
+    pub fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
+        embedded::load()
+    }
+}
+
+#[cfg(feature = "embedded-ipadic-neologd")]
+use lindera_dictionary::LinderaResult;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 
