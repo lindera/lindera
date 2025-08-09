@@ -12,6 +12,7 @@ use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
@@ -128,5 +129,23 @@ pub fn load() -> LinderaResult<Dictionary> {
             unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
             metadata,
         })
+    }
+}
+
+pub struct EmbeddedLoader;
+
+impl EmbeddedLoader {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn load(&self) -> LinderaResult<Dictionary> {
+        load()
+    }
+}
+
+impl DictionaryLoader for EmbeddedLoader {
+    fn load(&self) -> LinderaResult<Dictionary> {
+        load()
     }
 }
