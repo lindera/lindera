@@ -12,7 +12,7 @@ use crate::util::read_file;
 /// # Examples
 ///
 /// ```no_run
-/// use lindera_dictionary::dictionary_loader::MetadataLoader;
+/// use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
 /// use std::path::Path;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -98,7 +98,7 @@ mod tests {
         // Load from file
         let loaded_metadata = MetadataLoader::load(&temp_path).unwrap();
 
-        assert_eq!(loaded_metadata.encoding, "UTF-8");
+        assert_eq!(loaded_metadata.encoding, "EUC-JP");
         assert_eq!(loaded_metadata.simple_word_cost, -10000);
         assert_eq!(loaded_metadata.simple_context_id, 0);
         assert_eq!(loaded_metadata.simple_userdic_fields_num, 3);

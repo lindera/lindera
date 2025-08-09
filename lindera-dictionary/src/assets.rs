@@ -134,10 +134,7 @@ async fn download_with_retry(
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`
-pub async fn fetch(
-    params: FetchParams,
-    builder: impl DictionaryBuilder,
-) -> Result<(), Box<dyn Error>> {
+pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs::{File, create_dir, rename};
     use std::io::{self, Cursor, Read, Write};

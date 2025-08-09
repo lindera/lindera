@@ -5,6 +5,8 @@ pub mod prefix_dictionary;
 pub mod schema;
 pub mod unknown_dictionary;
 
+use std::fs;
+use std::path::Path;
 use std::str;
 
 use byteorder::{ByteOrder, LittleEndian};
@@ -17,6 +19,11 @@ use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::metadata::Metadata;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
+use crate::dictionary_loader::character_definition::CharacterDefinitionLoader;
+use crate::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
+use crate::dictionary_loader::metadata::MetadataLoader;
+use crate::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
+use crate::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use crate::error::LinderaErrorKind;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
@@ -61,6 +68,76 @@ impl Dictionary {
             details.push(detail);
         }
         details
+    }
+
+    /// Load dictionary from a directory containing dictionary files
+    pub fn load_from_path(dict_path: &Path) -> LinderaResult<Self> {
+        Self::load_from_path_with_options(dict_path, false)
+    }
+
+    /// Load dictionary from a directory with options
+    pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
+        // Verify that the dictionary directory exists
+        if !dict_path.exists() {
+            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "Dictionary path does not exist: {}",
+                dict_path.display()
+            )));
+        }
+
+        if !dict_path.is_dir() {
+            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "Dictionary path is not a directory: {}",
+                dict_path.display()
+            )));
+        }
+
+        // Load each component from the dictionary directory
+        let metadata = MetadataLoader::load(dict_path)?;
+        let character_definition = CharacterDefinitionLoader::load(dict_path)?;
+
+        let connection_cost_matrix = {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                ConnectionCostMatrixLoader::load_mmap(dict_path)?
+            } else {
+                ConnectionCostMatrixLoader::load(dict_path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            ConnectionCostMatrixLoader::load(dict_path)?
+        };
+
+        let prefix_dictionary = {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                PrefixDictionaryLoader::load_mmap(dict_path)?
+            } else {
+                PrefixDictionaryLoader::load(dict_path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            PrefixDictionaryLoader::load(dict_path)?
+        };
+
+        let unknown_dictionary = UnknownDictionaryLoader::load(dict_path)?;
+
+        Ok(Dictionary {
+            prefix_dictionary,
+            connection_cost_matrix,
+            character_definition,
+            unknown_dictionary,
+            metadata,
+        })
+    }
+
+    /// Save dictionary to a directory
+    pub fn save_to_path(&self, dict_path: &Path) -> LinderaResult<()> {
+        // Create directory if it doesn't exist
+        fs::create_dir_all(dict_path)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        // For now, we'll implement this as needed
+        // This would require implementing save methods for each component
+        todo!("Dictionary saving will be implemented when needed")
     }
 }
 

@@ -2,7 +2,7 @@
 name = "lindera-ko-dic"
 version = "0.45.0"
 edition = "2024"
-description = "A Japanese morphological dictionary for ko-dic."
+description = "A Korean morphological dictionary for Ko-Dic."
 documentation = "https://docs.rs/lindera-ko-dic"
 homepage = "https://github.com/lindera/lindera"
 repository = "https://github.com/lindera/lindera"
@@ -13,12 +13,15 @@ license = "MIT"
 
 [features]
 ko-dic = []
+embedded-ko-dic = ["ko-dic"]               # Embed Ko-Dic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 
 [dependencies]
+anyhow.workspace = true
 bincode.workspace = true
 byteorder.workspace = true
+csv.workspace = true
 once_cell.workspace = true
 serde_json.workspace = true
 

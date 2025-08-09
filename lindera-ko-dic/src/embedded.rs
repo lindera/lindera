@@ -1,18 +1,17 @@
-#[cfg(feature = "ipadic-neologd")]
+#[cfg(feature = "embedded-ko-dic")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
 
 use lindera_dictionary::LinderaResult;
+#[cfg(feature = "compress")]
+use lindera_dictionary::decompress::{CompressedData, decompress};
 use lindera_dictionary::dictionary::Dictionary;
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
-
-#[cfg(feature = "compress")]
-use lindera_dictionary::decompress::{CompressedData, decompress};
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
@@ -44,61 +43,54 @@ macro_rules! decompress_data {
     };
 }
 
-macro_rules! ipadic_neologd_data {
+macro_rules! kodic_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ipadic-neologd")]
+        #[cfg(feature = "embedded-ko-dic")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "ipadic-neologd"))]
+        #[cfg(not(feature = "embedded-ko-dic"))]
         decompress_data!($name, &[], $filename);
     };
 }
 
 // Metadata-specific macro (skips compression/decompression processing)
-macro_rules! ipadic_neologd_metadata {
+macro_rules! kodic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ipadic-neologd")]
+        #[cfg(feature = "embedded-ko-dic")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "ipadic-neologd"))]
+        #[cfg(not(feature = "embedded-ko-dic"))]
         const $name: &'static [u8] = &[];
     };
 }
 
-ipadic_neologd_data!(
+kodic_data!(
     CHAR_DEFINITION_DATA,
-    "/lindera-ipadic-neologd/char_def.bin",
+    "/lindera-ko-dic/char_def.bin",
     "char_def.bin"
 );
-ipadic_neologd_data!(
-    CONNECTION_DATA,
-    "/lindera-ipadic-neologd/matrix.mtx",
-    "matrix.mtx"
-);
-ipadic_neologd_data!(DA_DATA, "/lindera-ipadic-neologd/dict.da", "dict.da");
-ipadic_neologd_data!(VALS_DATA, "/lindera-ipadic-neologd/dict.vals", "dict.vals");
-ipadic_neologd_data!(UNKNOWN_DATA, "/lindera-ipadic-neologd/unk.bin", "unk.bin");
-ipadic_neologd_data!(
+kodic_data!(CONNECTION_DATA, "/lindera-ko-dic/matrix.mtx", "matrix.mtx");
+kodic_data!(DA_DATA, "/lindera-ko-dic/dict.da", "dict.da");
+kodic_data!(VALS_DATA, "/lindera-ko-dic/dict.vals", "dict.vals");
+kodic_data!(UNKNOWN_DATA, "/lindera-ko-dic/unk.bin", "unk.bin");
+kodic_data!(
     WORDS_IDX_DATA,
-    "/lindera-ipadic-neologd/dict.wordsidx",
+    "/lindera-ko-dic/dict.wordsidx",
     "dict.wordsidx"
 );
-ipadic_neologd_data!(
-    WORDS_DATA,
-    "/lindera-ipadic-neologd/dict.words",
-    "dict.words"
-);
-ipadic_neologd_metadata!(
+kodic_data!(WORDS_DATA, "/lindera-ko-dic/dict.words", "dict.words");
+kodic_metadata!(
     METADATA_DATA,
-    "/lindera-ipadic-neologd/metadata.json",
+    "/lindera-ko-dic/metadata.json",
     "metadata.json"
 );
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::ipadic_neologd);
+    let metadata =
+        Metadata::load_or_default(METADATA_DATA, crate::metadata::KoDicMetadata::metadata);
 
     #[cfg(feature = "compress")]
     {
@@ -128,7 +120,7 @@ pub fn load() -> LinderaResult<Dictionary> {
             ),
             connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
             character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
-            unknown_dictionary: UnknownDictionary::load(&UNKNOWN_DATA)?,
+            unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
             metadata,
         })
     }

@@ -1,4 +1,4 @@
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-ipadic-neologd")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -43,53 +43,63 @@ macro_rules! decompress_data {
     };
 }
 
-macro_rules! unidic_data {
+macro_rules! ipadicneologd_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "unidic")]
+        #[cfg(feature = "embedded-ipadic-neologd")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "unidic"))]
+        #[cfg(not(feature = "embedded-ipadic-neologd"))]
         decompress_data!($name, &[], $filename);
     };
 }
 
 // Metadata-specific macro (skips compression/decompression processing)
-macro_rules! unidic_metadata {
+macro_rules! ipadicneologd_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "unidic")]
+        #[cfg(feature = "embedded-ipadic-neologd")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "unidic"))]
+        #[cfg(not(feature = "embedded-ipadic-neologd"))]
         const $name: &'static [u8] = &[];
     };
 }
 
-unidic_data!(
+ipadicneologd_data!(
     CHAR_DEFINITION_DATA,
-    "/lindera-unidic/char_def.bin",
+    "/lindera-ipadic-neologd/char_def.bin",
     "char_def.bin"
 );
-unidic_data!(CONNECTION_DATA, "/lindera-unidic/matrix.mtx", "matrix.mtx");
-unidic_data!(DA_DATA, "/lindera-unidic/dict.da", "dict.da");
-unidic_data!(VALS_DATA, "/lindera-unidic/dict.vals", "dict.vals");
-unidic_data!(UNKNOWN_DATA, "/lindera-unidic/unk.bin", "unk.bin");
-unidic_data!(
+ipadicneologd_data!(
+    CONNECTION_DATA,
+    "/lindera-ipadic-neologd/matrix.mtx",
+    "matrix.mtx"
+);
+ipadicneologd_data!(DA_DATA, "/lindera-ipadic-neologd/dict.da", "dict.da");
+ipadicneologd_data!(VALS_DATA, "/lindera-ipadic-neologd/dict.vals", "dict.vals");
+ipadicneologd_data!(UNKNOWN_DATA, "/lindera-ipadic-neologd/unk.bin", "unk.bin");
+ipadicneologd_data!(
     WORDS_IDX_DATA,
-    "/lindera-unidic/dict.wordsidx",
+    "/lindera-ipadic-neologd/dict.wordsidx",
     "dict.wordsidx"
 );
-unidic_data!(WORDS_DATA, "/lindera-unidic/dict.words", "dict.words");
-unidic_metadata!(
+ipadicneologd_data!(
+    WORDS_DATA,
+    "/lindera-ipadic-neologd/dict.words",
+    "dict.words"
+);
+ipadicneologd_metadata!(
     METADATA_DATA,
-    "/lindera-unidic/metadata.json",
+    "/lindera-ipadic-neologd/metadata.json",
     "metadata.json"
 );
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::unidic);
+    let metadata = Metadata::load_or_default(METADATA_DATA, || {
+        crate::metadata::IpadicNeologdMetadata::metadata()
+    });
 
     #[cfg(feature = "compress")]
     {

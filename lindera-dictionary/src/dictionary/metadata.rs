@@ -5,30 +5,48 @@ use crate::dictionary::schema::Schema;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
-    pub encoding: String,
-    pub compress_algorithm: Algorithm,
-    pub simple_userdic_fields_num: usize,
-    pub simple_word_cost: i16,
-    pub simple_context_id: u16,
-    pub detailed_userdic_fields_num: usize,
-    pub unk_fields_num: usize,
-    pub schema: Schema,
-    pub name: String,
+    pub name: String,                              // Name of the dictionary
+    pub encoding: String,                          // Character encoding
+    pub compress_algorithm: Algorithm,             // Compression algorithm
+    pub simple_userdic_fields_num: usize,          // Number of fields in simple user dictionary
+    pub simple_word_cost: i16,                     // Word cost for simple user dictionary
+    pub simple_context_id: u16,                    // Context ID for simple user dictionary
+    pub detailed_userdic_fields_num: usize,        // Number of fields in detailed user dictionary
+    pub unk_fields_num: usize,                     // Number of fields in unknown dictionary
+    pub flexible_csv: bool,                        // Handle CSV columns flexibly
+    pub skip_invalid_cost_or_id: bool,             // Skip invalid cost or ID
+    pub normalize_details: bool,                   // Normalize characters
+    pub schema: Schema,                            // Schema for the dictionary
+    pub userdic_field_indices: Vec<Option<usize>>, // User dictionary field indices
 }
 
 impl Default for Metadata {
     fn default() -> Self {
         // Default metadata values can be adjusted as needed
         Metadata::new(
-            "UTF-8".to_string(),
+            "IPADIC".to_string(),
+            "EUC-JP".to_string(),
             Algorithm::Deflate,
             3,
             -10000,
             0,
             13,
             11,
-            Schema::ipadic(),
-            "IPADIC".to_string(),
+            false,
+            false,
+            false,
+            Schema::default(),
+            vec![
+                Some(1), // Use field 1 for major POS classification
+                None,    // Middle POS classification is '*'
+                None,    // Small POS classification is '*'
+                None,    // Fine POS classification is '*'
+                None,    // Conjugation type is '*'
+                None,    // Conjugation form is '*'
+                Some(0), // Use field 0 for base form
+                Some(2), // Use field 2 for reading
+                None,    // Pronunciation is '*'
+            ],
         )
     }
 }
@@ -36,6 +54,7 @@ impl Default for Metadata {
 impl Metadata {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
+        name: String,
         encoding: String,
         compress_algorithm: Algorithm,
         simple_userdic_fields_num: usize,
@@ -43,8 +62,11 @@ impl Metadata {
         simple_context_id: u16,
         detailed_userdic_fields_num: usize,
         unk_fields_num: usize,
+        flexible_csv: bool,
+        skip_invalid_cost_or_id: bool,
+        normalize_details: bool,
         schema: Schema,
-        name: String,
+        userdic_field_indices: Vec<Option<usize>>,
     ) -> Self {
         Self {
             encoding,
@@ -56,6 +78,10 @@ impl Metadata {
             unk_fields_num,
             schema,
             name,
+            flexible_csv,
+            skip_invalid_cost_or_id,
+            normalize_details,
+            userdic_field_indices,
         }
     }
 
@@ -119,104 +145,11 @@ impl Metadata {
             }
         }
     }
-
-    pub fn ipadic() -> Self {
-        Self::new(
-            "EUC-JP".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            13,
-            11,
-            Schema::ipadic(),
-            "IPADIC".to_string(),
-        )
-    }
-
-    pub fn ipadic_neologd() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            13,
-            11,
-            Schema::ipadic(),
-            "IPADIC-NEologd".to_string(),
-        )
-    }
-
-    pub fn unidic() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            21,
-            10,
-            Schema::unidic(),
-            "UniDic".to_string(),
-        )
-    }
-
-    pub fn ko_dic() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            12,
-            12,
-            Schema::ko_dic(),
-            "KO-DIC".to_string(),
-        )
-    }
-
-    pub fn cc_cedict() -> Self {
-        Self::new(
-            "UTF-8".to_string(),
-            Algorithm::Deflate,
-            3,
-            -10000,
-            0,
-            12,
-            10,
-            Schema::cc_cedict(),
-            "CC-CEDICT".to_string(),
-        )
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_metadata_dictionary_names() {
-        let ipadic = Metadata::ipadic();
-        assert_eq!(ipadic.name, "IPADIC");
-        assert_eq!(ipadic.schema.name, "IPADIC");
-
-        let ipadic_neologd = Metadata::ipadic_neologd();
-        assert_eq!(ipadic_neologd.name, "IPADIC-NEologd");
-        assert_eq!(ipadic_neologd.schema.name, "IPADIC");
-
-        let unidic = Metadata::unidic();
-        assert_eq!(unidic.name, "UniDic");
-        assert_eq!(unidic.schema.name, "UniDic");
-
-        let ko_dic = Metadata::ko_dic();
-        assert_eq!(ko_dic.name, "KO-DIC");
-        assert_eq!(ko_dic.schema.name, "KO-DIC");
-
-        let cc_cedict = Metadata::cc_cedict();
-        assert_eq!(cc_cedict.name, "CC-CEDICT");
-        assert_eq!(cc_cedict.schema.name, "CC-CEDICT");
-    }
 
     #[test]
     fn test_metadata_default() {
@@ -227,8 +160,9 @@ mod tests {
 
     #[test]
     fn test_metadata_new() {
-        let schema = Schema::unidic();
+        let schema = Schema::default();
         let metadata = Metadata::new(
+            "TestDict".to_string(),
             "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
@@ -236,8 +170,11 @@ mod tests {
             0,
             21,
             10,
+            false,
+            false,
+            false,
             schema.clone(),
-            "TestDict".to_string(),
+            vec![Some(1), None, None, None, None, None, Some(2), None],
         );
         assert_eq!(metadata.name, "TestDict");
         assert_eq!(metadata.schema.name, schema.name);
@@ -245,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_metadata_serialization() {
-        let metadata = Metadata::ipadic();
+        let metadata = Metadata::default();
 
         // Test serialization
         let serialized = serde_json::to_string(&metadata).unwrap();

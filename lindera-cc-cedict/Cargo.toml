@@ -13,12 +13,15 @@ license = "MIT"
 
 [features]
 cc-cedict = []
+embedded-cc-cedict = ["cc-cedict"]         # Embed CC-CEDICT dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 
 [dependencies]
+anyhow.workspace = true
 bincode.workspace = true
 byteorder.workspace = true
+csv.workspace = true
 once_cell.workspace = true
 serde_json.workspace = true
 

@@ -1,4 +1,4 @@
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-unidic")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -43,53 +43,54 @@ macro_rules! decompress_data {
     };
 }
 
-macro_rules! ko_dic_data {
+macro_rules! unidic_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ko-dic")]
+        #[cfg(feature = "embedded-unidic")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "ko-dic"))]
+        #[cfg(not(feature = "embedded-unidic"))]
         decompress_data!($name, &[], $filename);
     };
 }
 
 // Metadata-specific macro (skips compression/decompression processing)
-macro_rules! ko_dic_metadata {
+macro_rules! unidic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ko-dic")]
+        #[cfg(feature = "embedded-unidic")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "ko-dic"))]
+        #[cfg(not(feature = "embedded-unidic"))]
         const $name: &'static [u8] = &[];
     };
 }
 
-ko_dic_data!(
+unidic_data!(
     CHAR_DEFINITION_DATA,
-    "/lindera-ko-dic/char_def.bin",
+    "/lindera-unidic/char_def.bin",
     "char_def.bin"
 );
-ko_dic_data!(CONNECTION_DATA, "/lindera-ko-dic/matrix.mtx", "matrix.mtx");
-ko_dic_data!(DA_DATA, "/lindera-ko-dic/dict.da", "dict.da");
-ko_dic_data!(VALS_DATA, "/lindera-ko-dic/dict.vals", "dict.vals");
-ko_dic_data!(UNKNOWN_DATA, "/lindera-ko-dic/unk.bin", "unk.bin");
-ko_dic_data!(
+unidic_data!(CONNECTION_DATA, "/lindera-unidic/matrix.mtx", "matrix.mtx");
+unidic_data!(DA_DATA, "/lindera-unidic/dict.da", "dict.da");
+unidic_data!(VALS_DATA, "/lindera-unidic/dict.vals", "dict.vals");
+unidic_data!(UNKNOWN_DATA, "/lindera-unidic/unk.bin", "unk.bin");
+unidic_data!(
     WORDS_IDX_DATA,
-    "/lindera-ko-dic/dict.wordsidx",
+    "/lindera-unidic/dict.wordsidx",
     "dict.wordsidx"
 );
-ko_dic_data!(WORDS_DATA, "/lindera-ko-dic/dict.words", "dict.words");
-ko_dic_metadata!(
+unidic_data!(WORDS_DATA, "/lindera-unidic/dict.words", "dict.words");
+unidic_metadata!(
     METADATA_DATA,
-    "/lindera-ko-dic/metadata.json",
+    "/lindera-unidic/metadata.json",
     "metadata.json"
 );
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::ko_dic);
+    let metadata =
+        Metadata::load_or_default(METADATA_DATA, crate::metadata::UnidicMetadata::metadata);
 
     #[cfg(feature = "compress")]
     {

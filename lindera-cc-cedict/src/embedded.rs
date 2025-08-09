@@ -1,4 +1,4 @@
-#[cfg(feature = "cc-cedict")]
+#[cfg(feature = "embedded-cc-cedict")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -43,49 +43,49 @@ macro_rules! decompress_data {
     };
 }
 
-macro_rules! cc_cedict_data {
+macro_rules! cccedict_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "cc-cedict")]
+        #[cfg(feature = "embedded-cc-cedict")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "cc-cedict"))]
+        #[cfg(not(feature = "embedded-cc-cedict"))]
         decompress_data!($name, &[], $filename);
     };
 }
 
 // Metadata-specific macro (skips compression/decompression processing)
-macro_rules! cc_cedict_metadata {
+macro_rules! cccedict_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "cc-cedict")]
+        #[cfg(feature = "embedded-cc-cedict")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "cc-cedict"))]
+        #[cfg(not(feature = "embedded-cc-cedict"))]
         const $name: &'static [u8] = &[];
     };
 }
 
-cc_cedict_data!(
+cccedict_data!(
     CHAR_DEFINITION_DATA,
     "/lindera-cc-cedict/char_def.bin",
     "char_def.bin"
 );
-cc_cedict_data!(
+cccedict_data!(
     CONNECTION_DATA,
     "/lindera-cc-cedict/matrix.mtx",
     "matrix.mtx"
 );
-cc_cedict_data!(DA_DATA, "/lindera-cc-cedict/dict.da", "dict.da");
-cc_cedict_data!(VALS_DATA, "/lindera-cc-cedict/dict.vals", "dict.vals");
-cc_cedict_data!(UNKNOWN_DATA, "/lindera-cc-cedict/unk.bin", "unk.bin");
-cc_cedict_data!(
+cccedict_data!(DA_DATA, "/lindera-cc-cedict/dict.da", "dict.da");
+cccedict_data!(VALS_DATA, "/lindera-cc-cedict/dict.vals", "dict.vals");
+cccedict_data!(UNKNOWN_DATA, "/lindera-cc-cedict/unk.bin", "unk.bin");
+cccedict_data!(
     WORDS_IDX_DATA,
     "/lindera-cc-cedict/dict.wordsidx",
     "dict.wordsidx"
 );
-cc_cedict_data!(WORDS_DATA, "/lindera-cc-cedict/dict.words", "dict.words");
-cc_cedict_metadata!(
+cccedict_data!(WORDS_DATA, "/lindera-cc-cedict/dict.words", "dict.words");
+cccedict_metadata!(
     METADATA_DATA,
     "/lindera-cc-cedict/metadata.json",
     "metadata.json"
@@ -93,7 +93,9 @@ cc_cedict_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::cc_cedict);
+    let metadata = Metadata::load_or_default(METADATA_DATA, || {
+        crate::metadata::CcCedictMetadata::metadata()
+    });
 
     #[cfg(feature = "compress")]
     {

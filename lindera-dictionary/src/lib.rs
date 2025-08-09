@@ -6,6 +6,7 @@ pub mod dictionary;
 pub mod dictionary_builder;
 pub mod dictionary_loader;
 pub mod error;
+pub mod macros;
 pub mod mode;
 pub mod util;
 pub mod viterbi;

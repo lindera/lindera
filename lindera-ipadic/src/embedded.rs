@@ -1,4 +1,4 @@
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -45,13 +45,13 @@ macro_rules! decompress_data {
 
 macro_rules! ipadic_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ipadic")]
+        #[cfg(feature = "embedded-ipadic")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "ipadic"))]
+        #[cfg(not(feature = "embedded-ipadic"))]
         decompress_data!($name, &[], $filename);
     };
 }
@@ -59,9 +59,9 @@ macro_rules! ipadic_data {
 // Metadata-specific macro (skips compression/decompression processing)
 macro_rules! ipadic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "ipadic")]
+        #[cfg(feature = "embedded-ipadic")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "ipadic"))]
+        #[cfg(not(feature = "embedded-ipadic"))]
         const $name: &'static [u8] = &[];
     };
 }
@@ -89,7 +89,8 @@ ipadic_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, Metadata::ipadic);
+    let metadata =
+        Metadata::load_or_default(METADATA_DATA, crate::metadata::IpadicMetadata::metadata);
 
     #[cfg(feature = "compress")]
     {
