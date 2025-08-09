@@ -5,19 +5,19 @@ use crate::dictionary::schema::Schema;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
-    pub name: String,
-    pub encoding: String,
-    pub compress_algorithm: Algorithm,
-    pub simple_userdic_fields_num: usize,
-    pub simple_word_cost: i16,
-    pub simple_context_id: u16,
-    pub detailed_userdic_fields_num: usize,
-    pub unk_fields_num: usize,
-    pub flexible_csv: bool,
-    pub skip_invalid_cost_or_id: bool,
-    pub normalize_details: bool,
-    pub schema: Schema,
-    pub userdic_field_indices: Vec<Option<usize>>,
+    pub name: String,                              // Name of the dictionary
+    pub encoding: String,                          // Character encoding
+    pub compress_algorithm: Algorithm,             // Compression algorithm
+    pub simple_userdic_fields_num: usize,          // Number of fields in simple user dictionary
+    pub simple_word_cost: i16,                     // Word cost for simple user dictionary
+    pub simple_context_id: u16,                    // Context ID for simple user dictionary
+    pub detailed_userdic_fields_num: usize,        // Number of fields in detailed user dictionary
+    pub unk_fields_num: usize,                     // Number of fields in unknown dictionary
+    pub flexible_csv: bool,                        // Handle CSV columns flexibly
+    pub skip_invalid_cost_or_id: bool,             // Skip invalid cost or ID
+    pub normalize_details: bool,                   // Normalize characters
+    pub schema: Schema,                            // Schema for the dictionary
+    pub userdic_field_indices: Vec<Option<usize>>, // User dictionary field indices
 }
 
 impl Default for Metadata {
@@ -35,17 +35,17 @@ impl Default for Metadata {
             false,
             false,
             false,
-            Schema::ipadic(),
+            Schema::default(),
             vec![
-                Some(1),
-                None,
-                None,
-                None,
-                None,
-                None,
-                Some(0),
-                Some(2),
-                None,
+                Some(1), // Use field 1 for major POS classification
+                None,    // Middle POS classification is '*'
+                None,    // Small POS classification is '*'
+                None,    // Fine POS classification is '*'
+                None,    // Conjugation type is '*'
+                None,    // Conjugation form is '*'
+                Some(0), // Use field 0 for base form
+                Some(2), // Use field 2 for reading
+                None,    // Pronunciation is '*'
             ],
         )
     }
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_metadata_new() {
-        let schema = Schema::unidic();
+        let schema = Schema::default();
         let metadata = Metadata::new(
             "TestDict".to_string(),
             "UTF-8".to_string(),

@@ -71,7 +71,11 @@ cccedict_data!(
     "/lindera-cc-cedict/char_def.bin",
     "char_def.bin"
 );
-cccedict_data!(CONNECTION_DATA, "/lindera-cc-cedict/matrix.mtx", "matrix.mtx");
+cccedict_data!(
+    CONNECTION_DATA,
+    "/lindera-cc-cedict/matrix.mtx",
+    "matrix.mtx"
+);
 cccedict_data!(DA_DATA, "/lindera-cc-cedict/dict.da", "dict.da");
 cccedict_data!(VALS_DATA, "/lindera-cc-cedict/dict.vals", "dict.vals");
 cccedict_data!(UNKNOWN_DATA, "/lindera-cc-cedict/unk.bin", "unk.bin");
@@ -89,8 +93,9 @@ cccedict_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata =
-        Metadata::load_or_default(METADATA_DATA, || crate::metadata::CcCedictMetadata::default());
+    let metadata = Metadata::load_or_default(METADATA_DATA, || {
+        crate::metadata::CcCedictMetadata::default()
+    });
 
     #[cfg(feature = "compress")]
     {

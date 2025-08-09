@@ -71,7 +71,11 @@ ipadicneologd_data!(
     "/lindera-ipadic-neologd/char_def.bin",
     "char_def.bin"
 );
-ipadicneologd_data!(CONNECTION_DATA, "/lindera-ipadic-neologd/matrix.mtx", "matrix.mtx");
+ipadicneologd_data!(
+    CONNECTION_DATA,
+    "/lindera-ipadic-neologd/matrix.mtx",
+    "matrix.mtx"
+);
 ipadicneologd_data!(DA_DATA, "/lindera-ipadic-neologd/dict.da", "dict.da");
 ipadicneologd_data!(VALS_DATA, "/lindera-ipadic-neologd/dict.vals", "dict.vals");
 ipadicneologd_data!(UNKNOWN_DATA, "/lindera-ipadic-neologd/unk.bin", "unk.bin");
@@ -80,7 +84,11 @@ ipadicneologd_data!(
     "/lindera-ipadic-neologd/dict.wordsidx",
     "dict.wordsidx"
 );
-ipadicneologd_data!(WORDS_DATA, "/lindera-ipadic-neologd/dict.words", "dict.words");
+ipadicneologd_data!(
+    WORDS_DATA,
+    "/lindera-ipadic-neologd/dict.words",
+    "dict.words"
+);
 ipadicneologd_metadata!(
     METADATA_DATA,
     "/lindera-ipadic-neologd/metadata.json",
@@ -89,8 +97,9 @@ ipadicneologd_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata =
-        Metadata::load_or_default(METADATA_DATA, || crate::metadata::IpadicNeologdMetadata::default());
+    let metadata = Metadata::load_or_default(METADATA_DATA, || {
+        crate::metadata::IpadicNeologdMetadata::default()
+    });
 
     #[cfg(feature = "compress")]
     {

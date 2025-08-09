@@ -177,9 +177,8 @@ pub enum FieldType {
     Custom,
 }
 
-impl Schema {
-    /// Default IPADIC dictionary schema for backward compatibility
-    pub fn ipadic() -> Self {
+impl Default for Schema {
+    fn default() -> Self {
         Self::new(
             "IPADIC".to_string(),
             "2.7.0".to_string(),
@@ -193,69 +192,6 @@ impl Schema {
                 "base_form".to_string(),
                 "reading".to_string(),
                 "pronunciation".to_string(),
-            ],
-        )
-    }
-
-    /// UniDic dictionary schema for backward compatibility  
-    pub fn unidic() -> Self {
-        Self::new(
-            "UniDic".to_string(),
-            "2.1.2".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_form".to_string(),
-                "conjugation_type".to_string(),
-                "lexeme_reading".to_string(),
-                "lexeme".to_string(),
-                "orthography_appearance".to_string(),
-                "pronunciation_appearance".to_string(),
-                "orthography_basic".to_string(),
-                "pronunciation_basic".to_string(),
-                "word_type".to_string(),
-                "prefix_form".to_string(),
-                "prefix_type".to_string(),
-                "suffix_form".to_string(),
-                "suffix_type".to_string(),
-            ],
-        )
-    }
-
-    /// CC-CEDICT dictionary schema for backward compatibility
-    pub fn cc_cedict() -> Self {
-        Self::new(
-            "CC-CEDICT".to_string(),
-            "1.0.0".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "pinyin".to_string(),
-                "traditional".to_string(),
-                "simplified".to_string(),
-                "definition".to_string(),
-            ],
-        )
-    }
-
-    /// KO-DIC dictionary schema for backward compatibility
-    pub fn ko_dic() -> Self {
-        Self::new(
-            "KO-DIC".to_string(),
-            "1.0.0".to_string(),
-            vec![
-                "pos_tag".to_string(),
-                "meaning".to_string(),
-                "presence_absence".to_string(),
-                "reading".to_string(),
-                "type".to_string(),
-                "first_pos".to_string(),
-                "last_pos".to_string(),
-                "expression".to_string(),
             ],
         )
     }
@@ -278,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_field_index_lookup() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
 
         // Common fields
         assert_eq!(schema.get_field_index("surface"), Some(0));
@@ -297,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_field_name_lookup() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
 
         assert_eq!(schema.get_field_name(0), Some("surface"));
         assert_eq!(schema.get_field_name(3), Some("cost"));
@@ -307,8 +243,8 @@ mod tests {
     }
 
     #[test]
-    fn test_ipadic_schema() {
-        let schema = Schema::ipadic();
+    fn test_default_schema() {
+        let schema = Schema::default();
         assert_eq!(schema.name, "IPADIC");
         assert_eq!(schema.version, "2.7.0");
         assert_eq!(schema.field_count(), 13);
@@ -316,46 +252,8 @@ mod tests {
     }
 
     #[test]
-    fn test_unidic_schema() {
-        let schema = Schema::unidic();
-        assert_eq!(schema.name, "UniDic");
-        assert_eq!(schema.version, "2.1.2");
-        assert_eq!(schema.field_count(), 21);
-        assert_eq!(schema.custom_fields.len(), 17);
-    }
-
-    #[test]
-    fn test_cc_cedict_schema() {
-        let schema = Schema::cc_cedict();
-        assert_eq!(schema.name, "CC-CEDICT");
-        assert_eq!(schema.version, "1.0.0");
-        assert_eq!(schema.field_count(), 12);
-        assert_eq!(schema.custom_fields.len(), 8);
-
-        // Check specific fields
-        assert_eq!(schema.get_field_index("pinyin"), Some(8));
-        assert_eq!(schema.get_field_index("traditional"), Some(9));
-        assert_eq!(schema.get_field_index("simplified"), Some(10));
-        assert_eq!(schema.get_field_index("definition"), Some(11));
-    }
-
-    #[test]
-    fn test_ko_dic_schema() {
-        let schema = Schema::ko_dic();
-        assert_eq!(schema.name, "KO-DIC");
-        assert_eq!(schema.version, "1.0.0");
-        assert_eq!(schema.field_count(), 12);
-        assert_eq!(schema.custom_fields.len(), 8);
-
-        // Check specific fields
-        assert_eq!(schema.get_field_index("pos_tag"), Some(4));
-        assert_eq!(schema.get_field_index("meaning"), Some(5));
-        assert_eq!(schema.get_field_index("expression"), Some(11));
-    }
-
-    #[test]
     fn test_common_field_index() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
 
         assert_eq!(schema.get_common_field_index(CommonField::Surface), 0);
         assert_eq!(schema.get_common_field_index(CommonField::LeftContextId), 1);
@@ -368,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_validate_common_fields_success() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let record = StringRecord::from(vec!["surface_form", "123", "456", "789", "名詞"]);
 
         let result = schema.validate_common_fields(&record);
@@ -377,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_validate_common_fields_empty_field() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let record = StringRecord::from(vec![
             "", // Empty surface
             "123", "456", "789",
@@ -389,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_validate_common_fields_missing_field() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let record = StringRecord::from(vec![
             "surface_form", // Only first field
         ]);
@@ -400,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_backward_compatibility() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
 
         // Test get_field_by_name
         let field = schema.get_field_by_name("surface").unwrap();
@@ -416,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_detail_fields() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let detail_fields = schema.get_detail_fields();
         assert_eq!(detail_fields.len(), 9);
         assert_eq!(detail_fields[0], "major_pos");

@@ -38,7 +38,7 @@ pub struct PrefixDictionaryBuilder {
     normalize_details: bool,
     #[builder(default = "false")]
     skip_invalid_cost_or_id: bool,
-    #[builder(default = "Schema::ipadic()")]
+    #[builder(default = "Schema::default()")]
     schema: Schema,
 }
 
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_new_with_schema() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema.clone());
 
         assert_eq!(builder.schema.name, "IPADIC");
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn test_get_common_field_value_empty() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -492,7 +492,7 @@ mod tests {
 
     #[test]
     fn test_get_common_field_value_out_of_bounds() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn test_parse_word_cost() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn test_parse_word_cost_invalid() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn test_parse_word_cost_skip_invalid() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.skip_invalid_cost_or_id = true;
 
@@ -556,7 +556,7 @@ mod tests {
 
     #[test]
     fn test_parse_left_id() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -572,7 +572,7 @@ mod tests {
 
     #[test]
     fn test_parse_right_id() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
@@ -596,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_get_encoding() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let encoding = builder.get_encoding().unwrap();
@@ -605,7 +605,7 @@ mod tests {
 
     #[test]
     fn test_get_encoding_invalid() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let mut builder = PrefixDictionaryBuilder::new(schema);
         builder.encoding = "INVALID-ENCODING".into();
 
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn test_get_common_field_value() {
-        let schema = Schema::ipadic();
+        let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![

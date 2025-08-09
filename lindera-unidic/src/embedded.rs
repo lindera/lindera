@@ -89,7 +89,8 @@ unidic_metadata!(
 
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, || crate::metadata::UnidicMetadata::default());
+    let metadata =
+        Metadata::load_or_default(METADATA_DATA, || crate::metadata::UnidicMetadata::default());
 
     #[cfg(feature = "compress")]
     {
