@@ -8,6 +8,14 @@ use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
+#[cfg(any(
+    all(feature = "ipadic", not(feature = "embedded-ipadic")),
+    all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")),
+    all(feature = "unidic", not(feature = "embedded-unidic")),
+    all(feature = "ko-dic", not(feature = "embedded-ko-dic")),
+    all(feature = "cc-cedict", not(feature = "embedded-cc-cedict"))
+))]
+use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 
 use crate::LinderaResult;
@@ -82,27 +90,37 @@ pub type UserDictionaryConfig = Value;
 pub fn resolve_builder(dictionary_type: DictionaryKind) -> LinderaResult<DictionaryBuilder> {
     match dictionary_type {
         #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => Ok(lindera_ipadic::create_builder()),
+        DictionaryKind::IPADIC => Ok(DictionaryBuilder::new(
+            lindera_ipadic::metadata::IpadicMetadata::metadata(),
+        )),
         #[cfg(not(feature = "ipadic"))]
         DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC feature is not enabled"))),
         #[cfg(feature = "ipadic-neologd")]
-        DictionaryKind::IPADICNEologd => Ok(lindera_ipadic_neologd::create_builder()),
+        DictionaryKind::IPADICNEologd => Ok(DictionaryBuilder::new(
+            lindera_ipadic_neologd::metadata::IpadicNeologdMetadata::metadata(),
+        )),
         #[cfg(not(feature = "ipadic-neologd"))]
         DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC-NEologd feature is not enabled"))),
         #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => Ok(lindera_unidic::create_builder()),
+        DictionaryKind::UniDic => Ok(DictionaryBuilder::new(
+            lindera_unidic::metadata::UnidicMetadata::metadata(),
+        )),
         #[cfg(not(feature = "unidic"))]
         DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("UniDic feature is not enabled"))),
         #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => Ok(lindera_ko_dic::create_builder()),
+        DictionaryKind::KoDic => Ok(DictionaryBuilder::new(
+            lindera_ko_dic::metadata::KoDicMetadata::metadata(),
+        )),
         #[cfg(not(feature = "ko-dic"))]
         DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("KO-DIC feature is not enabled"))),
         #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => Ok(lindera_cc_cedict::create_builder()),
+        DictionaryKind::CcCedict => Ok(DictionaryBuilder::new(
+            lindera_cc_cedict::metadata::CcCedictMetadata::metadata(),
+        )),
         #[cfg(not(feature = "cc-cedict"))]
         DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("CC-CEDICT feature is not enabled"))),
@@ -111,28 +129,83 @@ pub fn resolve_builder(dictionary_type: DictionaryKind) -> LinderaResult<Diction
 
 pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn DictionaryLoader>> {
     match dictionary_type {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => Ok(Box::new(lindera_ipadic::create_loader())),
+        #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+        DictionaryKind::IPADIC => Ok(Box::new(lindera_ipadic::EmbeddedLoader)),
+        #[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]
+        DictionaryKind::IPADIC => Ok(Box::new(StandardDictionaryLoader::new(
+            "IPADIC".to_string(),
+            vec![
+                "./dict/ipadic".to_string(),
+                "./lindera-ipadic".to_string(),
+                "/usr/local/share/lindera/ipadic".to_string(),
+                "/usr/share/lindera/ipadic".to_string(),
+            ],
+            "LINDERA_IPADIC_PATH".to_string(),
+        ))),
         #[cfg(not(feature = "ipadic"))]
         DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC feature is not enabled"))),
-        #[cfg(feature = "ipadic-neologd")]
-        DictionaryKind::IPADICNEologd => Ok(Box::new(lindera_ipadic_neologd::create_loader())),
+        #[cfg(all(feature = "ipadic-neologd", feature = "embedded-ipadic-neologd"))]
+        DictionaryKind::IPADICNEologd => Ok(Box::new(lindera_ipadic_neologd::EmbeddedLoader)),
+        #[cfg(all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")))]
+        DictionaryKind::IPADICNEologd => Ok(Box::new(StandardDictionaryLoader::new(
+            "IPADIC-NEologd".to_string(),
+            vec![
+                "./dict/ipadic-neologd".to_string(),
+                "./lindera-ipadic-neologd".to_string(),
+                "/usr/local/share/lindera/ipadic-neologd".to_string(),
+                "/usr/share/lindera/ipadic-neologd".to_string(),
+            ],
+            "LINDERA_IPADIC_NEOLOGD_PATH".to_string(),
+        ))),
         #[cfg(not(feature = "ipadic-neologd"))]
         DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC-NEologd feature is not enabled"))),
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => Ok(Box::new(lindera_unidic::create_loader())),
+        #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
+        DictionaryKind::UniDic => Ok(Box::new(lindera_unidic::EmbeddedLoader)),
+        #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
+        DictionaryKind::UniDic => Ok(Box::new(StandardDictionaryLoader::new(
+            "UniDic".to_string(),
+            vec![
+                "./dict/unidic".to_string(),
+                "./lindera-unidic".to_string(),
+                "/usr/local/share/lindera/unidic".to_string(),
+                "/usr/share/lindera/unidic".to_string(),
+            ],
+            "LINDERA_UNIDIC_PATH".to_string(),
+        ))),
         #[cfg(not(feature = "unidic"))]
         DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("UniDic feature is not enabled"))),
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => Ok(Box::new(lindera_ko_dic::create_loader())),
+        #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+        DictionaryKind::KoDic => Ok(Box::new(lindera_ko_dic::EmbeddedLoader)),
+        #[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
+        DictionaryKind::KoDic => Ok(Box::new(StandardDictionaryLoader::new(
+            "Ko-Dic".to_string(),
+            vec![
+                "./dict/ko-dic".to_string(),
+                "./lindera-ko-dic".to_string(),
+                "/usr/local/share/lindera/ko-dic".to_string(),
+                "/usr/share/lindera/ko-dic".to_string(),
+            ],
+            "LINDERA_KO_DIC_PATH".to_string(),
+        ))),
         #[cfg(not(feature = "ko-dic"))]
         DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("KO-DIC feature is not enabled"))),
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => Ok(Box::new(lindera_cc_cedict::create_loader())),
+        #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
+        DictionaryKind::CcCedict => Ok(Box::new(lindera_cc_cedict::EmbeddedLoader)),
+        #[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
+        DictionaryKind::CcCedict => Ok(Box::new(StandardDictionaryLoader::new(
+            "CC-CEDICT".to_string(),
+            vec![
+                "./dict/cc-cedict".to_string(),
+                "./lindera-cc-cedict".to_string(),
+                "/usr/local/share/lindera/cc-cedict".to_string(),
+                "/usr/share/lindera/cc-cedict".to_string(),
+            ],
+            "LINDERA_CC_CEDICT_PATH".to_string(),
+        ))),
         #[cfg(not(feature = "cc-cedict"))]
         DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("CC-CEDICT feature is not enabled"))),

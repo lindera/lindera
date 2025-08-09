@@ -11,37 +11,6 @@ use lindera_dictionary::LinderaResult;
 #[cfg(feature = "embedded-ipadic")]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
-#[cfg(feature = "ipadic")]
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]
-use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
-#[cfg(feature = "ipadic")]
-use metadata::IpadicMetadata;
-
-#[cfg(feature = "ipadic")]
-pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(IpadicMetadata::metadata())
-}
-
-#[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]
-pub fn create_loader() -> StandardDictionaryLoader {
-    StandardDictionaryLoader::new(
-        "IPADIC".to_string(),
-        vec![
-            "./dict/ipadic".to_string(),
-            "./lindera-ipadic".to_string(),
-            "/usr/local/share/lindera/ipadic".to_string(),
-            "/usr/share/lindera/ipadic".to_string(),
-        ],
-        "LINDERA_IPADIC_PATH".to_string(),
-    )
-}
-
-#[cfg(feature = "embedded-ipadic")]
-pub fn create_loader() -> EmbeddedLoader {
-    EmbeddedLoader
-}
-
 #[cfg(feature = "embedded-ipadic")]
 pub struct EmbeddedLoader;
 

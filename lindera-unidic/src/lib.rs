@@ -11,37 +11,6 @@ use lindera_dictionary::LinderaResult;
 #[cfg(feature = "embedded-unidic")]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
-#[cfg(feature = "unidic")]
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
-use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
-#[cfg(feature = "unidic")]
-use metadata::UnidicMetadata;
-
-#[cfg(feature = "unidic")]
-pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(UnidicMetadata::metadata())
-}
-
-#[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
-pub fn create_loader() -> StandardDictionaryLoader {
-    StandardDictionaryLoader::new(
-        "UniDic".to_string(),
-        vec![
-            "./dict/unidic".to_string(),
-            "./lindera-unidic".to_string(),
-            "/usr/local/share/lindera/unidic".to_string(),
-            "/usr/share/lindera/unidic".to_string(),
-        ],
-        "LINDERA_UNIDIC_PATH".to_string(),
-    )
-}
-
-#[cfg(feature = "embedded-unidic")]
-pub fn create_loader() -> EmbeddedLoader {
-    EmbeddedLoader
-}
-
 #[cfg(feature = "embedded-unidic")]
 pub struct EmbeddedLoader;
 
