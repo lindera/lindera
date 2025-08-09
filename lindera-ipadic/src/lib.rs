@@ -9,7 +9,7 @@ pub mod embedded;
 #[cfg(feature = "ipadic")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 #[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
+use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 #[cfg(feature = "ipadic")]
 use metadata::IpadicMetadata;
 
@@ -48,7 +48,16 @@ impl EmbeddedLoader {
 }
 
 #[cfg(feature = "embedded-ipadic")]
+impl DictionaryLoader for EmbeddedLoader {
+    fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
+        embedded::load()
+    }
+}
+
+#[cfg(feature = "embedded-ipadic")]
 use lindera_dictionary::LinderaResult;
+#[cfg(feature = "embedded-ipadic")]
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

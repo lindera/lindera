@@ -7,6 +7,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
 use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
 use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
@@ -113,6 +114,36 @@ pub fn resolve_builder(dictionary_type: DictionaryKind) -> LinderaResult<Diction
     }
 }
 
+pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn DictionaryLoader>> {
+    match dictionary_type {
+        #[cfg(feature = "ipadic")]
+        DictionaryKind::IPADIC => Ok(Box::new(lindera_ipadic::create_loader())),
+        #[cfg(not(feature = "ipadic"))]
+        DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("IPADIC feature is not enabled"))),
+        #[cfg(feature = "ipadic-neologd")]
+        DictionaryKind::IPADICNEologd => Ok(Box::new(lindera_ipadic_neologd::create_loader())),
+        #[cfg(not(feature = "ipadic-neologd"))]
+        DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("IPADIC-NEologd feature is not enabled"))),
+        #[cfg(feature = "unidic")]
+        DictionaryKind::UniDic => Ok(Box::new(lindera_unidic::create_loader())),
+        #[cfg(not(feature = "unidic"))]
+        DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("UniDic feature is not enabled"))),
+        #[cfg(feature = "ko-dic")]
+        DictionaryKind::KoDic => Ok(Box::new(lindera_ko_dic::create_loader())),
+        #[cfg(not(feature = "ko-dic"))]
+        DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("KO-DIC feature is not enabled"))),
+        #[cfg(feature = "cc-cedict")]
+        DictionaryKind::CcCedict => Ok(Box::new(lindera_cc_cedict::create_loader())),
+        #[cfg(not(feature = "cc-cedict"))]
+        DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("CC-CEDICT feature is not enabled"))),
+    }
+}
+
 pub fn load_dictionary_from_path(path: &Path, use_mmap: bool) -> LinderaResult<Dictionary> {
     Ok(Dictionary {
         prefix_dictionary: {
@@ -142,31 +173,10 @@ pub fn load_dictionary_from_path(path: &Path, use_mmap: bool) -> LinderaResult<D
 }
 
 pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
-    match kind {
-        #[cfg(feature = "ipadic")]
-        DictionaryKind::IPADIC => lindera_ipadic::create_loader()
-            .load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[cfg(feature = "ipadic-neologd")]
-        DictionaryKind::IPADICNEologd => lindera_ipadic_neologd::create_loader()
-            .load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[cfg(feature = "unidic")]
-        DictionaryKind::UniDic => lindera_unidic::create_loader()
-            .load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[cfg(feature = "ko-dic")]
-        DictionaryKind::KoDic => lindera_ko_dic::create_loader()
-            .load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[cfg(feature = "cc-cedict")]
-        DictionaryKind::CcCedict => lindera_cc_cedict::create_loader()
-            .load()
-            .map_err(|e| LinderaErrorKind::NotFound.with_error(e)),
-        #[allow(unreachable_patterns)]
-        _ => Err(LinderaErrorKind::Args
-            .with_error(anyhow::anyhow!("Invalid dictionary type: {:?}", kind))),
-    }
+    let loader = resolve_loader(kind)?;
+    loader
+        .load()
+        .map_err(|e| LinderaErrorKind::NotFound.with_error(e))
 }
 
 pub fn load_dictionary_from_config(

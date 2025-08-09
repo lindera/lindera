@@ -9,7 +9,7 @@ pub mod embedded;
 #[cfg(feature = "unidic")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
+use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 #[cfg(feature = "unidic")]
 use metadata::UnidicMetadata;
 
@@ -48,7 +48,16 @@ impl EmbeddedLoader {
 }
 
 #[cfg(feature = "embedded-unidic")]
+impl DictionaryLoader for EmbeddedLoader {
+    fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
+        embedded::load()
+    }
+}
+
+#[cfg(feature = "embedded-unidic")]
 use lindera_dictionary::LinderaResult;
+#[cfg(feature = "embedded-unidic")]
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 
