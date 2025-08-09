@@ -192,7 +192,7 @@ pub fn load_dictionary_from_config(
         let kind_str = kind_value.as_str().ok_or_else(|| {
             LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
         })?;
-        
+
         let kind = DictionaryKind::from_str(kind_str)?;
         return load_embedded_dictionary(kind);
     }
@@ -202,7 +202,7 @@ pub fn load_dictionary_from_config(
         let path_str = path_value.as_str().ok_or_else(|| {
             LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
         })?;
-        
+
         let path = PathBuf::from(path_str);
         return load_dictionary(&path);
     }
@@ -257,9 +257,13 @@ pub fn load_user_dictionary_from_config(
 ) -> LinderaResult<UserDictionary> {
     let path = get_path_from_config(dictionary_config)?;
 
-    let extension = path.extension().and_then(|ext| ext.to_str()).ok_or_else(|| {
-        LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid user dictionary source file"))
-    })?;
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .ok_or_else(|| {
+            LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("Invalid user dictionary source file"))
+        })?;
 
     match extension {
         "csv" => {
