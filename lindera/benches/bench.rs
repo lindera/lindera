@@ -5,14 +5,14 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
         use lindera::dictionary::DictionaryKind;
-        use lindera::dictionary::load_dictionary_from_kind;
+        use lindera::dictionary::load_embedded_dictionary;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-ipadic", |b| {
             b.iter(|| {
-                let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
                 let segmenter = Segmenter::new(
                     Mode::Normal,
                     dictionary,
@@ -28,14 +28,14 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "unidic")]
     {
         use lindera::dictionary::DictionaryKind;
-        use lindera::dictionary::load_dictionary_from_kind;
+        use lindera::dictionary::load_embedded_dictionary;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-unidic", |b| {
             b.iter(|| {
-                let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
                 let segmenter = Segmenter::new(
                     Mode::Normal,
                     dictionary,
@@ -51,14 +51,14 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "ko-dic")]
     {
         use lindera::dictionary::DictionaryKind;
-        use lindera::dictionary::load_dictionary_from_kind;
+        use lindera::dictionary::load_embedded_dictionary;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-ko-dic", |b| {
             b.iter(|| {
-                let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
                 let segmenter = Segmenter::new(
                     Mode::Normal,
                     dictionary,
@@ -74,14 +74,14 @@ fn bench_constructor(c: &mut Criterion) {
     #[cfg(feature = "cc-cedict")]
     {
         use lindera::dictionary::DictionaryKind;
-        use lindera::dictionary::load_dictionary_from_kind;
+        use lindera::dictionary::load_embedded_dictionary;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
         c.bench_function("bench-constructor-cc-cedict", |b| {
             b.iter(|| {
-                let dictionary = load_dictionary_from_kind(DictionaryKind::CcCedict).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::CcCedict).unwrap();
                 let segmenter = Segmenter::new(
                     Mode::Normal,
                     dictionary,
@@ -102,7 +102,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -114,7 +114,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     .join("../resources")
                     .join("ipadic_simple_userdic.csv");
 
-                let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
                 let user_dictionary =
                     load_user_dictionary_from_csv(DictionaryKind::IPADIC, userdic_file.as_path())
                         .unwrap();
@@ -135,7 +135,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -147,7 +147,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     .join("../resources")
                     .join("unidic_simple_userdic.csv");
 
-                let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
                 let user_dictionary =
                     load_user_dictionary_from_csv(DictionaryKind::UniDic, userdic_file.as_path())
                         .unwrap();
@@ -168,7 +168,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -180,7 +180,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     .join("../resources")
                     .join("ko-dic_simple_userdic.csv");
 
-                let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
                 let user_dictionary =
                     load_user_dictionary_from_csv(DictionaryKind::KoDic, userdic_file.as_path())
                         .unwrap();
@@ -201,7 +201,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -213,7 +213,7 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
                     .join("../resources")
                     .join("cc-cedict_simple_userdic.csv");
 
-                let dictionary = load_dictionary_from_kind(DictionaryKind::CcCedict).unwrap();
+                let dictionary = load_embedded_dictionary(DictionaryKind::CcCedict).unwrap();
                 let user_dictionary =
                     load_user_dictionary_from_csv(DictionaryKind::CcCedict, userdic_file.as_path())
                         .unwrap();
@@ -234,12 +234,12 @@ fn bench_constructor_with_simple_userdic(c: &mut Criterion) {
 fn bench_tokenize(c: &mut Criterion) {
     #[cfg(feature = "ipadic")]
     {
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -256,12 +256,12 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "unidic")]
     {
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -278,12 +278,12 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "ko-dic")]
     {
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -300,12 +300,12 @@ fn bench_tokenize(c: &mut Criterion) {
 
     #[cfg(feature = "cc-cedict")]
     {
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::CcCedict).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::CcCedict).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -328,7 +328,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -338,7 +338,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             .join("../resources")
             .join("ipadic_simple_userdic.csv");
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let user_dictionary =
             load_user_dictionary_from_csv(DictionaryKind::IPADIC, userdic_file.as_path()).unwrap();
         let segmenter = Segmenter::new(
@@ -362,7 +362,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -372,7 +372,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             .join("../resources")
             .join("unidic_simple_userdic.csv");
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
         let user_dictionary =
             load_user_dictionary_from_csv(DictionaryKind::UniDic, userdic_file.as_path()).unwrap();
         let segmenter = Segmenter::new(
@@ -396,7 +396,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -406,7 +406,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             .join("../resources")
             .join("ko-dic_simple_userdic.csv");
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
         let user_dictionary =
             load_user_dictionary_from_csv(DictionaryKind::KoDic, userdic_file.as_path()).unwrap();
         let segmenter = Segmenter::new(
@@ -428,7 +428,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -438,7 +438,7 @@ fn bench_tokenize_with_simple_userdic(c: &mut Criterion) {
             .join("../resources")
             .join("cc-cedict_simple_userdic.csv");
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::CcCedict).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::CcCedict).unwrap();
         let user_dictionary =
             load_user_dictionary_from_csv(DictionaryKind::CcCedict, userdic_file.as_path())
                 .unwrap();
@@ -466,7 +466,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -482,7 +482,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -508,7 +508,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -524,7 +524,7 @@ fn bench_tokenize_long_text(c: &mut Criterion) {
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -553,7 +553,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -569,7 +569,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
@@ -600,7 +600,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         use std::io::Read;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
@@ -616,7 +616,7 @@ fn bench_tokenize_details_long_text(c: &mut Criterion) {
         let mut long_text = String::new();
         let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::UniDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,

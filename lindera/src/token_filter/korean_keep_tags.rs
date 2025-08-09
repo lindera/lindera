@@ -137,7 +137,7 @@ mod tests {
     fn test_korean_keep_tags_token_filter_apply() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 
@@ -151,7 +151,7 @@ mod tests {
         let config: KoreanKeepTagsTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = KoreanKeepTagsTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {

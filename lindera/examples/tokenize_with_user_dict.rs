@@ -6,7 +6,7 @@ fn main() -> LinderaResult<()> {
         use std::path::PathBuf;
 
         use lindera::dictionary::{
-            DictionaryKind, load_dictionary_from_kind, load_user_dictionary_from_csv,
+            DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
         };
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
@@ -16,7 +16,7 @@ fn main() -> LinderaResult<()> {
             .join("../resources")
             .join("ipadic_simple_userdic.csv");
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
         let user_dictionary =
             load_user_dictionary_from_csv(DictionaryKind::IPADIC, user_dict_path.as_path())?;
         let segmenter = Segmenter::new(
