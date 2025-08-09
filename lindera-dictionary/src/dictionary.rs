@@ -95,7 +95,7 @@ impl Dictionary {
         // Load each component from the dictionary directory
         let metadata = MetadataLoader::load(dict_path)?;
         let character_definition = CharacterDefinitionLoader::load(dict_path)?;
-        
+
         let connection_cost_matrix = {
             #[cfg(feature = "mmap")]
             if use_mmap {
@@ -106,7 +106,7 @@ impl Dictionary {
             #[cfg(not(feature = "mmap"))]
             ConnectionCostMatrixLoader::load(dict_path)?
         };
-        
+
         let prefix_dictionary = {
             #[cfg(feature = "mmap")]
             if use_mmap {
@@ -117,7 +117,7 @@ impl Dictionary {
             #[cfg(not(feature = "mmap"))]
             PrefixDictionaryLoader::load(dict_path)?
         };
-        
+
         let unknown_dictionary = UnknownDictionaryLoader::load(dict_path)?;
 
         Ok(Dictionary {

@@ -67,7 +67,6 @@ impl StandardDictionaryLoader {
             self.dictionary_name, self.env_var_name, self.search_paths.join(", ")
         )))
     }
-
 }
 
 impl DictionaryLoader for StandardDictionaryLoader {
