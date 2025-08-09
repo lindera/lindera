@@ -6,9 +6,15 @@ use crate::schema::IpadicSchema;
 /// IPADIC metadata factory
 pub struct IpadicMetadata;
 
+impl Default for IpadicMetadata {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl IpadicMetadata {
     /// Create default IPADIC metadata
-    pub fn default() -> Metadata {
+    pub fn metadata() -> Metadata {
         Metadata::new(
             "IPADIC".to_string(),
             "EUC-JP".to_string(),
@@ -21,7 +27,7 @@ impl IpadicMetadata {
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic
-            IpadicSchema::default(),
+            IpadicSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

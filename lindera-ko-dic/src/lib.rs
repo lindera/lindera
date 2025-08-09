@@ -20,7 +20,7 @@ use metadata::KoDicMetadata;
 
 #[cfg(feature = "ko-dic")]
 pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(KoDicMetadata::default())
+    DictionaryBuilder::new(KoDicMetadata::metadata())
 }
 
 #[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]

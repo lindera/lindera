@@ -20,7 +20,7 @@ use metadata::CcCedictMetadata;
 
 #[cfg(feature = "cc-cedict")]
 pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(CcCedictMetadata::default())
+    DictionaryBuilder::new(CcCedictMetadata::metadata())
 }
 
 #[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]

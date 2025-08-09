@@ -3,9 +3,15 @@ use lindera_dictionary::dictionary::schema::Schema;
 /// IPADIC dictionary schema factory
 pub struct IpadicSchema;
 
+impl Default for IpadicSchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl IpadicSchema {
     /// Create default IPADIC schema
-    pub fn default() -> Schema {
+    pub fn schema() -> Schema {
         Schema::new(
             "IPADIC".to_string(),
             "2.7.0-20070801".to_string(),

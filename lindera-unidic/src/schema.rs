@@ -3,9 +3,15 @@ use lindera_dictionary::dictionary::schema::Schema;
 /// UniDic dictionary schema factory
 pub struct UnidicSchema;
 
+impl Default for UnidicSchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl UnidicSchema {
     /// Create default UniDic schema
-    pub fn default() -> Schema {
+    pub fn schema() -> Schema {
         Schema::new(
             "UniDic".to_string(),
             "2.1.2".to_string(),

@@ -20,7 +20,7 @@ use metadata::IpadicMetadata;
 
 #[cfg(feature = "ipadic")]
 pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(IpadicMetadata::default())
+    DictionaryBuilder::new(IpadicMetadata::metadata())
 }
 
 #[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]

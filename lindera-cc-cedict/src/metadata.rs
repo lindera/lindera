@@ -6,9 +6,15 @@ use crate::schema::CcCedictSchema;
 /// CC-CEDICT metadata factory
 pub struct CcCedictMetadata;
 
+impl Default for CcCedictMetadata {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl CcCedictMetadata {
     /// Create default CC-CEDICT metadata
-    pub fn default() -> Metadata {
+    pub fn metadata() -> Metadata {
         Metadata::new(
             "CC-CEDICT".to_string(),
             "UTF-8".to_string(),
@@ -21,7 +27,7 @@ impl CcCedictMetadata {
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
             false, // normalize_details
-            CcCedictSchema::default(),
+            CcCedictSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

@@ -20,7 +20,7 @@ use metadata::UnidicMetadata;
 
 #[cfg(feature = "unidic")]
 pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(UnidicMetadata::default())
+    DictionaryBuilder::new(UnidicMetadata::metadata())
 }
 
 #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]

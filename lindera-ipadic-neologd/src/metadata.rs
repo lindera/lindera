@@ -6,9 +6,15 @@ use crate::schema::IpadicNeologdSchema;
 /// IPADIC NEologd metadata factory
 pub struct IpadicNeologdMetadata;
 
+impl Default for IpadicNeologdMetadata {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl IpadicNeologdMetadata {
     /// Create default IPADIC NEologd metadata
-    pub fn default() -> Metadata {
+    pub fn metadata() -> Metadata {
         Metadata::new(
             "IPADIC-NEologd".to_string(),
             "UTF-8".to_string(),
@@ -21,7 +27,7 @@ impl IpadicNeologdMetadata {
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic-NEologd
-            IpadicNeologdSchema::default(),
+            IpadicNeologdSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

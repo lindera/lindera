@@ -20,7 +20,7 @@ use metadata::IpadicNeologdMetadata;
 
 #[cfg(feature = "ipadic-neologd")]
 pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(IpadicNeologdMetadata::default())
+    DictionaryBuilder::new(IpadicNeologdMetadata::metadata())
 }
 
 #[cfg(all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")))]

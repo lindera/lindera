@@ -2,8 +2,14 @@ use lindera_dictionary::dictionary::schema::Schema;
 
 pub struct KoDicSchema;
 
+impl Default for KoDicSchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl KoDicSchema {
-    pub fn default() -> Schema {
+    pub fn schema() -> Schema {
         Schema::new(
             "KO-DIC".to_string(),
             "2.1.1-20180720".to_string(),

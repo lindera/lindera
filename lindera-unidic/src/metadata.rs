@@ -6,9 +6,15 @@ use crate::schema::UnidicSchema;
 /// UniDic metadata factory
 pub struct UnidicMetadata;
 
+impl Default for UnidicMetadata {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl UnidicMetadata {
     /// Create default UniDic metadata
-    pub fn default() -> Metadata {
+    pub fn metadata() -> Metadata {
         Metadata::new(
             "UniDic".to_string(),
             "UTF-8".to_string(),
@@ -21,7 +27,7 @@ impl UnidicMetadata {
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
-            UnidicSchema::default(),
+            UnidicSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

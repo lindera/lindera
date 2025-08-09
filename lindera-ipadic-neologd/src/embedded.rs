@@ -98,7 +98,7 @@ ipadicneologd_metadata!(
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
     let metadata = Metadata::load_or_default(METADATA_DATA, || {
-        crate::metadata::IpadicNeologdMetadata::default()
+        crate::metadata::IpadicNeologdMetadata::metadata()
     });
 
     #[cfg(feature = "compress")]

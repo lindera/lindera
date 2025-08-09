@@ -6,9 +6,15 @@ use crate::schema::KoDicSchema;
 /// Ko-Dic metadata factory
 pub struct KoDicMetadata;
 
+impl Default for KoDicMetadata {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl KoDicMetadata {
     /// Create default Ko-Dic metadata
-    pub fn default() -> Metadata {
+    pub fn metadata() -> Metadata {
         Metadata::new(
             "KO-DIC".to_string(),
             "UTF-8".to_string(),
@@ -21,7 +27,7 @@ impl KoDicMetadata {
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
-            KoDicSchema::default(),
+            KoDicSchema::schema(),
             vec![
                 Some(1), // POS
                 None,    // Meaning

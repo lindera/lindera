@@ -1,4 +1,4 @@
-/// Common macros for dictionary data loading and decompression
+//! Common macros for dictionary data loading and decompression
 
 /// Macro for decompressing dictionary data
 /// This macro handles both compressed and uncompressed data formats
