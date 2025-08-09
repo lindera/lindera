@@ -18,7 +18,7 @@ impl IpadicNeologdMetadata {
             0,
             13,
             11,
-            false, // flexible_csv
+            true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic-NEologd
             IpadicNeologdSchema::default(),
@@ -29,7 +29,7 @@ impl IpadicNeologdMetadata {
                 None,    // Fine POS classification
                 None,    // Conjugation type
                 None,    // Conjugation form
-                None,    // Base form
+                Some(0), // Base form
                 Some(2), // Reading
                 None,    // Pronunciation
             ],
