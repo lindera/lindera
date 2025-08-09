@@ -19,13 +19,36 @@ ipadic-neologd = [
 unidic = ["lindera/unidic"] # Include Japanese dictionary (UniDic)
 ko-dic = ["lindera/ko-dic"] # Include Korean dictionary (ko-dic)
 cc-cedict = ["lindera/cc-cedict"] # Include Chinese dictionary (CC-CEDICT)
+
+embedded-unidic = [
+    "unidic",
+    "lindera/embedded-unidic",
+] # Embed UniDic dictionary in the binary
+embedded-ipadic = [
+    "ipadic",
+    "lindera/embedded-ipadic",
+] # Embed IPADIC dictionary in the binary
+embedded-ko-dic = [
+    "ko-dic",
+    "lindera/embedded-ko-dic",
+] # Embed ko-dic dictionary in the binary
+embedded-cc-cedict = [
+    "cc-cedict",
+    "lindera/embedded-cc-cedict",
+] # Embed CC-CEDICT dictionary in the binary
+embedded-ipadic-neologd = [
+    "ipadic-neologd",
+    "lindera/embedded-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
+
 cjk = ["lindera/cjk"] # Include CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
 cjk2 = ["lindera/cjk2"] # Include CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
 cjk3 = [
     "lindera/cjk3",
 ] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
+
 compress = ["lindera/compress"] # Compress dictionaries
-mmap = ["lindera/mmap"] # Use memory-mapped file
+mmap = ["lindera/mmap"]         # Use memory-mapped file
 default = ["lindera/default"]
 
 [dependencies]
