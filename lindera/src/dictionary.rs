@@ -7,7 +7,6 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 #[cfg(any(
     all(feature = "ipadic", not(feature = "embedded-ipadic")),
@@ -17,6 +16,7 @@ use lindera_dictionary::dictionary_loader::DictionaryLoader;
     all(feature = "cc-cedict", not(feature = "embedded-cc-cedict"))
 ))]
 use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
+use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
