@@ -6,6 +6,11 @@ pub mod schema;
 #[cfg(feature = "embedded-cc-cedict")]
 pub mod embedded;
 
+#[cfg(feature = "embedded-cc-cedict")]
+use lindera_dictionary::LinderaResult;
+#[cfg(feature = "embedded-cc-cedict")]
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
+
 #[cfg(feature = "cc-cedict")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 #[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
@@ -19,8 +24,8 @@ pub fn create_builder() -> DictionaryBuilder {
 }
 
 #[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
-pub fn create_loader() -> DictionaryLoader {
-    DictionaryLoader::new(
+pub fn create_loader() -> StandardDictionaryLoader {
+    StandardDictionaryLoader::new(
         "CC-CEDICT".to_string(),
         vec![
             "./dict/cc-cedict".to_string(),
@@ -54,10 +59,6 @@ impl DictionaryLoader for EmbeddedLoader {
     }
 }
 
-#[cfg(feature = "embedded-cc-cedict")]
-use lindera_dictionary::LinderaResult;
-#[cfg(feature = "embedded-cc-cedict")]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -72,6 +72,11 @@ impl Dictionary {
 
     /// Load dictionary from a directory containing dictionary files
     pub fn load_from_path(dict_path: &Path) -> LinderaResult<Self> {
+        Self::load_from_path_with_options(dict_path, false)
+    }
+
+    /// Load dictionary from a directory with options
+    pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
         // Verify that the dictionary directory exists
         if !dict_path.exists() {
             return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
@@ -90,8 +95,29 @@ impl Dictionary {
         // Load each component from the dictionary directory
         let metadata = MetadataLoader::load(dict_path)?;
         let character_definition = CharacterDefinitionLoader::load(dict_path)?;
-        let connection_cost_matrix = ConnectionCostMatrixLoader::load(dict_path)?;
-        let prefix_dictionary = PrefixDictionaryLoader::load(dict_path)?;
+        
+        let connection_cost_matrix = {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                ConnectionCostMatrixLoader::load_mmap(dict_path)?
+            } else {
+                ConnectionCostMatrixLoader::load(dict_path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            ConnectionCostMatrixLoader::load(dict_path)?
+        };
+        
+        let prefix_dictionary = {
+            #[cfg(feature = "mmap")]
+            if use_mmap {
+                PrefixDictionaryLoader::load_mmap(dict_path)?
+            } else {
+                PrefixDictionaryLoader::load(dict_path)?
+            }
+            #[cfg(not(feature = "mmap"))]
+            PrefixDictionaryLoader::load(dict_path)?
+        };
+        
         let unknown_dictionary = UnknownDictionaryLoader::load(dict_path)?;
 
         Ok(Dictionary {

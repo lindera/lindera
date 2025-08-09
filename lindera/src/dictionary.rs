@@ -8,11 +8,6 @@ use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
-use lindera_dictionary::dictionary_loader::character_definition::CharacterDefinitionLoader;
-use lindera_dictionary::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
-use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
-use lindera_dictionary::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
-use lindera_dictionary::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use lindera_dictionary::util::read_file;
 
 use crate::LinderaResult;
@@ -145,31 +140,7 @@ pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn 
 }
 
 pub fn load_dictionary_from_path(path: &Path, use_mmap: bool) -> LinderaResult<Dictionary> {
-    Ok(Dictionary {
-        prefix_dictionary: {
-            #[cfg(feature = "mmap")]
-            if use_mmap {
-                PrefixDictionaryLoader::load_mmap(path)?
-            } else {
-                PrefixDictionaryLoader::load(path)?
-            }
-            #[cfg(not(feature = "mmap"))]
-            PrefixDictionaryLoader::load(path)?
-        },
-        connection_cost_matrix: {
-            #[cfg(feature = "mmap")]
-            if use_mmap {
-                ConnectionCostMatrixLoader::load_mmap(path)?
-            } else {
-                ConnectionCostMatrixLoader::load(path)?
-            }
-            #[cfg(not(feature = "mmap"))]
-            ConnectionCostMatrixLoader::load(path)?
-        },
-        character_definition: CharacterDefinitionLoader::load(path)?,
-        unknown_dictionary: UnknownDictionaryLoader::load(path)?,
-        metadata: MetadataLoader::load(path)?, // Metadata is small, so normal loading is sufficient
-    })
+    Dictionary::load_from_path_with_options(path, use_mmap)
 }
 
 pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {

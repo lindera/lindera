@@ -101,6 +101,8 @@ impl DictionaryLoader for StandardDictionaryLoader {
     }
 
     fn load_from_path(&self, dict_path: &Path) -> LinderaResult<Dictionary> {
+        // StandardDictionaryLoader always uses the default (non-mmap) loading
+        // Users can control mmap usage through config or explicit API calls
         Dictionary::load_from_path(dict_path)
     }
 }

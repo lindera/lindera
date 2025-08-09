@@ -6,6 +6,11 @@ pub mod schema;
 #[cfg(feature = "embedded-ko-dic")]
 pub mod embedded;
 
+#[cfg(feature = "embedded-ko-dic")]
+use lindera_dictionary::LinderaResult;
+#[cfg(feature = "embedded-ko-dic")]
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
+
 #[cfg(feature = "ko-dic")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 #[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
@@ -19,8 +24,8 @@ pub fn create_builder() -> DictionaryBuilder {
 }
 
 #[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
-pub fn create_loader() -> DictionaryLoader {
-    DictionaryLoader::new(
+pub fn create_loader() -> StandardDictionaryLoader {
+    StandardDictionaryLoader::new(
         "Ko-Dic".to_string(),
         vec![
             "./dict/ko-dic".to_string(),
@@ -54,10 +59,6 @@ impl DictionaryLoader for EmbeddedLoader {
     }
 }
 
-#[cfg(feature = "embedded-ko-dic")]
-use lindera_dictionary::LinderaResult;
-#[cfg(feature = "embedded-ko-dic")]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 

@@ -6,6 +6,11 @@ pub mod schema;
 #[cfg(feature = "embedded-unidic")]
 pub mod embedded;
 
+#[cfg(feature = "embedded-unidic")]
+use lindera_dictionary::LinderaResult;
+#[cfg(feature = "embedded-unidic")]
+use lindera_dictionary::dictionary_loader::DictionaryLoader;
+
 #[cfg(feature = "unidic")]
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
@@ -19,8 +24,8 @@ pub fn create_builder() -> DictionaryBuilder {
 }
 
 #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
-pub fn create_loader() -> DictionaryLoader {
-    DictionaryLoader::new(
+pub fn create_loader() -> StandardDictionaryLoader {
+    StandardDictionaryLoader::new(
         "UniDic".to_string(),
         vec![
             "./dict/unidic".to_string(),
@@ -54,10 +59,6 @@ impl DictionaryLoader for EmbeddedLoader {
     }
 }
 
-#[cfg(feature = "embedded-unidic")]
-use lindera_dictionary::LinderaResult;
-#[cfg(feature = "embedded-unidic")]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 
