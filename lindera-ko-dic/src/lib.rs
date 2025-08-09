@@ -6,28 +6,6 @@ pub mod schema;
 #[cfg(feature = "embedded-ko-dic")]
 pub mod embedded;
 
-#[cfg(feature = "embedded-ko-dic")]
-use lindera_dictionary::LinderaResult;
-#[cfg(feature = "embedded-ko-dic")]
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
-
-#[cfg(feature = "embedded-ko-dic")]
-pub struct EmbeddedLoader;
-
-#[cfg(feature = "embedded-ko-dic")]
-impl EmbeddedLoader {
-    pub fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
-        embedded::load()
-    }
-}
-
-#[cfg(feature = "embedded-ko-dic")]
-impl DictionaryLoader for EmbeddedLoader {
-    fn load(&self) -> LinderaResult<lindera_dictionary::dictionary::Dictionary> {
-        embedded::load()
-    }
-}
-
 const VERERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn get_version() -> &'static str {
