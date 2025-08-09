@@ -466,10 +466,10 @@ mod tests {
 
         assert_eq!(builder.schema.name, "IPADIC");
         assert_eq!(builder.schema.version, "2.7.0");
-        assert_eq!(builder.flexible_csv, true);
+        assert!(builder.flexible_csv);
         assert_eq!(builder.encoding, "UTF-8");
-        assert_eq!(builder.normalize_details, false);
-        assert_eq!(builder.skip_invalid_cost_or_id, false);
+        assert!(!builder.normalize_details);
+        assert!(!builder.skip_invalid_cost_or_id);
     }
 
     #[test]

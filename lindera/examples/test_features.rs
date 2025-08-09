@@ -8,6 +8,6 @@ fn main() {
     println!("mmap feature: {}", cfg!(feature = "mmap"));
 
     let variants = lindera::dictionary::DictionaryKind::contained_variants();
-    println!("contained_variants: {:?}", variants);
+    println!("contained_variants: {variants:?}");
     println!("contained_variants count: {}", variants.len());
 }

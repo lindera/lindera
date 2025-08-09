@@ -41,7 +41,7 @@ fn main() {
 
     println!("\n=== Dictionary Variants ===");
     let variants = lindera::dictionary::DictionaryKind::contained_variants();
-    println!("contained_variants: {:?}", variants);
+    println!("contained_variants: {variants:?}");
     println!("contained_variants count: {}", variants.len());
 
     println!("\n=== Available Dictionaries ===");

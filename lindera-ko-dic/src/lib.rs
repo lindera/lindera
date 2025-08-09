@@ -11,37 +11,6 @@ use lindera_dictionary::LinderaResult;
 #[cfg(feature = "embedded-ko-dic")]
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
-#[cfg(feature = "ko-dic")]
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
-#[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
-use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
-#[cfg(feature = "ko-dic")]
-use metadata::KoDicMetadata;
-
-#[cfg(feature = "ko-dic")]
-pub fn create_builder() -> DictionaryBuilder {
-    DictionaryBuilder::new(KoDicMetadata::metadata())
-}
-
-#[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
-pub fn create_loader() -> StandardDictionaryLoader {
-    StandardDictionaryLoader::new(
-        "Ko-Dic".to_string(),
-        vec![
-            "./dict/ko-dic".to_string(),
-            "./lindera-ko-dic".to_string(),
-            "/usr/local/share/lindera/ko-dic".to_string(),
-            "/usr/share/lindera/ko-dic".to_string(),
-        ],
-        "LINDERA_KO_DIC_PATH".to_string(),
-    )
-}
-
-#[cfg(feature = "embedded-ko-dic")]
-pub fn create_loader() -> EmbeddedLoader {
-    EmbeddedLoader
-}
-
 #[cfg(feature = "embedded-ko-dic")]
 pub struct EmbeddedLoader;
 
