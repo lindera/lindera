@@ -3,6 +3,7 @@ pub mod connection_cost_matrix;
 pub mod metadata;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
+pub mod user_dictionary;
 
 use std::path::Path;
 
@@ -67,13 +68,6 @@ impl StandardDictionaryLoader {
         )))
     }
 
-    pub fn load_user_dictionary<P: AsRef<Path>>(
-        &self,
-        input_file: P,
-    ) -> LinderaResult<crate::dictionary::UserDictionary> {
-        let data = crate::util::read_file(input_file.as_ref())?;
-        crate::dictionary::UserDictionary::load(&data)
-    }
 }
 
 impl DictionaryLoader for StandardDictionaryLoader {

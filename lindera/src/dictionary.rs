@@ -8,7 +8,7 @@ use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
-use lindera_dictionary::util::read_file;
+use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
@@ -190,13 +190,12 @@ pub fn load_user_dictionary_from_csv(
     kind: DictionaryKind,
     path: &Path,
 ) -> LinderaResult<UserDictionary> {
-    // Resolve the builder for the specified dictionary kind.
     let builder = resolve_builder(kind)?;
-    builder.build_user_dict(path)
+    UserDictionaryLoader::load_from_csv(builder, path)
 }
 
 pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionary> {
-    UserDictionary::load(&read_file(path)?)
+    UserDictionaryLoader::load_from_bin(path)
 }
 
 pub fn load_user_dictionary_from_config(
