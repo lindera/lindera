@@ -201,7 +201,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -216,7 +216,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -296,7 +296,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -311,7 +311,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -426,7 +426,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -441,7 +441,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -521,7 +521,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -536,7 +536,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -651,7 +651,7 @@ mod tests {
     fn test_japanese_kana_token_filter_apply_mixed_to_katakana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -666,7 +666,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {
@@ -781,7 +781,7 @@ mod tests {
     fn test_japanese_kana_token_filter_applymixed_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -796,7 +796,7 @@ mod tests {
         let config: JapaneseKanaTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = JapaneseKanaTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {

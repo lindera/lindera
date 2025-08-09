@@ -60,14 +60,14 @@ mod tests {
     fn test_korean_reading_form_token_filter_apply() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
 
         let filter = KoreanReadingFormTokenFilter::new();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::KoDic).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {

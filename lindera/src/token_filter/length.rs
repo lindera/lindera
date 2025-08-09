@@ -128,7 +128,7 @@ mod tests {
     fn test_length_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
-        use crate::dictionary::{DictionaryKind, WordId, load_dictionary_from_kind};
+        use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 
@@ -141,7 +141,7 @@ mod tests {
         let config: LengthTokenFilterConfig = serde_json::from_str(config_str).unwrap();
         let filter = LengthTokenFilter::from_config(&config).unwrap();
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC).unwrap();
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![
             Token {

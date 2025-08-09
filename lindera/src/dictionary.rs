@@ -8,13 +8,6 @@ use strum_macros::EnumIter;
 
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
-#[cfg(any(
-    all(feature = "ipadic", not(feature = "embedded-ipadic")),
-    all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")),
-    all(feature = "unidic", not(feature = "embedded-unidic")),
-    all(feature = "ko-dic", not(feature = "embedded-ko-dic")),
-    all(feature = "cc-cedict", not(feature = "embedded-cc-cedict"))
-))]
 use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 
@@ -127,12 +120,15 @@ pub fn resolve_builder(dictionary_type: DictionaryKind) -> LinderaResult<Diction
     }
 }
 
-pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn DictionaryLoader>> {
+pub fn resolve_embedded_loader(
+    dictionary_type: DictionaryKind,
+) -> LinderaResult<Box<dyn DictionaryLoader>> {
     match dictionary_type {
         #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
         DictionaryKind::IPADIC => Ok(Box::new(lindera_ipadic::embedded::EmbeddedLoader::new())),
         #[cfg(all(feature = "ipadic", not(feature = "embedded-ipadic")))]
-        DictionaryKind::IPADIC => Ok(Box::new(StandardDictionaryLoader::new())),
+        DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("IPADIC embedded feature is not enabled"))),
         #[cfg(not(feature = "ipadic"))]
         DictionaryKind::IPADIC => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC feature is not enabled"))),
@@ -141,21 +137,25 @@ pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn 
             lindera_ipadic_neologd::embedded::EmbeddedLoader::new(),
         )),
         #[cfg(all(feature = "ipadic-neologd", not(feature = "embedded-ipadic-neologd")))]
-        DictionaryKind::IPADICNEologd => Ok(Box::new(StandardDictionaryLoader::new())),
+        DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary.with_error(
+            anyhow::anyhow!("IPADIC-NEologd embedded feature is not enabled"),
+        )),
         #[cfg(not(feature = "ipadic-neologd"))]
         DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("IPADIC-NEologd feature is not enabled"))),
         #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
         DictionaryKind::UniDic => Ok(Box::new(lindera_unidic::embedded::EmbeddedLoader::new())),
         #[cfg(all(feature = "unidic", not(feature = "embedded-unidic")))]
-        DictionaryKind::UniDic => Ok(Box::new(StandardDictionaryLoader::new())),
+        DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("UniDic embedded feature is not enabled"))),
         #[cfg(not(feature = "unidic"))]
         DictionaryKind::UniDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("UniDic feature is not enabled"))),
         #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
         DictionaryKind::KoDic => Ok(Box::new(lindera_ko_dic::embedded::EmbeddedLoader::new())),
         #[cfg(all(feature = "ko-dic", not(feature = "embedded-ko-dic")))]
-        DictionaryKind::KoDic => Ok(Box::new(StandardDictionaryLoader::new())),
+        DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("KO-DIC embedded feature is not enabled"))),
         #[cfg(not(feature = "ko-dic"))]
         DictionaryKind::KoDic => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("KO-DIC feature is not enabled"))),
@@ -164,19 +164,21 @@ pub fn resolve_loader(dictionary_type: DictionaryKind) -> LinderaResult<Box<dyn 
             Ok(Box::new(lindera_cc_cedict::embedded::EmbeddedLoader::new()))
         }
         #[cfg(all(feature = "cc-cedict", not(feature = "embedded-cc-cedict")))]
-        DictionaryKind::CcCedict => Ok(Box::new(StandardDictionaryLoader::new())),
+        DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("CC-CEDICT embedded feature is not enabled"))),
         #[cfg(not(feature = "cc-cedict"))]
         DictionaryKind::CcCedict => Err(LinderaErrorKind::Dictionary
             .with_error(anyhow::anyhow!("CC-CEDICT feature is not enabled"))),
     }
 }
 
-pub fn load_dictionary_from_path(path: &Path, use_mmap: bool) -> LinderaResult<Dictionary> {
-    Dictionary::load_from_path_with_options(path, use_mmap)
+pub fn load_dictionary(path: &Path) -> LinderaResult<Dictionary> {
+    let loader = StandardDictionaryLoader::new();
+    loader.load_from_path(path)
 }
 
-pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictionary> {
-    let loader = resolve_loader(kind)?;
+pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionary> {
+    let loader = resolve_embedded_loader(kind)?;
     loader
         .load()
         .map_err(|e| LinderaErrorKind::NotFound.with_error(e))
@@ -185,37 +187,29 @@ pub fn load_dictionary_from_kind(kind: DictionaryKind) -> LinderaResult<Dictiona
 pub fn load_dictionary_from_config(
     dictionary_config: &DictionaryConfig,
 ) -> LinderaResult<Dictionary> {
-    match dictionary_config.get("kind") {
-        Some(kind_value) => {
-            let kind = DictionaryKind::from_str(kind_value.as_str().ok_or_else(|| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
-            })?)?;
-            // Load contained dictionary from kind value in config.
-            load_dictionary_from_kind(kind)
-        }
-        None => {
-            match dictionary_config.get("path") {
-                Some(path_value) => {
-                    let path = PathBuf::from(path_value.as_str().ok_or_else(|| {
-                        LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("path field must be a string"))
-                    })?);
-
-                    // load external dictionary from path
-                    // Use mmap by default if feature is enabled, unless explicitly disabled
-                    let use_mmap = cfg!(feature = "mmap")
-                        && !dictionary_config
-                            .get("disable_mmap")
-                            .is_some_and(|x| x.as_bool().is_some_and(|b| b));
-
-                    load_dictionary_from_path(path.as_path(), use_mmap)
-                }
-                None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                    "kind field or path field must be specified"
-                ))),
-            }
-        }
+    // Try loading embedded dictionary first
+    if let Some(kind_value) = dictionary_config.get("kind") {
+        let kind_str = kind_value.as_str().ok_or_else(|| {
+            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
+        })?;
+        
+        let kind = DictionaryKind::from_str(kind_str)?;
+        return load_embedded_dictionary(kind);
     }
+
+    // Otherwise, try loading from path
+    if let Some(path_value) = dictionary_config.get("path") {
+        let path_str = path_value.as_str().ok_or_else(|| {
+            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
+        })?;
+        
+        let path = PathBuf::from(path_str);
+        return load_dictionary(&path);
+    }
+
+    Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+        "kind field or path field must be specified"
+    )))
 }
 
 pub fn load_user_dictionary_from_csv(
@@ -230,42 +224,51 @@ pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionar
     UserDictionaryLoader::load_from_bin(path)
 }
 
+fn get_path_from_config(dictionary_config: &UserDictionaryConfig) -> LinderaResult<PathBuf> {
+    let path_value = dictionary_config.get("path").ok_or_else(|| {
+        LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "path field must be specified in user dictionary config"
+        ))
+    })?;
+
+    let path_str = path_value.as_str().ok_or_else(|| {
+        LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
+    })?;
+
+    Ok(PathBuf::from(path_str))
+}
+
+fn get_kind_from_config(dictionary_config: &UserDictionaryConfig) -> LinderaResult<DictionaryKind> {
+    let kind_value = dictionary_config.get("kind").ok_or_else(|| {
+        LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "kind field must be specified if CSV file specified"
+        ))
+    })?;
+
+    let kind_str = kind_value.as_str().ok_or_else(|| {
+        LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
+    })?;
+
+    DictionaryKind::from_str(kind_str)
+}
+
 pub fn load_user_dictionary_from_config(
     dictionary_config: &UserDictionaryConfig,
 ) -> LinderaResult<UserDictionary> {
-    match dictionary_config.get("path") {
-        Some(path_value) => {
-            let path = PathBuf::from(path_value.as_str().ok_or_else(|| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
-            })?);
+    let path = get_path_from_config(dictionary_config)?;
 
-            match path.extension() {
-                Some(ext) => match ext.to_str() {
-                    Some("csv") => match dictionary_config.get("kind") {
-                        Some(kind_value) => {
-                            let kind = DictionaryKind::from_str(kind_value.as_str().ok_or_else(
-                                || {
-                                    LinderaErrorKind::Parse
-                                        .with_error(anyhow::anyhow!("kind field must be a string"))
-                                },
-                            )?)?;
-                            load_user_dictionary_from_csv(kind, path.as_path())
-                        }
-                        None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                            "kind field must be specified if CSV file specified"
-                        ))),
-                    },
-                    Some("bin") => load_user_dictionary_from_bin(path.as_path()),
-                    _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-                        "Invalid user dictionary source file extension"
-                    ))),
-                },
-                None => Err(LinderaErrorKind::Args
-                    .with_error(anyhow::anyhow!("Invalid user dictionary source file"))),
-            }
+    let extension = path.extension().and_then(|ext| ext.to_str()).ok_or_else(|| {
+        LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid user dictionary source file"))
+    })?;
+
+    match extension {
+        "csv" => {
+            let kind = get_kind_from_config(dictionary_config)?;
+            load_user_dictionary_from_csv(kind, &path)
         }
-        None => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-            "path field must be specified in user dictionary config"
+        "bin" => load_user_dictionary_from_bin(&path),
+        _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+            "Invalid user dictionary source file extension"
         ))),
     }
 }

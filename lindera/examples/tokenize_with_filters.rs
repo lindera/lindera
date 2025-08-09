@@ -8,7 +8,7 @@ fn main() -> LinderaResult<()> {
         use lindera::character_filter::unicode_normalize::{
             UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
         };
-        use lindera::dictionary::{DictionaryKind, load_dictionary_from_kind};
+        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::token_filter::BoxTokenFilter;
@@ -17,7 +17,7 @@ fn main() -> LinderaResult<()> {
         use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,

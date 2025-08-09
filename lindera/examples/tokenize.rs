@@ -4,12 +4,12 @@ macro_rules! run_with_feature {
     ($feature:literal, $dict_kind:expr, $text:expr) => {
         #[cfg(feature = $feature)]
         {
-            use lindera::dictionary::load_dictionary_from_kind;
+            use lindera::dictionary::load_embedded_dictionary;
             use lindera::mode::Mode;
             use lindera::segmenter::Segmenter;
             use lindera::tokenizer::Tokenizer;
 
-            let dictionary = load_dictionary_from_kind($dict_kind)?;
+            let dictionary = load_embedded_dictionary($dict_kind)?;
             let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
             let tokenizer = Tokenizer::new(segmenter);
 
