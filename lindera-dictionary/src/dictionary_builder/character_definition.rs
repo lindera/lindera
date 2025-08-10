@@ -43,7 +43,7 @@ fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
     let ucs2_codepoint = u16::from_str_radix(removed_0x, 16).map_err(|err| {
         LinderaErrorKind::Parse
             .with_error(anyhow::anyhow!(err))
-            .add_context(format!("Invalid hexadecimal codepoint: '{}'", s))
+            .add_context(format!("Invalid hexadecimal codepoint: '{s}'"))
     })?;
 
     ucs2_to_unicode(ucs2_codepoint)
@@ -163,8 +163,7 @@ impl CharacterDefinitionBuilder {
                     LinderaErrorKind::Parse
                         .with_error(anyhow::anyhow!("failed to parse line"))
                         .add_context(format!(
-                            "Malformed line in character definition: '{}'",
-                            line
+                            "Malformed line in character definition: '{line}'"
                         ))
                 })?
                 .trim();
@@ -254,8 +253,7 @@ impl CharacterDefinitionBuilder {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to create character definition output file: {:?}",
-                        wtr_chardef_path
+                        "Failed to create character definition output file: {wtr_chardef_path:?}"
                     ))
             })?);
 
@@ -265,8 +263,7 @@ impl CharacterDefinitionBuilder {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to flush character definition output file: {:?}",
-                    wtr_chardef_path
+                    "Failed to flush character definition output file: {wtr_chardef_path:?}"
                 ))
         })?;
 

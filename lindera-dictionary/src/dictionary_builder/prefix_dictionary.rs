@@ -96,8 +96,7 @@ impl PrefixDictionaryBuilder {
             return Err(LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!("Failed to convert path to &str."))
                 .add_context(format!(
-                    "Input directory path contains invalid characters: {:?}",
-                    input_dir
+                    "Input directory path contains invalid characters: {input_dir:?}"
                 )));
         };
 
@@ -106,8 +105,7 @@ impl PrefixDictionaryBuilder {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to glob CSV files with pattern: {}",
-                    pattern
+                    "Failed to glob CSV files with pattern: {pattern}"
                 ))
         })? {
             match entry {
@@ -117,15 +115,14 @@ impl PrefixDictionaryBuilder {
                     } else {
                         return Err(LinderaErrorKind::Io
                             .with_error(anyhow::anyhow!("failed to get filename"))
-                            .add_context(format!("Invalid filename in path: {:?}", path)));
+                            .add_context(format!("Invalid filename in path: {path:?}")));
                     };
                 }
                 Err(err) => {
                     return Err(LinderaErrorKind::Content
                         .with_error(anyhow!(err))
                         .add_context(format!(
-                            "Failed to process glob entry with pattern: {}",
-                            pattern
+                            "Failed to process glob entry with pattern: {pattern}"
                         )));
                 }
             }
@@ -158,7 +155,7 @@ impl PrefixDictionaryBuilder {
             let file = File::open(filename).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
-                    .add_context(format!("Failed to open CSV file: {:?}", filename))
+                    .add_context(format!("Failed to open CSV file: {filename:?}"))
             })?;
             let reader: Box<dyn Read> = if encoding == UTF_8 {
                 Box::new(file)
@@ -179,8 +176,7 @@ impl PrefixDictionaryBuilder {
                     LinderaErrorKind::Content
                         .with_error(anyhow!(err))
                         .add_context(format!(
-                            "Failed to parse CSV record in file: {:?}",
-                            filename
+                            "Failed to parse CSV record in file: {filename:?}"
                         ))
                 })?;
                 rows.push(record);
@@ -394,8 +390,7 @@ impl PrefixDictionaryBuilder {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to create dict.words file: {:?}",
-                        dict_words_path
+                        "Failed to create dict.words file: {dict_words_path:?}"
                     ))
             })?);
 
@@ -409,8 +404,7 @@ impl PrefixDictionaryBuilder {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to flush dict.words file: {:?}",
-                    dict_words_path
+                    "Failed to flush dict.words file: {dict_words_path:?}"
                 ))
         })?;
 
@@ -421,8 +415,7 @@ impl PrefixDictionaryBuilder {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to create dict.wordsidx file: {:?}",
-                        dict_wordsidx_path
+                        "Failed to create dict.wordsidx file: {dict_wordsidx_path:?}"
                     ))
             })?);
 
@@ -436,8 +429,7 @@ impl PrefixDictionaryBuilder {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to flush dict.wordsidx file: {:?}",
-                    dict_wordsidx_path
+                    "Failed to flush dict.wordsidx file: {dict_wordsidx_path:?}"
                 ))
         })?;
 
@@ -474,7 +466,7 @@ impl PrefixDictionaryBuilder {
             io::BufWriter::new(File::create(&dict_da_path).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
-                    .add_context(format!("Failed to create dict.da file: {:?}", dict_da_path))
+                    .add_context(format!("Failed to create dict.da file: {dict_da_path:?}"))
             })?);
 
         compress_write(
@@ -512,8 +504,7 @@ impl PrefixDictionaryBuilder {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to create dict.vals file: {:?}",
-                        dict_vals_path
+                        "Failed to create dict.vals file: {dict_vals_path:?}"
                     ))
             })?);
 
@@ -527,8 +518,7 @@ impl PrefixDictionaryBuilder {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to flush dict.vals file: {:?}",
-                    dict_vals_path
+                    "Failed to flush dict.vals file: {dict_vals_path:?}"
                 ))
         })?;
 

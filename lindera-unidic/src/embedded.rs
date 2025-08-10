@@ -129,6 +129,12 @@ pub fn load() -> LinderaResult<Dictionary> {
 
 pub struct EmbeddedUniDicLoader;
 
+impl Default for EmbeddedUniDicLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EmbeddedUniDicLoader {
     pub fn new() -> Self {
         Self

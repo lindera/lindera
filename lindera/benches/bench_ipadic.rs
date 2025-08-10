@@ -91,12 +91,9 @@ fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
-    let mut group = c.benchmark_group("tokenize-long-text-ipadic");
-    group.sample_size(20);
-    group.bench_function("bench-tokenize-long-text-ipadic", |b| {
+    c.bench_function("bench-tokenize-long-text-ipadic", |b| {
         b.iter(|| tokenizer.tokenize(long_text.as_str()));
     });
-    group.finish();
 }
 
 #[cfg(feature = "ipadic")]
@@ -116,9 +113,7 @@ fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
-    let mut group = c.benchmark_group("tokenize-details-long-text-ipadic");
-    group.sample_size(20);
-    group.bench_function("bench-tokenize-details-long-text-ipadic", |b| {
+    c.bench_function("bench-tokenize-details-long-text-ipadic", |b| {
         b.iter(|| {
             let mut tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
             for token in tokens.iter_mut() {
@@ -126,7 +121,6 @@ fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
             }
         });
     });
-    group.finish();
 }
 
 #[cfg(feature = "ipadic")]

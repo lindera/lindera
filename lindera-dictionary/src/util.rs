@@ -26,8 +26,7 @@ pub fn compress_write<W: Write>(
         LinderaErrorKind::Compression
             .with_error(err)
             .add_context(format!(
-                "Failed to compress data with {:?} algorithm",
-                algorithm
+                "Failed to compress data with {algorithm:?} algorithm"
             ))
     })?;
     bincode::serde::encode_into_std_write(&compressed, writer, bincode::config::legacy()).map_err(

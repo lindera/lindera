@@ -129,6 +129,12 @@ pub fn load() -> LinderaResult<Dictionary> {
 
 pub struct EmbeddedKoDicLoader;
 
+impl Default for EmbeddedKoDicLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EmbeddedKoDicLoader {
     pub fn new() -> Self {
         Self
