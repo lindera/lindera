@@ -1,18 +1,18 @@
 use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
-use crate::schema::UnidicSchema;
+use crate::schema::UniDicSchema;
 
 /// UniDic metadata factory
-pub struct UnidicMetadata;
+pub struct UniDicMetadata;
 
-impl Default for UnidicMetadata {
+impl Default for UniDicMetadata {
     fn default() -> Self {
         Self
     }
 }
 
-impl UnidicMetadata {
+impl UniDicMetadata {
     /// Create default UniDic metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
@@ -27,7 +27,7 @@ impl UnidicMetadata {
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details
-            UnidicSchema::schema(),
+            UniDicSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

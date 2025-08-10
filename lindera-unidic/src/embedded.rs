@@ -91,7 +91,7 @@ unidic_metadata!(
 pub fn load() -> LinderaResult<Dictionary> {
     // Load metadata from embedded binary data with fallback to default
     let metadata =
-        Metadata::load_or_default(METADATA_DATA, crate::metadata::UnidicMetadata::metadata);
+        Metadata::load_or_default(METADATA_DATA, crate::metadata::UniDicMetadata::metadata);
 
     #[cfg(feature = "compress")]
     {
@@ -127,19 +127,15 @@ pub fn load() -> LinderaResult<Dictionary> {
     }
 }
 
-pub struct EmbeddedLoader;
+pub struct EmbeddedUniDicLoader;
 
-impl EmbeddedLoader {
+impl EmbeddedUniDicLoader {
     pub fn new() -> Self {
         Self
     }
-
-    pub fn load(&self) -> LinderaResult<Dictionary> {
-        load()
-    }
 }
 
-impl DictionaryLoader for EmbeddedLoader {
+impl DictionaryLoader for EmbeddedUniDicLoader {
     fn load(&self) -> LinderaResult<Dictionary> {
         load()
     }

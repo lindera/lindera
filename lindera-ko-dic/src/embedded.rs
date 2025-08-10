@@ -127,19 +127,15 @@ pub fn load() -> LinderaResult<Dictionary> {
     }
 }
 
-pub struct EmbeddedLoader;
+pub struct EmbeddedKoDicLoader;
 
-impl EmbeddedLoader {
+impl EmbeddedKoDicLoader {
     pub fn new() -> Self {
         Self
     }
-
-    pub fn load(&self) -> LinderaResult<Dictionary> {
-        load()
-    }
 }
 
-impl DictionaryLoader for EmbeddedLoader {
+impl DictionaryLoader for EmbeddedKoDicLoader {
     fn load(&self) -> LinderaResult<Dictionary> {
         load()
     }
