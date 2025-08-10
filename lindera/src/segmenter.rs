@@ -152,13 +152,38 @@ impl Segmenter {
 
         let mut position = 0_usize;
         let mut byte_position = 0_usize;
-
-        // Split text into sentences using Japanese punctuation.
-        for sentence in text.split_inclusive(&['。', '、', '\n', '\t']) {
+        
+        // Process whole text without splitting first for better performance with borrowed text
+        let text_bytes = text.as_bytes();
+        let text_len = text.len();
+        let mut sentence_start = 0;
+        
+        while sentence_start < text_len {
+            // Find the end of the current sentence
+            let mut sentence_end = sentence_start;
+            while sentence_end < text_len {
+                let ch = text_bytes[sentence_end];
+                sentence_end += 1;
+                // Check for sentence delimiters
+                if ch == b'\n' || ch == b'\t' {
+                    break;
+                }
+                // Check for Japanese punctuation (multi-byte)
+                if sentence_end >= 3 && sentence_end <= text_len {
+                    let last_3 = &text_bytes[sentence_end-3..sentence_end];
+                    if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
+                        break;
+                    }
+                }
+            }
+            
+            let sentence = &text[sentence_start..sentence_end];
             if sentence.is_empty() {
+                sentence_start = sentence_end;
                 continue;
             }
 
+            // Process the sentence through lattice
             lattice.set_text(
                 &self.dictionary.prefix_dictionary,
                 &self.user_dictionary.as_ref().map(|d| &d.dict),
@@ -180,18 +205,23 @@ impl Segmenter {
                     next_start
                 };
 
-                // retrieve token from its sentence byte positions
-                let surface = &sentence[byte_start..byte_end];
+                // Calculate absolute position in the original text
+                let absolute_start = sentence_start + byte_start;
+                let absolute_end = sentence_start + byte_end;
+                
+                // Create surface Cow efficiently based on input type
+                let surface_cow = match &text {
+                    Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
+                    Cow::Owned(_) => Cow::Owned(text[absolute_start..absolute_end].to_string()),
+                };
 
                 // compute the token's absolute byte positions
                 let token_start = byte_position;
-                byte_position += surface.len();
+                byte_position += byte_end - byte_start;
                 let token_end = byte_position;
 
-                // Use Cow::Owned to ensure the token data can be returned safely
-                // Future optimization: implement buffer reuse for string allocation
                 tokens.push(Token::new(
-                    Cow::Owned(surface.to_string()), // String clone - optimized buffer reuse could be added later
+                    surface_cow,
                     token_start,
                     token_end,
                     position,
@@ -202,6 +232,8 @@ impl Segmenter {
 
                 position += 1;
             }
+            
+            sentence_start = sentence_end;
         }
 
         Ok(tokens)
