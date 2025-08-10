@@ -18,13 +18,20 @@ use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
 pub type TokenizerConfig = Value;
 
 fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
-    let mut input_read = File::open(file_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut input_read = File::open(file_path).map_err(|err| {
+        LinderaErrorKind::Io.with_error(err).add_context(format!(
+            "Failed to open tokenizer config file: {}",
+            file_path.display()
+        ))
+    })?;
 
     let mut buffer = Vec::new();
-    input_read
-        .read_to_end(&mut buffer)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    input_read.read_to_end(&mut buffer).map_err(|err| {
+        LinderaErrorKind::Io.with_error(err).add_context(format!(
+            "Failed to read tokenizer config file: {}",
+            file_path.display()
+        ))
+    })?;
 
     match serde_yaml::from_slice::<serde_yaml::Value>(&buffer) {
         Ok(value) => {
@@ -32,13 +39,28 @@ fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
             match value {
                 serde_yaml::Value::Mapping(_) => {
                     Ok(serde_json::to_value(value).map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(err)
+                            .add_context(format!(
+                                "Failed to convert YAML to JSON for config file: {}",
+                                file_path.display()
+                            ))
                     })?)
                 }
-                _ => Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("Invalid YAML"))),
+                _ => Err(LinderaErrorKind::Deserialize
+                    .with_error(anyhow::anyhow!("Invalid YAML"))
+                    .add_context(format!(
+                        "Config file must contain a YAML mapping: {}",
+                        file_path.display()
+                    ))),
             }
         }
-        Err(err) => Err(LinderaErrorKind::Deserialize.with_error(err)),
+        Err(err) => Err(LinderaErrorKind::Deserialize
+            .with_error(err)
+            .add_context(format!(
+                "Failed to parse YAML config file: {}",
+                file_path.display()
+            ))),
     }
 }
 

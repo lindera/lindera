@@ -32,7 +32,7 @@ impl MappingTokenFilter {
         }
 
         let data = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+            LinderaErrorKind::Build.with_error(anyhow::anyhow!("DoubleArray build error."))
         })?;
 
         let trie = DoubleArray::new(data);

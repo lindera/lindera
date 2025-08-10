@@ -46,12 +46,26 @@ impl UserDictionaryBuilder {
             .has_headers(false)
             .flexible(self.flexible_csv)
             .from_path(input_file)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            .map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to open user dictionary CSV file: {:?}",
+                        input_file
+                    ))
+            })?;
 
         let mut rows: Vec<StringRecord> = vec![];
-        for result in rdr.records() {
-            let record =
-                result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow::anyhow!(err)))?;
+        for (line_num, result) in rdr.records().enumerate() {
+            let record = result.map_err(|err| {
+                LinderaErrorKind::Content
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to parse CSV record at line {} in file: {:?}",
+                        line_num + 1,
+                        input_file
+                    ))
+            })?;
             rows.push(record);
         }
         rows.sort_by_key(|row| row[0].to_string());
@@ -64,7 +78,14 @@ impl UserDictionaryBuilder {
                 self.simple_word_cost
             } else {
                 row[3].parse::<i16>().map_err(|_err| {
-                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse word cost"))
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse word cost"))
+                        .add_context(format!(
+                            "Invalid word cost '{}' at row {} (surface: '{}')",
+                            &row[3],
+                            row_id + 1,
+                            &row[0]
+                        ))
                 })?
             };
             let (left_id, right_id) = if row.len() == self.simple_userdic_fields_num {
@@ -74,10 +95,22 @@ impl UserDictionaryBuilder {
                     row[1].parse::<u16>().map_err(|_err| {
                         LinderaErrorKind::Parse
                             .with_error(anyhow::anyhow!("failed to parse left context id"))
+                            .add_context(format!(
+                                "Invalid left context ID '{}' at row {} (surface: '{}')",
+                                &row[1],
+                                row_id + 1,
+                                &row[0]
+                            ))
                     })?,
                     row[2].parse::<u16>().map_err(|_err| {
                         LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("failed to parse left context id"))
+                            .with_error(anyhow::anyhow!("failed to parse right context id"))
+                            .add_context(format!(
+                                "Invalid right context ID '{}' at row {} (surface: '{}')",
+                                &row[2],
+                                row_id + 1,
+                                &row[0]
+                            ))
                     })?,
                 )
             };
@@ -112,29 +145,57 @@ impl UserDictionaryBuilder {
                 }
                 tmp_word_detail
             } else {
-                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
-                    "user dictionary should be a CSV with {} or {}+ fields",
-                    self.simple_userdic_fields_num,
-                    self.detailed_userdic_fields_num
-                )));
+                return Err(LinderaErrorKind::Content
+                    .with_error(anyhow::anyhow!(
+                        "user dictionary should be a CSV with {} or {}+ fields",
+                        self.simple_userdic_fields_num,
+                        self.detailed_userdic_fields_num
+                    ))
+                    .add_context(format!(
+                        "Row {} has {} fields (surface: '{}')",
+                        rows.iter().position(|r| std::ptr::eq(r, row)).unwrap_or(0) + 1,
+                        row.len(),
+                        row.get(0).unwrap_or("<empty>")
+                    )));
             };
 
             let offset = words_data.len();
             words_idx_data
                 .write_u32::<LittleEndian>(offset as u32)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to write word offset to user dictionary words index")
+                })?;
 
             // Store word details as null-separated string (like main dictionary)
             let joined_details = word_detail.join("\0");
-            let joined_details_len = u32::try_from(joined_details.len())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            let joined_details_len = u32::try_from(joined_details.len()).map_err(|err| {
+                LinderaErrorKind::Serialize
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Word details length too large: {} bytes for word '{}'",
+                        joined_details.len(),
+                        row.get(0).unwrap_or("<unknown>")
+                    ))
+            })?;
 
             words_data
                 .write_u32::<LittleEndian>(joined_details_len)
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(
+                            "Failed to write word details length to user dictionary words data",
+                        )
+                })?;
             words_data
                 .write_all(joined_details.as_bytes())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to write word details to user dictionary words data")
+                })?;
         }
 
         let mut id = 0u32;
@@ -148,16 +209,26 @@ impl UserDictionaryBuilder {
             id += len;
         }
         let da_bytes = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+            LinderaErrorKind::Build
+                .with_error(anyhow::anyhow!("DoubleArray build error."))
+                .add_context(format!(
+                    "Failed to build DoubleArray with {} keys for user dictionary",
+                    keyset.len()
+                ))
         })?;
 
         // building values
         let mut vals_data = Vec::<u8>::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
-                word_entry
-                    .serialize(&mut vals_data)
-                    .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                word_entry.serialize(&mut vals_data).map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to serialize user dictionary word entry (id: {})",
+                            word_entry.word_id.id
+                        ))
+                })?;
             }
         }
 
@@ -171,22 +242,47 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
     let parent_dir = match output_file.parent() {
         Some(parent_dir) => parent_dir,
         None => {
-            return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                "failed to get parent directory of output file"
-            )));
+            return Err(LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(
+                    "failed to get parent directory of output file"
+                ))
+                .add_context(format!("Invalid output file path: {:?}", output_file)));
         }
     };
-    fs::create_dir_all(parent_dir)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    fs::create_dir_all(parent_dir).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create parent directory: {:?}",
+                parent_dir
+            ))
+    })?;
 
-    let mut wtr = io::BufWriter::new(
-        File::create(output_file)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-    );
+    let mut wtr = io::BufWriter::new(File::create(output_file).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create user dictionary output file: {:?}",
+                output_file
+            ))
+    })?);
     bincode::serde::encode_into_std_write(&user_dict, &mut wtr, bincode::config::legacy())
-        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
-    wtr.flush()
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| {
+            LinderaErrorKind::Serialize
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to serialize user dictionary to file: {:?}",
+                    output_file
+                ))
+        })?;
+    wtr.flush().map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to flush user dictionary output file: {:?}",
+                output_file
+            ))
+    })?;
 
     Ok(())
 }

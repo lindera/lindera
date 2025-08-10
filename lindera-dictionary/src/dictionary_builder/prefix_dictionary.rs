@@ -93,25 +93,41 @@ impl PrefixDictionaryBuilder {
         let pattern = if let Some(path) = input_dir.to_str() {
             format!("{path}/*.csv")
         } else {
-            return Err(
-                LinderaErrorKind::Io.with_error(anyhow::anyhow!("Failed to convert path to &str."))
-            );
+            return Err(LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!("Failed to convert path to &str."))
+                .add_context(format!(
+                    "Input directory path contains invalid characters: {:?}",
+                    input_dir
+                )));
         };
 
         let mut filenames: Vec<PathBuf> = Vec::new();
-        for entry in
-            glob(&pattern).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?
-        {
+        for entry in glob(&pattern).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to glob CSV files with pattern: {}",
+                    pattern
+                ))
+        })? {
             match entry {
                 Ok(path) => {
                     if let Some(filename) = path.file_name() {
                         filenames.push(Path::new(input_dir).join(filename));
                     } else {
                         return Err(LinderaErrorKind::Io
-                            .with_error(anyhow::anyhow!("failed to get filename")));
+                            .with_error(anyhow::anyhow!("failed to get filename"))
+                            .add_context(format!("Invalid filename in path: {:?}", path)));
                     };
                 }
-                Err(err) => return Err(LinderaErrorKind::Content.with_error(anyhow!(err))),
+                Err(err) => {
+                    return Err(LinderaErrorKind::Content
+                        .with_error(anyhow!(err))
+                        .add_context(format!(
+                            "Failed to process glob entry with pattern: {}",
+                            pattern
+                        )));
+                }
             }
         }
 
@@ -122,7 +138,9 @@ impl PrefixDictionaryBuilder {
     fn get_encoding(&self) -> LinderaResult<&'static Encoding> {
         let encoding = Encoding::for_label_no_replacement(self.encoding.as_bytes());
         encoding.ok_or_else(|| {
-            LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", self.encoding))
+            LinderaErrorKind::Decode
+                .with_error(anyhow!("Invalid encoding: {}", self.encoding))
+                .add_context("Failed to get encoding for CSV file reading")
         })
     }
 
@@ -137,8 +155,11 @@ impl PrefixDictionaryBuilder {
         for filename in filenames {
             debug!("reading {filename:?}");
 
-            let file = File::open(filename)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            let file = File::open(filename).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!("Failed to open CSV file: {:?}", filename))
+            })?;
             let reader: Box<dyn Read> = if encoding == UTF_8 {
                 Box::new(file)
             } else {
@@ -154,8 +175,14 @@ impl PrefixDictionaryBuilder {
                 .from_reader(reader);
 
             for result in rdr.records() {
-                let record =
-                    result.map_err(|err| LinderaErrorKind::Content.with_error(anyhow!(err)))?;
+                let record = result.map_err(|err| {
+                    LinderaErrorKind::Content
+                        .with_error(anyhow!(err))
+                        .add_context(format!(
+                            "Failed to parse CSV record in file: {:?}",
+                            filename
+                        ))
+                })?;
                 rows.push(record);
             }
         }
@@ -318,7 +345,11 @@ impl PrefixDictionaryBuilder {
             let offset = dict_words_buffer.len();
             dict_wordsidx_buffer
                 .write_u32::<LittleEndian>(offset as u32)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to write word index offset to dict.wordsidx buffer")
+                })?;
 
             // Create word details from the row data (5th column and beyond)
             let joined_details = if self.normalize_details {
@@ -330,24 +361,43 @@ impl PrefixDictionaryBuilder {
             } else {
                 row.iter().skip(4).collect::<Vec<&str>>().join("\0")
             };
-            let joined_details_len = u32::try_from(joined_details.len())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+            let joined_details_len = u32::try_from(joined_details.len()).map_err(|err| {
+                LinderaErrorKind::Serialize
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Word details length too large: {} bytes",
+                        joined_details.len()
+                    ))
+            })?;
 
             // Write to dict.words buffer
             dict_words_buffer
                 .write_u32::<LittleEndian>(joined_details_len)
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to write word details length to dict.words buffer")
+                })?;
             dict_words_buffer
                 .write_all(joined_details.as_bytes())
-                .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                .map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to write word details to dict.words buffer")
+                })?;
         }
 
         // Write dict.words file
         let dict_words_path = output_dir.join(Path::new("dict.words"));
-        let mut dict_words_writer = io::BufWriter::new(
-            File::create(dict_words_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut dict_words_writer =
+            io::BufWriter::new(File::create(&dict_words_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.words file: {:?}",
+                        dict_words_path
+                    ))
+            })?);
 
         compress_write(
             &dict_words_buffer,
@@ -355,16 +405,26 @@ impl PrefixDictionaryBuilder {
             &mut dict_words_writer,
         )?;
 
-        dict_words_writer
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        dict_words_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.words file: {:?}",
+                    dict_words_path
+                ))
+        })?;
 
         // Write dict.wordsidx file
         let dict_wordsidx_path = output_dir.join(Path::new("dict.wordsidx"));
-        let mut dict_wordsidx_writer = io::BufWriter::new(
-            File::create(dict_wordsidx_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut dict_wordsidx_writer =
+            io::BufWriter::new(File::create(&dict_wordsidx_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.wordsidx file: {:?}",
+                        dict_wordsidx_path
+                    ))
+            })?);
 
         compress_write(
             &dict_wordsidx_buffer,
@@ -372,9 +432,14 @@ impl PrefixDictionaryBuilder {
             &mut dict_wordsidx_writer,
         )?;
 
-        dict_wordsidx_writer
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        dict_wordsidx_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.wordsidx file: {:?}",
+                    dict_wordsidx_path
+                ))
+        })?;
 
         Ok(())
     }
@@ -396,14 +461,21 @@ impl PrefixDictionaryBuilder {
         }
 
         let dict_da_buffer = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!("DoubleArray build error."))
+            LinderaErrorKind::Build
+                .with_error(anyhow::anyhow!("DoubleArray build error."))
+                .add_context(format!(
+                    "Failed to build DoubleArray with {} keys for prefix dictionary",
+                    keyset.len()
+                ))
         })?;
 
         let dict_da_path = output_dir.join(Path::new("dict.da"));
-        let mut dict_da_writer = io::BufWriter::new(
-            File::create(dict_da_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut dict_da_writer =
+            io::BufWriter::new(File::create(&dict_da_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!("Failed to create dict.da file: {:?}", dict_da_path))
+            })?);
 
         compress_write(
             &dict_da_buffer,
@@ -423,17 +495,27 @@ impl PrefixDictionaryBuilder {
         let mut dict_vals_buffer = Vec::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
-                word_entry
-                    .serialize(&mut dict_vals_buffer)
-                    .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+                word_entry.serialize(&mut dict_vals_buffer).map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to serialize word entry (id: {})",
+                            word_entry.word_id.id
+                        ))
+                })?;
             }
         }
 
         let dict_vals_path = output_dir.join(Path::new("dict.vals"));
-        let mut dict_vals_writer = io::BufWriter::new(
-            File::create(dict_vals_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut dict_vals_writer =
+            io::BufWriter::new(File::create(&dict_vals_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.vals file: {:?}",
+                        dict_vals_path
+                    ))
+            })?);
 
         compress_write(
             &dict_vals_buffer,
@@ -441,9 +523,14 @@ impl PrefixDictionaryBuilder {
             &mut dict_vals_writer,
         )?;
 
-        dict_vals_writer
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        dict_vals_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.vals file: {:?}",
+                    dict_vals_path
+                ))
+        })?;
 
         Ok(())
     }

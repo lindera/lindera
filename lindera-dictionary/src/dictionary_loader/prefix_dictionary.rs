@@ -25,20 +25,30 @@ impl PrefixDictionaryLoader {
             let (compressed_data, _) =
                 bincode::serde::decode_from_slice(da_data.as_slice(), bincode::config::legacy())
                     .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context("Failed to deserialize dict.da data")
                     })?;
-            da_data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            da_data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress dict.da DoubleArray data")
+            })?;
         }
         #[cfg(feature = "compress")]
         {
             let (compressed_data, _) =
                 bincode::serde::decode_from_slice(vals_data.as_slice(), bincode::config::legacy())
                     .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context("Failed to deserialize dict.vals data")
                     })?;
-            vals_data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            vals_data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress dict.vals word values data")
+            })?;
         }
         #[cfg(feature = "compress")]
         {
@@ -46,19 +56,31 @@ impl PrefixDictionaryLoader {
                 words_idx_data.as_slice(),
                 bincode::config::legacy(),
             )
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
-            words_idx_data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            .map_err(|err| {
+                LinderaErrorKind::Deserialize
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context("Failed to deserialize dict.wordsidx data")
+            })?;
+            words_idx_data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress dict.wordsidx word index data")
+            })?;
         }
         #[cfg(feature = "compress")]
         {
             let (compressed_data, _) =
                 bincode::serde::decode_from_slice(words_data.as_slice(), bincode::config::legacy())
                     .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context("Failed to deserialize dict.words data")
                     })?;
-            words_data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            words_data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress dict.words word details data")
+            })?;
         }
 
         Ok(PrefixDictionary::load(

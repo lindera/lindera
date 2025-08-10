@@ -22,10 +22,21 @@ pub fn compress_write<W: Write>(
     algorithm: Algorithm,
     writer: &mut W,
 ) -> LinderaResult<()> {
-    let compressed = compress(buffer, algorithm)
-        .map_err(|err| LinderaErrorKind::Compress.with_error(anyhow::anyhow!(err)))?;
-    bincode::serde::encode_into_std_write(&compressed, writer, bincode::config::legacy())
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let compressed = compress(buffer, algorithm).map_err(|err| {
+        LinderaErrorKind::Compression
+            .with_error(err)
+            .add_context(format!(
+                "Failed to compress data with {:?} algorithm",
+                algorithm
+            ))
+    })?;
+    bincode::serde::encode_into_std_write(&compressed, writer, bincode::config::legacy()).map_err(
+        |err| {
+            LinderaErrorKind::Io
+                .with_error(err)
+                .add_context("Failed to write compressed data to output")
+        },
+    )?;
 
     Ok(())
 }
@@ -36,29 +47,44 @@ pub fn compress_write<W: Write>(
     _algorithm: Algorithm,
     writer: &mut W,
 ) -> LinderaResult<()> {
-    writer
-        .write_all(buffer)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writer.write_all(buffer).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(err)
+            .add_context("Failed to write data to output")
+    })?;
 
     Ok(())
 }
 
 pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
-    let mut input_read = File::open(filename)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut input_read = File::open(filename).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(err)
+            .add_context(format!("Failed to open file: {}", filename.display()))
+    })?;
     let mut buffer = Vec::new();
-    input_read
-        .read_to_end(&mut buffer)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    input_read.read_to_end(&mut buffer).map_err(|err| {
+        LinderaErrorKind::Io.with_error(err).add_context(format!(
+            "Failed to read file contents: {}",
+            filename.display()
+        ))
+    })?;
     Ok(buffer)
 }
 
 #[cfg(feature = "mmap")]
 pub fn mmap_file(filename: &Path) -> LinderaResult<Mmap> {
-    let file = File::open(filename)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let mmap = unsafe { Mmap::map(&file) }
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let file = File::open(filename).map_err(|err| {
+        LinderaErrorKind::Io.with_error(err).add_context(format!(
+            "Failed to open file for memory mapping: {}",
+            filename.display()
+        ))
+    })?;
+    let mmap = unsafe { Mmap::map(&file) }.map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(err)
+            .add_context(format!("Failed to memory map file: {}", filename.display()))
+    })?;
     Ok(mmap)
 }
 

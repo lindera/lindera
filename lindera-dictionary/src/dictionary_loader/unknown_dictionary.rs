@@ -20,10 +20,15 @@ impl UnknownDictionaryLoader {
             let (compressed_data, _) =
                 bincode::serde::decode_from_slice(data.as_slice(), bincode::config::legacy())
                     .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context("Failed to deserialize unk.bin data")
                     })?;
-            data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress unknown dictionary data")
+            })?;
         }
 
         UnknownDictionary::load(data.as_slice())

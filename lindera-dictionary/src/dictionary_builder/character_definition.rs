@@ -28,14 +28,23 @@ fn ucs2_to_unicode(ucs2_codepoint: u16) -> LinderaResult<u32> {
 
     match chrs.len() {
         1 => Ok(chrs[0] as u32),
-        _ => Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!("unusual char length"))),
+        _ => Err(LinderaErrorKind::Parse
+            .with_error(anyhow::anyhow!("unusual char length"))
+            .add_context(format!(
+                "UCS2 codepoint 0x{:04x} resulted in {} characters",
+                ucs2_codepoint,
+                chrs.len()
+            ))),
     }
 }
 
 fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
     let removed_0x = s.trim_start_matches("0x");
-    let ucs2_codepoint = u16::from_str_radix(removed_0x, 16)
-        .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+    let ucs2_codepoint = u16::from_str_radix(removed_0x, 16).map_err(|err| {
+        LinderaErrorKind::Parse
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Invalid hexadecimal codepoint: '{}'", s))
+    })?;
 
     ucs2_to_unicode(ucs2_codepoint)
 }
@@ -81,9 +90,12 @@ impl CharacterDefinitionBuilder {
                 higher_bound = parse_hex_codepoint(range_bounds[1])?;
             }
             _ => {
-                return Err(
-                    LinderaErrorKind::Content.with_error(anyhow::anyhow!("Invalid line: {}", line))
-                );
+                return Err(LinderaErrorKind::Content
+                    .with_error(anyhow::anyhow!("Invalid line: {}", line))
+                    .add_context(format!(
+                        "Character range should have format 'START..END' or 'SINGLE', got {} parts",
+                        range_bounds.len()
+                    )));
             }
         }
         let category_ids: Vec<CategoryId> = fields[1..]
@@ -104,19 +116,32 @@ impl CharacterDefinitionBuilder {
                 "Expected 4 fields. Got {} in {}",
                 fields.len(),
                 line
-            )));
+            )).add_context("Character category definition requires: <category_name> <invoke> <group> <length>"));
         }
-        let invoke = fields[1]
-            .parse::<u32>()
-            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
-            == 1;
-        let group = fields[2]
-            .parse::<u32>()
-            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?
-            == 1;
-        let length = fields[3]
-            .parse::<u32>()
-            .map_err(|err| LinderaErrorKind::Parse.with_error(anyhow::anyhow!(err)))?;
+        let invoke = fields[1].parse::<u32>().map_err(|err| {
+            LinderaErrorKind::Parse
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Invalid 'invoke' field value '{}' for category '{}'",
+                    fields[1], fields[0]
+                ))
+        })? == 1;
+        let group = fields[2].parse::<u32>().map_err(|err| {
+            LinderaErrorKind::Parse
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Invalid 'group' field value '{}' for category '{}'",
+                    fields[2], fields[0]
+                ))
+        })? == 1;
+        let length = fields[3].parse::<u32>().map_err(|err| {
+            LinderaErrorKind::Parse
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Invalid 'length' field value '{}' for category '{}'",
+                    fields[3], fields[0]
+                ))
+        })?;
         let category_data = CategoryData {
             invoke,
             group,
@@ -135,7 +160,12 @@ impl CharacterDefinitionBuilder {
                 .split('#')
                 .next()
                 .ok_or_else(|| {
-                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to parse line"))
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("failed to parse line"))
+                        .add_context(format!(
+                            "Malformed line in character definition: '{}'",
+                            line
+                        ))
                 })?
                 .trim();
             if line_str.is_empty() {
@@ -212,19 +242,33 @@ impl CharacterDefinitionBuilder {
             &mut chardef_buffer,
             bincode::config::legacy(),
         )
-        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        .map_err(|err| {
+            LinderaErrorKind::Serialize
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to serialize character definition data")
+        })?;
 
         let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));
-        let mut wtr_chardef = io::BufWriter::new(
-            File::create(wtr_chardef_path)
-                .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-        );
+        let mut wtr_chardef =
+            io::BufWriter::new(File::create(&wtr_chardef_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create character definition output file: {:?}",
+                        wtr_chardef_path
+                    ))
+            })?);
 
         compress_write(&chardef_buffer, self.compress_algorithm, &mut wtr_chardef)?;
 
-        wtr_chardef
-            .flush()
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        wtr_chardef.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush character definition output file: {:?}",
+                    wtr_chardef_path
+                ))
+        })?;
 
         Ok(char_definitions)
     }
