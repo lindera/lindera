@@ -145,13 +145,13 @@ impl Lattice {
         self.edge_buffer.clear();
         self.edge_id_buffer.clear();
     }
-    
+
     /// Get a reusable edge buffer with preserved capacity
     pub fn get_edge_buffer(&mut self) -> &mut Vec<Edge> {
         self.edge_buffer.clear();
         &mut self.edge_buffer
     }
-    
+
     /// Get a reusable edge ID buffer with preserved capacity
     pub fn get_edge_id_buffer(&mut self) -> &mut Vec<EdgeId> {
         self.edge_id_buffer.clear();
@@ -290,7 +290,11 @@ impl Lattice {
             // Optimize: Calculate byte boundary directly instead of collecting chars
             let unknown_word = if unknown_word_num_chars == 1 {
                 // Common case optimization: single character
-                suffix.chars().next().map(|c| &suffix[..c.len_utf8()]).unwrap_or("")
+                suffix
+                    .chars()
+                    .next()
+                    .map(|c| &suffix[..c.len_utf8()])
+                    .unwrap_or("")
             } else {
                 // Multi-character case: find byte boundary efficiently
                 let mut byte_end = 0;
