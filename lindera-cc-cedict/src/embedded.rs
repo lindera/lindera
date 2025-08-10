@@ -132,19 +132,15 @@ pub fn load() -> LinderaResult<Dictionary> {
     }
 }
 
-pub struct EmbeddedLoader;
+pub struct EmbeddedCcCedictLoader;
 
-impl EmbeddedLoader {
+impl EmbeddedCcCedictLoader {
     pub fn new() -> Self {
         Self
     }
-
-    pub fn load(&self) -> LinderaResult<Dictionary> {
-        load()
-    }
 }
 
-impl DictionaryLoader for EmbeddedLoader {
+impl DictionaryLoader for EmbeddedCcCedictLoader {
     fn load(&self) -> LinderaResult<Dictionary> {
         load()
     }

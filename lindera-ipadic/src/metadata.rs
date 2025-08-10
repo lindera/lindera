@@ -1,18 +1,18 @@
 use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
-use crate::schema::IpadicSchema;
+use crate::schema::IPADICSchema;
 
 /// IPADIC metadata factory
-pub struct IpadicMetadata;
+pub struct IPADICMetadata;
 
-impl Default for IpadicMetadata {
+impl Default for IPADICMetadata {
     fn default() -> Self {
         Self
     }
 }
 
-impl IpadicMetadata {
+impl IPADICMetadata {
     /// Create default IPADIC metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
@@ -27,7 +27,7 @@ impl IpadicMetadata {
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic
-            IpadicSchema::schema(),
+            IPADICSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification

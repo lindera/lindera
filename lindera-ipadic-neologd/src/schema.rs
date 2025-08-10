@@ -1,15 +1,15 @@
 use lindera_dictionary::dictionary::schema::Schema;
 
 /// IPADIC NEologd dictionary schema factory
-pub struct IpadicNeologdSchema;
+pub struct IPADICNEologdSchema;
 
-impl Default for IpadicNeologdSchema {
+impl Default for IPADICNEologdSchema {
     fn default() -> Self {
         Self
     }
 }
 
-impl IpadicNeologdSchema {
+impl IPADICNEologdSchema {
     /// Create default IPADIC NEologd schema
     pub fn schema() -> Schema {
         Schema::new(

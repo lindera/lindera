@@ -1,15 +1,15 @@
 use lindera_dictionary::dictionary::schema::Schema;
 
 /// UniDic dictionary schema factory
-pub struct UnidicSchema;
+pub struct UniDicSchema;
 
-impl Default for UnidicSchema {
+impl Default for UniDicSchema {
     fn default() -> Self {
         Self
     }
 }
 
-impl UnidicSchema {
+impl UniDicSchema {
     /// Create default UniDic schema
     pub fn schema() -> Schema {
         Schema::new(

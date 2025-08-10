@@ -1,18 +1,18 @@
 use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
-use crate::schema::IpadicNeologdSchema;
+use crate::schema::IPADICNEologdSchema;
 
 /// IPADIC NEologd metadata factory
-pub struct IpadicNeologdMetadata;
+pub struct IPADICNEologdMetadata;
 
-impl Default for IpadicNeologdMetadata {
+impl Default for IPADICNEologdMetadata {
     fn default() -> Self {
         Self
     }
 }
 
-impl IpadicNeologdMetadata {
+impl IPADICNEologdMetadata {
     /// Create default IPADIC NEologd metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
@@ -27,7 +27,7 @@ impl IpadicNeologdMetadata {
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic-NEologd
-            IpadicNeologdSchema::schema(),
+            IPADICNEologdSchema::schema(),
             vec![
                 Some(1), // Major POS classification
                 None,    // Middle POS classification
