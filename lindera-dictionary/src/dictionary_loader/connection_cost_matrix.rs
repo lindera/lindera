@@ -22,10 +22,15 @@ impl ConnectionCostMatrixLoader {
             let (compressed_data, _) =
                 bincode::serde::decode_from_slice(data.as_slice(), bincode::config::legacy())
                     .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err))
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context("Failed to deserialize matrix.mtx data")
                     })?;
-            data = decompress(compressed_data)
-                .map_err(|err| LinderaErrorKind::Decompress.with_error(err))?;
+            data = decompress(compressed_data).map_err(|err| {
+                LinderaErrorKind::Compression
+                    .with_error(err)
+                    .add_context("Failed to decompress connection cost matrix data")
+            })?;
         }
 
         Ok(ConnectionCostMatrix::load(data))

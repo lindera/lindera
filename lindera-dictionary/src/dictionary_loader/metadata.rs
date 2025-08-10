@@ -44,8 +44,11 @@ impl MetadataLoader {
     pub fn load(input_dir: &Path) -> LinderaResult<Metadata> {
         let data = read_file(input_dir.join("metadata.json").as_path())?;
 
-        let metadata: Metadata = serde_json::from_slice(&data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+        let metadata: Metadata = serde_json::from_slice(&data).map_err(|err| {
+            LinderaErrorKind::Deserialize
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to deserialize metadata.json file")
+        })?;
 
         Ok(metadata)
     }
@@ -66,8 +69,11 @@ impl MetadataLoader {
     pub fn load_mmap(input_dir: &Path) -> LinderaResult<Metadata> {
         let data = mmap_file(input_dir.join("metadata.json").as_path())?;
 
-        let metadata: Metadata = serde_json::from_slice(&data)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+        let metadata: Metadata = serde_json::from_slice(&data).map_err(|err| {
+            LinderaErrorKind::Deserialize
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to deserialize metadata.json file (mmap)")
+        })?;
 
         Ok(metadata)
     }

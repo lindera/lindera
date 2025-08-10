@@ -12,15 +12,12 @@ pub enum LinderaErrorKind {
     Io,
     Parse,
     Serialize,
-    Compress,
-    Decompress,
+    Compression,
     NotFound,
-    Load,
     Build,
     Dictionary,
-    Source,
     Mode,
-    Token,
+    FeatureDisabled,
 }
 
 impl LinderaErrorKind {
