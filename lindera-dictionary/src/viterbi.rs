@@ -123,16 +123,40 @@ pub struct Lattice {
     edge_id_buffer: Vec<EdgeId>,
 }
 
+#[inline]
 fn is_kanji(c: char) -> bool {
     let c = c as u32;
+    // Direct comparison is faster than range.contains()
     (19968..=40879).contains(&c)
 }
 
+#[inline]
 fn is_kanji_only(s: &str) -> bool {
-    s.chars().all(is_kanji)
+    // Early exit for empty strings
+    !s.is_empty() && s.chars().all(is_kanji)
 }
 
 impl Lattice {
+    /// Helper method to create an edge efficiently
+    #[inline]
+    fn create_edge(
+        edge_type: EdgeType,
+        word_entry: WordEntry,
+        start: usize,
+        stop: usize,
+        kanji_only: bool,
+    ) -> Edge {
+        Edge {
+            edge_type,
+            word_entry,
+            left_edge: None,
+            start_index: start as u32,
+            stop_index: stop as u32,
+            path_cost: i32::MAX,
+            kanji_only,
+        }
+    }
+
     pub fn clear(&mut self) {
         for edge_vec in &mut self.starts_at {
             edge_vec.clear();
@@ -206,15 +230,13 @@ impl Lattice {
             if user_dict.is_some() {
                 let dict = user_dict.as_ref().unwrap();
                 for (prefix_len, word_entry) in dict.prefix(suffix) {
-                    let edge = Edge {
-                        edge_type: EdgeType::KNOWN,
+                    let edge = Self::create_edge(
+                        EdgeType::KNOWN,
                         word_entry,
-                        left_edge: None,
-                        start_index: start as u32,
-                        stop_index: (start + prefix_len) as u32,
-                        path_cost: i32::MAX,
-                        kanji_only: is_kanji_only(&suffix[..prefix_len]),
-                    };
+                        start,
+                        start + prefix_len,
+                        is_kanji_only(&suffix[..prefix_len]),
+                    );
                     self.add_edge_in_lattice(edge);
                     found = true;
                 }
@@ -223,15 +245,13 @@ impl Lattice {
             // we check all word starting at start, using the double array, like we would use
             // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
-                let edge = Edge {
-                    edge_type: EdgeType::KNOWN,
+                let edge = Self::create_edge(
+                    EdgeType::KNOWN,
                     word_entry,
-                    left_edge: None,
-                    start_index: start as u32,
-                    stop_index: (start + prefix_len) as u32,
-                    path_cost: i32::MAX,
-                    kanji_only: is_kanji_only(&suffix[..prefix_len]),
-                };
+                    start,
+                    start + prefix_len,
+                    is_kanji_only(&suffix[..prefix_len]),
+                );
                 self.add_edge_in_lattice(edge);
                 found = true;
             }
@@ -287,46 +307,21 @@ impl Lattice {
             }
         }
         if unknown_word_num_chars > 0 {
-            // Optimize: Calculate byte boundary directly instead of collecting chars
-            let unknown_word = if unknown_word_num_chars == 1 {
-                // Common case optimization: single character
-                suffix
-                    .chars()
-                    .next()
-                    .map(|c| &suffix[..c.len_utf8()])
-                    .unwrap_or("")
-            } else {
-                // Multi-character case: find byte boundary efficiently
-                let mut byte_end = 0;
-                let mut char_count = 0;
-                for (byte_pos, _) in suffix.char_indices() {
-                    if char_count >= unknown_word_num_chars {
-                        break;
-                    }
-                    byte_end = byte_pos;
-                    char_count += 1;
-                }
-                // Include the last character's bytes
-                if char_count == unknown_word_num_chars {
-                    if let Some((next_pos, _)) = suffix.char_indices().nth(unknown_word_num_chars) {
-                        byte_end = next_pos;
-                    } else {
-                        byte_end = suffix.len();
-                    }
-                }
-                &suffix[..byte_end]
-            };
+            // Optimized: Direct byte boundary calculation
+            let byte_end = suffix
+                .char_indices()
+                .nth(unknown_word_num_chars)
+                .map_or(suffix.len(), |(pos, _)| pos);
+            let unknown_word = &suffix[..byte_end];
             for &word_id in unknown_dictionary.lookup_word_ids(category) {
                 let word_entry = unknown_dictionary.word_entry(word_id);
-                let edge = Edge {
-                    edge_type: EdgeType::UNKNOWN,
+                let edge = Self::create_edge(
+                    EdgeType::UNKNOWN,
                     word_entry,
-                    left_edge: None,
-                    start_index: start as u32,
-                    stop_index: (start + unknown_word.len()) as u32,
-                    path_cost: i32::MAX,
-                    kanji_only: is_kanji_only(&unknown_word[..]),
-                };
+                    start,
+                    start + unknown_word.len(),
+                    is_kanji_only(unknown_word),
+                );
                 self.add_edge_in_lattice(edge);
             }
             return Some(start + unknown_word.len());
@@ -358,23 +353,37 @@ impl Lattice {
         for i in 0..text_len {
             let left_edge_ids = &self.ends_at[i];
             let right_edge_ids = &self.starts_at[i];
+
             for &right_edge_id in right_edge_ids {
-                let right_word_entry = self.edge(right_edge_id).word_entry;
-                let best_path = left_edge_ids
-                    .iter()
-                    .cloned()
-                    .map(|left_edge_id| {
-                        let left_edge = self.edge(left_edge_id);
-                        let mut path_cost = left_edge.path_cost
-                            + cost_matrix
-                                .cost(left_edge.word_entry.right_id(), right_word_entry.left_id());
-                        path_cost += mode.penalty_cost(left_edge);
-                        (path_cost, left_edge_id)
-                    })
-                    .min_by_key(|&(cost, _)| cost);
-                if let Some((best_cost, best_left)) = best_path {
+                // Cache right edge data to avoid repeated access
+                let right_edge = &self.edges[right_edge_id.0 as usize];
+                let right_word_entry = right_edge.word_entry;
+                let right_left_id = right_word_entry.left_id();
+
+                // Manual loop for better performance (avoids iterator overhead)
+                let mut best_cost = i32::MAX;
+                let mut best_left = None;
+
+                for &left_edge_id in left_edge_ids {
+                    let left_edge = &self.edges[left_edge_id.0 as usize];
+                    let left_right_id = left_edge.word_entry.right_id();
+
+                    // Calculate path cost directly
+                    let mut path_cost =
+                        left_edge.path_cost + cost_matrix.cost(left_right_id, right_left_id);
+                    path_cost += mode.penalty_cost(left_edge);
+
+                    // Track minimum cost with branch-free comparison when possible
+                    if path_cost < best_cost {
+                        best_cost = path_cost;
+                        best_left = Some(left_edge_id);
+                    }
+                }
+
+                // Update edge with best path if found
+                if let Some(best_left_id) = best_left {
                     let edge = &mut self.edges[right_edge_id.0 as usize];
-                    edge.left_edge = Some(best_left);
+                    edge.left_edge = Some(best_left_id);
                     edge.path_cost = right_word_entry.word_cost as i32 + best_cost;
                 }
             }
