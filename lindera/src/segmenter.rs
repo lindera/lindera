@@ -152,12 +152,12 @@ impl Segmenter {
 
         let mut position = 0_usize;
         let mut byte_position = 0_usize;
-        
+
         // Process whole text without splitting first for better performance with borrowed text
         let text_bytes = text.as_bytes();
         let text_len = text.len();
         let mut sentence_start = 0;
-        
+
         while sentence_start < text_len {
             // Find the end of the current sentence
             let mut sentence_end = sentence_start;
@@ -170,13 +170,13 @@ impl Segmenter {
                 }
                 // Check for Japanese punctuation (multi-byte)
                 if sentence_end >= 3 && sentence_end <= text_len {
-                    let last_3 = &text_bytes[sentence_end-3..sentence_end];
+                    let last_3 = &text_bytes[sentence_end - 3..sentence_end];
                     if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
                         break;
                     }
                 }
             }
-            
+
             let sentence = &text[sentence_start..sentence_end];
             if sentence.is_empty() {
                 sentence_start = sentence_end;
@@ -208,7 +208,7 @@ impl Segmenter {
                 // Calculate absolute position in the original text
                 let absolute_start = sentence_start + byte_start;
                 let absolute_end = sentence_start + byte_end;
-                
+
                 // Create surface Cow efficiently based on input type
                 let surface_cow = match &text {
                     Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
@@ -232,7 +232,7 @@ impl Segmenter {
 
                 position += 1;
             }
-            
+
             sentence_start = sentence_end;
         }
 
