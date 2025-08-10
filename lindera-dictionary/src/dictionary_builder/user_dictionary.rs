@@ -251,9 +251,7 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
     fs::create_dir_all(parent_dir).map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
-            .add_context(format!(
-                "Failed to create parent directory: {parent_dir:?}"
-            ))
+            .add_context(format!("Failed to create parent directory: {parent_dir:?}"))
     })?;
 
     let mut wtr = io::BufWriter::new(File::create(output_file).map_err(|err| {

@@ -104,9 +104,7 @@ impl PrefixDictionaryBuilder {
         for entry in glob(&pattern).map_err(|err| {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to glob CSV files with pattern: {pattern}"
-                ))
+                .add_context(format!("Failed to glob CSV files with pattern: {pattern}"))
         })? {
             match entry {
                 Ok(path) => {
@@ -175,9 +173,7 @@ impl PrefixDictionaryBuilder {
                 let record = result.map_err(|err| {
                     LinderaErrorKind::Content
                         .with_error(anyhow!(err))
-                        .add_context(format!(
-                            "Failed to parse CSV record in file: {filename:?}"
-                        ))
+                        .add_context(format!("Failed to parse CSV record in file: {filename:?}"))
                 })?;
                 rows.push(record);
             }

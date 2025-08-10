@@ -162,9 +162,7 @@ impl CharacterDefinitionBuilder {
                 .ok_or_else(|| {
                     LinderaErrorKind::Parse
                         .with_error(anyhow::anyhow!("failed to parse line"))
-                        .add_context(format!(
-                            "Malformed line in character definition: '{line}'"
-                        ))
+                        .add_context(format!("Malformed line in character definition: '{line}'"))
                 })?
                 .trim();
             if line_str.is_empty() {

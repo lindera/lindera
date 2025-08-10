@@ -118,6 +118,9 @@ pub struct Lattice {
     edges: Vec<Edge>,
     starts_at: Vec<Vec<EdgeId>>,
     ends_at: Vec<Vec<EdgeId>>,
+    // Buffer reuse optimization: pre-allocated vectors for reuse
+    edge_buffer: Vec<Edge>,
+    edge_id_buffer: Vec<EdgeId>,
 }
 
 fn is_kanji(c: char) -> bool {
@@ -137,7 +140,22 @@ impl Lattice {
         for edge_vec in &mut self.ends_at {
             edge_vec.clear();
         }
-        self.edges.clear()
+        self.edges.clear();
+        // Clear buffers but preserve capacity for reuse
+        self.edge_buffer.clear();
+        self.edge_id_buffer.clear();
+    }
+
+    /// Get a reusable edge buffer with preserved capacity
+    pub fn get_edge_buffer(&mut self) -> &mut Vec<Edge> {
+        self.edge_buffer.clear();
+        &mut self.edge_buffer
+    }
+
+    /// Get a reusable edge ID buffer with preserved capacity
+    pub fn get_edge_id_buffer(&mut self) -> &mut Vec<EdgeId> {
+        self.edge_id_buffer.clear();
+        &mut self.edge_id_buffer
     }
 
     fn set_capacity(&mut self, text_len: usize) {
@@ -269,11 +287,35 @@ impl Lattice {
             }
         }
         if unknown_word_num_chars > 0 {
-            // optimize
-            let unknown_word = suffix
-                .chars()
-                .take(unknown_word_num_chars)
-                .collect::<String>();
+            // Optimize: Calculate byte boundary directly instead of collecting chars
+            let unknown_word = if unknown_word_num_chars == 1 {
+                // Common case optimization: single character
+                suffix
+                    .chars()
+                    .next()
+                    .map(|c| &suffix[..c.len_utf8()])
+                    .unwrap_or("")
+            } else {
+                // Multi-character case: find byte boundary efficiently
+                let mut byte_end = 0;
+                let mut char_count = 0;
+                for (byte_pos, _) in suffix.char_indices() {
+                    if char_count >= unknown_word_num_chars {
+                        break;
+                    }
+                    byte_end = byte_pos;
+                    char_count += 1;
+                }
+                // Include the last character's bytes
+                if char_count == unknown_word_num_chars {
+                    if let Some((next_pos, _)) = suffix.char_indices().nth(unknown_word_num_chars) {
+                        byte_end = next_pos;
+                    } else {
+                        byte_end = suffix.len();
+                    }
+                }
+                &suffix[..byte_end]
+            };
             for &word_id in unknown_dictionary.lookup_word_ids(category) {
                 let word_entry = unknown_dictionary.word_entry(word_id);
                 let edge = Edge {
