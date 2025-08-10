@@ -134,6 +134,12 @@ pub fn load() -> LinderaResult<Dictionary> {
 
 pub struct EmbeddedCcCedictLoader;
 
+impl Default for EmbeddedCcCedictLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EmbeddedCcCedictLoader {
     pub fn new() -> Self {
         Self

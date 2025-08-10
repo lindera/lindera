@@ -50,8 +50,7 @@ impl UserDictionaryBuilder {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to open user dictionary CSV file: {:?}",
-                        input_file
+                        "Failed to open user dictionary CSV file: {input_file:?}"
                     ))
             })?;
 
@@ -246,15 +245,14 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
                 .with_error(anyhow::anyhow!(
                     "failed to get parent directory of output file"
                 ))
-                .add_context(format!("Invalid output file path: {:?}", output_file)));
+                .add_context(format!("Invalid output file path: {output_file:?}")));
         }
     };
     fs::create_dir_all(parent_dir).map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
             .add_context(format!(
-                "Failed to create parent directory: {:?}",
-                parent_dir
+                "Failed to create parent directory: {parent_dir:?}"
             ))
     })?;
 
@@ -262,8 +260,7 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
             .add_context(format!(
-                "Failed to create user dictionary output file: {:?}",
-                output_file
+                "Failed to create user dictionary output file: {output_file:?}"
             ))
     })?);
     bincode::serde::encode_into_std_write(&user_dict, &mut wtr, bincode::config::legacy())
@@ -271,16 +268,14 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
             LinderaErrorKind::Serialize
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to serialize user dictionary to file: {:?}",
-                    output_file
+                    "Failed to serialize user dictionary to file: {output_file:?}"
                 ))
         })?;
     wtr.flush().map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))
             .add_context(format!(
-                "Failed to flush user dictionary output file: {:?}",
-                output_file
+                "Failed to flush user dictionary output file: {output_file:?}"
             ))
     })?;
 

@@ -28,6 +28,34 @@ test: ## Test the project
 build: ## Build the project
 	cargo build --release --all-features
 
+bench: ## Run all benchmarks
+	@echo "🚀 Running all Lindera benchmarks..."
+	@echo ""
+	@echo "📊 Running IPADIC benchmark..."
+	(cd lindera && cargo bench --bench bench_ipadic --features ipadic,embedded-ipadic) || true
+	@echo ""
+	@echo "📊 Running IPADIC-NEologd benchmark..."
+	(cd lindera && cargo bench --bench bench_ipadic_neologd --features ipadic-neologd,embedded-ipadic-neologd) || true
+	@echo ""
+	@echo "📊 Running UniDic benchmark..."
+	(cd lindera && cargo bench --bench bench_unidic --features unidic,embedded-unidic) || true
+	@echo ""
+	@echo "📊 Running KO-DIC benchmark..."
+	(cd lindera && cargo bench --bench bench_ko_dic --features ko-dic,embedded-ko-dic) || true
+	@echo ""
+	@echo "📊 Running CC-CEDICT benchmark..."
+	(cd lindera && cargo bench --bench bench_cc_cedict --features cc-cedict,embedded-cc-cedict) || true
+	@echo ""
+	@echo ""
+	@echo "✅ All benchmarks completed!"
+	@echo "📈 Results are available in lindera/target/criterion/"
+
+bench-all: ## Run all benchmarks with all features enabled
+	@echo "🚀 Running all Lindera benchmarks with all features..."
+	(cd lindera && cargo bench --all-features)
+	@echo "✅ All benchmarks completed!"
+	@echo "📈 Results are available in lindera/target/criterion/"
+
 tag: ## Make a tag
 	git tag v$(LINDERA_VERSION)
 	git push origin v$(LINDERA_VERSION)

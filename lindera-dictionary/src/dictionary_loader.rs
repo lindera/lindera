@@ -31,6 +31,12 @@ pub trait DictionaryLoader {
 
 pub struct StandardDictionaryLoader;
 
+impl Default for StandardDictionaryLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StandardDictionaryLoader {
     pub fn new() -> Self {
         Self

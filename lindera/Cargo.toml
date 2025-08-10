@@ -110,5 +110,26 @@ required-features = ["embedded-ipadic"]
 name = "test_all_embedded_features"
 
 [[bench]]
-name = "bench"
+name = "bench_ipadic"
 harness = false
+required-features = ["ipadic"]
+
+[[bench]]
+name = "bench_unidic"
+harness = false
+required-features = ["unidic"]
+
+[[bench]]
+name = "bench_ko_dic"
+harness = false
+required-features = ["ko-dic"]
+
+[[bench]]
+name = "bench_cc_cedict"
+harness = false
+required-features = ["cc-cedict"]
+
+[[bench]]
+name = "bench_ipadic_neologd"
+harness = false
+required-features = ["ipadic-neologd"]
