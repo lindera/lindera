@@ -189,8 +189,9 @@ impl Segmenter {
                 let token_end = byte_position;
 
                 // Use Cow::Owned to ensure the token data can be returned safely
+                // Future optimization: implement buffer reuse for string allocation
                 tokens.push(Token::new(
-                    Cow::Owned(surface.to_string()), // Clone the string here
+                    Cow::Owned(surface.to_string()), // String clone - optimized buffer reuse could be added later
                     token_start,
                     token_end,
                     position,

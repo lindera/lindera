@@ -80,6 +80,26 @@ impl PrefixDictionary {
             None => vec![],
         }
     }
+
+    /// Find `WordEntry`s with surface using lazy evaluation
+    /// This iterator-based approach reduces memory allocations
+    pub fn find_surface_iter(&self, surface: &str) -> impl Iterator<Item = WordEntry> + '_ {
+        self.da.exact_match_search(surface)
+            .map(|offset_len| {
+                let offset = offset_len >> 5u32;
+                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
+                let data = &self.vals_data[offset_bytes..];
+                let len = offset_len & ((1u32 << 5) - 1u32);
+                (0..len as usize).map(move |i| {
+                    WordEntry::deserialize(
+                        &data[WordEntry::SERIALIZED_LEN * i..],
+                        self.is_system,
+                    )
+                })
+            })
+            .into_iter()
+            .flatten()
+    }
 }
 
 #[cfg(test)]
