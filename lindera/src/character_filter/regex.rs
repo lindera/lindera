@@ -2,7 +2,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::character_filter::{CharacterFilter, add_offset_diff};
+use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
 use crate::error::LinderaErrorKind;
 
 pub const REGEX_CHARACTER_FILTER_NAME: &str = "regex";
@@ -59,98 +59,50 @@ impl CharacterFilter for RegexCharacterFilter {
         REGEX_CHARACTER_FILTER_NAME
     }
 
-    /// Applies a regular expression-based replacement to the input text and tracks offsets and differences.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - A mutable reference to the input text (`String`) that will be modified in place by replacing matched patterns.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `LinderaResult` containing:
-    /// - A vector of offsets (`Vec<usize>`) where modifications occurred.
-    /// - A vector of differences (`Vec<i64>`) indicating the change in length (in bytes) at each modification point.
-    /// - The final length (`usize`) of the modified text.
-    ///
-    /// # Process
-    ///
-    /// 1. **Regular Expression Matching**:
-    ///    - The function uses a regular expression (`regex`) to find matches in the input text.
-    ///    - For each match, the corresponding replacement text (from the configuration) is applied.
-    ///    - The replacement text can be shorter or longer than the matched text, so offsets and differences are tracked to maintain byte alignment.
-    ///
-    /// 2. **Replacement and Text Construction**:
-    ///    - The function builds a new `filtered_text` by appending non-matched portions of the original text and replacing matched portions with the replacement text.
-    ///    - As it processes each match, the text before the match is appended, followed by the replacement text, until the entire input text is processed.
-    ///
-    /// 3. **Offset and Difference Calculation**:
-    ///    - For each match, the difference between the length of the matched text and the replacement text is calculated (`diff_len`).
-    ///    - If the replacement text is shorter, the offset and the difference are recorded. If it is longer, multiple offset entries may be created to account for the expansion.
-    ///
-    /// 4. **Final Text Assignment**:
-    ///    - The newly constructed `filtered_text` replaces the original text passed by reference.
-    ///
-    /// # Errors
-    ///
-    /// If there are issues with the regular expression or the replacement process, the function returns a `LinderaResult` containing the error.
-    fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
-        let mut offsets: Vec<usize> = Vec::new();
-        let mut diffs: Vec<i64> = Vec::new();
+    /// Apply the filter using the OffsetMapping API
+    fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping> {
         let mut filtered_text = String::with_capacity(text.len());
-
+        let mut mapping = OffsetMapping::new();
         let mut last_match_end = 0;
-        let mut prev_diff = 0;
 
         for mat in self.regex.find_iter(text) {
             let input_start = mat.start();
-            let input_text = mat.as_str();
-            let input_len = input_text.len();
+            let input_len = mat.len();
             let replacement_text = self.replacement.as_str();
             let replacement_len = replacement_text.len();
-            let diff_len = input_len as i64 - replacement_len as i64;
-            let input_offset = input_start + input_len;
 
             // Append the text before the match
             filtered_text.push_str(&text[last_match_end..input_start]);
 
+            // Record transformation if text changed
+            if input_len != replacement_len {
+                let transformation = Transformation::new(
+                    input_start,
+                    input_start + input_len,
+                    filtered_text.len(),
+                    filtered_text.len() + replacement_len,
+                );
+                mapping.add_transformation(transformation);
+            }
+
             // Apply the replacement
             filtered_text.push_str(replacement_text);
 
-            // Track offsets and differences
-            if diff_len != 0 {
-                if diff_len > 0 {
-                    // Replacement is shorter than matched surface
-                    let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
-                    let diff = prev_diff + diff_len;
-                    add_offset_diff(&mut offsets, &mut diffs, offset, diff);
-                } else {
-                    // Replacement is longer than matched surface
-                    let output_start = (input_offset as i64 - prev_diff) as usize;
-                    for extra_idx in 0..diff_len.unsigned_abs() as usize {
-                        let offset = output_start + extra_idx;
-                        let diff = prev_diff - extra_idx as i64 - 1;
-                        add_offset_diff(&mut offsets, &mut diffs, offset, diff);
-                    }
-                }
-                prev_diff += diff_len;
-            }
-
-            last_match_end = input_offset;
+            last_match_end = input_start + input_len;
         }
 
         // Append the remaining text after the last match
         filtered_text.push_str(&text[last_match_end..]);
 
         *text = filtered_text;
-
-        Ok((offsets, diffs, text.len()))
+        Ok(mapping)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::character_filter::CharacterFilter;
     use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
-    use crate::character_filter::{CharacterFilter, correct_offset};
 
     #[test]
     fn test_regex_character_filter_config() {
@@ -192,15 +144,23 @@ mod tests {
             let filter = RegexCharacterFilter::from_config(&config).unwrap();
             let original_text = "リンデラは形態素解析器です。";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("Linderaは形態素解析器です。", text.as_str());
-            assert_eq!(vec![7], offsets);
-            assert_eq!(vec![5], diffs);
+
+            // Verify transformation: "リンデラ"(0-12) → "Lindera"(0-7)
+            assert_eq!(1, mapping.transformations.len());
+            let transform = &mapping.transformations[0];
+            assert_eq!(0, transform.original_start);
+            assert_eq!(12, transform.original_end);
+            assert_eq!(0, transform.filtered_start);
+            assert_eq!(7, transform.filtered_end);
+
+            // Test text fragments
             let start = 0;
             let end = 7;
             assert_eq!("Lindera", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(0, correct_start);
             assert_eq!(12, correct_end);
             assert_eq!("リンデラ", &original_text[correct_start..correct_end]);
@@ -218,15 +178,29 @@ mod tests {
             let filter = RegexCharacterFilter::from_config(&config).unwrap();
             let original_text = "a     b     c";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("a b c", text.as_str());
-            assert_eq!(vec![2, 4], offsets);
-            assert_eq!(vec![4, 8], diffs);
+
+            // Verify transformations: two groups of spaces compressed
+            assert_eq!(2, mapping.transformations.len());
+            let transform1 = &mapping.transformations[0];
+            assert_eq!(1, transform1.original_start);
+            assert_eq!(6, transform1.original_end);
+            assert_eq!(1, transform1.filtered_start);
+            assert_eq!(2, transform1.filtered_end);
+
+            let transform2 = &mapping.transformations[1];
+            assert_eq!(7, transform2.original_start);
+            assert_eq!(12, transform2.original_end);
+            assert_eq!(3, transform2.filtered_start);
+            assert_eq!(4, transform2.filtered_end);
+
+            // Test text fragments
             let start = 2;
             let end = 3;
             assert_eq!("b", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(6, correct_start);
             assert_eq!(7, correct_end);
             assert_eq!("b", &original_text[correct_start..correct_end]);

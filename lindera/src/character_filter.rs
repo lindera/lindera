@@ -4,6 +4,55 @@
 /// also provides functionality to load character filters from configuration values or CLI flags,
 /// and utilities to manage text offsets during transformations.
 ///
+/// # Offset Mapping System
+///
+/// The offset mapping system tracks how character positions change during text filtering,
+/// allowing accurate mapping between filtered text positions and original text positions.
+/// This is essential for maintaining correct token byte offsets in tokenization.
+///
+/// ## How Offset Mapping Works
+///
+/// When text is transformed by character filters, each transformation is recorded as a
+/// `Transformation` that captures:
+/// - Original text byte range (before filtering)  
+/// - Filtered text byte range (after filtering)
+///
+/// ### Example: "１０㍑" → "10リットル"
+///
+/// ```text
+/// Original:  "１０㍑"
+/// Positions:  0-3  3-6  6-9     (byte positions)
+///              ↓    ↓    ↓
+/// Filtered:  "10リットル"  
+/// Positions:  0-1  1-2  2-14    (byte positions)
+/// ```
+///
+/// This creates three transformations:
+/// 1. "１" (0-3) → "1" (0-1)
+/// 2. "０" (3-6) → "0" (1-2)
+/// 3. "㍑" (6-9) → "リットル" (2-14)
+///
+/// ### Position Correction
+///
+/// To map a filtered text position back to the original:
+/// 1. Find which transformation range contains the position
+/// 2. Calculate the corresponding position in the original text
+/// 3. Return the original text position
+///
+/// ```rust,no_run
+/// # use lindera::character_filter::{OffsetMapping, Transformation};
+/// # let mut mapping = OffsetMapping::new();
+/// # mapping.add_transformation(Transformation::new(6, 9, 2, 14));
+/// # let text = "10リットル";
+/// // For filtered position 2 ("リットル" start):
+/// // → finds transformation[2]: filtered_range(2-14) contains position 2
+/// // → returns original_start: 6 (start of "㍑")
+/// let original_pos = mapping.correct_offset(2, text.len()); // returns 6
+/// ```
+///
+/// This ensures that tokenizer can provide accurate byte offsets relative to the original
+/// input text, even after multiple character transformations.
+///
 /// # Modules
 /// - `japanese_iteration_mark`: Contains the Japanese iteration mark character filter.
 /// - `mapping`: Contains the mapping character filter.
@@ -17,13 +66,11 @@
 /// # Structs
 /// - `BoxCharacterFilter`: A boxed character filter that implements `Deref` to `CharacterFilter`.
 /// - `CharacterFilterLoader`: A loader for character filters from configuration values or CLI flags.
+/// - `OffsetMapping`: A modern structure for tracking position changes during text filtering.
+/// - `Transformation`: A record of text transformation with original and filtered positions.
 ///
 /// # Functions
-/// - `add_offset_diff`: Adds an offset difference to the given offsets and diffs vectors.
-/// - `correct_offset`: Corrects the given offset based on the provided offsets and diffs.
-///
-/// # Tests
-/// - `test_correct_offset`: Tests the `correct_offset` function with various cases.
+/// No public utility functions are exposed, as all offset management is handled through OffsetMapping.
 pub mod japanese_iteration_mark;
 pub mod mapping;
 pub mod regex;
@@ -45,6 +92,231 @@ use crate::character_filter::unicode_normalize::{
 use crate::error::LinderaErrorKind;
 use crate::parse_cli_flag;
 
+/// A transformation record for offset mapping between original and filtered text.
+///
+/// This structure captures a single text transformation, recording how a specific
+/// segment of the original text maps to a segment in the filtered text.
+///
+/// # Example
+///
+/// For the transformation "㍑" → "リットル":
+/// ```rust
+/// # use lindera::character_filter::Transformation;
+/// let transformation = Transformation::new(
+///     6, 9,    // original: "㍑" at bytes 6-9
+///     2, 14    // filtered: "リットル" at bytes 2-14  
+/// );
+/// ```
+///
+/// This allows precise mapping between any position in the filtered text
+/// back to the corresponding position in the original text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Transformation {
+    /// Start position in the original text (in bytes)
+    pub original_start: usize,
+    /// End position in the original text (in bytes)
+    pub original_end: usize,
+    /// Start position in the filtered text (in bytes)
+    pub filtered_start: usize,
+    /// End position in the filtered text (in bytes)
+    pub filtered_end: usize,
+}
+
+impl Transformation {
+    pub fn new(
+        original_start: usize,
+        original_end: usize,
+        filtered_start: usize,
+        filtered_end: usize,
+    ) -> Self {
+        Self {
+            original_start,
+            original_end,
+            filtered_start,
+            filtered_end,
+        }
+    }
+}
+
+/// Offset mapping structure for tracking position changes during text filtering.
+///
+/// This structure maintains a list of all text transformations that occurred during
+/// character filtering, enabling accurate position mapping between filtered and original text.
+///
+/// # Usage Pattern
+///
+/// 1. **Record transformations** during filtering:
+/// ```rust
+/// # use lindera::character_filter::{OffsetMapping, Transformation};
+/// let mut mapping = OffsetMapping::new();
+/// // When "㍑" → "リットル" transformation occurs:
+/// mapping.add_transformation(Transformation::new(6, 9, 2, 14));
+/// ```
+///
+/// 2. **Correct positions** from filtered to original:
+/// ```rust,no_run
+/// # use lindera::character_filter::OffsetMapping;
+/// # let mapping = OffsetMapping::new();
+/// # let filtered_pos = 0;
+/// # let text = String::new();
+/// let original_pos = mapping.correct_offset(filtered_pos, text.len());
+/// ```
+///
+/// # Multi-Filter Support
+///
+/// When multiple character filters are applied, their mappings are composed:
+/// ```rust,no_run
+/// # use lindera::character_filter::OffsetMapping;
+/// # let mapping1 = OffsetMapping::new();
+/// # let mapping2 = OffsetMapping::new();
+/// let combined_mapping = mapping1.compose(mapping2);
+/// ```
+///
+/// This ensures accurate position tracking through complex filter chains.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct OffsetMapping {
+    /// List of transformations applied to the text
+    pub transformations: Vec<Transformation>,
+}
+
+impl OffsetMapping {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_transformations(transformations: Vec<Transformation>) -> Self {
+        Self { transformations }
+    }
+
+    /// Add a transformation to the mapping
+    pub fn add_transformation(&mut self, transformation: Transformation) {
+        self.transformations.push(transformation);
+    }
+
+    /// Check if this mapping is empty (no transformations)
+    pub fn is_empty(&self) -> bool {
+        self.transformations.is_empty()
+    }
+
+    /// Correct a position in filtered text to the corresponding position in original text.
+    ///
+    /// This method maps a byte position in the filtered text back to the corresponding
+    /// byte position in the original text, accounting for all recorded transformations.
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - Byte position in the filtered text
+    /// * `text_len` - Length of the filtered text (used for boundary validation)
+    ///
+    /// # Returns
+    ///
+    /// The corresponding byte position in the original text.
+    ///
+    /// # Algorithm
+    ///
+    /// 1. If no transformations exist, return the offset unchanged
+    /// 2. Find the transformation whose filtered range contains the offset
+    /// 3. Map the offset to the corresponding position in the original range
+    /// 4. If offset is outside all transformation ranges, adjust by cumulative differences
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use lindera::character_filter::{OffsetMapping, Transformation};
+    /// // For "１０㍑" → "10リットル" with transformations recorded
+    /// let mut mapping = OffsetMapping::new();
+    /// mapping.add_transformation(Transformation::new(6, 9, 2, 14));
+    ///
+    /// // Position 2 in "10リットル" ("リットル" start)
+    /// let original_pos = mapping.correct_offset(2, 14); // returns 6
+    /// // This maps to position 6 in "１０㍑" ("㍑" start)
+    /// ```
+    pub fn correct_offset(&self, offset: usize, text_len: usize) -> usize {
+        if self.transformations.is_empty() {
+            return offset;
+        }
+
+        // Boundary check: if offset is beyond text length, clamp to text length
+        let clamped_offset = offset.min(text_len);
+
+        // Find the transformation that affects this offset
+        for transformation in &self.transformations {
+            if clamped_offset >= transformation.filtered_start
+                && clamped_offset <= transformation.filtered_end
+            {
+                // Offset is within this transformation range
+                let filtered_offset = clamped_offset - transformation.filtered_start;
+                let original_len = transformation.original_end - transformation.original_start;
+                let filtered_len = transformation.filtered_end - transformation.filtered_start;
+
+                if filtered_len == 0 {
+                    // Deletion case
+                    return transformation.original_start;
+                } else if original_len == 0 {
+                    // Insertion case
+                    return transformation.original_start;
+                } else {
+                    // Substitution case - proportionally map within the range
+                    let ratio = filtered_offset as f64 / filtered_len as f64;
+                    let original_offset = (ratio * original_len as f64).round() as usize;
+                    return transformation.original_start + original_offset;
+                }
+            } else if clamped_offset < transformation.filtered_start {
+                // Offset is before this transformation, need to account for previous transformations
+                let mut corrected = clamped_offset;
+                for prev_transform in &self.transformations {
+                    if prev_transform.filtered_start < transformation.filtered_start {
+                        let original_len =
+                            prev_transform.original_end - prev_transform.original_start;
+                        let filtered_len =
+                            prev_transform.filtered_end - prev_transform.filtered_start;
+                        let diff = original_len as i64 - filtered_len as i64;
+                        corrected = (corrected as i64 + diff) as usize;
+                    }
+                }
+                return corrected;
+            }
+        }
+
+        // Offset is after all transformations - apply cumulative differences
+        let mut corrected = clamped_offset;
+        for transformation in &self.transformations {
+            let original_len = transformation.original_end - transformation.original_start;
+            let filtered_len = transformation.filtered_end - transformation.filtered_start;
+            let diff = original_len as i64 - filtered_len as i64;
+            corrected = (corrected as i64 + diff) as usize;
+        }
+
+        // Handle case where original offset was beyond text length
+        if offset > text_len {
+            // Preserve the overshoot in the original text space
+            let overshoot = offset - text_len;
+            corrected + overshoot
+        } else {
+            corrected
+        }
+    }
+
+    /// Compose this mapping with another mapping (for chaining filters)
+    pub fn compose(self, other: OffsetMapping) -> OffsetMapping {
+        if other.transformations.is_empty() {
+            return self;
+        }
+        if self.transformations.is_empty() {
+            return other;
+        }
+
+        // For now, use a simple approach: convert both to legacy format and merge
+        // This can be optimized in the future for better performance
+        let mut combined_transformations = self.transformations;
+        combined_transformations.extend(other.transformations);
+
+        OffsetMapping {
+            transformations: combined_transformations,
+        }
+    }
+}
+
 /// The `CharacterFilter` trait defines an interface for filters that preprocess text before tokenization.
 ///
 /// # Required Methods
@@ -52,12 +324,10 @@ use crate::parse_cli_flag;
 /// - `name(&self) -> &str`:
 ///   - Returns the name of the character filter. This can be used for identification or logging purposes.
 ///
-/// - `apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>`:
+/// - `apply_with_offset_mapping(&self, text: &mut String) -> LinderaResult<OffsetMapping>`:
 ///   - Applies the character filter to the provided mutable string `text`.
-///   - It returns a result containing a tuple of:
-///     - A vector of offsets (`Vec<usize>`) which represent positions in the text where modifications were made.
-///     - A vector of differences (`Vec<i64>`) which indicates the change in text length at those positions.
-///     - The final length of the modified text (`usize`).
+///   - It returns a result containing an `OffsetMapping` which tracks all text transformations
+///     performed by the filter, allowing precise position mapping between original and filtered text.
 ///
 /// # Trait Bounds
 ///
@@ -69,7 +339,7 @@ use crate::parse_cli_flag;
 /// - This trait requires the `CharacterFilterClone` trait, which is typically used to allow cloning of trait objects that implement `CharacterFilter`. This enables dynamic dispatch of cloned filters.
 pub trait CharacterFilter: 'static + Send + Sync + CharacterFilterClone {
     fn name(&self) -> &str;
-    fn apply(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)>;
+    fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping>;
 }
 
 /// A struct that holds a boxed `CharacterFilter` trait object.
@@ -114,53 +384,6 @@ impl<T: CharacterFilter + Clone + 'static> CharacterFilterClone for T {
     fn box_clone(&self) -> BoxCharacterFilter {
         BoxCharacterFilter::from(self.clone())
     }
-}
-
-pub fn add_offset_diff(offsets: &mut Vec<usize>, diffs: &mut Vec<i64>, offset: usize, diff: i64) {
-    match offsets.last() {
-        Some(&last_offset) => {
-            if last_offset == offset {
-                // Replace the last diff.
-                diffs.pop();
-                diffs.push(diff);
-            } else {
-                offsets.push(offset);
-                diffs.push(diff);
-            }
-        }
-        None => {
-            // First offset.
-            offsets.push(offset);
-            diffs.push(diff);
-        }
-    }
-}
-
-pub fn correct_offset(offset: usize, offsets: &[usize], diffs: &[i64], text_len: usize) -> usize {
-    // If `offsets` is empty, the `offset` specified is the correct offset.
-    if offsets.is_empty() {
-        return offset;
-    }
-
-    // Finds the `index` containing the specified `offset` from the `offsets`.
-    let index = match offsets.binary_search(&offset) {
-        Ok(i) => i,
-        Err(i) => {
-            if i != 0 {
-                // If `i` is greater than `0`, then `i - 1` is the `index` for the `diff` of the specified `offset`.
-                i - 1
-            } else if i >= text_len {
-                text_len
-            } else {
-                // If the `offset` is not found and `i` is 0,
-                // the specified `offset` is the correct offset.
-                return offset;
-            }
-        }
-    };
-
-    // The correct offset value can be calculated by adding `diff[index]` to the given `offset`.
-    (offset as i64 + diffs[index]) as usize
 }
 
 pub struct CharacterFilterLoader {}
@@ -252,40 +475,49 @@ impl CharacterFilterLoader {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn test_correct_offset() {
-        let text = "ABCDEFG";
-        let filterd_text = "AbbbCdddFgggg";
+    fn test_transformation() {
+        let transformation = Transformation::new(0, 3, 0, 1);
+        assert_eq!(transformation.original_start, 0);
+        assert_eq!(transformation.original_end, 3);
+        assert_eq!(transformation.filtered_start, 0);
+        assert_eq!(transformation.filtered_end, 1);
+    }
 
-        let text_len = filterd_text.len();
-        let offsets = vec![2, 3, 7, 10, 11, 12];
-        let diffs = vec![-1, -2, -3, -4, -5, -6];
+    #[test]
+    fn test_offset_mapping_empty() {
+        let mapping = OffsetMapping::new();
+        assert!(mapping.is_empty());
 
-        let start_b = 1;
-        let end_b = 4;
-        assert_eq!("bbb", &filterd_text[start_b..end_b]);
-        let correct_start_b = super::correct_offset(start_b, &offsets, &diffs, text_len);
-        let correct_end_b = super::correct_offset(end_b, &offsets, &diffs, text_len);
-        assert_eq!(1, correct_start_b);
-        assert_eq!(2, correct_end_b);
-        assert_eq!("B", &text[correct_start_b..correct_end_b]);
+        // Empty mapping should not change offsets
+        assert_eq!(5, mapping.correct_offset(5, 10));
+        assert_eq!(0, mapping.correct_offset(0, 10));
+    }
 
-        let start_g = 9;
-        let end_g = 13;
-        assert_eq!("gggg", &filterd_text[start_g..end_g]);
-        let correct_start_g = super::correct_offset(start_g, &offsets, &diffs, text_len);
-        let correct_end_g = super::correct_offset(end_g, &offsets, &diffs, text_len);
-        assert_eq!(6, correct_start_g);
-        assert_eq!(7, correct_end_g);
-        assert_eq!("G", &text[correct_start_g..correct_end_g]);
+    #[test]
+    fn test_offset_mapping_with_transformation() {
+        let mut mapping = OffsetMapping::new();
+        mapping.add_transformation(Transformation::new(0, 3, 0, 1));
 
-        let start = 0;
-        let end = 13;
-        assert_eq!("AbbbCdddFgggg", &filterd_text[start..end]);
-        let correct_start = super::correct_offset(start, &offsets, &diffs, text_len);
-        let correct_end = super::correct_offset(end, &offsets, &diffs, text_len);
-        assert_eq!(0, correct_start);
-        assert_eq!(7, correct_end);
-        assert_eq!("ABCDEFG", &text[correct_start..correct_end]);
+        assert!(!mapping.is_empty());
+
+        // Test offset correction for shortening transformation (0-3) -> (0-1)
+        assert_eq!(0, mapping.correct_offset(0, 8)); // Start maps to start
+        assert_eq!(3, mapping.correct_offset(1, 8)); // End of filtered maps to end of original
+        assert_eq!(5, mapping.correct_offset(3, 8)); // After transformation, add diff
+    }
+
+    #[test]
+    fn test_offset_mapping_compose() {
+        let mut mapping1 = OffsetMapping::new();
+        mapping1.add_transformation(Transformation::new(0, 3, 0, 1));
+
+        let mut mapping2 = OffsetMapping::new();
+        mapping2.add_transformation(Transformation::new(1, 2, 1, 4));
+
+        let composed = mapping1.compose(mapping2);
+        assert_eq!(composed.transformations.len(), 2);
     }
 }

@@ -7,7 +7,7 @@ use std::path::Path;
 use serde_json::{Value, json};
 
 use crate::LinderaResult;
-use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, correct_offset};
+use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
 use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
@@ -327,27 +327,23 @@ impl Tokenizer {
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
 
-        let mut text_len_vec: Vec<usize> = Vec::new();
-        let mut offsets_vec: Vec<Vec<usize>> = Vec::new();
-        let mut diffs_vec: Vec<Vec<i64>> = Vec::new();
+        let mut offset_mappings: Vec<OffsetMapping> = Vec::new();
 
-        // Appy character filters to the text if it is not empty.
+        // Apply character filters to the text if it is not empty.
         for character_filter in &self.character_filters {
-            let (offsets, diffs, text_len) = character_filter.apply(normalized_text.to_mut())?;
+            let mapping = character_filter.apply(normalized_text.to_mut())?;
 
-            if !offsets.is_empty() {
-                // Record the offsets of each character filter.
-                offsets_vec.insert(0, offsets);
-
-                // Record the diffs of each character filter.
-                diffs_vec.insert(0, diffs);
-
-                // Record the length of the text after each character filter is applied.
-                text_len_vec.insert(0, text_len);
+            if !mapping.is_empty() {
+                // Record the offset mapping of each character filter in reverse order
+                // since we need to apply corrections in reverse order
+                offset_mappings.push(mapping);
             }
         }
 
-        // Setment a text.
+        // Store the final text length for offset correction
+        let final_text_len = normalized_text.len();
+
+        // Segment a text.
         let mut tokens = self.segmenter.segment(normalized_text)?;
 
         // Apply token filters to the tokens if they are not empty.
@@ -356,16 +352,15 @@ impl Tokenizer {
         }
 
         // Correct token offsets if character filters are applied.
-        if !offsets_vec.is_empty() {
+        // Apply corrections in reverse order (last filter first)
+        if !offset_mappings.is_empty() {
             for token in tokens.iter_mut() {
-                // Override details.
-                for (i, offsets) in offsets_vec.iter().enumerate() {
+                // Apply corrections in reverse order to undo the transformations
+                for mapping in offset_mappings.iter().rev() {
                     // Override start.
-                    token.byte_start =
-                        correct_offset(token.byte_start, offsets, &diffs_vec[i], text_len_vec[i]);
+                    token.byte_start = mapping.correct_offset(token.byte_start, final_text_len);
                     // Override end.
-                    token.byte_end =
-                        correct_offset(token.byte_end, offsets, &diffs_vec[i], text_len_vec[i]);
+                    token.byte_end = mapping.correct_offset(token.byte_end, final_text_len);
                 }
             }
         }
