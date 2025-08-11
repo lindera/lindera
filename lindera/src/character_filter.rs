@@ -39,7 +39,11 @@
 /// 2. Calculate the corresponding position in the original text
 /// 3. Return the original text position
 ///
-/// ```rust
+/// ```rust,no_run
+/// # use lindera::character_filter::{OffsetMapping, Transformation};
+/// # let mut mapping = OffsetMapping::new();
+/// # mapping.add_transformation(Transformation::new(6, 9, 2, 14));
+/// # let text = "10リットル";
 /// // For filtered position 2 ("リットル" start):
 /// // → finds transformation[2]: filtered_range(2-14) contains position 2
 /// // → returns original_start: 6 (start of "㍑")
@@ -97,6 +101,7 @@ use crate::parse_cli_flag;
 ///
 /// For the transformation "㍑" → "リットル":
 /// ```rust
+/// # use lindera::character_filter::Transformation;
 /// let transformation = Transformation::new(
 ///     6, 9,    // original: "㍑" at bytes 6-9
 ///     2, 14    // filtered: "リットル" at bytes 2-14  
@@ -142,20 +147,28 @@ impl Transformation {
 ///
 /// 1. **Record transformations** during filtering:
 /// ```rust
+/// # use lindera::character_filter::{OffsetMapping, Transformation};
 /// let mut mapping = OffsetMapping::new();
 /// // When "㍑" → "リットル" transformation occurs:
 /// mapping.add_transformation(Transformation::new(6, 9, 2, 14));
 /// ```
 ///
 /// 2. **Correct positions** from filtered to original:
-/// ```rust
+/// ```rust,no_run
+/// # use lindera::character_filter::OffsetMapping;
+/// # let mapping = OffsetMapping::new();
+/// # let filtered_pos = 0;
+/// # let text = String::new();
 /// let original_pos = mapping.correct_offset(filtered_pos, text.len());
 /// ```
 ///
 /// # Multi-Filter Support
 ///
 /// When multiple character filters are applied, their mappings are composed:
-/// ```rust
+/// ```rust,no_run
+/// # use lindera::character_filter::OffsetMapping;
+/// # let mapping1 = OffsetMapping::new();
+/// # let mapping2 = OffsetMapping::new();
 /// let combined_mapping = mapping1.compose(mapping2);
 /// ```
 ///
@@ -208,9 +221,11 @@ impl OffsetMapping {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
+    /// # use lindera::character_filter::{OffsetMapping, Transformation};
     /// // For "１０㍑" → "10リットル" with transformations recorded
-    /// let mapping = /* ... transformations for the above conversion */;
+    /// let mut mapping = OffsetMapping::new();
+    /// mapping.add_transformation(Transformation::new(6, 9, 2, 14));
     ///
     /// // Position 2 in "10リットル" ("リットル" start)
     /// let original_pos = mapping.correct_offset(2, 14); // returns 6
