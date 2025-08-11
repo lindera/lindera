@@ -24,8 +24,8 @@ impl Default for Metadata {
     fn default() -> Self {
         // Default metadata values can be adjusted as needed
         Metadata::new(
-            "IPADIC".to_string(),
-            "EUC-JP".to_string(),
+            "default".to_string(),
+            "UTF-8".to_string(),
             Algorithm::Deflate,
             3,
             -10000,
@@ -154,8 +154,8 @@ mod tests {
     #[test]
     fn test_metadata_default() {
         let metadata = Metadata::default();
-        assert_eq!(metadata.name, "IPADIC");
-        assert_eq!(metadata.schema.name, "IPADIC");
+        assert_eq!(metadata.name, "default");
+        // Schema no longer has name field
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
             vec![Some(1), None, None, None, None, None, Some(2), None],
         );
         assert_eq!(metadata.name, "TestDict");
-        assert_eq!(metadata.schema.name, schema.name);
+        // Schema no longer has name field
     }
 
     #[test]
@@ -186,13 +186,13 @@ mod tests {
 
         // Test serialization
         let serialized = serde_json::to_string(&metadata).unwrap();
-        assert!(serialized.contains("IPADIC"));
+        assert!(serialized.contains("default"));
         assert!(serialized.contains("schema"));
         assert!(serialized.contains("name"));
 
         // Test deserialization
         let deserialized: Metadata = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(deserialized.name, "IPADIC");
-        assert_eq!(deserialized.schema.name, "IPADIC");
+        assert_eq!(deserialized.name, "default");
+        // Schema no longer has name field
     }
 }

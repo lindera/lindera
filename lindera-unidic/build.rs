@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // skip_invalid_cost_or_id
         false,                // normalize_details
         Schema::new(
-            "UniDic".to_string(), // Schema name
-            "2.1.2".to_string(),  // Schema version
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

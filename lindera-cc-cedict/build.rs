@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         true,                    // skip_invalid_cost_or_id is true for CC-CEDICT
         false,                   // normalize_details
         Schema::new(
-            "CC-CEDICT".to_string(),      // Schema name
-            "0.1.0-20200409".to_string(), // Schema version
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),
