@@ -3,6 +3,9 @@ use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::UniDicSchema;
 
+pub const DICTIONARY_NAME: &str = "unidic";
+pub const DICTIONARY_ENCODING: &str = "UTF-8";
+
 /// UniDic metadata factory
 pub struct UniDicMetadata;
 
@@ -16,8 +19,8 @@ impl UniDicMetadata {
     /// Create default UniDic metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
-            "UniDic".to_string(),
-            "UTF-8".to_string(),
+            DICTIONARY_NAME.to_string(),
+            DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
             3,
             -10000,

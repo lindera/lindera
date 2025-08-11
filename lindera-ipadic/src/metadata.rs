@@ -3,6 +3,9 @@ use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::IPADICSchema;
 
+pub const DICTIONARY_NAME: &str = "ipadic";
+pub const DICTIONARY_ENCODING: &str = "EUC-JP";
+
 /// IPADIC metadata factory
 pub struct IPADICMetadata;
 
@@ -16,8 +19,8 @@ impl IPADICMetadata {
     /// Create default IPADIC metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
-            "IPADIC".to_string(),
-            "EUC-JP".to_string(),
+            DICTIONARY_NAME.to_string(),
+            DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
             3,
             -10000,

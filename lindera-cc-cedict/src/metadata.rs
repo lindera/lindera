@@ -3,6 +3,9 @@ use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::CcCedictSchema;
 
+pub const DICTIONARY_NAME: &str = "cc-cedict";
+pub const DICTIONARY_ENCODING: &str = "UTF-8";
+
 /// CC-CEDICT metadata factory
 pub struct CcCedictMetadata;
 
@@ -16,8 +19,8 @@ impl CcCedictMetadata {
     /// Create default CC-CEDICT metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
-            "CC-CEDICT".to_string(),
-            "UTF-8".to_string(),
+            DICTIONARY_NAME.to_string(),
+            DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
             3,
             -10000,

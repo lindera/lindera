@@ -1,25 +1,30 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-#[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
-use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
-#[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
-use lindera_ipadic::embedded::EmbeddedIPADICLoader;
-#[cfg(all(feature = "ipadic-neologd", feature = "embedded-ipadic-neologd"))]
-use lindera_ipadic_neologd::embedded::EmbeddedIPADICNEologdLoader;
-#[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
-use lindera_ko_dic::embedded::EmbeddedKoDicLoader;
-#[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
-use lindera_unidic::embedded::EmbeddedUniDicLoader;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
+#[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
+use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
+use lindera_cc_cedict::metadata::DICTIONARY_NAME as CC_CEDICT_DICTIONARY_NAME;
 use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
+#[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+use lindera_ipadic::embedded::EmbeddedIPADICLoader;
+use lindera_ipadic::metadata::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
+#[cfg(all(feature = "ipadic-neologd", feature = "embedded-ipadic-neologd"))]
+use lindera_ipadic_neologd::embedded::EmbeddedIPADICNEologdLoader;
+use lindera_ipadic_neologd::metadata::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
+#[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+use lindera_ko_dic::embedded::EmbeddedKoDicLoader;
+use lindera_ko_dic::metadata::DICTIONARY_NAME as KO_DIC_DICTIONARY_NAME;
+#[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
+use lindera_unidic::embedded::EmbeddedUniDicLoader;
+use lindera_unidic::metadata::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
 
 use crate::LinderaResult;
 use crate::error::{LinderaError, LinderaErrorKind};
@@ -63,11 +68,11 @@ impl DictionaryKind {
 
     pub fn as_str(&self) -> &str {
         match self {
-            DictionaryKind::IPADIC => "ipadic",
-            DictionaryKind::IPADICNEologd => "ipadic-neologd",
-            DictionaryKind::UniDic => "unidic",
-            DictionaryKind::KoDic => "ko-dic",
-            DictionaryKind::CcCedict => "cc-cedict",
+            DictionaryKind::IPADIC => IPADIC_DICTIONARY_NAME,
+            DictionaryKind::IPADICNEologd => IPADIC_NEOLOGD_DICTIONARY_NAME,
+            DictionaryKind::UniDic => UNIDIC_DICTIONARY_NAME,
+            DictionaryKind::KoDic => KO_DIC_DICTIONARY_NAME,
+            DictionaryKind::CcCedict => CC_CEDICT_DICTIONARY_NAME,
         }
     }
 }
@@ -76,11 +81,11 @@ impl FromStr for DictionaryKind {
     type Err = LinderaError;
     fn from_str(input: &str) -> Result<DictionaryKind, Self::Err> {
         match input {
-            "ipadic" => Ok(DictionaryKind::IPADIC),
-            "ipadic-neologd" => Ok(DictionaryKind::IPADICNEologd),
-            "unidic" => Ok(DictionaryKind::UniDic),
-            "ko-dic" => Ok(DictionaryKind::KoDic),
-            "cc-cedict" => Ok(DictionaryKind::CcCedict),
+            IPADIC_DICTIONARY_NAME => Ok(DictionaryKind::IPADIC),
+            IPADIC_NEOLOGD_DICTIONARY_NAME => Ok(DictionaryKind::IPADICNEologd),
+            UNIDIC_DICTIONARY_NAME => Ok(DictionaryKind::UniDic),
+            KO_DIC_DICTIONARY_NAME => Ok(DictionaryKind::KoDic),
+            CC_CEDICT_DICTIONARY_NAME => Ok(DictionaryKind::CcCedict),
             _ => Err(LinderaErrorKind::Dictionary
                 .with_error(anyhow::anyhow!("Invalid dictionary kind: {}", input))),
         }
