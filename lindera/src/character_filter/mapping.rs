@@ -108,8 +108,8 @@ impl CharacterFilter for MappingCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
     use crate::character_filter::CharacterFilter;
+    use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
 
     #[test]
     fn test_mapping_character_filter_config() {
@@ -170,7 +170,7 @@ mod tests {
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("アイウエオ", text.as_str());
             assert!(mapping.is_empty());
-            
+
             // Test text fragments
             let start = 3;
             let end = 6;
@@ -200,7 +200,7 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("リンデラ", text.as_str());
-            
+
             // Verify transformation: "ﾃﾞ"(6-12) → "デ"(6-9)
             assert_eq!(1, mapping.transformations.len());
             let transform = &mapping.transformations[0];
@@ -208,7 +208,7 @@ mod tests {
             assert_eq!(12, transform.original_end);
             assert_eq!(6, transform.filtered_start);
             assert_eq!(9, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 6;
             let end = 9;
@@ -235,7 +235,7 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("リンデラ", text.as_str());
-            
+
             // Verify transformation: "ﾘﾝﾃﾞﾗ"(0-15) → "リンデラ"(0-12)
             assert_eq!(1, mapping.transformations.len());
             let transform = &mapping.transformations[0];
@@ -243,7 +243,7 @@ mod tests {
             assert_eq!(15, transform.original_end);
             assert_eq!(0, transform.filtered_start);
             assert_eq!(12, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 0;
             let end = 12;
@@ -273,15 +273,15 @@ mod tests {
                 "Rust製形態素解析器Linderaで日本語を形態素解析する。",
                 text.as_str()
             );
-            
-            // Verify transformation: "リンデラ"(25-37) → "Lindera"(25-32) 
+
+            // Verify transformation: "リンデラ"(25-37) → "Lindera"(25-32)
             assert_eq!(1, mapping.transformations.len());
             let transform = &mapping.transformations[0];
             assert_eq!(25, transform.original_start);
             assert_eq!(37, transform.original_end);
             assert_eq!(25, transform.filtered_start);
             assert_eq!(32, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 25;
             let end = 32;
@@ -291,7 +291,7 @@ mod tests {
             assert_eq!(25, correct_start);
             assert_eq!(37, correct_end);
             assert_eq!("リンデラ", &original_text[correct_start..correct_end]);
-            
+
             let start = 35;
             let end = 44;
             assert_eq!("日本語", &text[start..end]);
@@ -319,17 +319,17 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("10リットル", text.as_str());
-            
+
             // All three replacements are recorded because of byte length differences
             assert_eq!(3, mapping.transformations.len());
-            
+
             // Verify the last transformation: "㍑"(6-9) → "リットル"(2-14)
             let transform = &mapping.transformations[2];
             assert_eq!(6, transform.original_start);
             assert_eq!(9, transform.original_end);
             assert_eq!(2, transform.filtered_start);
             assert_eq!(14, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 2;
             let end = 14;

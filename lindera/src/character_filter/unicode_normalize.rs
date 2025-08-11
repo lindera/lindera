@@ -125,10 +125,10 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 #[cfg(test)]
 mod tests {
 
+    use crate::character_filter::CharacterFilter;
     use crate::character_filter::unicode_normalize::{
         UnicodeNormalizeCharacterFilter, UnicodeNormalizeCharacterFilterConfig,
     };
-    use crate::character_filter::CharacterFilter;
 
     #[test]
     fn test_unicode_normalize_character_filter_config() {
@@ -213,7 +213,7 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("ABCDE", text.as_str());
-            
+
             // Verify transformations: 5 full-width chars converted to half-width
             assert_eq!(5, mapping.transformations.len());
             let transform = &mapping.transformations[2]; // Check "Ｃ" (6-9) → "C" (2-3)
@@ -221,7 +221,7 @@ mod tests {
             assert_eq!(9, transform.original_end);
             assert_eq!(2, transform.filtered_start);
             assert_eq!(3, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 2;
             let end = 4;
@@ -239,17 +239,17 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("10ガロン", text.as_str());
-            
+
             // Multiple transformations: 2 character normalizations + 1 expansion
             assert_eq!(3, mapping.transformations.len());
-            
+
             // Test expansion: "㌎"(6-9) → "ガロン"(2-11)
             let expand_transform = &mapping.transformations[2];
             assert_eq!(6, expand_transform.original_start);
             assert_eq!(9, expand_transform.original_end);
             assert_eq!(2, expand_transform.filtered_start);
             assert_eq!(11, expand_transform.filtered_end);
-            
+
             let start = 2;
             let end = 11;
             assert_eq!("ガロン", &text[start..end]);
@@ -278,7 +278,7 @@ mod tests {
         let mut text = original_text.to_string();
         let mapping = filter.apply(&mut text).unwrap();
         assert_eq!("ABCDE", text.as_str());
-        
+
         // Same as NFKC for this example
         assert_eq!(5, mapping.transformations.len());
         let transform = &mapping.transformations[2];

@@ -5,7 +5,7 @@
 /// and utilities to manage text offsets during transformations.
 ///
 /// # Offset Mapping System
-/// 
+///
 /// The offset mapping system tracks how character positions change during text filtering,
 /// allowing accurate mapping between filtered text positions and original text positions.
 /// This is essential for maintaining correct token byte offsets in tokenization.
@@ -29,7 +29,7 @@
 ///
 /// This creates three transformations:
 /// 1. "１" (0-3) → "1" (0-1)
-/// 2. "０" (3-6) → "0" (1-2) 
+/// 2. "０" (3-6) → "0" (1-2)
 /// 3. "㍑" (6-9) → "リットル" (2-14)
 ///
 /// ### Position Correction
@@ -185,7 +185,6 @@ impl OffsetMapping {
         self.transformations.is_empty()
     }
 
-
     /// Correct a position in filtered text to the corresponding position in original text.
     ///
     /// This method maps a byte position in the filtered text back to the corresponding
@@ -212,7 +211,7 @@ impl OffsetMapping {
     /// ```rust
     /// // For "１０㍑" → "10リットル" with transformations recorded
     /// let mapping = /* ... transformations for the above conversion */;
-    /// 
+    ///
     /// // Position 2 in "10リットル" ("リットル" start)
     /// let original_pos = mapping.correct_offset(2, 14); // returns 6
     /// // This maps to position 6 in "１０㍑" ("㍑" start)
@@ -227,12 +226,14 @@ impl OffsetMapping {
 
         // Find the transformation that affects this offset
         for transformation in &self.transformations {
-            if clamped_offset >= transformation.filtered_start && clamped_offset <= transformation.filtered_end {
+            if clamped_offset >= transformation.filtered_start
+                && clamped_offset <= transformation.filtered_end
+            {
                 // Offset is within this transformation range
                 let filtered_offset = clamped_offset - transformation.filtered_start;
                 let original_len = transformation.original_end - transformation.original_start;
                 let filtered_len = transformation.filtered_end - transformation.filtered_start;
-                
+
                 if filtered_len == 0 {
                     // Deletion case
                     return transformation.original_start;
@@ -250,8 +251,10 @@ impl OffsetMapping {
                 let mut corrected = clamped_offset;
                 for prev_transform in &self.transformations {
                     if prev_transform.filtered_start < transformation.filtered_start {
-                        let original_len = prev_transform.original_end - prev_transform.original_start;
-                        let filtered_len = prev_transform.filtered_end - prev_transform.filtered_start;
+                        let original_len =
+                            prev_transform.original_end - prev_transform.original_start;
+                        let filtered_len =
+                            prev_transform.filtered_end - prev_transform.filtered_start;
                         let diff = original_len as i64 - filtered_len as i64;
                         corrected = (corrected as i64 + diff) as usize;
                     }
@@ -268,7 +271,7 @@ impl OffsetMapping {
             let diff = original_len as i64 - filtered_len as i64;
             corrected = (corrected as i64 + diff) as usize;
         }
-        
+
         // Handle case where original offset was beyond text length
         if offset > text_len {
             // Preserve the overshoot in the original text space
@@ -367,7 +370,6 @@ impl<T: CharacterFilter + Clone + 'static> CharacterFilterClone for T {
         BoxCharacterFilter::from(self.clone())
     }
 }
-
 
 pub struct CharacterFilterLoader {}
 
@@ -503,5 +505,4 @@ mod tests {
         let composed = mapping1.compose(mapping2);
         assert_eq!(composed.transformations.len(), 2);
     }
-
 }

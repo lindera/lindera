@@ -101,8 +101,8 @@ impl CharacterFilter for RegexCharacterFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
     use crate::character_filter::CharacterFilter;
+    use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
 
     #[test]
     fn test_regex_character_filter_config() {
@@ -146,7 +146,7 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("Linderaは形態素解析器です。", text.as_str());
-            
+
             // Verify transformation: "リンデラ"(0-12) → "Lindera"(0-7)
             assert_eq!(1, mapping.transformations.len());
             let transform = &mapping.transformations[0];
@@ -154,7 +154,7 @@ mod tests {
             assert_eq!(12, transform.original_end);
             assert_eq!(0, transform.filtered_start);
             assert_eq!(7, transform.filtered_end);
-            
+
             // Test text fragments
             let start = 0;
             let end = 7;
@@ -180,7 +180,7 @@ mod tests {
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
             assert_eq!("a b c", text.as_str());
-            
+
             // Verify transformations: two groups of spaces compressed
             assert_eq!(2, mapping.transformations.len());
             let transform1 = &mapping.transformations[0];
@@ -188,13 +188,13 @@ mod tests {
             assert_eq!(6, transform1.original_end);
             assert_eq!(1, transform1.filtered_start);
             assert_eq!(2, transform1.filtered_end);
-            
+
             let transform2 = &mapping.transformations[1];
             assert_eq!(7, transform2.original_start);
             assert_eq!(12, transform2.original_end);
             assert_eq!(3, transform2.filtered_start);
             assert_eq!(4, transform2.filtered_end);
-            
+
             // Test text fragments
             let start = 2;
             let end = 3;
