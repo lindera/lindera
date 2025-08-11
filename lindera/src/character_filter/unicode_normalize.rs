@@ -88,7 +88,6 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
     /// Apply the filter using the OffsetMapping API
     fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping> {
-
         let mut filtered_text = String::with_capacity(text.len());
         let mut mapping = OffsetMapping::new();
         let mut input_start = 0;

@@ -172,17 +172,16 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
 
     /// Apply the filter using the OffsetMapping API
     fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping> {
-        
         let mut filtered_text = String::with_capacity(text.len());
         let mut mapping = OffsetMapping::new();
-        
+
         let text_chars = text.chars().collect::<Vec<char>>();
         let mut iter_marks = BTreeMap::new();
         let mut byte_pos = 0_usize;
-        
+
         for (i, c) in text_chars.iter().enumerate() {
             let char_byte_len = c.len_utf8();
-            
+
             match c {
                 &KANJI_ITERATION_MARK if self.normalize_kanji => {
                     iter_marks.insert(i, c);
@@ -198,9 +197,12 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
                 _ => {
                     if !iter_marks.is_empty() {
                         let normalized_text = self.normalize(&iter_marks, &text_chars);
-                        let original_len: usize = iter_marks.keys().map(|&idx| text_chars[idx].len_utf8()).sum();
+                        let original_len: usize = iter_marks
+                            .keys()
+                            .map(|&idx| text_chars[idx].len_utf8())
+                            .sum();
                         let replacement_len = normalized_text.len();
-                        
+
                         // Record transformation if text changed
                         if original_len != replacement_len {
                             let transformation = Transformation::new(
@@ -211,7 +213,7 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
                             );
                             mapping.add_transformation(transformation);
                         }
-                        
+
                         filtered_text.push_str(&normalized_text);
                         byte_pos += original_len;
                         iter_marks.clear();
@@ -225,9 +227,12 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
         // Handle remaining iteration marks at the end
         if !iter_marks.is_empty() {
             let normalized_text = self.normalize(&iter_marks, &text_chars);
-            let original_len: usize = iter_marks.keys().map(|&idx| text_chars[idx].len_utf8()).sum();
+            let original_len: usize = iter_marks
+                .keys()
+                .map(|&idx| text_chars[idx].len_utf8())
+                .sum();
             let replacement_len = normalized_text.len();
-            
+
             // Record transformation if text changed
             if original_len != replacement_len {
                 let transformation = Transformation::new(
@@ -238,7 +243,7 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
                 );
                 mapping.add_transformation(transformation);
             }
-            
+
             filtered_text.push_str(&normalized_text);
         }
 

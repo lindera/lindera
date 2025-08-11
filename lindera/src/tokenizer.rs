@@ -342,7 +342,7 @@ impl Tokenizer {
 
         // Store the final text length for offset correction
         let final_text_len = normalized_text.len();
-        
+
         // Segment a text.
         let mut tokens = self.segmenter.segment(normalized_text)?;
 

@@ -167,7 +167,6 @@ impl OffsetMapping {
     }
 }
 
-
 /// The `CharacterFilter` trait defines an interface for filters that preprocess text before tokenization.
 ///
 /// # Required Methods
@@ -418,7 +417,6 @@ mod tests {
         assert_eq!(diffs, vec![2]);
         assert_eq!(text_len, 8);
     }
-
 
     #[test]
     fn test_offset_mapping_compose() {
