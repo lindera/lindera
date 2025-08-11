@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::character_filter::CharacterFilter;
+use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
 use crate::error::LinderaErrorKind;
 
 pub const JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str = "japanese_iteration_mark";
@@ -170,46 +170,19 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
         JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME
     }
 
-    /// Applies iteration mark normalization to the input text and returns a filtered version of the text.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - A mutable reference to the input text (`String`). The text will be modified in place after applying the iteration mark normalization.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `LinderaResult` containing:
-    /// - An empty vector of offsets (`Vec<usize>`) since no specific offset tracking is required.
-    /// - An empty vector of differences (`Vec<i64>`) since no length difference tracking is needed.
-    /// - The final length (`usize`) of the modified text.
-    ///
-    /// # Process
-    ///
-    /// 1. **Character Iteration**:
-    ///    - The function iterates through each character in the input text.
-    ///    - If the character is an iteration mark (e.g., `KANJI_ITERATION_MARK`, `HIRAGANA_ITERATION_MARK`), it is stored in a map (`iter_marks`) for normalization if the corresponding configuration is enabled (`normalize_kanji` or `normalize_kana`).
-    ///    - If a non-iteration mark character is encountered, any collected iteration marks are normalized and appended to the `filtered_text`. The non-iteration mark character is also appended.
-    ///
-    /// 2. **Normalization**:
-    ///    - When iteration marks are detected and normalization is enabled, the corresponding normalized string is generated using the `normalize` method and appended to the `filtered_text`.
-    ///
-    /// 3. **Final Text Assignment**:
-    ///    - After all characters are processed, the constructed `filtered_text` is assigned back to the original `text`.
-    ///
-    /// # Special Cases:
-    ///
-    /// - If there are no iteration marks, the original text is left mostly unchanged.
-    /// - If the text ends with iteration marks, those are normalized and appended to the final result.
-    ///
-    /// # Errors
-    ///
-    /// No specific errors are expected from this function. However, if an issue arises with the `normalize` method, an error will be returned.
-    fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
+    /// Apply the filter using the OffsetMapping API
+    fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping> {
+        
         let mut filtered_text = String::with_capacity(text.len());
-
+        let mut mapping = OffsetMapping::new();
+        
         let text_chars = text.chars().collect::<Vec<char>>();
         let mut iter_marks = BTreeMap::new();
+        let mut byte_pos = 0_usize;
+        
         for (i, c) in text_chars.iter().enumerate() {
+            let char_byte_len = c.len_utf8();
+            
             match c {
                 &KANJI_ITERATION_MARK if self.normalize_kanji => {
                     iter_marks.insert(i, c);
@@ -224,22 +197,53 @@ impl CharacterFilter for JapaneseIterationMarkCharacterFilter {
                 }
                 _ => {
                     if !iter_marks.is_empty() {
-                        filtered_text.push_str(&self.normalize(&iter_marks, &text_chars));
+                        let normalized_text = self.normalize(&iter_marks, &text_chars);
+                        let original_len: usize = iter_marks.keys().map(|&idx| text_chars[idx].len_utf8()).sum();
+                        let replacement_len = normalized_text.len();
+                        
+                        // Record transformation if text changed
+                        if original_len != replacement_len {
+                            let transformation = Transformation::new(
+                                byte_pos,
+                                byte_pos + original_len,
+                                filtered_text.len(),
+                                filtered_text.len() + replacement_len,
+                            );
+                            mapping.add_transformation(transformation);
+                        }
+                        
+                        filtered_text.push_str(&normalized_text);
+                        byte_pos += original_len;
                         iter_marks.clear();
                     }
                     filtered_text.push(*c);
+                    byte_pos += char_byte_len;
                 }
             }
         }
 
+        // Handle remaining iteration marks at the end
         if !iter_marks.is_empty() {
-            filtered_text.push_str(&self.normalize(&iter_marks, &text_chars));
+            let normalized_text = self.normalize(&iter_marks, &text_chars);
+            let original_len: usize = iter_marks.keys().map(|&idx| text_chars[idx].len_utf8()).sum();
+            let replacement_len = normalized_text.len();
+            
+            // Record transformation if text changed
+            if original_len != replacement_len {
+                let transformation = Transformation::new(
+                    byte_pos,
+                    byte_pos + original_len,
+                    filtered_text.len(),
+                    filtered_text.len() + replacement_len,
+                );
+                mapping.add_transformation(transformation);
+            }
+            
+            filtered_text.push_str(&normalized_text);
         }
 
         *text = filtered_text;
-
-        // The offsets and diffs are not changed by this filter.
-        Ok((Vec::new(), Vec::new(), text.len()))
+        Ok(mapping)
     }
 }
 
@@ -410,7 +414,8 @@ mod tests {
         {
             let original_text = "ここは騒々しい";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ここは騒騒しい", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -420,7 +425,8 @@ mod tests {
         {
             let original_text = "祇園 さゝ木";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("祇園 ささ木", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -430,7 +436,8 @@ mod tests {
         {
             let original_text = "いすゞ自動車株式会社";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("いすず自動車株式会社", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -440,7 +447,8 @@ mod tests {
         {
             let original_text = "サヽキ印刷";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ササキ印刷", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -450,7 +458,8 @@ mod tests {
         {
             let original_text = "愛知県岡崎市牧平町マカヾイツ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("愛知県岡崎市牧平町マカガイツ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -460,7 +469,8 @@ mod tests {
         {
             let original_text = "馬鹿々々しい";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("馬鹿馬鹿しい", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -470,7 +480,8 @@ mod tests {
         {
             let original_text = "ところゞゝゝ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -480,7 +491,8 @@ mod tests {
         {
             let original_text = "じゝ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("じし", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -490,7 +502,8 @@ mod tests {
         {
             let original_text = "じゞ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("じじ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -500,7 +513,8 @@ mod tests {
         {
             let original_text = "ジヽ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ジシ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -510,7 +524,8 @@ mod tests {
         {
             let original_text = "ジヾ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ジジ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -520,7 +535,8 @@ mod tests {
         {
             let original_text = "ところゞゝゝゞゝゝ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころゞゝゝ", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());
@@ -530,7 +546,8 @@ mod tests {
         {
             let original_text = "ところゞゝゝ馬鹿々々しく騒々しい";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころ馬鹿馬鹿しく騒騒しい", text);
             assert!(offsets.is_empty());
             assert!(diffs.is_empty());

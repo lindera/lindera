@@ -5,7 +5,7 @@ use yada::DoubleArray;
 use yada::builder::DoubleArrayBuilder;
 
 use crate::LinderaResult;
-use crate::character_filter::{CharacterFilter, add_offset_diff};
+use crate::character_filter::{CharacterFilter, OffsetMapping, Transformation};
 use crate::error::LinderaErrorKind;
 
 pub const MAPPING_CHARACTER_FILTER_NAME: &str = "mapping";
@@ -56,44 +56,13 @@ impl CharacterFilter for MappingCharacterFilter {
         MAPPING_CHARACTER_FILTER_NAME
     }
 
-    /// Applies the configured mappings to the input text, replacing matching substrings and tracking offsets.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - A mutable reference to the input text (`String`) that will be modified in place.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `LinderaResult` containing:
-    /// - A vector of offsets where modifications occurred.
-    /// - A vector of differences (in bytes) for each modification.
-    /// - The final length of the modified text.
-    ///
-    /// # Process
-    ///
-    /// 1. **Prefix Matching**:
-    ///    - The function uses a trie structure to search for common prefixes in the input text.
-    ///    - If a match is found, the corresponding replacement text is inserted into the output, and the difference in length between the original and replacement is recorded.
-    ///
-    /// 2. **Offset and Difference Tracking**:
-    ///    - If the replacement text is shorter or longer than the matched text, the offsets and differences are adjusted accordingly to maintain the correct byte positions in the modified text.
-    ///
-    /// 3. **Text Construction**:
-    ///    - The function constructs the filtered text in `filtered_text` by pushing characters or replacements into it while updating the input start position.
-    ///
-    /// # Returns
-    ///
-    /// - `offsets`: A vector of byte positions in the original text where changes occurred.
-    /// - `diffs`: A vector of byte differences at each position where changes were made.
-    /// - `text.len()`: The length of the modified text.
-    fn apply<'a>(&self, text: &mut String) -> LinderaResult<(Vec<usize>, Vec<i64>, usize)> {
-        let mut offsets: Vec<usize> = Vec::new();
-        let mut diffs: Vec<i64> = Vec::new();
+    /// Apply the filter using the OffsetMapping API
+    fn apply(&self, text: &mut String) -> LinderaResult<OffsetMapping> {
 
         let mut filtered_text = String::with_capacity(text.len());
+        let mut mapping = OffsetMapping::new();
         let mut input_start = 0_usize;
         let len = text.len();
-        let mut prev_diff = 0_i64;
 
         while input_start < len {
             let suffix = &text[input_start..];
@@ -107,30 +76,19 @@ impl CharacterFilter for MappingCharacterFilter {
                     let input_text = &text[input_start..input_start + input_len];
                     let replacement_text = &self.mapping[input_text];
                     let replacement_len = replacement_text.len();
-                    let diff_len = input_len as i64 - replacement_len as i64;
-                    let input_offset = input_start + input_len;
 
-                    if diff_len != 0 {
-                        if diff_len > 0 {
-                            // Replacement is shorter than matched surface.
-                            let offset = (input_offset as i64 - diff_len - prev_diff) as usize;
-                            let diff = prev_diff + diff_len;
-                            add_offset_diff(&mut offsets, &mut diffs, offset, diff);
-                        } else {
-                            // Replacement is longer than matched surface.
-                            let output_offset = (input_offset as i64 - prev_diff) as usize;
-                            for extra_idx in 0..diff_len.unsigned_abs() as usize {
-                                let offset = output_offset + extra_idx;
-                                let diff = prev_diff - extra_idx as i64 - 1;
-                                add_offset_diff(&mut offsets, &mut diffs, offset, diff);
-                            }
-                        }
-                        prev_diff += diff_len;
+                    // Record transformation if text changed
+                    if input_len != replacement_len {
+                        let transformation = Transformation::new(
+                            input_start,
+                            input_start + input_len,
+                            filtered_text.len(),
+                            filtered_text.len() + replacement_len,
+                        );
+                        mapping.add_transformation(transformation);
                     }
 
                     filtered_text.push_str(replacement_text);
-
-                    // move start offset
                     input_start += input_len;
                 }
                 None => {
@@ -145,8 +103,7 @@ impl CharacterFilter for MappingCharacterFilter {
         }
 
         *text = filtered_text;
-
-        Ok((offsets, diffs, text.len()))
+        Ok(mapping)
     }
 }
 
@@ -211,7 +168,8 @@ mod tests {
 
             let original_text = "ｱｲｳｴｵ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("アイウエオ", text.as_str());
             assert_eq!(Vec::<usize>::new(), offsets);
             assert_eq!(Vec::<i64>::new(), diffs);
@@ -241,7 +199,8 @@ mod tests {
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("リンデラ", text.as_str());
             assert_eq!(vec![9], offsets);
             assert_eq!(vec![3], diffs);
@@ -268,7 +227,8 @@ mod tests {
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("リンデラ", text.as_str());
             assert_eq!(vec![12], offsets);
             assert_eq!(vec![3], diffs);
@@ -295,7 +255,8 @@ mod tests {
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "Rust製形態素解析器リンデラで日本語を形態素解析する。";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!(
                 "Rust製形態素解析器Linderaで日本語を形態素解析する。",
                 text.as_str()
@@ -335,7 +296,8 @@ mod tests {
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "１０㍑";
             let mut text = original_text.to_string();
-            let (offsets, diffs, text_len) = filter.apply(&mut text).unwrap();
+            let mapping = filter.apply(&mut text).unwrap();
+            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("10リットル", text.as_str());
             assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
             assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
