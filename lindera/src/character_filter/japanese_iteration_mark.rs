@@ -420,143 +420,104 @@ mod tests {
             let original_text = "ここは騒々しい";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ここは騒騒しい", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 21);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "祇園 さゝ木";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("祇園 ささ木", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 16);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "いすゞ自動車株式会社";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("いすず自動車株式会社", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 30);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "サヽキ印刷";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ササキ印刷", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 15);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "愛知県岡崎市牧平町マカヾイツ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("愛知県岡崎市牧平町マカガイツ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 42);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "馬鹿々々しい";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("馬鹿馬鹿しい", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 18);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "ところゞゝゝ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 18);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "じゝ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("じし", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 6);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "じゞ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("じじ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 6);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "ジヽ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ジシ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 6);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "ジヾ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ジジ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 6);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "ところゞゝゝゞゝゝ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころゞゝゝ", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 27);
+            assert!(mapping.is_empty());
         }
 
         {
             let original_text = "ところゞゝゝ馬鹿々々しく騒々しい";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("ところどころ馬鹿馬鹿しく騒騒しい", text);
-            assert!(offsets.is_empty());
-            assert!(diffs.is_empty());
-            assert_eq!(text_len, 48);
+            assert!(mapping.is_empty());
         }
     }
 

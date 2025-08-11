@@ -4,6 +4,51 @@
 /// also provides functionality to load character filters from configuration values or CLI flags,
 /// and utilities to manage text offsets during transformations.
 ///
+/// # Offset Mapping System
+/// 
+/// The offset mapping system tracks how character positions change during text filtering,
+/// allowing accurate mapping between filtered text positions and original text positions.
+/// This is essential for maintaining correct token byte offsets in tokenization.
+///
+/// ## How Offset Mapping Works
+///
+/// When text is transformed by character filters, each transformation is recorded as a
+/// `Transformation` that captures:
+/// - Original text byte range (before filtering)  
+/// - Filtered text byte range (after filtering)
+///
+/// ### Example: "１０㍑" → "10リットル"
+///
+/// ```text
+/// Original:  "１０㍑"
+/// Positions:  0-3  3-6  6-9     (byte positions)
+///              ↓    ↓    ↓
+/// Filtered:  "10リットル"  
+/// Positions:  0-1  1-2  2-14    (byte positions)
+/// ```
+///
+/// This creates three transformations:
+/// 1. "１" (0-3) → "1" (0-1)
+/// 2. "０" (3-6) → "0" (1-2) 
+/// 3. "㍑" (6-9) → "リットル" (2-14)
+///
+/// ### Position Correction
+///
+/// To map a filtered text position back to the original:
+/// 1. Find which transformation range contains the position
+/// 2. Calculate the corresponding position in the original text
+/// 3. Return the original text position
+///
+/// ```rust
+/// // For filtered position 2 ("リットル" start):
+/// // → finds transformation[2]: filtered_range(2-14) contains position 2
+/// // → returns original_start: 6 (start of "㍑")
+/// let original_pos = mapping.correct_offset(2, text.len()); // returns 6
+/// ```
+///
+/// This ensures that tokenizer can provide accurate byte offsets relative to the original
+/// input text, even after multiple character transformations.
+///
 /// # Modules
 /// - `japanese_iteration_mark`: Contains the Japanese iteration mark character filter.
 /// - `mapping`: Contains the mapping character filter.
@@ -21,11 +66,7 @@
 /// - `Transformation`: A record of text transformation with original and filtered positions.
 ///
 /// # Functions
-/// - `add_offset_diff`: Adds an offset difference to the given offsets and diffs vectors.
-/// - `correct_offset`: Corrects the given offset based on the provided offsets and diffs.
-///
-/// # Tests
-/// - `test_correct_offset`: Tests the `correct_offset` function with various cases.
+/// No public utility functions are exposed, as all offset management is handled through OffsetMapping.
 pub mod japanese_iteration_mark;
 pub mod mapping;
 pub mod regex;
@@ -47,7 +88,23 @@ use crate::character_filter::unicode_normalize::{
 use crate::error::LinderaErrorKind;
 use crate::parse_cli_flag;
 
-/// A transformation record for offset mapping between original and filtered text
+/// A transformation record for offset mapping between original and filtered text.
+///
+/// This structure captures a single text transformation, recording how a specific
+/// segment of the original text maps to a segment in the filtered text.
+///
+/// # Example
+///
+/// For the transformation "㍑" → "リットル":
+/// ```rust
+/// let transformation = Transformation::new(
+///     6, 9,    // original: "㍑" at bytes 6-9
+///     2, 14    // filtered: "リットル" at bytes 2-14  
+/// );
+/// ```
+///
+/// This allows precise mapping between any position in the filtered text
+/// back to the corresponding position in the original text.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Transformation {
     /// Start position in the original text (in bytes)
@@ -76,7 +133,33 @@ impl Transformation {
     }
 }
 
-/// Offset mapping structure for tracking position changes during text filtering
+/// Offset mapping structure for tracking position changes during text filtering.
+///
+/// This structure maintains a list of all text transformations that occurred during
+/// character filtering, enabling accurate position mapping between filtered and original text.
+///
+/// # Usage Pattern
+///
+/// 1. **Record transformations** during filtering:
+/// ```rust
+/// let mut mapping = OffsetMapping::new();
+/// // When "㍑" → "リットル" transformation occurs:
+/// mapping.add_transformation(Transformation::new(6, 9, 2, 14));
+/// ```
+///
+/// 2. **Correct positions** from filtered to original:
+/// ```rust
+/// let original_pos = mapping.correct_offset(filtered_pos, text.len());
+/// ```
+///
+/// # Multi-Filter Support
+///
+/// When multiple character filters are applied, their mappings are composed:
+/// ```rust
+/// let combined_mapping = mapping1.compose(mapping2);
+/// ```
+///
+/// This ensures accurate position tracking through complex filter chains.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OffsetMapping {
     /// List of transformations applied to the text
@@ -102,49 +185,98 @@ impl OffsetMapping {
         self.transformations.is_empty()
     }
 
-    /// Convert this OffsetMapping to the legacy format (Vec<usize>, Vec<i64>, usize)
-    /// This method ensures backward compatibility with existing code
-    pub fn to_legacy_format(&self, text_len: usize) -> (Vec<usize>, Vec<i64>, usize) {
+
+    /// Correct a position in filtered text to the corresponding position in original text.
+    ///
+    /// This method maps a byte position in the filtered text back to the corresponding
+    /// byte position in the original text, accounting for all recorded transformations.
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - Byte position in the filtered text
+    /// * `text_len` - Length of the filtered text (used for boundary validation)
+    ///
+    /// # Returns
+    ///
+    /// The corresponding byte position in the original text.
+    ///
+    /// # Algorithm
+    ///
+    /// 1. If no transformations exist, return the offset unchanged
+    /// 2. Find the transformation whose filtered range contains the offset
+    /// 3. Map the offset to the corresponding position in the original range
+    /// 4. If offset is outside all transformation ranges, adjust by cumulative differences
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// // For "１０㍑" → "10リットル" with transformations recorded
+    /// let mapping = /* ... transformations for the above conversion */;
+    /// 
+    /// // Position 2 in "10リットル" ("リットル" start)
+    /// let original_pos = mapping.correct_offset(2, 14); // returns 6
+    /// // This maps to position 6 in "１０㍑" ("㍑" start)
+    /// ```
+    pub fn correct_offset(&self, offset: usize, text_len: usize) -> usize {
         if self.transformations.is_empty() {
-            return (Vec::new(), Vec::new(), text_len);
+            return offset;
         }
 
-        let mut offsets = Vec::new();
-        let mut diffs = Vec::new();
-        let mut prev_diff = 0_i64;
+        // Boundary check: if offset is beyond text length, clamp to text length
+        let clamped_offset = offset.min(text_len);
 
+        // Find the transformation that affects this offset
         for transformation in &self.transformations {
-            let original_len = transformation.original_end - transformation.original_start;
-            let filtered_len = transformation.filtered_end - transformation.filtered_start;
-            let diff_len = original_len as i64 - filtered_len as i64;
-
-            if diff_len != 0 {
-                if diff_len > 0 {
-                    // Replacement is shorter than original
-                    let offset =
-                        (transformation.original_end as i64 - diff_len - prev_diff) as usize;
-                    let diff = prev_diff + diff_len;
-                    add_offset_diff(&mut offsets, &mut diffs, offset, diff);
+            if clamped_offset >= transformation.filtered_start && clamped_offset <= transformation.filtered_end {
+                // Offset is within this transformation range
+                let filtered_offset = clamped_offset - transformation.filtered_start;
+                let original_len = transformation.original_end - transformation.original_start;
+                let filtered_len = transformation.filtered_end - transformation.filtered_start;
+                
+                if filtered_len == 0 {
+                    // Deletion case
+                    return transformation.original_start;
+                } else if original_len == 0 {
+                    // Insertion case
+                    return transformation.original_start;
                 } else {
-                    // Replacement is longer than original
-                    let output_offset = (transformation.original_end as i64 - prev_diff) as usize;
-                    for extra_idx in 0..diff_len.unsigned_abs() as usize {
-                        let offset = output_offset + extra_idx;
-                        let diff = prev_diff - extra_idx as i64 - 1;
-                        add_offset_diff(&mut offsets, &mut diffs, offset, diff);
+                    // Substitution case - proportionally map within the range
+                    let ratio = filtered_offset as f64 / filtered_len as f64;
+                    let original_offset = (ratio * original_len as f64).round() as usize;
+                    return transformation.original_start + original_offset;
+                }
+            } else if clamped_offset < transformation.filtered_start {
+                // Offset is before this transformation, need to account for previous transformations
+                let mut corrected = clamped_offset;
+                for prev_transform in &self.transformations {
+                    if prev_transform.filtered_start < transformation.filtered_start {
+                        let original_len = prev_transform.original_end - prev_transform.original_start;
+                        let filtered_len = prev_transform.filtered_end - prev_transform.filtered_start;
+                        let diff = original_len as i64 - filtered_len as i64;
+                        corrected = (corrected as i64 + diff) as usize;
                     }
                 }
-                prev_diff += diff_len;
+                return corrected;
             }
         }
 
-        (offsets, diffs, text_len)
-    }
-
-    /// Correct a position in filtered text to the corresponding position in original text
-    pub fn correct_offset(&self, offset: usize, text_len: usize) -> usize {
-        let (offsets, diffs, text_len) = self.to_legacy_format(text_len);
-        correct_offset(offset, &offsets, &diffs, text_len)
+        // Offset is after all transformations - apply cumulative differences
+        let mut corrected = clamped_offset;
+        for transformation in &self.transformations {
+            let original_len = transformation.original_end - transformation.original_start;
+            let filtered_len = transformation.filtered_end - transformation.filtered_start;
+            let diff = original_len as i64 - filtered_len as i64;
+            corrected = (corrected as i64 + diff) as usize;
+        }
+        
+        // Handle case where original offset was beyond text length
+        if offset > text_len {
+            // Preserve the overshoot in the original text space
+            let overshoot = offset - text_len;
+            corrected + overshoot
+        } else {
+            corrected
+        }
     }
 
     /// Compose this mapping with another mapping (for chaining filters)
@@ -236,63 +368,6 @@ impl<T: CharacterFilter + Clone + 'static> CharacterFilterClone for T {
     }
 }
 
-pub fn add_offset_diff(offsets: &mut Vec<usize>, diffs: &mut Vec<i64>, offset: usize, diff: i64) {
-    match offsets.last() {
-        Some(&last_offset) => {
-            if last_offset == offset {
-                // Replace the last diff.
-                diffs.pop();
-                diffs.push(diff);
-            } else {
-                offsets.push(offset);
-                diffs.push(diff);
-            }
-        }
-        None => {
-            // First offset.
-            offsets.push(offset);
-            diffs.push(diff);
-        }
-    }
-}
-
-pub fn correct_offset(offset: usize, offsets: &[usize], diffs: &[i64], text_len: usize) -> usize {
-    // If `offsets` is empty, the `offset` specified is the correct offset.
-    if offsets.is_empty() {
-        return offset;
-    }
-
-    // Finds the `index` containing the specified `offset` from the `offsets`.
-    let index = match offsets.binary_search(&offset) {
-        Ok(i) => i,
-        Err(i) => {
-            if i != 0 {
-                // If `i` is greater than `0`, then `i - 1` is the `index` for the `diff` of the specified `offset`.
-                i - 1
-            } else if offset >= text_len {
-                // If offset is beyond the text length, use the last available diff
-                if diffs.is_empty() {
-                    return offset;
-                } else {
-                    diffs.len() - 1
-                }
-            } else {
-                // If the `offset` is not found and `i` is 0,
-                // the specified `offset` is the correct offset.
-                return offset;
-            }
-        }
-    };
-
-    // Ensure index is within bounds
-    if index >= diffs.len() {
-        return offset;
-    }
-
-    // The correct offset value can be calculated by adding `diff[index]` to the given `offset`.
-    let corrected = offset as i64 + diffs[index];
-    if corrected < 0 { 0 } else { corrected as usize }
-}
 
 pub struct CharacterFilterLoader {}
 
@@ -399,10 +474,9 @@ mod tests {
         let mapping = OffsetMapping::new();
         assert!(mapping.is_empty());
 
-        let (offsets, diffs, text_len) = mapping.to_legacy_format(10);
-        assert!(offsets.is_empty());
-        assert!(diffs.is_empty());
-        assert_eq!(text_len, 10);
+        // Empty mapping should not change offsets
+        assert_eq!(5, mapping.correct_offset(5, 10));
+        assert_eq!(0, mapping.correct_offset(0, 10));
     }
 
     #[test]
@@ -412,10 +486,10 @@ mod tests {
 
         assert!(!mapping.is_empty());
 
-        let (offsets, diffs, text_len) = mapping.to_legacy_format(8);
-        assert_eq!(offsets, vec![1]);
-        assert_eq!(diffs, vec![2]);
-        assert_eq!(text_len, 8);
+        // Test offset correction for shortening transformation (0-3) -> (0-1)
+        assert_eq!(0, mapping.correct_offset(0, 8)); // Start maps to start
+        assert_eq!(3, mapping.correct_offset(1, 8)); // End of filtered maps to end of original
+        assert_eq!(5, mapping.correct_offset(3, 8)); // After transformation, add diff
     }
 
     #[test]
@@ -430,40 +504,4 @@ mod tests {
         assert_eq!(composed.transformations.len(), 2);
     }
 
-    #[test]
-    fn test_correct_offset() {
-        let text = "ABCDEFG";
-        let filterd_text = "AbbbCdddFgggg";
-
-        let text_len = filterd_text.len();
-        let offsets = vec![2, 3, 7, 10, 11, 12];
-        let diffs = vec![-1, -2, -3, -4, -5, -6];
-
-        let start_b = 1;
-        let end_b = 4;
-        assert_eq!("bbb", &filterd_text[start_b..end_b]);
-        let correct_start_b = super::correct_offset(start_b, &offsets, &diffs, text_len);
-        let correct_end_b = super::correct_offset(end_b, &offsets, &diffs, text_len);
-        assert_eq!(1, correct_start_b);
-        assert_eq!(2, correct_end_b);
-        assert_eq!("B", &text[correct_start_b..correct_end_b]);
-
-        let start_g = 9;
-        let end_g = 13;
-        assert_eq!("gggg", &filterd_text[start_g..end_g]);
-        let correct_start_g = super::correct_offset(start_g, &offsets, &diffs, text_len);
-        let correct_end_g = super::correct_offset(end_g, &offsets, &diffs, text_len);
-        assert_eq!(6, correct_start_g);
-        assert_eq!(7, correct_end_g);
-        assert_eq!("G", &text[correct_start_g..correct_end_g]);
-
-        let start = 0;
-        let end = 13;
-        assert_eq!("AbbbCdddFgggg", &filterd_text[start..end]);
-        let correct_start = super::correct_offset(start, &offsets, &diffs, text_len);
-        let correct_end = super::correct_offset(end, &offsets, &diffs, text_len);
-        assert_eq!(0, correct_start);
-        assert_eq!(7, correct_end);
-        assert_eq!("ABCDEFG", &text[correct_start..correct_end]);
-    }
 }

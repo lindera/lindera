@@ -109,7 +109,7 @@ impl CharacterFilter for MappingCharacterFilter {
 #[cfg(test)]
 mod tests {
     use crate::character_filter::mapping::{MappingCharacterFilter, MappingCharacterFilterConfig};
-    use crate::character_filter::{CharacterFilter, correct_offset};
+    use crate::character_filter::CharacterFilter;
 
     #[test]
     fn test_mapping_character_filter_config() {
@@ -168,15 +168,15 @@ mod tests {
             let original_text = "ｱｲｳｴｵ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("アイウエオ", text.as_str());
-            assert_eq!(Vec::<usize>::new(), offsets);
-            assert_eq!(Vec::<i64>::new(), diffs);
+            assert!(mapping.is_empty());
+            
+            // Test text fragments
             let start = 3;
             let end = 6;
             assert_eq!("イ", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(3, correct_start);
             assert_eq!(6, correct_end);
             assert_eq!("ｲ", &original_text[correct_start..correct_end]);
@@ -199,15 +199,22 @@ mod tests {
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("リンデラ", text.as_str());
-            assert_eq!(vec![9], offsets);
-            assert_eq!(vec![3], diffs);
+            
+            // Verify transformation: "ﾃﾞ"(6-12) → "デ"(6-9)
+            assert_eq!(1, mapping.transformations.len());
+            let transform = &mapping.transformations[0];
+            assert_eq!(6, transform.original_start);
+            assert_eq!(12, transform.original_end);
+            assert_eq!(6, transform.filtered_start);
+            assert_eq!(9, transform.filtered_end);
+            
+            // Test text fragments
             let start = 6;
             let end = 9;
             assert_eq!("デ", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(6, correct_start);
             assert_eq!(12, correct_end);
             assert_eq!("ﾃﾞ", &original_text[correct_start..correct_end]);
@@ -227,15 +234,22 @@ mod tests {
             let original_text = "ﾘﾝﾃﾞﾗ";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("リンデラ", text.as_str());
-            assert_eq!(vec![12], offsets);
-            assert_eq!(vec![3], diffs);
+            
+            // Verify transformation: "ﾘﾝﾃﾞﾗ"(0-15) → "リンデラ"(0-12)
+            assert_eq!(1, mapping.transformations.len());
+            let transform = &mapping.transformations[0];
+            assert_eq!(0, transform.original_start);
+            assert_eq!(15, transform.original_end);
+            assert_eq!(0, transform.filtered_start);
+            assert_eq!(12, transform.filtered_end);
+            
+            // Test text fragments
             let start = 0;
             let end = 12;
             assert_eq!("リンデラ", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(0, correct_start);
             assert_eq!(15, correct_end);
             assert_eq!("ﾘﾝﾃﾞﾗ", &original_text[correct_start..correct_end]);
@@ -255,26 +269,34 @@ mod tests {
             let original_text = "Rust製形態素解析器リンデラで日本語を形態素解析する。";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!(
                 "Rust製形態素解析器Linderaで日本語を形態素解析する。",
                 text.as_str()
             );
-            assert_eq!(vec![32], offsets);
-            assert_eq!(vec![5], diffs);
+            
+            // Verify transformation: "リンデラ"(25-37) → "Lindera"(25-32) 
+            assert_eq!(1, mapping.transformations.len());
+            let transform = &mapping.transformations[0];
+            assert_eq!(25, transform.original_start);
+            assert_eq!(37, transform.original_end);
+            assert_eq!(25, transform.filtered_start);
+            assert_eq!(32, transform.filtered_end);
+            
+            // Test text fragments
             let start = 25;
             let end = 32;
             assert_eq!("Lindera", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(25, correct_start);
             assert_eq!(37, correct_end);
             assert_eq!("リンデラ", &original_text[correct_start..correct_end]);
+            
             let start = 35;
             let end = 44;
             assert_eq!("日本語", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(40, correct_start);
             assert_eq!(49, correct_end);
             assert_eq!("日本語", &original_text[correct_start..correct_end]);
@@ -290,29 +312,30 @@ mod tests {
                 }
             }
             "#;
-            let config = serde_json::from_str::<MappingCharacterFilterConfig>(config_str).unwrap();
+            let config = serde_json::from_str(config_str).unwrap();
 
             let filter = MappingCharacterFilter::from_config(&config).unwrap();
             let original_text = "１０㍑";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("10リットル", text.as_str());
-            assert_eq!(vec![1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13], offsets);
-            assert_eq!(vec![2, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5], diffs);
-            let start = 0;
-            let end = 2;
-            assert_eq!("10", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
-            assert_eq!(0, correct_start);
-            assert_eq!(6, correct_end);
-            assert_eq!("１０", &original_text[correct_start..correct_end]);
+            
+            // All three replacements are recorded because of byte length differences
+            assert_eq!(3, mapping.transformations.len());
+            
+            // Verify the last transformation: "㍑"(6-9) → "リットル"(2-14)
+            let transform = &mapping.transformations[2];
+            assert_eq!(6, transform.original_start);
+            assert_eq!(9, transform.original_end);
+            assert_eq!(2, transform.filtered_start);
+            assert_eq!(14, transform.filtered_end);
+            
+            // Test text fragments
             let start = 2;
             let end = 14;
             assert_eq!("リットル", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(6, correct_start);
             assert_eq!(9, correct_end);
             assert_eq!("㍑", &original_text[correct_start..correct_end]);

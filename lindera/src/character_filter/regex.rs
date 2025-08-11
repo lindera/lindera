@@ -102,7 +102,7 @@ impl CharacterFilter for RegexCharacterFilter {
 #[cfg(test)]
 mod tests {
     use crate::character_filter::regex::{RegexCharacterFilter, RegexCharacterFilterConfig};
-    use crate::character_filter::{CharacterFilter, correct_offset};
+    use crate::character_filter::CharacterFilter;
 
     #[test]
     fn test_regex_character_filter_config() {
@@ -145,15 +145,22 @@ mod tests {
             let original_text = "リンデラは形態素解析器です。";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("Linderaは形態素解析器です。", text.as_str());
-            assert_eq!(vec![7], offsets);
-            assert_eq!(vec![5], diffs);
+            
+            // Verify transformation: "リンデラ"(0-12) → "Lindera"(0-7)
+            assert_eq!(1, mapping.transformations.len());
+            let transform = &mapping.transformations[0];
+            assert_eq!(0, transform.original_start);
+            assert_eq!(12, transform.original_end);
+            assert_eq!(0, transform.filtered_start);
+            assert_eq!(7, transform.filtered_end);
+            
+            // Test text fragments
             let start = 0;
             let end = 7;
             assert_eq!("Lindera", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(0, correct_start);
             assert_eq!(12, correct_end);
             assert_eq!("リンデラ", &original_text[correct_start..correct_end]);
@@ -172,15 +179,28 @@ mod tests {
             let original_text = "a     b     c";
             let mut text = original_text.to_string();
             let mapping = filter.apply(&mut text).unwrap();
-            let (offsets, diffs, text_len) = mapping.to_legacy_format(text.len());
             assert_eq!("a b c", text.as_str());
-            assert_eq!(vec![2, 4], offsets);
-            assert_eq!(vec![4, 8], diffs);
+            
+            // Verify transformations: two groups of spaces compressed
+            assert_eq!(2, mapping.transformations.len());
+            let transform1 = &mapping.transformations[0];
+            assert_eq!(1, transform1.original_start);
+            assert_eq!(6, transform1.original_end);
+            assert_eq!(1, transform1.filtered_start);
+            assert_eq!(2, transform1.filtered_end);
+            
+            let transform2 = &mapping.transformations[1];
+            assert_eq!(7, transform2.original_start);
+            assert_eq!(12, transform2.original_end);
+            assert_eq!(3, transform2.filtered_start);
+            assert_eq!(4, transform2.filtered_end);
+            
+            // Test text fragments
             let start = 2;
             let end = 3;
             assert_eq!("b", &text[start..end]);
-            let correct_start = correct_offset(start, &offsets, &diffs, text_len);
-            let correct_end = correct_offset(end, &offsets, &diffs, text_len);
+            let correct_start = mapping.correct_offset(start, text.len());
+            let correct_end = mapping.correct_offset(end, text.len());
             assert_eq!(6, correct_start);
             assert_eq!(7, correct_end);
             assert_eq!("b", &original_text[correct_start..correct_end]);
