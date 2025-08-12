@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "IPADIC".to_string(), // Dictionary name
+        "ipadic".to_string(), // Dictionary name
         "EUC-JP".to_string(), // Encoding for IPADIC
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary
@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // skip_invalid_cost_or_id
         true,                 // normalize_details
         Schema::new(
-            "IPADIC".to_string(),         // Schema name
-            "2.7.0-20070801".to_string(), // Schema version
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "IPADIC-NEologd".to_string(), // Dictionary name
+        "ipadic-neologd".to_string(), // Dictionary name
         "UTF-8".to_string(),          // Encoding for IPADIC NEologd
         Algorithm::Deflate,           // Compression algorithm
         3,                            // Number of fields in simple user dictionary
@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                        // skip_invalid_cost_or_id
         true,                         // normalize_details is true for IPAdic-NEologd
         Schema::new(
-            "IPADIC-NEologd".to_string(), // Schema name
-            "0.0.7-20200820".to_string(), // Schema version
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

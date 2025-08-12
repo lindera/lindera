@@ -1,12 +1,16 @@
 #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
 use std::borrow::Cow;
-use std::str::FromStr;
 
 use serde_json::Value;
 
+#[cfg(feature = "ipadic")]
+use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
+#[cfg(feature = "ipadic-neologd")]
+use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
+#[cfg(feature = "unidic")]
+use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
+
 use crate::LinderaResult;
-use crate::dictionary::DictionaryKind;
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
 
@@ -18,28 +22,21 @@ pub type JapaneseBaseFormTokenFilterConfig = Value;
 /// This acts as a lemmatizer for verbs and adjectives.
 ///
 #[derive(Clone, Debug)]
-pub struct JapaneseBaseFormTokenFilter {
-    kind: DictionaryKind,
-}
+pub struct JapaneseBaseFormTokenFilter {}
 
 impl JapaneseBaseFormTokenFilter {
-    pub fn new(kind: DictionaryKind) -> Self {
-        Self { kind }
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub fn from_config(config: &JapaneseBaseFormTokenFilterConfig) -> LinderaResult<Self> {
-        let kind = config
-            .get("kind")
-            .ok_or_else(|| {
-                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("missing kind config."))
-            })?
-            .as_str()
-            .ok_or_else(|| {
-                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("invalid kind config."))
-            })?;
-        let kind = DictionaryKind::from_str(kind)?;
+    pub fn from_config(_config: &JapaneseBaseFormTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new())
+    }
+}
 
-        Ok(Self::new(kind))
+impl Default for JapaneseBaseFormTokenFilter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -48,68 +45,43 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
         JAPANESE_BASE_FORM_TOKEN_FILTER_NAME
     }
 
-    /// Applies the base form normalization to tokens based on the dictionary type.
-    ///
-    /// # Arguments
-    ///
-    /// * `tokens` - A mutable reference to a vector of tokens. Each token's `text` will be modified to its base form according to the specified dictionary.
-    ///
-    /// # Returns
-    ///
-    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
-    ///
-    /// # Process
-    ///
-    /// 1. **Token Filtering**:
-    ///    - For each token, if the first detail (`detail[0]`) is `"UNK"` (unknown), the token is skipped, as it does not require normalization.
-    ///
-    /// 2. **Base Form Extraction**:
-    ///    - Depending on the configured dictionary type (`IPADIC`, `IPADICNeologd`, or `UniDic`), the function determines which detail contains the base form of the token.
-    ///    - For `IPADIC` and `IPADICNeologd`, the base form is located at `detail[6]`.
-    ///    - For `UniDic`, the base form is located at `detail[10]`.
-    ///
-    /// 3. **Text Modification**:
-    ///    - Once the correct base form detail is identified, the token's `text` is replaced with the base form using `Cow::Owned`.
-    ///
-    /// # Dictionary Types:
-    ///
-    /// - **IPADIC**: Uses index `6` for base form extraction.
-    /// - **IPADICNeologd**: Also uses index `6` for base form extraction.
-    /// - **UniDic**: Uses index `10` for base form extraction.
-    ///
-    /// # Errors
-    ///
-    /// If any issue arises while processing tokens, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        macro_rules! apply_base_form {
-            ($($feature:literal => $kind:path => $index:expr),* $(,)?) => {
-                for token in tokens.iter_mut() {
-                    if let Some(detail) = token.get_detail(0) {
-                        if detail == "UNK" {
-                            continue;
-                        }
-                    }
-
-                    // Get the index of the detail that contains the base form.
-                    match self.kind {
-                        $(
-                            #[cfg(feature = $feature)]
-                            $kind => {
-                                if let Some(detail) = token.get_detail($index) {
-                                    token.text = Cow::Owned(detail.to_string());
-                                }
-                            }
-                        )*
-                        _ => continue,
-                    }
+        for token in tokens.iter_mut() {
+            // Skip tokens with "UNK" in the first detail
+            if let Some(detail) = token.get_detail(0) {
+                if detail == "UNK" {
+                    continue;
                 }
-            };
-        }
+            }
 
-        apply_base_form! {
-            "ipadic" => DictionaryKind::IPADIC => 6,
-            "ipadic-neologd" => DictionaryKind::IPADICNEologd => 6,
-            "unidic" => DictionaryKind::UniDic => 10,
+            // Get the dictionary name
+            #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+            let dictionary_name = token.dictionary.metadata.name.as_str();
+
+            // Get the index of the detail that contains the base form based on dictionary name.
+            #[cfg(feature = "ipadic")]
+            if dictionary_name == IPADIC_DICTIONARY_NAME {
+                if let Some(detail) = token.get_detail(6) {
+                    token.text = Cow::Owned(detail.to_string());
+                }
+                continue;
+            }
+
+            #[cfg(feature = "ipadic-neologd")]
+            if dictionary_name == IPADIC_NEOLOGD_DICTIONARY_NAME {
+                if let Some(detail) = token.get_detail(6) {
+                    token.text = Cow::Owned(detail.to_string());
+                }
+                continue;
+            }
+
+            #[cfg(feature = "unidic")]
+            if dictionary_name == UNIDIC_DICTIONARY_NAME {
+                if let Some(detail) = token.get_detail(10) {
+                    token.text = Cow::Owned(detail.to_string());
+                }
+                continue;
+            }
         }
 
         Ok(())
@@ -118,69 +90,7 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    // テストマクロは lib.rs で定義されているため、直接使用できます
-    // use crate::test_macros::*; は不要
-    #[test]
-    fn test_japanese_base_form_token_filter_config_ipadic() {
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
-
-        let config_str = r#"
-        {
-            "kind": "ipadic"
-        }
-        "#;
-        let result: Result<JapaneseBaseFormTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_japanese_base_form_token_filter_config_funidic() {
-        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig;
-
-        let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
-        let result: Result<JapaneseBaseFormTokenFilterConfig, _> = serde_json::from_str(config_str);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_japanese_base_form_token_filter_ipadic() {
-        use crate::token_filter::japanese_base_form::{
-            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-        };
-
-        let config_str = r#"
-        {
-            "kind": "ipadic"
-        }
-        "#;
-        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
-        let result = JapaneseBaseFormTokenFilter::from_config(&config);
-
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_japanese_base_form_token_filter_from_slice_unidic() {
-        use crate::token_filter::japanese_base_form::{
-            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-        };
-
-        let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
-        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
-        let result = JapaneseBaseFormTokenFilter::from_config(&config);
-
-        assert!(result.is_ok());
-    }
-
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_ipadic() {
         use std::borrow::Cow;
@@ -188,17 +98,9 @@ mod tests {
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
-        use crate::token_filter::japanese_base_form::{
-            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-        };
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
 
-        let config_str = r#"
-        {
-            "kind": "ipadic"
-        }
-        "#;
-        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
-        let filter = JapaneseBaseFormTokenFilter::from_config(&config).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::new();
 
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
@@ -310,7 +212,7 @@ mod tests {
         assert_eq!(tokens[3].text, "ます");
     }
 
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     #[test]
     fn test_japanese_base_form_token_filter_apply_unidic() {
         use std::borrow::Cow;
@@ -318,17 +220,9 @@ mod tests {
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
-        use crate::token_filter::japanese_base_form::{
-            JapaneseBaseFormTokenFilter, JapaneseBaseFormTokenFilterConfig,
-        };
+        use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
 
-        let config_str = r#"
-        {
-            "kind": "unidic"
-        }
-        "#;
-        let config: JapaneseBaseFormTokenFilterConfig = serde_json::from_str(config_str).unwrap();
-        let filter = JapaneseBaseFormTokenFilter::from_config(&config).unwrap();
+        let filter = JapaneseBaseFormTokenFilter::new();
 
         let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
 

@@ -48,7 +48,7 @@ impl TokenFilter for UppercaseTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_uppercase_token_filter_apply() {
         use std::borrow::Cow;
 

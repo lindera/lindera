@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "UniDic".to_string(), // Dictionary name
+        "unidic".to_string(), // Dictionary name
         "UTF-8".to_string(),  // Encoding for UniDic
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary
@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // skip_invalid_cost_or_id
         false,                // normalize_details
         Schema::new(
-            "UniDic".to_string(), // Schema name
-            "2.1.2".to_string(),  // Schema version
             vec![
                 "major_pos".to_string(),
                 "middle_pos".to_string(),

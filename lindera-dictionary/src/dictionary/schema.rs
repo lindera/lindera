@@ -17,8 +17,6 @@ pub enum CommonField {
 /// Dictionary schema that defines the structure of dictionary entries
 #[derive(Debug, Clone, Serialize)]
 pub struct Schema {
-    pub name: String,
-    pub version: String,
     /// Custom field names (from 4th column onwards)
     pub custom_fields: Vec<String>,
     /// Field name to index mapping for fast lookup
@@ -33,15 +31,11 @@ impl<'de> serde::Deserialize<'de> for Schema {
     {
         #[derive(Deserialize)]
         struct DictionarySchemaHelper {
-            name: String,
-            version: String,
             custom_fields: Vec<String>,
         }
 
         let helper = DictionarySchemaHelper::deserialize(deserializer)?;
         let mut schema = Schema {
-            name: helper.name,
-            version: helper.version,
             custom_fields: helper.custom_fields,
             field_index_map: None,
         };
@@ -52,10 +46,8 @@ impl<'de> serde::Deserialize<'de> for Schema {
 
 impl Schema {
     /// Create a new dictionary schema
-    pub fn new(name: String, version: String, custom_fields: Vec<String>) -> Self {
+    pub fn new(custom_fields: Vec<String>) -> Self {
         let mut schema = Self {
-            name,
-            version,
             custom_fields,
             field_index_map: None,
         };
@@ -179,21 +171,17 @@ pub enum FieldType {
 
 impl Default for Schema {
     fn default() -> Self {
-        Self::new(
-            "IPADIC".to_string(),
-            "2.7.0".to_string(),
-            vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_type".to_string(),
-                "conjugation_form".to_string(),
-                "base_form".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ],
-        )
+        Self::new(vec![
+            "major_pos".to_string(),
+            "middle_pos".to_string(),
+            "small_pos".to_string(),
+            "fine_pos".to_string(),
+            "conjugation_type".to_string(),
+            "conjugation_form".to_string(),
+            "base_form".to_string(),
+            "reading".to_string(),
+            "pronunciation".to_string(),
+        ])
     }
 }
 
@@ -204,10 +192,8 @@ mod tests {
     #[test]
     fn test_new_schema() {
         let custom_fields = vec!["field1".to_string(), "field2".to_string()];
-        let schema = Schema::new("TestDict".to_string(), "1.0.0".to_string(), custom_fields);
+        let schema = Schema::new(custom_fields);
 
-        assert_eq!(schema.name, "TestDict");
-        assert_eq!(schema.version, "1.0.0");
         assert_eq!(schema.custom_fields.len(), 2);
         assert!(schema.field_index_map.is_some());
     }
@@ -245,8 +231,7 @@ mod tests {
     #[test]
     fn test_default_schema() {
         let schema = Schema::default();
-        assert_eq!(schema.name, "IPADIC");
-        assert_eq!(schema.version, "2.7.0");
+        // Name and version fields have been removed from Schema
         assert_eq!(schema.field_count(), 13);
         assert_eq!(schema.custom_fields.len(), 9);
     }

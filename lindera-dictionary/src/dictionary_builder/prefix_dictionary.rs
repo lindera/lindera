@@ -537,8 +537,8 @@ mod tests {
         let schema = Schema::default();
         let builder = PrefixDictionaryBuilder::new(schema.clone());
 
-        assert_eq!(builder.schema.name, "IPADIC");
-        assert_eq!(builder.schema.version, "2.7.0");
+        // Schema no longer has name field
+        // Schema no longer has version field
         assert!(builder.flexible_csv);
         assert_eq!(builder.encoding, "UTF-8");
         assert!(!builder.normalize_details);

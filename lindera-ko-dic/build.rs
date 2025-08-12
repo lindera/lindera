@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "KO-DIC".to_string(), // Dictionary name
+        "ko-dic".to_string(), // Dictionary name
         "UTF-8".to_string(),  // Encoding for Ko-Dic
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary
@@ -32,8 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // skip_invalid_cost_or_id
         false,                // normalize_details
         Schema::new(
-            "KO-DIC".to_string(),         // Schema name
-            "2.1.1-20180720".to_string(), // Schema version
             vec![
                 "pos_tag".to_string(),
                 "meaning".to_string(),

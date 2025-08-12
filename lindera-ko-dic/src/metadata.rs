@@ -2,6 +2,7 @@ use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::KoDicSchema;
+use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// Ko-Dic metadata factory
 pub struct KoDicMetadata;
@@ -16,8 +17,8 @@ impl KoDicMetadata {
     /// Create default Ko-Dic metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
-            "KO-DIC".to_string(),
-            "UTF-8".to_string(),
+            DICTIONARY_NAME.to_string(),
+            DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
             3,
             -10000,

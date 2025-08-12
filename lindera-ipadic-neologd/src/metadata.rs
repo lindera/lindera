@@ -2,6 +2,7 @@ use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::IPADICNEologdSchema;
+use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// IPADIC NEologd metadata factory
 pub struct IPADICNEologdMetadata;
@@ -16,8 +17,8 @@ impl IPADICNEologdMetadata {
     /// Create default IPADIC NEologd metadata
     pub fn metadata() -> Metadata {
         Metadata::new(
-            "IPADIC-NEologd".to_string(),
-            "UTF-8".to_string(),
+            DICTIONARY_NAME.to_string(),
+            DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
             3,
             -10000,

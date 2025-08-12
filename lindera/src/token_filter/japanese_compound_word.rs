@@ -1,11 +1,16 @@
 use std::borrow::Cow;
-use std::str::FromStr;
 use std::{collections::HashSet, mem};
 
 use serde_json::Value;
 
+#[cfg(feature = "ipadic")]
+use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
+#[cfg(feature = "ipadic-neologd")]
+use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
+#[cfg(feature = "unidic")]
+use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
+
 use crate::LinderaResult;
-use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
@@ -18,14 +23,13 @@ pub type JapaneseCompoundWordTokenFilterConfig = Value;
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseCompoundWordTokenFilter {
-    kind: DictionaryKind,
     tags: HashSet<String>,
     #[allow(dead_code)]
     new_tag: Option<String>,
 }
 
 impl JapaneseCompoundWordTokenFilter {
-    pub fn new(kind: DictionaryKind, tags: HashSet<String>, new_tag: Option<String>) -> Self {
+    pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
         let tags: HashSet<String> = tags
             .into_iter()
             .map(|v| {
@@ -41,27 +45,10 @@ impl JapaneseCompoundWordTokenFilter {
             tag_parts.join(",")
         });
 
-        Self {
-            kind,
-            tags,
-            new_tag,
-        }
+        Self { tags, new_tag }
     }
 
     pub fn from_config(config: &JapaneseCompoundWordTokenFilterConfig) -> LinderaResult<Self> {
-        let kind = DictionaryKind::from_str(
-            config
-                .get("kind")
-                .ok_or_else(|| {
-                    LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("kind is required"))
-                })?
-                .as_str()
-                .ok_or_else(|| {
-                    LinderaErrorKind::Deserialize
-                        .with_error(anyhow::anyhow!("kind must be a string"))
-                })?,
-        )?;
-
         let tags: HashSet<String> = config["tags"]
             .as_array()
             .ok_or_else(|| {
@@ -90,7 +77,7 @@ impl JapaneseCompoundWordTokenFilter {
             })
             .transpose()?;
 
-        Ok(Self::new(kind, tags, new_tag))
+        Ok(Self::new(tags, new_tag))
     }
 
     // Concatenate two tokens into one.
@@ -99,9 +86,12 @@ impl JapaneseCompoundWordTokenFilter {
         token1.byte_end = token2.byte_end;
         token1.position_length += token2.position_length;
 
-        let details = match self.kind {
+        // Get the dictionary name
+        let dictionary_name = token1.dictionary.metadata.name.as_str();
+
+        let details = match dictionary_name {
             #[cfg(feature = "ipadic")]
-            DictionaryKind::IPADIC => {
+            IPADIC_DICTIONARY_NAME => {
                 // Make details for the new token based on the new_tag.
                 match &self.new_tag {
                     Some(new_tag) => {
@@ -129,7 +119,7 @@ impl JapaneseCompoundWordTokenFilter {
                 }
             }
             #[cfg(feature = "ipadic-neologd")]
-            DictionaryKind::IPADICNEologd => {
+            IPADIC_NEOLOGD_DICTIONARY_NAME => {
                 // Make details for the new token based on the new_tag.
                 match &self.new_tag {
                     Some(new_tag) => {
@@ -157,7 +147,7 @@ impl JapaneseCompoundWordTokenFilter {
                 }
             }
             #[cfg(feature = "unidic")]
-            DictionaryKind::UniDic => {
+            UNIDIC_DICTIONARY_NAME => {
                 // Make details for the new token based on the new_tag.
                 match &self.new_tag {
                     Some(new_tag) => {
@@ -294,7 +284,6 @@ mod tests {
 
         let config_str = r#"
         {
-            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
@@ -316,7 +305,6 @@ mod tests {
 
         let config_str = r#"
         {
-            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
@@ -332,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 
@@ -345,7 +333,6 @@ mod tests {
 
         let config_str = r#"
         {
-            "kind": "ipadic",
             "tags": [
                 "名詞,数",
                 "名詞,接尾,助数詞"
