@@ -327,14 +327,15 @@ impl Tokenizer {
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
 
-        let mut offset_mappings: Vec<OffsetMapping> = Vec::with_capacity(self.character_filters.len());
+        let mut offset_mappings: Vec<OffsetMapping> =
+            Vec::with_capacity(self.character_filters.len());
 
         // Apply character filters to the text if it is not empty.
         // Optimize: Only convert to mutable when we have filters to apply
         if !self.character_filters.is_empty() {
             // Convert to owned string once for all filters
             let text_mut = normalized_text.to_mut();
-            
+
             for character_filter in &self.character_filters {
                 let mapping = character_filter.apply(text_mut)?;
 
