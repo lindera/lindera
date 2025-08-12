@@ -16,13 +16,12 @@ character_filters:
       normalize_kana: true
   - kind: mapping
     args:
-       mapping:
-         リンデラ: Lindera
+      mapping:
+        リンデラ: Lindera
 
 token_filters:
   - kind: "japanese_compound_word"
     args:
-      kind: "ipadic"
       tags:
         - "名詞,数"
         - "名詞,接尾,助数詞"

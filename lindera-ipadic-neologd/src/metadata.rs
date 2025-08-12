@@ -2,9 +2,7 @@ use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::IPADICNEologdSchema;
-
-pub const DICTIONARY_NAME: &str = "ipadic-neologd";
-pub const DICTIONARY_ENCODING: &str = "UTF-8";
+use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// IPADIC NEologd metadata factory
 pub struct IPADICNEologdMetadata;

@@ -2,9 +2,7 @@ use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::UniDicSchema;
-
-pub const DICTIONARY_NAME: &str = "unidic";
-pub const DICTIONARY_ENCODING: &str = "UTF-8";
+use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// UniDic metadata factory
 pub struct UniDicMetadata;

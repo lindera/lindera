@@ -132,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_remove_diacritical_token_filter_apply() {
         use std::borrow::Cow;
 
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_remove_diacritical_token_filter_apply_japanese() {
         use std::borrow::Cow;
 

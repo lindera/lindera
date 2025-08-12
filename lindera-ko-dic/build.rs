@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "KO-DIC".to_string(), // Dictionary name
+        "ko-dic".to_string(), // Dictionary name
         "UTF-8".to_string(),  // Encoding for Ko-Dic
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary

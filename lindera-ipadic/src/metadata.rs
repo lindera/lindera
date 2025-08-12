@@ -2,9 +2,7 @@ use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
 use crate::schema::IPADICSchema;
-
-pub const DICTIONARY_NAME: &str = "ipadic";
-pub const DICTIONARY_ENCODING: &str = "EUC-JP";
+use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// IPADIC metadata factory
 pub struct IPADICMetadata;

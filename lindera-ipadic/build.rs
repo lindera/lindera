@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "IPADIC".to_string(), // Dictionary name
+        "ipadic".to_string(), // Dictionary name
         "EUC-JP".to_string(), // Encoding for IPADIC
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary

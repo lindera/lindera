@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_mapping_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

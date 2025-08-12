@@ -100,11 +100,13 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ko-dic")]
     use crate::token_filter::korean_keep_tags::{
         KoreanKeepTagsTokenFilter, KoreanKeepTagsTokenFilterConfig,
     };
 
     #[test]
+    #[cfg(feature = "ko-dic")]
     fn test_korean_keep_tags_token_filter_config() {
         let config_str = r#"
         {
@@ -118,6 +120,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ko-dic")]
     fn test_korean_keep_tags_token_filter() {
         let config_str = r#"
         {
@@ -133,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_korean_keep_tags_token_filter_apply() {
         use std::borrow::Cow;
 

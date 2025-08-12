@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "UniDic".to_string(), // Dictionary name
+        "unidic".to_string(), // Dictionary name
         "UTF-8".to_string(),  // Encoding for UniDic
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary

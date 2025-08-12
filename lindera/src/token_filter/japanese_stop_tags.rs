@@ -119,11 +119,13 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ipadic")]
     use crate::token_filter::japanese_stop_tags::{
         JapaneseStopTagsTokenFilter, JapaneseStopTagsTokenFilterConfig,
     };
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_japanese_stop_tags_token_filter_config() {
         let config_str = r#"
             {
@@ -161,6 +163,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ipadic")]
     fn test_japanese_stop_tagss_token_filter() {
         let config_str = r#"
             {
@@ -200,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_japanese_stop_tags_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

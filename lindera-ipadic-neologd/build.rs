@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let metadata = Metadata::new(
-        "IPADIC-NEologd".to_string(), // Dictionary name
+        "ipadic-neologd".to_string(), // Dictionary name
         "UTF-8".to_string(),          // Encoding for IPADIC NEologd
         Algorithm::Deflate,           // Compression algorithm
         3,                            // Number of fields in simple user dictionary

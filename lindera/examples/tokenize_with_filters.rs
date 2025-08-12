@@ -31,7 +31,6 @@ fn main() -> LinderaResult<()> {
             JapaneseIterationMarkCharacterFilter::new(true, true);
 
         let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
-            DictionaryKind::IPADIC,
             vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
                 .into_iter()
                 .collect(),
