@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -44,7 +44,7 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -101,7 +101,7 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Cache ~/.cargo/registry
         uses: actions/cache@v4
@@ -170,7 +170,7 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
