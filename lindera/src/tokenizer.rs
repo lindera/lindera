@@ -327,16 +327,22 @@ impl Tokenizer {
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
         let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
 
-        let mut offset_mappings: Vec<OffsetMapping> = Vec::new();
+        let mut offset_mappings: Vec<OffsetMapping> = Vec::with_capacity(self.character_filters.len());
 
         // Apply character filters to the text if it is not empty.
-        for character_filter in &self.character_filters {
-            let mapping = character_filter.apply(normalized_text.to_mut())?;
+        // Optimize: Only convert to mutable when we have filters to apply
+        if !self.character_filters.is_empty() {
+            // Convert to owned string once for all filters
+            let text_mut = normalized_text.to_mut();
+            
+            for character_filter in &self.character_filters {
+                let mapping = character_filter.apply(text_mut)?;
 
-            if !mapping.is_empty() {
-                // Record the offset mapping of each character filter in reverse order
-                // since we need to apply corrections in reverse order
-                offset_mappings.push(mapping);
+                if !mapping.is_empty() {
+                    // Record the offset mapping of each character filter in reverse order
+                    // since we need to apply corrections in reverse order
+                    offset_mappings.push(mapping);
+                }
             }
         }
 
@@ -387,15 +393,17 @@ impl Clone for Tokenizer {
     /// - This method performs deep cloning, meaning that all internal filters and segmenter instances are fully duplicated.
     /// - The `box_clone` method is used to clone the dynamically dispatched filter objects (`BoxCharacterFilter` and `BoxTokenFilter`).
     fn clone(&self) -> Self {
-        let mut character_filters: Vec<BoxCharacterFilter> = Vec::new();
-        for character_filter in self.character_filters.iter() {
-            character_filters.push(character_filter.box_clone());
-        }
+        let character_filters: Vec<BoxCharacterFilter> = self
+            .character_filters
+            .iter()
+            .map(|filter| filter.box_clone())
+            .collect();
 
-        let mut token_filters: Vec<BoxTokenFilter> = Vec::new();
-        for token_filter in self.token_filters.iter() {
-            token_filters.push(token_filter.box_clone());
-        }
+        let token_filters: Vec<BoxTokenFilter> = self
+            .token_filters
+            .iter()
+            .map(|filter| filter.box_clone())
+            .collect();
 
         Tokenizer {
             character_filters,

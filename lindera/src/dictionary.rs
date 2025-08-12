@@ -77,6 +77,8 @@ impl DictionaryKind {
                 DictionaryKind::KoDic => cfg!(feature = "ko-dic"),
                 #[cfg(feature = "cc-cedict")]
                 DictionaryKind::CcCedict => cfg!(feature = "cc-cedict"),
+                #[allow(unreachable_patterns)]
+                _ => false,
             })
             .collect::<Vec<_>>()
     }
@@ -93,6 +95,8 @@ impl DictionaryKind {
             DictionaryKind::KoDic => KO_DIC_DICTIONARY_NAME,
             #[cfg(feature = "cc-cedict")]
             DictionaryKind::CcCedict => CC_CEDICT_DICTIONARY_NAME,
+            #[allow(unreachable_patterns)]
+            _ => "",
         }
     }
 }
