@@ -126,7 +126,7 @@ impl<'a> Token<'a> {
     pub fn details(&mut self) -> Vec<&str> {
         // Ensure details are initialized
         self.ensure_details();
-        
+
         // Fast path: return references without allocation
         match &self.details {
             Some(details) => details.iter().map(|x| x.as_ref()).collect(),
@@ -257,7 +257,7 @@ impl<'a> Token<'a> {
     pub fn as_map(&mut self) -> HashMap<&str, Cow<str>> {
         // Get schema info first
         let schema_fields = &self.dictionary.metadata.schema.custom_fields;
-        
+
         // Pre-allocate with known capacity (surface + byte_start + byte_end + word_id + custom fields)
         let mut map = HashMap::with_capacity(4 + schema_fields.len());
 
@@ -266,17 +266,17 @@ impl<'a> Token<'a> {
         let byte_start_str = self.byte_start.to_string();
         let byte_end_str = self.byte_end.to_string();
         let word_id_str = format!("{}", self.word_id.id);
-        
+
         // Get details (requires mutable borrow)
         let details = self.details();
 
         // Always include surface
         map.insert("surface", surface_text);
-        
+
         // Include byte positions
         map.insert("byte_start", Cow::Owned(byte_start_str));
         map.insert("byte_end", Cow::Owned(byte_end_str));
-        
+
         // Include word_id
         map.insert("word_id", Cow::Owned(word_id_str));
 

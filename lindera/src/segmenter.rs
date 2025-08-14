@@ -215,7 +215,7 @@ impl Segmenter {
                     Cow::Owned(s) => {
                         // Use slice from owned string instead of creating new string
                         Cow::Owned(s[absolute_start..absolute_end].to_owned())
-                    },
+                    }
                 };
 
                 // compute the token's absolute byte positions
