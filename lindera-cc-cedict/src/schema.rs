@@ -11,10 +11,10 @@ impl Default for CcCedictSchema {
 impl CcCedictSchema {
     pub fn schema() -> Schema {
         Schema::new(vec![
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
+            "part_of_speech".to_string(),
+            "part_of_speech_subcategory_1".to_string(),
+            "part_of_speech_subcategory_2".to_string(),
+            "part_of_speech_subcategory_3".to_string(),
             "pinyin".to_string(),
             "traditional".to_string(),
             "simplified".to_string(),

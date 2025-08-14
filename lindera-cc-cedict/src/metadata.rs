@@ -30,14 +30,14 @@ impl CcCedictMetadata {
             false, // normalize_details
             CcCedictSchema::schema(),
             vec![
-                Some(1), // Major POS classification
-                None,    // Middle POS classification
-                None,    // Small POS classification
-                None,    // Fine POS classification
+                Some(1), // Part-of-speech
+                None,    // Part-of-speech subcategory 1
+                None,    // Part-of-speech subcategory 2
+                None,    // Part-of-speech subcategory 3
                 Some(2), // Pinyin
                 None,    // Traditional
                 None,    // Simplified
-                None,    // definition
+                None,    // Definition
             ],
         )
     }

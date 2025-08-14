@@ -11,13 +11,13 @@ impl Default for KoDicSchema {
 impl KoDicSchema {
     pub fn schema() -> Schema {
         Schema::new(vec![
-            "pos_tag".to_string(),
+            "part_of_speech_tag".to_string(),
             "meaning".to_string(),
             "presence_absence".to_string(),
             "reading".to_string(),
             "type".to_string(),
-            "first_pos".to_string(),
-            "last_pos".to_string(),
+            "first_part_of_speech".to_string(),
+            "last_part_of_speech".to_string(),
             "expression".to_string(),
         ])
     }

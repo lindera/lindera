@@ -209,10 +209,13 @@ impl Segmenter {
                 let absolute_start = sentence_start + byte_start;
                 let absolute_end = sentence_start + byte_end;
 
-                // Create surface Cow efficiently based on input type
+                // Create surface Cow efficiently - avoid unnecessary string allocation for owned strings
                 let surface_cow = match &text {
                     Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
-                    Cow::Owned(_) => Cow::Owned(text[absolute_start..absolute_end].to_string()),
+                    Cow::Owned(s) => {
+                        // Use slice from owned string instead of creating new string
+                        Cow::Owned(s[absolute_start..absolute_end].to_owned())
+                    }
                 };
 
                 // compute the token's absolute byte positions

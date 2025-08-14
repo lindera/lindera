@@ -164,14 +164,8 @@ fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
 fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     let mut json_tokens = Vec::new();
     for token in tokens.iter_mut() {
-        let json_token = serde_json::json!({
-            "text": token.text,
-            "details": token.details(),
-            "byte_start": token.byte_start,
-            "byte_end": token.byte_end,
-            "word_id": token.word_id,
-        });
-        json_tokens.push(json_token);
+        let token_map = token.as_map();
+        json_tokens.push(token_map);
     }
 
     println!(

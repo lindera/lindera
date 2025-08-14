@@ -33,10 +33,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                   // normalize_details
         Schema::new(
             vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
+                "part_of_speech".to_string(),
+                "part_of_speech_subcategory_1".to_string(),
+                "part_of_speech_subcategory_2".to_string(),
+                "part_of_speech_subcategory_3".to_string(),
                 "pinyin".to_string(),
                 "traditional".to_string(),
                 "simplified".to_string(),
@@ -44,14 +44,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
             ], // Field names
         ), // Schema for CC-CEDICT
         vec![
-            Some(1), // Major POS classification
-            None,    // Middle POS classification
-            None,    // Small POS classification
-            None,    // Fine POS classification
+            Some(1), // Part-of-speech
+            None,    // Part-of-speech subcategory 1
+            None,    // Part-of-speech subcategory 2
+            None,    // Part-of-speech subcategory 3
             Some(2), // Pinyin
             None,    // Traditional
             None,    // Simplified
-            None,    // definition
+            None,    // Definition
         ], // User dictionary field indices
     );
 
