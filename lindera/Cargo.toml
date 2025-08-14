@@ -102,13 +102,6 @@ serde_json.workspace = true
 criterion.workspace = true
 once_cell.workspace = true
 
-[[example]]
-name = "test_features"
-required-features = ["embedded-ipadic"]
-
-[[example]]
-name = "test_all_embedded_features"
-
 [[bench]]
 name = "bench_ipadic"
 harness = false
