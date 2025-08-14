@@ -22,14 +22,14 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 1 | 왼쪽 문맥 ID | Left context ID | |
 | 2 | 오른쪽 문맥 ID | Right context ID | |
 | 3 | 비용 | Cost | |
-| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
-| 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
-| 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
-| 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
-| 8 | 타입 | type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
-| 9 | 첫번째 품사 | first part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
-| 10 | 마지막 품사 | last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
-| 11 | 표현 | expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
+| 4 | 품사 태그 | Part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 5 | 의미 부류 | Meaning | (too few examples for me to be sure) |
+| 6 | 종성 유무 | Presence or absence | `T` for true; `F` for false; else `*` |
+| 7 | 읽기 | Reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
+| 8 | 타입 | Type | One of: `Inflect` (활용); `Compound` (복합명사); or `Preanalysis` (기분석) |
+| 9 | 첫번째 품사 | First part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `VV` |
+| 10 | 마지막 품사 | Last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
+| 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
 
 ## User dictionary format (CSV)
 

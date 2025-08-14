@@ -33,24 +33,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         true,                 // normalize_details
         Schema::new(
             vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_type".to_string(),
+                "part_of_speech".to_string(),
+                "part_of_speech_subcategory_1".to_string(),
+                "part_of_speech_subcategory_2".to_string(),
+                "part_of_speech_subcategory_3".to_string(),
                 "conjugation_form".to_string(),
+                "conjugation_type".to_string(),
                 "base_form".to_string(),
                 "reading".to_string(),
                 "pronunciation".to_string(),
             ], // Field names
         ), // Schema for IPADIC
         vec![
-            Some(1), // Major POS classification
-            None,    // Middle POS classification
-            None,    // Small POS classification
-            None,    // Fine POS classification
-            None,    // Conjugation type
+            Some(1), // Part-of-speech
+            None,    // Part-of-speech subcategory 1
+            None,    // Part-of-speech subcategory 2
+            None,    // Part-of-speech subcategory 3
             None,    // Conjugation form
+            None,    // Conjugation type
             Some(0), // Base form
             Some(2), // Reading
             None,    // Pronunciation

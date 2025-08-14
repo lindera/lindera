@@ -30,7 +30,7 @@ impl KoDicMetadata {
             false, // normalize_details
             KoDicSchema::schema(),
             vec![
-                Some(1), // POS
+                Some(1), // Part-of-speech tag
                 None,    // Meaning
                 None,    // Presence or absence
                 Some(2), // Reading

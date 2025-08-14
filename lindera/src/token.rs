@@ -124,7 +124,18 @@ impl<'a> Token<'a> {
     /// - The first time this method is called, it fetches the details from the dictionary (or user dictionary), but on subsequent calls, it returns the cached details in `self.details`.
     /// - If the token is unknown and no details can be retrieved, a default value (`UNK`) is used.
     pub fn details(&mut self) -> Vec<&str> {
-        // set details if it is not set yet.
+        // Ensure details are initialized
+        self.ensure_details();
+        
+        // Fast path: return references without allocation
+        match &self.details {
+            Some(details) => details.iter().map(|x| x.as_ref()).collect(),
+            None => UNK.to_vec(), // Fallback, should not happen after ensure_details()
+        }
+    }
+
+    /// Helper method to ensure details are loaded without returning them
+    fn ensure_details(&mut self) {
         if self.details.is_none() {
             let tmp = if self.word_id.is_unknown() {
                 UNK.to_vec()
@@ -139,12 +150,6 @@ impl<'a> Token<'a> {
 
             self.details = Some(tmp.into_iter().map(Cow::Borrowed).collect());
         }
-
-        // convert Cow to &str.
-        self.details
-            .as_ref()
-            .map(|vec| vec.iter().map(|x| x.as_ref()).collect())
-            .unwrap_or_else(|| UNK.to_vec())
     }
 
     /// Retrieves the token's detail at the specified index, if available.
@@ -230,13 +235,13 @@ impl<'a> Token<'a> {
         }
     }
 
-    /// Returns all token fields as a map.
+    /// Returns all token fields as a map with string references.
     ///
     /// # Returns
     ///
-    /// Returns a `HashMap<String, String>` containing all available fields and their values.
+    /// Returns a `HashMap<&str, Cow<str>>` containing all available fields and their values.
     /// The map always includes the "surface" field, and includes other fields based on
-    /// the dictionary schema.
+    /// the dictionary schema. Also includes "byte_start", "byte_end", and "word_id" fields.
     ///
     /// # Example
     ///
@@ -244,25 +249,41 @@ impl<'a> Token<'a> {
     /// # use lindera::token::Token;
     /// # let mut token: Token = unimplemented!();
     /// let fields = token.as_map();
-    /// println!("Surface: {}", fields.get("surface").unwrap_or(&"".to_string()));
-    /// println!("POS: {}", fields.get("major_pos").unwrap_or(&"UNK".to_string()));
+    /// println!("Surface: {}", fields.get("surface").map(|s| s.as_ref()).unwrap_or(""));
+    /// println!("POS: {}", fields.get("major_pos").map(|s| s.as_ref()).unwrap_or("UNK"));
+    /// println!("Start: {}", fields.get("byte_start").map(|s| s.as_ref()).unwrap_or("0"));
+    /// println!("Word ID: {}", fields.get("word_id").map(|s| s.as_ref()).unwrap_or("0"));
     /// ```
-    pub fn as_map(&mut self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
+    pub fn as_map(&mut self) -> HashMap<&str, Cow<str>> {
+        // Get schema info first
+        let schema_fields = &self.dictionary.metadata.schema.custom_fields;
+        
+        // Pre-allocate with known capacity (surface + byte_start + byte_end + word_id + custom fields)
+        let mut map = HashMap::with_capacity(4 + schema_fields.len());
+
+        // Clone/copy values before mutable borrow
+        let surface_text = self.text.clone();
+        let byte_start_str = self.byte_start.to_string();
+        let byte_end_str = self.byte_end.to_string();
+        let word_id_str = format!("{}", self.word_id.id);
+        
+        // Get details (requires mutable borrow)
+        let details = self.details();
 
         // Always include surface
-        map.insert("surface".to_string(), self.text.to_string());
-
-        // Get schema info first
-        let schema_fields = self.dictionary.metadata.schema.custom_fields.clone();
-
-        // Then get details
-        let details = self.details();
+        map.insert("surface", surface_text);
+        
+        // Include byte positions
+        map.insert("byte_start", Cow::Owned(byte_start_str));
+        map.insert("byte_end", Cow::Owned(byte_end_str));
+        
+        // Include word_id
+        map.insert("word_id", Cow::Owned(word_id_str));
 
         // Add each custom field from the schema
         for (i, field_name) in schema_fields.iter().enumerate() {
             if let Some(value) = details.get(i) {
-                map.insert(field_name.clone(), value.to_string());
+                map.insert(field_name.as_str(), Cow::Borrowed(*value));
             }
         }
 

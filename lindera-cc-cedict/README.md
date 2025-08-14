@@ -16,14 +16,14 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 1 | 左语境ID | Left context ID | |
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
-| 4 | 词类 | Major POS classification | |
-| 5 | 词类1 | Middle POS classification | |
-| 6 | 词类2 | Small POS classification | |
-| 7 | 词类3 | Fine POS classification | |
-| 8 | 併音 | pinyin | |
-| 9 | 繁体字 | traditional | |
-| 10 | 簡体字 | simplified | |
-| 11 | 定义 | definition | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 词类1 | Part-of-speech subcategory 1 | |
+| 6 | 词类2 | Part-of-speech subcategory 2 | |
+| 7 | 词类3 | Part-of-speech subcategory 3 | |
+| 8 | 併音 | Pinyin | |
+| 9 | 繁体字 | Traditional | |
+| 10 | 簡体字 | Simplified | |
+| 11 | 定义 | Definition | |
 
 ## User dictionary format (CSV)
 
@@ -32,8 +32,8 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
-| 1 | 词类 | Major POS classification | |
-| 2 | 併音 | pinyin | |
+| 1 | 词类 | Part-of-speech | |
+| 2 | 併音 | Pinyin | |
 
 ### Detailed version
 
@@ -43,14 +43,14 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 1 | 左语境ID | Left context ID | |
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
-| 4 | 词类 | POS | |
-| 5 | 词类1 | POS subcategory 1 | |
-| 6 | 词类2 | POS subcategory 2 | |
-| 7 | 词类3 | POS subcategory 3 | |
-| 8 | 併音 | pinyin | |
-| 9 | 繁体字 | traditional | |
-| 10 | 簡体字 | simplified | |
-| 11 | 定义 | definition | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 词类1 | Part-of-speech subcategory 1 | |
+| 6 | 词类2 | Part-of-speech subcategory 2 | |
+| 7 | 词类3 | Part-of-speech subcategory 3 | |
+| 8 | 併音 | Pinyin | |
+| 9 | 繁体字 | Traditional | |
+| 10 | 簡体字 | Simplified | |
+| 11 | 定义 | Definition | |
 | 12 | - | - | After 12, it can be freely expanded. |
 
 ## API reference

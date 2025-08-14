@@ -33,43 +33,43 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // normalize_details
         Schema::new(
             vec![
-                "major_pos".to_string(),
-                "middle_pos".to_string(),
-                "small_pos".to_string(),
-                "fine_pos".to_string(),
-                "conjugation_form".to_string(),
+                "part_of_speech".to_string(),
+                "part_of_speech_subcategory_1".to_string(),
+                "part_of_speech_subcategory_2".to_string(),
+                "part_of_speech_subcategory_3".to_string(),
                 "conjugation_type".to_string(),
-                "lexeme_reading".to_string(),
+                "conjugation_form".to_string(),
+                "reading".to_string(),
                 "lexeme".to_string(),
-                "orthography_appearance".to_string(),
-                "pronunciation_appearance".to_string(),
-                "orthography_basic".to_string(),
-                "pronunciation_basic".to_string(),
+                "orthographic_surface_form".to_string(),
+                "phonological_surface_form".to_string(),
+                "orthographic_base_form".to_string(),
+                "phonological_base_form".to_string(),
                 "word_type".to_string(),
-                "prefix_form".to_string(),
-                "prefix_type".to_string(),
-                "suffix_form".to_string(),
-                "suffix_type".to_string(),
+                "initial_mutation_type".to_string(),
+                "initial_mutation_form".to_string(),
+                "final_mutation_type".to_string(),
+                "final_mutation_form".to_string(),
             ], // Field names
         ), // Schema for UniDic
         vec![
-            Some(1), // Major POS classification
-            None,    // Middle POS classification
-            None,    // Small POS classification
-            None,    // Fine POS classification
+            Some(1), // Part-of-speech
+            None,    // Part-of-speech subcategory 1
+            None,    // Part-of-speech subcategory 2
+            None,    // Part-of-speech subcategory 3
             None,    // Conjugation form
             None,    // Conjugation type
-            Some(2), // Lexeme reading
+            Some(2), // Reading
             None,    // Lexeme
-            None,    // Orthography appearance type
-            None,    // Pronunciation appearance type
-            None,    // Orthography basic type
-            None,    // Pronunciation basic type
+            None,    // Orthographic surface form
+            None,    // Phonological surface form
+            None,    // Orthographic base form
+            None,    // Phonological base form
             None,    // Word type
-            None,    // Prefix of a word form
-            None,    // Prefix of a word type
-            None,    // Suffix of a word form
-            None,    // Suffix of a word type
+            None,    // Initial mutation type
+            None,    // Initial mutation form
+            None,    // Final mutation type
+            None,    // Final mutation form
         ], // User dictionary field indices
     );
 

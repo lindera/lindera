@@ -30,10 +30,10 @@ impl IPADICNEologdMetadata {
             true,  // normalize_details is true for IPAdic-NEologd
             IPADICNEologdSchema::schema(),
             vec![
-                Some(1), // Major POS classification
-                None,    // Middle POS classification
-                None,    // Small POS classification
-                None,    // Fine POS classification
+                Some(1), // Part-of-speech
+                None,    // Part-of-speech subcategory 1
+                None,    // Part-of-speech subcategory 2
+                None,    // Part-of-speech subcategory 3
                 None,    // Conjugation type
                 None,    // Conjugation form
                 Some(0), // Base form
