@@ -1,6 +1,6 @@
 [package]
 name = "lindera-unidic"
-version = "0.45.0"
+version = "1.0.0"
 edition = "2024"
 description = "A Japanese morphological dictionary for UniDic."
 documentation = "https://docs.rs/lindera-unidic"
@@ -13,7 +13,7 @@ license = "MIT"
 
 [features]
 unidic = []
-embedded-unidic = ["unidic"]                # Embed UniDic dictionary in the binary
+embedded-unidic = ["unidic"]               # Embed UniDic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 
