@@ -1,7 +1,7 @@
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     {
         use std::path::PathBuf;
 
@@ -38,6 +38,18 @@ fn main() -> LinderaResult<()> {
             let details = token.details().join(",");
             println!("token:\t{}\t{}", token.text.as_ref(), details);
         }
+    }
+
+    #[cfg(not(feature = "embedded-ipadic"))]
+    {
+        eprintln!(
+            "This example requires the '{}' feature to be enabled.",
+            "embedded-ipadic"
+        );
+        eprintln!(
+            "Run with: cargo run --features {} --example tokenize",
+            "embedded-ipadic"
+        );
     }
 
     Ok(())
