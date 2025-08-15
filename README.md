@@ -14,7 +14,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["ipadic"] }
+lindera = { version = "1.0.0", features = ["embedded-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -26,32 +26,19 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let mut config_builder = TokenizerConfigBuilder::new();
-    config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
-    config_builder.set_segmenter_mode(&Mode::Normal);
-
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
-    let segmenter = Segmenter::new(
-        Mode::Normal,
-        dictionary,
-        None, // Assuming no user dictionary is provided
-    );
-
-    // Create a tokenizer.
+    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
-    // Tokenize a text.
     let text = "関西国際空港限定トートバッグ";
     let mut tokens = tokenizer.tokenize(text)?;
-
-    // Print the text and tokens.
     println!("text:\t{}", text);
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
@@ -107,21 +94,20 @@ With an user dictionary, `Tokenizer` will be created as follows:
 use std::path::PathBuf;
 
 use lindera::dictionary::{
-    load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
+    DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
 };
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
-use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("ipadic_simple_userdic.csv");
 
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
     let user_dictionary =
-        load_user_dictionary_from_csv(DictionaryKind::IPADIC, PathBuf::from("./resources/ipadic_simple_userdic.csv").as_path())?;
+        load_user_dictionary_from_csv(DictionaryKind::IPADIC, user_dict_path.as_path())?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
@@ -177,25 +163,23 @@ It will:
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
 
 ```rust
-use std::collections::HashSet;
-
-use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-use lindera::character_filter::unicode_normalize::{
-    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
-};
-use lindera::character_filter::BoxCharacterFilter;
-use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
-use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera::token_filter::BoxTokenFilter;
-use lindera::tokenizer::Tokenizer;
+    use lindera::character_filter::BoxCharacterFilter;
+    use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+    use lindera::character_filter::unicode_normalize::{
+        UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+    };
+    use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
+    use lindera::mode::Mode;
+    use lindera::segmenter::Segmenter;
+    use lindera::token_filter::BoxTokenFilter;
+    use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+    use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
+    use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+    use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
@@ -388,19 +372,24 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     // Creates a new `TokenizerConfigBuilder` instance.
     // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
-    let builder = TokenizerBuilder::from_file(PathBuf::from("./resources/lindera.yml").as_path())?;
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("lindera.yml");
+
+    let builder = TokenizerBuilder::from_file(&path)?;
 
     let tokenizer = builder.build()?;
 
-    // Tokenize a text.
-    let text = "関西国際空港限定トートバッグ";
-    let mut tokens = tokenizer.tokenize(text)?;
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
+    println!("text: {text}");
 
-    // Print the text and tokens.
-    println!("text:\t{}", text);
-    for token in tokens.iter_mut() {
-        let details = token.details().join(",");
-        println!("token:\t{}\t{}", token.text.as_ref(), details);
+    let tokens = tokenizer.tokenize(&text)?;
+
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.text, token.byte_start, token.byte_end, token.details
+        );
     }
 
     Ok(())

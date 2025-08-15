@@ -1,6 +1,6 @@
 [package]
 name = "lindera"
-version = "0.45.0"
+version = "1.0.0"
 edition = "2024"
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
@@ -101,13 +101,6 @@ lindera-cc-cedict = { workspace = true, optional = true }
 serde_json.workspace = true
 criterion.workspace = true
 once_cell.workspace = true
-
-[[example]]
-name = "test_features"
-required-features = ["embedded-ipadic"]
-
-[[example]]
-name = "test_all_embedded_features"
 
 [[bench]]
 name = "bench_ipadic"
