@@ -76,7 +76,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["embedded-ipadic"] }
+lindera = { version = "1.0.0", features = ["embedded-ipadic"] }
 ```
 
 For example:
@@ -151,7 +151,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["embedded-ipadic"] }
+lindera = { version = "1.0.0", features = ["embedded-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
