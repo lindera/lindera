@@ -12,40 +12,45 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["lindera/ipadic"] # Include Japanese dictionary (IPADIC)
+ipadic = ["lindera/ipadic"] # Enable Japanese dictionary (IPADIC)
 ipadic-neologd = [
     "lindera/ipadic-neologd",
-] # Include Japanese dictionary (IPADIC NEologd)
-unidic = ["lindera/unidic"] # Include Japanese dictionary (UniDic)
-ko-dic = ["lindera/ko-dic"] # Include Korean dictionary (ko-dic)
-cc-cedict = ["lindera/cc-cedict"] # Include Chinese dictionary (CC-CEDICT)
+] # Enable Japanese dictionary (IPADIC NEologd)
+unidic = ["lindera/unidic"] # Enable Japanese dictionary (UniDic)
+ko-dic = ["lindera/ko-dic"] # Enable Korean dictionary (ko-dic)
+cc-cedict = ["lindera/cc-cedict"] # Enamble Chinese dictionary (CC-CEDICT)
 
-embedded-unidic = [
-    "unidic",
-    "lindera/embedded-unidic",
-] # Embed UniDic dictionary in the binary
+cjk = ["lindera/cjk"] # Enable CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
+cjk2 = ["lindera/cjk2"] # Enable CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
+cjk3 = [
+    "lindera/cjk3",
+] # Enable CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
+
 embedded-ipadic = [
-    "ipadic",
     "lindera/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary
+embedded-ipadic-neologd = [
+    "lindera/embedded-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
+embedded-unidic = [
+    "lindera/embedded-unidic",
+] # Embed UniDic dictionary in the binary
 embedded-ko-dic = [
-    "ko-dic",
     "lindera/embedded-ko-dic",
 ] # Embed ko-dic dictionary in the binary
 embedded-cc-cedict = [
-    "cc-cedict",
     "lindera/embedded-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
-embedded-ipadic-neologd = [
-    "ipadic-neologd",
-    "lindera/embedded-ipadic-neologd",
-] # Embed IPADIC-NEologd dictionary in the binary
 
-cjk = ["lindera/cjk"] # Include CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
-cjk2 = ["lindera/cjk2"] # Include CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
-cjk3 = [
-    "lindera/cjk3",
-] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
+embedded-cjk = [
+    "lindera/embedded-cjk",
+] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) in the binary
+embedded-cjk2 = [
+    "lindera/embedded-cjk2",
+] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT) in the binary
+embedded-cjk3 = [
+    "lindera/embedded-cjk3",
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
 
 compress = ["lindera/compress"] # Compress dictionaries
 mmap = ["lindera/mmap"]         # Use memory-mapped file
