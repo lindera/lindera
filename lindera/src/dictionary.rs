@@ -10,7 +10,6 @@ use strum_macros::EnumIter;
 use lindera_cc_cedict::DICTIONARY_NAME as CC_CEDICT_DICTIONARY_NAME;
 #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
 use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
-use lindera_dictionary::dictionary_builder::DictionaryBuilder;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
@@ -38,6 +37,7 @@ pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
 pub type WordId = lindera_dictionary::viterbi::WordId;
+pub type DictionaryBuilder = lindera_dictionary::dictionary_builder::DictionaryBuilder;
 
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {

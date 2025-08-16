@@ -22,6 +22,7 @@ use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
 
+#[derive(Clone)]
 pub struct DictionaryBuilder {
     metadata: Metadata,
 }

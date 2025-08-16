@@ -12,20 +12,40 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["lindera-ipadic/ipadic"] # Include Japanese dictionary (IPADIC)
+ipadic = ["lindera-ipadic/ipadic"] # Enable Japanese dictionary (IPADIC)
 ipadic-neologd = [
     "lindera-ipadic-neologd/ipadic-neologd",
-] # Include Japanese dictionary (IPADIC NEologd)
-unidic = ["lindera-unidic/unidic"] # Include Japanese dictionary (UniDic)
-ko-dic = ["lindera-ko-dic/ko-dic"] # Include Korean dictionary (ko-dic)
+] # Enable Japanese dictionary (IPADIC NEologd)
+unidic = ["lindera-unidic/unidic"] # Enable Japanese dictionary (UniDic)
+ko-dic = ["lindera-ko-dic/ko-dic"] # Enable Korean dictionary (ko-dic)
 cc-cedict = [
     "lindera-cc-cedict/cc-cedict",
-] # Include Chinese dictionary (CC-CEDICT)
+] # Enable Chinese dictionary (CC-CEDICT)
+
+cjk = [
+    "ipadic",
+    "ko-dic",
+    "cc-cedict",
+] # Enable CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
+cjk2 = [
+    "unidic",
+    "ko-dic",
+    "cc-cedict",
+] # Enable CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
+cjk3 = [
+    "ipadic-neologd",
+    "ko-dic",
+    "cc-cedict",
+] # Enable CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
 
 embedded-ipadic = [
     "ipadic",
     "lindera-ipadic/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary
+embedded-ipadic-neologd = [
+    "ipadic-neologd",
+    "lindera-ipadic-neologd/embedded-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
 embedded-unidic = [
     "unidic",
     "lindera-unidic/embedded-unidic",
@@ -38,26 +58,22 @@ embedded-cc-cedict = [
     "cc-cedict",
     "lindera-cc-cedict/embedded-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
-embedded-ipadic-neologd = [
-    "ipadic-neologd",
-    "lindera-ipadic-neologd/embedded-ipadic-neologd",
-] # Embed IPADIC-NEologd dictionary in the binary
 
-cjk = [
-    "ipadic",
-    "ko-dic",
-    "cc-cedict",
-] # Include CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
-cjk2 = [
-    "unidic",
-    "ko-dic",
-    "cc-cedict",
-] # Include CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
-cjk3 = [
-    "ipadic-neologd",
-    "ko-dic",
-    "cc-cedict",
-] # Include CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
+embedded-cjk = [
+    "embedded-ipadic",
+    "embedded-ko-dic",
+    "embedded-cc-cedict",
+] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) in the binary
+embedded-cjk2 = [
+    "embedded-unidic",
+    "embedded-ko-dic",
+    "embedded-cc-cedict",
+] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT) in the binary
+embedded-cjk3 = [
+    "embedded-ipadic-neologd",
+    "embedded-ko-dic",
+    "embedded-cc-cedict",
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
 
 compress = [
     "lindera-dictionary/compress",
