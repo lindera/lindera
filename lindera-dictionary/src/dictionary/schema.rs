@@ -5,6 +5,23 @@ use std::collections::HashMap;
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 
+/// Common field name constants
+pub const FIELD_SURFACE: &str = "surface";
+pub const FIELD_LEFT_CONTEXT_ID: &str = "left_context_id";
+pub const FIELD_RIGHT_CONTEXT_ID: &str = "right_context_id";
+pub const FIELD_COST: &str = "cost";
+
+/// Default custom field name constants
+pub const FIELD_MAJOR_POS: &str = "major_pos";
+pub const FIELD_MIDDLE_POS: &str = "middle_pos";
+pub const FIELD_SMALL_POS: &str = "small_pos";
+pub const FIELD_FINE_POS: &str = "fine_pos";
+pub const FIELD_CONJUGATION_TYPE: &str = "conjugation_type";
+pub const FIELD_CONJUGATION_FORM: &str = "conjugation_form";
+pub const FIELD_BASE_FORM: &str = "base_form";
+pub const FIELD_READING: &str = "reading";
+pub const FIELD_PRONUNCIATION: &str = "pronunciation";
+
 /// Common fields present in all dictionaries (first 4 columns)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CommonField {
@@ -60,10 +77,10 @@ impl Schema {
         let mut map = HashMap::new();
 
         // Common fields
-        map.insert("surface".to_string(), 0);
-        map.insert("left_context_id".to_string(), 1);
-        map.insert("right_context_id".to_string(), 2);
-        map.insert("cost".to_string(), 3);
+        map.insert(FIELD_SURFACE.to_string(), 0);
+        map.insert(FIELD_LEFT_CONTEXT_ID.to_string(), 1);
+        map.insert(FIELD_RIGHT_CONTEXT_ID.to_string(), 2);
+        map.insert(FIELD_COST.to_string(), 3);
 
         // Custom fields
         for (i, field) in self.custom_fields.iter().enumerate() {
@@ -89,10 +106,10 @@ impl Schema {
     /// Get field name by index
     pub fn get_field_name(&self, index: usize) -> Option<&str> {
         match index {
-            0 => Some("surface"),
-            1 => Some("left_context_id"),
-            2 => Some("right_context_id"),
-            3 => Some("cost"),
+            0 => Some(FIELD_SURFACE),
+            1 => Some(FIELD_LEFT_CONTEXT_ID),
+            2 => Some(FIELD_RIGHT_CONTEXT_ID),
+            3 => Some(FIELD_COST),
             n => self.custom_fields.get(n - 4).map(|s| s.as_str()),
         }
     }
@@ -110,10 +127,10 @@ impl Schema {
     /// Validate common fields (first 4 columns)
     pub fn validate_common_fields(&self, row: &StringRecord) -> LinderaResult<()> {
         let common_fields = [
-            ("surface", CommonField::Surface),
-            ("left_context_id", CommonField::LeftContextId),
-            ("right_context_id", CommonField::RightContextId),
-            ("cost", CommonField::Cost),
+            (FIELD_SURFACE, CommonField::Surface),
+            (FIELD_LEFT_CONTEXT_ID, CommonField::LeftContextId),
+            (FIELD_RIGHT_CONTEXT_ID, CommonField::RightContextId),
+            (FIELD_COST, CommonField::Cost),
         ];
 
         for (name, field) in &common_fields {
@@ -172,15 +189,15 @@ pub enum FieldType {
 impl Default for Schema {
     fn default() -> Self {
         Self::new(vec![
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
+            FIELD_MAJOR_POS.to_string(),
+            FIELD_MIDDLE_POS.to_string(),
+            FIELD_SMALL_POS.to_string(),
+            FIELD_FINE_POS.to_string(),
+            FIELD_CONJUGATION_TYPE.to_string(),
+            FIELD_CONJUGATION_FORM.to_string(),
+            FIELD_BASE_FORM.to_string(),
+            FIELD_READING.to_string(),
+            FIELD_PRONUNCIATION.to_string(),
         ])
     }
 }
@@ -203,15 +220,15 @@ mod tests {
         let schema = Schema::default();
 
         // Common fields
-        assert_eq!(schema.get_field_index("surface"), Some(0));
-        assert_eq!(schema.get_field_index("left_context_id"), Some(1));
-        assert_eq!(schema.get_field_index("right_context_id"), Some(2));
-        assert_eq!(schema.get_field_index("cost"), Some(3));
+        assert_eq!(schema.get_field_index(FIELD_SURFACE), Some(0));
+        assert_eq!(schema.get_field_index(FIELD_LEFT_CONTEXT_ID), Some(1));
+        assert_eq!(schema.get_field_index(FIELD_RIGHT_CONTEXT_ID), Some(2));
+        assert_eq!(schema.get_field_index(FIELD_COST), Some(3));
 
         // Custom fields
-        assert_eq!(schema.get_field_index("major_pos"), Some(4));
-        assert_eq!(schema.get_field_index("base_form"), Some(10));
-        assert_eq!(schema.get_field_index("pronunciation"), Some(12));
+        assert_eq!(schema.get_field_index(FIELD_MAJOR_POS), Some(4));
+        assert_eq!(schema.get_field_index(FIELD_BASE_FORM), Some(10));
+        assert_eq!(schema.get_field_index(FIELD_PRONUNCIATION), Some(12));
 
         // Non-existent field
         assert_eq!(schema.get_field_index("nonexistent"), None);
@@ -221,10 +238,10 @@ mod tests {
     fn test_field_name_lookup() {
         let schema = Schema::default();
 
-        assert_eq!(schema.get_field_name(0), Some("surface"));
-        assert_eq!(schema.get_field_name(3), Some("cost"));
-        assert_eq!(schema.get_field_name(4), Some("major_pos"));
-        assert_eq!(schema.get_field_name(12), Some("pronunciation"));
+        assert_eq!(schema.get_field_name(0), Some(FIELD_SURFACE));
+        assert_eq!(schema.get_field_name(3), Some(FIELD_COST));
+        assert_eq!(schema.get_field_name(4), Some(FIELD_MAJOR_POS));
+        assert_eq!(schema.get_field_name(12), Some(FIELD_PRONUNCIATION));
         assert_eq!(schema.get_field_name(13), None);
     }
 
@@ -286,14 +303,14 @@ mod tests {
         let schema = Schema::default();
 
         // Test get_field_by_name
-        let field = schema.get_field_by_name("surface").unwrap();
+        let field = schema.get_field_by_name(FIELD_SURFACE).unwrap();
         assert_eq!(field.index, 0);
-        assert_eq!(field.name, "surface");
+        assert_eq!(field.name, FIELD_SURFACE);
         assert_eq!(field.field_type, FieldType::Surface);
 
-        let field = schema.get_field_by_name("major_pos").unwrap();
+        let field = schema.get_field_by_name(FIELD_MAJOR_POS).unwrap();
         assert_eq!(field.index, 4);
-        assert_eq!(field.name, "major_pos");
+        assert_eq!(field.name, FIELD_MAJOR_POS);
         assert_eq!(field.field_type, FieldType::Custom);
     }
 
@@ -302,7 +319,7 @@ mod tests {
         let schema = Schema::default();
         let detail_fields = schema.get_detail_fields();
         assert_eq!(detail_fields.len(), 9);
-        assert_eq!(detail_fields[0], "major_pos");
-        assert_eq!(detail_fields[8], "pronunciation");
+        assert_eq!(detail_fields[0], FIELD_MAJOR_POS);
+        assert_eq!(detail_fields[8], FIELD_PRONUNCIATION);
     }
 }
