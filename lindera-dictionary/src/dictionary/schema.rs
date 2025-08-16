@@ -68,7 +68,7 @@ impl Schema {
 
     /// Get total field count
     pub fn field_count(&self) -> usize {
-        self.fields.len()
+        self.get_all_fields().len()
     }
 
     /// Get field name by index

@@ -24,8 +24,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "EUC-JP".to_string(), // Encoding for IPADIC
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary
-        -10000,               // Simple word cost
-        0,                    // Simple context ID
+        -10000,               // Default word cost
+        0,                    // Default left context ID
+        0,                    // Default right context ID
+        "*".to_string(),      // Default field value
         13,                   // Detailed user dictionary fields number
         11,                   // Unknown fields number
         false,                // flexible_csv

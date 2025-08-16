@@ -23,6 +23,8 @@ impl KoDicMetadata {
             3,
             -10000,
             0,
+            0,
+            "*".to_string(),
             12,
             12,
             false, // flexible_csv

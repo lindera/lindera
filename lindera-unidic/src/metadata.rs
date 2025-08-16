@@ -23,6 +23,8 @@ impl UniDicMetadata {
             3,
             -10000,
             0,
+            0,
+            "*".to_string(),
             21,
             10,
             false, // flexible_csv

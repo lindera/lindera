@@ -23,6 +23,8 @@ impl IPADICNEologdMetadata {
             3,
             -10000,
             0,
+            0,
+            "*".to_string(),
             13,
             11,
             true,  // flexible_csv
