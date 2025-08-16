@@ -256,10 +256,10 @@ impl<'a> Token<'a> {
     /// ```
     pub fn as_map(&mut self) -> HashMap<&str, Cow<str>> {
         // Get schema info first
-        let schema_fields = &self.dictionary.metadata.schema.custom_fields;
+        let schema_custom_fields = self.dictionary.metadata.schema.get_custom_fields();
 
         // Pre-allocate with known capacity (surface + byte_start + byte_end + word_id + custom fields)
-        let mut map = HashMap::with_capacity(4 + schema_fields.len());
+        let mut map = HashMap::with_capacity(4 + schema_custom_fields.len());
 
         // Clone/copy values before mutable borrow
         let surface_text = self.text.clone();
@@ -281,7 +281,7 @@ impl<'a> Token<'a> {
         map.insert("word_id", Cow::Owned(word_id_str));
 
         // Add each custom field from the schema
-        for (i, field_name) in schema_fields.iter().enumerate() {
+        for (i, field_name) in schema_custom_fields.iter().enumerate() {
             if let Some(value) = details.get(i) {
                 map.insert(field_name.as_str(), Cow::Borrowed(*value));
             }

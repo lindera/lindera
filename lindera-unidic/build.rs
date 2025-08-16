@@ -33,6 +33,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // normalize_details
         Schema::new(
             vec![
+                "surface".to_string(),
+                "left_context_id".to_string(),
+                "right_context_id".to_string(),
+                "cost".to_string(),
                 "part_of_speech".to_string(),
                 "part_of_speech_subcategory_1".to_string(),
                 "part_of_speech_subcategory_2".to_string(),
@@ -50,7 +54,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "initial_mutation_form".to_string(),
                 "final_mutation_type".to_string(),
                 "final_mutation_form".to_string(),
-            ], // Field names
+            ], // All field names including common fields
         ), // Schema for UniDic
         vec![
             Some(1), // Part-of-speech

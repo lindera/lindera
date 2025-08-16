@@ -33,6 +33,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         true,                         // normalize_details is true for IPAdic-NEologd
         Schema::new(
             vec![
+                "surface".to_string(),
+                "left_context_id".to_string(),
+                "right_context_id".to_string(),
+                "cost".to_string(),
                 "part_of_speech".to_string(),
                 "part_of_speech_subcategory_1".to_string(),
                 "part_of_speech_subcategory_2".to_string(),
@@ -42,7 +46,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "base_form".to_string(),
                 "reading".to_string(),
                 "pronunciation".to_string(),
-            ], // Field names
+            ], // All field names including common fields
         ), // Schema for IPADIC NEologd
         vec![
             Some(1), // Part-of-speech

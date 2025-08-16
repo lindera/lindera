@@ -33,6 +33,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // normalize_details
         Schema::new(
             vec![
+                "surface".to_string(),
+                "left_context_id".to_string(),
+                "right_context_id".to_string(),
+                "cost".to_string(),
                 "part_of_speech_tag".to_string(),
                 "meaning".to_string(),
                 "presence_absence".to_string(),
@@ -41,7 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "first_part_of_speech".to_string(),
                 "last_part_of_speech".to_string(),
                 "expression".to_string(),
-            ], // Field names
+            ], // All field names including common fields
         ), // Schema for Ko-Dic
         vec![
             Some(1), // Part-of-speech tag

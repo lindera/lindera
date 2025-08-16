@@ -200,16 +200,12 @@ impl PrefixDictionaryBuilder {
             }
 
             let key = if self.normalize_details {
-                if let Some(surface) = self
-                    .get_common_field_value(row, crate::dictionary::schema::CommonField::Surface)?
-                {
+                if let Some(surface) = self.get_field_value(row, "surface")? {
                     normalize(&surface)
                 } else {
                     continue;
                 }
-            } else if let Some(surface) =
-                self.get_common_field_value(row, crate::dictionary::schema::CommonField::Surface)?
-            {
+            } else if let Some(surface) = self.get_field_value(row, "surface")? {
                 surface
             } else {
                 continue;
@@ -229,30 +225,31 @@ impl PrefixDictionaryBuilder {
         Ok(word_entry_map)
     }
 
-    /// Get common field value by type
-    fn get_common_field_value(
+    /// Get field value by name
+    fn get_field_value(
         &self,
         row: &StringRecord,
-        field: crate::dictionary::schema::CommonField,
+        field_name: &str,
     ) -> LinderaResult<Option<String>> {
-        let index = self.schema.get_common_field_index(field);
+        if let Some(index) = self.schema.get_field_index(field_name) {
+            if index >= row.len() {
+                return Ok(None);
+            }
 
-        if index >= row.len() {
-            return Ok(None);
-        }
-
-        let value = row[index].trim();
-        Ok(if value.is_empty() {
-            None
+            let value = row[index].trim();
+            Ok(if value.is_empty() {
+                None
+            } else {
+                Some(value.to_string())
+            })
         } else {
-            Some(value.to_string())
-        })
+            Ok(None)
+        }
     }
 
     /// Parse word cost using schema
     fn parse_word_cost(&self, row: &StringRecord) -> LinderaResult<Option<i16>> {
-        let cost_str =
-            self.get_common_field_value(row, crate::dictionary::schema::CommonField::Cost)?;
+        let cost_str = self.get_field_value(row, "cost")?;
         match cost_str {
             Some(s) => match i16::from_str(&s) {
                 Ok(cost) => Ok(Some(cost)),
@@ -271,8 +268,7 @@ impl PrefixDictionaryBuilder {
 
     /// Parse left ID using schema
     fn parse_left_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        let left_id_str = self
-            .get_common_field_value(row, crate::dictionary::schema::CommonField::LeftContextId)?;
+        let left_id_str = self.get_field_value(row, "left_context_id")?;
         match left_id_str {
             Some(s) => match u16::from_str(&s) {
                 Ok(id) => Ok(Some(id)),
@@ -291,8 +287,7 @@ impl PrefixDictionaryBuilder {
 
     /// Parse right ID using schema
     fn parse_right_id(&self, row: &StringRecord) -> LinderaResult<Option<u16>> {
-        let right_id_str = self
-            .get_common_field_value(row, crate::dictionary::schema::CommonField::RightContextId)?;
+        let right_id_str = self.get_field_value(row, "right_context_id")?;
         match right_id_str {
             Some(s) => match u16::from_str(&s) {
                 Ok(id) => Ok(Some(id)),
@@ -529,7 +524,7 @@ fn normalize(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dictionary::schema::{CommonField, Schema};
+    use crate::dictionary::schema::Schema;
     use csv::StringRecord;
 
     #[test]
@@ -557,9 +552,7 @@ mod tests {
             "789", // Cost
         ]);
 
-        let surface = builder
-            .get_common_field_value(&record, CommonField::Surface)
-            .unwrap();
+        let surface = builder.get_field_value(&record, "surface").unwrap();
         assert_eq!(surface, None);
     }
 
@@ -572,9 +565,7 @@ mod tests {
             "surface_form", // Surface only
         ]);
 
-        let left_id = builder
-            .get_common_field_value(&record, CommonField::LeftContextId)
-            .unwrap();
+        let left_id = builder.get_field_value(&record, "left_context_id").unwrap();
         assert_eq!(left_id, None);
     }
 
@@ -692,45 +683,37 @@ mod tests {
         let builder = PrefixDictionaryBuilder::new(schema);
 
         let record = StringRecord::from(vec![
-            "surface_form", // Surface
-            "123",          // LeftContextId
-            "456",          // RightContextId
-            "789",          // Cost
-            "名詞",         // MajorPos
+            "word", // Surface
+            "123",  // LeftContextId
+            "456",  // RightContextId
+            "789",  // Cost
+            "名詞", // MajorPos
         ]);
 
         // Test common fields
         assert_eq!(
-            builder
-                .get_common_field_value(&record, CommonField::Surface)
-                .unwrap(),
-            Some("surface_form".to_string())
+            builder.get_field_value(&record, "surface").unwrap(),
+            Some("word".to_string())
         );
         assert_eq!(
-            builder
-                .get_common_field_value(&record, CommonField::LeftContextId)
-                .unwrap(),
+            builder.get_field_value(&record, "left_context_id").unwrap(),
             Some("123".to_string())
         );
         assert_eq!(
             builder
-                .get_common_field_value(&record, CommonField::RightContextId)
+                .get_field_value(&record, "right_context_id")
                 .unwrap(),
             Some("456".to_string())
         );
         assert_eq!(
-            builder
-                .get_common_field_value(&record, CommonField::Cost)
-                .unwrap(),
+            builder.get_field_value(&record, "cost").unwrap(),
             Some("789".to_string())
         );
 
         // Test case where field is out of bounds - should return None, not an error
-        let short_record = StringRecord::from(vec!["surface_form", "123"]);
+        let short_record = StringRecord::from(vec!["word", "123"]);
         assert_eq!(
-            builder
-                .get_common_field_value(&short_record, CommonField::Cost)
-                .unwrap(),
+            builder.get_field_value(&short_record, "cost").unwrap(),
             None
         );
     }

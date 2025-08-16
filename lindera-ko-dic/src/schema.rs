@@ -11,6 +11,10 @@ impl Default for KoDicSchema {
 impl KoDicSchema {
     pub fn schema() -> Schema {
         Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
             "part_of_speech_tag".to_string(),
             "meaning".to_string(),
             "presence_absence".to_string(),
