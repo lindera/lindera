@@ -12,12 +12,12 @@ pub const FIELD_RIGHT_CONTEXT_ID: &str = "right_context_id";
 pub const FIELD_COST: &str = "cost";
 
 /// Default custom field name constants
-pub const FIELD_MAJOR_POS: &str = "major_pos";
-pub const FIELD_MIDDLE_POS: &str = "middle_pos";
-pub const FIELD_SMALL_POS: &str = "small_pos";
-pub const FIELD_FINE_POS: &str = "fine_pos";
-pub const FIELD_CONJUGATION_TYPE: &str = "conjugation_type";
-pub const FIELD_CONJUGATION_FORM: &str = "conjugation_form";
+pub const FIELD_PART_OF_SPEECH: &str = "major_pos";
+pub const FIELD_PART_OF_SPEECH_SUBCATEGORY_1: &str = "middle_pos";
+pub const FIELD_PART_OF_SPEECH_SUBCATEGORY_2: &str = "small_pos";
+pub const FIELD_PART_OF_SPEECH_SUBCATEGORY_3: &str = "fine_pos";
+pub const FIELD_CONJUGATION_FORM: &str = "conjugation_type";
+pub const FIELD_CONJUGATION_TYPE: &str = "conjugation_form";
 pub const FIELD_BASE_FORM: &str = "base_form";
 pub const FIELD_READING: &str = "reading";
 pub const FIELD_PRONUNCIATION: &str = "pronunciation";
@@ -189,12 +189,12 @@ pub enum FieldType {
 impl Default for Schema {
     fn default() -> Self {
         Self::new(vec![
-            FIELD_MAJOR_POS.to_string(),
-            FIELD_MIDDLE_POS.to_string(),
-            FIELD_SMALL_POS.to_string(),
-            FIELD_FINE_POS.to_string(),
-            FIELD_CONJUGATION_TYPE.to_string(),
+            FIELD_PART_OF_SPEECH.to_string(),
+            FIELD_PART_OF_SPEECH_SUBCATEGORY_1.to_string(),
+            FIELD_PART_OF_SPEECH_SUBCATEGORY_2.to_string(),
+            FIELD_PART_OF_SPEECH_SUBCATEGORY_3.to_string(),
             FIELD_CONJUGATION_FORM.to_string(),
+            FIELD_CONJUGATION_TYPE.to_string(),
             FIELD_BASE_FORM.to_string(),
             FIELD_READING.to_string(),
             FIELD_PRONUNCIATION.to_string(),
@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(schema.get_field_index(FIELD_COST), Some(3));
 
         // Custom fields
-        assert_eq!(schema.get_field_index(FIELD_MAJOR_POS), Some(4));
+        assert_eq!(schema.get_field_index(FIELD_PART_OF_SPEECH), Some(4));
         assert_eq!(schema.get_field_index(FIELD_BASE_FORM), Some(10));
         assert_eq!(schema.get_field_index(FIELD_PRONUNCIATION), Some(12));
 
@@ -240,7 +240,7 @@ mod tests {
 
         assert_eq!(schema.get_field_name(0), Some(FIELD_SURFACE));
         assert_eq!(schema.get_field_name(3), Some(FIELD_COST));
-        assert_eq!(schema.get_field_name(4), Some(FIELD_MAJOR_POS));
+        assert_eq!(schema.get_field_name(4), Some(FIELD_PART_OF_SPEECH));
         assert_eq!(schema.get_field_name(12), Some(FIELD_PRONUNCIATION));
         assert_eq!(schema.get_field_name(13), None);
     }
@@ -308,9 +308,9 @@ mod tests {
         assert_eq!(field.name, FIELD_SURFACE);
         assert_eq!(field.field_type, FieldType::Surface);
 
-        let field = schema.get_field_by_name(FIELD_MAJOR_POS).unwrap();
+        let field = schema.get_field_by_name(FIELD_PART_OF_SPEECH).unwrap();
         assert_eq!(field.index, 4);
-        assert_eq!(field.name, FIELD_MAJOR_POS);
+        assert_eq!(field.name, FIELD_PART_OF_SPEECH);
         assert_eq!(field.field_type, FieldType::Custom);
     }
 
@@ -319,7 +319,7 @@ mod tests {
         let schema = Schema::default();
         let detail_fields = schema.get_detail_fields();
         assert_eq!(detail_fields.len(), 9);
-        assert_eq!(detail_fields[0], FIELD_MAJOR_POS);
+        assert_eq!(detail_fields[0], FIELD_PART_OF_SPEECH);
         assert_eq!(detail_fields[8], FIELD_PRONUNCIATION);
     }
 }
