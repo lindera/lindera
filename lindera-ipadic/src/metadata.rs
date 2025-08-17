@@ -20,12 +20,10 @@ impl IPADICMetadata {
             DICTIONARY_NAME.to_string(),
             DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
-            3,
             -10000,
             0,
             0,
             "*".to_string(),
-            13,
             11,
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id

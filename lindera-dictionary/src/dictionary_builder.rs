@@ -122,8 +122,8 @@ impl DictionaryBuilder {
         let default_field_value = self.metadata.default_field_value.clone();
 
         UserDictionaryBuilderOptions::default()
-            .user_dictionary_fields_num(self.metadata.user_dictionary_fields_num)
-            .dictionary_fields_num(self.metadata.dictionary_fields_num)
+            .user_dictionary_fields_num(self.metadata.user_dictionary_schema.field_count())
+            .dictionary_fields_num(self.metadata.dictionary_schema.field_count())
             .default_word_cost(self.metadata.default_word_cost)
             .default_left_context_id(self.metadata.default_left_context_id)
             .default_right_context_id(self.metadata.default_right_context_id)

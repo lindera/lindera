@@ -23,12 +23,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "unidic".to_string(), // Dictionary name
         "UTF-8".to_string(),  // Encoding for UniDic
         Algorithm::Deflate,   // Compression algorithm
-        3,                    // Number of fields in simple user dictionary
         -10000,               // Default word cost=
         0,                    // Default left context ID
         0,                    // Default right context ID
         "*".to_string(),      // Default field value
-        21,                   // Detailed user dictionary fields number
         10,                   // Unknown fields number
         true,                 // flexible_csv
         false,                // skip_invalid_cost_or_id

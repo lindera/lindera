@@ -20,12 +20,10 @@ impl CcCedictMetadata {
             DICTIONARY_NAME.to_string(),
             DICTIONARY_ENCODING.to_string(),
             Algorithm::Deflate,
-            3,
             -10000,
             0,
             0,
             "*".to_string(),
-            12,
             10,
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
