@@ -71,7 +71,6 @@ impl DictionaryBuilder {
         UnknownDictionaryBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
             .compress_algorithm(self.metadata.compress_algorithm)
-            .unk_fields_num(self.metadata.unk_fields_num)
             .builder()
             .unwrap()
             .build(input_dir, chardef, output_dir)

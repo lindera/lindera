@@ -24,7 +24,6 @@ impl UniDicMetadata {
             0,
             0,
             "*".to_string(),
-            10,
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details

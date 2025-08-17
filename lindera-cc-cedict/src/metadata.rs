@@ -24,7 +24,6 @@ impl CcCedictMetadata {
             0,
             0,
             "*".to_string(),
-            10,
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
             false, // normalize_details

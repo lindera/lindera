@@ -24,7 +24,6 @@ impl KoDicMetadata {
             0,
             0,
             "*".to_string(),
-            12,
             false, // flexible_csv
             false, // skip_invalid_cost_or_id
             false, // normalize_details

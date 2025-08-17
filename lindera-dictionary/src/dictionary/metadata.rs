@@ -18,7 +18,6 @@ pub struct Metadata {
     pub default_left_context_id: u16,   // Context ID for simple user dictionary
     pub default_right_context_id: u16,  // Context ID for simple user dictionary
     pub default_field_value: String,    // Default value for fields in simple user dictionary
-    pub unk_fields_num: usize,          // Number of fields in unknown dictionary
     pub flexible_csv: bool,             // Handle CSV columns flexibly
     pub skip_invalid_cost_or_id: bool,  // Skip invalid cost or ID
     pub normalize_details: bool,        // Normalize characters
@@ -37,7 +36,6 @@ impl Default for Metadata {
             DEFAULT_LEFT_CONTEXT_ID,
             DEFAULT_RIGHT_CONTEXT_ID,
             DEFAULT_FIELD_VALUE.to_string(),
-            11,
             false,
             false,
             false,
@@ -61,7 +59,6 @@ impl Metadata {
         default_left_context_id: u16,
         default_right_context_id: u16,
         default_field_value: String,
-        unk_fields_num: usize,
         flexible_csv: bool,
         skip_invalid_cost_or_id: bool,
         normalize_details: bool,
@@ -75,7 +72,6 @@ impl Metadata {
             default_left_context_id,
             default_right_context_id,
             default_field_value,
-            unk_fields_num,
             dictionary_schema: schema,
             name,
             flexible_csv,
@@ -169,7 +165,6 @@ mod tests {
             0,
             0,
             "*".to_string(),
-            10,
             false,
             false,
             false,

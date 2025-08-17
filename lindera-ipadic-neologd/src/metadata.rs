@@ -24,7 +24,6 @@ impl IPADICNEologdMetadata {
             0,
             0,
             "*".to_string(),
-            11,
             true,  // flexible_csv
             false, // skip_invalid_cost_or_id
             true,  // normalize_details is true for IPAdic-NEologd

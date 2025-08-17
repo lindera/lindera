@@ -27,7 +27,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         0,                    // Default left context ID
         0,                    // Default right context ID
         "*".to_string(),      // Default field value
-        11,                   // Unknown fields number
         false,                // flexible_csv
         false,                // skip_invalid_cost_or_id
         true,                 // normalize_details

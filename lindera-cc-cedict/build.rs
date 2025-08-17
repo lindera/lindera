@@ -27,7 +27,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         0,                       // Default left context ID
         0,                       // Default right context ID
         "*".to_string(),         // Default field value
-        10,                      // Unknown fields number
         true,                    // flexible_csv is true for CC-CEDICT
         true,                    // skip_invalid_cost_or_id is true for CC-CEDICT
         false,                   // normalize_details

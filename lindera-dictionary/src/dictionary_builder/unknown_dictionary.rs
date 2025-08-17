@@ -21,8 +21,6 @@ pub struct UnknownDictionaryBuilder {
     encoding: Cow<'static, str>,
     #[builder(default = "Algorithm::Deflate")]
     compress_algorithm: Algorithm,
-    #[builder(default = "11")]
-    unk_fields_num: usize,
 }
 
 impl UnknownDictionaryBuilder {
@@ -35,7 +33,7 @@ impl UnknownDictionaryBuilder {
         let unk_data_path = input_dir.join("unk.def");
         debug!("reading {unk_data_path:?}");
         let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
-        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data, self.unk_fields_num)?;
+        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
 
         let mut unk_buffer = Vec::new();
         bincode::serde::encode_into_std_write(
