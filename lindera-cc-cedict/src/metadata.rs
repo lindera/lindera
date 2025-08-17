@@ -1,7 +1,7 @@
 use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
-use crate::schema::CcCedictSchema;
+use crate::schema::{CCedictUserDictionarySchema, CcCedictDictionarySchema};
 use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// CC-CEDICT metadata factory
@@ -23,22 +23,15 @@ impl CcCedictMetadata {
             3,
             -10000,
             0,
+            0,
+            "*".to_string(),
             12,
             10,
             true,  // flexible_csv is true for CC-CEDICT
             true,  // skip_invalid_cost_or_id is true for CC-CEDICT
             false, // normalize_details
-            CcCedictSchema::schema(),
-            vec![
-                Some(1), // Part-of-speech
-                None,    // Part-of-speech subcategory 1
-                None,    // Part-of-speech subcategory 2
-                None,    // Part-of-speech subcategory 3
-                Some(2), // Pinyin
-                None,    // Traditional
-                None,    // Simplified
-                None,    // Definition
-            ],
+            CcCedictDictionarySchema::schema(),
+            CCedictUserDictionarySchema::schema(),
         )
     }
 }

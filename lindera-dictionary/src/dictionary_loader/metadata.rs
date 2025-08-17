@@ -105,10 +105,10 @@ mod tests {
         let loaded_metadata = MetadataLoader::load(&temp_path).unwrap();
 
         assert_eq!(loaded_metadata.encoding, "UTF-8");
-        assert_eq!(loaded_metadata.simple_word_cost, -10000);
-        assert_eq!(loaded_metadata.simple_context_id, 0);
-        assert_eq!(loaded_metadata.simple_userdic_fields_num, 3);
-        assert_eq!(loaded_metadata.detailed_userdic_fields_num, 13);
+        assert_eq!(loaded_metadata.default_word_cost, -10000);
+        assert_eq!(loaded_metadata.default_left_context_id, 1288);
+        assert_eq!(loaded_metadata.user_dictionary_fields_num, 3);
+        assert_eq!(loaded_metadata.dictionary_fields_num, 13);
         assert_eq!(loaded_metadata.unk_fields_num, 11);
         // Cleanup
         std::fs::remove_dir_all(&temp_path).ok();

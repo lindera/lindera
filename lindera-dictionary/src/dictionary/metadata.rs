@@ -3,21 +3,29 @@ use serde::{Deserialize, Serialize};
 use crate::decompress::Algorithm;
 use crate::dictionary::schema::Schema;
 
+const DEFAULT_COMPRESS_ALGORITHM: Algorithm = Algorithm::Deflate;
+const DEFAULT_WORD_COST: i16 = -10000;
+const DEFAULT_LEFT_CONTEXT_ID: u16 = 1288;
+const DEFAULT_RIGHT_CONTEXT_ID: u16 = 1288;
+const DEFAULT_FIELD_VALUE: &str = "*";
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
-    pub name: String,                              // Name of the dictionary
-    pub encoding: String,                          // Character encoding
-    pub compress_algorithm: Algorithm,             // Compression algorithm
-    pub simple_userdic_fields_num: usize,          // Number of fields in simple user dictionary
-    pub simple_word_cost: i16,                     // Word cost for simple user dictionary
-    pub simple_context_id: u16,                    // Context ID for simple user dictionary
-    pub detailed_userdic_fields_num: usize,        // Number of fields in detailed user dictionary
-    pub unk_fields_num: usize,                     // Number of fields in unknown dictionary
-    pub flexible_csv: bool,                        // Handle CSV columns flexibly
-    pub skip_invalid_cost_or_id: bool,             // Skip invalid cost or ID
-    pub normalize_details: bool,                   // Normalize characters
-    pub schema: Schema,                            // Schema for the dictionary
-    pub userdic_field_indices: Vec<Option<usize>>, // User dictionary field indices
+    pub name: String,                      // Name of the dictionary
+    pub encoding: String,                  // Character encoding
+    pub compress_algorithm: Algorithm,     // Compression algorithm
+    pub user_dictionary_fields_num: usize, // Number of fields in simple user dictionary
+    pub default_word_cost: i16,            // Word cost for simple user dictionary
+    pub default_left_context_id: u16,      // Context ID for simple user dictionary
+    pub default_right_context_id: u16,     // Context ID for simple user dictionary
+    pub default_field_value: String,       // Default value for fields in simple user dictionary
+    pub dictionary_fields_num: usize,      // Number of fields in detailed user dictionary
+    pub unk_fields_num: usize,             // Number of fields in unknown dictionary
+    pub flexible_csv: bool,                // Handle CSV columns flexibly
+    pub skip_invalid_cost_or_id: bool,     // Skip invalid cost or ID
+    pub normalize_details: bool,           // Normalize characters
+    pub dictionary_schema: Schema,         // Schema for the dictionary
+    pub user_dictionary_schema: Schema,    // Schema for user dictionary
 }
 
 impl Default for Metadata {
@@ -26,27 +34,23 @@ impl Default for Metadata {
         Metadata::new(
             "default".to_string(),
             "UTF-8".to_string(),
-            Algorithm::Deflate,
+            DEFAULT_COMPRESS_ALGORITHM,
             3,
-            -10000,
-            0,
+            DEFAULT_WORD_COST,
+            DEFAULT_LEFT_CONTEXT_ID,
+            DEFAULT_RIGHT_CONTEXT_ID,
+            DEFAULT_FIELD_VALUE.to_string(),
             13,
             11,
             false,
             false,
             false,
             Schema::default(),
-            vec![
-                Some(1), // Use field 1 for major POS classification
-                None,    // Middle POS classification is '*'
-                None,    // Small POS classification is '*'
-                None,    // Fine POS classification is '*'
-                None,    // Conjugation type is '*'
-                None,    // Conjugation form is '*'
-                Some(0), // Use field 0 for base form
-                Some(2), // Use field 2 for reading
-                None,    // Pronunciation is '*'
-            ],
+            Schema::new(vec![
+                "surface".to_string(),
+                "reading".to_string(),
+                "pronunciation".to_string(),
+            ]),
         )
     }
 }
@@ -59,29 +63,33 @@ impl Metadata {
         compress_algorithm: Algorithm,
         simple_userdic_fields_num: usize,
         simple_word_cost: i16,
-        simple_context_id: u16,
+        default_left_context_id: u16,
+        default_right_context_id: u16,
+        default_field_value: String,
         detailed_userdic_fields_num: usize,
         unk_fields_num: usize,
         flexible_csv: bool,
         skip_invalid_cost_or_id: bool,
         normalize_details: bool,
         schema: Schema,
-        userdic_field_indices: Vec<Option<usize>>,
+        userdic_schema: Schema,
     ) -> Self {
         Self {
             encoding,
             compress_algorithm,
-            simple_userdic_fields_num,
-            simple_word_cost,
-            simple_context_id,
-            detailed_userdic_fields_num,
+            user_dictionary_fields_num: simple_userdic_fields_num,
+            default_word_cost: simple_word_cost,
+            default_left_context_id,
+            default_right_context_id,
+            default_field_value,
+            dictionary_fields_num: detailed_userdic_fields_num,
             unk_fields_num,
-            schema,
+            dictionary_schema: schema,
             name,
             flexible_csv,
             skip_invalid_cost_or_id,
             normalize_details,
-            userdic_field_indices,
+            user_dictionary_schema: userdic_schema,
         }
     }
 
@@ -168,13 +176,15 @@ mod tests {
             3,
             -10000,
             0,
+            0,
+            "*".to_string(),
             21,
             10,
             false,
             false,
             false,
             schema.clone(),
-            vec![Some(1), None, None, None, None, None, Some(2), None],
+            Schema::new(vec!["surface".to_string(), "reading".to_string()]),
         );
         assert_eq!(metadata.name, "TestDict");
         // Schema no longer has name field

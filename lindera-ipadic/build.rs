@@ -24,37 +24,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
         "EUC-JP".to_string(), // Encoding for IPADIC
         Algorithm::Deflate,   // Compression algorithm
         3,                    // Number of fields in simple user dictionary
-        -10000,               // Simple word cost
-        0,                    // Simple context ID
+        -10000,               // Default word cost
+        0,                    // Default left context ID
+        0,                    // Default right context ID
+        "*".to_string(),      // Default field value
         13,                   // Detailed user dictionary fields number
         11,                   // Unknown fields number
         false,                // flexible_csv
         false,                // skip_invalid_cost_or_id
         true,                 // normalize_details
-        Schema::new(
-            vec![
-                "part_of_speech".to_string(),
-                "part_of_speech_subcategory_1".to_string(),
-                "part_of_speech_subcategory_2".to_string(),
-                "part_of_speech_subcategory_3".to_string(),
-                "conjugation_form".to_string(),
-                "conjugation_type".to_string(),
-                "base_form".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ], // Field names
-        ), // Schema for IPADIC
-        vec![
-            Some(1), // Part-of-speech
-            None,    // Part-of-speech subcategory 1
-            None,    // Part-of-speech subcategory 2
-            None,    // Part-of-speech subcategory 3
-            None,    // Conjugation form
-            None,    // Conjugation type
-            Some(0), // Base form
-            Some(2), // Reading
-            None,    // Pronunciation
-        ], // User dictionary field indices
+        Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "part_of_speech".to_string(),
+            "part_of_speech_subcategory_1".to_string(),
+            "part_of_speech_subcategory_2".to_string(),
+            "part_of_speech_subcategory_3".to_string(),
+            "conjugation_form".to_string(),
+            "conjugation_type".to_string(),
+            "base_form".to_string(),
+            "reading".to_string(),
+            "pronunciation".to_string(),
+        ]), // Schema for IPADIC dictionary
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "reading".to_string(),
+        ]), // Schema for IPADIC user dictionary
     );
 
     let builder = DictionaryBuilder::new(metadata);

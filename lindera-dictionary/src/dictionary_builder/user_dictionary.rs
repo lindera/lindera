@@ -25,17 +25,19 @@ type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<V
 #[builder(build_fn(name = "builder"))]
 pub struct UserDictionaryBuilder {
     #[builder(default = "3")]
-    simple_userdic_fields_num: usize,
-    #[builder(default = "4")]
-    detailed_userdic_fields_num: usize,
+    user_dictionary_fields_num: usize,
+    #[builder(default = "12")]
+    dictionary_fields_num: usize,
     #[builder(default = "-10000")]
-    simple_word_cost: i16,
+    default_word_cost: i16,
     #[builder(default = "0")]
-    simple_context_id: u16,
+    default_left_context_id: u16,
+    #[builder(default = "0")]
+    default_right_context_id: u16,
     #[builder(default = "true")]
     flexible_csv: bool,
     #[builder(setter(strip_option), default = "None")]
-    simple_userdic_details_handler: StringRecordProcessor,
+    user_dictionary_handler: StringRecordProcessor,
 }
 
 impl UserDictionaryBuilder {
@@ -73,8 +75,8 @@ impl UserDictionaryBuilder {
 
         for (row_id, row) in rows.iter().enumerate() {
             let surface = row[0].to_string();
-            let word_cost = if row.len() == self.simple_userdic_fields_num {
-                self.simple_word_cost
+            let word_cost = if row.len() == self.user_dictionary_fields_num {
+                self.default_word_cost
             } else {
                 row[3].parse::<i16>().map_err(|_err| {
                     LinderaErrorKind::Parse
@@ -87,8 +89,8 @@ impl UserDictionaryBuilder {
                         ))
                 })?
             };
-            let (left_id, right_id) = if row.len() == self.simple_userdic_fields_num {
-                (self.simple_context_id, self.simple_context_id)
+            let (left_id, right_id) = if row.len() == self.user_dictionary_fields_num {
+                (self.default_left_context_id, self.default_right_context_id)
             } else {
                 (
                     row[1].parse::<u16>().map_err(|_err| {
@@ -128,8 +130,8 @@ impl UserDictionaryBuilder {
         let mut words_data = Vec::<u8>::new();
         let mut words_idx_data = Vec::<u8>::new();
         for row in rows.iter() {
-            let word_detail = if row.len() == self.simple_userdic_fields_num {
-                if let Some(handler) = &self.simple_userdic_details_handler {
+            let word_detail = if row.len() == self.user_dictionary_fields_num {
+                if let Some(handler) = &self.user_dictionary_handler {
                     handler(row)?
                 } else {
                     row.iter()
@@ -137,7 +139,7 @@ impl UserDictionaryBuilder {
                         .map(|s| s.to_string())
                         .collect::<Vec<String>>()
                 }
-            } else if row.len() >= self.detailed_userdic_fields_num {
+            } else if row.len() >= self.dictionary_fields_num {
                 let mut tmp_word_detail = Vec::new();
                 for item in row.iter().skip(4) {
                     tmp_word_detail.push(item.to_string());
@@ -147,8 +149,8 @@ impl UserDictionaryBuilder {
                 return Err(LinderaErrorKind::Content
                     .with_error(anyhow::anyhow!(
                         "user dictionary should be a CSV with {} or {}+ fields",
-                        self.simple_userdic_fields_num,
-                        self.detailed_userdic_fields_num
+                        self.user_dictionary_fields_num,
+                        self.dictionary_fields_num
                     ))
                     .add_context(format!(
                         "Row {} has {} fields (surface: '{}')",
