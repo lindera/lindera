@@ -114,15 +114,11 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
         .collect()
 }
 
-pub fn parse_unk(
-    categories: &[String],
-    file_content: &str,
-    expected_fields_len: usize,
-) -> LinderaResult<UnknownDictionary> {
+pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     for line in file_content.lines() {
         let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
-        let entry = parse_dictionary_entry(&fields[..], expected_fields_len)?;
+        let entry = parse_dictionary_entry(&fields[..], fields.len())?;
         unknown_dict_entries.push(entry);
     }
 
@@ -133,6 +129,3 @@ pub fn parse_unk(
         costs,
     })
 }
-
-#[cfg(test)]
-mod tests {}
