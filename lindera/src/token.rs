@@ -220,7 +220,7 @@ impl<'a> Token<'a> {
         let index = self
             .dictionary
             .metadata
-            .schema
+            .dictionary_schema
             .get_field_index(field_name)?;
 
         // Handle common fields
@@ -256,7 +256,11 @@ impl<'a> Token<'a> {
     /// ```
     pub fn as_map(&mut self) -> HashMap<&str, Cow<str>> {
         // Get schema info first
-        let schema_custom_fields = self.dictionary.metadata.schema.get_custom_fields();
+        let schema_custom_fields = self
+            .dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields();
 
         // Pre-allocate with known capacity (surface + byte_start + byte_end + word_id + custom fields)
         let mut map = HashMap::with_capacity(4 + schema_custom_fields.len());

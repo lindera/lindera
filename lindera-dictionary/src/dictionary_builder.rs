@@ -88,7 +88,7 @@ impl DictionaryBuilder {
             .compress_algorithm(self.metadata.compress_algorithm)
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
             .normalize_details(self.metadata.normalize_details)
-            .schema(self.metadata.schema.clone())
+            .schema(self.metadata.dictionary_schema.clone())
             .builder()
             .unwrap()
             .build(input_dir, output_dir)
@@ -117,7 +117,10 @@ impl DictionaryBuilder {
     }
 
     pub fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
-        let indices = self.metadata.userdic_field_indices.clone();
+        let userdic_schema = self.metadata.user_dictionary_schema.clone();
+        let dict_schema = self.metadata.dictionary_schema.clone();
+        let default_field_value = self.metadata.default_field_value.clone();
+
         UserDictionaryBuilderOptions::default()
             .user_dictionary_fields_num(self.metadata.user_dictionary_fields_num)
             .dictionary_fields_num(self.metadata.dictionary_fields_num)
@@ -126,13 +129,25 @@ impl DictionaryBuilder {
             .default_right_context_id(self.metadata.default_right_context_id)
             .flexible_csv(self.metadata.flexible_csv)
             .user_dictionary_handler(Some(Box::new(move |row: &StringRecord| {
-                Ok(indices
-                    .iter()
-                    .map(|idx| match idx {
-                        Some(i) => row[*i].to_string(),
-                        None => "*".to_string(),
-                    })
-                    .collect())
+                // Map user dictionary fields to dictionary schema fields
+                let mut result = Vec::new();
+
+                // Skip the first 4 common fields (surface, left_id, right_id, cost)
+                for field_name in dict_schema.get_custom_fields() {
+                    if let Some(idx) = userdic_schema.get_field_index(field_name) {
+                        // If field exists in user dictionary schema, get value from CSV
+                        if idx < row.len() {
+                            result.push(row[idx].to_string());
+                        } else {
+                            result.push(default_field_value.clone());
+                        }
+                    } else {
+                        // Field not in user dictionary schema, use default value
+                        result.push(default_field_value.clone());
+                    }
+                }
+
+                Ok(result)
             })))
             .builder()
             .unwrap()

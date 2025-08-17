@@ -1,7 +1,7 @@
 use lindera_dictionary::decompress::Algorithm;
 use lindera_dictionary::dictionary::metadata::Metadata;
 
-use crate::schema::KoDicSchema;
+use crate::schema::{KoDicSchema, KoDicUserDictionarySchema};
 use crate::{DICTIONARY_ENCODING, DICTIONARY_NAME};
 
 /// Ko-Dic metadata factory
@@ -31,16 +31,7 @@ impl KoDicMetadata {
             false, // skip_invalid_cost_or_id
             false, // normalize_details
             KoDicSchema::schema(),
-            vec![
-                Some(1), // Part-of-speech tag
-                None,    // Meaning
-                None,    // Presence or absence
-                Some(2), // Reading
-                None,    // Type
-                None,    // First part-of-speech
-                None,    // Last part-of-speech
-                None,    // Expression
-            ],
+            KoDicUserDictionarySchema::schema(),
         )
     }
 }

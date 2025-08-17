@@ -33,32 +33,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
         true,                    // flexible_csv is true for CC-CEDICT
         true,                    // skip_invalid_cost_or_id is true for CC-CEDICT
         false,                   // normalize_details
-        Schema::new(
-            vec![
-                "surface".to_string(),
-                "left_context_id".to_string(),
-                "right_context_id".to_string(),
-                "cost".to_string(),
-                "part_of_speech".to_string(),
-                "part_of_speech_subcategory_1".to_string(),
-                "part_of_speech_subcategory_2".to_string(),
-                "part_of_speech_subcategory_3".to_string(),
-                "pinyin".to_string(),
-                "traditional".to_string(),
-                "simplified".to_string(),
-                "definition".to_string(),
-            ], // All field names including common fields
-        ), // Schema for CC-CEDICT
-        vec![
-            Some(1), // Part-of-speech
-            None,    // Part-of-speech subcategory 1
-            None,    // Part-of-speech subcategory 2
-            None,    // Part-of-speech subcategory 3
-            Some(2), // Pinyin
-            None,    // Traditional
-            None,    // Simplified
-            None,    // Definition
-        ], // User dictionary field indices
+        Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "part_of_speech".to_string(),
+            "part_of_speech_subcategory_1".to_string(),
+            "part_of_speech_subcategory_2".to_string(),
+            "part_of_speech_subcategory_3".to_string(),
+            "pinyin".to_string(),
+            "traditional".to_string(),
+            "simplified".to_string(),
+            "definition".to_string(),
+        ]), // Schema for CC-CEDICT dictionary
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "pinyin".to_string(),
+        ]), // Schema for CC-CEDICT user dictionary
     );
 
     let builder = DictionaryBuilder::new(metadata);

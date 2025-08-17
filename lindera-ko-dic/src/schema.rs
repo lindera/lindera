@@ -26,3 +26,21 @@ impl KoDicSchema {
         ])
     }
 }
+
+pub struct KoDicUserDictionarySchema;
+
+impl Default for KoDicUserDictionarySchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl KoDicUserDictionarySchema {
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech_tag".to_string(),
+            "reading".to_string(),
+        ])
+    }
+}

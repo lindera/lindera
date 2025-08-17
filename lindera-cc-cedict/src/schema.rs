@@ -1,14 +1,14 @@
 use lindera_dictionary::dictionary::schema::Schema;
 
-pub struct CcCedictSchema;
+pub struct CcCedictDictionarySchema;
 
-impl Default for CcCedictSchema {
+impl Default for CcCedictDictionarySchema {
     fn default() -> Self {
         Self
     }
 }
 
-impl CcCedictSchema {
+impl CcCedictDictionarySchema {
     pub fn schema() -> Schema {
         Schema::new(vec![
             "surface".to_string(),
@@ -23,6 +23,24 @@ impl CcCedictSchema {
             "traditional".to_string(),
             "simplified".to_string(),
             "definition".to_string(),
+        ])
+    }
+}
+
+pub struct CCedictUserDictionarySchema;
+
+impl Default for CCedictUserDictionarySchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl CCedictUserDictionarySchema {
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "pinyin".to_string(),
         ])
     }
 }

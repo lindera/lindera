@@ -29,3 +29,21 @@ impl IPADICNEologdSchema {
         ])
     }
 }
+
+pub struct IPADICNEologdUserDictionarySchema;
+
+impl Default for IPADICNEologdUserDictionarySchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl IPADICNEologdUserDictionarySchema {
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "reading".to_string(),
+        ])
+    }
+}

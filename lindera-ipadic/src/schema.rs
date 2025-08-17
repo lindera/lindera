@@ -1,15 +1,15 @@
 use lindera_dictionary::dictionary::schema::Schema;
 
 /// IPADIC dictionary schema factory
-pub struct IPADICSchema;
+pub struct IPADICDictionarySchema;
 
-impl Default for IPADICSchema {
+impl Default for IPADICDictionarySchema {
     fn default() -> Self {
         Self
     }
 }
 
-impl IPADICSchema {
+impl IPADICDictionarySchema {
     /// Create default IPADIC schema
     pub fn schema() -> Schema {
         Schema::new(vec![
@@ -26,6 +26,24 @@ impl IPADICSchema {
             "base_form".to_string(),
             "reading".to_string(),
             "pronunciation".to_string(),
+        ])
+    }
+}
+
+pub struct IPADICUserDictionarySchema;
+
+impl Default for IPADICUserDictionarySchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl IPADICUserDictionarySchema {
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "reading".to_string(),
         ])
     }
 }

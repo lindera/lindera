@@ -37,3 +37,21 @@ impl UniDicSchema {
         ])
     }
 }
+
+pub struct UniDicUserDictionarySchema;
+
+impl Default for UniDicUserDictionarySchema {
+    fn default() -> Self {
+        Self
+    }
+}
+
+impl UniDicUserDictionarySchema {
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech".to_string(),
+            "reading".to_string(),
+        ])
+    }
+}

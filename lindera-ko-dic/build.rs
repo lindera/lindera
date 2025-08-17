@@ -33,32 +33,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
         false,                // flexible_csv
         false,                // skip_invalid_cost_or_id
         false,                // normalize_details
-        Schema::new(
-            vec![
-                "surface".to_string(),
-                "left_context_id".to_string(),
-                "right_context_id".to_string(),
-                "cost".to_string(),
-                "part_of_speech_tag".to_string(),
-                "meaning".to_string(),
-                "presence_absence".to_string(),
-                "reading".to_string(),
-                "type".to_string(),
-                "first_part_of_speech".to_string(),
-                "last_part_of_speech".to_string(),
-                "expression".to_string(),
-            ], // All field names including common fields
-        ), // Schema for Ko-Dic
-        vec![
-            Some(1), // Part-of-speech tag
-            None,    // Meaning
-            None,    // Presence or absence
-            Some(2), // Reading
-            None,    // Type
-            None,    // First part-of-speech
-            None,    // Last part-of-speech
-            None,    // Expression
-        ], // User dictionary field indices
+        Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "part_of_speech_tag".to_string(),
+            "meaning".to_string(),
+            "presence_absence".to_string(),
+            "reading".to_string(),
+            "type".to_string(),
+            "first_part_of_speech".to_string(),
+            "last_part_of_speech".to_string(),
+            "expression".to_string(),
+        ]), // Schema for ko-dic dictionary
+        Schema::new(vec![
+            "surface".to_string(),
+            "part_of_speech_tag".to_string(),
+            "reading".to_string(),
+        ]), // Schema for ko-dic user dictionary
     );
 
     let builder = DictionaryBuilder::new(metadata);
