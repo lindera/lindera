@@ -8,7 +8,7 @@ use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::dictionary::{load_dictionary_from_config, load_user_dictionary_from_config};
+use crate::dictionary::{load_dictionary, load_user_dictionary};
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 
@@ -78,16 +78,46 @@ impl Segmenter {
     /// user dictionary loading, or tokenization process.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
         // Load the dictionary from the config
-        let dictionary =
-            load_dictionary_from_config(config.get("dictionary").ok_or_else(|| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("dictionary field is missing"))
-            })?)?;
+        let dictionary = load_dictionary(
+            config
+                .get("dictionary")
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("dictionary field is missing"))
+                })?,
+        )?;
+
+        // Get metadata from the dictionary
+        let metadata = &dictionary.metadata;
 
         // Load the user dictionary from the config
-        let user_dictionary = config
+        let user_dictionary_uri = config
             .get("user_dictionary")
-            .map(load_user_dictionary_from_config)
-            .transpose()?;
+            .and_then(Value::as_str)
+            .map(String::from);
+
+        let user_dictionary = match user_dictionary_uri {
+            Some(uri) => Some(load_user_dictionary(&uri, metadata)?),
+            None => None,
+        };
+
+        // let user_dictionary = match load_user_dictionary(
+        //     config
+        //         .get("user_dictionary")
+        //         .and_then(Value::as_str)
+        //         .ok_or_else(|| {
+        //             LinderaErrorKind::Parse
+        //                 .with_error(anyhow::anyhow!("user_dictionary field is missing"))
+        //         })?,
+        //     metadata,
+        // ) {
+        //     Ok(dict) => Some(dict),
+        //     Err(err) => {
+        //         eprintln!("Failed to load user dictionary: {}", err);
+        //         None
+        //     }
+        // };
 
         // Load the mode from the config
         let mode: Mode = config.get("mode").map_or_else(
@@ -323,9 +353,7 @@ mod tests {
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         }
         "#;
@@ -583,9 +611,7 @@ mod tests {
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "unidic"
-            },
+            "dictionary": "embedded://unidic",
             "mode": "normal"
         }
         "#;
@@ -995,9 +1021,7 @@ mod tests {
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ko-dic"
-            },
+            "dictionary": "embedded://ko-dic",
             "mode": "normal"
         }
         "#;
@@ -1167,9 +1191,7 @@ mod tests {
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
+            "dictionary": "embedded://cc-cedict",
             "mode": "normal"
         }
         "#;
@@ -1306,13 +1328,8 @@ mod tests {
             .join("ipadic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1459,13 +1476,8 @@ mod tests {
             .join("unidic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "unidic"
-            },
-            "user_dictionary": {
-                "kind": "unidic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://unidic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1728,13 +1740,8 @@ mod tests {
             .join("ko-dic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ko-dic"
-            },
-            "user_dictionary": {
-                "kind": "ko-dic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ko-dic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1812,13 +1819,8 @@ mod tests {
             .join("cc-cedict_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
-            "user_dictionary": {
-                "kind": "cc-cedict",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://cc-cedict",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1924,12 +1926,8 @@ mod tests {
             .join("ipadic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2076,12 +2074,8 @@ mod tests {
             .join("unidic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "unidic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://unidic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2344,12 +2338,8 @@ mod tests {
             .join("ko-dic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ko-dic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ko-dic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2427,12 +2417,8 @@ mod tests {
             .join("cc-cedict_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://cc-cedict",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2538,13 +2524,8 @@ mod tests {
             .join("ipadic_detailed_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2691,13 +2672,8 @@ mod tests {
             .join("ipadic_mixed_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2843,13 +2819,8 @@ mod tests {
             .join("ipadic_userdic_invalid_word_cost.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2865,13 +2836,8 @@ mod tests {
             .join("ipadic_userdic_insufficient_number_of_fields.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2884,10 +2850,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         });
 
@@ -2957,9 +2920,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": {
                 "decompose": {
                     "kanji_penalty_length_threshold": 2,
@@ -3058,9 +3019,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": "decompose"
         });
 
@@ -3164,10 +3123,7 @@ mod tests {
         let _size = large_file.read_to_string(&mut large_text).unwrap();
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         });
 

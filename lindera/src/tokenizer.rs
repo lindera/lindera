@@ -8,7 +8,6 @@ use serde_json::{Value, json};
 
 use crate::LinderaResult;
 use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
-use crate::dictionary::DictionaryKind;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
 use crate::segmenter::Segmenter;
@@ -125,23 +124,13 @@ impl TokenizerBuilder {
         self
     }
 
-    pub fn set_segmenter_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
-        self.config["segmenter"]["dictionary"]["kind"] = json!(kind.as_str());
+    pub fn set_segmenter_dictionary(&mut self, uri: &str) -> &mut Self {
+        self.config["segmenter"]["dictionary"] = json!(uri);
         self
     }
 
-    pub fn set_segmenter_dictionary_path(&mut self, path: &Path) -> &mut Self {
-        self.config["segmenter"]["dictionary"]["path"] = json!(path);
-        self
-    }
-
-    pub fn set_segmenter_user_dictionary_path(&mut self, path: &Path) -> &mut Self {
-        self.config["segmenter"]["user_dictionary"]["path"] = json!(path);
-        self
-    }
-
-    pub fn set_segmenter_user_dictionary_kind(&mut self, kind: &DictionaryKind) -> &mut Self {
-        self.config["segmenter"]["user_dictionary"]["kind"] = json!(kind.as_str());
+    pub fn set_segmenter_user_dictionary(&mut self, uri: &str) -> &mut Self {
+        self.config["segmenter"]["user_dictionary"] = json!(uri);
         self
     }
 
