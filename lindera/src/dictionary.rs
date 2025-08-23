@@ -87,7 +87,7 @@ impl FromStr for DictionaryScheme {
             "embedded" => Ok(DictionaryScheme::Embedded),
             "file" => Ok(DictionaryScheme::File),
             _ => Err(LinderaErrorKind::Dictionary
-                .with_error(anyhow::anyhow!("Invalid dictionary kind: {}", input))),
+                .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", input))),
         }
     }
 }
@@ -245,46 +245,52 @@ pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionar
 }
 
 pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
-    // Try to parse as URI first
-    match Url::parse(uri) {
-        Ok(parsed_uri) => {
-            // Parse the URI and return the appropriate dictionary
-            let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
-                LinderaErrorKind::Dictionary
-                    .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
-            })?;
+    // Try to parse as URI first, but only if it looks like a URI
+    // (contains "://" or starts with known schemes)
+    if uri.contains("://") {
+        match Url::parse(uri) {
+            Ok(parsed_uri) => {
+                // Parse the URI and return the appropriate dictionary
+                let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
+                    LinderaErrorKind::Dictionary
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                })?;
 
-            match scheme {
-                #[cfg(any(
-                    feature = "embedded-ipadic",
-                    feature = "embedded-ipadic-neologd",
-                    feature = "embedded-unidic",
-                    feature = "embedded-ko-dic",
-                    feature = "embedded-cc-cedict",
-                ))]
-                DictionaryScheme::Embedded => {
-                    let kind = DictionaryKind::from_str(parsed_uri.host_str().unwrap_or(""))
-                        .map_err(|err| LinderaErrorKind::Dictionary.with_error(err))?;
+                match scheme {
+                    #[cfg(any(
+                        feature = "embedded-ipadic",
+                        feature = "embedded-ipadic-neologd",
+                        feature = "embedded-unidic",
+                        feature = "embedded-ko-dic",
+                        feature = "embedded-cc-cedict",
+                    ))]
+                    DictionaryScheme::Embedded => {
+                        let kind = DictionaryKind::from_str(parsed_uri.host_str().unwrap_or(""))
+                            .map_err(|err| LinderaErrorKind::Dictionary.with_error(err))?;
 
-                    // Load the embedded dictionary
-                    load_embedded_dictionary(kind)
-                }
-                DictionaryScheme::File => {
-                    let path = parsed_uri.to_file_path().map_err(|_| {
-                        LinderaErrorKind::Dictionary
-                            .with_error(anyhow::anyhow!("Invalid file path"))
-                    })?;
+                        // Load the embedded dictionary
+                        load_embedded_dictionary(kind)
+                    }
+                    DictionaryScheme::File => {
+                        let path = parsed_uri.to_file_path().map_err(|_| {
+                            LinderaErrorKind::Dictionary
+                                .with_error(anyhow::anyhow!("Invalid file path"))
+                        })?;
 
-                    // Load the file-based dictionary
-                    load_fs_dictionary(&path)
+                        // Load the file-based dictionary
+                        load_fs_dictionary(&path)
+                    }
                 }
             }
+            Err(e) => {
+                Err(LinderaErrorKind::Dictionary
+                    .with_error(anyhow::anyhow!("Invalid URI format: {}", e)))
+            }
         }
-        Err(_) => {
-            // If URI parsing fails, treat it as a file path
-            let path = Path::new(uri);
-            load_fs_dictionary(path)
-        }
+    } else {
+        // Treat it as a file path directly
+        let path = Path::new(uri);
+        load_fs_dictionary(path)
     }
 }
 
@@ -301,37 +307,43 @@ pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionar
 }
 
 pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<UserDictionary> {
-    // Try to parse as URI first
-    let path = match Url::parse(uri) {
-        Ok(parsed_uri) => {
-            // Parse the URI and return the appropriate dictionary
-            let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
-                LinderaErrorKind::Dictionary
-                    .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
-            })?;
+    // Try to parse as URI first, but only if it looks like a URI
+    // (contains "://" or starts with known schemes)
+    let path = if uri.contains("://") {
+        match Url::parse(uri) {
+            Ok(parsed_uri) => {
+                // Parse the URI and return the appropriate dictionary
+                let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
+                    LinderaErrorKind::Dictionary
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                })?;
 
-            match scheme {
-                DictionaryScheme::File => parsed_uri.to_file_path().map_err(|_| {
-                    LinderaErrorKind::Dictionary.with_error(anyhow::anyhow!("Invalid file path"))
-                })?,
-                #[cfg(any(
-                    feature = "embedded-ipadic",
-                    feature = "embedded-ipadic-neologd",
-                    feature = "embedded-unidic",
-                    feature = "embedded-ko-dic",
-                    feature = "embedded-cc-cedict",
-                ))]
-                _ => {
-                    // Unsupported dictionary scheme
-                    return Err(LinderaErrorKind::Dictionary
-                        .with_error(anyhow::anyhow!("Unsupported dictionary scheme")));
+                match scheme {
+                    DictionaryScheme::File => parsed_uri.to_file_path().map_err(|_| {
+                        LinderaErrorKind::Dictionary.with_error(anyhow::anyhow!("Invalid file path"))
+                    })?,
+                    #[cfg(any(
+                        feature = "embedded-ipadic",
+                        feature = "embedded-ipadic-neologd",
+                        feature = "embedded-unidic",
+                        feature = "embedded-ko-dic",
+                        feature = "embedded-cc-cedict",
+                    ))]
+                    _ => {
+                        // Unsupported dictionary scheme
+                        return Err(LinderaErrorKind::Dictionary
+                            .with_error(anyhow::anyhow!("Unsupported dictionary scheme")));
+                    }
                 }
             }
+            Err(e) => {
+                return Err(LinderaErrorKind::Dictionary
+                    .with_error(anyhow::anyhow!("Invalid URI format: {}", e)));
+            }
         }
-        Err(_) => {
-            // If URI parsing fails, treat it as a file path
-            PathBuf::from(uri)
-        }
+    } else {
+        // Treat it as a file path directly
+        PathBuf::from(uri)
     };
 
     // extract file extension

@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_segment_ipadic() {
         use std::borrow::Cow;
 
@@ -588,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_unidic() {
         use std::borrow::Cow;
 
@@ -998,7 +998,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_ko_dic() {
         use std::borrow::Cow;
 
@@ -1168,7 +1168,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_cc_cedict() {
         use std::borrow::Cow;
 
@@ -1450,7 +1450,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_with_simple_userdic_unidic() {
         use std::borrow::Cow;
 
@@ -1714,7 +1714,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_with_simple_userdic_ko_dic() {
         use std::borrow::Cow;
 
@@ -1793,7 +1793,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_with_simple_userdic_cc_cedict() {
         use std::borrow::Cow;
 
@@ -2048,7 +2048,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_with_simple_userdic_bin_unidic() {
         use std::borrow::Cow;
 
@@ -2312,7 +2312,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_with_simple_userdic_bin_ko_dic() {
         use std::borrow::Cow;
 
@@ -2391,7 +2391,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_with_simple_userdic_bin_cc_cedict() {
         use std::borrow::Cow;
 
@@ -2498,7 +2498,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_segment_with_detailed_userdic_ipadic() {
         use std::borrow::Cow;
 
