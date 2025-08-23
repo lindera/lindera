@@ -330,9 +330,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
         }
         Err(_) => {
             // If URI parsing fails, treat it as a file path
-            PathBuf::from_str(uri).map_err(|_| {
-                LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid URI format"))
-            })?
+            PathBuf::from(uri)
         }
     };
 
