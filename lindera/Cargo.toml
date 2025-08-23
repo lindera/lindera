@@ -103,6 +103,7 @@ strum_macros.workspace = true
 unicode-blocks.workspace = true
 unicode-normalization.workspace = true
 unicode-segmentation.workspace = true
+url.workspace = true
 yada.workspace = true
 
 lindera-dictionary = { workspace = true }

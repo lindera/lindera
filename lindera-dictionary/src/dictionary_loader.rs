@@ -29,15 +29,15 @@ pub trait DictionaryLoader {
     }
 }
 
-pub struct StandardDictionaryLoader;
+pub struct FSDictionaryLoader;
 
-impl Default for StandardDictionaryLoader {
+impl Default for FSDictionaryLoader {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl StandardDictionaryLoader {
+impl FSDictionaryLoader {
     pub fn new() -> Self {
         Self
     }
@@ -47,7 +47,7 @@ impl StandardDictionaryLoader {
     }
 }
 
-impl DictionaryLoader for StandardDictionaryLoader {
+impl DictionaryLoader for FSDictionaryLoader {
     fn load_from_path(&self, dict_path: &Path) -> LinderaResult<Dictionary> {
         Dictionary::load_from_path(dict_path)
     }

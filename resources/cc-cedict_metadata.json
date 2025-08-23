@@ -1,0 +1,35 @@
+{
+  "name": "cc-cedict",
+  "encoding": "UTF-8",
+  "compress_algorithm": "deflate",
+  "default_word_cost": -10000,
+  "default_left_context_id": 0,
+  "default_right_context_id": 0,
+  "default_field_value": "*",
+  "flexible_csv": true,
+  "skip_invalid_cost_or_id": true,
+  "normalize_details": false,
+  "dictionary_schema": {
+    "fields": [
+      "surface",
+      "left_context_id",
+      "right_context_id",
+      "cost",
+      "part_of_speech",
+      "part_of_speech_subcategory_1",
+      "part_of_speech_subcategory_2",
+      "part_of_speech_subcategory_3",
+      "pinyin",
+      "traditional",
+      "simplified",
+      "definition"
+    ]
+  },
+  "user_dictionary_schema": {
+    "fields": [
+      "surface",
+      "part_of_speech",
+      "pinyin"
+    ]
+  }
+}

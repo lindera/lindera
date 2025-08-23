@@ -5,13 +5,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+use url::Url;
 
 #[cfg(feature = "cc-cedict")]
 use lindera_cc_cedict::DICTIONARY_NAME as CC_CEDICT_DICTIONARY_NAME;
 #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
 use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
-use lindera_dictionary::dictionary_loader::StandardDictionaryLoader;
+use lindera_dictionary::dictionary_loader::FSDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
 #[cfg(feature = "ipadic")]
 use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
@@ -38,6 +39,58 @@ pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
 pub type WordId = lindera_dictionary::viterbi::WordId;
 pub type DictionaryBuilder = lindera_dictionary::dictionary_builder::DictionaryBuilder;
+pub type DictionaryConfig = Value;
+pub type UserDictionaryConfig = Value;
+
+#[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
+pub enum DictionaryScheme {
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+        feature = "embedded-ko-dic",
+        feature = "embedded-cc-cedict",
+    ))]
+    #[serde(rename = "embedded")]
+    Embedded,
+    #[serde(rename = "file")]
+    File,
+}
+
+impl DictionaryScheme {
+    pub fn as_str(&self) -> &str {
+        match self {
+            #[cfg(any(
+                feature = "embedded-ipadic",
+                feature = "embedded-ipadic-neologd",
+                feature = "embedded-unidic",
+                feature = "embedded-ko-dic",
+                feature = "embedded-cc-cedict",
+            ))]
+            DictionaryScheme::Embedded => "embedded",
+            DictionaryScheme::File => "file",
+        }
+    }
+}
+
+impl FromStr for DictionaryScheme {
+    type Err = LinderaError;
+    fn from_str(input: &str) -> Result<DictionaryScheme, Self::Err> {
+        match input {
+            #[cfg(any(
+                feature = "embedded-ipadic",
+                feature = "embedded-ipadic-neologd",
+                feature = "embedded-unidic",
+                feature = "embedded-ko-dic",
+                feature = "embedded-cc-cedict",
+            ))]
+            "embedded" => Ok(DictionaryScheme::Embedded),
+            "file" => Ok(DictionaryScheme::File),
+            _ => Err(LinderaErrorKind::Dictionary
+                .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", input))),
+        }
+    }
+}
 
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
@@ -121,9 +174,6 @@ impl FromStr for DictionaryKind {
     }
 }
 
-pub type DictionaryConfig = Value;
-pub type UserDictionaryConfig = Value;
-
 pub fn resolve_builder(dictionary_type: DictionaryKind) -> LinderaResult<DictionaryBuilder> {
     match dictionary_type {
         #[cfg(feature = "ipadic")]
@@ -182,8 +232,8 @@ pub fn resolve_embedded_loader(
     }
 }
 
-pub fn load_dictionary(path: &Path) -> LinderaResult<Dictionary> {
-    let loader = StandardDictionaryLoader::new();
+pub fn load_fs_dictionary(path: &Path) -> LinderaResult<Dictionary> {
+    let loader = FSDictionaryLoader::new();
     loader.load_from_path(path)
 }
 
@@ -194,39 +244,59 @@ pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionar
         .map_err(|e| LinderaErrorKind::NotFound.with_error(e))
 }
 
-pub fn load_dictionary_from_config(
-    dictionary_config: &DictionaryConfig,
-) -> LinderaResult<Dictionary> {
-    // Try loading embedded dictionary first
-    if let Some(kind_value) = dictionary_config.get("kind") {
-        let kind_str = kind_value.as_str().ok_or_else(|| {
-            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
-        })?;
+pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
+    // Try to parse as URI first, but only if it looks like a URI
+    // (contains "://" or starts with known schemes)
+    if uri.contains("://") {
+        match Url::parse(uri) {
+            Ok(parsed_uri) => {
+                // Parse the URI and return the appropriate dictionary
+                let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
+                    LinderaErrorKind::Dictionary
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                })?;
 
-        let kind = DictionaryKind::from_str(kind_str)?;
-        return load_embedded_dictionary(kind);
+                match scheme {
+                    #[cfg(any(
+                        feature = "embedded-ipadic",
+                        feature = "embedded-ipadic-neologd",
+                        feature = "embedded-unidic",
+                        feature = "embedded-ko-dic",
+                        feature = "embedded-cc-cedict",
+                    ))]
+                    DictionaryScheme::Embedded => {
+                        let kind = DictionaryKind::from_str(parsed_uri.host_str().unwrap_or(""))
+                            .map_err(|err| LinderaErrorKind::Dictionary.with_error(err))?;
+
+                        // Load the embedded dictionary
+                        load_embedded_dictionary(kind)
+                    }
+                    DictionaryScheme::File => {
+                        let path = parsed_uri.to_file_path().map_err(|_| {
+                            LinderaErrorKind::Dictionary
+                                .with_error(anyhow::anyhow!("Invalid file path"))
+                        })?;
+
+                        // Load the file-based dictionary
+                        load_fs_dictionary(&path)
+                    }
+                }
+            }
+            Err(e) => Err(LinderaErrorKind::Dictionary
+                .with_error(anyhow::anyhow!("Invalid URI format: {}", e))),
+        }
+    } else {
+        // Treat it as a file path directly
+        let path = Path::new(uri);
+        load_fs_dictionary(path)
     }
-
-    // Otherwise, try loading from path
-    if let Some(path_value) = dictionary_config.get("path") {
-        let path_str = path_value.as_str().ok_or_else(|| {
-            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
-        })?;
-
-        let path = PathBuf::from(path_str);
-        return load_dictionary(&path);
-    }
-
-    Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-        "kind field or path field must be specified"
-    )))
 }
 
 pub fn load_user_dictionary_from_csv(
-    kind: DictionaryKind,
+    metadata: &Metadata,
     path: &Path,
 ) -> LinderaResult<UserDictionary> {
-    let builder = resolve_builder(kind)?;
+    let builder = DictionaryBuilder::new(metadata.clone());
     UserDictionaryLoader::load_from_csv(builder, path)
 }
 
@@ -234,39 +304,48 @@ pub fn load_user_dictionary_from_bin(path: &Path) -> LinderaResult<UserDictionar
     UserDictionaryLoader::load_from_bin(path)
 }
 
-fn get_path_from_config(dictionary_config: &UserDictionaryConfig) -> LinderaResult<PathBuf> {
-    let path_value = dictionary_config.get("path").ok_or_else(|| {
-        LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-            "path field must be specified in user dictionary config"
-        ))
-    })?;
+pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<UserDictionary> {
+    // Try to parse as URI first, but only if it looks like a URI
+    // (contains "://" or starts with known schemes)
+    let path = if uri.contains("://") {
+        match Url::parse(uri) {
+            Ok(parsed_uri) => {
+                // Parse the URI and return the appropriate dictionary
+                let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
+                    LinderaErrorKind::Dictionary
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                })?;
 
-    let path_str = path_value.as_str().ok_or_else(|| {
-        LinderaErrorKind::Parse.with_error(anyhow::anyhow!("path field must be a string"))
-    })?;
+                match scheme {
+                    DictionaryScheme::File => parsed_uri.to_file_path().map_err(|_| {
+                        LinderaErrorKind::Dictionary
+                            .with_error(anyhow::anyhow!("Invalid file path"))
+                    })?,
+                    #[cfg(any(
+                        feature = "embedded-ipadic",
+                        feature = "embedded-ipadic-neologd",
+                        feature = "embedded-unidic",
+                        feature = "embedded-ko-dic",
+                        feature = "embedded-cc-cedict",
+                    ))]
+                    _ => {
+                        // Unsupported dictionary scheme
+                        return Err(LinderaErrorKind::Dictionary
+                            .with_error(anyhow::anyhow!("Unsupported dictionary scheme")));
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(LinderaErrorKind::Dictionary
+                    .with_error(anyhow::anyhow!("Invalid URI format: {}", e)));
+            }
+        }
+    } else {
+        // Treat it as a file path directly
+        PathBuf::from(uri)
+    };
 
-    Ok(PathBuf::from(path_str))
-}
-
-fn get_kind_from_config(dictionary_config: &UserDictionaryConfig) -> LinderaResult<DictionaryKind> {
-    let kind_value = dictionary_config.get("kind").ok_or_else(|| {
-        LinderaErrorKind::Args.with_error(anyhow::anyhow!(
-            "kind field must be specified if CSV file specified"
-        ))
-    })?;
-
-    let kind_str = kind_value.as_str().ok_or_else(|| {
-        LinderaErrorKind::Parse.with_error(anyhow::anyhow!("kind field must be a string"))
-    })?;
-
-    DictionaryKind::from_str(kind_str)
-}
-
-pub fn load_user_dictionary_from_config(
-    dictionary_config: &UserDictionaryConfig,
-) -> LinderaResult<UserDictionary> {
-    let path = get_path_from_config(dictionary_config)?;
-
+    // extract file extension
     let extension = path
         .extension()
         .and_then(|ext| ext.to_str())
@@ -276,10 +355,7 @@ pub fn load_user_dictionary_from_config(
         })?;
 
     match extension {
-        "csv" => {
-            let kind = get_kind_from_config(dictionary_config)?;
-            load_user_dictionary_from_csv(kind, &path)
-        }
+        "csv" => load_user_dictionary_from_csv(metadata, &path),
         "bin" => load_user_dictionary_from_bin(&path),
         _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
             "Invalid user dictionary source file extension"

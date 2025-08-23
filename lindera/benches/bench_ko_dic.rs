@@ -28,14 +28,29 @@ fn bench_constructor_ko_dic(c: &mut Criterion) {
 fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ko-dic", |b| {
         b.iter(|| {
+            use std::fs::File;
+
+            use lindera::dictionary::Metadata;
+            use lindera::error::LinderaErrorKind;
+
+            let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("ko-dic_metadata.json");
             let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
                 .join("ko-dic_simple_userdic.csv");
 
+            let metadata: Metadata = serde_json::from_reader(
+                File::open(metadata_file)
+                    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+                    .unwrap(),
+            )
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap();
+
             let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
             let user_dictionary =
-                load_user_dictionary_from_csv(DictionaryKind::KoDic, userdic_file.as_path())
-                    .unwrap();
+                load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
             let _tokenizer = Tokenizer::new(segmenter);
         })
@@ -55,13 +70,28 @@ fn bench_tokenize_ko_dic(c: &mut Criterion) {
 
 #[cfg(feature = "ko-dic")]
 fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
+    use std::fs::File;
+
+    use lindera::dictionary::Metadata;
+    use lindera::error::LinderaErrorKind;
+
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("ko-dic_metadata.json");
     let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("ko-dic_simple_userdic.csv");
 
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
     let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
-    let user_dictionary =
-        load_user_dictionary_from_csv(DictionaryKind::KoDic, userdic_file.as_path()).unwrap();
+    let user_dictionary = load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
     let tokenizer = Tokenizer::new(segmenter);
 

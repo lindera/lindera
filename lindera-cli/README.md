@@ -133,7 +133,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary --dictionary-kind=ipadic ./resources/ipadic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./resources/ipadic_metadata.json ./resources/ipadic_simple_userdic.csv ./resources
 ```
 
 ### Build CC-CEDICT (Chinese dictionary)
@@ -143,7 +143,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary --dictionary-kind=cc-cedict ./resources/cc-cedict_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./resources/cc-cedict_metadata.json ./resources/cc-cedict_simple_userdic.csv ./resources
 ```
 
 ### Build ko-dic (Korean dictionary)
@@ -153,7 +153,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary --dictionary-kind=ko-dic ./resources/ko-dic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./resources/ko-dic_metadata.json ./resources/ko-dic_simple_userdic.csv ./resources
 ```
 
 ### Build UniDic (Japanese dictionary)
@@ -163,7 +163,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary --dictionary-kind=unidic ./resources/unidic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./resources/unidic_metadata.json ./resources/unidic_simple_userdic.csv ./resources
 ```
 
 ## Tokenization
@@ -175,7 +175,7 @@ For example, text can be tokenized using a prepared dictionary as follows:
 #### Tokenize with IPADIC (Japanese dictionary)
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-path=/tmp/lindera-ipadic-2.7.0-20070801
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize /tmp/lindera-ipadic-2.7.0-20070801
 ```
 
 ```text
@@ -196,7 +196,7 @@ EOS
 #### Tokenize with UniDic (Japanese dictionary)
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-path=/tmp/lindera-unidic-2.1.2
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize /tmp/lindera-unidic-2.1.2
 ```
 
 ```text
@@ -219,7 +219,7 @@ EOS
 #### Tokenize with IPADIC Neologd (Japanese dictionary)
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-path=/tmp/lindera-ipadic-neologd-0.0.7-20200820
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize /tmp/lindera-ipadic-neologd-0.0.7-20200820
 ```
 
 ```text
@@ -239,7 +239,7 @@ EOS
 #### Tokenize ko-dic (Korean dictionary)
 
 ```shell
-% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dictionary-path=/tmp/lindera-ko-dic-2.1.1-20180720
+% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize /tmp/lindera-ko-dic-2.1.1-20180720
 ```
 
 ```text
@@ -260,7 +260,7 @@ EOS
 #### Tokenize with CC-CEDICT (Chinese dictionary)
 
 ```shell
-% echo "可以进行中文形态学分析。" | lindera tokenize --dictionary-path=/tmp/lindera-cc-cedict-0.1.0-20200409
+% echo "可以进行中文形态学分析。" | lindera tokenize /tmp/lindera-cc-cedict-0.1.0-20200409
 ```
 
 ```text
@@ -273,16 +273,16 @@ EOS
 EOS
 ```
 
-### Self-contained dictionary
+### Embedded dictionary
 
 If you had a built-in IPADIC, it is also possible to switch to the self-contained dictionary and tokenize.
 
-#### Tokenize with self-contained IPADIC (Japanese dictionary)
+#### Tokenize with embedded IPADIC (Japanese dictionary)
 
 The following example uses the self-contained IPADIC to tokenize:
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-kind=ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize embedded://ipadic
 ```
 
 ```text
@@ -300,14 +300,14 @@ The following example uses the self-contained IPADIC to tokenize:
 EOS
 ```
 
-NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=ipadic` option.
+NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=embedded-ipadic` option.
 
-#### Tokenize with self-contained UniDic (Japanese dictionary)
+#### Tokenize with embedded UniDic (Japanese dictionary)
 
 If UniDic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-kind=unidic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize embedded://unidic
 ```
 
 ```text
@@ -327,14 +327,14 @@ If UniDic were built in, it could also be tokenized by switching to a self-conta
 EOS
 ```
 
-NOTE: To include UniDic dictionary in the binary, you must build with the `--features=unidic` option.
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embedded-unidic` option.
 
 #### Tokenize with self-contained IPADIC NEologd (Japanese dictionary)
 
 If IPADIC NEologd were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dictionary-kind=ipadic-neologd
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize embedded://ipadic-neologd
 ```
 
 ```text
@@ -351,14 +351,14 @@ If IPADIC NEologd were built in, it could also be tokenized by switching to a se
 EOS
 ```
 
-NOTE: To include UniDic dictionary in the binary, you must build with the `--features=ipadic-neologd` option.
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embedded-ipadic-neologd` option.
 
 #### Tokenize with self-contained ko-dic (Korean dictionary)
 
 If ko-dic were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell
-% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize --dictionary-kind=ko-dic
+% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize embedded://ko-dic
 ```
 
 ```text
@@ -376,14 +376,14 @@ If ko-dic were built in, it could also be tokenized by switching to a self-conta
 EOS
 ```
 
-NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=ko-dic` option.
+NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=embedded-ko-dic` option.
 
 #### Tokenize with self-contained CC-CEDICT (Chinese dictionary)
 
 If CC-CEDICT were built in, it could also be tokenized by switching to a self-contained dictionary in the same way:
 
 ```shell
-% echo "可以进行中文形态学分析。" | lindera tokenize --dictionary-kind=cc-cedict
+% echo "可以进行中文形态学分析。" | lindera tokenize embedded://cc-cedict
 ```
 
 ```text
@@ -396,7 +396,7 @@ If CC-CEDICT were built in, it could also be tokenized by switching to a self-co
 EOS
 ```
 
-NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=cc-cedict` option.
+NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=embedded-cc-cedict` option.
 
 ### User dictionary
 
@@ -407,7 +407,7 @@ Lindera supports two types of user dictionaries, one in CSV format and the other
 This will parse the given CSV file at runtime, build a dictionary, and then run the text tokenization.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.csv
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --user-dictionary-uri=./resources/ipadic_simple_userdic.csv embedded://ipadic
 ```
 
 ```text
@@ -426,7 +426,7 @@ This will read the given pre-built user dictionary file and perform text tokeniz
 Please check the repository of each dictionary builder for the configuration of the user dictionary binary files.
 
 ```shell
-% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --dictionary-kind=ipadic --user-dictionary-path=./resources/ipadic_simple_userdic.bin
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize --user-dictionary-uri=./resources/ipadic_simple_userdic.bin /tmp/lindera-ipadic-2.7.0-20070801/
 ```
 
 ```text
@@ -446,7 +446,7 @@ Lindera provides two tokenization modes: `normal` and `decompose`.
 `normal` mode tokenizes faithfully based on words registered in the dictionary. (Default):
 
 ```shell
-% echo "関西国際空港限定トートバッグ" | lindera tokenize --dictionary-kind=ipadic --mode=normal
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --mode=normal embedded://ipadic
 ```
 
 ```text
@@ -459,7 +459,7 @@ EOS
 `decompose` mode tokenizes a compound noun words additionally:
 
 ```shell
-% echo "関西国際空港限定トートバッグ" | lindera tokenize --dictionary-kind=ipadic --mode=decompose
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --mode=decompose embedded://ipadic
 ```
 
 ```text
@@ -478,7 +478,7 @@ Lindera provides three output formats: `mecab`, `wakati` and `json`.
 `mecab` outputs results in a format like MeCab:
 
 ```shell
-% echo "お待ちしております。" | lindera tokenize --dictionary-kind=ipadic --output-format=mecab
+% echo "お待ちしております。" | lindera tokenize --output-format=mecab embedded://ipadic
 ```
 
 ```text
@@ -494,7 +494,7 @@ EOS
 `wakati` outputs the token text separated by spaces:
 
 ```shell
-% echo "お待ちしております。" | lindera tokenize --dictionary-kind=ipadic --output-format=wakati
+% echo "お待ちしております。" | lindera tokenize --output-format=wakati embedded://ipadic
 ```
 
 ```text
@@ -504,130 +504,100 @@ EOS
 `json` outputs the token information in JSON format:
 
 ```shell
-% echo "お待ちしております。" | lindera tokenize --dictionary-kind=ipadic --output-format=json
+% echo "お待ちしております。" | lindera tokenize --output-format=json embedded://ipadic
 ```
 
 ```json
 [
   {
-    "byte_end": 9,
-    "byte_start": 0,
-    "details": [
-      "名詞",
-      "サ変接続",
-      "*",
-      "*",
-      "*",
-      "*",
-      "お待ち",
-      "オマチ",
-      "オマチ"
-    ],
-    "text": "お待ち",
-    "word_id": {
-      "id": 14695,
-      "is_system": true
-    }
+    "conjugation_type": "*",
+    "word_id": "14695",
+    "part_of_speech_subcategory_2": "*",
+    "reading": "オマチ",
+    "part_of_speech_subcategory_1": "サ変接続",
+    "byte_end": "9",
+    "base_form": "お待ち",
+    "pronunciation": "オマチ",
+    "surface": "お待ち",
+    "byte_start": "0",
+    "part_of_speech_subcategory_3": "*",
+    "conjugation_form": "*",
+    "part_of_speech": "名詞"
   },
   {
-    "byte_end": 12,
-    "byte_start": 9,
-    "details": [
-      "動詞",
-      "自立",
-      "*",
-      "*",
-      "サ変・スル",
-      "連用形",
-      "する",
-      "シ",
-      "シ"
-    ],
-    "text": "し",
-    "word_id": {
-      "id": 30760,
-      "is_system": true
-    }
+    "byte_start": "9",
+    "conjugation_form": "サ変・スル",
+    "conjugation_type": "連用形",
+    "base_form": "する",
+    "surface": "し",
+    "part_of_speech_subcategory_3": "*",
+    "byte_end": "12",
+    "word_id": "30760",
+    "part_of_speech_subcategory_1": "自立",
+    "part_of_speech_subcategory_2": "*",
+    "pronunciation": "シ",
+    "reading": "シ",
+    "part_of_speech": "動詞"
   },
   {
-    "byte_end": 15,
-    "byte_start": 12,
-    "details": [
-      "助詞",
-      "接続助詞",
-      "*",
-      "*",
-      "*",
-      "*",
-      "て",
-      "テ",
-      "テ"
-    ],
-    "text": "て",
-    "word_id": {
-      "id": 46600,
-      "is_system": true
-    }
+    "base_form": "て",
+    "surface": "て",
+    "pronunciation": "テ",
+    "part_of_speech_subcategory_1": "接続助詞",
+    "conjugation_type": "*",
+    "part_of_speech_subcategory_3": "*",
+    "reading": "テ",
+    "part_of_speech": "助詞",
+    "part_of_speech_subcategory_2": "*",
+    "byte_start": "12",
+    "byte_end": "15",
+    "word_id": "46600",
+    "conjugation_form": "*"
   },
   {
-    "byte_end": 21,
-    "byte_start": 15,
-    "details": [
-      "動詞",
-      "非自立",
-      "*",
-      "*",
-      "五段・ラ行",
-      "連用形",
-      "おる",
-      "オリ",
-      "オリ"
-    ],
-    "text": "おり",
-    "word_id": {
-      "id": 14236,
-      "is_system": true
-    }
+    "word_id": "14236",
+    "part_of_speech_subcategory_1": "非自立",
+    "conjugation_type": "連用形",
+    "byte_start": "15",
+    "part_of_speech_subcategory_3": "*",
+    "part_of_speech": "動詞",
+    "surface": "おり",
+    "byte_end": "21",
+    "base_form": "おる",
+    "part_of_speech_subcategory_2": "*",
+    "pronunciation": "オリ",
+    "reading": "オリ",
+    "conjugation_form": "五段・ラ行"
   },
   {
-    "byte_end": 27,
-    "byte_start": 21,
-    "details": [
-      "助動詞",
-      "*",
-      "*",
-      "*",
-      "特殊・マス",
-      "基本形",
-      "ます",
-      "マス",
-      "マス"
-    ],
-    "text": "ます",
-    "word_id": {
-      "id": 68730,
-      "is_system": true
-    }
+    "pronunciation": "マス",
+    "part_of_speech": "助動詞",
+    "base_form": "ます",
+    "word_id": "68730",
+    "part_of_speech_subcategory_1": "*",
+    "byte_start": "21",
+    "reading": "マス",
+    "conjugation_type": "基本形",
+    "byte_end": "27",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "conjugation_form": "特殊・マス",
+    "surface": "ます"
   },
   {
-    "byte_end": 30,
-    "byte_start": 27,
-    "details": [
-      "記号",
-      "句点",
-      "*",
-      "*",
-      "*",
-      "*",
-      "。",
-      "。",
-      "。"
-    ],
-    "text": "。",
-    "word_id": {
-      "id": 98,
-      "is_system": true
-    }
+    "byte_end": "30",
+    "byte_start": "27",
+    "part_of_speech_subcategory_3": "*",
+    "word_id": "98",
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "base_form": "。",
+    "part_of_speech": "記号",
+    "part_of_speech_subcategory_2": "*",
+    "reading": "。",
+    "pronunciation": "。",
+    "surface": "。",
+    "part_of_speech_subcategory_1": "句点"
   }
 ]
 ```
@@ -639,7 +609,7 @@ Combine character filters, tokenizers, and token filters for more advanced text 
 Describe the character filter and token filter settings used for analysis in JSON.
 
 ```shell
-% echo "すもももももももものうち" | lindera tokenize --dictionary-kind=ipadic --character-filter='unicode_normalize:{"kind":"nfkc"}' --token-filter='japanese_keep_tags:{"tags":["名詞,一般"]}'
+% echo "すもももももももものうち" | lindera tokenize --character-filter='unicode_normalize:{"kind":"nfkc"}' --token-filter='japanese_keep_tags:{"tags":["名詞,一般"]}' embedded://ipadic
 ```
 
 ```text

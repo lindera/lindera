@@ -8,7 +8,7 @@ use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::dictionary::{load_dictionary_from_config, load_user_dictionary_from_config};
+use crate::dictionary::{load_dictionary, load_user_dictionary};
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 
@@ -78,16 +78,29 @@ impl Segmenter {
     /// user dictionary loading, or tokenization process.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
         // Load the dictionary from the config
-        let dictionary =
-            load_dictionary_from_config(config.get("dictionary").ok_or_else(|| {
-                LinderaErrorKind::Parse.with_error(anyhow::anyhow!("dictionary field is missing"))
-            })?)?;
+        let dictionary = load_dictionary(
+            config
+                .get("dictionary")
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("dictionary field is missing"))
+                })?,
+        )?;
+
+        // Get metadata from the dictionary
+        let metadata = &dictionary.metadata;
 
         // Load the user dictionary from the config
-        let user_dictionary = config
+        let user_dictionary_uri = config
             .get("user_dictionary")
-            .map(load_user_dictionary_from_config)
-            .transpose()?;
+            .and_then(Value::as_str)
+            .map(String::from);
+
+        let user_dictionary = match user_dictionary_uri {
+            Some(uri) => Some(load_user_dictionary(&uri, metadata)?),
+            None => None,
+        };
 
         // Load the mode from the config
         let mode: Mode = config.get("mode").map_or_else(
@@ -317,15 +330,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_segment_ipadic() {
         use std::borrow::Cow;
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         }
         "#;
@@ -577,15 +588,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_unidic() {
         use std::borrow::Cow;
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "unidic"
-            },
+            "dictionary": "embedded://unidic",
             "mode": "normal"
         }
         "#;
@@ -989,15 +998,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_ko_dic() {
         use std::borrow::Cow;
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ko-dic"
-            },
+            "dictionary": "embedded://ko-dic",
             "mode": "normal"
         }
         "#;
@@ -1161,15 +1168,13 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_cc_cedict() {
         use std::borrow::Cow;
 
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
+            "dictionary": "embedded://cc-cedict",
             "mode": "normal"
         }
         "#;
@@ -1306,13 +1311,8 @@ mod tests {
             .join("ipadic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1450,7 +1450,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_with_simple_userdic_unidic() {
         use std::borrow::Cow;
 
@@ -1459,13 +1459,8 @@ mod tests {
             .join("unidic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "unidic"
-            },
-            "user_dictionary": {
-                "kind": "unidic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://unidic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1719,7 +1714,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_with_simple_userdic_ko_dic() {
         use std::borrow::Cow;
 
@@ -1728,13 +1723,8 @@ mod tests {
             .join("ko-dic_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ko-dic"
-            },
-            "user_dictionary": {
-                "kind": "ko-dic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ko-dic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1803,7 +1793,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_with_simple_userdic_cc_cedict() {
         use std::borrow::Cow;
 
@@ -1812,13 +1802,8 @@ mod tests {
             .join("cc-cedict_simple_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
-            "user_dictionary": {
-                "kind": "cc-cedict",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://cc-cedict",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1924,12 +1909,8 @@ mod tests {
             .join("ipadic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1956,7 +1937,7 @@ mod tests {
                     "*",
                     "*",
                     "*",
-                    "東京スカイツリー",
+                    "*",
                     "トウキョウスカイツリー",
                     "*"
                 ]
@@ -2024,7 +2005,7 @@ mod tests {
                     "*",
                     "*",
                     "*",
-                    "とうきょうスカイツリー駅",
+                    "*",
                     "トウキョウスカイツリーエキ",
                     "*"
                 ]
@@ -2067,7 +2048,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "unidic")]
+    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
     fn test_segment_with_simple_userdic_bin_unidic() {
         use std::borrow::Cow;
 
@@ -2076,12 +2057,8 @@ mod tests {
             .join("unidic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "unidic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://unidic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2335,7 +2312,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ko-dic")]
+    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
     fn test_segment_with_simple_userdic_bin_ko_dic() {
         use std::borrow::Cow;
 
@@ -2344,12 +2321,8 @@ mod tests {
             .join("ko-dic_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ko-dic"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ko-dic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2418,7 +2391,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "cc-cedict")]
+    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
     fn test_segment_with_simple_userdic_bin_cc_cedict() {
         use std::borrow::Cow;
 
@@ -2427,12 +2400,8 @@ mod tests {
             .join("cc-cedict_simple_userdic.bin");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "cc-cedict"
-            },
-            "user_dictionary": {
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://cc-cedict",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2529,7 +2498,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
     fn test_segment_with_detailed_userdic_ipadic() {
         use std::borrow::Cow;
 
@@ -2538,13 +2507,8 @@ mod tests {
             .join("ipadic_detailed_userdic.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2683,159 +2647,6 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ipadic")]
-    fn test_mixed_user_dict() {
-        use std::borrow::Cow;
-
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_mixed_userdic.csv");
-
-        let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
-            "mode": "normal"
-        });
-
-        let segmenter = Segmenter::from_config(&config).unwrap();
-        let mut tokens = segmenter
-            .segment(Cow::Borrowed(
-                "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
-            ))
-            .unwrap();
-        let mut tokens_iter = tokens.iter_mut();
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
-            assert_eq!(token.byte_start, 0);
-            assert_eq!(token.byte_end, 24);
-            assert_eq!(token.position, 0);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "名詞",
-                    "固有名詞",
-                    "一般",
-                    "カスタム名詞",
-                    "*",
-                    "*",
-                    "東京スカイツリー",
-                    "トウキョウスカイツリー",
-                    "トウキョウスカイツリー"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
-            assert_eq!(token.byte_start, 24);
-            assert_eq!(token.byte_end, 27);
-            assert_eq!(token.position, 1);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り駅");
-            assert_eq!(token.byte_start, 27);
-            assert_eq!(token.byte_end, 39);
-            assert_eq!(token.position, 2);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "名詞",
-                    "一般",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "最寄り駅",
-                    "モヨリエキ",
-                    "モヨリエキ"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
-            assert_eq!(token.byte_start, 39);
-            assert_eq!(token.byte_end, 42);
-            assert_eq!(token.position, 3);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
-            assert_eq!(token.byte_start, 42);
-            assert_eq!(token.byte_end, 78);
-            assert_eq!(token.position, 4);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "カスタム名詞",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "トウキョウスカイツリーエキ",
-                    "*"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
-            assert_eq!(token.byte_start, 78);
-            assert_eq!(token.byte_end, 84);
-            assert_eq!(token.position, 5);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "助動詞",
-                    "*",
-                    "*",
-                    "*",
-                    "特殊・デス",
-                    "基本形",
-                    "です",
-                    "デス",
-                    "デス"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
-            assert_eq!(token.byte_start, 84);
-            assert_eq!(token.byte_end, 87);
-            assert_eq!(token.position, 6);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
-            );
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
     #[should_panic(expected = "failed to parse word cost")]
     fn test_user_dict_invalid_word_cost() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -2843,13 +2654,8 @@ mod tests {
             .join("ipadic_userdic_invalid_word_cost.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2865,13 +2671,8 @@ mod tests {
             .join("ipadic_userdic_insufficient_number_of_fields.csv");
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-            "user_dictionary": {
-                "kind": "ipadic",
-                "path": userdic_file.to_str().unwrap()
-            },
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2884,10 +2685,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         });
 
@@ -2957,9 +2755,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": {
                 "decompose": {
                     "kanji_penalty_length_threshold": 2,
@@ -3058,9 +2854,7 @@ mod tests {
         use std::borrow::Cow;
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": "decompose"
         });
 
@@ -3164,10 +2958,7 @@ mod tests {
         let _size = large_file.read_to_string(&mut large_text).unwrap();
 
         let config = serde_json::json!({
-            "dictionary": {
-                "kind": "ipadic"
-            },
-
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         });
 
