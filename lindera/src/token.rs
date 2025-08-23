@@ -254,7 +254,7 @@ impl<'a> Token<'a> {
     /// println!("Start: {}", fields.get("byte_start").map(|s| s.as_ref()).unwrap_or("0"));
     /// println!("Word ID: {}", fields.get("word_id").map(|s| s.as_ref()).unwrap_or("0"));
     /// ```
-    pub fn as_map(&mut self) -> HashMap<&str, Cow<str>> {
+    pub fn as_map<'b>(&'b mut self) -> HashMap<&'b str, Cow<'b, str>> {
         // Get schema info first
         let schema_custom_fields = self
             .dictionary
