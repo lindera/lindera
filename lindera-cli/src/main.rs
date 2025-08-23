@@ -7,7 +7,7 @@ use clap::{Parser, Subcommand};
 
 use lindera::LinderaResult;
 use lindera::character_filter::CharacterFilterLoader;
-use lindera::dictionary::{DictionaryKind, resolve_builder};
+use lindera::dictionary::{DictionaryBuilder, DictionaryKind, Metadata};
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
@@ -99,8 +99,8 @@ struct BuildArgs {
         help = "Build user dictionary flag"
     )]
     build_user_dic: bool,
-    #[clap(short = 'k', long = "dictionary-kind", help = "Kind of dictionary")]
-    dic_type: DictionaryKind,
+    #[clap(help = "Metadata file path")]
+    metadata_path: PathBuf,
     #[clap(help = "Dictionary source path")]
     src_path: PathBuf,
     #[clap(help = "Dictionary destination path")]
@@ -257,7 +257,13 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 }
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
-    let builder = resolve_builder(args.dic_type)?;
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(&args.metadata_path)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    let builder = DictionaryBuilder::new(metadata);
 
     if args.build_user_dic {
         let output_file = if let Some(filename) = args.src_path.file_name() {

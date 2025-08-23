@@ -102,23 +102,6 @@ impl Segmenter {
             None => None,
         };
 
-        // let user_dictionary = match load_user_dictionary(
-        //     config
-        //         .get("user_dictionary")
-        //         .and_then(Value::as_str)
-        //         .ok_or_else(|| {
-        //             LinderaErrorKind::Parse
-        //                 .with_error(anyhow::anyhow!("user_dictionary field is missing"))
-        //         })?,
-        //     metadata,
-        // ) {
-        //     Ok(dict) => Some(dict),
-        //     Err(err) => {
-        //         eprintln!("Failed to load user dictionary: {}", err);
-        //         None
-        //     }
-        // };
-
         // Load the mode from the config
         let mode: Mode = config.get("mode").map_or_else(
             || Ok(Mode::Normal),
