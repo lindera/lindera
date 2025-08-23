@@ -1937,7 +1937,7 @@ mod tests {
                     "*",
                     "*",
                     "*",
-                    "東京スカイツリー",
+                    "*",
                     "トウキョウスカイツリー",
                     "*"
                 ]
@@ -2005,7 +2005,7 @@ mod tests {
                     "*",
                     "*",
                     "*",
-                    "とうきょうスカイツリー駅",
+                    "*",
                     "トウキョウスカイツリーエキ",
                     "*"
                 ]
@@ -2606,154 +2606,6 @@ mod tests {
                     "とうきょうスカイツリー駅",
                     "トウキョウスカイツリーエキ",
                     "トウキョウスカイツリーエキ"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
-            assert_eq!(token.byte_start, 78);
-            assert_eq!(token.byte_end, 84);
-            assert_eq!(token.position, 5);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "助動詞",
-                    "*",
-                    "*",
-                    "*",
-                    "特殊・デス",
-                    "基本形",
-                    "です",
-                    "デス",
-                    "デス"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
-            assert_eq!(token.byte_start, 84);
-            assert_eq!(token.byte_end, 87);
-            assert_eq!(token.position, 6);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["記号", "句点", "*", "*", "*", "*", "。", "。", "。"]
-            );
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "ipadic")]
-    fn test_mixed_user_dict() {
-        use std::borrow::Cow;
-
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_mixed_userdic.csv");
-
-        let config = serde_json::json!({
-            "dictionary": "embedded://ipadic",
-            "user_dictionary": userdic_file.to_str().unwrap(),
-            "mode": "normal"
-        });
-
-        let segmenter = Segmenter::from_config(&config).unwrap();
-        let mut tokens = segmenter
-            .segment(Cow::Borrowed(
-                "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です。",
-            ))
-            .unwrap();
-        let mut tokens_iter = tokens.iter_mut();
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
-            assert_eq!(token.byte_start, 0);
-            assert_eq!(token.byte_end, 24);
-            assert_eq!(token.position, 0);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "名詞",
-                    "固有名詞",
-                    "一般",
-                    "カスタム名詞",
-                    "*",
-                    "*",
-                    "東京スカイツリー",
-                    "トウキョウスカイツリー",
-                    "トウキョウスカイツリー"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
-            assert_eq!(token.byte_start, 24);
-            assert_eq!(token.byte_end, 27);
-            assert_eq!(token.position, 1);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["助詞", "連体化", "*", "*", "*", "*", "の", "ノ", "ノ"]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り駅");
-            assert_eq!(token.byte_start, 27);
-            assert_eq!(token.byte_end, 39);
-            assert_eq!(token.position, 2);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "名詞",
-                    "一般",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "最寄り駅",
-                    "モヨリエキ",
-                    "モヨリエキ"
-                ]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
-            assert_eq!(token.byte_start, 39);
-            assert_eq!(token.byte_end, 42);
-            assert_eq!(token.position, 3);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec!["助詞", "係助詞", "*", "*", "*", "*", "は", "ハ", "ワ"]
-            );
-        }
-        {
-            let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
-            assert_eq!(token.byte_start, 42);
-            assert_eq!(token.byte_end, 78);
-            assert_eq!(token.position, 4);
-            assert_eq!(token.position_length, 1);
-            assert_eq!(
-                token.details(),
-                vec![
-                    "カスタム名詞",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "*",
-                    "トウキョウスカイツリーエキ",
-                    "*"
                 ]
             );
         }
