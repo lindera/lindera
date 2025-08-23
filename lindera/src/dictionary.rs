@@ -282,10 +282,8 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                     }
                 }
             }
-            Err(e) => {
-                Err(LinderaErrorKind::Dictionary
-                    .with_error(anyhow::anyhow!("Invalid URI format: {}", e)))
-            }
+            Err(e) => Err(LinderaErrorKind::Dictionary
+                .with_error(anyhow::anyhow!("Invalid URI format: {}", e))),
         }
     } else {
         // Treat it as a file path directly
@@ -320,7 +318,8 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
 
                 match scheme {
                     DictionaryScheme::File => parsed_uri.to_file_path().map_err(|_| {
-                        LinderaErrorKind::Dictionary.with_error(anyhow::anyhow!("Invalid file path"))
+                        LinderaErrorKind::Dictionary
+                            .with_error(anyhow::anyhow!("Invalid file path"))
                     })?,
                     #[cfg(any(
                         feature = "embedded-ipadic",
