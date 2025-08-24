@@ -3,13 +3,6 @@ use std::{collections::HashSet, mem};
 
 use serde_json::Value;
 
-#[cfg(feature = "ipadic")]
-use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
-#[cfg(feature = "ipadic-neologd")]
-use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
-#[cfg(feature = "unidic")]
-use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
-
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
@@ -86,103 +79,31 @@ impl JapaneseCompoundWordTokenFilter {
         token1.byte_end = token2.byte_end;
         token1.position_length += token2.position_length;
 
-        // Get the dictionary name
-        let dictionary_name = token1.dictionary.metadata.name.as_str();
+        // Token details field length
+        // -4 to exclude surface, left_context_id, right_context_id and cost
+        let details_field_length = token1.dictionary.metadata.dictionary_schema.field_count() - 4;
 
-        let details = match dictionary_name {
-            #[cfg(feature = "ipadic")]
-            IPADIC_DICTIONARY_NAME => {
-                // Make details for the new token based on the new_tag.
-                match &self.new_tag {
-                    Some(new_tag) => {
-                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
-                        if details.len() < 9 {
-                            details.resize(9, "*");
-                        } else {
-                            details.truncate(9);
-                        }
-                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
-                    }
-                    None => {
-                        vec![
-                            Cow::Borrowed("複合語"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                        ]
-                    }
+        // Make details for the new token based on the new_tag.
+        let details = match &self.new_tag {
+            Some(new_tag) => {
+                let mut details = new_tag.split(',').collect::<Vec<&str>>();
+                if details.len() < details_field_length {
+                    details.resize(details_field_length, "*");
+                } else {
+                    details.truncate(details_field_length);
                 }
+                let details: Vec<Cow<'_, str>> =
+                    details.iter().map(|s| Cow::Owned(s.to_string())).collect();
+                details
             }
-            #[cfg(feature = "ipadic-neologd")]
-            IPADIC_NEOLOGD_DICTIONARY_NAME => {
-                // Make details for the new token based on the new_tag.
-                match &self.new_tag {
-                    Some(new_tag) => {
-                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
-                        if details.len() < 9 {
-                            details.resize(9, "*");
-                        } else {
-                            details.truncate(9);
-                        }
-                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
-                    }
-                    None => {
-                        vec![
-                            Cow::Borrowed("複合語"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                        ]
-                    }
+            None => {
+                let mut details = Vec::with_capacity(details_field_length);
+                details.push(Cow::Borrowed("複合語"));
+                while details.len() < details_field_length {
+                    details.push(Cow::Borrowed("*"));
                 }
+                details
             }
-            #[cfg(feature = "unidic")]
-            UNIDIC_DICTIONARY_NAME => {
-                // Make details for the new token based on the new_tag.
-                match &self.new_tag {
-                    Some(new_tag) => {
-                        let mut details = new_tag.split(',').collect::<Vec<&str>>();
-                        if details.len() < 17 {
-                            details.resize(17, "*");
-                        } else {
-                            details.truncate(17);
-                        }
-                        details.iter().map(|s| Cow::Owned(s.to_string())).collect()
-                    }
-                    None => {
-                        vec![
-                            Cow::Borrowed("複合語"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                            Cow::Borrowed("*"),
-                        ]
-                    }
-                }
-            }
-            _ => vec![],
         };
 
         token1.details = Some(details);

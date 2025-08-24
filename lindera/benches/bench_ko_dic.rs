@@ -1,30 +1,30 @@
-#[cfg(feature = "ko-dic")]
-use criterion::{Criterion, criterion_group, criterion_main};
-#[cfg(feature = "ko-dic")]
-use lindera::dictionary::{
-    DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
-};
-#[cfg(feature = "ko-dic")]
-use lindera::mode::Mode;
-#[cfg(feature = "ko-dic")]
-use lindera::segmenter::Segmenter;
-#[cfg(feature = "ko-dic")]
-use lindera::tokenizer::Tokenizer;
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
+use criterion::{Criterion, criterion_group, criterion_main};
+
+#[cfg(feature = "embedded-ko-dic")]
+use lindera::dictionary::{load_dictionary, load_user_dictionary};
+#[cfg(feature = "embedded-ko-dic")]
+use lindera::mode::Mode;
+#[cfg(feature = "embedded-ko-dic")]
+use lindera::segmenter::Segmenter;
+#[cfg(feature = "embedded-ko-dic")]
+use lindera::tokenizer::Tokenizer;
+
+#[cfg(feature = "embedded-ko-dic")]
 fn bench_constructor_ko_dic(c: &mut Criterion) {
     c.bench_function("bench-constructor-ko-dic", |b| {
         b.iter(|| {
-            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ko-dic", |b| {
         b.iter(|| {
@@ -36,10 +36,6 @@ fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
             let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
                 .join("ko-dic_metadata.json");
-            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("ko-dic_simple_userdic.csv");
-
             let metadata: Metadata = serde_json::from_reader(
                 File::open(metadata_file)
                     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -48,18 +44,22 @@ fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
             .unwrap();
 
-            let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("ko-dic_simple_userdic.csv");
+
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
             let user_dictionary =
-                load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+                load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 fn bench_tokenize_ko_dic(c: &mut Criterion) {
-    let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+    let dictionary = load_dictionary("embedded://ko-dic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -68,7 +68,7 @@ fn bench_tokenize_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -78,10 +78,6 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("ko-dic_metadata.json");
-    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("ko-dic_simple_userdic.csv");
-
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -90,8 +86,12 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
     .unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
-    let user_dictionary = load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("ko-dic_simple_userdic.csv");
+
+    let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+    let user_dictionary = load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -100,7 +100,7 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 criterion_group!(
     benches,
     bench_constructor_ko_dic,
@@ -109,10 +109,10 @@ criterion_group!(
     bench_tokenize_with_simple_userdic_ko_dic,
 );
 
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "ko-dic"))]
+#[cfg(not(feature = "embedded-ko-dic"))]
 fn main() {
-    println!("KO-DIC feature is not enabled");
+    println!("Embedded KO-DIC feature is not enabled");
 }

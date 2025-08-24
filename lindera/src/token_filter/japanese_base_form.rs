@@ -1,14 +1,6 @@
-#[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
 use std::borrow::Cow;
 
 use serde_json::Value;
-
-#[cfg(feature = "ipadic")]
-use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
-#[cfg(feature = "ipadic-neologd")]
-use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
-#[cfg(feature = "unidic")]
-use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
 
 use crate::LinderaResult;
 use crate::token::Token;
@@ -48,39 +40,17 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             // Skip tokens with "UNK" in the first detail
-            if let Some(detail) = token.get_detail(0) {
-                if detail == "UNK" {
+            if let Some(pos) = token.get_detail(0) {
+                if pos == "UNK" {
                     continue;
                 }
             }
 
-            // Get the dictionary name
-            #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-            let dictionary_name = token.dictionary.metadata.name.as_str();
-
-            // Get the index of the detail that contains the base form based on dictionary name.
-            #[cfg(feature = "ipadic")]
-            if dictionary_name == IPADIC_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(6) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
+            if let Some(base_form) = token.get("base_form") {
+                token.text = Cow::Owned(base_form.to_string());
             }
-
-            #[cfg(feature = "ipadic-neologd")]
-            if dictionary_name == IPADIC_NEOLOGD_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(6) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
-            }
-
-            #[cfg(feature = "unidic")]
-            if dictionary_name == UNIDIC_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(10) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
+            if let Some(base_form) = token.get("orthographic_base_form") {
+                token.text = Cow::Owned(base_form.to_string());
             }
         }
 
