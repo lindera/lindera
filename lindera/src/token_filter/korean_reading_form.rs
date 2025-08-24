@@ -38,14 +38,14 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            if let Some(detail) = token.get_detail(0) {
-                if detail == "UNK" {
+            if let Some(pos) = token.get_detail(0) {
+                if pos == "UNK" {
                     continue;
                 }
             }
 
-            if let Some(detail) = token.get_detail(3) {
-                token.text = Cow::Owned(detail.to_string());
+            if let Some(reading) = token.get("reading") {
+                token.text = Cow::Owned(reading.to_string());
             }
         }
 

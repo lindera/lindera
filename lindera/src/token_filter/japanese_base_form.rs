@@ -40,17 +40,17 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             // Skip tokens with "UNK" in the first detail
-            if let Some(detail) = token.get_detail(0) {
-                if detail == "UNK" {
+            if let Some(pos) = token.get_detail(0) {
+                if pos == "UNK" {
                     continue;
                 }
             }
 
-            if let Some(detail) = token.get("base_form") {
-                token.text = Cow::Owned(detail.to_string());
+            if let Some(base_form) = token.get("base_form") {
+                token.text = Cow::Owned(base_form.to_string());
             }
-            if let Some(detail) = token.get("orthographic_base_form") {
-                token.text = Cow::Owned(detail.to_string());
+            if let Some(base_form) = token.get("orthographic_base_form") {
+                token.text = Cow::Owned(base_form.to_string());
             }
         }
 
