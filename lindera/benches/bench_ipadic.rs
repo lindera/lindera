@@ -1,34 +1,34 @@
-#[cfg(feature = "ipadic")]
-use criterion::{Criterion, criterion_group, criterion_main};
-#[cfg(feature = "ipadic")]
-use lindera::dictionary::{
-    DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
-};
-#[cfg(feature = "ipadic")]
-use lindera::mode::Mode;
-#[cfg(feature = "ipadic")]
-use lindera::segmenter::Segmenter;
-#[cfg(feature = "ipadic")]
-use lindera::tokenizer::Tokenizer;
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 use std::fs::File;
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 use std::io::{BufReader, Read};
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
+use criterion::{Criterion, criterion_group, criterion_main};
+
+#[cfg(feature = "embedded-ipadic")]
+use lindera::dictionary::{load_dictionary, load_user_dictionary};
+#[cfg(feature = "embedded-ipadic")]
+use lindera::mode::Mode;
+#[cfg(feature = "embedded-ipadic")]
+use lindera::segmenter::Segmenter;
+#[cfg(feature = "embedded-ipadic")]
+use lindera::tokenizer::Tokenizer;
+
+#[cfg(feature = "embedded-ipadic")]
 fn bench_constructor_ipadic(c: &mut Criterion) {
     c.bench_function("bench-constructor-ipadic", |b| {
         b.iter(|| {
-            let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+            let dictionary = load_dictionary("embedded://ipadic").unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ipadic", |b| {
         b.iter(|| {
@@ -40,10 +40,6 @@ fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
             let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
                 .join("ipadic_metadata.json");
-            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("ipadic_simple_userdic.csv");
-
             let metadata: Metadata = serde_json::from_reader(
                 File::open(metadata_file)
                     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -52,18 +48,22 @@ fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
             .unwrap();
 
-            let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("ipadic_simple_userdic.csv");
+
+            let dictionary = load_dictionary("embedded://ipadic").unwrap();
             let user_dictionary =
-                load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+                load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 fn bench_tokenize_ipadic(c: &mut Criterion) {
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -72,7 +72,7 @@ fn bench_tokenize_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -82,10 +82,6 @@ fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("ipadic_metadata.json");
-    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("ipadic_simple_userdic.csv");
-
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -94,8 +90,12 @@ fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
     .unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
-    let user_dictionary = load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("ipadic_simple_userdic.csv");
+
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let user_dictionary = load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -104,7 +104,7 @@ fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -117,7 +117,7 @@ fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     let mut long_text = String::new();
     let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -139,7 +139,7 @@ fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     let mut long_text = String::new();
     let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 

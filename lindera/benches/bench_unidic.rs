@@ -1,34 +1,34 @@
-#[cfg(feature = "unidic")]
-use criterion::{Criterion, criterion_group, criterion_main};
-#[cfg(feature = "unidic")]
-use lindera::dictionary::{
-    DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
-};
-#[cfg(feature = "unidic")]
-use lindera::mode::Mode;
-#[cfg(feature = "unidic")]
-use lindera::segmenter::Segmenter;
-#[cfg(feature = "unidic")]
-use lindera::tokenizer::Tokenizer;
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 use std::fs::File;
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 use std::io::{BufReader, Read};
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
+use criterion::{Criterion, criterion_group, criterion_main};
+
+#[cfg(feature = "embedded-unidic")]
+use lindera::dictionary::{load_dictionary, load_user_dictionary};
+#[cfg(feature = "embedded-unidic")]
+use lindera::mode::Mode;
+#[cfg(feature = "embedded-unidic")]
+use lindera::segmenter::Segmenter;
+#[cfg(feature = "embedded-unidic")]
+use lindera::tokenizer::Tokenizer;
+
+#[cfg(feature = "embedded-unidic")]
 fn bench_constructor_unidic(c: &mut Criterion) {
     c.bench_function("bench-constructor-unidic", |b| {
         b.iter(|| {
-            let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
+            let dictionary = load_dictionary("embedded://unidic").unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 fn bench_constructor_with_simple_userdic_unidic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-unidic", |b| {
         b.iter(|| {
@@ -40,10 +40,6 @@ fn bench_constructor_with_simple_userdic_unidic(c: &mut Criterion) {
             let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
                 .join("unidic_metadata.json");
-            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("unidic_simple_userdic.csv");
-
             let metadata: Metadata = serde_json::from_reader(
                 File::open(metadata_file)
                     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -52,18 +48,22 @@ fn bench_constructor_with_simple_userdic_unidic(c: &mut Criterion) {
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
             .unwrap();
 
-            let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
+            let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("unidic_simple_userdic.csv");
+
+            let dictionary = load_dictionary("embedded://unidic").unwrap();
             let user_dictionary =
-                load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+                load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
             let _tokenizer = Tokenizer::new(segmenter);
         })
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 fn bench_tokenize_unidic(c: &mut Criterion) {
-    let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
+    let dictionary = load_dictionary("embedded://unidic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -72,7 +72,7 @@ fn bench_tokenize_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -82,10 +82,6 @@ fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("unidic_metadata.json");
-    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("unidic_simple_userdic.csv");
-
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -94,8 +90,12 @@ fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
     .unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
-    let user_dictionary = load_user_dictionary_from_csv(&metadata, userdic_file.as_path()).unwrap();
+    let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("unidic_simple_userdic.csv");
+
+    let dictionary = load_dictionary("embedded://unidic").unwrap();
+    let user_dictionary = load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -104,7 +104,7 @@ fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 fn bench_tokenize_long_text_unidic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -117,7 +117,7 @@ fn bench_tokenize_long_text_unidic(c: &mut Criterion) {
     let mut long_text = String::new();
     let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
+    let dictionary = load_dictionary("embedded://unidic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -126,7 +126,7 @@ fn bench_tokenize_long_text_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 fn bench_tokenize_details_long_text_unidic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -139,7 +139,7 @@ fn bench_tokenize_details_long_text_unidic(c: &mut Criterion) {
     let mut long_text = String::new();
     let _size = long_text_file.read_to_string(&mut long_text).unwrap();
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::UniDic).unwrap();
+    let dictionary = load_dictionary("embedded://unidic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -153,7 +153,7 @@ fn bench_tokenize_details_long_text_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 criterion_group!(
     benches,
     bench_constructor_unidic,
@@ -164,10 +164,10 @@ criterion_group!(
     bench_tokenize_details_long_text_unidic,
 );
 
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "unidic"))]
+#[cfg(not(feature = "embedded-unidic"))]
 fn main() {
-    println!("UniDic feature is not enabled");
+    println!("Embedded UniDic feature is not enabled");
 }
