@@ -48,7 +48,7 @@ impl TokenFilter for LowercaseTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_lowercase_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

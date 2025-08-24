@@ -133,7 +133,11 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_kana_token_filter_config_hiragana() {
         use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
@@ -147,7 +151,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_kana_token_filter_config_katakana() {
         use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
@@ -161,7 +169,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_kana_token_filter_hiragana() {
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
@@ -179,7 +191,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_kana_token_filter_from_slice_katakana() {
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
@@ -197,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_apply_katakana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
@@ -292,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_apply_hiragana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
@@ -422,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_apply_katakana_to_katakana_ipadic() {
         use std::borrow::Cow;
 
@@ -517,7 +533,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_apply_hiragana_to_hiragana_ipadic() {
         use std::borrow::Cow;
 
@@ -647,7 +663,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_apply_mixed_to_katakana_ipadic() {
         use std::borrow::Cow;
 
@@ -777,7 +793,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_kana_token_filter_applymixed_to_hiragana_ipadic() {
         use std::borrow::Cow;
 

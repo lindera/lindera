@@ -276,13 +276,21 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     use crate::token_filter::japanese_number::{
         JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
     };
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_to_number_str() {
         use std::str::FromStr;
 
@@ -825,7 +833,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_number_token_filter_config() {
         {
             let config_str = r#"
@@ -862,7 +874,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
+    #[cfg(any(
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+    ))]
     fn test_japanese_number_token_filter() {
         {
             // test empty tags
@@ -892,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         use std::borrow::Cow;
 
@@ -1070,7 +1086,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         use std::borrow::Cow;
 

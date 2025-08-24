@@ -12,50 +12,19 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["lindera-ipadic/ipadic"] # Enable Japanese dictionary (IPADIC)
-ipadic-neologd = [
-    "lindera-ipadic-neologd/ipadic-neologd",
-] # Enable Japanese dictionary (IPADIC NEologd)
-unidic = ["lindera-unidic/unidic"] # Enable Japanese dictionary (UniDic)
-ko-dic = ["lindera-ko-dic/ko-dic"] # Enable Korean dictionary (ko-dic)
-cc-cedict = [
-    "lindera-cc-cedict/cc-cedict",
-] # Enable Chinese dictionary (CC-CEDICT)
-
-cjk = [
-    "ipadic",
-    "ko-dic",
-    "cc-cedict",
-] # Enable CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
-cjk2 = [
-    "unidic",
-    "ko-dic",
-    "cc-cedict",
-] # Enable CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
-cjk3 = [
-    "ipadic-neologd",
-    "ko-dic",
-    "cc-cedict",
-] # Enable CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
-
 embedded-ipadic = [
-    "ipadic",
     "lindera-ipadic/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary
 embedded-ipadic-neologd = [
-    "ipadic-neologd",
     "lindera-ipadic-neologd/embedded-ipadic-neologd",
 ] # Embed IPADIC-NEologd dictionary in the binary
 embedded-unidic = [
-    "unidic",
     "lindera-unidic/embedded-unidic",
 ] # Embed UniDic dictionary in the binary
 embedded-ko-dic = [
-    "ko-dic",
     "lindera-ko-dic/embedded-ko-dic",
 ] # Embed ko-dic dictionary in the binary
 embedded-cc-cedict = [
-    "cc-cedict",
     "lindera-cc-cedict/embedded-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
 
@@ -122,24 +91,24 @@ once_cell.workspace = true
 [[bench]]
 name = "bench_ipadic"
 harness = false
-required-features = ["ipadic"]
+required-features = ["embedded-ipadic"]
 
 [[bench]]
 name = "bench_unidic"
 harness = false
-required-features = ["unidic"]
+required-features = ["embedded-unidic"]
 
 [[bench]]
 name = "bench_ko_dic"
 harness = false
-required-features = ["ko-dic"]
+required-features = ["embedded-ko-dic"]
 
 [[bench]]
 name = "bench_cc_cedict"
 harness = false
-required-features = ["cc-cedict"]
+required-features = ["embedded-cc-cedict"]
 
 [[bench]]
 name = "bench_ipadic_neologd"
 harness = false
-required-features = ["ipadic-neologd"]
+required-features = ["embedded-ipadic-neologd"]

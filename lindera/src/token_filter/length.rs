@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_length_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

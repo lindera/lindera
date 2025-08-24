@@ -260,11 +260,11 @@ impl Segmenter {
 mod tests {
     #[allow(unused_imports)]
     #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
+        feature = "embedded-ipadic",
+        feature = "embedded-ipadic-neologd",
+        feature = "embedded-unidic",
+        feature = "embedded-ko-dic",
+        feature = "embedded-cc-cedict"
     ))]
     use std::{
         fs::File,
@@ -272,32 +272,22 @@ mod tests {
         path::PathBuf,
     };
 
-    #[allow(unused_imports)]
-    #[cfg(any(
-        feature = "ipadic",
-        feature = "ipadic-neologd",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
-    ))]
-    use crate::mode::{Mode, Penalty};
+    // use crate::mode::{Mode, Penalty};
 
     #[cfg(any(
-        feature = "ipadic",
-        feature = "unidic",
-        feature = "ko-dic",
-        feature = "cc-cedict"
+        feature = "embedded-ipadic",
+        feature = "embedded-unidic",
+        feature = "embedded-ko-dic",
+        feature = "embedded-cc-cedict"
     ))]
     use crate::segmenter::{Segmenter, SegmenterConfig};
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segmenter_config_ipadic_normal() {
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": "normal"
         }
         "#;
@@ -307,13 +297,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segmenter_config_ipadic_decompose() {
         let config_str = r#"
         {
-            "dictionary": {
-                "kind": "ipadic"
-            },
+            "dictionary": "embedded://ipadic",
             "mode": {
                 "decompose": {
                     "kanji_penalty_length_threshold": 2,
@@ -330,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_ipadic() {
         use std::borrow::Cow;
 
@@ -588,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
+    #[cfg(feature = "embedded-unidic")]
     fn test_segment_unidic() {
         use std::borrow::Cow;
 
@@ -998,7 +986,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+    #[cfg(feature = "embedded-ko-dic")]
     fn test_segment_ko_dic() {
         use std::borrow::Cow;
 
@@ -1168,7 +1156,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
+    #[cfg(feature = "embedded-cc-cedict")]
     fn test_segment_cc_cedict() {
         use std::borrow::Cow;
 
@@ -1302,7 +1290,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_simple_userdic_ipadic() {
         use std::borrow::Cow;
 
@@ -1450,7 +1438,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
+    #[cfg(feature = "embedded-unidic")]
     fn test_segment_with_simple_userdic_unidic() {
         use std::borrow::Cow;
 
@@ -1714,7 +1702,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+    #[cfg(feature = "embedded-ko-dic")]
     fn test_segment_with_simple_userdic_ko_dic() {
         use std::borrow::Cow;
 
@@ -1793,7 +1781,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
+    #[cfg(feature = "embedded-cc-cedict")]
     fn test_segment_with_simple_userdic_cc_cedict() {
         use std::borrow::Cow;
 
@@ -1900,7 +1888,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_simple_userdic_bin_ipadic() {
         use std::borrow::Cow;
 
@@ -2048,7 +2036,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "unidic", feature = "embedded-unidic"))]
+    #[cfg(feature = "embedded-unidic")]
     fn test_segment_with_simple_userdic_bin_unidic() {
         use std::borrow::Cow;
 
@@ -2312,7 +2300,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+    #[cfg(feature = "embedded-ko-dic")]
     fn test_segment_with_simple_userdic_bin_ko_dic() {
         use std::borrow::Cow;
 
@@ -2391,7 +2379,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "cc-cedict", feature = "embedded-cc-cedict"))]
+    #[cfg(feature = "embedded-cc-cedict")]
     fn test_segment_with_simple_userdic_bin_cc_cedict() {
         use std::borrow::Cow;
 
@@ -2498,7 +2486,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_detailed_userdic_ipadic() {
         use std::borrow::Cow;
 
@@ -2646,7 +2634,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     #[should_panic(expected = "failed to parse word cost")]
     fn test_user_dict_invalid_word_cost() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -2663,7 +2651,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     #[should_panic(expected = "user dictionary should be a CSV with 3 or 13+ fields")]
     fn test_user_dict_number_of_fields_is_11() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -2680,7 +2668,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_nomal_mode() {
         use std::borrow::Cow;
 
@@ -2750,7 +2738,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_decompose_mode() {
         use std::borrow::Cow;
 
@@ -2849,7 +2837,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_segment_with_decompose_mode_default_penalty() {
         use std::borrow::Cow;
 
@@ -2942,7 +2930,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_long_text() {
         use std::borrow::Cow;
 

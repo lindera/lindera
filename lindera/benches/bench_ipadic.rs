@@ -126,7 +126,7 @@ fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -153,7 +153,7 @@ fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 criterion_group!(
     benches,
     bench_constructor_ipadic,
@@ -164,10 +164,10 @@ criterion_group!(
     bench_tokenize_details_long_text_ipadic,
 );
 
-#[cfg(feature = "ipadic")]
+#[cfg(feature = "embedded-ipadic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "ipadic"))]
+#[cfg(not(feature = "embedded-ipadic"))]
 fn main() {
-    println!("IPADIC feature is not enabled");
+    println!("Embedded IPADIC feature is not enabled");
 }

@@ -12,20 +12,6 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = ["lindera/ipadic"] # Enable Japanese dictionary (IPADIC)
-ipadic-neologd = [
-    "lindera/ipadic-neologd",
-] # Enable Japanese dictionary (IPADIC NEologd)
-unidic = ["lindera/unidic"] # Enable Japanese dictionary (UniDic)
-ko-dic = ["lindera/ko-dic"] # Enable Korean dictionary (ko-dic)
-cc-cedict = ["lindera/cc-cedict"] # Enamble Chinese dictionary (CC-CEDICT)
-
-cjk = ["lindera/cjk"] # Enable CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)
-cjk2 = ["lindera/cjk2"] # Enable CJK dictionaries (UniDic, ko-dic, CC-CEDICT)
-cjk3 = [
-    "lindera/cjk3",
-] # Enable CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)
-
 embedded-ipadic = [
     "lindera/embedded-ipadic",
 ] # Embed IPADIC dictionary in the binary

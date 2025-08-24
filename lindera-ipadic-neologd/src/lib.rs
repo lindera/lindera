@@ -1,6 +1,6 @@
-#[cfg(feature = "ipadic-neologd")]
+#[cfg(feature = "embedded-ipadic-neologd")]
 pub mod metadata;
-#[cfg(feature = "ipadic-neologd")]
+#[cfg(feature = "embedded-ipadic-neologd")]
 pub mod schema;
 
 #[cfg(feature = "embedded-ipadic-neologd")]

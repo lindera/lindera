@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_stop_words_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

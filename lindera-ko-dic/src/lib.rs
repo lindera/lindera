@@ -1,6 +1,6 @@
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 pub mod metadata;
-#[cfg(feature = "ko-dic")]
+#[cfg(feature = "embedded-ko-dic")]
 pub mod schema;
 
 #[cfg(feature = "embedded-ko-dic")]

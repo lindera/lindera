@@ -97,22 +97,30 @@ async fn download_with_retry(
                 Ok(resp) if resp.status().is_success() => {
                     debug!("HTTP download successful from {url}");
 
-                    let content = resp.bytes().await?;
+                    match resp.bytes().await {
+                        Ok(content) => {
+                            // Calculate MD5 hash
+                            let mut context = Context::new();
+                            context.consume(&content);
+                            let actual_md5 = format!("{:x}", context.finalize());
 
-                    // Calculate MD5 hash
-                    let mut context = Context::new();
-                    context.consume(&content);
-                    let actual_md5 = format!("{:x}", context.finalize());
+                            debug!("Expected MD5: {expected_md5}");
+                            debug!("Actual   MD5: {actual_md5}");
 
-                    debug!("Expected MD5: {expected_md5}");
-                    debug!("Actual   MD5: {actual_md5}");
-
-                    if actual_md5 == expected_md5 {
-                        debug!("MD5 check passed from {url}");
-                        return Ok(content.to_vec());
-                    } else {
-                        warn!("MD5 mismatch from {url}, Expected {expected_md5}, got {actual_md5}");
-                        // continue to next url
+                            if actual_md5 == expected_md5 {
+                                debug!("MD5 check passed from {url}");
+                                return Ok(content.to_vec());
+                            } else {
+                                warn!(
+                                    "MD5 mismatch from {url}, Expected {expected_md5}, got {actual_md5}"
+                                );
+                                // continue to next url
+                            }
+                        }
+                        Err(e) => {
+                            warn!("Failed to download content from {url}: {e}");
+                            // continue to next url
+                        }
                     }
                 }
                 Ok(resp) => {
