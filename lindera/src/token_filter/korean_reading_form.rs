@@ -56,7 +56,7 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(all(feature = "ko-dic", feature = "embedded-ko-dic"))]
+    #[cfg(feature = "embedded-ko-dic")]
     fn test_korean_reading_form_token_filter_apply() {
         use std::borrow::Cow;
 

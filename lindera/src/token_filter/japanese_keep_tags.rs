@@ -116,7 +116,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_keep_tags_token_filter_config() {
         use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig;
 
@@ -170,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_keep_tags_token_filter() {
         use crate::token_filter::japanese_keep_tags::{
             JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_keep_tags_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

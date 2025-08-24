@@ -14,7 +14,7 @@ fn main() -> LinderaResult<()> {
 
         let text = "関西国際空港限定トートバッグ";
         let mut tokens = tokenizer.tokenize(text)?;
-        println!("text:\t{}", text);
+        println!("text:\t{text}");
         for token in tokens.iter_mut() {
             let details = token.details().join(",");
             println!("token:\t{}\t{}", token.text.as_ref(), details);

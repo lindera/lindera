@@ -1,6 +1,6 @@
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 pub mod metadata;
-#[cfg(feature = "unidic")]
+#[cfg(feature = "embedded-unidic")]
 pub mod schema;
 
 #[cfg(feature = "embedded-unidic")]

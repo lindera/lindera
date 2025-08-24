@@ -405,7 +405,7 @@ impl Clone for Tokenizer {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     #[test]
     fn test_tokenizer_config_from_slice() {
         use std::path::PathBuf;
@@ -422,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_tokenizer_config_clone() {
         use std::path::PathBuf;
 
@@ -440,7 +440,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_tokenize_ipadic() {
         use std::borrow::Cow;
         use std::path::PathBuf;

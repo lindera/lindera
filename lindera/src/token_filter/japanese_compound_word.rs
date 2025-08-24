@@ -198,7 +198,7 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     #[test]
     fn test_japanese_compound_word_token_filter_config_ipadic() {
         use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig;
@@ -217,7 +217,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[cfg(feature = "ipadic")]
+    #[cfg(feature = "embedded-ipadic")]
     #[test]
     fn test_japanese_compound_word_token_filter_ipadic() {
         use crate::token_filter::japanese_compound_word::{
@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "ipadic", feature = "embedded-ipadic"))]
+    #[cfg(feature = "embedded-ipadic")]
     fn test_japanese_compound_word_token_filter_apply_ipadic() {
         use std::borrow::Cow;
 

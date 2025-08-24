@@ -32,19 +32,19 @@ bench: ## Run all benchmarks
 	@echo "🚀 Running all Lindera benchmarks..."
 	@echo ""
 	@echo "📊 Running IPADIC benchmark..."
-	(cd lindera && cargo bench --bench bench_ipadic --features ipadic,embedded-ipadic) || true
+	(cd lindera && cargo bench --bench=bench_ipadic --features=embedded-ipadic) || true
 	@echo ""
 	@echo "📊 Running IPADIC-NEologd benchmark..."
-	(cd lindera && cargo bench --bench bench_ipadic_neologd --features ipadic-neologd,embedded-ipadic-neologd) || true
+	(cd lindera && cargo bench --bench=bench_ipadic_neologd --features=embedded-ipadic-neologd) || true
 	@echo ""
 	@echo "📊 Running UniDic benchmark..."
-	(cd lindera && cargo bench --bench bench_unidic --features unidic,embedded-unidic) || true
+	(cd lindera && cargo bench --bench=bench_unidic --features=embedded-unidic) || true
 	@echo ""
 	@echo "📊 Running KO-DIC benchmark..."
-	(cd lindera && cargo bench --bench bench_ko_dic --features ko-dic,embedded-ko-dic) || true
+	(cd lindera && cargo bench --bench=bench_ko_dic --features=embedded-ko-dic) || true
 	@echo ""
 	@echo "📊 Running CC-CEDICT benchmark..."
-	(cd lindera && cargo bench --bench bench_cc_cedict --features cc-cedict,embedded-cc-cedict) || true
+	(cd lindera && cargo bench --bench=bench_cc_cedict --features=embedded-cc-cedict) || true
 	@echo ""
 	@echo ""
 	@echo "✅ All benchmarks completed!"
