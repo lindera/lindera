@@ -1,14 +1,6 @@
-#[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic"))]
 use std::borrow::Cow;
 
 use serde_json::Value;
-
-#[cfg(feature = "ipadic")]
-use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
-#[cfg(feature = "ipadic-neologd")]
-use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
-#[cfg(feature = "unidic")]
-use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
 
 use crate::LinderaResult;
 use crate::token::Token;
@@ -87,33 +79,8 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
                 }
             }
 
-            // Get the dictionary name
-            #[cfg(any(feature = "ipadic", feature = "ipadic-neologd", feature = "unidic",))]
-            let dictionary_name = token.dictionary.metadata.name.as_str();
-
-            // Get the index of the detail that contains the base form based on dictionary name.
-            #[cfg(feature = "ipadic")]
-            if dictionary_name == IPADIC_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(7) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
-            }
-
-            #[cfg(feature = "ipadic-neologd")]
-            if dictionary_name == IPADIC_NEOLOGD_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(7) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
-            }
-
-            #[cfg(feature = "unidic")]
-            if dictionary_name == UNIDIC_DICTIONARY_NAME {
-                if let Some(detail) = token.get_detail(6) {
-                    token.text = Cow::Owned(detail.to_string());
-                }
-                continue;
+            if let Some(reading) = token.get("reading") {
+                token.text = Cow::Owned(reading.to_string());
             }
         }
 
