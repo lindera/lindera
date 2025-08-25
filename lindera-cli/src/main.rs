@@ -37,7 +37,7 @@ enum Commands {
 #[derive(Debug, clap::Args)]
 #[clap(
     author,
-    about = "List a contained morphological analysis dictionaries",
+    about = "List embedded morphological analysis dictionaries",
     version = get_version(),
 )]
 struct ListArgs {}
