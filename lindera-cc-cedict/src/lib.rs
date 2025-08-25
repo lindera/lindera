@@ -1,9 +1,4 @@
 #[cfg(feature = "embedded-cc-cedict")]
-pub mod metadata;
-#[cfg(feature = "embedded-cc-cedict")]
-pub mod schema;
-
-#[cfg(feature = "embedded-cc-cedict")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "cc-cedict";

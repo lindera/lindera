@@ -1,9 +1,4 @@
 #[cfg(feature = "embedded-ko-dic")]
-pub mod metadata;
-#[cfg(feature = "embedded-ko-dic")]
-pub mod schema;
-
-#[cfg(feature = "embedded-ko-dic")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "ko-dic";
