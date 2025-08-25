@@ -14,8 +14,6 @@ use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 
-use crate::metadata::IPADICNEologdMetadata;
-
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {
         #[cfg(feature = "compress")]
@@ -99,8 +97,8 @@ ipadicneologd_metadata!(
 );
 
 pub fn load() -> LinderaResult<Dictionary> {
-    // Load metadata from embedded binary data with fallback to default
-    let metadata = Metadata::load_or_default(METADATA_DATA, IPADICNEologdMetadata::metadata);
+    // Load metadata from embedded binary data
+    let metadata = Metadata::load(METADATA_DATA)?;
 
     #[cfg(feature = "compress")]
     {

@@ -27,10 +27,6 @@
     ]
   },
   "user_dictionary_schema": {
-    "fields": [
-      "surface",
-      "part_of_speech",
-      "reading"
-    ]
+    "fields": ["surface", "part_of_speech", "reading"]
   }
 }

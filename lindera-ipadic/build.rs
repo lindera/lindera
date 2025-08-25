@@ -1,12 +1,13 @@
 use std::error::Error;
+use std::fs;
+use std::path::Path;
 
 #[cfg(feature = "embedded-ipadic")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     use lindera_dictionary::{
         assets::{FetchParams, fetch},
-        decompress::Algorithm,
-        dictionary::{metadata::Metadata, schema::Schema},
+        dictionary::metadata::Metadata,
         dictionary_builder::DictionaryBuilder,
     };
 
@@ -19,38 +20,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "3311c7c71a869ca141e1b8bde0c8666c",
     };
 
-    let metadata = Metadata::new(
-        "ipadic".to_string(), // Dictionary name
-        "EUC-JP".to_string(), // Encoding for IPADIC
-        Algorithm::Deflate,   // Compression algorithm
-        -10000,               // Default word cost
-        0,                    // Default left context ID
-        0,                    // Default right context ID
-        "*".to_string(),      // Default field value
-        false,                // flexible_csv
-        false,                // skip_invalid_cost_or_id
-        true,                 // normalize_details
-        Schema::new(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "part_of_speech".to_string(),
-            "part_of_speech_subcategory_1".to_string(),
-            "part_of_speech_subcategory_2".to_string(),
-            "part_of_speech_subcategory_3".to_string(),
-            "conjugation_form".to_string(),
-            "conjugation_type".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ]), // Schema for IPADIC dictionary
-        Schema::new(vec![
-            "surface".to_string(),
-            "part_of_speech".to_string(),
-            "reading".to_string(),
-        ]), // Schema for IPADIC user dictionary
-    );
+    // Read and deserialize metadata directly from JSON file
+    let metadata_path = Path::new("metadata.json");
+    let metadata_json = fs::read_to_string(metadata_path)?;
+    let metadata: Metadata = serde_json::from_str(&metadata_json)?;
 
     let builder = DictionaryBuilder::new(metadata);
 
