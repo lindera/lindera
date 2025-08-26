@@ -14,7 +14,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["ipadic"] }
+lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -26,32 +26,19 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
+use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let mut config_builder = TokenizerConfigBuilder::new();
-    config_builder.set_segmenter_dictionary_kind(&DictionaryKind::IPADIC);
-    config_builder.set_segmenter_mode(&Mode::Normal);
-
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
-    let segmenter = Segmenter::new(
-        Mode::Normal,
-        dictionary,
-        None, // Assuming no user dictionary is provided
-    );
-
-    // Create a tokenizer.
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
-    // Tokenize a text.
     let text = "関西国際空港限定トートバッグ";
     let mut tokens = tokenizer.tokenize(text)?;
-
-    // Print the text and tokens.
     println!("text:\t{}", text);
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
@@ -65,7 +52,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=ipadic --example=tokenize
+% cargo run --features=embedded-ipadic --example=tokenize
 ```
 
 You can see the result as follows:
@@ -89,7 +76,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["ipadic"] }
+lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
 ```
 
 For example:
@@ -106,22 +93,29 @@ With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
 use std::path::PathBuf;
 
-use lindera::dictionary::{
-    load_dictionary_from_kind, load_user_dictionary_from_csv, DictionaryKind,
-};
+use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
-use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("ipadic_simple_userdic.csv");
 
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
-    let user_dictionary =
-        load_user_dictionary_from_csv(DictionaryKind::IPADIC, PathBuf::from("./resources/ipadic_simple_userdic.csv").as_path())?;
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("ipadic_metadata.json");
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &metadata)?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
@@ -149,7 +143,7 @@ fn main() -> LinderaResult<()> {
 The above example can be by `cargo run --example`:
 
 ```shell
-% cargo run --features=ipadic --example=tokenize_with_user_dict
+% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -165,7 +159,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "0.44.1", features = ["ipadic"] }
+lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -177,25 +171,23 @@ It will:
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
 
 ```rust
-use std::collections::HashSet;
-
-use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-use lindera::character_filter::unicode_normalize::{
-    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
-};
-use lindera::character_filter::BoxCharacterFilter;
-use lindera::dictionary::{load_dictionary_from_kind, DictionaryKind};
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
-use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera::token_filter::BoxTokenFilter;
-use lindera::tokenizer::Tokenizer;
+    use lindera::character_filter::BoxCharacterFilter;
+    use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+    use lindera::character_filter::unicode_normalize::{
+        UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+    };
+    use lindera::dictionary::load_dictionary;
+    use lindera::mode::Mode;
+    use lindera::segmenter::Segmenter;
+    use lindera::token_filter::BoxTokenFilter;
+    use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+    use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
+    use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+    use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary_from_kind(DictionaryKind::IPADIC)?;
+    let dictionary = load_dictionary("embedded://ipadic")?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
@@ -283,7 +275,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=ipadic --example=tokenize_with_filters
+% cargo run --features=embedded-ipadic --example=tokenize_with_filters
 ```
 
 You can see the result as follows:
@@ -388,24 +380,70 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     // Creates a new `TokenizerConfigBuilder` instance.
     // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
-    let builder = TokenizerBuilder::from_file(PathBuf::from("./resources/lindera.yml").as_path())?;
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("lindera.yml");
+
+    let builder = TokenizerBuilder::from_file(&path)?;
 
     let tokenizer = builder.build()?;
 
-    // Tokenize a text.
-    let text = "関西国際空港限定トートバッグ";
-    let mut tokens = tokenizer.tokenize(text)?;
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
+    println!("text: {text}");
 
-    // Print the text and tokens.
-    println!("text:\t{}", text);
-    for token in tokens.iter_mut() {
-        let details = token.details().join(",");
-        println!("token:\t{}\t{}", token.text.as_ref(), details);
+    let tokens = tokenizer.tokenize(&text)?;
+
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.text, token.byte_start, token.byte_end, token.details
+        );
     }
 
     Ok(())
 }
 ```
+
+## Environment Variables
+
+### LINDERA_CACHE
+
+The `LINDERA_CACHE` environment variable specifies a directory for caching dictionary source files. This enables:
+
+- **Offline builds**: Once downloaded, dictionary source files are preserved for future builds
+- **Faster builds**: Subsequent builds skip downloading if valid cached files exist
+- **Reproducible builds**: Ensures consistent dictionary versions across builds
+
+Usage:
+
+```shell
+export LINDERA_CACHE=/path/to/cache
+cargo build --features=ipadic
+```
+
+When set, dictionary source files are stored in `$LINDERA_CACHE/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
+
+### LINDERA_CONFIG_PATH
+
+The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
+
+```shell
+export LINDERA_CONFIG_PATH=./resources/lindera.yml
+```
+
+See the [Configuration file](#configuration-file) section for details on the configuration format.
+
+### DOCS_RS
+
+The `DOCS_RS` environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.
+
+This is primarily used internally by docs.rs and typically doesn't need to be set by users.
+
+### LINDERA_WORKDIR
+
+The `LINDERA_WORKDIR` environment variable is automatically set during the build process by the lindera-dictionary crate. It points to the directory containing the built dictionary data files and is used internally by dictionary crates to locate their data files.
+
+This variable is set automatically and should not be modified by users.
 
 ## API reference
 
