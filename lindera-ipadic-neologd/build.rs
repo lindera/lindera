@@ -1,10 +1,11 @@
 use std::error::Error;
-use std::fs;
-use std::path::Path;
 
 #[cfg(feature = "embedded-ipadic-neologd")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
+    use std::fs;
+    use std::path::Path;
+
     use lindera_dictionary::{
         assets::{FetchParams, fetch},
         dictionary::metadata::Metadata,

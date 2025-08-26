@@ -12,8 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic = []
-embedded-ipadic = ["ipadic"]               # Embed IPADIC dictionary in the binary
+embedded-ipadic = []                       # Embed IPADIC dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

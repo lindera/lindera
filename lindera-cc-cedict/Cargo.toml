@@ -12,8 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-cc-cedict = []
-embedded-cc-cedict = ["cc-cedict"]         # Embed CC-CEDICT dictionary in the binary
+embedded-cc-cedict = []                    # Embed CC-CEDICT dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

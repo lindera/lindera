@@ -12,8 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ko-dic = []
-embedded-ko-dic = ["ko-dic"]               # Embed Ko-Dic dictionary in the binary
+embedded-ko-dic = []                       # Embed Ko-Dic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

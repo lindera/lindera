@@ -12,10 +12,7 @@ categories = ["text-processing"]
 license = "MIT"
 
 [features]
-ipadic-neologd = []
-embedded-ipadic-neologd = [
-    "ipadic-neologd",
-] # Embed IPADIC-NEologd dictionary in the binary
+embedded-ipadic-neologd = []               # Embed IPADIC-NEologd dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 
