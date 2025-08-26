@@ -6,21 +6,19 @@ fn main() -> LinderaResult<()> {
         use std::fs::File;
         use std::path::PathBuf;
 
-        use lindera::dictionary::{
-            DictionaryKind, Metadata, load_embedded_dictionary, load_user_dictionary_from_csv,
-        };
+        use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
         use lindera::error::LinderaErrorKind;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../resources")
-            .join("ipadic_metadata.json");
         let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("ipadic_simple_userdic.csv");
 
+        let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("ipadic_metadata.json");
         let metadata: Metadata = serde_json::from_reader(
             File::open(metadata_file)
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -29,8 +27,8 @@ fn main() -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
         .unwrap();
 
-        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
-        let user_dictionary = load_user_dictionary_from_csv(&metadata, user_dict_path.as_path())?;
+        let dictionary = load_dictionary("embedded://ipadic")?;
+        let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &metadata)?;
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,

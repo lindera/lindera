@@ -26,14 +26,14 @@ It will:
 - Output the tokens
 
 ```rust
-use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
+use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
+    let dictionary = load_dictionary("embedded://ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -93,9 +93,7 @@ With an user dictionary, `Tokenizer` will be created as follows:
 ```rust
 use std::path::PathBuf;
 
-use lindera::dictionary::{
-    DictionaryKind, load_embedded_dictionary, load_user_dictionary_from_csv,
-};
+use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
@@ -105,9 +103,19 @@ fn main() -> LinderaResult<()> {
         .join("../resources")
         .join("ipadic_simple_userdic.csv");
 
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
-    let user_dictionary =
-        load_user_dictionary_from_csv(DictionaryKind::IPADIC, user_dict_path.as_path())?;
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("ipadic_metadata.json");
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &metadata)?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
@@ -168,7 +176,7 @@ It will:
     use lindera::character_filter::unicode_normalize::{
         UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
     };
-    use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
+    use lindera::dictionary::load_dictionary;
     use lindera::mode::Mode;
     use lindera::segmenter::Segmenter;
     use lindera::token_filter::BoxTokenFilter;
@@ -179,7 +187,7 @@ It will:
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
+    let dictionary = load_dictionary("embedded://ipadic")?;
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
