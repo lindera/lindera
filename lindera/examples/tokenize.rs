@@ -3,12 +3,12 @@ use lindera::LinderaResult;
 fn main() -> LinderaResult<()> {
     #[cfg(feature = "embedded-ipadic")]
     {
-        use lindera::dictionary::{DictionaryKind, load_embedded_dictionary};
+        use lindera::dictionary::load_dictionary;
         use lindera::mode::Mode;
         use lindera::segmenter::Segmenter;
         use lindera::tokenizer::Tokenizer;
 
-        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC)?;
+        let dictionary = load_dictionary("embedded://ipadic")?;
         let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
         let tokenizer = Tokenizer::new(segmenter);
 
