@@ -74,7 +74,7 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
-% lindera build ./resources/ipadic_metadata.json /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
+% lindera build ./lindera-ipadic/metadata.json /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
 % ls -al /tmp/lindera-ipadic-2.7.0-20070801
 % (cd /tmp && zip -r lindera-ipadic-2.7.0-20070801.zip lindera-ipadic-2.7.0-20070801/)
 % tar -czf /tmp/lindera-ipadic-2.7.0-20070801.tar.gz -C /tmp lindera-ipadic-2.7.0-20070801
@@ -85,7 +85,7 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
-% lindera build ./resources/cc-cedict_metadata.json /tmp/CC-CEDICT-MeCab-0.1.0-20200409 /tmp/lindera-cc-cedict-0.1.0-20200409
+% lindera build ./lindera-cc-cedict/metadata.json /tmp/CC-CEDICT-MeCab-0.1.0-20200409 /tmp/lindera-cc-cedict-0.1.0-20200409
 % ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
 % (cd /tmp && zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
 % tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
@@ -96,7 +96,7 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
-% lindera build ./resources/ko-dic_metadata.json /tmp/mecab-ko-dic-2.1.1-20180720 /tmp/lindera-ko-dic-2.1.1-20180720
+% lindera build ./lindera-ko-dic/metadata.json /tmp/mecab-ko-dic-2.1.1-20180720 /tmp/lindera-ko-dic-2.1.1-20180720
 % ls -al /tmp/lindera-ko-dic-2.1.1-20180720
 % (cd /tmp && zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
 % tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
@@ -107,7 +107,7 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
 % tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-% lindera build ./resources/unidic_metadata.json /tmp/unidic-mecab-2.1.2 /tmp/lindera-unidic-2.1.2
+% lindera build ./lindera-unidic/metadata.json /tmp/unidic-mecab-2.1.2 /tmp/lindera-unidic-2.1.2
 % ls -al /tmp/lindera-unidic-2.1.2
 % (cd /tmp && zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
 % tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
@@ -118,7 +118,7 @@ Instead, you will be penalized for the execution time of the program.
 ```shell script
 % curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
-% lindera build ./resources/ipadic-neologd_metadata.json /tmp/mecab-ipadic-neologd-0.0.7-20200820 /tmp/lindera-ipadic-neologd-0.0.7-20200820
+% lindera build ./lindera-ipadic-neologd/metadata.json /tmp/mecab-ipadic-neologd-0.0.7-20200820 /tmp/lindera-ipadic-neologd-0.0.7-20200820
 % ls -al /tmp/lindera-ipadic-neologd-0.0.7-20200820
 % (cd /tmp && zip -r lindera-ipadic-neologd-0.0.7-20200820.zip lindera-ipadic-neologd-0.0.7-20200820/)
 % tar -czf /tmp/lindera-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp lindera-ipadic-neologd-0.0.7-20200820
@@ -133,7 +133,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary ./resources/ipadic_metadata.json ./resources/ipadic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./lindera-ipadic/metadata.json ./resources/ipadic_simple_userdic.csv ./resources
 ```
 
 ### Build CC-CEDICT (Chinese dictionary)
@@ -143,7 +143,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary ./resources/cc-cedict_metadata.json ./resources/cc-cedict_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./lindera-cc-cedict/metadata.json ./resources/cc-cedict_simple_userdic.csv ./resources
 ```
 
 ### Build ko-dic (Korean dictionary)
@@ -153,7 +153,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary ./resources/ko-dic_metadata.json ./resources/ko-dic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./lindera-ko-dic/metadata.json ./resources/ko-dic_simple_userdic.csv ./resources
 ```
 
 ### Build UniDic (Japanese dictionary)
@@ -163,7 +163,7 @@ For more details about user dictionary format please refer to the following URL:
 - [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
 
 ```shell
-% lindera build --build-user-dictionary ./resources/unidic_metadata.json ./resources/unidic_simple_userdic.csv ./resources
+% lindera build --build-user-dictionary ./lindera-unidic/metadata.json ./resources/unidic_simple_userdic.csv ./resources
 ```
 
 ## Tokenization
