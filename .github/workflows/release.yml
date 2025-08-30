@@ -56,9 +56,26 @@ jobs:
       - name: Run test
         run: cargo test --target "${{ matrix.platform.target }}" --all-features
 
+  create-release:
+    name: Create Release
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          make_latest: false
+
   release:
     name: Build
-    needs: [test]
+    needs: [create-release]
     strategy:
       matrix:
         platform:
@@ -158,12 +175,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
-          name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          make_latest: false
 
   publish-crates:
     name: Publish crate
