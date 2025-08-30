@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use percent_encoding::percent_decode_str;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::IntoEnumIterator;
@@ -247,13 +248,28 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                         load_embedded_dictionary(kind)
                     }
                     DictionaryScheme::File => {
-                        let path = parsed_uri.to_file_path().map_err(|_| {
-                            LinderaErrorKind::Dictionary
-                                .with_error(anyhow::anyhow!("Invalid file path"))
-                        })?;
+                        // Extract path from file:// URL manually
+                        let path_str = parsed_uri.path();
+
+                        // Handle Windows paths that might start with /C:/ etc.
+                        let path_str =
+                            if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
+                                &path_str[1..]
+                            } else {
+                                path_str
+                            };
+
+                        // Decode percent-encoded characters
+                        let decoded_path =
+                            percent_decode_str(path_str).decode_utf8().map_err(|e| {
+                                LinderaErrorKind::Dictionary
+                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
+                            })?;
+
+                        let path = Path::new(decoded_path.as_ref());
 
                         // Load the file-based dictionary
-                        load_fs_dictionary(&path)
+                        load_fs_dictionary(path)
                     }
                 }
             }
@@ -292,10 +308,27 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                 })?;
 
                 match scheme {
-                    DictionaryScheme::File => parsed_uri.to_file_path().map_err(|_| {
-                        LinderaErrorKind::Dictionary
-                            .with_error(anyhow::anyhow!("Invalid file path"))
-                    })?,
+                    DictionaryScheme::File => {
+                        // Extract path from file:// URL manually
+                        let path_str = parsed_uri.path();
+
+                        // Handle Windows paths that might start with /C:/ etc.
+                        let path_str =
+                            if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
+                                &path_str[1..]
+                            } else {
+                                path_str
+                            };
+
+                        // Decode percent-encoded characters
+                        let decoded_path =
+                            percent_decode_str(path_str).decode_utf8().map_err(|e| {
+                                LinderaErrorKind::Dictionary
+                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
+                            })?;
+
+                        PathBuf::from(decoded_path.as_ref())
+                    }
                     #[cfg(any(
                         feature = "embedded-ipadic",
                         feature = "embedded-ipadic-neologd",

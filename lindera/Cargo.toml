@@ -63,6 +63,7 @@ byteorder.workspace = true
 csv.workspace = true
 kanaria.workspace = true
 once_cell.workspace = true
+percent-encoding.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

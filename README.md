@@ -104,8 +104,8 @@ fn main() -> LinderaResult<()> {
         .join("ipadic_simple_userdic.csv");
 
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("ipadic_metadata.json");
+        .join("../lindera-ipadic")
+        .join("metadata.json");
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
