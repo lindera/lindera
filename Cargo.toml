@@ -12,19 +12,19 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "1.1.0", path = "lindera-dictionary" }
-lindera-cc-cedict = { version = "1.1.0", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "1.1.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "1.1.0", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "1.1.0", path = "lindera-ko-dic" }
-lindera-unidic = { version = "1.1.0", path = "lindera-unidic" }
-lindera = { version = "1.1.0", path = "lindera" }
-lindera-cli = { version = "1.1.0", path = "lindera-cli" }
+lindera-dictionary = { version = "1.1.1", path = "lindera-dictionary" }
+lindera-cc-cedict = { version = "1.1.1", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "1.1.1", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "1.1.1", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "1.1.1", path = "lindera-ko-dic" }
+lindera-unidic = { version = "1.1.1", path = "lindera-unidic" }
+lindera = { version = "1.1.1", path = "lindera" }
+lindera-cli = { version = "1.1.1", path = "lindera-cli" }
 
 anyhow = "1.0.99"
 bincode = { version = "2.0.1", features = ["serde"] }
 byteorder = "1.5.0"
-clap = { version = "4.5.45", features = ["derive", "cargo"] }
+clap = { version = "4.5.46", features = ["derive", "cargo"] }
 criterion = { version = "0.7.0", default-features = false, features = [
     "html_reports",
 ] }
