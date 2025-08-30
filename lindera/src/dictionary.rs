@@ -250,22 +250,22 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                     DictionaryScheme::File => {
                         // Extract path from file:// URL manually
                         let path_str = parsed_uri.path();
-                        
+
                         // Handle Windows paths that might start with /C:/ etc.
-                        let path_str = if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
-                            &path_str[1..]
-                        } else {
-                            path_str
-                        };
-                        
+                        let path_str =
+                            if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
+                                &path_str[1..]
+                            } else {
+                                path_str
+                            };
+
                         // Decode percent-encoded characters
-                        let decoded_path = percent_decode_str(path_str)
-                            .decode_utf8()
-                            .map_err(|e| {
+                        let decoded_path =
+                            percent_decode_str(path_str).decode_utf8().map_err(|e| {
                                 LinderaErrorKind::Dictionary
                                     .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
                             })?;
-                        
+
                         let path = Path::new(decoded_path.as_ref());
 
                         // Load the file-based dictionary
@@ -311,24 +311,24 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                     DictionaryScheme::File => {
                         // Extract path from file:// URL manually
                         let path_str = parsed_uri.path();
-                        
+
                         // Handle Windows paths that might start with /C:/ etc.
-                        let path_str = if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
-                            &path_str[1..]
-                        } else {
-                            path_str
-                        };
-                        
+                        let path_str =
+                            if cfg!(windows) && path_str.len() > 1 && path_str.starts_with('/') {
+                                &path_str[1..]
+                            } else {
+                                path_str
+                            };
+
                         // Decode percent-encoded characters
-                        let decoded_path = percent_decode_str(path_str)
-                            .decode_utf8()
-                            .map_err(|e| {
+                        let decoded_path =
+                            percent_decode_str(path_str).decode_utf8().map_err(|e| {
                                 LinderaErrorKind::Dictionary
                                     .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
                             })?;
-                        
+
                         PathBuf::from(decoded_path.as_ref())
-                    },
+                    }
                     #[cfg(any(
                         feature = "embedded-ipadic",
                         feature = "embedded-ipadic-neologd",
