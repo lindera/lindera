@@ -34,8 +34,8 @@ fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
             use lindera::error::LinderaErrorKind;
 
             let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("ko-dic_metadata.json");
+                .join("../lindera-ko-dic")
+                .join("metadata.json");
             let metadata: Metadata = serde_json::from_reader(
                 File::open(metadata_file)
                     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -76,8 +76,8 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     use lindera::error::LinderaErrorKind;
 
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("ko-dic_metadata.json");
+        .join("../lindera-ko-dic")
+        .join("metadata.json");
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))

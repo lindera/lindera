@@ -34,8 +34,8 @@ fn bench_constructor_with_simple_userdic_cc_cedict(c: &mut Criterion) {
             use lindera::error::LinderaErrorKind;
 
             let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../resources")
-                .join("cc-cedict_metadata.json");
+                .join("../lindera-cc-cedict")
+                .join("metadata.json");
             let metadata: Metadata = serde_json::from_reader(
                 File::open(metadata_file)
                     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
@@ -76,8 +76,8 @@ fn bench_tokenize_with_simple_userdic_cc_cedict(c: &mut Criterion) {
     use lindera::error::LinderaErrorKind;
 
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../resources")
-        .join("cc-cedict_metadata.json");
+        .join("../lindera-cc-cedict")
+        .join("metadata.json");
     let metadata: Metadata = serde_json::from_reader(
         File::open(metadata_file)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
