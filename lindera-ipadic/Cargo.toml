@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic"
-version = "1.1.2"
+version = "1.2.0"
 edition = "2024"
 description = "A Japanese morphological dictionary for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic"
