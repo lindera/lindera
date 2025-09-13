@@ -38,7 +38,7 @@ impl TokenFilter for LowercaseTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.text = Cow::Owned(token.text.to_lowercase());
+            token.surface = Cow::Owned(token.surface.to_lowercase());
         }
 
         Ok(())
@@ -62,7 +62,7 @@ mod tests {
         let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
 
         let mut tokens: Vec<Token> = vec![Token {
-            text: Cow::Borrowed("Rust"),
+            surface: Cow::Borrowed("Rust"),
             byte_start: 0,
             byte_end: 4,
             position: 0,
@@ -79,6 +79,6 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 1);
-        assert_eq!(&tokens[0].text, "rust");
+        assert_eq!(&tokens[0].surface, "rust");
     }
 }

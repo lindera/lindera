@@ -85,20 +85,20 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
 
         for token in tokens.iter_mut() {
             // Skip if the token is not katakana
-            if !is_katakana(&token.text) {
+            if !is_katakana(&token.surface) {
                 continue;
             }
 
             // Check if the token ends with the prolonged sound mark and is longer than the minimum length
             if token
-                .text
+                .surface
                 .ends_with(DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK)
-                && token.text.chars().count() > min_len
+                && token.surface.chars().count() > min_len
             {
                 // Remove the prolonged sound mark
                 let new_len =
-                    token.text.len() - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8();
-                token.text = Cow::Owned(token.text[..new_len].to_string());
+                    token.surface.len() - DEFAULT_HIRAGANA_KATAKANA_PROLONGED_SOUND_MARK.len_utf8();
+                token.surface = Cow::Owned(token.surface[..new_len].to_string());
             }
         }
 
@@ -229,7 +229,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("バター"),
+                surface: Cow::Borrowed("バター"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -253,7 +253,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("メーカー"),
+                surface: Cow::Borrowed("メーカー"),
                 byte_start: 9,
                 byte_end: 21,
                 position: 1,
@@ -281,7 +281,7 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 2);
-        assert_eq!(&tokens[0].text, "バター");
-        assert_eq!(&tokens[1].text, "メーカ");
+        assert_eq!(&tokens[0].surface, "バター");
+        assert_eq!(&tokens[1].surface, "メーカ");
     }
 }

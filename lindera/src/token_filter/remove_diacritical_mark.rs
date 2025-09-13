@@ -92,7 +92,7 @@ impl TokenFilter for RemoveDiacriticalMarkTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.text = Cow::Owned(self.remove_diacritic(token.text.as_ref()));
+            token.surface = Cow::Owned(self.remove_diacritic(token.surface.as_ref()));
         }
 
         Ok(())
@@ -153,7 +153,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("café"),
+                surface: Cow::Borrowed("café"),
                 byte_start: 0,
                 byte_end: 4,
                 position: 0,
@@ -169,12 +169,12 @@ mod tests {
 
             filter.apply(&mut tokens).unwrap();
 
-            assert_eq!(tokens[0].text, "cafe");
+            assert_eq!(tokens[0].surface, "cafe");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("ガソリン"),
+                surface: Cow::Borrowed("ガソリン"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -200,7 +200,7 @@ mod tests {
 
             filter.apply(&mut tokens).unwrap();
 
-            assert_eq!(tokens[0].text, "ガソリン");
+            assert_eq!(tokens[0].surface, "ガソリン");
         }
     }
 
@@ -226,7 +226,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("café"),
+                surface: Cow::Borrowed("café"),
                 byte_start: 0,
                 byte_end: 4,
                 position: 0,
@@ -242,12 +242,12 @@ mod tests {
 
             filter.apply(&mut tokens).unwrap();
 
-            assert_eq!(tokens[0].text, "cafe");
+            assert_eq!(tokens[0].surface, "cafe");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("ガソリン"),
+                surface: Cow::Borrowed("ガソリン"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -273,7 +273,7 @@ mod tests {
 
             filter.apply(&mut tokens).unwrap();
 
-            assert_eq!(tokens[0].text, "カソリン");
+            assert_eq!(tokens[0].surface, "カソリン");
         }
     }
 }

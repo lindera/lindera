@@ -64,10 +64,10 @@ impl TokenFilter for MappingTokenFilter {
         for token in tokens.iter_mut() {
             let mut result = String::new();
             let mut start = 0_usize;
-            let len = token.text.len();
+            let len = token.surface.len();
 
             while start < len {
-                let suffix = &token.text[start..];
+                let suffix = &token.surface[start..];
                 match self
                     .trie
                     .common_prefix_search(suffix.as_bytes())
@@ -75,7 +75,7 @@ impl TokenFilter for MappingTokenFilter {
                     .map(|(_offset_len, prefix_len)| prefix_len)
                 {
                     Some(prefix_len) => {
-                        let surface = &token.text[start..start + prefix_len];
+                        let surface = &token.surface[start..start + prefix_len];
                         let replacement = &self.mapping[surface];
 
                         result.push_str(replacement);
@@ -97,7 +97,7 @@ impl TokenFilter for MappingTokenFilter {
                 }
             }
 
-            token.text = Cow::Owned(result);
+            token.surface = Cow::Owned(result);
         }
 
         Ok(())
@@ -168,7 +168,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("籠原"),
+                surface: Cow::Borrowed("籠原"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -192,7 +192,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("駅"),
+                surface: Cow::Borrowed("駅"),
                 byte_start: 6,
                 byte_end: 9,
                 position: 1,
@@ -220,7 +220,7 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 2);
-        assert_eq!(&tokens[0].text, "篭原");
-        assert_eq!(&tokens[1].text, "駅");
+        assert_eq!(&tokens[0].surface, "篭原");
+        assert_eq!(&tokens[1].surface, "駅");
     }
 }

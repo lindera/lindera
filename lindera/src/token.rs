@@ -1,7 +1,7 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 use lindera_dictionary::dictionary::UNK;
+use serde_json::{Value, json};
 
 use crate::dictionary::{Dictionary, UserDictionary, WordId};
 
@@ -9,7 +9,7 @@ use crate::dictionary::{Dictionary, UserDictionary, WordId};
 pub struct Token<'a> {
     /// The text content of the token, which is a copy-on-write string slice.
     /// This allows for efficient handling of both owned and borrowed string data.
-    pub text: Cow<'a, str>,
+    pub surface: Cow<'a, str>,
 
     /// The starting byte position of the token in the original text.
     /// This indicates where the token begins in the input string.
@@ -79,7 +79,7 @@ impl<'a> Token<'a> {
     /// - `position_length` is set to `1` by default.
     /// - `word_id` is used to identify the token in the dictionary, and the dictionaries (both `dictionary` and `user_dictionary`) provide additional details about the token.
     pub fn new(
-        text: Cow<'a, str>,
+        surface: Cow<'a, str>,
         start: usize,
         end: usize,
         position: usize,
@@ -88,7 +88,7 @@ impl<'a> Token<'a> {
         user_dictionary: Option<&'a UserDictionary>,
     ) -> Self {
         Self {
-            text,
+            surface,
             byte_start: start,
             byte_end: end,
             position,
@@ -225,7 +225,7 @@ impl<'a> Token<'a> {
 
         // Handle common fields
         match index {
-            0 => Some(self.text.as_ref()), // surface
+            0 => Some(self.surface.as_ref()), // surface
             1..=3 => None, // left_context_id, right_context_id, cost are not stored in token
             _ => {
                 // For custom fields (index >= 4), get from details
@@ -235,26 +235,25 @@ impl<'a> Token<'a> {
         }
     }
 
-    /// Returns all token fields as a map with string references.
+    /// Returns all token fields as a JSON Value.
     ///
     /// # Returns
     ///
-    /// Returns a `HashMap<&str, Cow<str>>` containing all available fields and their values.
-    /// The map always includes the "surface" field, and includes other fields based on
-    /// the dictionary schema. Also includes "byte_start", "byte_end", and "word_id" fields.
+    /// Returns a `serde_json::Value` containing all available fields and their values.
+    /// Numeric fields (byte_start, byte_end, word_id) are represented as numbers,
+    /// while text fields remain as strings.
     ///
     /// # Example
     ///
     /// ```no_run
     /// # use lindera::token::Token;
     /// # let mut token: Token = unimplemented!();
-    /// let fields = token.as_map();
-    /// println!("Surface: {}", fields.get("surface").map(|s| s.as_ref()).unwrap_or(""));
-    /// println!("POS: {}", fields.get("major_pos").map(|s| s.as_ref()).unwrap_or("UNK"));
-    /// println!("Start: {}", fields.get("byte_start").map(|s| s.as_ref()).unwrap_or("0"));
-    /// println!("Word ID: {}", fields.get("word_id").map(|s| s.as_ref()).unwrap_or("0"));
+    /// let value = token.as_value();
+    /// println!("Surface: {}", value["surface"]);
+    /// println!("Byte start: {}", value["byte_start"]); // This is a number
+    /// println!("Word ID: {}", value["word_id"]); // This is a number
     /// ```
-    pub fn as_map<'b>(&'b mut self) -> HashMap<&'b str, Cow<'b, str>> {
+    pub fn as_value(&mut self) -> Value {
         // Get schema info first
         let schema_custom_fields = self
             .dictionary
@@ -262,35 +261,42 @@ impl<'a> Token<'a> {
             .dictionary_schema
             .get_custom_fields();
 
-        // Pre-allocate with known capacity (surface + byte_start + byte_end + word_id + custom fields)
-        let mut map = HashMap::with_capacity(4 + schema_custom_fields.len());
-
-        // Clone/copy values before mutable borrow
-        let surface_text = self.text.clone();
-        let byte_start_str = self.byte_start.to_string();
-        let byte_end_str = self.byte_end.to_string();
-        let word_id_str = format!("{}", self.word_id.id);
+        // Copy values before mutable borrow
+        let surface = self.surface.to_string();
+        let byte_start = self.byte_start;
+        let byte_end = self.byte_end;
+        let word_id = self.word_id.id;
 
         // Get details (requires mutable borrow)
         let details = self.details();
 
-        // Always include surface
-        map.insert("surface", surface_text);
+        // Build JSON object
+        let mut obj = serde_json::Map::new();
 
-        // Include byte positions
-        map.insert("byte_start", Cow::Owned(byte_start_str));
-        map.insert("byte_end", Cow::Owned(byte_end_str));
+        // Add surface as string
+        obj.insert("surface".to_string(), json!(surface));
 
-        // Include word_id
-        map.insert("word_id", Cow::Owned(word_id_str));
+        // Add byte positions as numbers
+        obj.insert("byte_start".to_string(), json!(byte_start));
+        obj.insert("byte_end".to_string(), json!(byte_end));
+
+        // Add word_id as number
+        obj.insert("word_id".to_string(), json!(word_id));
 
         // Add each custom field from the schema
         for (i, field_name) in schema_custom_fields.iter().enumerate() {
             if let Some(value) = details.get(i) {
-                map.insert(field_name.as_str(), Cow::Borrowed(*value));
+                // Try to parse as number if possible, otherwise keep as string
+                if let Ok(num) = value.parse::<i64>() {
+                    obj.insert(field_name.to_string(), json!(num));
+                } else if let Ok(num) = value.parse::<f64>() {
+                    obj.insert(field_name.to_string(), json!(num));
+                } else {
+                    obj.insert(field_name.to_string(), json!(*value));
+                }
             }
         }
 
-        map
+        Value::Object(obj)
     }
 }

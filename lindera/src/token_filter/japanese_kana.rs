@@ -115,15 +115,15 @@ impl TokenFilter for JapaneseKanaTokenFilter {
             let converted_text = match self.kind {
                 KanaKind::Hiragana => {
                     // Convert katakana to hiragana.
-                    UCSStr::from_str(&token.text).hiragana().to_string()
+                    UCSStr::from_str(&token.surface).hiragana().to_string()
                 }
                 KanaKind::Katakana => {
                     // Convert hiragana to katakana.
-                    UCSStr::from_str(&token.text).katakana().to_string()
+                    UCSStr::from_str(&token.surface).katakana().to_string()
                 }
             };
 
-            token.text = Cow::Owned(converted_text);
+            token.surface = Cow::Owned(converted_text);
         }
 
         Ok(())
@@ -236,7 +236,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田空港"),
+                surface: Cow::Borrowed("羽田空港"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -260,7 +260,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                surface: Cow::Borrowed("限定"),
                 byte_start: 12,
                 byte_end: 18,
                 position: 1,
@@ -284,7 +284,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トートバッグ"),
+                surface: Cow::Borrowed("トートバッグ"),
                 byte_start: 18,
                 byte_end: 36,
                 position: 2,
@@ -302,9 +302,9 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(&tokens[0].text, "羽田空港");
-        assert_eq!(&tokens[1].text, "限定");
-        assert_eq!(&tokens[2].text, "とーとばっぐ");
+        assert_eq!(&tokens[0].surface, "羽田空港");
+        assert_eq!(&tokens[1].surface, "限定");
+        assert_eq!(&tokens[2].surface, "とーとばっぐ");
     }
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("埼玉"),
+                surface: Cow::Borrowed("埼玉"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -355,7 +355,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("県"),
+                surface: Cow::Borrowed("県"),
                 byte_start: 6,
                 byte_end: 9,
                 position: 1,
@@ -379,7 +379,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("さいたま"),
+                surface: Cow::Borrowed("さいたま"),
                 byte_start: 9,
                 byte_end: 21,
                 position: 2,
@@ -403,7 +403,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("市"),
+                surface: Cow::Borrowed("市"),
                 byte_start: 21,
                 byte_end: 24,
                 position: 3,
@@ -431,10 +431,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(&tokens[0].text, "埼玉");
-        assert_eq!(&tokens[1].text, "県");
-        assert_eq!(&tokens[2].text, "サイタマ");
-        assert_eq!(&tokens[3].text, "市");
+        assert_eq!(&tokens[0].surface, "埼玉");
+        assert_eq!(&tokens[1].surface, "県");
+        assert_eq!(&tokens[2].surface, "サイタマ");
+        assert_eq!(&tokens[3].surface, "市");
     }
 
     #[test]
@@ -461,7 +461,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田空港"),
+                surface: Cow::Borrowed("羽田空港"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -485,7 +485,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                surface: Cow::Borrowed("限定"),
                 byte_start: 12,
                 byte_end: 18,
                 position: 1,
@@ -509,7 +509,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トートバッグ"),
+                surface: Cow::Borrowed("トートバッグ"),
                 byte_start: 18,
                 byte_end: 36,
                 position: 2,
@@ -527,9 +527,9 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(&tokens[0].text, "羽田空港");
-        assert_eq!(&tokens[1].text, "限定");
-        assert_eq!(&tokens[2].text, "トートバッグ");
+        assert_eq!(&tokens[0].surface, "羽田空港");
+        assert_eq!(&tokens[1].surface, "限定");
+        assert_eq!(&tokens[2].surface, "トートバッグ");
     }
 
     #[test]
@@ -556,7 +556,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("埼玉"),
+                surface: Cow::Borrowed("埼玉"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -580,7 +580,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("県"),
+                surface: Cow::Borrowed("県"),
                 byte_start: 6,
                 byte_end: 9,
                 position: 1,
@@ -604,7 +604,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("さいたま"),
+                surface: Cow::Borrowed("さいたま"),
                 byte_start: 9,
                 byte_end: 21,
                 position: 2,
@@ -628,7 +628,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("市"),
+                surface: Cow::Borrowed("市"),
                 byte_start: 21,
                 byte_end: 24,
                 position: 3,
@@ -656,10 +656,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(&tokens[0].text, "埼玉");
-        assert_eq!(&tokens[1].text, "県");
-        assert_eq!(&tokens[2].text, "さいたま");
-        assert_eq!(&tokens[3].text, "市");
+        assert_eq!(&tokens[0].surface, "埼玉");
+        assert_eq!(&tokens[1].surface, "県");
+        assert_eq!(&tokens[2].surface, "さいたま");
+        assert_eq!(&tokens[3].surface, "市");
     }
 
     #[test]
@@ -686,7 +686,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("東京"),
+                surface: Cow::Borrowed("東京"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -710,7 +710,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("都"),
+                surface: Cow::Borrowed("都"),
                 byte_start: 6,
                 byte_end: 9,
                 position: 1,
@@ -734,7 +734,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("あきる野"),
+                surface: Cow::Borrowed("あきる野"),
                 byte_start: 9,
                 byte_end: 21,
                 position: 2,
@@ -758,7 +758,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("市"),
+                surface: Cow::Borrowed("市"),
                 byte_start: 21,
                 byte_end: 24,
                 position: 3,
@@ -786,10 +786,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(&tokens[0].text, "東京");
-        assert_eq!(&tokens[1].text, "都");
-        assert_eq!(&tokens[2].text, "アキル野");
-        assert_eq!(&tokens[3].text, "市");
+        assert_eq!(&tokens[0].surface, "東京");
+        assert_eq!(&tokens[1].surface, "都");
+        assert_eq!(&tokens[2].surface, "アキル野");
+        assert_eq!(&tokens[3].surface, "市");
     }
 
     #[test]
@@ -816,7 +816,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("南北線"),
+                surface: Cow::Borrowed("南北線"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -840,7 +840,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("四ツ谷"),
+                surface: Cow::Borrowed("四ツ谷"),
                 byte_start: 9,
                 byte_end: 18,
                 position: 1,
@@ -864,7 +864,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("駅"),
+                surface: Cow::Borrowed("駅"),
                 byte_start: 18,
                 byte_end: 21,
                 position: 2,
@@ -892,8 +892,8 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(&tokens[0].text, "南北線");
-        assert_eq!(&tokens[1].text, "四つ谷");
-        assert_eq!(&tokens[2].text, "駅");
+        assert_eq!(&tokens[0].surface, "南北線");
+        assert_eq!(&tokens[1].surface, "四つ谷");
+        assert_eq!(&tokens[2].surface, "駅");
     }
 }

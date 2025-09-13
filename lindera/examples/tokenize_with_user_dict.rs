@@ -46,7 +46,7 @@ fn main() -> LinderaResult<()> {
         println!("text:\t{text}");
         for token in tokens.iter_mut() {
             let details = token.details().join(",");
-            println!("token:\t{}\t{}", token.text.as_ref(), details);
+            println!("token:\t{}\t{}", token.surface.as_ref(), details);
         }
     }
 
