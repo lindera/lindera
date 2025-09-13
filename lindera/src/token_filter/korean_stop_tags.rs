@@ -215,7 +215,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("한국어"),
+                surface: Cow::Borrowed("한국어"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -238,7 +238,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("의"),
+                surface: Cow::Borrowed("의"),
                 byte_start: 9,
                 byte_end: 12,
                 position: 1,
@@ -261,7 +261,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("형태소"),
+                surface: Cow::Borrowed("형태소"),
                 byte_start: 12,
                 byte_end: 21,
                 position: 2,
@@ -284,7 +284,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("분석"),
+                surface: Cow::Borrowed("분석"),
                 byte_start: 21,
                 byte_end: 27,
                 position: 3,
@@ -307,7 +307,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("을"),
+                surface: Cow::Borrowed("을"),
                 byte_start: 27,
                 byte_end: 30,
                 position: 4,
@@ -330,7 +330,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("할"),
+                surface: Cow::Borrowed("할"),
                 byte_start: 30,
                 byte_end: 33,
                 position: 5,
@@ -353,7 +353,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("수"),
+                surface: Cow::Borrowed("수"),
                 byte_start: 33,
                 byte_end: 36,
                 position: 6,
@@ -376,7 +376,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("있"),
+                surface: Cow::Borrowed("있"),
                 byte_start: 36,
                 byte_end: 39,
                 position: 7,
@@ -399,7 +399,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("습니다"),
+                surface: Cow::Borrowed("습니다"),
                 byte_start: 39,
                 byte_end: 48,
                 position: 8,
@@ -426,11 +426,11 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 6);
-        assert_eq!(&tokens[0].text, "한국어");
-        assert_eq!(&tokens[1].text, "형태소");
-        assert_eq!(&tokens[2].text, "분석");
-        assert_eq!(&tokens[3].text, "할");
-        assert_eq!(&tokens[4].text, "수");
-        assert_eq!(&tokens[5].text, "있");
+        assert_eq!(&tokens[0].surface, "한국어");
+        assert_eq!(&tokens[1].surface, "형태소");
+        assert_eq!(&tokens[2].surface, "분석");
+        assert_eq!(&tokens[3].surface, "할");
+        assert_eq!(&tokens[4].surface, "수");
+        assert_eq!(&tokens[5].surface, "있");
     }
 }

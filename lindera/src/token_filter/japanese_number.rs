@@ -101,8 +101,8 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 
             // If conversion is required, apply the Arabic numeral conversion.
             if should_convert {
-                let text = token.text.as_ref();
-                token.text = Cow::Owned(to_arabic_numerals(text));
+                let text = token.surface.as_ref();
+                token.surface = Cow::Owned(to_arabic_numerals(text));
             }
         }
 
@@ -929,7 +929,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一"),
+                surface: Cow::Borrowed("一"),
                 byte_start: 0,
                 byte_end: 3,
                 position: 0,
@@ -956,12 +956,12 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "1");
+            assert_eq!(&tokens[0].surface, "1");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一二三"),
+                surface: Cow::Borrowed("一二三"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -988,12 +988,12 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "123");
+            assert_eq!(&tokens[0].surface, "123");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed(
+                surface: Cow::Borrowed(
                     "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四",
                 ),
                 byte_start: 0,
@@ -1022,13 +1022,13 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "123456789012345678901234");
+            assert_eq!(&tokens[0].surface, "123456789012345678901234");
         }
 
         {
             let mut tokens: Vec<Token> = vec![
                 Token {
-                    text: Cow::Borrowed("鈴木"),
+                    surface: Cow::Borrowed("鈴木"),
                     byte_start: 0,
                     byte_end: 6,
                     position: 0,
@@ -1052,7 +1052,7 @@ mod tests {
                     ]),
                 },
                 Token {
-                    text: Cow::Borrowed("一郎"),
+                    surface: Cow::Borrowed("一郎"),
                     byte_start: 6,
                     byte_end: 12,
                     position: 0,
@@ -1080,8 +1080,8 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(&tokens[0].text, "鈴木");
-            assert_eq!(&tokens[1].text, "一郎");
+            assert_eq!(&tokens[0].surface, "鈴木");
+            assert_eq!(&tokens[1].surface, "一郎");
         }
     }
 
@@ -1103,7 +1103,7 @@ mod tests {
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一"),
+                surface: Cow::Borrowed("一"),
                 byte_start: 0,
                 byte_end: 3,
                 position: 0,
@@ -1130,12 +1130,12 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "1");
+            assert_eq!(&tokens[0].surface, "1");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed("一二三"),
+                surface: Cow::Borrowed("一二三"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -1162,12 +1162,12 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "123");
+            assert_eq!(&tokens[0].surface, "123");
         }
 
         {
             let mut tokens: Vec<Token> = vec![Token {
-                text: Cow::Borrowed(
+                surface: Cow::Borrowed(
                     "一千二百三十四垓五千六百七十八京九千十二兆三千四百五十六億七千八百九十万一千二百三十四",
                 ),
                 byte_start: 0,
@@ -1196,13 +1196,13 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 1);
-            assert_eq!(&tokens[0].text, "123456789012345678901234");
+            assert_eq!(&tokens[0].surface, "123456789012345678901234");
         }
 
         {
             let mut tokens: Vec<Token> = vec![
                 Token {
-                    text: Cow::Borrowed("鈴木"),
+                    surface: Cow::Borrowed("鈴木"),
                     byte_start: 0,
                     byte_end: 6,
                     position: 0,
@@ -1226,7 +1226,7 @@ mod tests {
                     ]),
                 },
                 Token {
-                    text: Cow::Borrowed("一郎"),
+                    surface: Cow::Borrowed("一郎"),
                     byte_start: 6,
                     byte_end: 12,
                     position: 0,
@@ -1254,8 +1254,8 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
-            assert_eq!(&tokens[0].text, "鈴木");
-            assert_eq!(&tokens[1].text, "1郎");
+            assert_eq!(&tokens[0].surface, "鈴木");
+            assert_eq!(&tokens[1].surface, "1郎");
         }
     }
 }

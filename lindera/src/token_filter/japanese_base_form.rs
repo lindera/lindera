@@ -47,10 +47,10 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
             }
 
             if let Some(base_form) = token.get("base_form") {
-                token.text = Cow::Owned(base_form.to_string());
+                token.surface = Cow::Owned(base_form.to_string());
             }
             if let Some(base_form) = token.get("orthographic_base_form") {
-                token.text = Cow::Owned(base_form.to_string());
+                token.surface = Cow::Owned(base_form.to_string());
             }
         }
 
@@ -76,7 +76,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田空港"),
+                surface: Cow::Borrowed("羽田空港"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -100,7 +100,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("に"),
+                surface: Cow::Borrowed("に"),
                 byte_start: 12,
                 byte_end: 15,
                 position: 1,
@@ -124,7 +124,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("あり"),
+                surface: Cow::Borrowed("あり"),
                 byte_start: 15,
                 byte_end: 21,
                 position: 2,
@@ -148,7 +148,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("ます"),
+                surface: Cow::Borrowed("ます"),
                 byte_start: 21,
                 byte_end: 27,
                 position: 3,
@@ -176,10 +176,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].text, "羽田空港");
-        assert_eq!(tokens[1].text, "に");
-        assert_eq!(tokens[2].text, "ある");
-        assert_eq!(tokens[3].text, "ます");
+        assert_eq!(tokens[0].surface, "羽田空港");
+        assert_eq!(tokens[1].surface, "に");
+        assert_eq!(tokens[2].surface, "ある");
+        assert_eq!(tokens[3].surface, "ます");
     }
 
     #[cfg(feature = "embedded-unidic")]
@@ -198,7 +198,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田"),
+                surface: Cow::Borrowed("羽田"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -230,7 +230,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("空港"),
+                surface: Cow::Borrowed("空港"),
                 byte_start: 6,
                 byte_end: 12,
                 position: 1,
@@ -262,7 +262,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("に"),
+                surface: Cow::Borrowed("に"),
                 byte_start: 12,
                 byte_end: 15,
                 position: 2,
@@ -294,7 +294,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("あり"),
+                surface: Cow::Borrowed("あり"),
                 byte_start: 15,
                 byte_end: 21,
                 position: 3,
@@ -326,7 +326,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("ます"),
+                surface: Cow::Borrowed("ます"),
                 byte_start: 21,
                 byte_end: 27,
                 position: 4,
@@ -362,10 +362,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 5);
-        assert_eq!(&tokens[0].text, "羽田");
-        assert_eq!(&tokens[1].text, "空港");
-        assert_eq!(&tokens[2].text, "に");
-        assert_eq!(&tokens[3].text, "ある");
-        assert_eq!(&tokens[4].text, "ます");
+        assert_eq!(&tokens[0].surface, "羽田");
+        assert_eq!(&tokens[1].surface, "空港");
+        assert_eq!(&tokens[2].surface, "に");
+        assert_eq!(&tokens[3].surface, "ある");
+        assert_eq!(&tokens[4].surface, "ます");
     }
 }

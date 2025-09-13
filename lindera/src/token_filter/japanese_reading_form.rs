@@ -80,7 +80,7 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
             }
 
             if let Some(reading) = token.get("reading") {
-                token.text = Cow::Owned(reading.to_string());
+                token.surface = Cow::Owned(reading.to_string());
             }
         }
 
@@ -106,7 +106,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田空港"),
+                surface: Cow::Borrowed("羽田空港"),
                 byte_start: 0,
                 byte_end: 12,
                 position: 0,
@@ -130,7 +130,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                surface: Cow::Borrowed("限定"),
                 byte_start: 12,
                 byte_end: 18,
                 position: 1,
@@ -154,7 +154,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トートバッグ"),
+                surface: Cow::Borrowed("トートバッグ"),
                 byte_start: 18,
                 byte_end: 36,
                 position: 2,
@@ -172,9 +172,9 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(&tokens[0].text, "ハネダクウコウ");
-        assert_eq!(&tokens[1].text, "ゲンテイ");
-        assert_eq!(&tokens[2].text, "トートバッグ");
+        assert_eq!(&tokens[0].surface, "ハネダクウコウ");
+        assert_eq!(&tokens[1].surface, "ゲンテイ");
+        assert_eq!(&tokens[2].surface, "トートバッグ");
     }
 
     #[cfg(feature = "embedded-unidic")]
@@ -193,7 +193,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("羽田"),
+                surface: Cow::Borrowed("羽田"),
                 byte_start: 0,
                 byte_end: 6,
                 position: 0,
@@ -225,7 +225,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("空港"),
+                surface: Cow::Borrowed("空港"),
                 byte_start: 6,
                 byte_end: 12,
                 position: 1,
@@ -257,7 +257,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("限定"),
+                surface: Cow::Borrowed("限定"),
                 byte_start: 12,
                 byte_end: 18,
                 position: 2,
@@ -289,7 +289,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("トート"),
+                surface: Cow::Borrowed("トート"),
                 byte_start: 18,
                 byte_end: 27,
                 position: 3,
@@ -321,7 +321,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("バッグ"),
+                surface: Cow::Borrowed("バッグ"),
                 byte_start: 27,
                 byte_end: 36,
                 position: 4,
@@ -357,10 +357,10 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 5);
-        assert_eq!(&tokens[0].text, "ハタ");
-        assert_eq!(&tokens[1].text, "クウコウ");
-        assert_eq!(&tokens[2].text, "ゲンテイ");
-        assert_eq!(&tokens[3].text, "トート");
-        assert_eq!(&tokens[4].text, "バッグ");
+        assert_eq!(&tokens[0].surface, "ハタ");
+        assert_eq!(&tokens[1].surface, "クウコウ");
+        assert_eq!(&tokens[2].surface, "ゲンテイ");
+        assert_eq!(&tokens[3].surface, "トート");
+        assert_eq!(&tokens[4].surface, "バッグ");
     }
 }

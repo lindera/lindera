@@ -339,7 +339,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "日本語");
+            assert_eq!(token.surface, "日本語");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 0);
@@ -361,7 +361,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
@@ -373,7 +373,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "形態素");
+            assert_eq!(token.surface, "形態素");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 2);
@@ -395,7 +395,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "解析");
+            assert_eq!(token.surface, "解析");
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
@@ -417,7 +417,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "を");
+            assert_eq!(token.surface, "を");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
@@ -429,7 +429,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "行う");
+            assert_eq!(token.surface, "行う");
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 5);
@@ -451,7 +451,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "こと");
+            assert_eq!(token.surface, "こと");
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 6);
@@ -473,7 +473,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "が");
+            assert_eq!(token.surface, "が");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 45);
             assert_eq!(token.position, 7);
@@ -485,7 +485,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "でき");
+            assert_eq!(token.surface, "でき");
             assert_eq!(token.byte_start, 45);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 8);
@@ -507,7 +507,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "ます");
+            assert_eq!(token.surface, "ます");
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 57);
             assert_eq!(token.position, 9);
@@ -529,7 +529,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 57);
             assert_eq!(token.byte_end, 60);
             assert_eq!(token.position, 10);
@@ -541,7 +541,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "テスト");
+            assert_eq!(token.surface, "テスト");
             assert_eq!(token.byte_start, 60);
             assert_eq!(token.byte_end, 69);
             assert_eq!(token.position, 11);
@@ -563,7 +563,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 69);
             assert_eq!(token.byte_end, 72);
             assert_eq!(token.position, 12);
@@ -595,7 +595,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "日本");
+            assert_eq!(token.surface, "日本");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
@@ -625,7 +625,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "語");
+            assert_eq!(token.surface, "語");
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 1);
@@ -655,7 +655,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 2);
@@ -685,7 +685,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "形態");
+            assert_eq!(token.surface, "形態");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 3);
@@ -715,7 +715,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "素");
+            assert_eq!(token.surface, "素");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 4);
@@ -745,7 +745,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "解析");
+            assert_eq!(token.surface, "解析");
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 5);
@@ -775,7 +775,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "を");
+            assert_eq!(token.surface, "を");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 6);
@@ -805,7 +805,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "行う");
+            assert_eq!(token.surface, "行う");
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 7);
@@ -835,7 +835,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "こと");
+            assert_eq!(token.surface, "こと");
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 8);
@@ -865,7 +865,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "が");
+            assert_eq!(token.surface, "が");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 45);
             assert_eq!(token.position, 9);
@@ -895,7 +895,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "でき");
+            assert_eq!(token.surface, "でき");
             assert_eq!(token.byte_start, 45);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 10);
@@ -925,7 +925,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "ます");
+            assert_eq!(token.surface, "ます");
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 57);
             assert_eq!(token.position, 11);
@@ -955,7 +955,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 57);
             assert_eq!(token.byte_end, 60);
             assert_eq!(token.position, 12);
@@ -1005,7 +1005,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "한국어");
+            assert_eq!(token.surface, "한국어");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 9);
             assert_eq!(token.position, 0);
@@ -1026,7 +1026,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "의");
+            assert_eq!(token.surface, "의");
             assert_eq!(token.byte_start, 9);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
@@ -1038,7 +1038,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "형태");
+            assert_eq!(token.surface, "형태");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
@@ -1050,7 +1050,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "해석");
+            assert_eq!(token.surface, "해석");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 3);
@@ -1062,7 +1062,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "을");
+            assert_eq!(token.surface, "을");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 4);
@@ -1074,7 +1074,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "실시");
+            assert_eq!(token.surface, "실시");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 33);
             assert_eq!(token.position, 5);
@@ -1086,7 +1086,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "할");
+            assert_eq!(token.surface, "할");
             assert_eq!(token.byte_start, 33);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 6);
@@ -1107,7 +1107,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "수");
+            assert_eq!(token.surface, "수");
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 7);
@@ -1119,7 +1119,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "있");
+            assert_eq!(token.surface, "있");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 8);
@@ -1131,7 +1131,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "습니다");
+            assert_eq!(token.surface, "습니다");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 51);
             assert_eq!(token.position, 9);
@@ -1143,7 +1143,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, ".");
+            assert_eq!(token.surface, ".");
             assert_eq!(token.byte_start, 51);
             assert_eq!(token.byte_end, 52);
             assert_eq!(token.position, 10);
@@ -1175,7 +1175,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "可以");
+            assert_eq!(token.surface, "可以");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
@@ -1196,7 +1196,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "进行");
+            assert_eq!(token.surface, "进行");
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
@@ -1217,7 +1217,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "中文");
+            assert_eq!(token.surface, "中文");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
@@ -1238,7 +1238,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "形态学");
+            assert_eq!(token.surface, "形态学");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
@@ -1259,7 +1259,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "分析");
+            assert_eq!(token.surface, "分析");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 33);
             assert_eq!(token.position, 4);
@@ -1280,7 +1280,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 33);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 5);
@@ -1313,7 +1313,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
+            assert_eq!(token.surface, "東京スカイツリー");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
@@ -1335,7 +1335,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
@@ -1347,7 +1347,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り駅");
+            assert_eq!(token.surface, "最寄り駅");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
@@ -1369,7 +1369,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
+            assert_eq!(token.surface, "は");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
@@ -1381,7 +1381,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
+            assert_eq!(token.surface, "とうきょうスカイツリー駅");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
@@ -1403,7 +1403,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
+            assert_eq!(token.surface, "です");
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
@@ -1425,7 +1425,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
@@ -1461,7 +1461,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
+            assert_eq!(token.surface, "東京スカイツリー");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
@@ -1491,7 +1491,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
@@ -1521,7 +1521,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り");
+            assert_eq!(token.surface, "最寄り");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
@@ -1551,7 +1551,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "駅");
+            assert_eq!(token.surface, "駅");
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 3);
@@ -1581,7 +1581,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
+            assert_eq!(token.surface, "は");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 4);
@@ -1611,7 +1611,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
+            assert_eq!(token.surface, "とうきょうスカイツリー駅");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 5);
@@ -1641,7 +1641,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
+            assert_eq!(token.surface, "です");
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 6);
@@ -1671,7 +1671,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 7);
@@ -1723,7 +1723,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "하네다공항");
+            assert_eq!(token.surface, "하네다공항");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 15);
             assert_eq!(token.position, 0);
@@ -1735,7 +1735,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "한정");
+            assert_eq!(token.surface, "한정");
             assert_eq!(token.byte_start, 15);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 1);
@@ -1747,7 +1747,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "토트백");
+            assert_eq!(token.surface, "토트백");
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 2);
@@ -1768,7 +1768,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, ".");
+            assert_eq!(token.surface, ".");
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 31);
             assert_eq!(token.position, 3);
@@ -1802,7 +1802,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "羽田机场");
+            assert_eq!(token.surface, "羽田机场");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
@@ -1814,7 +1814,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "限定");
+            assert_eq!(token.surface, "限定");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
@@ -1835,7 +1835,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "托特");
+            assert_eq!(token.surface, "托特");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 2);
@@ -1856,7 +1856,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "包");
+            assert_eq!(token.surface, "包");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
@@ -1878,7 +1878,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
@@ -1911,7 +1911,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
+            assert_eq!(token.surface, "東京スカイツリー");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
@@ -1933,7 +1933,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
@@ -1945,7 +1945,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り駅");
+            assert_eq!(token.surface, "最寄り駅");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
@@ -1967,7 +1967,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
+            assert_eq!(token.surface, "は");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
@@ -1979,7 +1979,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
+            assert_eq!(token.surface, "とうきょうスカイツリー駅");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
@@ -2001,7 +2001,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
+            assert_eq!(token.surface, "です");
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
@@ -2023,7 +2023,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
@@ -2059,7 +2059,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
+            assert_eq!(token.surface, "東京スカイツリー");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
@@ -2089,7 +2089,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
@@ -2119,7 +2119,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り");
+            assert_eq!(token.surface, "最寄り");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
@@ -2149,7 +2149,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "駅");
+            assert_eq!(token.surface, "駅");
             assert_eq!(token.byte_start, 36);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 3);
@@ -2179,7 +2179,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
+            assert_eq!(token.surface, "は");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 4);
@@ -2209,7 +2209,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
+            assert_eq!(token.surface, "とうきょうスカイツリー駅");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 5);
@@ -2239,7 +2239,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
+            assert_eq!(token.surface, "です");
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 6);
@@ -2269,7 +2269,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 7);
@@ -2321,7 +2321,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "하네다공항");
+            assert_eq!(token.surface, "하네다공항");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 15);
             assert_eq!(token.position, 0);
@@ -2333,7 +2333,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "한정");
+            assert_eq!(token.surface, "한정");
             assert_eq!(token.byte_start, 15);
             assert_eq!(token.byte_end, 21);
             assert_eq!(token.position, 1);
@@ -2345,7 +2345,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "토트백");
+            assert_eq!(token.surface, "토트백");
             assert_eq!(token.byte_start, 21);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 2);
@@ -2366,7 +2366,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, ".");
+            assert_eq!(token.surface, ".");
             assert_eq!(token.byte_start, 30);
             assert_eq!(token.byte_end, 31);
             assert_eq!(token.position, 3);
@@ -2400,7 +2400,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "羽田机场");
+            assert_eq!(token.surface, "羽田机场");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
@@ -2412,7 +2412,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "限定");
+            assert_eq!(token.surface, "限定");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
@@ -2433,7 +2433,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "托特");
+            assert_eq!(token.surface, "托特");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 2);
@@ -2454,7 +2454,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "包");
+            assert_eq!(token.surface, "包");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 3);
@@ -2476,7 +2476,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
@@ -2509,7 +2509,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "東京スカイツリー");
+            assert_eq!(token.surface, "東京スカイツリー");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 24);
             assert_eq!(token.position, 0);
@@ -2531,7 +2531,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "の");
+            assert_eq!(token.surface, "の");
             assert_eq!(token.byte_start, 24);
             assert_eq!(token.byte_end, 27);
             assert_eq!(token.position, 1);
@@ -2543,7 +2543,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "最寄り駅");
+            assert_eq!(token.surface, "最寄り駅");
             assert_eq!(token.byte_start, 27);
             assert_eq!(token.byte_end, 39);
             assert_eq!(token.position, 2);
@@ -2565,7 +2565,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "は");
+            assert_eq!(token.surface, "は");
             assert_eq!(token.byte_start, 39);
             assert_eq!(token.byte_end, 42);
             assert_eq!(token.position, 3);
@@ -2577,7 +2577,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "とうきょうスカイツリー駅");
+            assert_eq!(token.surface, "とうきょうスカイツリー駅");
             assert_eq!(token.byte_start, 42);
             assert_eq!(token.byte_end, 78);
             assert_eq!(token.position, 4);
@@ -2599,7 +2599,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "です");
+            assert_eq!(token.surface, "です");
             assert_eq!(token.byte_start, 78);
             assert_eq!(token.byte_end, 84);
             assert_eq!(token.position, 5);
@@ -2621,7 +2621,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "。");
+            assert_eq!(token.surface, "。");
             assert_eq!(token.byte_start, 84);
             assert_eq!(token.byte_end, 87);
             assert_eq!(token.position, 6);
@@ -2684,7 +2684,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "羽田空港");
+            assert_eq!(token.surface, "羽田空港");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 0);
@@ -2706,7 +2706,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "限定");
+            assert_eq!(token.surface, "限定");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 1);
@@ -2728,7 +2728,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "トートバッグ");
+            assert_eq!(token.surface, "トートバッグ");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
@@ -2761,7 +2761,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "羽田");
+            assert_eq!(token.surface, "羽田");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
@@ -2783,7 +2783,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "空港");
+            assert_eq!(token.surface, "空港");
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
@@ -2805,7 +2805,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "限定");
+            assert_eq!(token.surface, "限定");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
@@ -2827,7 +2827,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "トートバッグ");
+            assert_eq!(token.surface, "トートバッグ");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 3);
@@ -2854,7 +2854,7 @@ mod tests {
         let mut tokens_iter = tokens.iter_mut();
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "羽田");
+            assert_eq!(token.surface, "羽田");
             assert_eq!(token.byte_start, 0);
             assert_eq!(token.byte_end, 6);
             assert_eq!(token.position, 0);
@@ -2876,7 +2876,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "空港");
+            assert_eq!(token.surface, "空港");
             assert_eq!(token.byte_start, 6);
             assert_eq!(token.byte_end, 12);
             assert_eq!(token.position, 1);
@@ -2898,7 +2898,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "限定");
+            assert_eq!(token.surface, "限定");
             assert_eq!(token.byte_start, 12);
             assert_eq!(token.byte_end, 18);
             assert_eq!(token.position, 2);
@@ -2920,7 +2920,7 @@ mod tests {
         }
         {
             let token = tokens_iter.next().unwrap();
-            assert_eq!(token.text, "トートバッグ");
+            assert_eq!(token.surface, "トートバッグ");
             assert_eq!(token.byte_start, 18);
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 3);

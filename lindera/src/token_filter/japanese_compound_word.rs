@@ -75,7 +75,7 @@ impl JapaneseCompoundWordTokenFilter {
 
     // Concatenate two tokens into one.
     fn concat_token<'a>(&self, token1: &mut Token<'a>, token2: &Token<'a>) {
-        token1.text = Cow::Owned(format!("{}{}", token1.text, token2.text));
+        token1.surface = Cow::Owned(format!("{}{}", token1.surface, token2.surface));
         token1.byte_end = token2.byte_end;
         token1.position_length += token2.position_length;
 
@@ -106,7 +106,10 @@ impl JapaneseCompoundWordTokenFilter {
             }
         };
 
-        token1.details = Some(details);
+        // token1.details = Some(details);
+        for (i, detail) in details.iter().enumerate() {
+            token1.set_detail(i, detail.clone());
+        }
     }
 }
 
@@ -269,7 +272,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("１"),
+                surface: Cow::Borrowed("１"),
                 byte_start: 0,
                 byte_end: 3,
                 position: 0,
@@ -293,7 +296,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("０"),
+                surface: Cow::Borrowed("０"),
                 byte_start: 3,
                 byte_end: 6,
                 position: 1,
@@ -317,7 +320,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("０"),
+                surface: Cow::Borrowed("０"),
                 byte_start: 6,
                 byte_end: 9,
                 position: 2,
@@ -341,7 +344,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("円"),
+                surface: Cow::Borrowed("円"),
                 byte_start: 9,
                 byte_end: 12,
                 position: 3,
@@ -365,7 +368,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("玉"),
+                surface: Cow::Borrowed("玉"),
                 byte_start: 12,
                 byte_end: 15,
                 position: 4,
@@ -389,7 +392,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("を"),
+                surface: Cow::Borrowed("を"),
                 byte_start: 15,
                 byte_end: 18,
                 position: 5,
@@ -413,7 +416,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("拾う"),
+                surface: Cow::Borrowed("拾う"),
                 byte_start: 18,
                 byte_end: 24,
                 position: 6,
@@ -441,22 +444,22 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(tokens[0].text, "１００円".to_string());
+        assert_eq!(tokens[0].surface, "１００円".to_string());
         assert_eq!(tokens[0].byte_start, 0);
         assert_eq!(tokens[0].byte_end, 12);
         assert_eq!(tokens[0].position, 0);
         assert_eq!(tokens[0].position_length, 4);
-        assert_eq!(tokens[1].text, "玉".to_string());
+        assert_eq!(tokens[1].surface, "玉".to_string());
         assert_eq!(tokens[1].byte_start, 12);
         assert_eq!(tokens[1].byte_end, 15);
         assert_eq!(tokens[1].position, 4);
         assert_eq!(tokens[1].position_length, 1);
-        assert_eq!(tokens[2].text, "を".to_string());
+        assert_eq!(tokens[2].surface, "を".to_string());
         assert_eq!(tokens[2].byte_start, 15);
         assert_eq!(tokens[2].byte_end, 18);
         assert_eq!(tokens[2].position, 5);
         assert_eq!(tokens[2].position_length, 1);
-        assert_eq!(tokens[3].text, "拾う".to_string());
+        assert_eq!(tokens[3].surface, "拾う".to_string());
         assert_eq!(tokens[3].byte_start, 18);
         assert_eq!(tokens[3].byte_end, 24);
         assert_eq!(tokens[3].position, 6);

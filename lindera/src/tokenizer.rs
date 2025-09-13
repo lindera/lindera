@@ -461,7 +461,7 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("Lindera"));
+                assert_eq!(token.surface, Cow::Borrowed("Lindera"));
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 15);
                 assert_eq!(token.position, 0);
@@ -470,7 +470,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("形態素"));
+                assert_eq!(token.surface, Cow::Borrowed("形態素"));
                 assert_eq!(token.byte_start, 18);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
@@ -492,7 +492,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("解析"));
+                assert_eq!(token.surface, Cow::Borrowed("解析"));
                 assert_eq!(token.byte_start, 27);
                 assert_eq!(token.byte_end, 33);
                 assert_eq!(token.position, 3);
@@ -514,7 +514,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("エンジン"));
+                assert_eq!(token.surface, Cow::Borrowed("エンジン"));
                 assert_eq!(token.byte_start, 33);
                 assert_eq!(token.byte_end, 48);
                 assert_eq!(token.position, 4);
@@ -540,7 +540,7 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, Cow::Borrowed("Lindera"));
+                assert_eq!(token.surface, Cow::Borrowed("Lindera"));
                 assert_eq!(&text[start..end], "ﾘﾝﾃﾞﾗ");
             }
         }
@@ -551,7 +551,7 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("10"));
+                assert_eq!(token.surface, Cow::Borrowed("10"));
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
@@ -560,7 +560,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("ガロン"));
+                assert_eq!(token.surface, Cow::Borrowed("ガロン"));
                 assert_eq!(token.byte_start, 6);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 1);
@@ -582,7 +582,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("ガソリン"));
+                assert_eq!(token.surface, Cow::Borrowed("ガソリン"));
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 3);
@@ -608,21 +608,21 @@ mod tests {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, Cow::Borrowed("10"));
+                assert_eq!(token.surface, Cow::Borrowed("10"));
                 assert_eq!(&text[start..end], "１０");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, Cow::Borrowed("ガロン"));
+                assert_eq!(token.surface, Cow::Borrowed("ガロン"));
                 assert_eq!(&text[start..end], "㌎");
             }
             {
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.text, Cow::Borrowed("ガソリン"));
+                assert_eq!(token.surface, Cow::Borrowed("ガソリン"));
                 assert_eq!(&text[start..end], "ｶﾞｿﾘﾝ");
             }
         }
@@ -633,7 +633,7 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("お釣り"));
+                assert_eq!(token.surface, Cow::Borrowed("お釣り"));
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 9);
                 assert_eq!(token.position, 0);
@@ -655,7 +655,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("134円"));
+                assert_eq!(token.surface, Cow::Borrowed("134円"));
                 assert_eq!(token.byte_start, 12);
                 assert_eq!(token.byte_end, 27);
                 assert_eq!(token.position, 2);
@@ -683,7 +683,7 @@ mod tests {
             let mut tokens_iter = tokens.iter_mut();
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("ここ"));
+                assert_eq!(token.surface, Cow::Borrowed("ここ"));
                 assert_eq!(token.byte_start, 0);
                 assert_eq!(token.byte_end, 6);
                 assert_eq!(token.position, 0);
@@ -705,7 +705,7 @@ mod tests {
             }
             {
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.text, Cow::Borrowed("騒騒しい"));
+                assert_eq!(token.surface, Cow::Borrowed("騒騒しい"));
                 assert_eq!(token.byte_start, 9);
                 assert_eq!(token.byte_end, 21);
                 assert_eq!(token.position, 2);

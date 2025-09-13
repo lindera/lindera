@@ -42,7 +42,7 @@ impl TokenFilter for LengthTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         tokens.retain(|token| {
-            let len = token.text.chars().count();
+            let len = token.surface.chars().count();
             if let Some(min) = self.min {
                 if len < min {
                     return false;
@@ -145,7 +145,7 @@ mod tests {
 
         let mut tokens: Vec<Token> = vec![
             Token {
-                text: Cow::Borrowed("すもも"),
+                surface: Cow::Borrowed("すもも"),
                 byte_start: 0,
                 byte_end: 9,
                 position: 0,
@@ -169,7 +169,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("も"),
+                surface: Cow::Borrowed("も"),
                 byte_start: 9,
                 byte_end: 12,
                 position: 1,
@@ -193,7 +193,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("もも"),
+                surface: Cow::Borrowed("もも"),
                 byte_start: 12,
                 byte_end: 18,
                 position: 2,
@@ -217,7 +217,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("も"),
+                surface: Cow::Borrowed("も"),
                 byte_start: 18,
                 byte_end: 21,
                 position: 3,
@@ -241,7 +241,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("もも"),
+                surface: Cow::Borrowed("もも"),
                 byte_start: 21,
                 byte_end: 27,
                 position: 4,
@@ -265,7 +265,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("の"),
+                surface: Cow::Borrowed("の"),
                 byte_start: 27,
                 byte_end: 30,
                 position: 5,
@@ -289,7 +289,7 @@ mod tests {
                 ]),
             },
             Token {
-                text: Cow::Borrowed("うち"),
+                surface: Cow::Borrowed("うち"),
                 byte_start: 30,
                 byte_end: 36,
                 position: 6,
@@ -317,9 +317,9 @@ mod tests {
         filter.apply(&mut tokens).unwrap();
 
         assert_eq!(tokens.len(), 4);
-        assert_eq!(&tokens[0].text, "すもも");
-        assert_eq!(&tokens[1].text, "もも");
-        assert_eq!(&tokens[2].text, "もも");
-        assert_eq!(&tokens[3].text, "うち");
+        assert_eq!(&tokens[0].surface, "すもも");
+        assert_eq!(&tokens[1].surface, "もも");
+        assert_eq!(&tokens[2].surface, "もも");
+        assert_eq!(&tokens[3].surface, "うち");
     }
 }

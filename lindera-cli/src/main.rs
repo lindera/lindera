@@ -148,7 +148,7 @@ fn list(_args: ListArgs) -> LinderaResult<()> {
 fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
-        println!("{}\t{}", token.text.as_ref(), details);
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     println!("EOS");
 
@@ -158,8 +158,8 @@ fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
 fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     let mut json_tokens = Vec::new();
     for token in tokens.iter_mut() {
-        let token_map = token.as_map();
-        json_tokens.push(token_map);
+        let token_value = token.as_value();
+        json_tokens.push(token_value);
     }
 
     println!(
@@ -175,9 +175,9 @@ fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
     let mut it = tokens.iter().peekable();
     while let Some(token) = it.next() {
         if it.peek().is_some() {
-            print!("{} ", token.text.as_ref());
+            print!("{} ", token.surface.as_ref());
         } else {
-            println!("{}", token.text.as_ref());
+            println!("{}", token.surface.as_ref());
         }
     }
 
