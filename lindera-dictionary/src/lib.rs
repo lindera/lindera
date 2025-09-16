@@ -11,6 +11,9 @@ pub mod mode;
 pub mod util;
 pub mod viterbi;
 
+#[cfg(feature = "train")]
+pub mod trainer;
+
 pub type LinderaResult<T> = Result<T, crate::error::LinderaError>;
 
 const VERERSION: &str = env!("CARGO_PKG_VERSION");

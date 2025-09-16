@@ -27,7 +27,6 @@ embedded-ko-dic = [
 embedded-cc-cedict = [
     "lindera-cc-cedict/embedded-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
-
 embedded-cjk = [
     "embedded-ipadic",
     "embedded-ko-dic",
@@ -43,7 +42,6 @@ embedded-cjk3 = [
     "embedded-ko-dic",
     "embedded-cc-cedict",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
-
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",
@@ -53,7 +51,7 @@ compress = [
     "lindera-cc-cedict?/compress",
 ] # Compress dictionaries
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
-
+train = ["lindera-dictionary/train"] # Enable training functionality
 default = ["compress", "mmap"]
 
 [dependencies]

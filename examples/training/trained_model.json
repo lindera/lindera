@@ -1,0 +1,37 @@
+{
+  "feature_weights": [],
+  "labels": [
+    "外国",
+    "人",
+    "参政",
+    "権",
+    "これ",
+    "は",
+    "テスト",
+    "です",
+    "。",
+    "形態素",
+    "解析",
+    "を",
+    "行う",
+    "DEFAULT",
+    "HIRAGANA",
+    "KATAKANA",
+    "KANJI",
+    "ALPHA",
+    "NUMERIC"
+  ],
+  "feature_templates": [
+    "UNIGRAM:%F[0]",
+    "UNIGRAM:%F[1]",
+    "LEFT:%L[0]",
+    "RIGHT:%R[0]"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "regularization": 0.01,
+    "iterations": 100,
+    "feature_count": 13,
+    "label_count": 19
+  }
+}

@@ -1,0 +1,13 @@
+# Rewrite rules for feature normalization
+# Format: original_pattern	replacement_pattern
+
+# Normalize numeric expressions
+数	NUM
+*	UNK
+
+# Normalize proper nouns
+名詞,固有名詞	名詞,一般
+
+# Simplify auxiliary verbs
+助動詞,*,*,*,特殊・デス	助動詞
+助動詞,*,*,*,特殊・ダ	助動詞

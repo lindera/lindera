@@ -1,0 +1,20 @@
+# Feature template definitions for training
+# These define how features are extracted from the morphological data
+
+# Unigram features (word-level features)
+UNIGRAM:%F[0]    # Part of speech (first element of features)
+UNIGRAM:%F[1]    # Sub-category 1
+UNIGRAM:%F[6]    # Base form
+UNIGRAM:%F[7]    # Reading (katakana)
+
+# Left context features (for transition costs)
+LEFT:%L[0]       # Left word POS
+LEFT:%L[1]       # Left word sub-category
+
+# Right context features (for transition costs)
+RIGHT:%R[0]      # Right word POS
+RIGHT:%R[1]      # Right word sub-category
+
+# Bigram features (combinations)
+UNIGRAM:%F[0]/%F[1]    # POS + sub-category
+UNIGRAM:%F[0]/%F[6]    # POS + base form

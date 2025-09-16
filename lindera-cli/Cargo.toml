@@ -38,9 +38,10 @@ embedded-cjk3 = [
     "lindera/embedded-cjk3",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
 
-compress = ["lindera/compress"] # Compress dictionaries
-mmap = ["lindera/mmap"]         # Use memory-mapped file
-default = ["lindera/default"]
+compress = ["lindera/compress"]         # Compress dictionaries
+mmap = ["lindera/mmap"]                 # Use memory-mapped file
+train = ["lindera/train"]               # Enable training functionality
+default = ["compress", "mmap", "train"]
 
 [dependencies]
 anyhow.workspace = true

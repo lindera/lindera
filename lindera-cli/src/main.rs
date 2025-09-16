@@ -32,6 +32,10 @@ enum Commands {
     List(ListArgs),
     Tokenize(TokenizeArgs),
     Build(BuildArgs),
+    #[cfg(feature = "train")]
+    Train(TrainArgs),
+    #[cfg(feature = "train")]
+    ExportDict(ExportDictArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -107,6 +111,98 @@ struct BuildArgs {
     dest_path: PathBuf,
 }
 
+#[cfg(feature = "train")]
+#[derive(Debug, clap::Args)]
+#[clap(
+    author,
+    about = "Train a morphological analysis model from corpus",
+    version = get_version(),
+)]
+struct TrainArgs {
+    #[clap(
+        short = 'l',
+        long = "seed-lexicon",
+        help = "Seed lexicon file (lex.csv) to be weighted"
+    )]
+    seed_lexicon: PathBuf,
+    #[clap(
+        short = 'u',
+        long = "seed-unk",
+        help = "Unknown word file (unk.def) to be weighted"
+    )]
+    seed_unk: PathBuf,
+    #[clap(
+        short = 't',
+        long = "corpus",
+        help = "Corpus file to be trained"
+    )]
+    corpus: PathBuf,
+    #[clap(
+        short = 'c',
+        long = "char-def",
+        help = "Character definition file (char.def)"
+    )]
+    char_def: PathBuf,
+    #[clap(
+        short = 'f',
+        long = "feature-def",
+        help = "Feature definition file (feature.def)"
+    )]
+    feature_def: PathBuf,
+    #[clap(
+        short = 'r',
+        long = "rewrite-def",
+        help = "Rewrite rule definition file (rewrite.def)"
+    )]
+    rewrite_def: PathBuf,
+    #[clap(
+        short = 'o',
+        long = "model-out",
+        help = "Output model file"
+    )]
+    model_out: PathBuf,
+    #[clap(
+        long = "lambda",
+        default_value = "0.01",
+        help = "Regularization coefficient"
+    )]
+    lambda: f64,
+    #[clap(
+        long = "max-iter",
+        default_value = "100",
+        help = "Maximum number of iterations"
+    )]
+    max_iter: u64,
+    #[clap(
+        long = "num-threads",
+        default_value = "1",
+        help = "Number of threads"
+    )]
+    num_threads: usize,
+}
+
+#[cfg(feature = "train")]
+#[derive(Debug, clap::Args)]
+#[clap(
+    author,
+    about = "Export dictionary files from trained model",
+    version = get_version(),
+)]
+struct ExportDictArgs {
+    #[clap(
+        short = 'm',
+        long = "model-file",
+        help = "Trained model file (JSON format)"
+    )]
+    model_file: PathBuf,
+    #[clap(
+        short = 'd',
+        long = "dict-dir",
+        help = "Output directory for dictionary files"
+    )]
+    dict_dir: PathBuf,
+}
+
 #[derive(Debug, Clone, Copy)]
 /// Formatter type
 pub enum Format {
@@ -135,6 +231,10 @@ fn main() -> LinderaResult<()> {
         Commands::List(args) => list(args),
         Commands::Tokenize(args) => tokenize(args),
         Commands::Build(args) => build(args),
+        #[cfg(feature = "train")]
+        Commands::Train(args) => train(args),
+        #[cfg(feature = "train")]
+        Commands::ExportDict(args) => export_dict(args),
     }
 }
 
@@ -277,4 +377,121 @@ fn build(args: BuildArgs) -> LinderaResult<()> {
     } else {
         builder.build_dictionary(&args.src_path, &args.dest_path)
     }
+}
+
+#[cfg(feature = "train")]
+fn train(args: TrainArgs) -> LinderaResult<()> {
+    use std::fs::File;
+    use lindera::dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+
+    // Load configuration
+    let config = TrainerConfig::from_paths(
+        &args.seed_lexicon,
+        &args.char_def,
+        &args.seed_unk,
+        &args.feature_def,
+        &args.rewrite_def,
+    ).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+
+    // Initialize trainer
+    let trainer = Trainer::new(config)
+        .map_err(|err| LinderaErrorKind::Args.with_error(err))?
+        .regularization_cost(args.lambda)
+        .max_iter(args.max_iter)
+        .num_threads(args.num_threads);
+
+    // Load corpus
+    let corpus_file = File::open(&args.corpus)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let corpus = Corpus::from_reader(corpus_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+
+    println!("Training with {} examples...", corpus.len());
+
+    // Train model
+    let model = trainer.train(corpus)
+        .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+
+    // Save model
+    let mut output_file = File::create(&args.model_out)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    model.write_model(&mut output_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+
+    println!("Model saved to {:?}", args.model_out);
+    Ok(())
+}
+
+#[cfg(feature = "train")]
+fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
+    use std::fs::{self, File};
+    use std::io::Write;
+    use lindera::dictionary::trainer::SerializableModel;
+
+    // Load trained model
+    let model_file = File::open(&args.model_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let model: SerializableModel = serde_json::from_reader(model_file)
+        .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+
+    // Create output directory
+    fs::create_dir_all(&args.dict_dir)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    // Export dictionary files
+    let lexicon_path = args.dict_dir.join("lex.csv");
+    let connector_path = args.dict_dir.join("matrix.def");
+    let unk_path = args.dict_dir.join("unk.def");
+    let char_def_path = args.dict_dir.join("char.def");
+
+    // Write lexicon file
+    let mut lexicon_file = File::create(&lexicon_path)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(lexicon_file, "surface,left_id,right_id,cost,features")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    for (i, label) in model.labels.iter().enumerate() {
+        let cost = if i < model.feature_weights.len() {
+            (model.feature_weights[i] * 1000.0) as i32
+        } else {
+            1000
+        };
+        writeln!(lexicon_file, "{},{},{},{},名詞,一般,*,*,*,*,*,*,*", label, 0, 0, cost)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    }
+
+    // Write connection matrix (simple identity matrix)
+    let mut connector_file = File::create(&connector_path)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let size = 6; // Basic category count
+    writeln!(connector_file, "{} {}", size, size)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    for i in 0..size {
+        for j in 0..size {
+            let cost = if i == j { 0 } else { 100 };
+            if j == size - 1 {
+                writeln!(connector_file, "{}", cost)
+                    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            } else {
+                write!(connector_file, "{} ", cost)
+                    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+            }
+        }
+    }
+
+    // Write unknown word definitions
+    let mut unk_file = File::create(&unk_path)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let categories = vec!["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
+    for category in &categories {
+        writeln!(unk_file, "{},{},{},{},名詞,一般,*,*,*,*,*,*,*", category, 0, 0, 2000)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    }
+
+    println!("Dictionary files exported to: {:?}", args.dict_dir);
+    println!("Files created:");
+    println!("  - {:?}", lexicon_path);
+    println!("  - {:?}", connector_path);
+    println!("  - {:?}", unk_path);
+
+    Ok(())
 }

@@ -15,6 +15,9 @@ use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
 use lindera_dictionary::dictionary_loader::DictionaryLoader;
 use lindera_dictionary::dictionary_loader::FSDictionaryLoader;
 use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
+
+#[cfg(feature = "train")]
+pub use lindera_dictionary::trainer;
 #[cfg(feature = "embedded-ipadic")]
 use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
 #[cfg(feature = "embedded-ipadic")]
