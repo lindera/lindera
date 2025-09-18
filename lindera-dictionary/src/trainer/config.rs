@@ -20,6 +20,8 @@ pub struct TrainerConfig {
     pub(crate) surfaces: Vec<String>,
     /// Maps surface forms to their original feature strings from the lexicon
     pub(crate) surface_features: HashMap<String, String>,
+    /// User lexicon entries for additional vocabulary
+    pub(crate) user_lexicon: HashMap<String, String>,
     pub(crate) feature_extractor: FeatureExtractor,
     pub(crate) unigram_rewriter: FeatureRewriter,
     pub(crate) left_rewriter: FeatureRewriter,
@@ -73,27 +75,38 @@ impl TrainerConfig {
             }
         }
 
-        // Create feature extractor from templates
-        let mut feature_extractor = FeatureExtractor::new();
+        // Create feature extractor from templates (Vibrato-style)
         let mut feature_content = String::new();
         {
             let mut template_reader = BufReader::new(feature_templates_rdr);
             std::io::Read::read_to_string(&mut template_reader, &mut feature_content)?;
         }
 
+        // Parse templates into unigram and bigram categories
+        let mut unigram_templates = Vec::new();
+        let mut bigram_templates = Vec::new();
+
         for line in feature_content.lines() {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
             }
-            // Parse template format (simplified)
+            // Parse template format (Vibrato-style)
             if line.starts_with("UNIGRAM:") {
-                feature_extractor.add_unigram_template(line[8..].to_string());
-            } else if line.starts_with("LEFT:") {
-                feature_extractor.add_left_template(line[5..].to_string());
-            } else if line.starts_with("RIGHT:") {
-                feature_extractor.add_right_template(line[6..].to_string());
+                unigram_templates.push(line[8..].to_string());
+            } else if line.starts_with("BIGRAM:") {
+                // Parse bigram template like "BIGRAM:%L[0],%R[0]"
+                let template_part = &line[7..];
+                if let Some((left, right)) = template_part.split_once(',') {
+                    bigram_templates.push((left.to_string(), right.to_string()));
+                }
+            } else {
+                // Default unigram template
+                unigram_templates.push(line.to_string());
             }
         }
+
+        // Create feature extractor with parsed templates
+        let feature_extractor = FeatureExtractor::from_templates(&unigram_templates, &bigram_templates);
 
         // Create feature rewriters
         let unigram_rewriter = FeatureRewriter::new();
@@ -108,11 +121,60 @@ impl TrainerConfig {
             dict,
             surfaces,
             surface_features,
+            user_lexicon: HashMap::new(), // Initialize empty user lexicon
             feature_extractor,
             unigram_rewriter,
             left_rewriter,
             right_rewriter,
         })
+    }
+
+    /// Get the surfaces extracted from the lexicon
+    pub fn surfaces(&self) -> &[String] {
+        &self.surfaces
+    }
+
+    /// Get the surface features mapping
+    pub fn surface_features(&self) -> &HashMap<String, String> {
+        &self.surface_features
+    }
+
+    /// Get the user lexicon mapping
+    pub fn user_lexicon(&self) -> &HashMap<String, String> {
+        &self.user_lexicon
+    }
+
+    /// Add user lexicon entry (Vibrato-style user dictionary support)
+    pub fn add_user_lexicon_entry(&mut self, surface: String, features: String) {
+        self.user_lexicon.insert(surface, features);
+    }
+
+    /// Load user lexicon from CSV content
+    pub fn load_user_lexicon_from_content(&mut self, content: &str) -> Result<()> {
+        for line in content.lines() {
+            if line.trim().is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            let parts: Vec<&str> = line.split(',').collect();
+            if parts.len() >= 5 {
+                let surface = parts[0].to_string();
+                // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
+                let features = parts[4..].join(",");
+                self.user_lexicon.insert(surface, features);
+            }
+        }
+        Ok(())
+    }
+
+    /// Get features for a surface, checking both main lexicon and user lexicon
+    pub fn get_features(&self, surface: &str) -> Option<&String> {
+        // Check user lexicon first (higher priority)
+        if let Some(features) = self.user_lexicon.get(surface) {
+            Some(features)
+        } else {
+            self.surface_features.get(surface)
+        }
     }
 
     /// Creates a new trainer configuration from file paths.
@@ -175,33 +237,126 @@ impl TrainerConfig {
         })
     }
 
-    fn build_char_def_from_content(_content: &str) -> Result<CharacterDefinition> {
-        // For training purposes, create a minimal character definition
-        // In a real implementation, this would parse the char.def format
-        use crate::dictionary::character_definition::{CategoryData, LookupTable};
+    fn build_char_def_from_content(content: &str) -> Result<CharacterDefinition> {
+        use crate::dictionary::character_definition::{CategoryData, CategoryId, LookupTable};
+        use std::collections::HashMap;
+
         let mut category_definitions = Vec::new();
         let mut category_names = Vec::new();
+        let mut category_map = HashMap::new(); // Name -> Index
+        let mut char_ranges = Vec::new();
 
-        // Add default categories for basic character types
+        // Always add DEFAULT as category 0
         category_names.push("DEFAULT".to_string());
-        category_names.push("HIRAGANA".to_string());
-        category_names.push("KATAKANA".to_string());
-        category_names.push("KANJI".to_string());
-        category_names.push("ALPHA".to_string());
-        category_names.push("NUMERIC".to_string());
+        category_map.insert("DEFAULT".to_string(), 0);
+        category_definitions.push(CategoryData {
+            invoke: false,
+            group: true,
+            length: 0,
+        });
 
-        for _name in category_names.iter() {
-            category_definitions.push(CategoryData {
-                invoke: true,
-                group: true,
-                length: 1,
-            });
+        // Parse the char.def file
+        for line in content.lines() {
+            let line = line.trim();
+
+            // Skip comments and empty lines
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            // Parse character range mappings (e.g., "0x3041..0x3096 HIRAGANA")
+            if line.starts_with("0x") {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let range_str = parts[0];
+                    let category = parts[1];
+
+                    // Parse range (e.g., "0x3041..0x3096")
+                    if let Some(range_parts) = range_str.split_once("..") {
+                        let start = u32::from_str_radix(&range_parts.0[2..], 16)?;
+                        let end = u32::from_str_radix(&range_parts.1[2..], 16)?;
+
+                        // Get or create category index
+                        let cat_idx = *category_map.entry(category.to_string())
+                            .or_insert_with(|| {
+                                let idx = category_names.len();
+                                category_names.push(category.to_string());
+                                // Default category data - will be overridden if defined
+                                category_definitions.push(CategoryData {
+                                    invoke: true,
+                                    group: true,
+                                    length: 0,
+                                });
+                                idx
+                            });
+
+                        char_ranges.push((start, end, cat_idx));
+                    }
+                }
+            } else {
+                // Parse category definitions (e.g., "HIRAGANA 1 1 0")
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 4 {
+                    let name = parts[0];
+                    let invoke = parts[1] != "0";
+                    let group = parts[2] != "0";
+                    let length = parts[3].parse::<u8>().unwrap_or(0);
+
+                    // Get or create category index
+                    let cat_idx = *category_map.entry(name.to_string())
+                        .or_insert_with(|| {
+                            let idx = category_names.len();
+                            category_names.push(name.to_string());
+                            category_definitions.push(CategoryData {
+                                invoke,
+                                group,
+                                length: length.into(),
+                            });
+                            idx
+                        });
+
+                    // Update category definition if it already exists
+                    if cat_idx < category_definitions.len() {
+                        category_definitions[cat_idx] = CategoryData {
+                            invoke,
+                            group,
+                            length: length.into(),
+                        };
+                    }
+                }
+            }
         }
 
-        // Create a simple lookup table that maps all characters to DEFAULT
-        let boundaries = vec![0u32, 0x10FFFF]; // All Unicode range
-        let mapping = LookupTable::from_fn(boundaries, &|_c, buff| {
-            buff.push(crate::dictionary::character_definition::CategoryId(0)); // Map to DEFAULT category
+        // Sort char ranges by start position
+        char_ranges.sort_by_key(|&(start, _, _)| start);
+
+        // Build boundaries and mapping function
+        let mut boundaries = vec![0u32];
+        for &(start, end, _) in &char_ranges {
+            if start > boundaries[boundaries.len() - 1] {
+                boundaries.push(start);
+            }
+            boundaries.push(end + 1);
+        }
+        if boundaries[boundaries.len() - 1] < 0x10FFFF {
+            boundaries.push(0x10FFFF);
+        }
+
+        // Create lookup table with proper category mappings
+        let ranges_clone = char_ranges.clone();
+        let mapping = LookupTable::from_fn(boundaries, &|c, buff| {
+            let code = c as u32;
+
+            // Find which category this character belongs to
+            for &(start, end, cat_idx) in &ranges_clone {
+                if code >= start && code <= end {
+                    buff.push(CategoryId(cat_idx));
+                    return;
+                }
+            }
+
+            // Default to category 0 (DEFAULT)
+            buff.push(CategoryId(0));
         });
 
         Ok(CharacterDefinition {

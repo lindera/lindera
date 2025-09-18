@@ -25,9 +25,8 @@ EOS
 
     #[test]
     fn test_trainer_config_creation() {
-        // Note: This test will fail because TrainerConfig::from_readers
-        // currently returns an error requiring actual dictionary files
-        let lexicon_data = "surface,left_id,right_id,cost,features\n";
+        // Test that TrainerConfig can be created with minimal valid data
+        let lexicon_data = "外国,0,0,5000,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n人,1,1,5000,名詞,接尾,一般,*,*,*,人,ジン,ジン\n";
         let char_data = "# char.def placeholder\n";
         let unk_data = "# unk.def placeholder\n";
         let feature_data = "UNIGRAM:%F[0]\nLEFT:%L[0]\nRIGHT:%R[0]\n";
@@ -41,24 +40,26 @@ EOS
             Cursor::new(rewrite_data.as_bytes()),
         );
 
-        // Currently expected to fail with our placeholder implementation
-        assert!(result.is_err());
-        let error_msg = format!("{}", result.err().unwrap());
-        assert!(error_msg.contains("TrainerConfig requires actual dictionary files"));
+        // Config creation should now succeed with the fixed implementation
+        assert!(result.is_ok());
+        let config = result.unwrap();
+        // Verify that surfaces were extracted correctly using the getter
+        assert_eq!(config.surfaces().len(), 2);
+        assert!(config.surfaces().contains(&"外国".to_string()));
+        assert!(config.surfaces().contains(&"人".to_string()));
     }
 
     #[test]
     fn test_trainer_creation() {
-        // This test demonstrates the API even though it will fail
-        // due to the dictionary loading limitation
+        use lindera_dictionary::trainer::Trainer;
 
-        let lexicon_data = "surface,left_id,right_id,cost,features\n";
+        // Test that Trainer can be created from a valid config
+        let lexicon_data = "外国,0,0,5000,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n";
         let char_data = "# char.def placeholder\n";
         let unk_data = "# unk.def placeholder\n";
         let feature_data = "UNIGRAM:%F[0]\nLEFT:%L[0]\nRIGHT:%R[0]\n";
         let rewrite_data = "# rewrite.def placeholder\n";
 
-        // This will fail, but shows the intended API
         let config_result = TrainerConfig::from_readers(
             Cursor::new(lexicon_data.as_bytes()),
             Cursor::new(char_data.as_bytes()),
@@ -67,13 +68,19 @@ EOS
             Cursor::new(rewrite_data.as_bytes()),
         );
 
-        assert!(config_result.is_err());
+        assert!(config_result.is_ok());
+        let config = config_result.unwrap();
 
-        // When config creation works, this would be the API:
-        // let trainer = Trainer::new(config)
-        //     .unwrap()
-        //     .regularization_cost(0.01)
-        //     .max_iter(10)
-        //     .num_threads(1);
+        // Test trainer creation with builder pattern
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(10)
+            .num_threads(1);
+
+        // Verify trainer settings using the getters
+        assert_eq!(trainer.get_regularization_cost(), 0.01);
+        assert_eq!(trainer.get_max_iter(), 10);
+        assert_eq!(trainer.get_num_threads(), 1);
     }
 }

@@ -4,8 +4,8 @@ pub mod feature_extractor;
 pub mod feature_rewriter;
 pub mod model;
 
-use std::num::NonZeroU32;
 use std::collections::HashMap;
+use std::num::NonZeroU32;
 
 use anyhow::Result;
 
@@ -57,14 +57,19 @@ impl Trainer {
             let label_id = std::num::NonZeroU32::new((i + 1) as u32).unwrap();
             label_id_map.insert(surface.clone(), HashMap::new());
             if let Some(first_char) = surface.chars().next() {
-                label_id_map.get_mut(surface).unwrap().insert(first_char, label_id);
+                label_id_map
+                    .get_mut(surface)
+                    .unwrap()
+                    .insert(first_char, label_id);
             }
         }
 
         // Initialize unknown word labels for 6 character type categories
         // These pre-allocated IDs ensure consistent handling of unknown words
-        for i in 0..6 { // 6 categories: DEFAULT, HIRAGANA, KATAKANA, KANJI, ALPHA, NUMERIC
-            label_id_map_unk.push(std::num::NonZeroU32::new((config.surfaces.len() + i + 1) as u32).unwrap());
+        for i in 0..6 {
+            // 6 categories: DEFAULT, HIRAGANA, KATAKANA, KANJI, ALPHA, NUMERIC
+            label_id_map_unk
+                .push(std::num::NonZeroU32::new((config.surfaces.len() + i + 1) as u32).unwrap());
         }
 
         Ok(Self {
@@ -103,6 +108,21 @@ impl Trainer {
         self
     }
 
+    /// Get the regularization cost (lambda)
+    pub fn get_regularization_cost(&self) -> f64 {
+        self.regularization_cost
+    }
+
+    /// Get the maximum number of iterations
+    pub fn get_max_iter(&self) -> u64 {
+        self.max_iter
+    }
+
+    /// Get the number of threads
+    pub fn get_num_threads(&self) -> usize {
+        self.num_threads
+    }
+
     /// Trains a model from the given corpus.
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         println!("Building feature lattices...");
@@ -139,7 +159,10 @@ impl Trainer {
     }
 
     /// Extracts feature weights from the trained model
-    fn extract_feature_weights_static(raw_model: &rucrf::RawModel, _surface_count: usize) -> Vec<f64> {
+    fn extract_feature_weights_static(
+        raw_model: &rucrf::RawModel,
+        _surface_count: usize,
+    ) -> Vec<f64> {
         // Use vibrato's approach: merge the model to get weights
         match raw_model.merge() {
             Ok(merged_model) => {
@@ -165,7 +188,10 @@ impl Trainer {
                 weights
             }
             Err(e) => {
-                println!("WARNING: Failed to merge model for weight extraction: {}", e);
+                println!(
+                    "WARNING: Failed to merge model for weight extraction: {}",
+                    e
+                );
                 Vec::new()
             }
         }
@@ -260,7 +286,8 @@ impl Trainer {
 
         // Store the new mapping
         if let Some(first_char) = token.surface().chars().next() {
-            self.label_id_map.entry(token.surface().to_string())
+            self.label_id_map
+                .entry(token.surface().to_string())
                 .or_insert_with(HashMap::new)
                 .insert(first_char, new_id);
         }
@@ -308,7 +335,11 @@ impl Trainer {
         // by the dictionary's character definitions
         if let Some(first_char) = token.surface().chars().next() {
             // Use the dictionary's character definition to validate character types
-            let categories = self.config.dict.character_definition.lookup_categories(first_char);
+            let categories = self
+                .config
+                .dict
+                .character_definition
+                .lookup_categories(first_char);
             if !categories.is_empty() {
                 return true;
             }
@@ -324,32 +355,51 @@ impl Trainer {
         let features: Vec<String> = token.feature().split(',').map(|s| s.to_string()).collect();
 
         // Extract different types of features
-        let mut unigram_features_u32 = self.config.feature_extractor
+        let mut unigram_features_u32 = self
+            .config
+            .feature_extractor
             .extract_unigram_feature_ids(&features, 0);
-        let mut left_features_u32 = self.config.feature_extractor
+        let mut left_features_u32 = self
+            .config
+            .feature_extractor
             .extract_left_feature_ids(&features);
-        let mut right_features_u32 = self.config.feature_extractor
+        let mut right_features_u32 = self
+            .config
+            .feature_extractor
             .extract_right_feature_ids(&features);
 
         // Apply feature rewriters to transform features
-        unigram_features_u32 = self.config.unigram_rewriter
+        unigram_features_u32 = self
+            .config
+            .unigram_rewriter
             .rewrite_features(&unigram_features_u32);
-        left_features_u32 = self.config.left_rewriter
+        left_features_u32 = self
+            .config
+            .left_rewriter
             .rewrite_features(&left_features_u32);
-        right_features_u32 = self.config.right_rewriter
+        right_features_u32 = self
+            .config
+            .right_rewriter
             .rewrite_features(&right_features_u32);
 
         // Convert to NonZeroU32
-        let unigram_features: Vec<NonZeroU32> = unigram_features_u32.into_iter()
+        let unigram_features: Vec<NonZeroU32> = unigram_features_u32
+            .into_iter()
             .filter_map(|id| NonZeroU32::new(id))
             .collect();
-        let left_features: Vec<Option<NonZeroU32>> = left_features_u32.into_iter()
+        let left_features: Vec<Option<NonZeroU32>> = left_features_u32
+            .into_iter()
             .map(|id| NonZeroU32::new(id))
             .collect();
-        let right_features: Vec<Option<NonZeroU32>> = right_features_u32.into_iter()
+        let right_features: Vec<Option<NonZeroU32>> = right_features_u32
+            .into_iter()
             .map(|id| NonZeroU32::new(id))
             .collect();
 
-        Ok(rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features))
+        Ok(rucrf::FeatureSet::new(
+            &unigram_features,
+            &right_features,
+            &left_features,
+        ))
     }
 }

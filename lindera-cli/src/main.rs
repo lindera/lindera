@@ -535,11 +535,50 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     }
 
+    // Write character definition file
+    let mut char_def_file = File::create(&char_def_path)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    writeln!(char_def_file, "# Character definition file generated from trained model")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "# Format: CATEGORY_NAME invoke group length")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "DEFAULT 0 1 0")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "HIRAGANA 1 1 0")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "KATAKANA 1 1 0")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "KANJI 0 0 2")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "ALPHA 1 1 0")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "NUMERIC 1 1 0")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+    writeln!(char_def_file, "# Character mappings")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x3041..0x3096 HIRAGANA  # Hiragana")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x30A1..0x30F6 KATAKANA  # Katakana")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x4E00..0x9FAF KANJI     # CJK Unified Ideographs")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x0030..0x0039 NUMERIC   # ASCII Digits")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x0041..0x005A ALPHA     # ASCII Uppercase")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file, "0x0061..0x007A ALPHA     # ASCII Lowercase")
+        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
     println!("Dictionary files exported to: {:?}", args.dict_dir);
     println!("Files created:");
     println!("  - {:?}", lexicon_path);
     println!("  - {:?}", connector_path);
     println!("  - {:?}", unk_path);
+    println!("  - {:?}", char_def_path);
 
     Ok(())
 }

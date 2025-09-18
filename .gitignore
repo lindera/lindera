@@ -16,3 +16,6 @@ flamegraph.svg
 .claude
 .mcp.json
 .serena
+
+# Training outputs
+examples/training/trained_*
