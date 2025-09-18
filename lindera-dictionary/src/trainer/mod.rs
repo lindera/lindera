@@ -139,15 +139,36 @@ impl Trainer {
     }
 
     /// Extracts feature weights from the trained model
-    fn extract_feature_weights_static(_raw_model: &rucrf::RawModel, surface_count: usize) -> Vec<f64> {
-        // For now, generate some dummy weights based on surfaces
-        // In a full implementation, this would extract actual weights from the model
-        let mut weights = Vec::new();
-        for i in 0..surface_count {
-            // Simple deterministic weight based on index
-            weights.push((i as f64).sin() * 0.1); // Small weights for initial training
+    fn extract_feature_weights_static(raw_model: &rucrf::RawModel, _surface_count: usize) -> Vec<f64> {
+        // Use vibrato's approach: merge the model to get weights
+        match raw_model.merge() {
+            Ok(merged_model) => {
+                let mut weights = Vec::new();
+
+                // Extract weights from feature sets (similar to vibrato's implementation)
+                for feature_set in &merged_model.feature_sets {
+                    weights.push(feature_set.weight);
+                }
+
+                // Extract weights from connection matrix (bigram weights)
+                for hm in &merged_model.matrix {
+                    for &w in hm.values() {
+                        weights.push(w);
+                    }
+                }
+
+                // Optionally log the extraction results (can be removed in production)
+                // println!("Extracted {} feature weights and {} connection weights",
+                //          merged_model.feature_sets.len(),
+                //          merged_model.matrix.iter().map(|hm| hm.len()).sum::<usize>());
+
+                weights
+            }
+            Err(e) => {
+                println!("WARNING: Failed to merge model for weight extraction: {}", e);
+                Vec::new()
+            }
         }
-        weights
     }
 
     /// Extracts labels from the configuration

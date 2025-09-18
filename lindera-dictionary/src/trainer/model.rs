@@ -10,6 +10,8 @@ pub struct SerializableModel {
     pub feature_weights: Vec<f64>,
     /// Label information
     pub labels: Vec<String>,
+    /// Part-of-speech information for each label
+    pub pos_info: Vec<String>,
     /// Feature templates
     pub feature_templates: Vec<String>,
     /// Model metadata
@@ -57,6 +59,7 @@ impl Model {
         let serializable_model = SerializableModel {
             feature_weights,
             labels: self.labels.clone(),
+            pos_info: self.extract_pos_info(),
             feature_templates: self.extract_feature_templates(),
             metadata: ModelMetadata {
                 version: "1.0.0".to_string(),
@@ -76,12 +79,49 @@ impl Model {
 
     /// Extracts feature weights from the raw CRF model
     fn extract_feature_weights(&self) -> Vec<f64> {
-        // Extract actual weights from the trained raw CRF model
-        // The raw model contains the learned feature weights
-        let weights = self.raw_model.weights();
+        // Use vibrato's approach: merge the model to get weights
+        match self.raw_model.merge() {
+            Ok(merged_model) => {
+                let mut weights = Vec::new();
 
-        // Convert weights to Vec<f64> for compatibility
-        weights.iter().copied().collect()
+                // Extract weights from feature sets (similar to vibrato's implementation)
+                for feature_set in &merged_model.feature_sets {
+                    weights.push(feature_set.weight);
+                }
+
+                // Extract weights from connection matrix (bigram weights)
+                for hm in &merged_model.matrix {
+                    for &w in hm.values() {
+                        weights.push(w);
+                    }
+                }
+
+                weights
+            }
+            Err(_) => {
+                // Fall back to empty vector if merge fails
+                Vec::new()
+            }
+        }
+    }
+
+    /// Extracts part-of-speech information for each label
+    fn extract_pos_info(&self) -> Vec<String> {
+        // Get POS info from config for each surface
+        let mut pos_info = Vec::new();
+
+        for surface in &self.labels {
+            // Look up the surface in the lexicon to get its POS info
+            if let Some(entry) = self.config.lexicon.get(surface) {
+                // Join the features with commas
+                pos_info.push(entry.features.join(","));
+            } else {
+                // Default POS for unknown words
+                pos_info.push("名詞,一般,*,*,*,*,*,*,*".to_string());
+            }
+        }
+
+        pos_info
     }
 
     /// Extracts feature templates used in training

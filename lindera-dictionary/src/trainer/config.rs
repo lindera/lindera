@@ -1,5 +1,6 @@
 use std::io::{BufReader, Read};
 use std::path::Path;
+use std::collections::HashMap;
 
 use anyhow::Result;
 
@@ -17,6 +18,8 @@ use super::feature_rewriter::FeatureRewriter;
 pub struct TrainerConfig {
     pub(crate) dict: Dictionary,
     pub(crate) surfaces: Vec<String>,
+    /// Maps surface forms to their original feature strings from the lexicon
+    pub(crate) surface_features: HashMap<String, String>,
     pub(crate) feature_extractor: FeatureExtractor,
     pub(crate) unigram_rewriter: FeatureRewriter,
     pub(crate) left_rewriter: FeatureRewriter,
@@ -47,8 +50,9 @@ impl TrainerConfig {
         R4: Read,
         R5: Read,
     {
-        // Parse lexicon to extract surfaces
+        // Parse lexicon to extract surfaces and features
         let mut surfaces = Vec::new();
+        let mut surface_features = HashMap::new();
         let mut lexicon_content = String::new();
         {
             let mut lexicon_reader = BufReader::new(lexicon_rdr);
@@ -60,8 +64,12 @@ impl TrainerConfig {
                 continue;
             }
             let parts: Vec<&str> = line.split(',').collect();
-            if !parts.is_empty() {
-                surfaces.push(parts[0].to_string());
+            if parts.len() >= 5 {
+                let surface = parts[0].to_string();
+                // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
+                let features = parts[4..].join(",");
+                surfaces.push(surface.clone());
+                surface_features.insert(surface, features);
             }
         }
 
@@ -99,6 +107,7 @@ impl TrainerConfig {
         Ok(Self {
             dict,
             surfaces,
+            surface_features,
             feature_extractor,
             unigram_rewriter,
             left_rewriter,

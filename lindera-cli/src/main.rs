@@ -449,20 +449,68 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(lexicon_file, "surface,left_id,right_id,cost,features")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    // Calculate weight scale factor from saved feature weights
+    let mut weight_abs_max = 0f64;
+    for &weight in &model.feature_weights {
+        weight_abs_max = weight_abs_max.max(weight.abs());
+    }
+    let weight_scale_factor = if weight_abs_max > 0.0 {
+        f64::from(i16::MAX) / weight_abs_max
+    } else {
+        1.0
+    };
+
+    // Filter out unknown word category labels (DEFAULT, HIRAGANA, etc.)
+    // These are internal processing labels and should not appear in the dictionary
+    let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
+
+    // Create POS-based connection ID mapping
+    use std::collections::HashMap;
+    let mut pos_to_id: HashMap<String, u32> = HashMap::new();
+    let mut next_id = 0u32;
+
+    let mut valid_entry_index = 0;
     for (i, label) in model.labels.iter().enumerate() {
-        let cost = if i < model.feature_weights.len() {
-            (model.feature_weights[i] * 1000.0) as i32
+        // Skip unknown word category labels
+        if unk_categories.contains(&label.as_str()) {
+            continue;
+        }
+
+        // Get POS info for this label
+        let pos_info = if valid_entry_index < model.pos_info.len() {
+            &model.pos_info[valid_entry_index]
         } else {
-            1000
+            "名詞,一般,*,*,*,*,*,*,*"
         };
-        writeln!(lexicon_file, "{},{},{},{},名詞,一般,*,*,*,*,*,*,*", label, 0, 0, cost)
+
+        // Extract the main POS category for connection ID assignment
+        let main_pos = pos_info.split(',').next().unwrap_or("名詞");
+        let connection_id = *pos_to_id.entry(main_pos.to_string()).or_insert_with(|| {
+            let id = next_id;
+            next_id += 1;
+            id
+        });
+
+        // Calculate cost from feature weights
+        let cost = if valid_entry_index < model.feature_weights.len() {
+            // Use vibrato's cost calculation method
+            (-model.feature_weights[valid_entry_index] * weight_scale_factor) as i32
+        } else {
+            1000  // Default cost
+        };
+
+        writeln!(lexicon_file, "{},{},{},{},{}", label, connection_id, connection_id, cost, pos_info)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        valid_entry_index += 1;
     }
 
-    // Write connection matrix (simple identity matrix)
+    let num_pos_categories = next_id;
+
+    // Write connection matrix based on actual POS categories
     let mut connector_file = File::create(&connector_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let size = 6; // Basic category count
+    let size = std::cmp::max(num_pos_categories, 1); // Ensure at least 1x1 matrix
     writeln!(connector_file, "{} {}", size, size)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     for i in 0..size {
