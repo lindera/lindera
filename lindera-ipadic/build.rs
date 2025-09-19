@@ -13,12 +13,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let fetch_params = FetchParams {
-        file_name: "mecab-ipadic-2.7.0-20070801.tar.gz",
-        input_dir: "mecab-ipadic-2.7.0-20070801",
+        file_name: "mecab-ipadic-2.7.0-20250920.tar.gz",
+        input_dir: "mecab-ipadic-2.7.0-20250920",
         output_dir: "lindera-ipadic",
         dummy_input: "テスト,1288,1288,-1000,名詞,固有名詞,一般,*,*,*,*,*,*\n",
-        download_urls: &["https://Lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz"],
-        md5_hash: "3311c7c71a869ca141e1b8bde0c8666c",
+        download_urls: &["https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"],
+        md5_hash: "a95c409f12f1023fce8ef91f991ef042",
     };
 
     // Read and deserialize metadata directly from JSON file
