@@ -102,10 +102,7 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
                 warn!("left id and right id are not same: {e:?}");
             }
             WordEntry {
-                word_id: WordId {
-                    id: u32::MAX,
-                    is_system: true,
-                },
+                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, u32::MAX),
                 left_id: e.left_id as u16,
                 right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,

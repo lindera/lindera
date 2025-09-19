@@ -56,7 +56,7 @@ impl Corpus {
 
     /// Creates a corpus from a reader.
     ///
-    /// The format should be compatible with Vibrato's tokenized output:
+    /// The format should be compatible with standard tokenized output:
     /// Each line contains a token with tab-separated surface and features.
     /// Sentences are separated by empty lines.
     pub fn from_reader<R: Read>(reader: R) -> Result<Self> {

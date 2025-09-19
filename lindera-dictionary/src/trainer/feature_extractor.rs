@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range;
+use std::num::NonZeroU32;
 use regex::Regex;
 
 /// Feature type for template parsing
@@ -17,21 +18,21 @@ struct ParsedTemplate {
     captures: Vec<(Range<usize>, FeatureType)>,
 }
 
-/// Feature extractor for training with Vibrato-level capabilities.
+/// Feature extractor for training with advanced capabilities.
 pub struct FeatureExtractor {
     unigram_templates: Vec<ParsedTemplate>,
     left_templates: Vec<ParsedTemplate>,
     right_templates: Vec<ParsedTemplate>,
-    unigram_feature_ids: HashMap<String, u32>,
-    left_feature_ids: HashMap<String, u32>,
-    right_feature_ids: HashMap<String, u32>,
+    pub unigram_feature_ids: HashMap<String, NonZeroU32>,
+    pub left_feature_ids: HashMap<String, NonZeroU32>,
+    pub right_feature_ids: HashMap<String, NonZeroU32>,
     unigram_next_id: u32,
     left_next_id: u32,
     right_next_id: u32,
 }
 
 impl FeatureExtractor {
-    /// Creates a new feature extractor with Vibrato-style template parsing.
+    /// Creates a new feature extractor with advanced template parsing.
     pub fn new() -> Self {
         Self {
             unigram_templates: Vec::new(),
@@ -46,7 +47,7 @@ impl FeatureExtractor {
         }
     }
 
-    /// Creates a new feature extractor from templates (Vibrato-style).
+    /// Creates a new feature extractor from templates.
     pub fn from_templates<S>(
         unigram_templates: &[S],
         bigram_templates: &[(S, S)],
@@ -54,7 +55,7 @@ impl FeatureExtractor {
     where
         S: ToString,
     {
-        // Regex patterns matching Vibrato's implementation
+        // Regex patterns for advanced feature parsing
         let unigram_feature_pattern = Regex::new(r"%((F|F\?)\[([0-9]+)\]|t)").unwrap();
         let left_feature_pattern = Regex::new(r"%(L|L\?)\[([0-9]+)\]").unwrap();
         let right_feature_pattern = Regex::new(r"%(R|R\?)\[([0-9]+)\]").unwrap();
@@ -208,42 +209,40 @@ impl FeatureExtractor {
         Some(result)
     }
 
-    /// Get or create feature ID
-    fn get_or_create_unigram_feature_id(&mut self, feature_str: &str) -> u32 {
+    /// Get or create feature ID (with NonZeroU32)
+    fn get_or_create_unigram_feature_id(&mut self, feature_str: &str) -> NonZeroU32 {
         if let Some(&id) = self.unigram_feature_ids.get(feature_str) {
             id
         } else {
-            let id = self.unigram_next_id;
-            self.unigram_feature_ids.insert(feature_str.to_string(), id);
-            self.unigram_next_id += 1;
-            id
+            let new_id = NonZeroU32::new(self.unigram_next_id).unwrap();
+            let feature_id = *self.unigram_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+            if new_id == feature_id {
+                self.unigram_next_id += 1;
+            }
+            feature_id
         }
     }
 
-    fn get_or_create_left_feature_id(&mut self, feature_str: &str) -> u32 {
-        if let Some(&id) = self.left_feature_ids.get(feature_str) {
-            id
-        } else {
-            let id = self.left_next_id;
-            self.left_feature_ids.insert(feature_str.to_string(), id);
+    fn get_or_create_left_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
+        let new_id = NonZeroU32::new(self.left_next_id).unwrap();
+        let feature_id = *self.left_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+        if new_id == feature_id {
             self.left_next_id += 1;
-            id
         }
+        Some(feature_id)
     }
 
-    fn get_or_create_right_feature_id(&mut self, feature_str: &str) -> u32 {
-        if let Some(&id) = self.right_feature_ids.get(feature_str) {
-            id
-        } else {
-            let id = self.right_next_id;
-            self.right_feature_ids.insert(feature_str.to_string(), id);
+    fn get_or_create_right_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
+        let new_id = NonZeroU32::new(self.right_next_id).unwrap();
+        let feature_id = *self.right_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+        if new_id == feature_id {
             self.right_next_id += 1;
-            id
         }
+        Some(feature_id)
     }
 
-    /// Extracts unigram feature IDs from features (Vibrato-style).
-    pub fn extract_unigram_feature_ids(&mut self, features: &[String], cate_id: u32) -> Vec<u32> {
+    /// Extracts unigram feature IDs from features.
+    pub fn extract_unigram_feature_ids(&mut self, features: &[String], cate_id: u32) -> Vec<NonZeroU32> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
@@ -258,8 +257,8 @@ impl FeatureExtractor {
         feature_ids
     }
 
-    /// Extracts left context feature IDs from features (Vibrato-style).
-    pub fn extract_left_feature_ids(&mut self, features: &[String]) -> Vec<u32> {
+    /// Extracts left context feature IDs from features (with Optional).
+    pub fn extract_left_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
@@ -268,14 +267,16 @@ impl FeatureExtractor {
             if let Some(feature_str) = self.apply_parsed_template(&template, features, 0) {
                 let id = self.get_or_create_left_feature_id(&feature_str);
                 feature_ids.push(id);
+            } else {
+                feature_ids.push(None); // Handle undefined features
             }
         }
 
         feature_ids
     }
 
-    /// Extracts right context feature IDs from features (Vibrato-style).
-    pub fn extract_right_feature_ids(&mut self, features: &[String]) -> Vec<u32> {
+    /// Extracts right context feature IDs from features (with Optional).
+    pub fn extract_right_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
@@ -284,6 +285,8 @@ impl FeatureExtractor {
             if let Some(feature_str) = self.apply_parsed_template(&template, features, 0) {
                 let id = self.get_or_create_right_feature_id(&feature_str);
                 feature_ids.push(id);
+            } else {
+                feature_ids.push(None); // Handle undefined features
             }
         }
 

@@ -11,18 +11,50 @@ use crate::mode::Mode;
 
 const EOS_NODE: EdgeId = EdgeId(1u32);
 
+/// Type of lexicon containing the word
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum LexType {
+    /// System dictionary (base dictionary)
+    System,
+    /// User dictionary (additional vocabulary)
+    User,
+    /// Unknown words (OOV handling)
+    Unknown,
+}
+
+impl Default for LexType {
+    fn default() -> Self {
+        LexType::System
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WordId {
     pub id: u32,
     pub is_system: bool,
+    pub lex_type: LexType,
 }
 
 impl WordId {
-    pub fn is_unknown(&self) -> bool {
-        self.id == u32::MAX
+    /// Creates a new WordId with specified lexicon type
+    pub fn new(lex_type: LexType, id: u32) -> Self {
+        WordId {
+            id,
+            is_system: matches!(lex_type, LexType::System),
+            lex_type,
+        }
     }
+
+    pub fn is_unknown(&self) -> bool {
+        self.id == u32::MAX || matches!(self.lex_type, LexType::Unknown)
+    }
+
     pub fn is_system(&self) -> bool {
         self.is_system
+    }
+
+    pub fn lex_type(&self) -> LexType {
+        self.lex_type
     }
 }
 
@@ -31,6 +63,7 @@ impl Default for WordId {
         WordId {
             id: u32::MAX,
             is_system: true,
+            lex_type: LexType::System,
         }
     }
 }
@@ -63,10 +96,10 @@ impl WordEntry {
     }
 
     pub fn deserialize(data: &[u8], is_system_entry: bool) -> WordEntry {
-        let word_id = WordId {
-            id: LittleEndian::read_u32(&data[0..4]),
-            is_system: is_system_entry,
-        };
+        let word_id = WordId::new(
+            if is_system_entry { LexType::System } else { LexType::User },
+            LittleEndian::read_u32(&data[0..4])
+        );
         let word_cost = LittleEndian::read_i16(&data[4..6]);
         let left_id = LittleEndian::read_u16(&data[6..8]);
         let right_id = LittleEndian::read_u16(&data[8..10]);

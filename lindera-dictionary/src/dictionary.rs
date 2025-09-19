@@ -28,6 +28,7 @@ use crate::error::LinderaErrorKind;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
+
 #[derive(Clone)]
 pub struct Dictionary {
     pub prefix_dictionary: PrefixDictionary,

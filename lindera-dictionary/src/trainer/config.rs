@@ -1,6 +1,6 @@
+use std::collections::HashMap;
 use std::io::{BufReader, Read};
 use std::path::Path;
-use std::collections::HashMap;
 
 use anyhow::Result;
 
@@ -75,7 +75,7 @@ impl TrainerConfig {
             }
         }
 
-        // Create feature extractor from templates (Vibrato-style)
+        // Create feature extractor from templates
         let mut feature_content = String::new();
         {
             let mut template_reader = BufReader::new(feature_templates_rdr);
@@ -90,7 +90,7 @@ impl TrainerConfig {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
             }
-            // Parse template format (Vibrato-style)
+            // Parse template format
             if line.starts_with("UNIGRAM:") {
                 unigram_templates.push(line[8..].to_string());
             } else if line.starts_with("BIGRAM:") {
@@ -106,7 +106,8 @@ impl TrainerConfig {
         }
 
         // Create feature extractor with parsed templates
-        let feature_extractor = FeatureExtractor::from_templates(&unigram_templates, &bigram_templates);
+        let feature_extractor =
+            FeatureExtractor::from_templates(&unigram_templates, &bigram_templates);
 
         // Create feature rewriters
         let unigram_rewriter = FeatureRewriter::new();
@@ -144,9 +145,18 @@ impl TrainerConfig {
         &self.user_lexicon
     }
 
-    /// Add user lexicon entry (Vibrato-style user dictionary support)
+    /// Add user lexicon entry (user dictionary support)
     pub fn add_user_lexicon_entry(&mut self, surface: String, features: String) {
         self.user_lexicon.insert(surface, features);
+    }
+
+    /// Get features for a given surface form
+    pub fn get_features(&self, surface: &str) -> Option<String> {
+        // First check user lexicon, then surface features
+        self.user_lexicon
+            .get(surface)
+            .or_else(|| self.surface_features.get(surface))
+            .cloned()
     }
 
     /// Load user lexicon from CSV content
@@ -165,16 +175,6 @@ impl TrainerConfig {
             }
         }
         Ok(())
-    }
-
-    /// Get features for a surface, checking both main lexicon and user lexicon
-    pub fn get_features(&self, surface: &str) -> Option<&String> {
-        // Check user lexicon first (higher priority)
-        if let Some(features) = self.user_lexicon.get(surface) {
-            Some(features)
-        } else {
-            self.surface_features.get(surface)
-        }
     }
 
     /// Creates a new trainer configuration from file paths.
@@ -277,8 +277,8 @@ impl TrainerConfig {
                         let end = u32::from_str_radix(&range_parts.1[2..], 16)?;
 
                         // Get or create category index
-                        let cat_idx = *category_map.entry(category.to_string())
-                            .or_insert_with(|| {
+                        let cat_idx =
+                            *category_map.entry(category.to_string()).or_insert_with(|| {
                                 let idx = category_names.len();
                                 category_names.push(category.to_string());
                                 // Default category data - will be overridden if defined
@@ -303,17 +303,16 @@ impl TrainerConfig {
                     let length = parts[3].parse::<u8>().unwrap_or(0);
 
                     // Get or create category index
-                    let cat_idx = *category_map.entry(name.to_string())
-                        .or_insert_with(|| {
-                            let idx = category_names.len();
-                            category_names.push(name.to_string());
-                            category_definitions.push(CategoryData {
-                                invoke,
-                                group,
-                                length: length.into(),
-                            });
-                            idx
+                    let cat_idx = *category_map.entry(name.to_string()).or_insert_with(|| {
+                        let idx = category_names.len();
+                        category_names.push(name.to_string());
+                        category_definitions.push(CategoryData {
+                            invoke,
+                            group,
+                            length: length.into(),
                         });
+                        idx
+                    });
 
                     // Update category definition if it already exists
                     if cat_idx < category_definitions.len() {

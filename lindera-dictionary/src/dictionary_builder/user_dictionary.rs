@@ -117,10 +117,7 @@ impl UserDictionaryBuilder {
             };
 
             word_entry_map.entry(surface).or_default().push(WordEntry {
-                word_id: WordId {
-                    id: row_id as u32,
-                    is_system: false,
-                },
+                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::User, row_id as u32),
                 word_cost,
                 left_id,
                 right_id,

@@ -131,11 +131,7 @@ struct TrainArgs {
         help = "Unknown word file (unk.def) to be weighted"
     )]
     seed_unk: PathBuf,
-    #[clap(
-        short = 't',
-        long = "corpus",
-        help = "Corpus file to be trained"
-    )]
+    #[clap(short = 't', long = "corpus", help = "Corpus file to be trained")]
     corpus: PathBuf,
     #[clap(
         short = 'c',
@@ -155,11 +151,7 @@ struct TrainArgs {
         help = "Rewrite rule definition file (rewrite.def)"
     )]
     rewrite_def: PathBuf,
-    #[clap(
-        short = 'o',
-        long = "model-out",
-        help = "Output model file"
-    )]
+    #[clap(short = 'o', long = "model-out", help = "Output model file")]
     model_out: PathBuf,
     #[clap(
         long = "lambda",
@@ -173,11 +165,7 @@ struct TrainArgs {
         help = "Maximum number of iterations"
     )]
     max_iter: u64,
-    #[clap(
-        long = "num-threads",
-        default_value = "1",
-        help = "Number of threads"
-    )]
+    #[clap(long = "num-threads", default_value = "1", help = "Number of threads")]
     num_threads: usize,
 }
 
@@ -381,8 +369,8 @@ fn build(args: BuildArgs) -> LinderaResult<()> {
 
 #[cfg(feature = "train")]
 fn train(args: TrainArgs) -> LinderaResult<()> {
-    use std::fs::File;
     use lindera::dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+    use std::fs::File;
 
     // Load configuration
     let config = TrainerConfig::from_paths(
@@ -391,7 +379,8 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
         &args.seed_unk,
         &args.feature_def,
         &args.rewrite_def,
-    ).map_err(|err| LinderaErrorKind::Args.with_error(err))?;
+    )
+    .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Initialize trainer
     let trainer = Trainer::new(config)
@@ -403,19 +392,21 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     // Load corpus
     let corpus_file = File::open(&args.corpus)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let corpus = Corpus::from_reader(corpus_file)
-        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+    let corpus =
+        Corpus::from_reader(corpus_file).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     println!("Training with {} examples...", corpus.len());
 
     // Train model
-    let model = trainer.train(corpus)
+    let model = trainer
+        .train(corpus)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Save model
     let mut output_file = File::create(&args.model_out)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    model.write_model(&mut output_file)
+    model
+        .write_model(&mut output_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     println!("Model saved to {:?}", args.model_out);
@@ -424,14 +415,14 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
 
 #[cfg(feature = "train")]
 fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
+    use lindera::dictionary::trainer::SerializableModel;
     use std::fs::{self, File};
     use std::io::Write;
-    use lindera::dictionary::trainer::SerializableModel;
 
     // Load trained model
     let model_file = File::open(&args.model_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let model: SerializableModel = serde_json::from_reader(model_file)
+    let model: SerializableModel = lindera::dictionary::trainer::Model::read_model(model_file)
         .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
 
     // Create output directory
@@ -444,103 +435,33 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
     let unk_path = args.dict_dir.join("unk.def");
     let char_def_path = args.dict_dir.join("char.def");
 
-    // Write lexicon file
+    // Write lexicon file using SerializableModel methods
     let mut lexicon_file = File::create(&lexicon_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(lexicon_file, "surface,left_id,right_id,cost,features")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    // Calculate weight scale factor from saved feature weights
-    let mut weight_abs_max = 0f64;
-    for &weight in &model.feature_weights {
-        weight_abs_max = weight_abs_max.max(weight.abs());
-    }
-    let weight_scale_factor = if weight_abs_max > 0.0 {
-        f64::from(i16::MAX) / weight_abs_max
-    } else {
-        1.0
-    };
+    model.write_lexicon(&mut lexicon_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    // Filter out unknown word category labels (DEFAULT, HIRAGANA, etc.)
-    // These are internal processing labels and should not appear in the dictionary
-    let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
-
-    // Create POS-based connection ID mapping
-    use std::collections::HashMap;
-    let mut pos_to_id: HashMap<String, u32> = HashMap::new();
-    let mut next_id = 0u32;
-
-    let mut valid_entry_index = 0;
-    for (i, label) in model.labels.iter().enumerate() {
-        // Skip unknown word category labels
-        if unk_categories.contains(&label.as_str()) {
-            continue;
-        }
-
-        // Get POS info for this label
-        let pos_info = if valid_entry_index < model.pos_info.len() {
-            &model.pos_info[valid_entry_index]
-        } else {
-            "名詞,一般,*,*,*,*,*,*,*"
-        };
-
-        // Extract the main POS category for connection ID assignment
-        let main_pos = pos_info.split(',').next().unwrap_or("名詞");
-        let connection_id = *pos_to_id.entry(main_pos.to_string()).or_insert_with(|| {
-            let id = next_id;
-            next_id += 1;
-            id
-        });
-
-        // Calculate cost from feature weights
-        let cost = if valid_entry_index < model.feature_weights.len() {
-            // Use vibrato's cost calculation method
-            (-model.feature_weights[valid_entry_index] * weight_scale_factor) as i32
-        } else {
-            1000  // Default cost
-        };
-
-        writeln!(lexicon_file, "{},{},{},{},{}", label, connection_id, connection_id, cost, pos_info)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-
-        valid_entry_index += 1;
-    }
-
-    let num_pos_categories = next_id;
-
-    // Write connection matrix based on actual POS categories
+    // Write connection matrix
     let mut connector_file = File::create(&connector_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let size = std::cmp::max(num_pos_categories, 1); // Ensure at least 1x1 matrix
-    writeln!(connector_file, "{} {}", size, size)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    for i in 0..size {
-        for j in 0..size {
-            let cost = if i == j { 0 } else { 100 };
-            if j == size - 1 {
-                writeln!(connector_file, "{}", cost)
-                    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            } else {
-                write!(connector_file, "{} ", cost)
-                    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-            }
-        }
-    }
+    model.write_connection_costs(&mut connector_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write unknown word definitions
     let mut unk_file = File::create(&unk_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let categories = vec!["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
-    for category in &categories {
-        writeln!(unk_file, "{},{},{},{},名詞,一般,*,*,*,*,*,*,*", category, 0, 0, 2000)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    }
+    model.write_unknown_dictionary(&mut unk_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write character definition file
     let mut char_def_file = File::create(&char_def_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-    writeln!(char_def_file, "# Character definition file generated from trained model")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(
+        char_def_file,
+        "# Character definition file generated from trained model"
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "# Format: CATEGORY_NAME invoke group length")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "DEFAULT 0 1 0")
@@ -555,8 +476,7 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "NUMERIC 1 1 0")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(char_def_file).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     writeln!(char_def_file, "# Character mappings")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
@@ -564,8 +484,11 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "0x30A1..0x30F6 KATAKANA  # Katakana")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x4E00..0x9FAF KANJI     # CJK Unified Ideographs")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    writeln!(
+        char_def_file,
+        "0x4E00..0x9FAF KANJI     # CJK Unified Ideographs"
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "0x0030..0x0039 NUMERIC   # ASCII Digits")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     writeln!(char_def_file, "0x0041..0x005A ALPHA     # ASCII Uppercase")
