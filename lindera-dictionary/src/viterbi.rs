@@ -444,7 +444,7 @@ impl Lattice {
 
 #[cfg(test)]
 mod tests {
-    use crate::viterbi::{WordEntry, WordId};
+    use crate::viterbi::{LexType, WordEntry, WordId};
 
     #[test]
     fn test_word_entry() {
@@ -453,6 +453,7 @@ mod tests {
             word_id: WordId {
                 id: 1u32,
                 is_system: true,
+                lex_type: LexType::System,
             },
             word_cost: -17i16,
             left_id: 1411u16,

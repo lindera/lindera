@@ -94,7 +94,7 @@ impl Model {
     /// # Arguments
     ///
     /// * `rdr` - Read sink of the user-defined lexicon file.
-    pub fn read_user_lexicon<R: Read>(&mut self, mut rdr: R) -> Result<()> {
+    pub fn read_user_lexicon<R: Read>(&mut self, rdr: R) -> Result<()> {
         use std::io::BufRead;
         use std::io::BufReader;
 
@@ -154,7 +154,11 @@ impl Model {
                     self.config.feature_extractor.extract_right_feature_ids(&feature_vec)
                 };
 
-                let feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+                let _feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+                // TODO: Integrate feature_set into provider for proper user lexicon feature handling
+                // Currently, we cannot access the provider from this context, which limits
+                // the integration of user lexicon features into the trained model.
+                // This should be refactored to allow proper feature integration.
 
                 // Create a label ID without modifying the provider
                 // Since we can't clone the provider, we'll use a fixed ID based on entry count
@@ -405,22 +409,32 @@ impl Model {
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
         // Get merged model for proper connection cost calculation
         let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let _weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+
+        // Calculate matrix dimensions dynamically
+        let max_context_id = self.calculate_max_context_id();
+        let matrix_size = std::cmp::max(
+            max_context_id as usize + 1,
+            std::cmp::max(
+                merged_model.right_conn_to_left_feats.len() + 1,
+                merged_model.left_conn_to_right_feats.len() + 1
+            )
+        );
 
         // Write matrix dimensions
-        writeln!(writer, "{} {}",
-            merged_model.right_conn_to_left_feats.len() + 1,
-            merged_model.left_conn_to_right_feats.len() + 1)?;
+        writeln!(writer, "{} {}", matrix_size, matrix_size)?;
 
-        // Write connection costs from merged model
+        // Write connection costs using trained model calculations
         for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
             let mut pairs: Vec<_> = hm.iter().map(|(&j, &w)| (j, w)).collect();
             pairs.sort_unstable_by_key(|&(k, _)| k);
-            for (left_conn_id, w) in pairs {
+            for (left_conn_id, _w) in pairs {
+                // Use get_trained_connection_cost method for consistency
+                let cost = self.get_trained_connection_cost(left_conn_id as usize, right_conn_id);
                 writeln!(writer, "{} {} {}",
                     right_conn_id,
                     left_conn_id,
-                    (-w * weight_scale_factor) as i16)?;
+                    cost)?;
             }
         }
 
@@ -463,10 +477,12 @@ impl Model {
         let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
 
         for (surface, features) in self.config.user_lexicon() {
-            // For user lexicon, use default parameters or look up in merged model
+            // For user lexicon, use scaled costs following Vibrato's approach
             let (left_id, right_id) = self.infer_context_ids(surface, features);
-            let cost = self.get_user_word_cost(surface);
-            writeln!(writer, "{},{},{},{},{}", surface, left_id, right_id, cost, features)?;
+            let raw_cost = self.get_user_word_cost(surface);
+            // Apply weight scaling to ensure consistency with trained model weights
+            let scaled_cost = (raw_cost as f64 * weight_scale_factor / 1000.0) as i32;
+            writeln!(writer, "{},{},{},{},{}", surface, left_id, right_id, scaled_cost, features)?;
         }
 
         Ok(())
@@ -615,9 +631,9 @@ impl Model {
     /// This is equivalent to Vibrato's write_bigram_details method.
     pub fn write_bigram_details<L, R, C>(
         &self,
-        mut left_wtr: L,
-        mut right_wtr: R,
-        mut cost_wtr: C,
+        left_wtr: L,
+        right_wtr: R,
+        cost_wtr: C,
     ) -> Result<()>
     where
         L: Write,
@@ -856,7 +872,16 @@ impl SerializableModel {
         ];
 
         for (i, (category, features)) in categories.iter().enumerate() {
-            let cost = 2000i16; // Standard unknown word cost
+            // Use category-specific unknown word cost
+            let cost = match i {
+                0 => 2000, // DEFAULT
+                1 => 1800, // HIRAGANA - slightly lower cost
+                2 => 1800, // KATAKANA - slightly lower cost
+                3 => 2200, // KANJI - slightly higher cost
+                4 => 2100, // ALPHA - moderately higher cost
+                5 => 1900, // NUMERIC - lower cost for numbers
+                _ => 2000, // fallback
+            };
             writeln!(writer, "{},{},{},{},{}", category, i, i, cost, features)?;
         }
 

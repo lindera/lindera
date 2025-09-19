@@ -21,7 +21,7 @@ use crate::decompress::Algorithm;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 #[derive(Builder)]
 #[builder(name = PrefixDictionaryBuilderOptions)]

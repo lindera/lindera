@@ -96,6 +96,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter;
@@ -114,6 +115,7 @@ mod tests {
                 word_id: WordId {
                     id: 321702,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -138,6 +140,7 @@ mod tests {
                 word_id: WordId {
                     id: 374175,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -162,6 +165,7 @@ mod tests {
                 word_id: WordId {
                     id: 4294967295,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -183,6 +187,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter;
@@ -201,6 +206,7 @@ mod tests {
                 word_id: WordId {
                     id: 618177,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -233,6 +239,7 @@ mod tests {
                 word_id: WordId {
                     id: 587348,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -265,6 +272,7 @@ mod tests {
                 word_id: WordId {
                     id: 720499,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -297,6 +305,7 @@ mod tests {
                 word_id: WordId {
                     id: 216230,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -329,6 +338,7 @@ mod tests {
                 word_id: WordId {
                     id: 223781,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

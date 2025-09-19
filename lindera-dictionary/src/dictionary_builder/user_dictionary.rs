@@ -15,7 +15,7 @@ use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::error::LinderaErrorKind;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
 

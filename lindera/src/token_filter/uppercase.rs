@@ -53,6 +53,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::uppercase::UppercaseTokenFilter;
@@ -70,6 +71,7 @@ mod tests {
             word_id: WordId {
                 id: 4294967295,
                 is_system: true,
+                lex_type: LexType::System,
             },
             dictionary: &dictionary,
             user_dictionary: None,

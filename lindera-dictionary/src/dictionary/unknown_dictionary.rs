@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UnknownDictionary {

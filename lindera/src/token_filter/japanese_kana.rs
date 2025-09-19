@@ -218,6 +218,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -244,6 +245,7 @@ mod tests {
                 word_id: WordId {
                     id: 321702,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -268,6 +270,7 @@ mod tests {
                 word_id: WordId {
                     id: 374175,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -292,6 +295,7 @@ mod tests {
                 word_id: WordId {
                     id: 4294967295,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -313,6 +317,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -339,6 +344,7 @@ mod tests {
                 word_id: WordId {
                     id: 171030,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -363,6 +369,7 @@ mod tests {
                 word_id: WordId {
                     id: 298064,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -387,6 +394,7 @@ mod tests {
                 word_id: WordId {
                     id: 28502,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -411,6 +419,7 @@ mod tests {
                 word_id: WordId {
                     id: 202045,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -443,6 +452,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -469,6 +479,7 @@ mod tests {
                 word_id: WordId {
                     id: 321702,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -493,6 +504,7 @@ mod tests {
                 word_id: WordId {
                     id: 374175,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -517,6 +529,7 @@ mod tests {
                 word_id: WordId {
                     id: 4294967295,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -538,6 +551,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -564,6 +578,7 @@ mod tests {
                 word_id: WordId {
                     id: 171030,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -588,6 +603,7 @@ mod tests {
                 word_id: WordId {
                     id: 298064,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -612,6 +628,7 @@ mod tests {
                 word_id: WordId {
                     id: 28502,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -636,6 +653,7 @@ mod tests {
                 word_id: WordId {
                     id: 202045,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -668,6 +686,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -694,6 +713,7 @@ mod tests {
                 word_id: WordId {
                     id: 250023,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -718,6 +738,7 @@ mod tests {
                 word_id: WordId {
                     id: 364736,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -742,6 +763,7 @@ mod tests {
                 word_id: WordId {
                     id: 927,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -766,6 +788,7 @@ mod tests {
                 word_id: WordId {
                     id: 202045,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -798,6 +821,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_kana::{
@@ -824,6 +848,7 @@ mod tests {
                 word_id: WordId {
                     id: 151151,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -848,6 +873,7 @@ mod tests {
                 word_id: WordId {
                     id: 166998,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -872,6 +898,7 @@ mod tests {
                 word_id: WordId {
                     id: 383791,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

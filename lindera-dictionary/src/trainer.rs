@@ -229,7 +229,8 @@ impl Trainer {
     fn build_lattice(&mut self, example: &Example) -> Result<rucrf::Lattice> {
         use rucrf::{Edge, Lattice};
 
-        let input_len = example.sentence.chars().count();
+        let input_chars: Vec<char> = example.sentence.chars().collect();
+        let input_len = input_chars.len();
         let mut lattice = Lattice::new(input_len)?;
 
         // First, add positive edges (correct segmentation from training data)
@@ -255,18 +256,18 @@ impl Trainer {
                 .extract_right_feature_ids(&features);
 
             let feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
-            let feature_id = self.provider.add_feature_set(feature_set)?;
+            let _feature_id = self.provider.add_feature_set(feature_set)?;
 
-            // Create edge
-            let edge = Edge::new(pos + token_len, feature_id);
+            // Create edge using label_id (following Vibrato's approach)
+            let edge = Edge::new(pos + token_len, label_id);
             lattice.add_edge(pos, edge)?;
             positive_edges.push((pos, pos + token_len));
 
             pos += token_len;
         }
 
-        // Add simple negative edges (limited to prevent timeout)
-        // Only add 1-3 character segments as negative examples
+        // Add negative edges with proper unknown word handling (following Vibrato's approach)
+        // Generate unknown word features based on character types
         for start_pos in 0..input_len {
             let mut added_count = 0;
 
@@ -281,8 +282,24 @@ impl Trainer {
                     continue;
                 }
 
-                // Create a minimal negative edge (no features to save time)
-                let feature_set = rucrf::FeatureSet::new(&[], &[], &[]);
+                // Extract substring and determine character type for unknown word features
+                let substring: String = input_chars[start_pos..end_pos].iter().collect();
+                let first_char = substring.chars().next().unwrap_or('\0');
+                let char_type = self.get_char_type(first_char);
+
+                // Generate unknown word features based on character type
+                let unknown_feature = self.get_unknown_feature(char_type);
+                let features: Vec<String> = unknown_feature.split(',').map(|s| s.to_string()).collect();
+
+                // Extract features for unknown word
+                let unigram_features = self.config.feature_extractor
+                    .extract_unigram_feature_ids(&features, char_type as u32);
+                let left_features = self.config.feature_extractor
+                    .extract_left_feature_ids(&features);
+                let right_features = self.config.feature_extractor
+                    .extract_right_feature_ids(&features);
+
+                let feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
                 let feature_id = self.provider.add_feature_set(feature_set)?;
                 let edge = Edge::new(end_pos, feature_id);
                 lattice.add_edge(start_pos, edge)?;

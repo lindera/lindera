@@ -96,6 +96,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
 
@@ -122,6 +123,7 @@ mod tests {
                 word_id: WordId {
                     id: 36165,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -146,6 +148,7 @@ mod tests {
                 word_id: WordId {
                     id: 73246,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -170,6 +173,7 @@ mod tests {
                 word_id: WordId {
                     id: 74990,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -194,6 +198,7 @@ mod tests {
                 word_id: WordId {
                     id: 73246,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -218,6 +223,7 @@ mod tests {
                 word_id: WordId {
                     id: 74990,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -242,6 +248,7 @@ mod tests {
                 word_id: WordId {
                     id: 55831,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -266,6 +273,7 @@ mod tests {
                 word_id: WordId {
                     id: 8029,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

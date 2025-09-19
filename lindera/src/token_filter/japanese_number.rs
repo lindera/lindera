@@ -913,6 +913,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
@@ -937,6 +938,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -969,6 +971,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -1003,6 +1006,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -1036,6 +1040,7 @@ mod tests {
                     word_id: WordId {
                         id: 368893,
                         is_system: true,
+                    lex_type: LexType::System,
                     },
                     dictionary: &dictionary,
                     user_dictionary: None,
@@ -1060,6 +1065,7 @@ mod tests {
                     word_id: WordId {
                         id: 103913,
                         is_system: true,
+                    lex_type: LexType::System,
                     },
                     dictionary: &dictionary,
                     user_dictionary: None,
@@ -1091,6 +1097,7 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera_dictionary::viterbi::LexType;
         use crate::{token::Token, token_filter::TokenFilter};
 
         let config_str = r#"
@@ -1111,6 +1118,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -1143,6 +1151,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -1177,6 +1186,7 @@ mod tests {
                 word_id: WordId {
                     id: 102657,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -1210,6 +1220,7 @@ mod tests {
                     word_id: WordId {
                         id: 368893,
                         is_system: true,
+                    lex_type: LexType::System,
                     },
                     dictionary: &dictionary,
                     user_dictionary: None,
@@ -1234,6 +1245,7 @@ mod tests {
                     word_id: WordId {
                         id: 103913,
                         is_system: true,
+                    lex_type: LexType::System,
                     },
                     dictionary: &dictionary,
                     user_dictionary: None,
