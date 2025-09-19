@@ -35,7 +35,7 @@ enum Commands {
     #[cfg(feature = "train")]
     Train(TrainArgs),
     #[cfg(feature = "train")]
-    ExportDict(ExportDictArgs),
+    Export(ExportArgs),
 }
 
 #[derive(Debug, clap::Args)]
@@ -176,7 +176,7 @@ struct TrainArgs {
     about = "Export dictionary files from trained model",
     version = get_version(),
 )]
-struct ExportDictArgs {
+struct ExportArgs {
     #[clap(
         short = 'm',
         long = "model-file",
@@ -222,7 +222,7 @@ fn main() -> LinderaResult<()> {
         #[cfg(feature = "train")]
         Commands::Train(args) => train(args),
         #[cfg(feature = "train")]
-        Commands::ExportDict(args) => export_dict(args),
+        Commands::Export(args) => export(args),
     }
 }
 
@@ -414,7 +414,7 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
 }
 
 #[cfg(feature = "train")]
-fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
+fn export(args: ExportArgs) -> LinderaResult<()> {
     use lindera::dictionary::trainer::SerializableModel;
     use std::fs::{self, File};
     use std::io::Write;
@@ -422,8 +422,9 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
     // Load trained model
     let model_file = File::open(&args.model_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let model: SerializableModel = lindera::dictionary::trainer::Model::read_model(model_file)
-        .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+    let model: SerializableModel =
+        lindera::dictionary::trainer::model::Model::read_model(model_file)
+            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
 
     // Create output directory
     fs::create_dir_all(&args.dict_dir)
@@ -438,19 +439,22 @@ fn export_dict(args: ExportDictArgs) -> LinderaResult<()> {
     // Write lexicon file using SerializableModel methods
     let mut lexicon_file = File::create(&lexicon_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    model.write_lexicon(&mut lexicon_file)
+    model
+        .write_lexicon(&mut lexicon_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write connection matrix
     let mut connector_file = File::create(&connector_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    model.write_connection_costs(&mut connector_file)
+    model
+        .write_connection_costs(&mut connector_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write unknown word definitions
     let mut unk_file = File::create(&unk_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    model.write_unknown_dictionary(&mut unk_file)
+    model
+        .write_unknown_dictionary(&mut unk_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write character definition file

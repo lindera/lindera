@@ -249,12 +249,12 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_compound_word::{
             JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
         };
+        use lindera_dictionary::viterbi::LexType;
 
         let config_str = r#"
         {

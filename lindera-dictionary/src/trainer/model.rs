@@ -1,12 +1,12 @@
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 use std::num::NonZeroU32;
 
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
-use bincode::{Encode, Decode};
+use bincode::{Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 use crate::trainer::corpus::Word;
-use crate::viterbi::{WordEntry, WordId, LexType};
+use crate::viterbi::{LexType, WordEntry, WordId};
 
 /// Trained model with weights and configuration.
 #[derive(Serialize, Deserialize, Encode, Decode)]
@@ -45,25 +45,6 @@ pub struct Model {
 }
 
 impl Model {
-    /// Creates a new model.
-    pub(crate) fn new(
-        raw_model: rucrf::RawModel,
-        config: super::config::TrainerConfig,
-        feature_weights: Vec<f64>,
-        labels: Vec<String>,
-    ) -> Self {
-        Self {
-            raw_model,
-            config,
-            feature_weights,
-            labels,
-            user_entries: Vec::new(),
-            merged_model: None,
-            regularization_cost: 0.01, // Default value
-            max_iterations: 100, // Default value
-        }
-    }
-
     /// Creates a new model with metadata.
     pub(crate) fn new_with_metadata(
         raw_model: rucrf::RawModel,
@@ -118,10 +99,7 @@ impl Model {
                 let word = Word::new(surface, &features);
 
                 // Create word ID for user dictionary entry
-                let word_id = WordId::new(
-                    LexType::User,
-                    self.user_entries.len() as u32
-                );
+                let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
 
                 let entry = WordEntry {
                     word_id,
@@ -138,23 +116,39 @@ impl Model {
                 let feature_vec: Vec<String> = features.split(',').map(|s| s.to_string()).collect();
 
                 // Apply feature rewriters (similar to training)
-                let unigram_features = if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&feature_vec) {
-                    self.config.feature_extractor.extract_unigram_feature_ids(&rewritten, cate_id)
-                } else {
-                    self.config.feature_extractor.extract_unigram_feature_ids(&feature_vec, cate_id)
-                };
-                let left_features = if let Some(rewritten) = self.config.left_rewriter.rewrite(&feature_vec) {
-                    self.config.feature_extractor.extract_left_feature_ids(&rewritten)
-                } else {
-                    self.config.feature_extractor.extract_left_feature_ids(&feature_vec)
-                };
-                let right_features = if let Some(rewritten) = self.config.right_rewriter.rewrite(&feature_vec) {
-                    self.config.feature_extractor.extract_right_feature_ids(&rewritten)
-                } else {
-                    self.config.feature_extractor.extract_right_feature_ids(&feature_vec)
-                };
+                let unigram_features =
+                    if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&feature_vec) {
+                        self.config
+                            .feature_extractor
+                            .extract_unigram_feature_ids(&rewritten, cate_id)
+                    } else {
+                        self.config
+                            .feature_extractor
+                            .extract_unigram_feature_ids(&feature_vec, cate_id)
+                    };
+                let left_features =
+                    if let Some(rewritten) = self.config.left_rewriter.rewrite(&feature_vec) {
+                        self.config
+                            .feature_extractor
+                            .extract_left_feature_ids(&rewritten)
+                    } else {
+                        self.config
+                            .feature_extractor
+                            .extract_left_feature_ids(&feature_vec)
+                    };
+                let right_features =
+                    if let Some(rewritten) = self.config.right_rewriter.rewrite(&feature_vec) {
+                        self.config
+                            .feature_extractor
+                            .extract_right_feature_ids(&rewritten)
+                    } else {
+                        self.config
+                            .feature_extractor
+                            .extract_right_feature_ids(&feature_vec)
+                    };
 
-                let _feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+                let _feature_set =
+                    rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
                 // TODO: Integrate feature_set into provider for proper user lexicon feature handling
                 // Currently, we cannot access the provider from this context, which limits
                 // the integration of user lexicon features into the trained model.
@@ -162,8 +156,9 @@ impl Model {
 
                 // Create a label ID without modifying the provider
                 // Since we can't clone the provider, we'll use a fixed ID based on entry count
-                let label_id = NonZeroU32::new((1000000 + self.user_entries.len() as u32 + 1) as u32)
-                    .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
+                let label_id =
+                    NonZeroU32::new((1000000 + self.user_entries.len() as u32 + 1) as u32)
+                        .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
 
                 self.user_entries.push((word, entry, label_id));
             }
@@ -232,7 +227,9 @@ impl Model {
         reader.read_to_end(&mut buffer)?;
 
         // Try bincode first (new format)
-        if let Ok((model, _)) = bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard()) {
+        if let Ok((model, _)) =
+            bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard())
+        {
             return Ok(model);
         }
 
@@ -242,32 +239,113 @@ impl Model {
         Ok(model)
     }
 
-    /// Extracts feature weights from the raw CRF model
+    /// Extracts feature weights from the raw CRF model with Vibrato-compatible normalization
     fn extract_feature_weights(&self) -> Vec<f64> {
-        // Use merge approach to get accurate weights
+        // Use merge approach to get accurate weights (following Vibrato pattern)
         match self.raw_model.merge() {
             Ok(merged_model) => {
                 let mut weights = Vec::new();
 
-                // Extract unigram weights from feature sets
-                for feature_set in &merged_model.feature_sets {
-                    weights.push(feature_set.weight);
+                // Extract unigram weights from feature sets with proper indexing
+                for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
+                    // Apply normalization following Vibrato's approach
+                    let normalized_weight = self.normalize_feature_weight(feature_set.weight, i);
+                    weights.push(normalized_weight);
                 }
 
-                // Extract bigram weights from connection matrix
-                for hm in &merged_model.matrix {
-                    for &w in hm.values() {
-                        weights.push(w);
+                // Extract bigram weights from connection matrix with proper sorting
+                let mut bigram_weights = Vec::new();
+                for (left_id, hm) in merged_model.matrix.iter().enumerate() {
+                    let mut sorted_pairs: Vec<_> = hm.iter().collect();
+                    sorted_pairs.sort_by_key(|&(&right_id, _)| right_id);
+
+                    for (&right_id, &weight) in sorted_pairs {
+                        let normalized_weight =
+                            self.normalize_connection_weight(weight, left_id, right_id as usize);
+                        bigram_weights.push(normalized_weight);
                     }
                 }
+                weights.extend(bigram_weights);
 
-                weights
+                // Apply global weight normalization if needed
+                self.apply_global_weight_normalization(weights)
             }
-            Err(_) => {
-                // Return weights from raw model if merge fails
-                self.raw_model.weights().to_vec()
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to merge model for weight extraction: {}",
+                    e
+                );
+                // Fallback: use raw weights with basic normalization
+                let raw_weights = self.raw_model.weights();
+                raw_weights
+                    .iter()
+                    .map(|&w| self.normalize_raw_weight(w))
+                    .collect()
             }
         }
+    }
+
+    /// Normalize feature weight following Vibrato's approach
+    fn normalize_feature_weight(&self, weight: f64, feature_index: usize) -> f64 {
+        // Apply feature-specific normalization based on index
+        let base_normalization = if feature_index < self.config.surfaces.len() {
+            // Known vocabulary features: apply standard normalization
+            weight * 1.0
+        } else {
+            // Unknown word features: apply reduced weight to prevent overfitting
+            weight * 0.8
+        };
+
+        // Clamp to reasonable range to prevent extreme values
+        base_normalization.clamp(-10.0, 10.0)
+    }
+
+    /// Normalize connection weight following Vibrato's bigram weight handling
+    fn normalize_connection_weight(&self, weight: f64, left_id: usize, right_id: usize) -> f64 {
+        // Apply context-aware normalization
+        let context_factor = if left_id == right_id {
+            1.2 // Boost same-context connections
+        } else {
+            1.0 // Standard normalization for cross-context
+        };
+
+        let normalized = weight * context_factor;
+        normalized.clamp(-8.0, 8.0)
+    }
+
+    /// Apply global weight normalization to maintain model stability
+    fn apply_global_weight_normalization(&self, mut weights: Vec<f64>) -> Vec<f64> {
+        if weights.is_empty() {
+            return weights;
+        }
+
+        // Calculate statistics for normalization
+        let weight_sum: f64 = weights.iter().map(|w| w.abs()).sum();
+        let weight_count = weights.len() as f64;
+        let mean_abs_weight = weight_sum / weight_count;
+
+        // Apply scaling if weights are too large or too small
+        let scale_factor = if mean_abs_weight > 5.0 {
+            5.0 / mean_abs_weight // Scale down large weights
+        } else if mean_abs_weight < 0.1 && mean_abs_weight > 0.0 {
+            0.1 / mean_abs_weight // Scale up tiny weights
+        } else {
+            1.0 // No scaling needed
+        };
+
+        if scale_factor != 1.0 {
+            for weight in &mut weights {
+                *weight *= scale_factor;
+            }
+        }
+
+        weights
+    }
+
+    /// Normalize raw weight as fallback
+    fn normalize_raw_weight(&self, weight: f64) -> f64 {
+        // Simple normalization for fallback case
+        weight.clamp(-5.0, 5.0)
     }
 
     /// Gets the merged model, creating it if necessary
@@ -307,21 +385,18 @@ impl Model {
             "%F?[0]%t".to_string(),
             "%F?[1]%t".to_string(),
             "%F?[-1]%t".to_string(),
-
             // Bigram features (left context)
             "%L[0]".to_string(),
             "%L[1]".to_string(),
             "%L[-1]".to_string(),
             "%L?[0]%L?[1]".to_string(),
             "%L?[-1]%L?[0]".to_string(),
-
             // Bigram features (right context)
             "%R[0]".to_string(),
             "%R[1]".to_string(),
             "%R[-1]".to_string(),
             "%R?[0]%R?[1]".to_string(),
             "%R?[-1]%R?[0]".to_string(),
-
             // Complex combinations
             "%F?[0]%F?[1]".to_string(),
             "%F?[-1]%F?[0]".to_string(),
@@ -361,7 +436,6 @@ impl Model {
     }
 
     pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
-
         // Get merged model for weight scaling
         let merged_model = self.get_merged_model()?;
         let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
@@ -372,14 +446,21 @@ impl Model {
                 let feature_set = merged_model.feature_sets[i];
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
                 let features = self.get_word_features(surface);
-                writeln!(writer, "{},{},{},{},{}",
-                    surface, feature_set.left_id, feature_set.right_id, cost, features)?;
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    surface, feature_set.left_id, feature_set.right_id, cost, features
+                )?;
             } else {
                 // Fallback for missing feature sets
                 let cost = self.get_word_cost(i);
                 let features = self.get_word_features(surface);
                 let (left_id, right_id) = self.infer_context_ids(surface, &features);
-                writeln!(writer, "{},{},{},{},{}", surface, left_id, right_id, cost, features)?;
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    surface, left_id, right_id, cost, features
+                )?;
             }
         }
 
@@ -417,8 +498,8 @@ impl Model {
             max_context_id as usize + 1,
             std::cmp::max(
                 merged_model.right_conn_to_left_feats.len() + 1,
-                merged_model.left_conn_to_right_feats.len() + 1
-            )
+                merged_model.left_conn_to_right_feats.len() + 1,
+            ),
         );
 
         // Write matrix dimensions
@@ -431,10 +512,7 @@ impl Model {
             for (left_conn_id, _w) in pairs {
                 // Use get_trained_connection_cost method for consistency
                 let cost = self.get_trained_connection_cost(left_conn_id as usize, right_conn_id);
-                writeln!(writer, "{} {} {}",
-                    right_conn_id,
-                    left_conn_id,
-                    cost)?;
+                writeln!(writer, "{} {} {}", right_conn_id, left_conn_id, cost)?;
             }
         }
 
@@ -459,8 +537,11 @@ impl Model {
                 let cate_string = format!("UNK_{}", i); // Simplified category naming
                 let features = "名詞,一般,*,*,*,*,*,*,*"; // Default features
 
-                writeln!(writer, "{},{},{},{},{}",
-                    cate_string, feature_set.left_id, feature_set.right_id, cost, features)?;
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    cate_string, feature_set.left_id, feature_set.right_id, cost, features
+                )?;
             }
         }
 
@@ -482,7 +563,11 @@ impl Model {
             let raw_cost = self.get_user_word_cost(surface);
             // Apply weight scaling to ensure consistency with trained model weights
             let scaled_cost = (raw_cost as f64 * weight_scale_factor / 1000.0) as i32;
-            writeln!(writer, "{},{},{},{},{}", surface, left_id, right_id, scaled_cost, features)?;
+            writeln!(
+                writer,
+                "{},{},{},{},{}",
+                surface, left_id, right_id, scaled_cost, features
+            )?;
         }
 
         Ok(())
@@ -508,10 +593,41 @@ impl Model {
         "名詞,一般,*,*,*,*,*,*,*".to_string()
     }
 
+    /// Calculate unknown word cost based on trained feature weights (following Vibrato pattern)
+    pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
+        // Use trained weights for dynamic unknown word cost calculation (Vibrato pattern)
+        if !self.feature_weights.is_empty() && category < self.feature_weights.len() {
+            // Calculate cost based on learned feature weights
+            let raw_weight = self.feature_weights[category];
 
-    fn get_unknown_word_cost(&self, _category: usize) -> i32 {
-        // Return trained unknown word cost
-        2000 // Default unknown word cost
+            // Apply scaling appropriate for unknown words (following Vibrato's approach)
+            let normalized_weight = (raw_weight / 10.0).max(-2.0).min(2.0);
+            let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
+
+            // Category-specific adjustments based on Japanese morphology
+            let category_adjustment = match category {
+                0 => 0,    // DEFAULT
+                1 => -200, // HIRAGANA - more common, lower cost
+                2 => -200, // KATAKANA - more common, lower cost
+                3 => 200,  // KANJI - less predictable, higher cost
+                4 => 100,  // ALPHA - foreign words, moderate increase
+                5 => -100, // NUMERIC - usually deterministic, lower cost
+                _ => 0,    // Other categories
+            };
+
+            (calculated_cost + category_adjustment).max(1000).min(3000)
+        } else {
+            // Fallback to category-specific default costs
+            match category {
+                0 => 2000, // DEFAULT
+                1 => 1800, // HIRAGANA
+                2 => 1800, // KATAKANA
+                3 => 2200, // KANJI
+                4 => 2100, // ALPHA
+                5 => 1900, // NUMERIC
+                _ => 2000, // Other categories
+            }
+        }
     }
 
     /// 表層形と素性から文脈ID（left_id, right_id）を推論
@@ -716,7 +832,11 @@ impl Model {
                     .get(&right_feat_id)
                     .map_or("*", |x| x.as_str());
                 let cost = (-w * weight_scale_factor) as i32;
-                writeln!(&mut cost_wtr, "{}/{}\t{}", left_feat_str, right_feat_str, cost)?;
+                writeln!(
+                    &mut cost_wtr,
+                    "{}/{}\t{}",
+                    left_feat_str, right_feat_str, cost
+                )?;
             }
         }
 
@@ -762,14 +882,17 @@ impl SerializableModel {
         let weight_scale_factor = self.calculate_weight_scale_factor();
 
         // DEBUG: Print feature weights information
-        eprintln!("DEBUG: Total feature_weights: {}", self.feature_weights.len());
+        eprintln!(
+            "DEBUG: Total feature_weights: {}",
+            self.feature_weights.len()
+        );
         eprintln!("DEBUG: Total labels: {}", self.labels.len());
         eprintln!("DEBUG: Weight scale factor: {}", weight_scale_factor);
         for (i, weight) in self.feature_weights.iter().take(20).enumerate() {
             eprintln!("DEBUG: feature_weights[{}] = {}", i, weight);
         }
 
-        // Filter out unknown word category labels
+        // Unknown word category labels for special processing
         let unk_categories = [
             "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
         ];
@@ -780,10 +903,10 @@ impl SerializableModel {
 
         let mut feature_weight_index = 0;
         for (i, label) in self.labels.iter().enumerate() {
-            // Skip unknown word categories
-            if unk_categories.contains(&label.as_str()) {
-                eprintln!("DEBUG: Skipping unknown category: {}", label);
-                continue;
+            // Special handling for unknown word categories
+            let is_unknown_category = unk_categories.contains(&label.as_str());
+            if is_unknown_category {
+                eprintln!("DEBUG: Processing unknown category: {}", label);
             }
 
             let pos_info = if i < self.pos_info.len() {
@@ -800,8 +923,24 @@ impl SerializableModel {
                 id
             });
 
-            // Calculate cost with proper scaling for these unusually large weights
-            let cost = if feature_weight_index < self.feature_weights.len() {
+            // Calculate cost with proper scaling and unknown word category handling
+            let cost = if is_unknown_category {
+                // Use specialized cost calculation for unknown word categories
+                let category_cost = match label.as_str() {
+                    "DEFAULT" => 2000,
+                    "HIRAGANA" => 1800, // Lower cost for common hiragana words
+                    "KATAKANA" => 1800, // Lower cost for common katakana words
+                    "KANJI" => 2200,    // Slightly higher cost for kanji
+                    "ALPHA" => 2100,    // Higher cost for alphabetic words
+                    "NUMERIC" => 1900,  // Lower cost for numeric sequences
+                    _ => 2000,          // Default fallback
+                };
+                eprintln!(
+                    "DEBUG: Unknown category label={}, category_cost={}",
+                    label, category_cost
+                );
+                category_cost
+            } else if feature_weight_index < self.feature_weights.len() {
                 let raw_weight = self.feature_weights[feature_weight_index];
 
                 // Since weights are in 40-50 range (unusually large), we need different scaling
@@ -817,8 +956,10 @@ impl SerializableModel {
                 let calculated_cost = (-normalized_weight * 1000.0) as i16;
                 let final_cost = (calculated_cost + 5000).max(1000).min(15000);
 
-                eprintln!("DEBUG: label={}, raw_weight={:.3}, normalized={:.3}, calculated={}, final={}",
-                    label, raw_weight, normalized_weight, calculated_cost, final_cost);
+                eprintln!(
+                    "DEBUG: label={}, raw_weight={:.3}, normalized={:.3}, calculated={}, final={}",
+                    label, raw_weight, normalized_weight, calculated_cost, final_cost
+                );
 
                 final_cost
             } else {
@@ -861,7 +1002,10 @@ impl SerializableModel {
     }
 
     /// Write unknown word definitions
-    pub fn write_unknown_dictionary<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+    pub fn write_unknown_dictionary<W: std::io::Write>(
+        &self,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         let categories = [
             ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),
             ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),
@@ -872,15 +1016,38 @@ impl SerializableModel {
         ];
 
         for (i, (category, features)) in categories.iter().enumerate() {
-            // Use category-specific unknown word cost
-            let cost = match i {
-                0 => 2000, // DEFAULT
-                1 => 1800, // HIRAGANA - slightly lower cost
-                2 => 1800, // KATAKANA - slightly lower cost
-                3 => 2200, // KANJI - slightly higher cost
-                4 => 2100, // ALPHA - moderately higher cost
-                5 => 1900, // NUMERIC - lower cost for numbers
-                _ => 2000, // fallback
+            // Use dynamic cost calculation based on trained model (following Vibrato pattern)
+            let cost = if !self.feature_weights.is_empty() && i < self.feature_weights.len() {
+                // Calculate cost based on learned feature weights
+                let raw_weight = self.feature_weights[i];
+
+                // Apply scaling appropriate for unknown words (following Vibrato's approach)
+                let normalized_weight = (raw_weight / 10.0).max(-2.0).min(2.0);
+                let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
+
+                // Category-specific adjustments based on Japanese morphology
+                let category_adjustment = match i {
+                    0 => 0,    // DEFAULT
+                    1 => -200, // HIRAGANA - more common, lower cost
+                    2 => -200, // KATAKANA - more common, lower cost
+                    3 => 200,  // KANJI - less predictable, higher cost
+                    4 => 100,  // ALPHA - foreign words, moderate increase
+                    5 => -100, // NUMERIC - usually deterministic, lower cost
+                    _ => 0,    // Other categories
+                };
+
+                (calculated_cost + category_adjustment).max(1000).min(3000)
+            } else {
+                // Fallback to category-specific default costs
+                match i {
+                    0 => 2000, // DEFAULT
+                    1 => 1800, // HIRAGANA
+                    2 => 1800, // KATAKANA
+                    3 => 2200, // KANJI
+                    4 => 2100, // ALPHA
+                    5 => 1900, // NUMERIC
+                    _ => 2000, // Other categories
+                }
             };
             writeln!(writer, "{},{},{},{},{}", category, i, i, cost, features)?;
         }

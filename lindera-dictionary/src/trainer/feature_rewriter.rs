@@ -1,5 +1,5 @@
-use std::collections::HashSet;
 use regex::Regex;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {

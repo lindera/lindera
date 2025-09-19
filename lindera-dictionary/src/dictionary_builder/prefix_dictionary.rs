@@ -212,7 +212,10 @@ impl PrefixDictionaryBuilder {
             };
 
             word_entry_map.entry(key).or_default().push(WordEntry {
-                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::System, row_id as u32),
+                word_id: crate::viterbi::WordId::new(
+                    crate::viterbi::LexType::System,
+                    row_id as u32,
+                ),
                 word_cost: word_cost.unwrap(),
                 left_id: left_id.unwrap(),
                 right_id: right_id.unwrap(),

@@ -97,8 +97,12 @@ impl WordEntry {
 
     pub fn deserialize(data: &[u8], is_system_entry: bool) -> WordEntry {
         let word_id = WordId::new(
-            if is_system_entry { LexType::System } else { LexType::User },
-            LittleEndian::read_u32(&data[0..4])
+            if is_system_entry {
+                LexType::System
+            } else {
+                LexType::User
+            },
+            LittleEndian::read_u32(&data[0..4]),
         );
         let word_cost = LittleEndian::read_i16(&data[4..6]);
         let left_id = LittleEndian::read_u16(&data[6..8]);

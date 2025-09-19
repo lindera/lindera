@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::ops::Range;
-use std::num::NonZeroU32;
 use regex::Regex;
+use std::collections::HashMap;
+use std::num::NonZeroU32;
+use std::ops::Range;
 
 /// Feature type for template parsing
 #[derive(Debug, Clone)]
@@ -48,10 +48,7 @@ impl FeatureExtractor {
     }
 
     /// Creates a new feature extractor from templates.
-    pub fn from_templates<S>(
-        unigram_templates: &[S],
-        bigram_templates: &[(S, S)],
-    ) -> Self
+    pub fn from_templates<S>(unigram_templates: &[S], bigram_templates: &[(S, S)]) -> Self
     where
         S: ToString,
     {
@@ -75,11 +72,13 @@ impl FeatureExtractor {
                     let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
                     match m.get(2).unwrap().as_str() {
                         "F" => {
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         "F?" => {
                             required_indices.push(idx);
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         _ => unreachable!(),
                     }
@@ -109,11 +108,13 @@ impl FeatureExtractor {
                     let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
                     match m.get(1).unwrap().as_str() {
                         "L" => {
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         "L?" => {
                             required_indices.push(idx);
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         _ => unreachable!(),
                     }
@@ -137,11 +138,13 @@ impl FeatureExtractor {
                     let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
                     match m.get(1).unwrap().as_str() {
                         "R" => {
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         "R?" => {
                             required_indices.push(idx);
-                            captures.push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                            captures
+                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
                         }
                         _ => unreachable!(),
                     }
@@ -215,7 +218,10 @@ impl FeatureExtractor {
             id
         } else {
             let new_id = NonZeroU32::new(self.unigram_next_id).unwrap();
-            let feature_id = *self.unigram_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+            let feature_id = *self
+                .unigram_feature_ids
+                .entry(feature_str.to_string())
+                .or_insert(new_id);
             if new_id == feature_id {
                 self.unigram_next_id += 1;
             }
@@ -225,7 +231,10 @@ impl FeatureExtractor {
 
     fn get_or_create_left_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
         let new_id = NonZeroU32::new(self.left_next_id).unwrap();
-        let feature_id = *self.left_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+        let feature_id = *self
+            .left_feature_ids
+            .entry(feature_str.to_string())
+            .or_insert(new_id);
         if new_id == feature_id {
             self.left_next_id += 1;
         }
@@ -234,7 +243,10 @@ impl FeatureExtractor {
 
     fn get_or_create_right_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
         let new_id = NonZeroU32::new(self.right_next_id).unwrap();
-        let feature_id = *self.right_feature_ids.entry(feature_str.to_string()).or_insert(new_id);
+        let feature_id = *self
+            .right_feature_ids
+            .entry(feature_str.to_string())
+            .or_insert(new_id);
         if new_id == feature_id {
             self.right_next_id += 1;
         }
@@ -242,7 +254,11 @@ impl FeatureExtractor {
     }
 
     /// Extracts unigram feature IDs from features.
-    pub fn extract_unigram_feature_ids(&mut self, features: &[String], cate_id: u32) -> Vec<NonZeroU32> {
+    pub fn extract_unigram_feature_ids(
+        &mut self,
+        features: &[String],
+        cate_id: u32,
+    ) -> Vec<NonZeroU32> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts

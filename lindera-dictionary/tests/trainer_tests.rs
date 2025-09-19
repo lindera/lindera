@@ -1,8 +1,8 @@
 #[cfg(feature = "train")]
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
     use lindera_dictionary::trainer::{Corpus, TrainerConfig};
+    use std::io::Cursor;
 
     #[test]
     fn test_corpus_from_reader() {

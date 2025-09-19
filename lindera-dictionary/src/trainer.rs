@@ -169,47 +169,114 @@ impl Trainer {
             feature_weights,
             labels,
             regularization_cost,
-            max_iter
+            max_iter,
         ))
     }
 
-    /// Extracts feature weights from the trained model
+    /// Extracts feature weights from the trained model with Vibrato-compatible processing
     fn extract_feature_weights_static(
         raw_model: &rucrf::RawModel,
-        _surface_count: usize,
+        surface_count: usize,
     ) -> Vec<f64> {
-        // Use merge approach to get accurate weights
+        // Use merge approach to get accurate weights (following Vibrato pattern)
         match raw_model.merge() {
             Ok(merged_model) => {
                 let mut weights = Vec::new();
 
-                // Extract weights from feature sets
-                for feature_set in &merged_model.feature_sets {
-                    weights.push(feature_set.weight);
+                // Extract unigram weights from feature sets with normalization
+                for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
+                    let normalized_weight =
+                        Self::normalize_feature_weight_static(feature_set.weight, i, surface_count);
+                    weights.push(normalized_weight);
                 }
 
-                // Extract weights from connection matrix (bigram weights)
-                for hm in &merged_model.matrix {
-                    for &w in hm.values() {
-                        weights.push(w);
+                // Extract bigram weights from connection matrix with proper ordering
+                let mut bigram_weights = Vec::new();
+                for (left_id, hm) in merged_model.matrix.iter().enumerate() {
+                    // Sort by right_id to ensure consistent ordering
+                    let mut sorted_pairs: Vec<_> = hm.iter().collect();
+                    sorted_pairs.sort_by_key(|&(&right_id, _)| right_id);
+
+                    for (&right_id, &weight) in sorted_pairs {
+                        let normalized_weight = Self::normalize_connection_weight_static(
+                            weight,
+                            left_id,
+                            right_id as usize,
+                        );
+                        bigram_weights.push(normalized_weight);
                     }
                 }
+                weights.extend(bigram_weights);
 
-                // Optionally log the extraction results (can be removed in production)
-                // println!("Extracted {} feature weights and {} connection weights",
-                //          merged_model.feature_sets.len(),
-                //          merged_model.matrix.iter().map(|hm| hm.len()).sum::<usize>());
-
-                weights
+                // Apply global normalization for stability
+                Self::apply_global_normalization_static(weights)
             }
             Err(e) => {
                 println!(
                     "WARNING: Failed to merge model for weight extraction: {}",
                     e
                 );
-                Vec::new()
+                // Fallback to raw weights with basic processing
+                let raw_weights = raw_model.weights();
+                raw_weights.iter().map(|&w| w.clamp(-5.0, 5.0)).collect()
             }
         }
+    }
+
+    /// Static version of feature weight normalization
+    fn normalize_feature_weight_static(
+        weight: f64,
+        feature_index: usize,
+        surface_count: usize,
+    ) -> f64 {
+        let base_normalization = if feature_index < surface_count {
+            // Known vocabulary features
+            weight * 1.0
+        } else {
+            // Unknown word features: reduce weight to prevent overfitting
+            weight * 0.8
+        };
+
+        base_normalization.clamp(-10.0, 10.0)
+    }
+
+    /// Static version of connection weight normalization
+    fn normalize_connection_weight_static(weight: f64, left_id: usize, right_id: usize) -> f64 {
+        let context_factor = if left_id == right_id {
+            1.2 // Boost same-context connections
+        } else {
+            1.0
+        };
+
+        let normalized = weight * context_factor;
+        normalized.clamp(-8.0, 8.0)
+    }
+
+    /// Static version of global weight normalization
+    fn apply_global_normalization_static(mut weights: Vec<f64>) -> Vec<f64> {
+        if weights.is_empty() {
+            return weights;
+        }
+
+        let weight_sum: f64 = weights.iter().map(|w| w.abs()).sum();
+        let weight_count = weights.len() as f64;
+        let mean_abs_weight = weight_sum / weight_count;
+
+        let scale_factor = if mean_abs_weight > 5.0 {
+            5.0 / mean_abs_weight
+        } else if mean_abs_weight < 0.1 && mean_abs_weight > 0.0 {
+            0.1 / mean_abs_weight
+        } else {
+            1.0
+        };
+
+        if scale_factor != 1.0 {
+            for weight in &mut weights {
+                *weight *= scale_factor;
+            }
+        }
+
+        weights
     }
 
     /// Extracts labels from the configuration
@@ -242,20 +309,8 @@ impl Trainer {
             // Get or create label ID for this token
             let label_id = self.get_or_create_label_id(token)?;
 
-            // Create minimal feature set for efficiency
-            let features: Vec<String> = token.feature().split(',').map(|s| s.to_string()).collect();
-            let first_char = token.surface().chars().next().unwrap_or('\0');
-            let cate_id = self.get_char_type(first_char) as u32;
-
-            // Extract features using the feature extractor (simplified)
-            let unigram_features = self.config.feature_extractor
-                .extract_unigram_feature_ids(&features, cate_id);
-            let left_features = self.config.feature_extractor
-                .extract_left_feature_ids(&features);
-            let right_features = self.config.feature_extractor
-                .extract_right_feature_ids(&features);
-
-            let feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+            // Use the dedicated extract_token_features method for comprehensive feature extraction
+            let feature_set = self.extract_token_features(token, pos)?;
             let _feature_id = self.provider.add_feature_set(feature_set)?;
 
             // Create edge using label_id (following Vibrato's approach)
@@ -287,25 +342,46 @@ impl Trainer {
                 let first_char = substring.chars().next().unwrap_or('\0');
                 let char_type = self.get_char_type(first_char);
 
-                // Generate unknown word features based on character type
-                let unknown_feature = self.get_unknown_feature(char_type);
-                let features: Vec<String> = unknown_feature.split(',').map(|s| s.to_string()).collect();
+                // Generate enhanced unknown word features based on character type and surface analysis
+                let enhanced_features = self.generate_unknown_word_features(&substring, char_type);
+                let features = if enhanced_features.len() > 1 {
+                    // Use first feature as base, combine others as additional features
+                    let mut combined_features = enhanced_features[0]
+                        .split(',')
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>();
+                    // Add enhanced features as additional context
+                    combined_features.extend(enhanced_features[1..].iter().cloned());
+                    combined_features
+                } else {
+                    // Fallback to basic feature parsing
+                    let unknown_feature = self.get_unknown_feature(char_type);
+                    unknown_feature.split(',').map(|s| s.to_string()).collect()
+                };
 
                 // Extract features for unknown word
-                let unigram_features = self.config.feature_extractor
+                let unigram_features = self
+                    .config
+                    .feature_extractor
                     .extract_unigram_feature_ids(&features, char_type as u32);
-                let left_features = self.config.feature_extractor
+                let left_features = self
+                    .config
+                    .feature_extractor
                     .extract_left_feature_ids(&features);
-                let right_features = self.config.feature_extractor
+                let right_features = self
+                    .config
+                    .feature_extractor
                     .extract_right_feature_ids(&features);
 
-                let feature_set = rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+                let feature_set =
+                    rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
                 let feature_id = self.provider.add_feature_set(feature_set)?;
                 let edge = Edge::new(end_pos, feature_id);
                 lattice.add_edge(start_pos, edge)?;
 
                 added_count += 1;
-                if added_count >= 2 {  // Limit to 2 negative edges per position
+                if added_count >= 2 {
+                    // Limit to 2 negative edges per position
                     break;
                 }
             }
@@ -314,33 +390,124 @@ impl Trainer {
         Ok(lattice)
     }
 
-    /// Get character type for character-based segmentation
+    /// Get character type for character-based segmentation with comprehensive Unicode support
     fn get_char_type(&self, ch: char) -> usize {
         if ch.is_ascii_digit() {
             5 // NUMERIC
         } else if ch.is_ascii_alphabetic() {
             4 // ALPHA
-        } else if ch >= '\u{4E00}' && ch <= '\u{9FAF}' {
-            3 // KANJI
-        } else if ch >= '\u{30A1}' && ch <= '\u{30F6}' {
-            2 // KATAKANA
-        } else if ch >= '\u{3041}' && ch <= '\u{3096}' {
-            1 // HIRAGANA
+        } else if self.is_kanji(ch) {
+            3 // KANJI - Extended CJK coverage
+        } else if self.is_katakana(ch) {
+            2 // KATAKANA - Full katakana range
+        } else if self.is_hiragana(ch) {
+            1 // HIRAGANA - Full hiragana range
         } else {
             0 // DEFAULT
         }
     }
 
-    /// Get feature string for unknown word based on character type
+    /// Check if character is Kanji (comprehensive CJK coverage)
+    fn is_kanji(&self, ch: char) -> bool {
+        matches!(ch,
+            '\u{4E00}'..='\u{9FAF}' |  // CJK Unified Ideographs
+            '\u{3400}'..='\u{4DBF}' |  // CJK Extension A
+            '\u{20000}'..='\u{2A6DF}' | // CJK Extension B
+            '\u{2A700}'..='\u{2B73F}' | // CJK Extension C
+            '\u{2B740}'..='\u{2B81F}' | // CJK Extension D
+            '\u{2B820}'..='\u{2CEAF}' | // CJK Extension E
+            '\u{2CEB0}'..='\u{2EBEF}' | // CJK Extension F
+            '\u{F900}'..='\u{FAFF}' |   // CJK Compatibility Ideographs
+            '\u{2F800}'..='\u{2FA1F}'   // CJK Compatibility Supplement
+        )
+    }
+
+    /// Check if character is Hiragana (full range including extensions)
+    fn is_hiragana(&self, ch: char) -> bool {
+        matches!(ch,
+            '\u{3041}'..='\u{3096}' |  // Basic Hiragana
+            '\u{309D}'..='\u{309F}'    // Hiragana iteration marks
+        )
+    }
+
+    /// Check if character is Katakana (full range including extensions)
+    fn is_katakana(&self, ch: char) -> bool {
+        matches!(ch,
+            '\u{30A1}'..='\u{30F6}' |  // Basic Katakana
+            '\u{30FD}'..='\u{30FF}' |  // Katakana iteration marks
+            '\u{31F0}'..='\u{31FF}' |  // Katakana phonetic extensions
+            '\u{32D0}'..='\u{32FE}' |  // Circled Katakana
+            '\u{3300}'..='\u{3357}'    // CJK Compatibility (Katakana)
+        )
+    }
+
+    /// Get comprehensive feature string for unknown word based on character type and surface analysis
     fn get_unknown_feature(&self, char_type: usize) -> String {
         match char_type {
-            1 => "名詞,一般,*,*,*,*,*,ひらがな,*".to_string(),
-            2 => "名詞,一般,*,*,*,*,*,カタカナ,*".to_string(),
-            3 => "名詞,一般,*,*,*,*,*,漢字,*".to_string(),
-            4 => "名詞,一般,*,*,*,*,*,アルファベット,*".to_string(),
+            1 => "名詞,一般,*,*,*,*,*,ひらがな,ひらがな".to_string(),
+            2 => "名詞,一般,*,*,*,*,*,カタカナ,カタカナ".to_string(),
+            3 => "名詞,一般,*,*,*,*,*,漢字,漢字".to_string(),
+            4 => "名詞,固有名詞,一般,*,*,*,*,アルファベット,*".to_string(),
             5 => "名詞,数,*,*,*,*,*,数字,*".to_string(),
-            _ => "名詞,一般,*,*,*,*,*,その他,*".to_string(),
+            _ => "記号,一般,*,*,*,*,*,その他,*".to_string(),
         }
+    }
+
+    /// Generate enhanced features for unknown words based on surface form analysis
+    fn generate_unknown_word_features(&self, surface: &str, char_type: usize) -> Vec<String> {
+        let mut features = Vec::new();
+
+        // Basic character type feature
+        let base_feature = self.get_unknown_feature(char_type);
+        features.push(base_feature);
+
+        // Length-based features
+        let len = surface.chars().count();
+        match len {
+            1 => features.push("UNK_LEN=1".to_string()),
+            2 => features.push("UNK_LEN=2".to_string()),
+            3..=5 => features.push("UNK_LEN=SHORT".to_string()),
+            6..=10 => features.push("UNK_LEN=MEDIUM".to_string()),
+            _ => features.push("UNK_LEN=LONG".to_string()),
+        }
+
+        // Character pattern features
+        let chars: Vec<char> = surface.chars().collect();
+        if chars.len() > 1 {
+            // Mixed character type detection
+            let has_hiragana = chars.iter().any(|&c| self.is_hiragana(c));
+            let has_katakana = chars.iter().any(|&c| self.is_katakana(c));
+            let has_kanji = chars.iter().any(|&c| self.is_kanji(c));
+            let has_alpha = chars.iter().any(|&c| c.is_ascii_alphabetic());
+            let has_digit = chars.iter().any(|&c| c.is_ascii_digit());
+
+            let type_count = [has_hiragana, has_katakana, has_kanji, has_alpha, has_digit]
+                .iter()
+                .filter(|&&x| x)
+                .count();
+
+            if type_count > 1 {
+                features.push("UNK_MIXED=TRUE".to_string());
+            }
+
+            // Specific patterns
+            if has_kanji && has_hiragana {
+                features.push("UNK_KANJI_HIRA=TRUE".to_string());
+            }
+            if has_katakana && has_alpha {
+                features.push("UNK_KATA_ALPHA=TRUE".to_string());
+            }
+        }
+
+        // Positional character features (first and last char types)
+        if let Some(first_char) = chars.first() {
+            features.push(format!("UNK_FIRST={}", self.get_char_type(*first_char)));
+        }
+        if let Some(last_char) = chars.last() {
+            features.push(format!("UNK_LAST={}", self.get_char_type(*last_char)));
+        }
+
+        features
     }
 
     fn get_or_create_label_id(&mut self, token: &Word) -> Result<NonZeroU32> {
@@ -388,8 +555,8 @@ impl Trainer {
         Ok(new_id)
     }
 
-    /// Classifies an unknown word into one of 6 predefined categories based on its character type.
-    /// This classification is used to index into `label_id_map_unk` for consistent label assignment.
+    /// Classifies an unknown word into one of 6 predefined categories based on comprehensive character analysis.
+    /// This classification uses the improved character type detection methods for better accuracy.
     ///
     /// Returns:
     /// - 0: DEFAULT (punctuation, symbols, or unclassified characters)
@@ -399,22 +566,55 @@ impl Trainer {
     /// - 4: ALPHA (A-Z, a-z)
     /// - 5: NUMERIC (0-9)
     fn classify_unknown_word(&self, token: &Word) -> usize {
-        // Classify unknown word into one of 6 categories based on character type
         let surface = token.surface();
-        let first_char = surface.chars().next().unwrap_or('\0');
+        let chars: Vec<char> = surface.chars().collect();
 
-        if first_char.is_ascii_digit() {
-            5 // NUMERIC - ASCII digits (0-9)
-        } else if first_char.is_ascii_alphabetic() {
-            4 // ALPHA - ASCII letters (A-Z, a-z)
-        } else if first_char >= '\u{4E00}' && first_char <= '\u{9FAF}' {
-            3 // KANJI - CJK Unified Ideographs
-        } else if first_char >= '\u{30A1}' && first_char <= '\u{30F6}' {
-            2 // KATAKANA - Japanese katakana
-        } else if first_char >= '\u{3041}' && first_char <= '\u{3096}' {
-            1 // HIRAGANA - Japanese hiragana
+        if chars.is_empty() {
+            return 0; // DEFAULT for empty strings
+        }
+
+        // For single character words, use direct classification
+        if chars.len() == 1 {
+            return self.get_char_type(chars[0]);
+        }
+
+        // For multi-character words, use majority voting with special rules
+        let mut type_counts = [0; 6]; // Count for each character type
+
+        for &ch in &chars {
+            let char_type = self.get_char_type(ch);
+            type_counts[char_type] += 1;
+        }
+
+        // Find the most frequent character type
+        let (most_frequent_type, max_count) = type_counts
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, count)| count)
+            .map(|(idx, count)| (idx, *count))
+            .unwrap_or((0, 0));
+
+        // Special rules for mixed character types
+        if type_counts[3] > 0 && type_counts[1] > 0 {
+            // Kanji + Hiragana = Kanji (compound words)
+            return 3;
+        }
+
+        if type_counts[2] > 0 && type_counts[4] > 0 {
+            // Katakana + Alpha = Katakana (foreign words)
+            return 2;
+        }
+
+        if type_counts[5] > 0 && max_count == type_counts[5] {
+            // If numbers are present and dominant, classify as numeric
+            return 5;
+        }
+
+        // Return the most frequent type, or DEFAULT if tie
+        if max_count > 0 {
+            most_frequent_type
         } else {
-            0 // DEFAULT - everything else (punctuation, symbols, etc.)
+            0 // DEFAULT fallback
         }
     }
 
@@ -446,21 +646,24 @@ impl Trainer {
         let features: Vec<String> = token.feature().split(',').map(|s| s.to_string()).collect();
 
         // Apply feature rewriting (similar to Vibrato's approach)
-        let unigram_features_input = if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&features) {
-            rewritten
-        } else {
-            features.clone()
-        };
-        let left_features_input = if let Some(rewritten) = self.config.left_rewriter.rewrite(&features) {
-            rewritten
-        } else {
-            features.clone()
-        };
-        let right_features_input = if let Some(rewritten) = self.config.right_rewriter.rewrite(&features) {
-            rewritten
-        } else {
-            features.clone()
-        };
+        let unigram_features_input =
+            if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&features) {
+                rewritten
+            } else {
+                features.clone()
+            };
+        let left_features_input =
+            if let Some(rewritten) = self.config.left_rewriter.rewrite(&features) {
+                rewritten
+            } else {
+                features.clone()
+            };
+        let right_features_input =
+            if let Some(rewritten) = self.config.right_rewriter.rewrite(&features) {
+                rewritten
+            } else {
+                features.clone()
+            };
 
         // Extract different types of features using rewritten inputs
         let unigram_features = self
@@ -538,7 +741,8 @@ impl Trainer {
         for k in &left_feature_keys {
             if let Some(id) = self.config.feature_extractor.left_feature_ids.get(k) {
                 let id_index = id.get() as usize;
-                if id_index >= merged_model.matrix.len() || merged_model.matrix[id_index].is_empty() {
+                if id_index >= merged_model.matrix.len() || merged_model.matrix[id_index].is_empty()
+                {
                     // Remove unused left features
                     self.config.feature_extractor.left_feature_ids.remove(k);
                 }
@@ -564,8 +768,17 @@ impl Trainer {
         }
 
         println!("Feature cleanup completed. Remaining features:");
-        println!("  Unigram: {}", self.config.feature_extractor.unigram_feature_ids.len());
-        println!("  Left: {}", self.config.feature_extractor.left_feature_ids.len());
-        println!("  Right: {}", self.config.feature_extractor.right_feature_ids.len());
+        println!(
+            "  Unigram: {}",
+            self.config.feature_extractor.unigram_feature_ids.len()
+        );
+        println!(
+            "  Left: {}",
+            self.config.feature_extractor.left_feature_ids.len()
+        );
+        println!(
+            "  Right: {}",
+            self.config.feature_extractor.right_feature_ids.len()
+        );
     }
 }

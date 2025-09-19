@@ -66,10 +66,10 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use lindera_dictionary::viterbi::LexType;
 
         let filter = JapaneseBaseFormTokenFilter::new();
 
@@ -193,10 +193,10 @@ mod tests {
         use std::borrow::Cow;
 
         use crate::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
-        use lindera_dictionary::viterbi::LexType;
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter;
+        use lindera_dictionary::viterbi::LexType;
 
         let filter = JapaneseBaseFormTokenFilter::new();
 
