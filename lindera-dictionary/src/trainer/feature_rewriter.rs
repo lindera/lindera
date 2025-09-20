@@ -37,6 +37,12 @@ pub struct FeatureRewriterBuilder {
     ref_pattern: Regex,
 }
 
+impl Default for FeatureRewriterBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeatureRewriterBuilder {
     pub fn new() -> Self {
         Self {
@@ -112,6 +118,12 @@ impl From<FeatureRewriterBuilder> for FeatureRewriter {
     }
 }
 
+impl Default for FeatureRewriter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeatureRewriter {
     /// Creates a new feature rewriter.
     pub fn new() -> Self {
@@ -182,6 +194,7 @@ impl FeatureRewriter {
     /// - "*" matches any feature
     /// - "(A|B|C)" matches any of A, B, or C
     /// - "text" matches exactly "text"
+    ///
     /// Replacement can contain:
     /// - "$1", "$2", etc. to reference pattern matches
     /// - literal text

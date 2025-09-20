@@ -21,16 +21,16 @@ cargo build --features train -p lindera-cli
 
 # 学習の実行
 ./target/debug/lindera train \
-  --seed-lexicon examples/training/sample_lex.csv \
-  --seed-unk examples/training/sample_unk.def \
+  --lexicon examples/training/sample_lex.csv \
+  --unk-def examples/training/sample_unk.def \
   --corpus examples/training/sample_corpus.txt \
   --char-def examples/training/sample_char.def \
   --feature-def examples/training/sample_feature.def \
   --rewrite-def examples/training/sample_rewrite.def \
-  --model-out trained_model.dat \
+  --output trained_model.dat \
   --lambda 0.01 \
-  --max-iter 100 \
-  --num-threads 4
+  --iter 100 \
+  --threads 4
 
 # CLIヘルプの確認
 ./target/debug/lindera train --help
@@ -38,7 +38,7 @@ cargo build --features train -p lindera-cli
 
 ### 必要なファイル（詳細）
 
-#### 1. **`--seed-lexicon` (lex.csv)**
+#### 1. **`--lexicon-lexicon` (lex.csv)**
 
 **役割**: 基本語彙辞書
 **形式**: MeCab形式のCSV
@@ -52,7 +52,7 @@ cargo build --features train -p lindera-cli
 - **用途**: 学習に使う基本的な単語とその品詞情報を定義
 - **構成**: `表層形,左文脈ID,右文脈ID,コスト,品詞,品詞細分類1,品詞細分類2,品詞細分類3,活用型,活用形,原形,読み,発音`
 
-#### 2. **`--seed-unk` (unk.def)**
+#### 2. **`--unk-def` (unk.def)**
 
 **役割**: 未知語処理定義
 **形式**: 文字種別ごとの未知語パラメータ
@@ -75,15 +75,15 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 **形式**: タブ区切りの分かち書き
 
 ```text
-外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
-人	名詞,接尾,一般,*,*,*,人,ジン,ジン
-参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
-権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+外国 名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人 名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政 名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権 名詞,接尾,一般,*,*,*,権,ケン,ケン
 EOS
 
-これ	連体詞,*,*,*,*,*,これ,コレ,コレ
-は	助詞,係助詞,*,*,*,*,は,ハ,ワ
-テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+これ 連体詞,*,*,*,*,*,これ,コレ,コレ
+は 助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト 名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
 EOS
 ```
 
@@ -152,15 +152,15 @@ UNIGRAM:%F[0]/%F[6]   # 品詞 + 原形
 
 ```text
 # 数値表現の正規化
-数	NUM
-*	UNK
+数 NUM
+* UNK
 
 # 固有名詞の正規化
-名詞,固有名詞	名詞,一般
+名詞,固有名詞 名詞,一般
 
 # 助動詞の簡略化
-助動詞,*,*,*,特殊・デス	助動詞
-助動詞,*,*,*,特殊・ダ	助動詞
+助動詞,*,*,*,特殊・デス 助動詞
+助動詞,*,*,*,特殊・ダ 助動詞
 ```
 
 - **用途**: 特徴を正規化して学習効率を向上
@@ -194,25 +194,25 @@ UNIGRAM:%F[0]/%F[6]   # 品詞 + 原形
 学習用コーパスは以下の形式で記述します：
 
 ```csv
-外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
-人	名詞,接尾,一般,*,*,*,人,ジン,ジン
-参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
-権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+外国 名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人 名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政 名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権 名詞,接尾,一般,*,*,*,権,ケン,ケン
 EOS
 
-これ	連体詞,*,*,*,*,*,これ,コレ,コレ
-は	助詞,係助詞,*,*,*,*,は,ハ,ワ
-テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
-です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
-。	記号,句点,*,*,*,*,。,。,。
+これ 連体詞,*,*,*,*,*,これ,コレ,コレ
+は 助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト 名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+です 助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。 記号,句点,*,*,*,*,。,。,。
 EOS
 ```
 
 ### パラメータ
 
 - `--lambda`: L1正則化係数（デフォルト: 0.01）
-- `--max-iter`: 最大イテレーション数（デフォルト: 100）
-- `--num-threads`: 使用スレッド数（デフォルト: 1）
+- `--iter`: 最大イテレーション数（デフォルト: 100）
+- `--threads`: 使用スレッド数（デフォルト: 1）
 
 ## API使用例
 
@@ -260,6 +260,85 @@ let mut user_out = File::create("output_user.csv")?;
 model.write_dictionary(&mut lex_out, &mut conn_out, &mut unk_out, &mut user_out)?;
 ```
 
+## IPADICの品詞別CSVファイルを使った学習
+
+### IPADIC品詞別CSV学習の概要
+
+IPADICなどのMeCab辞書では、品詞ごとに分割されたCSVファイル（Noun.csv, Verb.csv, Adj.csvなど）で提供される場合があります。Lindera Trainerでは、これらのファイルを統合して新しい単語の重みを学習できます。
+
+### 学習の流れ
+
+#### 1. **品詞別CSVファイルの統合**
+
+品詞ごとに分かれたCSVファイルを1つのシード辞書ファイルに統合します：
+
+```bash
+# 全ての品詞別CSVを結合
+cat Noun.csv Verb.csv Adj.csv Adverb.csv Auxil.csv > lexicon.csv
+```
+
+#### 2. **学習用コーパスの準備**
+
+学習用コーパスには、既存辞書の単語と新しい単語の**両方を含めることが推奨**されます：
+
+```text
+# 既存単語と新単語の混在例
+東京 名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # 既存単語
+の 助詞,連体化,*,*,*,*,の,ノ,ノ                              # 既存単語
+スカイツリー 名詞,固有名詞,一般,*,*,*,スカイツリー,スカイツリー,スカイツリー  # 新単語
+EOS
+
+ChatGPT 名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # 新単語
+を 助詞,格助詞,一般,*,*,*,を,ヲ,ヲ                            # 既存単語
+使う 動詞,自立,*,*,五段・ワ行促音便,基本形,使う,ツカウ,ツカウ    # 既存単語
+EOS
+```
+
+#### 3. **学習の実行**
+
+```bash
+./target/debug/lindera train \
+  --lexicon lexicon.csv \              # 統合したIPADIC辞書
+  --corpus training_corpus.txt \       # 新語を含むコーパス
+  --unk-def unk.def \                  # 未知語定義
+  --char-def char.def \                # 文字種定義
+  --feature-def feature.def \          # 特徴テンプレート
+  --rewrite-def rewrite.def \          # リライトルール
+  --output trained_model.dat           # 出力モデル
+```
+
+#### 4. **学習結果**
+
+学習後の出力辞書には：
+
+- **既存単語**：シード辞書の全レコードが**新しい学習済み重み**で出力されます
+- **新単語**：コーパスに出現した辞書にない単語が**適切な重みで追加**されます
+
+#### 例：学習前後の比較
+
+```csv
+# 学習前（シード辞書）
+東京,0,0,1000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
+
+# 学習後（出力辞書）
+東京,0,0,850,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # 重みが最適化
+ChatGPT,0,0,900,名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # 新規追加
+```
+
+### 重要なポイント
+
+1. **コーパスの構成**
+   - 既存単語と新単語を自然な文脈で混在させる
+   - 既存単語との接続関係から適切な重みを学習
+
+2. **新単語の定義**
+   - 新単語 = シード辞書（既存辞書）に存在しない単語
+   - コーパスに正解付きで記述された未知語
+
+3. **重み学習の効果**
+   - 文脈に基づいた重み（コスト）の最適化
+   - 既存単語と新単語のバランスの取れた辞書生成
+
 ## 実装状況
 
 ### 完了済み機能（2024年9月版）
@@ -282,7 +361,7 @@ model.write_dictionary(&mut lex_out, &mut conn_out, &mut unk_out, &mut user_out)
 - **表層形解析**: 文字パターン、長さ、位置情報による特徴生成
 - **動的コスト計算**: 文字種別・文脈考慮の適応的コスト
 
-#### **Vibrato互換の特徴重み最適化**
+#### **特徴重み最適化**
 
 - **多段階正規化**: 既知語・未知語の差別化重み処理
 - **グローバル重み正規化**: モデル安定性向上のための自動スケーリング
@@ -320,7 +399,7 @@ fn classify_unknown_word(&self, token: &Word) -> usize {
 }
 ```
 
-#### **2. Vibrato準拠重み正規化**
+#### **2. 重み正規化**
 
 ```rust
 // 特徴重み正規化
@@ -360,8 +439,8 @@ fn generate_unknown_word_features(&self, surface: &str, char_type: usize) -> Vec
 ## アーキテクチャ
 
 ```text
+lindera-dictionary/src/trainer.rs  # メインのTrainer構造体
 lindera-dictionary/src/trainer/
-├── mod.rs              # メインのTrainer構造体
 ├── config.rs           # 設定管理
 ├── corpus.rs           # コーパス処理
 ├── feature_extractor.rs # 特徴抽出
@@ -377,13 +456,13 @@ lindera-dictionary/src/trainer/
 
 ```bash
 $ ./target/debug/lindera train \
-  --seed-lexicon examples/training/sample_lex.csv \
-  --seed-unk examples/training/sample_unk.def \
+  --lexicon examples/training/sample_lex.csv \
   --corpus examples/training/sample_corpus.txt \
+  --unk-def examples/training/sample_unk.def \
   --char-def examples/training/sample_char.def \
   --feature-def examples/training/sample_feature.def \
   --rewrite-def examples/training/sample_rewrite.def \
-  --model-out trained_model.dat
+  --output trained_model.dat
 
 Building feature lattices...
 Processing example 1/3
@@ -452,7 +531,7 @@ $ cargo build --release
 ### 2. **重み正規化の最適化**
 
 - **従来**: 単純な重み抽出
-- **最新**: Vibrato準拠の多段階正規化
+- **最新**: 多段階正規化
 - **効果**: モデル安定性とパフォーマンス向上
 
 ### 3. **特徴抽出の拡張**

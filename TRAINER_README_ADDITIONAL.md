@@ -104,7 +104,7 @@ fn generate_unknown_word_features(&self, surface: &str, char_type: usize) -> Vec
 }
 ```
 
-## Vibrato互換の特徴重み最適化
+## 特徴重み最適化
 
 ### 多段階正規化システム
 

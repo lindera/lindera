@@ -156,9 +156,8 @@ impl Model {
 
                 // Create a label ID without modifying the provider
                 // Since we can't clone the provider, we'll use a fixed ID based on entry count
-                let label_id =
-                    NonZeroU32::new((1000000 + self.user_entries.len() as u32 + 1) as u32)
-                        .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
+                let label_id = NonZeroU32::new(1000000 + self.user_entries.len() as u32 + 1)
+                    .ok_or_else(|| anyhow::anyhow!("Failed to create label ID"))?;
 
                 self.user_entries.push((word, entry, label_id));
             }
@@ -173,11 +172,11 @@ impl Model {
             5 // NUMERIC
         } else if ch.is_ascii_alphabetic() {
             4 // ALPHA
-        } else if ch >= '\u{4E00}' && ch <= '\u{9FAF}' {
+        } else if ('\u{4E00}'..='\u{9FAF}').contains(&ch) {
             3 // KANJI
-        } else if ch >= '\u{30A1}' && ch <= '\u{30F6}' {
+        } else if ('\u{30A1}'..='\u{30F6}').contains(&ch) {
             2 // KATAKANA
-        } else if ch >= '\u{3041}' && ch <= '\u{3096}' {
+        } else if ('\u{3041}'..='\u{3096}').contains(&ch) {
             1 // HIRAGANA
         } else {
             0 // DEFAULT
@@ -271,10 +270,7 @@ impl Model {
                 self.apply_global_weight_normalization(weights)
             }
             Err(e) => {
-                eprintln!(
-                    "Warning: Failed to merge model for weight extraction: {}",
-                    e
-                );
+                eprintln!("Warning: Failed to merge model for weight extraction: {e}");
                 // Fallback: use raw weights with basic normalization
                 let raw_weights = self.raw_model.weights();
                 raw_weights
@@ -456,11 +452,7 @@ impl Model {
                 let cost = self.get_word_cost(i);
                 let features = self.get_word_features(surface);
                 let (left_id, right_id) = self.infer_context_ids(surface, &features);
-                writeln!(
-                    writer,
-                    "{},{},{},{},{}",
-                    surface, left_id, right_id, cost, features
-                )?;
+                writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
             }
         }
 
@@ -503,7 +495,7 @@ impl Model {
         );
 
         // Write matrix dimensions
-        writeln!(writer, "{} {}", matrix_size, matrix_size)?;
+        writeln!(writer, "{matrix_size} {matrix_size}")?;
 
         // Write connection costs using trained model calculations
         for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
@@ -512,7 +504,7 @@ impl Model {
             for (left_conn_id, _w) in pairs {
                 // Use get_trained_connection_cost method for consistency
                 let cost = self.get_trained_connection_cost(left_conn_id as usize, right_conn_id);
-                writeln!(writer, "{} {} {}", right_conn_id, left_conn_id, cost)?;
+                writeln!(writer, "{right_conn_id} {left_conn_id} {cost}")?;
             }
         }
 
@@ -534,13 +526,13 @@ impl Model {
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
 
                 // Get category string from character properties
-                let cate_string = format!("UNK_{}", i); // Simplified category naming
+                let cate_string = format!("UNK_{i}"); // Simplified category naming
                 let features = "名詞,一般,*,*,*,*,*,*,*"; // Default features
 
                 writeln!(
                     writer,
-                    "{},{},{},{},{}",
-                    cate_string, feature_set.left_id, feature_set.right_id, cost, features
+                    "{cate_string},{},{},{cost},{features}",
+                    feature_set.left_id, feature_set.right_id
                 )?;
             }
         }
@@ -565,8 +557,7 @@ impl Model {
             let scaled_cost = (raw_cost as f64 * weight_scale_factor / 1000.0) as i32;
             writeln!(
                 writer,
-                "{},{},{},{},{}",
-                surface, left_id, right_id, scaled_cost, features
+                "{surface},{left_id},{right_id},{scaled_cost},{features}"
             )?;
         }
 
@@ -601,7 +592,7 @@ impl Model {
             let raw_weight = self.feature_weights[category];
 
             // Apply scaling appropriate for unknown words (following Vibrato's approach)
-            let normalized_weight = (raw_weight / 10.0).max(-2.0).min(2.0);
+            let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
             let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
 
             // Category-specific adjustments based on Japanese morphology
@@ -615,7 +606,7 @@ impl Model {
                 _ => 0,    // Other categories
             };
 
-            (calculated_cost + category_adjustment).max(1000).min(3000)
+            (calculated_cost + category_adjustment).clamp(1000, 3000)
         } else {
             // Fallback to category-specific default costs
             match category {
@@ -636,7 +627,7 @@ impl Model {
         let feature_parts: Vec<&str> = features.split(',').collect();
 
         // 品詞（POS）に基づいてコンテキストIDを決定
-        let pos_category = if feature_parts.len() > 0 {
+        let pos_category = if !feature_parts.is_empty() {
             feature_parts[0]
         } else {
             "名詞" // デフォルト
@@ -669,11 +660,20 @@ impl Model {
             context_id + 100 // アルファベット
         } else if surface.chars().all(|c| c.is_ascii_digit()) {
             context_id + 200 // 数字
-        } else if surface.chars().any(|c| c >= '\u{3040}' && c <= '\u{309F}') {
+        } else if surface
+            .chars()
+            .any(|c| ('\u{3040}'..='\u{309F}').contains(&c))
+        {
             context_id + 300 // ひらがな
-        } else if surface.chars().any(|c| c >= '\u{30A0}' && c <= '\u{30FF}') {
+        } else if surface
+            .chars()
+            .any(|c| ('\u{30A0}'..='\u{30FF}').contains(&c))
+        {
             context_id + 400 // カタカナ
-        } else if surface.chars().any(|c| c >= '\u{4E00}' && c <= '\u{9FAF}') {
+        } else if surface
+            .chars()
+            .any(|c| ('\u{4E00}'..='\u{9FAF}').contains(&c))
+        {
             context_id + 500 // 漢字
         } else {
             context_id
@@ -769,13 +769,13 @@ impl Model {
 
         // Extract right feature names (simplified version - in practice would come from feature extractor)
         for i in 0..merged_model.feature_sets.len() {
-            let feature_name = format!("R{}", i);
+            let feature_name = format!("R{i}");
             right_features.insert(i as u32, feature_name);
         }
 
         // Extract left feature names
         for i in 0..merged_model.feature_sets.len() {
-            let feature_name = format!("L{}", i);
+            let feature_name = format!("L{i}");
             left_features.insert(i as u32, feature_name);
         }
 
@@ -789,7 +789,7 @@ impl Model {
                 }
                 if let Some(feat_id) = feat_id {
                     if let Some(feat_str) = right_features.get(&feat_id.get()) {
-                        write!(&mut left_wtr, "\"{}\"", feat_str)?;
+                        write!(&mut left_wtr, "\"{feat_str}\"")?;
                     } else {
                         write!(&mut left_wtr, "\"*\"")?;
                     }
@@ -810,7 +810,7 @@ impl Model {
                 }
                 if let Some(feat_id) = feat_id {
                     if let Some(feat_str) = left_features.get(&feat_id.get()) {
-                        write!(&mut right_wtr, "\"{}\"", feat_str)?;
+                        write!(&mut right_wtr, "\"{feat_str}\"")?;
                     } else {
                         write!(&mut right_wtr, "\"*\"")?;
                     }
@@ -832,11 +832,7 @@ impl Model {
                     .get(&right_feat_id)
                     .map_or("*", |x| x.as_str());
                 let cost = (-w * weight_scale_factor) as i32;
-                writeln!(
-                    &mut cost_wtr,
-                    "{}/{}\t{}",
-                    left_feat_str, right_feat_str, cost
-                )?;
+                writeln!(&mut cost_wtr, "{left_feat_str}/{right_feat_str}\t{cost}")?;
             }
         }
 
@@ -887,9 +883,9 @@ impl SerializableModel {
             self.feature_weights.len()
         );
         eprintln!("DEBUG: Total labels: {}", self.labels.len());
-        eprintln!("DEBUG: Weight scale factor: {}", weight_scale_factor);
+        eprintln!("DEBUG: Weight scale factor: {weight_scale_factor}");
         for (i, weight) in self.feature_weights.iter().take(20).enumerate() {
-            eprintln!("DEBUG: feature_weights[{}] = {}", i, weight);
+            eprintln!("DEBUG: feature_weights[{i}] = {weight}");
         }
 
         // Unknown word category labels for special processing
@@ -901,12 +897,11 @@ impl SerializableModel {
         let mut pos_to_id: HashMap<String, u32> = HashMap::new();
         let mut next_id = 0u32;
 
-        let mut feature_weight_index = 0;
         for (i, label) in self.labels.iter().enumerate() {
             // Special handling for unknown word categories
             let is_unknown_category = unk_categories.contains(&label.as_str());
             if is_unknown_category {
-                eprintln!("DEBUG: Processing unknown category: {}", label);
+                eprintln!("DEBUG: Processing unknown category: {label}");
             }
 
             let pos_info = if i < self.pos_info.len() {
@@ -935,45 +930,38 @@ impl SerializableModel {
                     "NUMERIC" => 1900,  // Lower cost for numeric sequences
                     _ => 2000,          // Default fallback
                 };
-                eprintln!(
-                    "DEBUG: Unknown category label={}, category_cost={}",
-                    label, category_cost
-                );
+                eprintln!("DEBUG: Unknown category label={label}, category_cost={category_cost}");
                 category_cost
-            } else if feature_weight_index < self.feature_weights.len() {
-                let raw_weight = self.feature_weights[feature_weight_index];
+            } else if i < self.feature_weights.len() {
+                let raw_weight = self.feature_weights[i];
 
                 // Since weights are in 40-50 range (unusually large), we need different scaling
                 // Normalize to a reasonable range first
                 let normalized_weight = if raw_weight.abs() > 1.0 {
                     // Scale down large weights to reasonable range (-5 to +5)
-                    (raw_weight / 10.0).max(-5.0).min(5.0)
+                    (raw_weight / 10.0).clamp(-5.0, 5.0)
                 } else {
                     raw_weight
                 };
 
                 // Apply standard morphological analysis cost calculation
                 let calculated_cost = (-normalized_weight * 1000.0) as i16;
-                let final_cost = (calculated_cost + 5000).max(1000).min(15000);
+                let final_cost = (calculated_cost + 5000).clamp(1000, 15000);
 
                 eprintln!(
-                    "DEBUG: label={}, raw_weight={:.3}, normalized={:.3}, calculated={}, final={}",
-                    label, raw_weight, normalized_weight, calculated_cost, final_cost
+                    "DEBUG: label={label}, raw_weight={raw_weight:.3}, normalized={normalized_weight:.3}, calculated={calculated_cost}, final={final_cost}"
                 );
 
                 final_cost
             } else {
-                eprintln!("DEBUG: label={} using default cost", label);
+                eprintln!("DEBUG: label={label} using default cost");
                 5000i16 // Default cost for morphological analysis
             };
 
             writeln!(
                 writer,
-                "{},{},{},{},{}",
-                label, connection_id, connection_id, cost, pos_info
+                "{label},{connection_id},{connection_id},{cost},{pos_info}"
             )?;
-
-            feature_weight_index += 1;
         }
 
         Ok(())
@@ -985,12 +973,12 @@ impl SerializableModel {
         // In a full implementation, this would use trained bigram weights
         let num_categories = 6; // Number of distinct POS categories
 
-        writeln!(writer, "{} {}", num_categories, num_categories)?;
+        writeln!(writer, "{num_categories} {num_categories}")?;
 
         for i in 0..num_categories {
             for j in 0..num_categories {
                 let cost = if i == j { 0 } else { 200 }; // Lower penalty than before
-                write!(writer, "{}", cost)?;
+                write!(writer, "{cost}")?;
                 if j < num_categories - 1 {
                     write!(writer, " ")?;
                 }
@@ -1022,7 +1010,7 @@ impl SerializableModel {
                 let raw_weight = self.feature_weights[i];
 
                 // Apply scaling appropriate for unknown words (following Vibrato's approach)
-                let normalized_weight = (raw_weight / 10.0).max(-2.0).min(2.0);
+                let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
                 let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
 
                 // Category-specific adjustments based on Japanese morphology
@@ -1036,7 +1024,7 @@ impl SerializableModel {
                     _ => 0,    // Other categories
                 };
 
-                (calculated_cost + category_adjustment).max(1000).min(3000)
+                (calculated_cost + category_adjustment).clamp(1000, 3000)
             } else {
                 // Fallback to category-specific default costs
                 match i {
@@ -1049,7 +1037,7 @@ impl SerializableModel {
                     _ => 2000, // Other categories
                 }
             };
-            writeln!(writer, "{},{},{},{},{}", category, i, i, cost, features)?;
+            writeln!(writer, "{category},{i},{i},{cost},{features}")?;
         }
 
         Ok(())

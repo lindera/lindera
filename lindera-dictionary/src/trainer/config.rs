@@ -91,11 +91,10 @@ impl TrainerConfig {
                 continue;
             }
             // Parse template format
-            if line.starts_with("UNIGRAM:") {
-                unigram_templates.push(line[8..].to_string());
-            } else if line.starts_with("BIGRAM:") {
+            if let Some(stripped) = line.strip_prefix("UNIGRAM:") {
+                unigram_templates.push(stripped.to_string());
+            } else if let Some(template_part) = line.strip_prefix("BIGRAM:") {
                 // Parse bigram template like "BIGRAM:%L[0],%R[0]"
-                let template_part = &line[7..];
                 if let Some((left, right)) = template_part.split_once(',') {
                     bigram_templates.push((left.to_string(), right.to_string()));
                 }
@@ -344,7 +343,7 @@ impl TrainerConfig {
         // Create lookup table with proper category mappings
         let ranges_clone = char_ranges.clone();
         let mapping = LookupTable::from_fn(boundaries, &|c, buff| {
-            let code = c as u32;
+            let code = c;
 
             // Find which category this character belongs to
             for &(start, end, cat_idx) in &ranges_clone {

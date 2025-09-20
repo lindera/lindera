@@ -12,20 +12,15 @@ use crate::mode::Mode;
 const EOS_NODE: EdgeId = EdgeId(1u32);
 
 /// Type of lexicon containing the word
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub enum LexType {
     /// System dictionary (base dictionary)
+    #[default]
     System,
     /// User dictionary (additional vocabulary)
     User,
     /// Unknown words (OOV handling)
     Unknown,
-}
-
-impl Default for LexType {
-    fn default() -> Self {
-        LexType::System
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

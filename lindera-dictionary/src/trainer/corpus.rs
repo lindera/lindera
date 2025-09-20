@@ -46,6 +46,12 @@ pub struct Corpus {
     pub(crate) examples: Vec<Example>,
 }
 
+impl Default for Corpus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Corpus {
     /// Creates a new empty corpus.
     pub fn new() -> Self {

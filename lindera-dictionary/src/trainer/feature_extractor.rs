@@ -31,6 +31,12 @@ pub struct FeatureExtractor {
     right_next_id: u32,
 }
 
+impl Default for FeatureExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeatureExtractor {
     /// Creates a new feature extractor with advanced template parsing.
     pub fn new() -> Self {

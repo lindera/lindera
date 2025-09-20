@@ -37,6 +37,7 @@ pub struct Trainer {
     /// - 3: KANJI (Chinese/Japanese ideographic characters)
     /// - 4: ALPHA (ASCII alphabetic characters)
     /// - 5: NUMERIC (ASCII numeric characters)
+    ///
     /// These are used to assign consistent labels to unknown words based on their character type.
     label_id_map_unk: Vec<NonZeroU32>,
 
@@ -212,10 +213,7 @@ impl Trainer {
                 Self::apply_global_normalization_static(weights)
             }
             Err(e) => {
-                println!(
-                    "WARNING: Failed to merge model for weight extraction: {}",
-                    e
-                );
+                println!("WARNING: Failed to merge model for weight extraction: {e}");
                 // Fallback to raw weights with basic processing
                 let raw_weights = raw_model.weights();
                 raw_weights.iter().map(|&w| w.clamp(-5.0, 5.0)).collect()
@@ -548,7 +546,7 @@ impl Trainer {
         if let Some(first_char) = token.surface().chars().next() {
             self.label_id_map
                 .entry(token.surface().to_string())
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .insert(first_char, new_id);
         }
 
@@ -696,7 +694,7 @@ impl Trainer {
         let merged_model = match raw_model.merge() {
             Ok(model) => model,
             Err(e) => {
-                eprintln!("Warning: Could not merge model for feature cleanup: {}", e);
+                eprintln!("Warning: Could not merge model for feature cleanup: {e}");
                 return;
             }
         };

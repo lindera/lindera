@@ -72,12 +72,12 @@ Instead, you will be penalized for the execution time of the program.
 ### IPADIC (Japanese dictionary)
 
 ```shell script
-% curl -L -o /tmp/mecab-ipadic-2.7.0-20070801.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz"
-% tar zxvf /tmp/mecab-ipadic-2.7.0-20070801.tar.gz -C /tmp
-% lindera build ./lindera-ipadic/metadata.json /tmp/mecab-ipadic-2.7.0-20070801 /tmp/lindera-ipadic-2.7.0-20070801
-% ls -al /tmp/lindera-ipadic-2.7.0-20070801
-% (cd /tmp && zip -r lindera-ipadic-2.7.0-20070801.zip lindera-ipadic-2.7.0-20070801/)
-% tar -czf /tmp/lindera-ipadic-2.7.0-20070801.tar.gz -C /tmp lindera-ipadic-2.7.0-20070801
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
+% lindera build ./lindera-ipadic/metadata.json /tmp/mecab-ipadic-2.7.0-20250920 /tmp/lindera-ipadic-2.7.0-20250920
+% ls -al /tmp/lindera-ipadic-2.7.0-20250920
+% (cd /tmp && zip -r lindera-ipadic-2.7.0-20250920.zip lindera-ipadic-2.7.0-20250920/)
+% tar -czf /tmp/lindera-ipadic-2.7.0-20250920.tar.gz -C /tmp lindera-ipadic-2.7.0-20250920
 ```
 
 ### CC-CEDICT (Chinese dictionary)

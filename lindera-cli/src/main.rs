@@ -54,40 +54,45 @@ struct ListArgs {}
 )]
 struct TokenizeArgs {
     #[clap(
-        short = 'u',
-        long = "user-dictionary-uri",
-        help = "User dictionary URI"
+        short = 'd',
+        long = "dict",
+        required = true,
+        help = "Dictionary directory path or URI (e.g., embedded://ipadic, /path/to/dictionary)"
     )]
-    user_dic_uri: Option<String>,
+    dict: String,
+    #[clap(
+        short = 'o',
+        long = "output",
+        default_value = "mecab",
+        help = "Output format (mecab|wakati|json)"
+    )]
+    output: String,
+    #[clap(
+        short = 'u',
+        long = "user-dict",
+        help = "User dictionary path or URI (optional)"
+    )]
+    user_dict: Option<String>,
     #[clap(
         short = 'm',
         long = "mode",
         default_value = "normal",
-        help = "Tokenization mode. normal"
+        help = "Tokenization mode (normal|decompose)"
     )]
     mode: Mode,
     #[clap(
-        short = 'o',
-        long = "output-format",
-        default_value = "mecab",
-        help = "Output format"
-    )]
-    output_format: String,
-    #[clap(
         short = 'c',
-        long = "character-filter",
-        help = "Specify character filter. e.g. unicode_normalize:{\"kind\":\"NFKC\"}"
+        long = "char-filter",
+        help = "Character filter config (JSON)"
     )]
     character_filters: Option<Vec<String>>,
     #[clap(
         short = 't',
         long = "token-filter",
-        help = "Specify token filter. e.g. stop_word:{\"words\":[\"a\", \"the\"]}"
+        help = "Token filter config (JSON)"
     )]
     token_filters: Option<Vec<String>>,
-    #[clap(help = "Dictionary directory URI")]
-    dic_uri: String,
-    #[clap(help = "Input text file path")]
+    #[clap(help = "Input text file (default: stdin)")]
     input_file: Option<PathBuf>,
 }
 
@@ -98,17 +103,32 @@ struct TokenizeArgs {
 )]
 struct BuildArgs {
     #[clap(
-        short = 'u',
-        long = "build-user-dictionary",
-        help = "Build user dictionary flag"
+        short = 's',
+        long = "src",
+        required = true,
+        help = "Source directory containing dictionary CSV files"
     )]
-    build_user_dic: bool,
-    #[clap(help = "Metadata file path")]
-    metadata_path: PathBuf,
-    #[clap(help = "Dictionary source path")]
-    src_path: PathBuf,
-    #[clap(help = "Dictionary destination path")]
-    dest_path: PathBuf,
+    src: PathBuf,
+    #[clap(
+        short = 'd',
+        long = "dest",
+        required = true,
+        help = "Destination directory for compiled dictionary"
+    )]
+    dest: PathBuf,
+    #[clap(
+        short = 'm',
+        long = "metadata",
+        required = true,
+        help = "Metadata configuration file (metadata.json)"
+    )]
+    metadata: PathBuf,
+    #[clap(
+        short = 'u',
+        long = "user",
+        help = "Build user dictionary (default: system dictionary)"
+    )]
+    user: bool,
 }
 
 #[cfg(feature = "train")]
@@ -121,52 +141,74 @@ struct BuildArgs {
 struct TrainArgs {
     #[clap(
         short = 'l',
-        long = "seed-lexicon",
-        help = "Seed lexicon file (lex.csv) to be weighted"
+        long = "lexicon",
+        required = true,
+        help = "Seed lexicon file (CSV format) to be weighted"
     )]
-    seed_lexicon: PathBuf,
-    #[clap(
-        short = 'u',
-        long = "seed-unk",
-        help = "Unknown word file (unk.def) to be weighted"
-    )]
-    seed_unk: PathBuf,
-    #[clap(short = 't', long = "corpus", help = "Corpus file to be trained")]
-    corpus: PathBuf,
+    lexicon: PathBuf,
     #[clap(
         short = 'c',
+        long = "corpus",
+        required = true,
+        help = "Training corpus (annotated text)"
+    )]
+    corpus: PathBuf,
+    #[clap(
+        short = 'C',
         long = "char-def",
+        required = true,
         help = "Character definition file (char.def)"
     )]
     char_def: PathBuf,
     #[clap(
+        short = 'u',
+        long = "unk-def",
+        required = true,
+        help = "Unknown word definition file (unk.def) to be weighted"
+    )]
+    unk_def: PathBuf,
+    #[clap(
         short = 'f',
         long = "feature-def",
+        required = true,
         help = "Feature definition file (feature.def)"
     )]
     feature_def: PathBuf,
     #[clap(
         short = 'r',
         long = "rewrite-def",
+        required = true,
         help = "Rewrite rule definition file (rewrite.def)"
     )]
     rewrite_def: PathBuf,
-    #[clap(short = 'o', long = "model-out", help = "Output model file")]
-    model_out: PathBuf,
     #[clap(
+        short = 'o',
+        long = "output",
+        required = true,
+        help = "Output model file"
+    )]
+    output: PathBuf,
+    #[clap(
+        short = 'L',
         long = "lambda",
         default_value = "0.01",
-        help = "Regularization coefficient"
+        help = "L1 regularization (0.0-1.0)"
     )]
     lambda: f64,
     #[clap(
-        long = "max-iter",
+        short = 'i',
+        long = "iter",
         default_value = "100",
-        help = "Maximum number of iterations"
+        help = "Max iterations"
     )]
-    max_iter: u64,
-    #[clap(long = "num-threads", default_value = "1", help = "Number of threads")]
-    num_threads: usize,
+    iter: u64,
+    #[clap(
+        short = 't',
+        long = "threads",
+        default_value = "1",
+        help = "Number of threads"
+    )]
+    threads: usize,
 }
 
 #[cfg(feature = "train")]
@@ -179,16 +221,18 @@ struct TrainArgs {
 struct ExportArgs {
     #[clap(
         short = 'm',
-        long = "model-file",
-        help = "Trained model file (JSON format)"
+        long = "model",
+        required = true,
+        help = "Trained model file (.dat format)"
     )]
-    model_file: PathBuf,
+    model: PathBuf,
     #[clap(
-        short = 'd',
-        long = "dict-dir",
-        help = "Output directory for dictionary files"
+        short = 'o',
+        long = "output",
+        required = true,
+        help = "Output directory (creates lex.csv, matrix.def, unk.def, char.def)"
     )]
-    dict_dir: PathBuf,
+    output: PathBuf,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -276,10 +320,10 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mut builder = TokenizerBuilder::new()?;
 
     // Set dictionary directory URI
-    builder.set_segmenter_dictionary(args.dic_uri.as_str());
+    builder.set_segmenter_dictionary(args.dict.as_str());
 
     // Set user dictionary URI
-    if let Some(user_dic_uri) = args.user_dic_uri {
+    if let Some(user_dic_uri) = args.user_dict {
         builder.set_segmenter_user_dictionary(user_dic_uri.as_str());
     }
 
@@ -292,7 +336,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // output format
-    let output_format = Format::from_str(args.output_format.as_str())?;
+    let output_format = Format::from_str(args.output.as_str())?;
 
     // Character flters
     for filter in args.character_filters.iter().flatten() {
@@ -346,24 +390,24 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
     let metadata: Metadata = serde_json::from_reader(
-        File::open(&args.metadata_path)
+        File::open(&args.metadata)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
     )
     .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     let builder = DictionaryBuilder::new(metadata);
 
-    if args.build_user_dic {
-        let output_file = if let Some(filename) = args.src_path.file_name() {
-            let mut output_file = Path::new(&args.dest_path).join(filename);
+    if args.user {
+        let output_file = if let Some(filename) = args.src.file_name() {
+            let mut output_file = Path::new(&args.dest).join(filename);
             output_file.set_extension("bin");
             output_file
         } else {
             return Err(LinderaErrorKind::Io.with_error(anyhow::anyhow!("failed to get filename")));
         };
-        builder.build_user_dictionary(&args.src_path, &output_file)
+        builder.build_user_dictionary(&args.src, &output_file)
     } else {
-        builder.build_dictionary(&args.src_path, &args.dest_path)
+        builder.build_dictionary(&args.src, &args.dest)
     }
 }
 
@@ -374,9 +418,9 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
 
     // Load configuration
     let config = TrainerConfig::from_paths(
-        &args.seed_lexicon,
+        &args.lexicon,
         &args.char_def,
-        &args.seed_unk,
+        &args.unk_def,
         &args.feature_def,
         &args.rewrite_def,
     )
@@ -386,8 +430,8 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     let trainer = Trainer::new(config)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
-        .max_iter(args.max_iter)
-        .num_threads(args.num_threads);
+        .max_iter(args.iter)
+        .num_threads(args.threads);
 
     // Load corpus
     let corpus_file = File::open(&args.corpus)
@@ -403,13 +447,13 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Save model
-    let mut output_file = File::create(&args.model_out)
+    let mut output_file = File::create(&args.output)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     model
         .write_model(&mut output_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    println!("Model saved to {:?}", args.model_out);
+    println!("Model saved to {:?}", args.output);
     Ok(())
 }
 
@@ -420,21 +464,21 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     use std::io::Write;
 
     // Load trained model
-    let model_file = File::open(&args.model_file)
+    let model_file = File::open(&args.model)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     let model: SerializableModel =
         lindera::dictionary::trainer::model::Model::read_model(model_file)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
 
     // Create output directory
-    fs::create_dir_all(&args.dict_dir)
+    fs::create_dir_all(&args.output)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
     // Export dictionary files
-    let lexicon_path = args.dict_dir.join("lex.csv");
-    let connector_path = args.dict_dir.join("matrix.def");
-    let unk_path = args.dict_dir.join("unk.def");
-    let char_def_path = args.dict_dir.join("char.def");
+    let lexicon_path = args.output.join("lex.csv");
+    let connector_path = args.output.join("matrix.def");
+    let unk_path = args.output.join("unk.def");
+    let char_def_path = args.output.join("char.def");
 
     // Write lexicon file using SerializableModel methods
     let mut lexicon_file = File::create(&lexicon_path)
@@ -500,12 +544,12 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     writeln!(char_def_file, "0x0061..0x007A ALPHA     # ASCII Lowercase")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
-    println!("Dictionary files exported to: {:?}", args.dict_dir);
+    println!("Dictionary files exported to: {:?}", args.output);
     println!("Files created:");
-    println!("  - {:?}", lexicon_path);
-    println!("  - {:?}", connector_path);
-    println!("  - {:?}", unk_path);
-    println!("  - {:?}", char_def_path);
+    println!("  - {lexicon_path:?}");
+    println!("  - {connector_path:?}");
+    println!("  - {unk_path:?}");
+    println!("  - {char_def_path:?}");
 
     Ok(())
 }
