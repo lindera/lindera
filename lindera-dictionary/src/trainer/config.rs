@@ -29,6 +29,23 @@ pub struct TrainerConfig {
 }
 
 impl TrainerConfig {
+    /// Access system lexicon for morphological analysis
+    pub fn system_lexicon(&self) -> &PrefixDictionary {
+        &self.dict.prefix_dictionary
+    }
+
+    /// Access dictionary (for compatibility)
+    pub fn dict(&self) -> &Dictionary {
+        &self.dict
+    }
+
+    /// Access unknown word handler for out-of-vocabulary processing
+    pub fn unk_handler(&self) -> &crate::dictionary::unknown_dictionary::UnknownDictionary {
+        &self.dict.unknown_dictionary
+    }
+}
+
+impl TrainerConfig {
     /// Creates a new trainer configuration from readers.
     ///
     /// # Arguments

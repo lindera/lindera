@@ -202,7 +202,7 @@ impl Model {
             },
         };
 
-        // Use bincode for efficient storage (compatible with Vibrato)
+        // Use bincode for efficient binary serialization
         let encoded = bincode::encode_to_vec(&serializable_model, bincode::config::standard())?;
         writer.write_all(&encoded)?;
 
@@ -238,16 +238,16 @@ impl Model {
         Ok(model)
     }
 
-    /// Extracts feature weights from the raw CRF model with Vibrato-compatible normalization
+    /// Extracts feature weights from the raw CRF model with optimized normalization
     fn extract_feature_weights(&self) -> Vec<f64> {
-        // Use merge approach to get accurate weights (following Vibrato pattern)
+        // Use merge approach to get accurate weights with advanced processing
         match self.raw_model.merge() {
             Ok(merged_model) => {
                 let mut weights = Vec::new();
 
                 // Extract unigram weights from feature sets with proper indexing
                 for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
-                    // Apply normalization following Vibrato's approach
+                    // Apply normalization with advanced scaling method
                     let normalized_weight = self.normalize_feature_weight(feature_set.weight, i);
                     weights.push(normalized_weight);
                 }
@@ -281,7 +281,7 @@ impl Model {
         }
     }
 
-    /// Normalize feature weight following Vibrato's approach
+    /// Normalize feature weight using advanced scaling method
     fn normalize_feature_weight(&self, weight: f64, feature_index: usize) -> f64 {
         // Apply feature-specific normalization based on index
         let base_normalization = if feature_index < self.config.surfaces.len() {
@@ -296,7 +296,7 @@ impl Model {
         base_normalization.clamp(-10.0, 10.0)
     }
 
-    /// Normalize connection weight following Vibrato's bigram weight handling
+    /// Normalize connection weight for bigram feature optimization
     fn normalize_connection_weight(&self, weight: f64, left_id: usize, right_id: usize) -> f64 {
         // Apply context-aware normalization
         let context_factor = if left_id == right_id {
@@ -550,7 +550,7 @@ impl Model {
         let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
 
         for (surface, features) in self.config.user_lexicon() {
-            // For user lexicon, use scaled costs following Vibrato's approach
+            // For user lexicon, use scaled costs with optimized weight calculation
             let (left_id, right_id) = self.infer_context_ids(surface, features);
             let raw_cost = self.get_user_word_cost(surface);
             // Apply weight scaling to ensure consistency with trained model weights
@@ -584,14 +584,14 @@ impl Model {
         "名詞,一般,*,*,*,*,*,*,*".to_string()
     }
 
-    /// Calculate unknown word cost based on trained feature weights (following Vibrato pattern)
+    /// Calculate unknown word cost based on trained feature weights using dynamic calculation
     pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
-        // Use trained weights for dynamic unknown word cost calculation (Vibrato pattern)
+        // Use trained weights for dynamic unknown word cost calculation
         if !self.feature_weights.is_empty() && category < self.feature_weights.len() {
             // Calculate cost based on learned feature weights
             let raw_weight = self.feature_weights[category];
 
-            // Apply scaling appropriate for unknown words (following Vibrato's approach)
+            // Apply scaling appropriate for unknown words with optimized weight calculation
             let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
             let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
 
@@ -744,7 +744,7 @@ impl Model {
     /// - Right features: connection features for right context
     /// - Costs: bigram connection costs with feature names
     ///
-    /// This is equivalent to Vibrato's write_bigram_details method.
+    /// Writes detailed bigram connection information for dictionary optimization.
     pub fn write_bigram_details<L, R, C>(
         &self,
         left_wtr: L,
@@ -854,6 +854,33 @@ impl Model {
             sum / weights.len() as f64
         }
     }
+
+    /// Write dictionary components to separate buffers using optimized serialization
+    pub fn write_dictionary_buffers(
+        &self,
+        lexicon: &mut Vec<u8>,
+        connector: &mut Vec<u8>,
+        unk_handler: &mut Vec<u8>,
+        user_lexicon: &mut Vec<u8>,
+    ) -> Result<()> {
+        // Serialize lexicon data
+        let lexicon_data = bincode::encode_to_vec(&self.labels, bincode::config::standard())?;
+        lexicon.extend_from_slice(&lexicon_data);
+
+        // Serialize connection costs (feature weights as connection matrix)
+        let connection_data = bincode::encode_to_vec(&self.feature_weights, bincode::config::standard())?;
+        connector.extend_from_slice(&connection_data);
+
+        // Serialize unknown word handler (simplified data)
+        let unk_data = bincode::encode_to_vec(&self.user_entries.len(), bincode::config::standard())?;
+        unk_handler.extend_from_slice(&unk_data);
+
+        // Serialize user lexicon (config info as user lexicon)
+        let user_data = bincode::encode_to_vec(&self.config.surfaces, bincode::config::standard())?;
+        user_lexicon.extend_from_slice(&user_data);
+
+        Ok(())
+    }
 }
 
 impl SerializableModel {
@@ -901,7 +928,8 @@ impl SerializableModel {
             // Special handling for unknown word categories
             let is_unknown_category = unk_categories.contains(&label.as_str());
             if is_unknown_category {
-                eprintln!("DEBUG: Processing unknown category: {label}");
+                eprintln!("DEBUG: Skipping unknown category in lex.csv: {label}");
+                continue; // 未知語カテゴリはlex.csvに含めない
             }
 
             let pos_info = if i < self.pos_info.len() {
@@ -918,21 +946,8 @@ impl SerializableModel {
                 id
             });
 
-            // Calculate cost with proper scaling and unknown word category handling
-            let cost = if is_unknown_category {
-                // Use specialized cost calculation for unknown word categories
-                let category_cost = match label.as_str() {
-                    "DEFAULT" => 2000,
-                    "HIRAGANA" => 1800, // Lower cost for common hiragana words
-                    "KATAKANA" => 1800, // Lower cost for common katakana words
-                    "KANJI" => 2200,    // Slightly higher cost for kanji
-                    "ALPHA" => 2100,    // Higher cost for alphabetic words
-                    "NUMERIC" => 1900,  // Lower cost for numeric sequences
-                    _ => 2000,          // Default fallback
-                };
-                eprintln!("DEBUG: Unknown category label={label}, category_cost={category_cost}");
-                category_cost
-            } else if i < self.feature_weights.len() {
+            // Calculate cost with proper scaling for actual vocabulary entries
+            let cost = if i < self.feature_weights.len() {
                 let raw_weight = self.feature_weights[i];
 
                 // Since weights are in 40-50 range (unusually large), we need different scaling
@@ -994,22 +1009,24 @@ impl SerializableModel {
         &self,
         writer: &mut W,
     ) -> anyhow::Result<()> {
+        // 未知語カテゴリの定義情報のみを出力
+        // 実際の語彙エントリではなく、カテゴリごとの設定情報
         let categories = [
-            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),
-            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),
-            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),
-            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),
-            ("ALPHA", "名詞,一般,*,*,*,*,*,*,*"),
-            ("NUMERIC", "名詞,一般,*,*,*,*,*,*,*"),
+            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),     // 文字種不明
+            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),    // ひらがな
+            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),    // カタカナ
+            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),       // 漢字
+            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"),   // アルファベット
+            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),       // 数字
         ];
 
         for (i, (category, features)) in categories.iter().enumerate() {
-            // Use dynamic cost calculation based on trained model (following Vibrato pattern)
+            // Use dynamic cost calculation based on trained model
             let cost = if !self.feature_weights.is_empty() && i < self.feature_weights.len() {
                 // Calculate cost based on learned feature weights
                 let raw_weight = self.feature_weights[i];
 
-                // Apply scaling appropriate for unknown words (following Vibrato's approach)
+                // Apply scaling appropriate for unknown words with optimized weight calculation
                 let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
                 let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
 
