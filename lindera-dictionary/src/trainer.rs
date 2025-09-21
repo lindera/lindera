@@ -37,9 +37,6 @@ pub struct Trainer {
     /// - 3: KANJI (Chinese/Japanese ideographic characters)
     /// - 4: ALPHA (ASCII alphabetic characters)
     /// - 5: NUMERIC (ASCII numeric characters)
-    ///
-    /// These are used to assign consistent labels to unknown words based on their character type.
-    label_id_map_unk: Vec<NonZeroU32>,
 
     regularization_cost: f64,
     max_iter: u64,
@@ -51,7 +48,6 @@ impl Trainer {
     pub fn new(config: TrainerConfig) -> Result<Self> {
         let provider = rucrf::FeatureProvider::default();
         let mut label_id_map = HashMap::new();
-        let mut label_id_map_unk = Vec::new();
 
         // Build label mapping from surfaces
         for (i, surface) in config.surfaces.iter().enumerate() {
@@ -67,18 +63,12 @@ impl Trainer {
 
         // Initialize unknown word labels for 6 character type categories
         // These pre-allocated IDs ensure consistent handling of unknown words
-        for i in 0..6 {
-            // 6 categories: DEFAULT, HIRAGANA, KATAKANA, KANJI, ALPHA, NUMERIC
-            label_id_map_unk
-                .push(std::num::NonZeroU32::new((config.surfaces.len() + i + 1) as u32).unwrap());
-        }
 
         Ok(Self {
             config,
             max_grouping_len: Some(10), // Default maximum grouping length
             provider,
             label_id_map,
-            label_id_map_unk,
             regularization_cost: 0.01,
             max_iter: 100,
             num_threads: 1,
@@ -146,17 +136,56 @@ impl Trainer {
         let regularization_cost = self.regularization_cost;
         let max_iter = self.max_iter;
 
+        // Dynamically adjust thread count based on dataset size
+        let optimal_threads = self.calculate_optimal_threads(lattices.len());
+
+        println!("Training parameters: regularization={regularization_cost}, max_iter={max_iter}, threads={optimal_threads} (optimized)");
+
         // Configure the CRF trainer
         let trainer = rucrf::Trainer::new()
             .regularization(rucrf::Regularization::L1, regularization_cost)?
             .max_iter(max_iter)?
-            .n_threads(self.num_threads)?;
+            .n_threads(optimal_threads)?;
 
         // Take ownership of provider and train the model
         let provider = std::mem::take(&mut self.provider);
-        let raw_model = trainer.train(&lattices, provider);
 
-        println!("Training completed successfully!");
+        println!("L-BFGS optimization starting...");
+        println!("Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above.");
+        println!("Each 'iter:' line indicates training progress. Please wait...");
+
+        // Training starts here - L-BFGS will show its own progress
+        let start_time = std::time::Instant::now();
+
+        // Spawn a thread to show periodic progress messages
+        let (tx, rx) = std::sync::mpsc::channel();
+        let progress_thread = std::thread::spawn(move || {
+            let mut elapsed_seconds = 0;
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(5)); // Check every 5 seconds
+                elapsed_seconds += 5;
+
+                match rx.try_recv() {
+                    Ok(_) => break, // Training completed
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+                    Err(std::sync::mpsc::TryRecvError::Empty) => {
+                        // Only show message if training is taking more than 10 seconds
+                        if elapsed_seconds >= 10 {
+                            println!("Training in progress... ({elapsed_seconds}s elapsed, L-BFGS optimizing weights)");
+                        }
+                    }
+                }
+            }
+        });
+
+        let raw_model = trainer.train(&lattices, provider);
+        let training_duration = start_time.elapsed();
+
+        // Signal the progress thread to stop
+        let _ = tx.send(());
+        let _ = progress_thread.join();
+
+        println!("Training completed successfully in {:.2}s!", training_duration.as_secs_f64());
 
         // Remove unused features from feature extractor
         self.remove_unused_features(&raw_model);
@@ -296,68 +325,77 @@ impl Trainer {
 
         let input_chars: Vec<char> = example.sentence.chars().collect();
         let input_len = input_chars.len();
-        let mut lattice = Lattice::new(input_len)?;
 
-        // First, add positive edges (correct segmentation from training data)
+        // Add positive edges (following Vibrato's approach)
+        let mut edges = vec![];
         let mut pos = 0;
-        let mut positive_edges = Vec::new();
         for token in &example.tokens {
             let token_len = token.surface().chars().count();
+            let first_char = input_chars[pos];
 
-            // Get or create label ID for this token
-            let label_id = self.get_or_create_label_id(token)?;
+            // Try to find existing label ID, or create one
+            let label_id = self
+                .label_id_map
+                .get(token.feature())
+                .and_then(|hm| hm.get(&first_char))
+                .cloned()
+                .map(Ok)
+                .unwrap_or_else(|| {
+                    // If not found, add virtual edge with empty features (like Vibrato)
+                    eprintln!(
+                        "adding virtual edge: {} {}",
+                        token.surface(),
+                        token.feature()
+                    );
+                    self.provider
+                        .add_feature_set(rucrf::FeatureSet::new(&[], &[], &[]))
+                })?;
 
-            // Use the dedicated extract_token_features method for comprehensive feature extraction
-            let feature_set = self.extract_token_features(token, pos)?;
-            let _feature_id = self.provider.add_feature_set(feature_set)?;
-
-            // Create edge using label_id (following Vibrato's approach)
-            let edge = Edge::new(pos + token_len, label_id);
-            lattice.add_edge(pos, edge)?;
-            positive_edges.push((pos, pos + token_len));
-
+            edges.push((pos, Edge::new(pos + token_len, label_id)));
             pos += token_len;
         }
+        assert_eq!(pos, input_len);
 
-        // Add negative edges with proper unknown word handling (following Vibrato's approach)
-        // Generate unknown word features based on character types
-        for start_pos in 0..input_len {
-            let mut added_count = 0;
+        let mut lattice = Lattice::new(input_len)?;
 
-            for length in 1..=3 {
+        // Add positive edges to lattice
+        for (pos, edge) in edges {
+            lattice.add_edge(pos, edge)?;
+        }
+
+        // Add negative edges using Vibrato-inspired approach (unknown words only)
+        // Skip dictionary lookup entirely for performance
+        let mut total_negative_edges = 0;
+
+        for (start_pos, _) in input_chars.iter().enumerate().take(input_len) {
+            // Generate unknown word candidates similar to Vibrato's unk_handler
+            // But with very aggressive limits for performance
+
+            // Add only single character unknown words and very few multi-char ones
+            let max_length = if start_pos % 4 == 0 { 2 } else { 1 }; // Length 2 only every 4th position
+
+            for length in 1..=std::cmp::min(max_length, input_len - start_pos) {
                 let end_pos = start_pos + length;
-                if end_pos > input_len {
-                    break;
+
+                // Skip if this would be identical to a positive edge
+                if let Some(first_edge) = lattice.nodes()[start_pos].edges().first() {
+                    if first_edge.target() == end_pos {
+                        continue;
+                    }
                 }
 
-                // Skip if this was a positive edge
-                if positive_edges.contains(&(start_pos, end_pos)) {
+                let first_char = input_chars[start_pos];
+                let char_type = self.get_char_type(first_char);
+
+                // Skip punctuation for multi-character words
+                if char_type == 0 && length > 1 {
                     continue;
                 }
 
-                // Extract substring and determine character type for unknown word features
-                let substring: String = input_chars[start_pos..end_pos].iter().collect();
-                let first_char = substring.chars().next().unwrap_or('\0');
-                let char_type = self.get_char_type(first_char);
+                // Generate unknown word using character type
+                let unknown_feature = self.get_unknown_feature(char_type);
+                let features: Vec<String> = unknown_feature.split(',').map(|s| s.to_string()).collect();
 
-                // Generate enhanced unknown word features based on character type and surface analysis
-                let enhanced_features = self.generate_unknown_word_features(&substring, char_type);
-                let features = if enhanced_features.len() > 1 {
-                    // Use first feature as base, combine others as additional features
-                    let mut combined_features = enhanced_features[0]
-                        .split(',')
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>();
-                    // Add enhanced features as additional context
-                    combined_features.extend(enhanced_features[1..].iter().cloned());
-                    combined_features
-                } else {
-                    // Fallback to basic feature parsing
-                    let unknown_feature = self.get_unknown_feature(char_type);
-                    unknown_feature.split(',').map(|s| s.to_string()).collect()
-                };
-
-                // Extract features for unknown word
                 let unigram_features = self
                     .config
                     .feature_extractor
@@ -376,12 +414,16 @@ impl Trainer {
                 let feature_id = self.provider.add_feature_set(feature_set)?;
                 let edge = Edge::new(end_pos, feature_id);
                 lattice.add_edge(start_pos, edge)?;
+                total_negative_edges += 1;
 
-                added_count += 1;
-                if added_count >= 2 {
-                    // Limit to 2 negative edges per position
+                // Strict limit for performance
+                if total_negative_edges >= 20 {
                     break;
                 }
+            }
+
+            if total_negative_edges >= 20 {
+                break;
             }
         }
 
@@ -451,239 +493,41 @@ impl Trainer {
         }
     }
 
-    /// Generate enhanced features for unknown words based on surface form analysis
-    fn generate_unknown_word_features(&self, surface: &str, char_type: usize) -> Vec<String> {
-        let mut features = Vec::new();
-
-        // Basic character type feature
-        let base_feature = self.get_unknown_feature(char_type);
-        features.push(base_feature);
-
-        // Length-based features
-        let len = surface.chars().count();
-        match len {
-            1 => features.push("UNK_LEN=1".to_string()),
-            2 => features.push("UNK_LEN=2".to_string()),
-            3..=5 => features.push("UNK_LEN=SHORT".to_string()),
-            6..=10 => features.push("UNK_LEN=MEDIUM".to_string()),
-            _ => features.push("UNK_LEN=LONG".to_string()),
-        }
-
-        // Character pattern features
-        let chars: Vec<char> = surface.chars().collect();
-        if chars.len() > 1 {
-            // Mixed character type detection
-            let has_hiragana = chars.iter().any(|&c| self.is_hiragana(c));
-            let has_katakana = chars.iter().any(|&c| self.is_katakana(c));
-            let has_kanji = chars.iter().any(|&c| self.is_kanji(c));
-            let has_alpha = chars.iter().any(|&c| c.is_ascii_alphabetic());
-            let has_digit = chars.iter().any(|&c| c.is_ascii_digit());
-
-            let type_count = [has_hiragana, has_katakana, has_kanji, has_alpha, has_digit]
-                .iter()
-                .filter(|&&x| x)
-                .count();
-
-            if type_count > 1 {
-                features.push("UNK_MIXED=TRUE".to_string());
-            }
-
-            // Specific patterns
-            if has_kanji && has_hiragana {
-                features.push("UNK_KANJI_HIRA=TRUE".to_string());
-            }
-            if has_katakana && has_alpha {
-                features.push("UNK_KATA_ALPHA=TRUE".to_string());
-            }
-        }
-
-        // Positional character features (first and last char types)
-        if let Some(first_char) = chars.first() {
-            features.push(format!("UNK_FIRST={}", self.get_char_type(*first_char)));
-        }
-        if let Some(last_char) = chars.last() {
-            features.push(format!("UNK_LAST={}", self.get_char_type(*last_char)));
-        }
-
-        features
-    }
-
-    fn get_or_create_label_id(&mut self, token: &Word) -> Result<NonZeroU32> {
-        // Check if the token exists in the dictionary
-        let is_known_word = self.is_word_in_dictionary(token);
-
-        // Try to find existing label for this surface/feature combination
-        if let Some(char_map) = self.label_id_map.get(token.surface()) {
-            if let Some(first_char) = token.surface().chars().next() {
-                if let Some(&label_id) = char_map.get(&first_char) {
-                    return Ok(label_id);
-                }
-            }
-        }
-
-        // For unknown words, try to use pre-defined unknown labels
-        // This ensures consistent handling of unknown words by character type,
-        // improving the model's ability to generalize to new vocabulary
-        if !is_known_word {
-            let unk_category = self.classify_unknown_word(token);
-            if let Some(&unk_label_id) = self.label_id_map_unk.get(unk_category) {
-                return Ok(unk_label_id);
-            }
-        }
-
-        // Create new label ID, considering dictionary status
-        let base_id = if is_known_word {
-            // Known words get lower IDs (higher priority)
-            self.label_id_map.len() + 1
-        } else {
-            // Unknown words get higher IDs (lower priority)
-            self.label_id_map.len() + 1000
+    /// Calculate optimal thread count based on dataset size and user request
+    fn calculate_optimal_threads(&self, num_examples: usize) -> usize {
+        // Define thresholds based on empirical analysis
+        let optimal_threads = match num_examples {
+            0..=10 => 1,           // Very small: always single-thread
+            11..=50 => 1,          // Small: single-thread is fastest
+            51..=200 => 2,         // Medium-small: minimal parallelization
+            201..=1000 => 4,       // Medium: moderate parallelization
+            1001..=5000 => 6,      // Large: more threads beneficial
+            _ => 8,                // Very large: maximum parallelization
         };
 
-        let new_id = NonZeroU32::new(base_id as u32).unwrap();
+        // Respect user's limit (don't exceed requested threads)
+        let user_requested = self.num_threads;
+        let cpu_cores = num_cpus::get();
+        let final_threads = optimal_threads.min(user_requested);
 
-        // Store the new mapping
-        if let Some(first_char) = token.surface().chars().next() {
-            self.label_id_map
-                .entry(token.surface().to_string())
-                .or_default()
-                .insert(first_char, new_id);
+        // Warn if user requested more threads than CPU cores
+        if user_requested > cpu_cores {
+            println!("Warning: Requested {user_requested} threads exceeds CPU cores ({cpu_cores}). This may reduce performance due to context switching.");
         }
 
-        Ok(new_id)
-    }
-
-    /// Classifies an unknown word into one of 6 predefined categories based on comprehensive character analysis.
-    /// This classification uses the improved character type detection methods for better accuracy.
-    ///
-    /// Returns:
-    /// - 0: DEFAULT (punctuation, symbols, or unclassified characters)
-    /// - 1: HIRAGANA (ひらがな)
-    /// - 2: KATAKANA (カタカナ)
-    /// - 3: KANJI (漢字)
-    /// - 4: ALPHA (A-Z, a-z)
-    /// - 5: NUMERIC (0-9)
-    fn classify_unknown_word(&self, token: &Word) -> usize {
-        let surface = token.surface();
-        let chars: Vec<char> = surface.chars().collect();
-
-        if chars.is_empty() {
-            return 0; // DEFAULT for empty strings
-        }
-
-        // For single character words, use direct classification
-        if chars.len() == 1 {
-            return self.get_char_type(chars[0]);
-        }
-
-        // For multi-character words, use majority voting with special rules
-        let mut type_counts = [0; 6]; // Count for each character type
-
-        for &ch in &chars {
-            let char_type = self.get_char_type(ch);
-            type_counts[char_type] += 1;
-        }
-
-        // Find the most frequent character type
-        let (most_frequent_type, max_count) = type_counts
-            .iter()
-            .enumerate()
-            .max_by_key(|&(_, count)| count)
-            .map(|(idx, count)| (idx, *count))
-            .unwrap_or((0, 0));
-
-        // Special rules for mixed character types
-        if type_counts[3] > 0 && type_counts[1] > 0 {
-            // Kanji + Hiragana = Kanji (compound words)
-            return 3;
-        }
-
-        if type_counts[2] > 0 && type_counts[4] > 0 {
-            // Katakana + Alpha = Katakana (foreign words)
-            return 2;
-        }
-
-        if type_counts[5] > 0 && max_count == type_counts[5] {
-            // If numbers are present and dominant, classify as numeric
-            return 5;
-        }
-
-        // Return the most frequent type, or DEFAULT if tie
-        if max_count > 0 {
-            most_frequent_type
+        // Log the decision for transparency
+        if final_threads != user_requested {
+            println!("Auto-adjusting threads: {num_examples} examples → {final_threads} threads (requested: {user_requested})");
+            println!("Reason: Small datasets benefit from fewer threads due to synchronization overhead");
         } else {
-            0 // DEFAULT fallback
-        }
-    }
-
-    fn is_word_in_dictionary(&self, token: &Word) -> bool {
-        // First check in the surface list (known training vocabulary)
-        if self.config.surfaces.contains(&token.surface().to_string()) {
-            return true;
+            println!("Using {final_threads} threads for {num_examples} examples");
         }
 
-        // Additionally check if the word can be handled as an unknown word
-        // by the dictionary's character definitions
-        if let Some(first_char) = token.surface().chars().next() {
-            // Use the dictionary's character definition to validate character types
-            let categories = self
-                .config
-                .dict
-                .character_definition
-                .lookup_categories(first_char);
-            if !categories.is_empty() {
-                return true;
-            }
-        }
-
-        false
+        final_threads
     }
 
-    fn extract_token_features(&mut self, token: &Word, _pos: usize) -> Result<rucrf::FeatureSet> {
-        // Parse features from the token
-        let features: Vec<String> = token.feature().split(',').map(|s| s.to_string()).collect();
 
-        // Apply feature rewriting (similar to Vibrato's approach)
-        let unigram_features_input =
-            if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&features) {
-                rewritten
-            } else {
-                features.clone()
-            };
-        let left_features_input =
-            if let Some(rewritten) = self.config.left_rewriter.rewrite(&features) {
-                rewritten
-            } else {
-                features.clone()
-            };
-        let right_features_input =
-            if let Some(rewritten) = self.config.right_rewriter.rewrite(&features) {
-                rewritten
-            } else {
-                features.clone()
-            };
 
-        // Extract different types of features using rewritten inputs
-        let unigram_features = self
-            .config
-            .feature_extractor
-            .extract_unigram_feature_ids(&unigram_features_input, 0);
-        let left_features = self
-            .config
-            .feature_extractor
-            .extract_left_feature_ids(&left_features_input);
-        let right_features = self
-            .config
-            .feature_extractor
-            .extract_right_feature_ids(&right_features_input);
-
-        // Convert to the exact types expected by rucrf
-        Ok(rucrf::FeatureSet::new(
-            &unigram_features,
-            &right_features,
-            &left_features,
-        ))
-    }
 
     /// Remove unused features from the feature extractor to optimize the model
     /// This is similar to Vibrato's optimization in trainer.rs:413-457

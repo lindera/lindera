@@ -197,18 +197,17 @@ struct TrainArgs {
     lambda: f64,
     #[clap(
         short = 'i',
-        long = "iter",
+        long = "max-iterations",
         default_value = "100",
-        help = "Max iterations"
+        help = "Maximum number of iterations for training"
     )]
     iter: u64,
     #[clap(
         short = 't',
-        long = "threads",
-        default_value = "1",
-        help = "Number of threads"
+        long = "max-threads",
+        help = "Maximum number of threads (defaults to CPU core count, auto-adjusted based on dataset size)"
     )]
-    threads: usize,
+    max_threads: Option<usize>,
 }
 
 #[cfg(feature = "train")]
@@ -431,7 +430,7 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
         .max_iter(args.iter)
-        .num_threads(args.threads);
+        .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
 
     // Load corpus
     let corpus_file = File::open(&args.corpus)

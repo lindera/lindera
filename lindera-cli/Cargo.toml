@@ -46,6 +46,7 @@ default = ["compress", "mmap", "train"]
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+num_cpus.workspace = true
 serde_json.workspace = true
 
 lindera.workspace = true

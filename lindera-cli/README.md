@@ -18,20 +18,12 @@ Alternatively, you can download a binary from the following release page:
 
 ## Build
 
-The following products are required to build:
-
-- Rust >= 1.46.0
-
-```shell script
-% cargo build --release
-```
-
 ### Build with IPADIC (Japanese dictionary)
 
 The "ipadic" feature flag allows Lindera to include IPADIC.
 
 ```shell script
-% cargo build --release --features=ipadic
+% cargo build --release --features=embedded-ipadic
 ```
 
 ### Build with UniDic (Japanese dictionary)
@@ -39,7 +31,7 @@ The "ipadic" feature flag allows Lindera to include IPADIC.
 The "unidic" feature flag allows Lindera to include UniDic.
 
 ```shell script
-% cargo build --release --features=unidic
+% cargo build --release --features=embedded-unidic
 ```
 
 ### Build with ko-dic (Korean dictionary)
@@ -47,7 +39,7 @@ The "unidic" feature flag allows Lindera to include UniDic.
 The "ko-dic" feature flag allows Lindera to include ko-dic.
 
 ```shell script
-% cargo build --release --features=ko-dic
+% cargo build --release --features=embedded-ko-dic
 ```
 
 ### Build with CC-CEDICT (Chinese dictionary)
@@ -55,16 +47,22 @@ The "ko-dic" feature flag allows Lindera to include ko-dic.
 The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.
 
 ```shell script
-% cargo build --release --features=cc-cedict
+% cargo build --release --features=embedded-cc-cedict
 ```
 
-### Build small binary
+### Build without dictionaries
 
 To reduce Lindera's binary size, omit the feature flag.
 This results in a binary containing only the tokenizer and trainer, as it no longer includes the dictionary.
 
 ```shell script
 % cargo build --release
+```
+
+### Build with all features
+
+```shell script
+% cargo build --release --all-features
 ```
 
 ## Build dictionary
@@ -112,7 +110,7 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 ### Examples
 
-#### IPADIC (Japanese dictionary)
+#### Build IPADIC (Japanese dictionary)
 
 ```shell script
 # Download and extract IPADIC source files
@@ -130,61 +128,7 @@ A supplementary dictionary for custom words that works alongside a system dictio
 % tar -czf /tmp/lindera-ipadic-2.7.0-20250920.tar.gz -C /tmp lindera-ipadic-2.7.0-20250920
 ```
 
-### CC-CEDICT (Chinese dictionary)
-
-```shell script
-# Download and extract CC-CEDICT source files
-% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
-% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
-
-# Build the dictionary
-% lindera build \
-  --metadata ./lindera-cc-cedict/metadata.json \
-  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
-  --dest /tmp/lindera-cc-cedict-0.1.0-20200409
-
-% ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
-% (cd /tmp && zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
-% tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
-```
-
-### ko-dic (Korean dictionary)
-
-```shell script
-# Download and extract ko-dic source files
-% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
-% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
-
-# Build the dictionary
-% lindera build \
-  --metadata ./lindera-ko-dic/metadata.json \
-  --src /tmp/mecab-ko-dic-2.1.1-20180720 \
-  --dest /tmp/lindera-ko-dic-2.1.1-20180720
-
-% ls -al /tmp/lindera-ko-dic-2.1.1-20180720
-% (cd /tmp && zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
-% tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
-```
-
-### UniDic (Japanese dictionary)
-
-```shell script
-# Download and extract UniDic source files
-% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
-% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
-
-# Build the dictionary
-% lindera build \
-  --metadata ./lindera-unidic/metadata.json \
-  --src /tmp/unidic-mecab-2.1.2 \
-  --dest /tmp/lindera-unidic-2.1.2
-
-% ls -al /tmp/lindera-unidic-2.1.2
-% (cd /tmp && zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
-% tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
-```
-
-### IPADIC NEologd (Japanese dictionary)
+### Build IPADIC NEologd (Japanese dictionary)
 
 ```shell script
 # Download and extract IPADIC NEologd source files
@@ -202,6 +146,60 @@ A supplementary dictionary for custom words that works alongside a system dictio
 % tar -czf /tmp/lindera-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp lindera-ipadic-neologd-0.0.7-20200820
 ```
 
+### Build UniDic (Japanese dictionary)
+
+```shell script
+# Download and extract UniDic source files
+% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
+% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --metadata ./lindera-unidic/metadata.json \
+  --src /tmp/unidic-mecab-2.1.2 \
+  --dest /tmp/lindera-unidic-2.1.2
+
+% ls -al /tmp/lindera-unidic-2.1.2
+% (cd /tmp && zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
+% tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
+```
+
+### Build CC-CEDICT (Chinese dictionary)
+
+```shell script
+# Download and extract CC-CEDICT source files
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --metadata ./lindera-cc-cedict/metadata.json \
+  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
+  --dest /tmp/lindera-cc-cedict-0.1.0-20200409
+
+% ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
+% (cd /tmp && zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
+% tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
+```
+
+### Build ko-dic (Korean dictionary)
+
+```shell script
+# Download and extract ko-dic source files
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --metadata ./lindera-ko-dic/metadata.json \
+  --src /tmp/mecab-ko-dic-2.1.1-20180720 \
+  --dest /tmp/lindera-ko-dic-2.1.1-20180720
+
+% ls -al /tmp/lindera-ko-dic-2.1.1-20180720
+% (cd /tmp && zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
+% tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
+```
+
 ## Build user dictionary
 
 ### Build IPADIC user dictionary (Japanese)
@@ -215,6 +213,20 @@ For more details about user dictionary format please refer to the following URL:
   --user \
   --metadata ./lindera-ipadic/metadata.json \
   --src ./resources/ipadic_simple_userdic.csv \
+  --dest ./resources
+```
+
+### Build UniDic user dictionary (Japanese)
+
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
+
+```shell
+% lindera build \
+  --user \
+  --metadata ./lindera-unidic/metadata.json \
+  --src ./resources/unidic_simple_userdic.csv \
   --dest ./resources
 ```
 
@@ -243,20 +255,6 @@ For more details about user dictionary format please refer to the following URL:
   --user \
   --metadata ./lindera-ko-dic/metadata.json \
   --src ./resources/ko-dic_simple_userdic.csv \
-  --dest ./resources
-```
-
-### Build UniDic user dictionary (Japanese)
-
-For more details about user dictionary format please refer to the following URL:
-
-- [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
-
-```shell
-% lindera build \
-  --user \
-  --metadata ./lindera-unidic/metadata.json \
-  --src ./resources/unidic_simple_userdic.csv \
   --dest ./resources
 ```
 
@@ -306,7 +304,7 @@ lindera tokenize \
 
 ### Examples with external dictionaries
 
-#### Tokenize with IPADIC (Japanese dictionary)
+#### Tokenize with external IPADIC (Japanese dictionary)
 
 ```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
@@ -328,7 +326,28 @@ lindera tokenize \
 EOS
 ```
 
-#### Tokenize with UniDic (Japanese dictionary)
+#### Tokenize with external IPADIC Neologd (Japanese dictionary)
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-neologd-0.0.7-20200820
+```
+
+```text
+日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+#### Tokenize with external UniDic (Japanese dictionary)
 
 ```shell
 % echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
@@ -352,28 +371,7 @@ EOS
 EOS
 ```
 
-#### Tokenize with IPADIC Neologd (Japanese dictionary)
-
-```shell
-% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
-  --dict /tmp/lindera-ipadic-neologd-0.0.7-20200820
-```
-
-```text
-日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
-の      助詞,連体化,*,*,*,*,の,ノ,ノ
-形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
-を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
-行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
-こと    名詞,非自立,一般,*,*,*,こと,コト,コト
-が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
-でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
-ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
-。      記号,句点,*,*,*,*,。,。,。
-EOS
-```
-
-#### Tokenize ko-dic (Korean dictionary)
+#### Tokenize with external ko-dic (Korean dictionary)
 
 ```shell
 % echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
@@ -395,7 +393,7 @@ EOS
 EOS
 ```
 
-#### Tokenize with CC-CEDICT (Chinese dictionary)
+#### Tokenize with external CC-CEDICT (Chinese dictionary)
 
 ```shell
 % echo "可以进行中文形态学分析。" | lindera tokenize \
@@ -663,103 +661,103 @@ Outputs detailed token information in JSON format:
 ```json
 [
   {
-    "conjugation_type": "*",
-    "word_id": "14695",
-    "part_of_speech_subcategory_2": "*",
-    "reading": "オマチ",
-    "part_of_speech_subcategory_1": "サ変接続",
-    "byte_end": "9",
     "base_form": "お待ち",
-    "pronunciation": "オマチ",
-    "surface": "お待ち",
-    "byte_start": "0",
-    "part_of_speech_subcategory_3": "*",
+    "byte_end": 9,
+    "byte_start": 0,
     "conjugation_form": "*",
-    "part_of_speech": "名詞"
+    "conjugation_type": "*",
+    "part_of_speech": "名詞",
+    "part_of_speech_subcategory_1": "サ変接続",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オマチ",
+    "reading": "オマチ",
+    "surface": "お待ち",
+    "word_id": 14698
   },
   {
-    "byte_start": "9",
+    "base_form": "する",
+    "byte_end": 12,
+    "byte_start": 9,
     "conjugation_form": "サ変・スル",
     "conjugation_type": "連用形",
-    "base_form": "する",
-    "surface": "し",
-    "part_of_speech_subcategory_3": "*",
-    "byte_end": "12",
-    "word_id": "30760",
+    "part_of_speech": "動詞",
     "part_of_speech_subcategory_1": "自立",
     "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
     "pronunciation": "シ",
     "reading": "シ",
-    "part_of_speech": "動詞"
+    "surface": "し",
+    "word_id": 30763
   },
   {
     "base_form": "て",
-    "surface": "て",
-    "pronunciation": "テ",
-    "part_of_speech_subcategory_1": "接続助詞",
-    "conjugation_type": "*",
-    "part_of_speech_subcategory_3": "*",
-    "reading": "テ",
-    "part_of_speech": "助詞",
-    "part_of_speech_subcategory_2": "*",
-    "byte_start": "12",
-    "byte_end": "15",
-    "word_id": "46600",
-    "conjugation_form": "*"
-  },
-  {
-    "word_id": "14236",
-    "part_of_speech_subcategory_1": "非自立",
-    "conjugation_type": "連用形",
-    "byte_start": "15",
-    "part_of_speech_subcategory_3": "*",
-    "part_of_speech": "動詞",
-    "surface": "おり",
-    "byte_end": "21",
-    "base_form": "おる",
-    "part_of_speech_subcategory_2": "*",
-    "pronunciation": "オリ",
-    "reading": "オリ",
-    "conjugation_form": "五段・ラ行"
-  },
-  {
-    "pronunciation": "マス",
-    "part_of_speech": "助動詞",
-    "base_form": "ます",
-    "word_id": "68730",
-    "part_of_speech_subcategory_1": "*",
-    "byte_start": "21",
-    "reading": "マス",
-    "conjugation_type": "基本形",
-    "byte_end": "27",
-    "part_of_speech_subcategory_2": "*",
-    "part_of_speech_subcategory_3": "*",
-    "conjugation_form": "特殊・マス",
-    "surface": "ます"
-  },
-  {
-    "byte_end": "30",
-    "byte_start": "27",
-    "part_of_speech_subcategory_3": "*",
-    "word_id": "98",
+    "byte_end": 15,
+    "byte_start": 12,
     "conjugation_form": "*",
     "conjugation_type": "*",
-    "base_form": "。",
-    "part_of_speech": "記号",
+    "part_of_speech": "助詞",
+    "part_of_speech_subcategory_1": "接続助詞",
     "part_of_speech_subcategory_2": "*",
-    "reading": "。",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "テ",
+    "reading": "テ",
+    "surface": "て",
+    "word_id": 46603
+  },
+  {
+    "base_form": "おる",
+    "byte_end": 21,
+    "byte_start": 15,
+    "conjugation_form": "五段・ラ行",
+    "conjugation_type": "連用形",
+    "part_of_speech": "動詞",
+    "part_of_speech_subcategory_1": "非自立",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オリ",
+    "reading": "オリ",
+    "surface": "おり",
+    "word_id": 14239
+  },
+  {
+    "base_form": "ます",
+    "byte_end": 27,
+    "byte_start": 21,
+    "conjugation_form": "特殊・マス",
+    "conjugation_type": "基本形",
+    "part_of_speech": "助動詞",
+    "part_of_speech_subcategory_1": "*",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "マス",
+    "reading": "マス",
+    "surface": "ます",
+    "word_id": 68733
+  },
+  {
+    "base_form": "。",
+    "byte_end": 30,
+    "byte_start": 27,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "記号",
+    "part_of_speech_subcategory_1": "句点",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
     "pronunciation": "。",
+    "reading": "。",
     "surface": "。",
-    "part_of_speech_subcategory_1": "句点"
+    "word_id": 101
   }
 ]
 ```
 
-## Advanced filtering
+## Advanced tokenization
 
 Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.
 
-### Character and token filters
+### Tokenize with character and token filters
 
 ```shell
 % echo "すもももももももものうち" | lindera tokenize \
@@ -784,13 +782,13 @@ Train a new morphological analysis model from annotated corpus data. To use this
 ```bash
 # Train a model from corpus
 lindera train \
-  --lexicon examples/training/sample_lex.csv \
-  --corpus examples/training/sample_corpus.txt \
-  --unk-def examples/training/sample_unk.def \
-  --char-def examples/training/sample_char.def \
-  --feature-def examples/training/sample_feature.def \
-  --rewrite-def examples/training/sample_rewrite.def \
-  --output trained_model.dat \
+  --lexicon lex.csv \
+  --corpus corpus.txt \
+  --unk-def unk.def \
+  --char-def char.def \
+  --feature-def feature.def \
+  --rewrite-def rewrite.def \
+  --output trained_model.bin \
   --lambda 0.01 \
   --iter 100 \
   --threads 4
@@ -821,13 +819,24 @@ lindera train \
 #### Training corpus (corpus.txt)
 
 ```text
-外国 名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
-人 名詞,接尾,一般,*,*,*,人,ジン,ジン
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
 EOS
 
-これ 連体詞,*,*,*,*,*,これ,コレ,コレ
-は 助詞,係助詞,*,*,*,*,は,ハ,ワ
-テスト 名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+
+形態	名詞,一般,*,*,*,*,形態,ケイタイ,ケイタイ
+素	名詞,接尾,一般,*,*,*,素,ソ,ソ
+解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う	動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
 EOS
 ```
 
@@ -841,7 +850,7 @@ When using IPADIC or other MeCab dictionaries that come as separate CSV files by
 
 ```bash
 # Combine all part-of-speech CSV files into one seed dictionary
-cat Noun.csv Verb.csv Adj.csv Adverb.csv Auxil.csv > lexicon.csv
+cat /tmp/mecab-ipadic-2.7.0-20250920/*.csv > /tmp/ipadic_lex.csv
 ```
 
 #### 2. Prepare training corpus
@@ -849,15 +858,24 @@ cat Noun.csv Verb.csv Adj.csv Adverb.csv Auxil.csv > lexicon.csv
 Include both existing dictionary words and new words in your training corpus:
 
 ```text
-# Mix of existing and new words
-東京 名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # Existing word
-の 助詞,連体化,*,*,*,*,の,ノ,ノ                              # Existing word
-スカイツリー 名詞,固有名詞,一般,*,*,*,スカイツリー,スカイツリー,スカイツリー  # New word
+外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
 EOS
 
-ChatGPT 名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # New word
-を 助詞,格助詞,一般,*,*,*,を,ヲ,ヲ                            # Existing word
-使う 動詞,自立,*,*,五段・ワ行促音便,基本形,使う,ツカウ,ツカウ    # Existing word
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+
+形態	名詞,一般,*,*,*,*,形態,ケイタイ,ケイタイ
+素	名詞,接尾,一般,*,*,*,素,ソ,ソ
+解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う	動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
 EOS
 ```
 
@@ -865,13 +883,13 @@ EOS
 
 ```bash
 lindera train \
-  --lexicon lexicon.csv \              # Combined IPADIC dictionary
-  --corpus training_corpus.txt \       # Corpus with new words
-  --unk-def unk.def \                  # Unknown word definitions
-  --char-def char.def \                # Character type definitions
-  --feature-def feature.def \          # Feature templates
-  --rewrite-def rewrite.def \          # Rewrite rules
-  --output trained_model.dat           # Output model
+  --lexicon /tmp/ipadic_lex.csv \
+  --corpus ./examples/training/corpus.txt \
+  --unk-def /tmp/mecab-ipadic-2.7.0-20250920/unk.def \
+  --char-def /tmp/mecab-ipadic-2.7.0-20250920/char.def \
+  --feature-def /tmp/mecab-ipadic-2.7.0-20250920/feature.def \
+  --rewrite-def /tmp/mecab-ipadic-2.7.0-20250920/rewrite.def \
+  --output /tmp/ipadic_trained_model.dat
 ```
 
 #### 4. Training results
