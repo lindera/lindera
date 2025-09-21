@@ -1,44 +1,26 @@
-# Lindera Trainer
+# Lindera Trainer - 技術仕様書
 
-Linderaの学習器機能です。コーパスから形態素解析モデルを学習できます。
+Linderaの学習器機能の内部実装と技術詳細についてのドキュメントです。
 
 ## 概要
 
-この学習器は以下の機能を提供します：
+Lindera Trainerは条件付き確率場(CRF)ベースの形態素解析器学習システムです。以下の高度な機能を提供します：
 
-- **CRFベースの学習**: 条件付き確率場(CRF)を用いた統計的学習
-- **L1正則化**: オーバーフィッティングを防ぐ正則化
-- **マルチスレッド対応**: 並列処理による高速化
-- **Lindera互換**: 既存のLindera辞書形式との統合
+- **CRFベースの統計的学習**: rucrf crateを用いた効率的な実装
+- **L1正則化**: オーバーフィッティングを防ぐ正則化機構
+- **マルチスレッド対応**: 並列処理による高速な学習
+- **包括的Unicode対応**: CJK拡張文字セットの完全サポート
+- **高度な未知語処理**: 混合文字種の知的分類アルゴリズム
+- **多段階重み最適化**: 学習済み重みの高度な正規化システム
+- **Lindera辞書互換**: 既存辞書フォーマットとの完全互換性
 
-## 使用方法
+## CLIの使用方法
 
-### 基本的な使用方法
+CLIコマンドの詳細な使用方法については [lindera-cli/README.md](./lindera-cli/README.md#train-dictionary) を参照してください。
 
-```bash
-# 学習機能を有効にしてビルド
-cargo build --features train -p lindera-cli
+## 必要なファイルフォーマット仕様
 
-# 学習の実行
-./target/debug/lindera train \
-  --lexicon examples/training/sample_lex.csv \
-  --unk-def examples/training/sample_unk.def \
-  --corpus examples/training/sample_corpus.txt \
-  --char-def examples/training/sample_char.def \
-  --feature-def examples/training/sample_feature.def \
-  --rewrite-def examples/training/sample_rewrite.def \
-  --output trained_model.dat \
-  --lambda 0.01 \
-  --iter 100 \
-  --threads 4
-
-# CLIヘルプの確認
-./target/debug/lindera train --help
-```
-
-### 必要なファイル（詳細）
-
-#### 1. **`--lexicon-lexicon` (lex.csv)**
+### 1. **語彙辞書 (lex.csv)**
 
 **役割**: 基本語彙辞書
 **形式**: MeCab形式のCSV
@@ -52,7 +34,7 @@ cargo build --features train -p lindera-cli
 - **用途**: 学習に使う基本的な単語とその品詞情報を定義
 - **構成**: `表層形,左文脈ID,右文脈ID,コスト,品詞,品詞細分類1,品詞細分類2,品詞細分類3,活用型,活用形,原形,読み,発音`
 
-#### 2. **`--unk-def` (unk.def)**
+### 2. **未知語定義 (unk.def)**
 
 **役割**: 未知語処理定義
 **形式**: 文字種別ごとの未知語パラメータ
@@ -69,7 +51,7 @@ NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
 - **用途**: 辞書にない単語（未知語）の処理方法を文字種別に定義
 - **注意**: これらのラベルは内部処理用で、最終的な辞書ファイルには出力されません
 
-#### 3. **`--corpus` (corpus.txt)**
+### 3. **学習コーパス (corpus.txt)**
 
 **役割**: 学習データ（正解付きコーパス）
 **形式**: タブ区切りの分かち書き
@@ -91,7 +73,7 @@ EOS
 - **形式**: 各行は`表層形\t品詞情報`、文の終わりは`EOS`
 - **重要**: 学習の品質はこのコーパスの量と質に大きく依存します
 
-#### 4. **`--char-def` (char.def)**
+### 4. **文字種定義 (char.def)**
 
 **役割**: 文字種定義
 **形式**: 文字カテゴリと文字コード範囲
@@ -117,7 +99,7 @@ NUMERIC 1 1 0
 - **用途**: どの文字がどのカテゴリに属するかを定義
 - **パラメータ**: 互換性、連続性、デフォルト長さなどの設定
 
-#### 5. **`--feature-def` (feature.def)**
+### 5. **特徴テンプレート (feature.def)**
 
 **役割**: 特徴テンプレート定義
 **形式**: 特徴抽出パターン
@@ -145,7 +127,7 @@ UNIGRAM:%F[0]/%F[6]   # 品詞 + 原形
 - **用途**: どの情報から学習特徴を作るかを定義
 - **テンプレート**: `%F[n]` (特徴), `%L[n]` (左文脈), `%R[n]` (右文脈)
 
-#### 6. **`--rewrite-def` (rewrite.def)**
+### 6. **特徴正規化ルール (rewrite.def)**
 
 **役割**: 特徴正規化ルール
 **形式**: 置換ルール（タブ区切り）
@@ -167,15 +149,18 @@ UNIGRAM:%F[0]/%F[6]   # 品詞 + 原形
 - **形式**: `元パターン\t置換パターン`
 - **効果**: 稀な特徴を一般化してスパースネス問題を軽減
 
-#### 7. **`--model-out`**
+### 7. **出力モデル形式**
 
 **役割**: 出力モデルファイル
-**形式**: JSON形式の学習済みモデル
+**形式**: bincode形式（バイナリ）が標準、JSON形式もサポート
+
+モデルには以下の情報が含まれます：
 
 ```json
 {
   "feature_weights": [0.0, 0.084, 0.091, ...],
   "labels": ["外国", "人", "参政", "権", ...],
+  "pos_info": ["名詞,一般,*,*,*,*,*,*,*", "名詞,接尾,一般,*,*,*,*,*,*", ...],
   "feature_templates": ["UNIGRAM:%F[0]", ...],
   "metadata": {
     "version": "1.0.0",
@@ -208,11 +193,11 @@ EOS
 EOS
 ```
 
-### パラメータ
+## 学習パラメータ仕様
 
-- `--lambda`: L1正則化係数（デフォルト: 0.01）
-- `--iter`: 最大イテレーション数（デフォルト: 100）
-- `--threads`: 使用スレッド数（デフォルト: 1）
+- **正則化係数 (lambda)**: L1正則化の強さを制御（デフォルト: 0.01）
+- **最大イテレーション数 (iter)**: 学習の最大反復回数（デフォルト: 100）
+- **並列スレッド数 (threads)**: 並列処理のスレッド数（デフォルト: 1）
 
 ## API使用例
 
@@ -259,85 +244,6 @@ let mut unk_out = File::create("output_unk.def")?;
 let mut user_out = File::create("output_user.csv")?;
 model.write_dictionary(&mut lex_out, &mut conn_out, &mut unk_out, &mut user_out)?;
 ```
-
-## IPADICの品詞別CSVファイルを使った学習
-
-### IPADIC品詞別CSV学習の概要
-
-IPADICなどのMeCab辞書では、品詞ごとに分割されたCSVファイル（Noun.csv, Verb.csv, Adj.csvなど）で提供される場合があります。Lindera Trainerでは、これらのファイルを統合して新しい単語の重みを学習できます。
-
-### 学習の流れ
-
-#### 1. **品詞別CSVファイルの統合**
-
-品詞ごとに分かれたCSVファイルを1つのシード辞書ファイルに統合します：
-
-```bash
-# 全ての品詞別CSVを結合
-cat Noun.csv Verb.csv Adj.csv Adverb.csv Auxil.csv > lexicon.csv
-```
-
-#### 2. **学習用コーパスの準備**
-
-学習用コーパスには、既存辞書の単語と新しい単語の**両方を含めることが推奨**されます：
-
-```text
-# 既存単語と新単語の混在例
-東京 名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # 既存単語
-の 助詞,連体化,*,*,*,*,の,ノ,ノ                              # 既存単語
-スカイツリー 名詞,固有名詞,一般,*,*,*,スカイツリー,スカイツリー,スカイツリー  # 新単語
-EOS
-
-ChatGPT 名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # 新単語
-を 助詞,格助詞,一般,*,*,*,を,ヲ,ヲ                            # 既存単語
-使う 動詞,自立,*,*,五段・ワ行促音便,基本形,使う,ツカウ,ツカウ    # 既存単語
-EOS
-```
-
-#### 3. **学習の実行**
-
-```bash
-./target/debug/lindera train \
-  --lexicon lexicon.csv \              # 統合したIPADIC辞書
-  --corpus training_corpus.txt \       # 新語を含むコーパス
-  --unk-def unk.def \                  # 未知語定義
-  --char-def char.def \                # 文字種定義
-  --feature-def feature.def \          # 特徴テンプレート
-  --rewrite-def rewrite.def \          # リライトルール
-  --output trained_model.dat           # 出力モデル
-```
-
-#### 4. **学習結果**
-
-学習後の出力辞書には：
-
-- **既存単語**：シード辞書の全レコードが**新しい学習済み重み**で出力されます
-- **新単語**：コーパスに出現した辞書にない単語が**適切な重みで追加**されます
-
-#### 例：学習前後の比較
-
-```csv
-# 学習前（シード辞書）
-東京,0,0,1000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
-
-# 学習後（出力辞書）
-東京,0,0,850,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # 重みが最適化
-ChatGPT,0,0,900,名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # 新規追加
-```
-
-### 重要なポイント
-
-1. **コーパスの構成**
-   - 既存単語と新単語を自然な文脈で混在させる
-   - 既存単語との接続関係から適切な重みを学習
-
-2. **新単語の定義**
-   - 新単語 = シード辞書（既存辞書）に存在しない単語
-   - コーパスに正解付きで記述された未知語
-
-3. **重み学習の効果**
-   - 文脈に基づいた重み（コスト）の最適化
-   - 既存単語と新単語のバランスの取れた辞書生成
 
 ## 実装状況
 
@@ -448,6 +354,344 @@ lindera-dictionary/src/trainer/
 └── model.rs            # 学習済みモデル
 ```
 
+## 高度な未知語処理システム
+
+### 包括的Unicode文字種判定
+
+最新実装では、基本的なUnicode範囲を大幅に拡張し、以下の文字セットを完全サポートしています：
+
+#### **漢字（CJK）の完全対応**
+
+```rust
+fn is_kanji(&self, ch: char) -> bool {
+    matches!(ch,
+        '\u{4E00}'..='\u{9FAF}' |  // CJK Unified Ideographs（基本漢字）
+        '\u{3400}'..='\u{4DBF}' |  // CJK Extension A（拡張漢字A）
+        '\u{20000}'..='\u{2A6DF}' | // CJK Extension B（拡張漢字B）
+        '\u{2A700}'..='\u{2B73F}' | // CJK Extension C（拡張漢字C）
+        '\u{2B740}'..='\u{2B81F}' | // CJK Extension D（拡張漢字D）
+        '\u{2B820}'..='\u{2CEAF}' | // CJK Extension E（拡張漢字E）
+        '\u{2CEB0}'..='\u{2EBEF}' | // CJK Extension F（拡張漢字F）
+        '\u{F900}'..='\u{FAFF}' |   // CJK Compatibility Ideographs
+        '\u{2F800}'..='\u{2FA1F}'   // CJK Compatibility Supplement
+    )
+}
+```
+
+#### **カタカナの拡張対応**
+
+```rust
+fn is_katakana(&self, ch: char) -> bool {
+    matches!(ch,
+        '\u{30A1}'..='\u{30F6}' |  // Basic Katakana（基本カタカナ）
+        '\u{30FD}'..='\u{30FF}' |  // Katakana iteration marks（音引き・促音）
+        '\u{31F0}'..='\u{31FF}' |  // Katakana phonetic extensions（音韻拡張）
+        '\u{32D0}'..='\u{32FE}' |  // Circled Katakana（丸囲みカタカナ）
+        '\u{3300}'..='\u{3357}'    // CJK Compatibility（カタカナ互換文字）
+    )
+}
+```
+
+### 混合文字種の高度な分類アルゴリズム
+
+従来の「最初の文字のみ」の判定から、**全文字の多数決+特殊ルール**ベースの分類に進化：
+
+```rust
+fn classify_unknown_word(&self, token: &Word) -> usize {
+    let chars: Vec<char> = surface.chars().collect();
+    let mut type_counts = [0; 6]; // 各文字種のカウント
+
+    // 全文字をスキャンして文字種をカウント
+    for &ch in &chars {
+        let char_type = self.get_char_type(ch);
+        type_counts[char_type] += 1;
+    }
+
+    // 特殊ルール適用
+    if type_counts[3] > 0 && type_counts[1] > 0 {
+        return 3; // 漢字+ひらがな → 漢字（「食べ物」等の複合語）
+    }
+    if type_counts[2] > 0 && type_counts[4] > 0 {
+        return 2; // カタカナ+英字 → カタカナ（「サッカーGame」等の外来語）
+    }
+
+    // 多数決で決定
+    most_frequent_type
+}
+```
+
+### 表層形解析による拡張特徴生成
+
+単語の表層形から豊富な特徴を自動生成：
+
+```rust
+fn generate_unknown_word_features(&self, surface: &str, char_type: usize) -> Vec<String> {
+    let mut features = Vec::new();
+
+    // 1. 長さベース特徴
+    let len = surface.chars().count();
+    match len {
+        1 => features.push("UNK_LEN=1".to_string()),
+        2 => features.push("UNK_LEN=2".to_string()),
+        3..=5 => features.push("UNK_LEN=SHORT".to_string()),
+        6..=10 => features.push("UNK_LEN=MEDIUM".to_string()),
+        _ => features.push("UNK_LEN=LONG".to_string()),
+    }
+
+    // 2. 混合文字種検出
+    if type_count > 1 {
+        features.push("UNK_MIXED=TRUE".to_string());
+    }
+
+    // 3. 特殊パターン
+    if has_kanji && has_hiragana {
+        features.push("UNK_KANJI_HIRA=TRUE".to_string());
+    }
+
+    // 4. 位置情報特徴
+    features.push(format!("UNK_FIRST={}", self.get_char_type(first_char)));
+    features.push(format!("UNK_LAST={}", self.get_char_type(last_char)));
+
+    features
+}
+```
+
+## 特徴重み最適化
+
+### 多段階正規化システム
+
+学習済みCRFモデルから抽出した重みを、辞書生成に適した形式に変換するための高度な正規化システム：
+
+#### **1. 特徴レベル正規化**
+
+```rust
+fn normalize_feature_weight(&self, weight: f64, feature_index: usize) -> f64 {
+    let base_normalization = if feature_index < self.config.surfaces.len() {
+        weight * 1.0        // 既知語: 標準正規化
+    } else {
+        weight * 0.8        // 未知語: 過学習防止のため軽減
+    };
+    base_normalization.clamp(-10.0, 10.0)  // 極値制限
+}
+```
+
+#### **2. 接続重み正規化**
+
+```rust
+fn normalize_connection_weight(&self, weight: f64, left_id: usize, right_id: usize) -> f64 {
+    let context_factor = if left_id == right_id {
+        1.2 // 同一コンテキスト接続を強化
+    } else {
+        1.0 // 異なるコンテキストは標準
+    };
+
+    let normalized = weight * context_factor;
+    normalized.clamp(-8.0, 8.0)  // 接続重み用の範囲制限
+}
+```
+
+#### **3. グローバル重み正規化**
+
+```rust
+fn apply_global_weight_normalization(&self, mut weights: Vec<f64>) -> Vec<f64> {
+    let mean_abs_weight = weights.iter().map(|w| w.abs()).sum::<f64>() / weights.len() as f64;
+
+    // 自動スケーリング
+    let scale_factor = if mean_abs_weight > 5.0 {
+        5.0 / mean_abs_weight       // 大きすぎる重みを縮小
+    } else if mean_abs_weight < 0.1 && mean_abs_weight > 0.0 {
+        0.1 / mean_abs_weight       // 小さすぎる重みを拡大
+    } else {
+        1.0                         // スケーリング不要
+    };
+
+    if scale_factor != 1.0 {
+        for weight in &mut weights {
+            *weight *= scale_factor;
+        }
+    }
+    weights
+}
+```
+
+### i16範囲への重み変換
+
+辞書ファイルで使用される16ビット整数範囲に最適化された重み変換：
+
+```rust
+fn calculate_weight_scale_factor(&self, merged_model: &rucrf::MergedModel) -> f64 {
+    let mut weight_abs_max = 0f64;
+
+    // 最大絶対重みを取得
+    for feature_set in &merged_model.feature_sets {
+        weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
+    }
+
+    // i16範囲（-32768〜32767）に収まるようスケーリング
+    f64::from(i16::MAX) / weight_abs_max
+}
+```
+
+## 高度な辞書出力システム
+
+### 動的コスト計算
+
+未知語カテゴリごとに学習重みを活用した動的コスト計算：
+
+```rust
+pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
+    if !self.feature_weights.is_empty() && category < self.feature_weights.len() {
+        let raw_weight = self.feature_weights[category];
+        let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
+        let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
+
+        // カテゴリ別調整
+        let category_adjustment = match category {
+            0 => 0,    // DEFAULT
+            1 => -200, // HIRAGANA（頻出、低コスト）
+            2 => -200, // KATAKANA（頻出、低コスト）
+            3 => 200,  // KANJI（予測困難、高コスト）
+            4 => 100,  // ALPHA（外来語、中程度）
+            5 => -100, // NUMERIC（規則的、低コスト）
+            _ => 0,
+        };
+
+        (calculated_cost + category_adjustment).clamp(1000, 3000)
+    } else {
+        // フォールバック用固定コスト
+        match category {
+            0 => 2000, 1 => 1800, 2 => 1800, 3 => 2200, 4 => 2100, 5 => 1900, _ => 2000
+        }
+    }
+}
+```
+
+### 辞書エクスポート機能
+
+学習済みモデルから実用的な辞書ファイルセットを生成：
+
+```rust
+// 語彙辞書（lex.csv）
+pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
+    let merged_model = self.get_merged_model()?;
+    let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+
+    for (i, surface) in self.config.surfaces.iter().enumerate() {
+        if i < merged_model.feature_sets.len() {
+            let feature_set = merged_model.feature_sets[i];
+            let cost = (-feature_set.weight * weight_scale_factor) as i16;
+            let features = self.get_word_features(surface);
+            writeln!(writer, "{},{},{},{},{}",
+                surface, feature_set.left_id, feature_set.right_id, cost, features)?;
+        }
+    }
+    Ok(())
+}
+
+// 接続コスト行列（matrix.def）
+pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
+    let merged_model = self.get_merged_model()?;
+
+    // 動的次元計算
+    let max_context_id = self.calculate_max_context_id();
+    let matrix_size = std::cmp::max(max_context_id as usize + 1,
+        std::cmp::max(merged_model.right_conn_to_left_feats.len() + 1,
+                     merged_model.left_conn_to_right_feats.len() + 1));
+
+    writeln!(writer, "{} {}", matrix_size, matrix_size)?;
+
+    // 学習済み接続コストを出力
+    for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
+        for (&left_conn_id, &_w) in hm.iter() {
+            let cost = self.get_trained_connection_cost(left_conn_id as usize, right_conn_id);
+            writeln!(writer, "{} {} {}", right_conn_id, left_conn_id, cost)?;
+        }
+    }
+    Ok(())
+}
+```
+
+## デバッグ・診断機能
+
+### 詳細ログ出力
+
+学習プロセスの可視化とデバッグ用の詳細ログ：
+
+```rust
+// 特徴クリーンアップログ
+println!("Feature cleanup completed. Remaining features:");
+println!("  Unigram: {}", self.config.feature_extractor.unigram_feature_ids.len());
+println!("  Left: {}", self.config.feature_extractor.left_feature_ids.len());
+println!("  Right: {}", self.config.feature_extractor.right_feature_ids.len());
+
+// 重み抽出デバッグログ
+eprintln!("DEBUG: Total feature_weights: {}", self.feature_weights.len());
+eprintln!("DEBUG: Weight scale factor: {}", weight_scale_factor);
+for (i, weight) in self.feature_weights.iter().take(20).enumerate() {
+    eprintln!("DEBUG: feature_weights[{}] = {}", i, weight);
+}
+```
+
+### 基本モデル評価機能
+
+```rust
+pub fn evaluate(&self, _test_lattices: &[rucrf::Lattice]) -> f64 {
+    // 現在は学習済み重みの平均絶対値を返す簡易評価
+    // より高度な実装では実際の尤度スコアを計算する
+    let weights = self.raw_model.weights();
+    if weights.is_empty() {
+        0.0
+    } else {
+        let sum: f64 = weights.iter().map(|w| w.abs()).sum();
+        sum / weights.len() as f64
+    }
+}
+```
+
+**注意**: この関数は基本的な実装で、テストデータでの実際の精度評価はまだ実装されていません。将来的には以下のような機能が追加予定：
+
+- **正解データとの比較**: テスト格子を使った実際の分析精度測定
+- **F値計算**: 精度・再現率・F値の自動計算
+- **エラー分析**: 誤分析パターンの詳細レポート
+
+## パフォーマンス最適化
+
+### メモリ効率化
+
+- **遅延評価**: 必要時のみmerged_modelを作成
+- **未使用特徴除去**: 学習後の不要特徴自動削除
+- **効率的なバイナリ形式**: bincode使用による高速シリアライゼーション
+
+### 並列処理対応
+
+```rust
+let trainer = rucrf::Trainer::new()
+    .regularization(rucrf::Regularization::L1, regularization_cost)?
+    .max_iter(max_iter)?
+    .n_threads(self.num_threads)?;  // マルチスレッド学習
+```
+
+## 実用的な学習データ要件
+
+### 推奨コーパス仕様
+
+実際のアプリケーションで有効な辞書を生成するための推奨事項：
+
+1. **コーパスサイズ**
+   - **最小**: 100文（基本動作確認用）
+   - **推奨**: 1,000文以上（実用レベル）
+   - **理想**: 10,000文以上（商用品質）
+
+2. **語彙の多様性**
+   - 異なる品詞の均等な分布
+   - 活用形・語尾変化の網羅
+   - 専門用語・固有名詞の適切な含有
+
+3. **品質管理**
+   - 人手による形態素解析結果の検証
+   - 一貫した分析基準の適用
+   - エラー率5%以下の維持
+
 ## 動作確認結果
 
 ### **最新版テスト結果**（2024年9月19日）
@@ -487,7 +731,9 @@ Model saved to "trained_model.dat"
 長い単語: "コンピューター" → UNK_LEN=MEDIUM特徴付与
 ```
 
-#### **生成モデル（最新bincode形式）**
+#### **生成モデル形式**
+
+実際のモデルファイルはbincode形式（バイナリ）で保存されますが、内容は以下のような構造です：
 
 ```json
 {
