@@ -829,12 +829,12 @@ For detailed information about file formats and advanced features, see [TRAINER_
 
 ```bash
 lindera train \
-  --seed ./examples/training/seed.csv \
-  --corpus ./examples/training/corpus.txt \
-  --unk-def ./examples/training/unk.def \
-  --char-def ./examples/training/char.def \
-  --feature-def ./examples/training/feature.def \
-  --rewrite-def ./examples/training/rewrite.def \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
   --output /tmp/lindera/training/model.dat \
   --lambda 0.01 \
   --max-iterations 100
@@ -857,7 +857,7 @@ Export a trained model file to Lindera dictionary format files. This feature req
 # Export trained model to dictionary files
 lindera export \
   --model /tmp/lindera/training/model.dat \
-  --metadata ./examples/training/metadata.json \
+  --metadata ./resources/training/metadata.json \
   --output /tmp/lindera/training/dictionary
 ```
 
@@ -883,12 +883,12 @@ The export command creates the following dictionary files in the output director
 
 ```bash
 lindera train \
-  --seed ./examples/training/seed.csv \
-  --corpus ./examples/training/corpus.txt \
-  --unk-def ./examples/training/unk.def \
-  --char-def ./examples/training/char.def \
-  --feature-def ./examples/training/feature.def \
-  --rewrite-def ./examples/training/rewrite.def \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
   --output /tmp/lindera/training/model.dat \
   --lambda 0.01 \
   --max-iterations 100
@@ -899,7 +899,7 @@ lindera train \
 ```bash
 lindera export \
   --model /tmp/lindera/training/model.dat \
-  --metadata ./examples/training/metadata.json \
+  --metadata ./resources/training/metadata.json \
   --output /tmp/lindera/training/dictionary
 ```
 

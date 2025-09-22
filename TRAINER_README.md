@@ -187,14 +187,14 @@ use std::fs::File;
 use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
 
 // 設定ファイルから設定を読み込み
-let lex_file = File::open("examples/training/sample_lex.csv")?;
-let char_file = File::open("examples/training/sample_char.def")?;
-let unk_file = File::open("examples/training/sample_unk.def")?;
-let feature_file = File::open("examples/training/sample_feature.def")?;
-let rewrite_file = File::open("examples/training/sample_rewrite.def")?;
+let seed_file = File::open("resources/training/seed.csv")?;
+let char_file = File::open("resources/training/char.def")?;
+let unk_file = File::open("resources/training/unk.def")?;
+let feature_file = File::open("resources/training/feature.def")?;
+let rewrite_file = File::open("resources/training/rewrite.def")?;
 
 let config = TrainerConfig::from_readers(
-    lex_file,
+    seed_file,
     char_file,
     unk_file,
     feature_file,
@@ -208,7 +208,7 @@ let trainer = Trainer::new(config)?
     .num_threads(4);
 
 // コーパスの読み込み
-let corpus_file = File::open("examples/training/sample_corpus.txt")?;
+let corpus_file = File::open("resources/training/corpus.txt")?;
 let corpus = Corpus::from_reader(corpus_file)?;
 
 // 学習の実行
