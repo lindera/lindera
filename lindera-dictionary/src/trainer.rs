@@ -111,7 +111,6 @@ pub struct Trainer {
 }
 
 impl Trainer {
-
     /// Creates a new [`Trainer`] using the specified configuration.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
         let mut provider = rucrf::FeatureProvider::default();
@@ -120,33 +119,33 @@ impl Trainer {
         // Build label mapping from surfaces and add feature sets to provider
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string for this surface
-            let feature_str = config.get_features(surface)
+            let feature_str = config
+                .get_features(surface)
                 .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string());
 
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;
             let features_vec: Vec<String> = feature_str.split(',').map(|s| s.to_string()).collect();
 
-            let unigram_ids = feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
+            let unigram_ids =
+                feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
             let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
             let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
 
-            let feature_set = rucrf::FeatureSet::new(
-                &unigram_ids,
-                &right_ids,
-                &left_ids,
-            );
+            let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
             // Add feature set to provider and get label ID
             let label_id = provider.add_feature_set(feature_set)?;
 
             // Map feature string to label ID using first character classification
-            label_id_map
-                .entry(feature_str)
-                .or_insert_with(HashMap::new);
+            label_id_map.entry(feature_str).or_insert_with(HashMap::new);
             if let Some(first_char) = surface.chars().next() {
                 label_id_map
-                    .get_mut(&config.get_features(surface).unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string()))
+                    .get_mut(
+                        &config
+                            .get_features(surface)
+                            .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string()),
+                    )
                     .unwrap()
                     .insert(first_char, label_id);
             }
@@ -154,7 +153,9 @@ impl Trainer {
 
         // Initialize unknown word labels for 6 character type categories
         let mut label_id_map_unk = Vec::new();
-        let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
+        let unk_categories = [
+            "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
+        ];
 
         for (i, category) in unk_categories.iter().enumerate() {
             // Get unknown word feature string based on category
@@ -166,21 +167,19 @@ impl Trainer {
                 "ALPHA" => "名詞,固有名詞,*,*,*,*,*,*,*",
                 "NUMERIC" => "名詞,数,*,*,*,*,*,*,*",
                 _ => "名詞,一般,*,*,*,*,*,*,*",
-            }.to_string();
+            }
+            .to_string();
 
             // Create feature set for unknown word category
             let feature_extractor = &mut config.feature_extractor;
             let features_vec: Vec<String> = unk_feature.split(',').map(|s| s.to_string()).collect();
 
-            let unigram_ids = feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
+            let unigram_ids =
+                feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
             let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
             let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
 
-            let feature_set = rucrf::FeatureSet::new(
-                &unigram_ids,
-                &right_ids,
-                &left_ids,
-            );
+            let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
             // Add to provider
             let unk_label_id = provider.add_feature_set(feature_set)?;
@@ -269,8 +268,12 @@ impl Trainer {
     /// Configure and execute CRF training
     fn train_crf_model(&mut self, lattices: Vec<rucrf::Lattice>) -> Result<rucrf::RawModel> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
-        log_info!("Training parameters: regularization={}, max_iter={}, threads={}",
-                  self.regularization_cost, self.max_iter, self.num_threads);
+        log_info!(
+            "Training parameters: regularization={}, max_iter={}, threads={}",
+            self.regularization_cost,
+            self.max_iter,
+            self.num_threads
+        );
 
         // Configure the CRF trainer
         let trainer = rucrf::Trainer::new()
@@ -288,7 +291,9 @@ impl Trainer {
         lattices: Vec<rucrf::Lattice>,
     ) -> Result<rucrf::RawModel> {
         println!("L-BFGS optimization starting...");
-        println!("Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above.");
+        println!(
+            "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above."
+        );
         println!("Each 'iter:' line indicates training progress. Please wait...");
 
         let start_time = std::time::Instant::now();
@@ -299,7 +304,10 @@ impl Trainer {
         let training_duration = start_time.elapsed();
 
         self.log_training_results(&model);
-        println!("Training completed successfully in {:.2}s!", training_duration.as_secs_f64());
+        println!(
+            "Training completed successfully in {:.2}s!",
+            training_duration.as_secs_f64()
+        );
 
         Ok(model)
     }
@@ -308,22 +316,35 @@ impl Trainer {
     fn log_training_results(&self, model: &rucrf::RawModel) {
         log_debug!("Training completed, checking raw model...");
         log_debug!("Raw model weights count: {}", model.weights().len());
-        log_debug!("Raw model first 5 weights: {:?}",
-                   &model.weights()[..std::cmp::min(5, model.weights().len())]);
+        log_debug!(
+            "Raw model first 5 weights: {:?}",
+            &model.weights()[..std::cmp::min(5, model.weights().len())]
+        );
 
         // Analyze weights for debugging
         let weights = model.weights();
         let nan_count = weights.iter().filter(|&&w| w.is_nan()).count();
         let inf_count = weights.iter().filter(|&&w| w.is_infinite()).count();
         let zero_count = weights.iter().filter(|&&w| w == 0.0).count();
-        log_debug!("Weight analysis - NaN: {}, Inf: {}, Zero: {}, Total: {}",
-                   nan_count, inf_count, zero_count, weights.len());
+        log_debug!(
+            "Weight analysis - NaN: {}, Inf: {}, Zero: {}, Total: {}",
+            nan_count,
+            inf_count,
+            zero_count,
+            weights.len()
+        );
 
         let weight_sum: f64 = weights.iter().sum();
         log_debug!("Sum of all weights: {:.16}", weight_sum);
 
-        log_debug!("Model unigram_weight_indices len: {}", model.unigram_weight_indices().len());
-        log_debug!("Model bigram_weight_indices len: {}", model.bigram_weight_indices().len());
+        log_debug!(
+            "Model unigram_weight_indices len: {}",
+            model.unigram_weight_indices().len()
+        );
+        log_debug!(
+            "Model bigram_weight_indices len: {}",
+            model.bigram_weight_indices().len()
+        );
     }
 
     /// Create the final trained model from CRF results
@@ -333,7 +354,6 @@ impl Trainer {
         labels: Vec<String>,
         _corpus: Corpus,
     ) -> Result<Model> {
-
         // Remove unused features from feature extractor to optimize model size
         self.remove_unused_features(&crf_model);
 
@@ -358,10 +378,15 @@ impl Trainer {
         let mut feature_weights = Vec::new();
         match crf_model.merge() {
             Ok(merged_model) => {
-                println!("DEBUG: merged_model.feature_sets.len() = {}", merged_model.feature_sets.len());
+                println!(
+                    "DEBUG: merged_model.feature_sets.len() = {}",
+                    merged_model.feature_sets.len()
+                );
 
                 // Check if merged model has valid weights
-                let has_valid_weights = merged_model.feature_sets.iter()
+                let has_valid_weights = merged_model
+                    .feature_sets
+                    .iter()
                     .take(self.config.surfaces.len())
                     .any(|fs| fs.weight != 0.0);
 
@@ -391,10 +416,14 @@ impl Trainer {
             }
         }
 
-        println!("DEBUG: First 10 feature weights: {:?}",
-                 &feature_weights[..std::cmp::min(10, feature_weights.len())]);
-        println!("DEBUG: Passing feature_weights to Model: {:?}",
-                 &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+        println!(
+            "DEBUG: First 10 feature weights: {:?}",
+            &feature_weights[..std::cmp::min(10, feature_weights.len())]
+        );
+        println!(
+            "DEBUG: Passing feature_weights to Model: {:?}",
+            &feature_weights[..std::cmp::min(5, feature_weights.len())]
+        );
 
         feature_weights
     }
@@ -402,7 +431,10 @@ impl Trainer {
     /// Use raw CRF model weights as fallback
     fn use_raw_weights(&self, crf_model: &rucrf::RawModel, feature_weights: &mut Vec<f64>) {
         let raw_weights = crf_model.weights();
-        println!("DEBUG: Fallback to raw weights, count: {}", raw_weights.len());
+        println!(
+            "DEBUG: Fallback to raw weights, count: {}",
+            raw_weights.len()
+        );
 
         for i in 0..self.config.surfaces.len() {
             if i < raw_weights.len() {
@@ -453,15 +485,18 @@ impl Trainer {
                     self.config
                         .dict()
                         .unknown_dictionary
-                        .compatible_unk_index(&example.sentence, pos, pos + token_len, token.feature())
+                        .compatible_unk_index(
+                            &example.sentence,
+                            pos,
+                            pos + token_len,
+                            token.feature(),
+                        )
                         .map_or_else(
                             || {
                                 self.provider
                                     .add_feature_set(rucrf::FeatureSet::new(&[], &[], &[]))
                             },
-                            |unk_index| {
-                                Ok(self.label_id_map_unk[unk_index.word_id as usize])
-                            },
+                            |unk_index| Ok(self.label_id_map_unk[unk_index.word_id as usize]),
                         )
                 })?;
 

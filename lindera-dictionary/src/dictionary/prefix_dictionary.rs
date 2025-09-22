@@ -138,21 +138,24 @@ impl PrefixDictionary {
                 }
 
                 let data: &[u8] = &self.vals_data[offset_bytes..];
-                (0..len as usize).filter_map(move |i| {
-                    let required_bytes = WordEntry::SERIALIZED_LEN * (i + 1);
-                    if required_bytes <= data.len() {
-                        let word_entry = WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        );
-                        Some(Match {
-                            word_idx: WordIdx::new(word_entry.word_id.id),
-                            end_char: prefix_len,
-                        })
-                    } else {
-                        None
-                    }
-                }).collect::<Vec<_>>().into_iter()
+                (0..len as usize)
+                    .filter_map(move |i| {
+                        let required_bytes = WordEntry::SERIALIZED_LEN * (i + 1);
+                        if required_bytes <= data.len() {
+                            let word_entry = WordEntry::deserialize(
+                                &data[WordEntry::SERIALIZED_LEN * i..],
+                                self.is_system,
+                            );
+                            Some(Match {
+                                word_idx: WordIdx::new(word_entry.word_id.id),
+                                end_char: prefix_len,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .into_iter()
             })
             .collect()
     }

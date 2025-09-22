@@ -37,7 +37,7 @@ pub struct Metadata {
     pub dictionary_schema: Schema,      // Schema for the dictionary
     pub user_dictionary_schema: Schema, // Schema for user dictionary
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_info: Option<ModelInfo>,  // Training model information (optional)
+    pub model_info: Option<ModelInfo>, // Training model information (optional)
 }
 
 impl Default for Metadata {

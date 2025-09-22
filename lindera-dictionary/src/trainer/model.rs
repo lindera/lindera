@@ -24,12 +24,12 @@ mod cost_constants {
     pub const UNK_COST_MAX: i32 = 4500;
 
     // Category-specific adjustments for unknown words
-    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0;     // DEFAULT category
-    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200;  // HIRAGANA - penalize known chars
-    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0;    // KATAKANA - moderate penalty
-    pub const UNK_KANJI_ADJUSTMENT: i32 = 400;     // KANJI - higher penalty
-    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100;     // ALPHA - foreign words
-    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100;  // NUMERIC - deterministic
+    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0; // DEFAULT category
+    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200; // HIRAGANA - penalize known chars
+    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0; // KATAKANA - moderate penalty
+    pub const UNK_KANJI_ADJUSTMENT: i32 = 400; // KANJI - higher penalty
+    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100; // ALPHA - foreign words
+    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100; // NUMERIC - deterministic
 
     // Weight normalization
     pub const WEIGHT_NORMALIZATION_DIVISOR: f64 = 10.0;
@@ -140,8 +140,14 @@ impl Model {
         regularization_cost: f64,
         max_iterations: u64,
     ) -> Self {
-        println!("DEBUG: Model::new_with_metadata received {} feature weights", feature_weights.len());
-        println!("DEBUG: First 5 received weights: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+        println!(
+            "DEBUG: Model::new_with_metadata received {} feature weights",
+            feature_weights.len()
+        );
+        println!(
+            "DEBUG: First 5 received weights: {:?}",
+            &feature_weights[..std::cmp::min(5, feature_weights.len())]
+        );
 
         Self {
             raw_model,
@@ -278,10 +284,22 @@ impl Model {
         let feature_weights = self.feature_weights.clone();
 
         // DEBUG: Check what we have before serialization
-        println!("DEBUG write_model: self.feature_weights.len() = {}", self.feature_weights.len());
-        println!("DEBUG write_model: First 5 weights: {:?}", &self.feature_weights[..std::cmp::min(5, self.feature_weights.len())]);
-        println!("DEBUG write_model: feature_weights.len() = {}", feature_weights.len());
-        println!("DEBUG write_model: First 5 weights: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+        println!(
+            "DEBUG write_model: self.feature_weights.len() = {}",
+            self.feature_weights.len()
+        );
+        println!(
+            "DEBUG write_model: First 5 weights: {:?}",
+            &self.feature_weights[..std::cmp::min(5, self.feature_weights.len())]
+        );
+        println!(
+            "DEBUG write_model: feature_weights.len() = {}",
+            feature_weights.len()
+        );
+        println!(
+            "DEBUG write_model: First 5 weights: {:?}",
+            &feature_weights[..std::cmp::min(5, feature_weights.len())]
+        );
 
         // Extract connection cost matrix from the trained model using standard CRF methodology
         let merged_model = self.raw_model.merge()?;
@@ -348,16 +366,28 @@ impl Model {
             bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard())
         {
             // DEBUG: Check what we read from bincode
-            println!("DEBUG read_model (bincode): feature_weights.len() = {}", model.feature_weights.len());
-            println!("DEBUG read_model (bincode): First 5 weights: {:?}", &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]);
+            println!(
+                "DEBUG read_model (bincode): feature_weights.len() = {}",
+                model.feature_weights.len()
+            );
+            println!(
+                "DEBUG read_model (bincode): First 5 weights: {:?}",
+                &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
+            );
             return Ok(model);
         }
 
         // Fallback to JSON format (legacy)
         let json_str = String::from_utf8(buffer)?;
         let model: SerializableModel = serde_json::from_str(&json_str)?;
-        println!("DEBUG read_model (JSON): feature_weights.len() = {}", model.feature_weights.len());
-        println!("DEBUG read_model (JSON): First 5 weights: {:?}", &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]);
+        println!(
+            "DEBUG read_model (JSON): feature_weights.len() = {}",
+            model.feature_weights.len()
+        );
+        println!(
+            "DEBUG read_model (JSON): First 5 weights: {:?}",
+            &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
+        );
         Ok(model)
     }
 
@@ -534,11 +564,7 @@ impl Model {
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
                 let features = self.get_word_features(surface);
                 // Use context ID 0,0 for compatibility with Lindera dictionary format
-                writeln!(
-                    writer,
-                    "{},{},{},{},{}",
-                    surface, 0, 0, cost, features
-                )?;
+                writeln!(writer, "{},{},{},{},{}", surface, 0, 0, cost, features)?;
             } else {
                 // Fallback for missing feature sets - use context ID 0,0 for compatibility
                 let cost = self.get_word_cost(i);
@@ -576,7 +602,8 @@ impl Model {
 
         // Calculate matrix dimensions from actual trained IDs and unknown word categories
         let unk_max_id = 105; // Maximum unknown word category ID
-        let max_trained_id = merged_model.feature_sets
+        let max_trained_id = merged_model
+            .feature_sets
             .iter()
             .map(|fs| std::cmp::max(fs.left_id.get(), fs.right_id.get()))
             .max()
@@ -971,11 +998,13 @@ impl Model {
         lexicon.extend_from_slice(&lexicon_data);
 
         // Serialize connection costs (feature weights as connection matrix)
-        let connection_data = bincode::encode_to_vec(&self.feature_weights, bincode::config::standard())?;
+        let connection_data =
+            bincode::encode_to_vec(&self.feature_weights, bincode::config::standard())?;
         connector.extend_from_slice(&connection_data);
 
         // Serialize unknown word handler (simplified data)
-        let unk_data = bincode::encode_to_vec(self.user_entries.len(), bincode::config::standard())?;
+        let unk_data =
+            bincode::encode_to_vec(self.user_entries.len(), bincode::config::standard())?;
         unk_handler.extend_from_slice(&unk_data);
 
         // Serialize user lexicon (config info as user lexicon)
@@ -1090,7 +1119,7 @@ impl SerializableModel {
             let unk_max_id = 105; // Maximum unknown word category ID
             let matrix_size = std::cmp::max(
                 std::cmp::max(self.max_right_id + 1, self.max_left_id + 1),
-                std::cmp::max(unk_max_id + 1, 6) // Include unknown word IDs
+                std::cmp::max(unk_max_id + 1, 6), // Include unknown word IDs
             );
 
             // Write matrix dimensions
@@ -1147,7 +1176,11 @@ impl SerializableModel {
     }
 
     /// Update metadata.json with trained model values
-    pub fn update_metadata_json<W: std::io::Write>(&self, base_metadata_path: &std::path::Path, writer: &mut W) -> anyhow::Result<()> {
+    pub fn update_metadata_json<W: std::io::Write>(
+        &self,
+        base_metadata_path: &std::path::Path,
+        writer: &mut W,
+    ) -> anyhow::Result<()> {
         // Read the base metadata.json file
         let base_content = std::fs::read_to_string(base_metadata_path)?;
         let mut metadata: serde_json::Value = serde_json::from_str(&base_content)?;
@@ -1163,14 +1196,19 @@ impl SerializableModel {
                 weights[weights.len() / 2]
             };
             // Convert to appropriate cost range for practical use
-            (median_weight * cost_constants::DEFAULT_WORD_COST_MULTIPLIER).abs() as i32 + cost_constants::DEFAULT_WORD_COST_BASE
+            (median_weight * cost_constants::DEFAULT_WORD_COST_MULTIPLIER).abs() as i32
+                + cost_constants::DEFAULT_WORD_COST_BASE
         } else {
             // Keep existing value if no trained weights
-            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(cost_constants::DEFAULT_WORD_COST_FALLBACK as i64) as i32
+            metadata
+                .get("default_word_cost")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(cost_constants::DEFAULT_WORD_COST_FALLBACK as i64) as i32
         };
 
         // Update metadata with trained model values
-        metadata["default_word_cost"] = serde_json::Value::Number(serde_json::Number::from(updated_default_cost));
+        metadata["default_word_cost"] =
+            serde_json::Value::Number(serde_json::Number::from(updated_default_cost));
 
         // Add model_info section with training statistics
         let max_context_id = std::cmp::max(self.max_left_id, self.max_right_id);
@@ -1201,12 +1239,12 @@ impl SerializableModel {
         // 未知語カテゴリの定義情報のみを出力
         // 実際の語彙エントリではなく、カテゴリごとの設定情報
         let categories = [
-            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),     // 文字種不明
-            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),    // ひらがな
-            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),    // カタカナ
-            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),       // 漢字
-            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"),   // アルファベット
-            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),       // 数字
+            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),   // 文字種不明
+            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),  // ひらがな
+            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),  // カタカナ
+            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),     // 漢字
+            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"), // アルファベット
+            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),     // 数字
         ];
 
         for (i, (category, features)) in categories.iter().enumerate() {
@@ -1228,7 +1266,10 @@ impl SerializableModel {
             };
             // Use offset context IDs to avoid conflict with lexicon entries
             let context_id = i + 100; // Start from 100 to avoid conflicts
-            writeln!(writer, "{category},{context_id},{context_id},{cost},{features}")?;
+            writeln!(
+                writer,
+                "{category},{context_id},{context_id},{cost},{features}"
+            )?;
         }
 
         Ok(())
@@ -1240,7 +1281,7 @@ impl SerializableModel {
         let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
         final_cost.clamp(
             cost_constants::KNOWN_WORD_COST_MIN as i32,
-            cost_constants::KNOWN_WORD_COST_MAX as i32
+            cost_constants::KNOWN_WORD_COST_MAX as i32,
         ) as i16
     }
 
@@ -1258,9 +1299,6 @@ impl SerializableModel {
         };
         let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
         let final_cost = base_cost + category_adjustment + scaled_weight;
-        final_cost.clamp(
-            cost_constants::UNK_COST_MIN,
-            cost_constants::UNK_COST_MAX
-        )
+        final_cost.clamp(cost_constants::UNK_COST_MIN, cost_constants::UNK_COST_MAX)
     }
 }
