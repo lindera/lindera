@@ -60,6 +60,9 @@ impl Model {
         regularization_cost: f64,
         max_iterations: u64,
     ) -> Self {
+        println!("DEBUG: Model::new_with_metadata received {} feature weights", feature_weights.len());
+        println!("DEBUG: First 5 received weights: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+
         Self {
             raw_model,
             config,
@@ -191,8 +194,14 @@ impl Model {
 
     /// Writes the model to a writer.
     pub fn write_model<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Extract feature weights from the trained CRF model
-        let feature_weights = self.extract_feature_weights();
+        // Use already extracted feature weights
+        let feature_weights = self.feature_weights.clone();
+
+        // DEBUG: Check what we have before serialization
+        println!("DEBUG write_model: self.feature_weights.len() = {}", self.feature_weights.len());
+        println!("DEBUG write_model: First 5 weights: {:?}", &self.feature_weights[..std::cmp::min(5, self.feature_weights.len())]);
+        println!("DEBUG write_model: feature_weights.len() = {}", feature_weights.len());
+        println!("DEBUG write_model: First 5 weights: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
 
         // Extract connection cost matrix from the trained model (following Vibrato's approach)
         let merged_model = self.raw_model.merge()?;
@@ -258,56 +267,24 @@ impl Model {
         if let Ok((model, _)) =
             bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard())
         {
+            // DEBUG: Check what we read from bincode
+            println!("DEBUG read_model (bincode): feature_weights.len() = {}", model.feature_weights.len());
+            println!("DEBUG read_model (bincode): First 5 weights: {:?}", &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]);
             return Ok(model);
         }
 
         // Fallback to JSON format (legacy)
         let json_str = String::from_utf8(buffer)?;
         let model: SerializableModel = serde_json::from_str(&json_str)?;
+        println!("DEBUG read_model (JSON): feature_weights.len() = {}", model.feature_weights.len());
+        println!("DEBUG read_model (JSON): First 5 weights: {:?}", &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]);
         Ok(model)
     }
 
     /// Extracts feature weights from the raw CRF model with optimized normalization
     fn extract_feature_weights(&self) -> Vec<f64> {
-        // Use merge approach to get accurate weights with advanced processing
-        match self.raw_model.merge() {
-            Ok(merged_model) => {
-                let mut weights = Vec::new();
-
-                // Extract unigram weights from feature sets with proper indexing
-                for (i, feature_set) in merged_model.feature_sets.iter().enumerate() {
-                    // Apply normalization with advanced scaling method
-                    let normalized_weight = self.normalize_feature_weight(feature_set.weight, i);
-                    weights.push(normalized_weight);
-                }
-
-                // Extract bigram weights from connection matrix with proper sorting
-                let mut bigram_weights = Vec::new();
-                for (left_id, hm) in merged_model.matrix.iter().enumerate() {
-                    let mut sorted_pairs: Vec<_> = hm.iter().collect();
-                    sorted_pairs.sort_by_key(|&(&right_id, _)| right_id);
-
-                    for (&right_id, &weight) in sorted_pairs {
-                        let normalized_weight =
-                            self.normalize_connection_weight(weight, left_id, right_id as usize);
-                        bigram_weights.push(normalized_weight);
-                    }
-                }
-                weights.extend(bigram_weights);
-
-                // Apply global weight normalization if needed
-                self.apply_global_weight_normalization(weights)
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to merge model for weight extraction: {e}");
-                // Fallback: use raw weights with basic normalization
-                let raw_weights = self.raw_model.weights();
-                raw_weights
-                    .iter()
-                    .map(|&w| self.normalize_raw_weight(w))
-                    .collect()
-            }
-        }
+        // Use the pre-computed feature weights that were stored during training
+        self.feature_weights.clone()
     }
 
     /// Normalize feature weight using advanced scaling method
@@ -471,17 +448,17 @@ impl Model {
                 let feature_set = merged_model.feature_sets[i];
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
                 let features = self.get_word_features(surface);
+                // Use context ID 0,0 for compatibility with Lindera dictionary format
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    surface, feature_set.left_id, feature_set.right_id, cost, features
+                    surface, 0, 0, cost, features
                 )?;
             } else {
-                // Fallback for missing feature sets
+                // Fallback for missing feature sets - use context ID 0,0 for compatibility
                 let cost = self.get_word_cost(i);
                 let features = self.get_word_features(surface);
-                let (left_id, right_id) = self.infer_context_ids(surface, &features);
-                writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
+                writeln!(writer, "{surface},0,0,{cost},{features}")?;
             }
         }
 
@@ -509,31 +486,58 @@ impl Model {
     }
 
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Get merged model for proper connection cost calculation
+        // Get merged model for trained connection costs (Vibrato-style)
         let merged_model = self.get_merged_model()?;
-        let _weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
 
-        // Calculate matrix dimensions dynamically
-        let max_context_id = self.calculate_max_context_id();
-        let matrix_size = std::cmp::max(
-            max_context_id as usize + 1,
-            std::cmp::max(
-                merged_model.right_conn_to_left_feats.len() + 1,
-                merged_model.left_conn_to_right_feats.len() + 1,
-            ),
-        );
+        // Calculate matrix dimensions from actual trained IDs and unknown word categories
+        let unk_max_id = 105; // Maximum unknown word category ID
+        let max_trained_id = merged_model.feature_sets
+            .iter()
+            .map(|fs| std::cmp::max(fs.left_id.get(), fs.right_id.get()))
+            .max()
+            .unwrap_or(0);
+        let matrix_size = std::cmp::max(max_trained_id + 1, unk_max_id + 1) as usize;
+
+        // Weight scaling (Vibrato-style)
+        let mut weight_abs_max = 0f64;
+        for feature_set in &merged_model.feature_sets {
+            weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
+        }
+        for hm in &merged_model.matrix {
+            for &w in hm.values() {
+                weight_abs_max = weight_abs_max.max(w.abs());
+            }
+        }
+        let weight_scale_factor = if weight_abs_max > 0.0 {
+            f64::from(i16::MAX) / weight_abs_max
+        } else {
+            1.0
+        };
 
         // Write matrix dimensions
         writeln!(writer, "{matrix_size} {matrix_size}")?;
 
-        // Write connection costs using trained model calculations
+        // Write trained connection costs (Vibrato-style)
         for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
-            let mut pairs: Vec<_> = hm.iter().map(|(&j, &w)| (j, w)).collect();
-            pairs.sort_unstable_by_key(|&(k, _)| k);
-            for (left_conn_id, _w) in pairs {
-                // Use get_trained_connection_cost method for consistency
-                let cost = self.get_trained_connection_cost(left_conn_id as usize, right_conn_id);
+            for (&left_conn_id, &weight) in hm.iter() {
+                let cost = (-weight * weight_scale_factor) as i16;
                 writeln!(writer, "{right_conn_id} {left_conn_id} {cost}")?;
+            }
+        }
+
+        // Add connections for unknown word categories
+        for unk_id in 100..=unk_max_id {
+            // BOS to unknown word categories
+            writeln!(writer, "0 {unk_id} 200")?;
+            // Unknown word categories to EOS
+            writeln!(writer, "{unk_id} 0 200")?;
+
+            // Unknown words to trained IDs and vice versa
+            for trained_id in 0..=max_trained_id {
+                if trained_id != 0 {
+                    writeln!(writer, "{unk_id} {trained_id} 300")?;
+                    writeln!(writer, "{trained_id} {unk_id} 300")?;
+                }
             }
         }
 
@@ -620,22 +624,22 @@ impl Model {
             // Calculate cost based on learned feature weights
             let raw_weight = self.feature_weights[category];
 
-            // Apply scaling appropriate for unknown words with optimized weight calculation
+            // Apply scaling appropriate for unknown words with higher baseline cost
             let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
-            let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
+            let calculated_cost = (-normalized_weight * 500.0) as i32 + 3000;  // Higher base cost for UNK
 
-            // Category-specific adjustments based on Japanese morphology
+            // Category-specific adjustments - UNK should be more expensive than known words
             let category_adjustment = match category {
                 0 => 0,    // DEFAULT
-                1 => -200, // HIRAGANA - more common, lower cost
-                2 => -200, // KATAKANA - more common, lower cost
-                3 => 200,  // KANJI - less predictable, higher cost
-                4 => 100,  // ALPHA - foreign words, moderate increase
-                5 => -100, // NUMERIC - usually deterministic, lower cost
+                1 => 200,  // HIRAGANA - penalize since known words should be preferred
+                2 => 0,    // KATAKANA - moderate penalty
+                3 => 400,  // KANJI - higher penalty for complex words
+                4 => 100,  // ALPHA - foreign words, moderate penalty
+                5 => -100, // NUMERIC - still lower for deterministic numbers
                 _ => 0,    // Other categories
             };
 
-            (calculated_cost + category_adjustment).clamp(1000, 3000)
+            (calculated_cost + category_adjustment).clamp(2500, 4500)  // Much higher cost range for UNK
         } else {
             // Fallback to category-specific default costs
             match category {
@@ -949,6 +953,9 @@ impl SerializableModel {
             "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
         ];
 
+        // For SerializableModel, we need to work with stored data directly
+        // Since we don't have access to the original merged model here
+
         // Create POS-based connection ID mapping
         let mut pos_to_id: HashMap<String, u32> = HashMap::new();
         let mut next_id = 0u32;
@@ -988,9 +995,9 @@ impl SerializableModel {
                     raw_weight
                 };
 
-                // Apply standard morphological analysis cost calculation
-                let calculated_cost = (-normalized_weight * 1000.0) as i16;
-                let final_cost = (calculated_cost + 5000).clamp(1000, 15000);
+                // Apply standard morphological analysis cost calculation with more reasonable range
+                let calculated_cost = (-normalized_weight * 500.0) as i16;
+                let final_cost = (calculated_cost + 1000).clamp(500, 3000);
 
                 eprintln!(
                     "DEBUG: label={label}, raw_weight={raw_weight:.3}, normalized={normalized_weight:.3}, calculated={calculated_cost}, final={final_cost}"
@@ -999,8 +1006,17 @@ impl SerializableModel {
                 final_cost
             } else {
                 eprintln!("DEBUG: label={label} using default cost");
-                5000i16 // Default cost for morphological analysis
+                1500i16 // Default cost for morphological analysis
             };
+
+            // Use POS-based context IDs for compatibility
+            // Extract main POS for connection ID
+            let main_pos = pos_info.split(',').next().unwrap_or("名詞");
+            let connection_id = *pos_to_id.entry(main_pos.to_string()).or_insert_with(|| {
+                let id = next_id;
+                next_id += 1;
+                id
+            });
 
             writeln!(
                 writer,
@@ -1016,9 +1032,11 @@ impl SerializableModel {
         // Check if we have trained connection matrix
         if !self.connection_matrix.is_empty() {
             // Use trained model to generate connection costs
+            // Include unknown word categories (100-105) in size calculation
+            let unk_max_id = 105; // Maximum unknown word category ID
             let matrix_size = std::cmp::max(
-                self.max_right_id + 1,
-                std::cmp::max(self.max_left_id + 1, 6) // Use at least 6 for our training data
+                std::cmp::max(self.max_right_id + 1, self.max_left_id + 1),
+                std::cmp::max(unk_max_id + 1, 6) // Include unknown word IDs
             );
 
             // Write matrix dimensions
@@ -1058,7 +1076,9 @@ impl SerializableModel {
             }
         } else {
             // Fallback to simple implementation when no trained model
-            let num_categories = 6;
+            // Include unknown word categories (100-105) in size calculation
+            let unk_max_id = 105; // Maximum unknown word category ID
+            let num_categories = std::cmp::max(unk_max_id + 1, 6);
             writeln!(writer, "{num_categories} {num_categories}")?;
 
             for i in 0..num_categories {
@@ -1088,11 +1108,11 @@ impl SerializableModel {
             } else {
                 weights[weights.len() / 2]
             };
-            // Convert to appropriate cost range
-            (median_weight * 1000.0).abs() as i32 + 3000
+            // Convert to appropriate cost range for practical use
+            (median_weight * 500.0).abs() as i32 + 1500
         } else {
             // Keep existing value if no trained weights
-            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(5000) as i32
+            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(2000) as i32
         };
 
         // Update metadata with trained model values
@@ -1141,22 +1161,22 @@ impl SerializableModel {
                 // Calculate cost based on learned feature weights
                 let raw_weight = self.feature_weights[i];
 
-                // Apply scaling appropriate for unknown words with optimized weight calculation
+                // Apply scaling appropriate for unknown words with higher baseline cost
                 let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
-                let calculated_cost = (-normalized_weight * 500.0) as i32 + 2000;
+                let calculated_cost = (-normalized_weight * 500.0) as i32 + 3000;  // Higher base cost for UNK
 
-                // Category-specific adjustments based on Japanese morphology
+                // Category-specific adjustments - UNK should be more expensive than known words
                 let category_adjustment = match i {
                     0 => 0,    // DEFAULT
-                    1 => -200, // HIRAGANA - more common, lower cost
-                    2 => -200, // KATAKANA - more common, lower cost
-                    3 => 200,  // KANJI - less predictable, higher cost
-                    4 => 100,  // ALPHA - foreign words, moderate increase
-                    5 => -100, // NUMERIC - usually deterministic, lower cost
+                    1 => 200,  // HIRAGANA - penalize since known words should be preferred
+                    2 => 0,    // KATAKANA - moderate penalty
+                    3 => 400,  // KANJI - higher penalty for complex words
+                    4 => 100,  // ALPHA - foreign words, moderate penalty
+                    5 => -100, // NUMERIC - still lower for deterministic numbers
                     _ => 0,    // Other categories
                 };
 
-                (calculated_cost + category_adjustment).clamp(1000, 3000)
+                (calculated_cost + category_adjustment).clamp(2500, 4500)  // Much higher cost range for UNK
             } else {
                 // Fallback to category-specific default costs
                 match i {
@@ -1169,7 +1189,9 @@ impl SerializableModel {
                     _ => 2000, // Other categories
                 }
             };
-            writeln!(writer, "{category},{i},{i},{cost},{features}")?;
+            // Use offset context IDs to avoid conflict with lexicon entries
+            let context_id = i + 100; // Start from 100 to avoid conflicts
+            writeln!(writer, "{category},{context_id},{context_id},{cost},{features}")?;
         }
 
         Ok(())

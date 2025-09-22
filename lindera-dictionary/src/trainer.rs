@@ -65,40 +65,81 @@ pub struct Trainer {
 impl Trainer {
 
     /// Creates a new [`Trainer`] using the specified configuration.
-    pub fn new(config: TrainerConfig) -> Result<Self> {
-        let provider = rucrf::FeatureProvider::default();
+    pub fn new(mut config: TrainerConfig) -> Result<Self> {
+        let mut provider = rucrf::FeatureProvider::default();
         let mut label_id_map = HashMap::new();
 
-        // Build label mapping from surfaces
+        // Build label mapping from surfaces and add feature sets to provider (Vibrato-style)
         for (i, surface) in config.surfaces.iter().enumerate() {
-            let label_id = std::num::NonZeroU32::new((i + 1) as u32).unwrap();
-            label_id_map.insert(surface.clone(), HashMap::new());
+            // Get feature string for this surface
+            let feature_str = config.get_features(surface)
+                .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string());
+
+            // Create feature set for this vocabulary entry
+            let feature_extractor = &mut config.feature_extractor;
+            let features_vec: Vec<String> = feature_str.split(',').map(|s| s.to_string()).collect();
+
+            let unigram_ids = feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
+            let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
+            let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
+
+            let feature_set = rucrf::FeatureSet::new(
+                &unigram_ids,
+                &right_ids,
+                &left_ids,
+            );
+
+            // Add feature set to provider and get label ID
+            let label_id = provider.add_feature_set(feature_set)?;
+
+            // Map feature string to label ID by first character (Vibrato-style)
+            label_id_map
+                .entry(feature_str)
+                .or_insert_with(HashMap::new);
             if let Some(first_char) = surface.chars().next() {
                 label_id_map
-                    .get_mut(surface)
+                    .get_mut(&config.get_features(surface).unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string()))
                     .unwrap()
                     .insert(first_char, label_id);
             }
         }
 
-        // Initialize unknown word labels for 6 character type categories
-        // These pre-allocated IDs ensure consistent handling of unknown words
+        // Initialize unknown word labels for 6 character type categories (Vibrato-style)
         let mut label_id_map_unk = Vec::new();
-        for i in 0..6 {
-            // 6 categories: DEFAULT, HIRAGANA, KATAKANA, KANJI, ALPHA, NUMERIC
-            label_id_map_unk
-                .push(std::num::NonZeroU32::new((config.surfaces.len() + i + 1) as u32).unwrap());
+        let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
+
+        for (i, category) in unk_categories.iter().enumerate() {
+            // Get unknown word feature string - simplified for now
+            let unk_feature = "名詞,一般,*,*,*,*,*,*,*".to_string();
+
+            // Create feature set for unknown word category
+            let feature_extractor = &mut config.feature_extractor;
+            let features_vec: Vec<String> = unk_feature.split(',').map(|s| s.to_string()).collect();
+
+            let unigram_ids = feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
+            let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
+            let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
+
+            let feature_set = rucrf::FeatureSet::new(
+                &unigram_ids,
+                &right_ids,
+                &left_ids,
+            );
+
+            // Add to provider
+            let unk_label_id = provider.add_feature_set(feature_set)?;
+            label_id_map_unk.push(unk_label_id);
         }
 
         Ok(Self {
             config,
-            max_grouping_len: Some(10), // Default maximum grouping length
+            max_grouping_len: None, // Vibrato default: infinite length
             provider,
             label_id_map,
             label_id_map_unk,
             regularization_cost: 0.01,
             max_iter: 100,
-            num_threads: 1,
+            num_threads: 8,
         })
     }
 
@@ -145,10 +186,15 @@ impl Trainer {
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
         println!("Building feature lattices...");
 
-        // Build lattices from corpus
+        // Build lattices from corpus (Vibrato-style)
         let mut lattices = Vec::new();
         for (i, example) in corpus.examples.iter().enumerate() {
             println!("Processing example {}/{}", i + 1, corpus.examples.len());
+
+            // NOTE: Vibrato performs sentence.compile() here for character processing
+            // In Lindera, character property processing should be handled differently
+            // For now, we proceed with the existing approach
+
             let lattice = self.build_lattice(example)?;
             lattices.push(lattice);
         }
@@ -170,9 +216,7 @@ impl Trainer {
             .max_iter(max_iter)?
             .n_threads(self.num_threads)?;
 
-        // Take ownership of provider and train the model
-        let provider = std::mem::take(&mut self.provider);
-
+        // Take ownership of provider and train the model (Vibrato-style)
         println!("L-BFGS optimization starting...");
         println!("Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above.");
         println!("Each 'iter:' line indicates training progress. Please wait...");
@@ -180,44 +224,128 @@ impl Trainer {
         // Training starts here - L-BFGS will show its own progress
         let start_time = std::time::Instant::now();
 
-        // Spawn a thread to show periodic progress messages
-        let (tx, rx) = std::sync::mpsc::channel();
-        let progress_thread = std::thread::spawn(move || {
-            let mut elapsed_seconds = 0;
-            loop {
-                std::thread::sleep(std::time::Duration::from_secs(5)); // Check every 5 seconds
-                elapsed_seconds += 5;
+        // DEBUG: Check provider state before training
+        println!("DEBUG: Provider state before training - ready for CRF");
+        println!("DEBUG: Provider has {} feature sets", self.provider.len());
 
-                match rx.try_recv() {
-                    Ok(_) => break, // Training completed
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
-                    Err(std::sync::mpsc::TryRecvError::Empty) => {
-                        // Only show message if training is taking more than 10 seconds
-                        if elapsed_seconds >= 10 {
-                            println!("Training in progress... ({elapsed_seconds}s elapsed, L-BFGS optimizing weights)");
-                        }
-                    }
-                }
-            }
-        });
+        // DEBUG: Check lattices state
+        println!("DEBUG: Training with {} lattices", lattices.len());
+        for i in 0..std::cmp::min(3, lattices.len()) {
+            println!("DEBUG: Lattice {} processed", i);
+        }
+
+        // DEBUG: Floating-point environment check
+        println!("DEBUG: f64::EPSILON = {}", f64::EPSILON);
+        println!("DEBUG: regularization_cost = {:.16}", regularization_cost);
+
+        // DEBUG: Memory alignment check
+        let provider_ptr = &self.provider as *const _ as usize;
+        println!("DEBUG: Provider memory alignment: 0x{:x}", provider_ptr);
+
+        // Train with provider (consumes provider like Vibrato)
+        let provider = std::mem::take(&mut self.provider);
+        println!("DEBUG: Moved provider to trainer, training starting...");
+
+        // DEBUG: Check for potential NaN/infinity values before training
+        println!("DEBUG: Training parameters - reg: {:.16}, iter: {}, threads: {}",
+                regularization_cost, max_iter, self.num_threads);
 
         let model = trainer.train(&lattices, provider);
         let training_duration = start_time.elapsed();
 
-        // Signal the progress thread to stop
-        let _ = tx.send(());
-        let _ = progress_thread.join();
+        println!("DEBUG: Training completed, checking raw model...");
+        println!("DEBUG: Raw model weights count: {}", model.weights().len());
+        println!("DEBUG: Raw model first 5 weights: {:?}", &model.weights()[..std::cmp::min(5, model.weights().len())]);
+
+        // DEBUG: Check for NaN/infinity in weights
+        let weights = model.weights();
+        let nan_count = weights.iter().filter(|&&w| w.is_nan()).count();
+        let inf_count = weights.iter().filter(|&&w| w.is_infinite()).count();
+        let zero_count = weights.iter().filter(|&&w| w == 0.0).count();
+        println!("DEBUG: Weight analysis - NaN: {}, Inf: {}, Zero: {}, Total: {}",
+                 nan_count, inf_count, zero_count, weights.len());
+
+        // DEBUG: Sum of weights for verification
+        let weight_sum: f64 = weights.iter().sum();
+        println!("DEBUG: Sum of all weights: {:.16}", weight_sum);
+
+        // DEBUG: Check model internal structure
+        println!("DEBUG: Model unigram_weight_indices len: {}", model.unigram_weight_indices().len());
+        println!("DEBUG: Model bigram_weight_indices len: {}", model.bigram_weight_indices().len());
 
         println!("Training completed successfully in {:.2}s!", training_duration.as_secs_f64());
 
         // Remove unused features from feature extractor (Vibrato-style)
         self.remove_unused_features(&model);
 
-        // Return the model (Vibrato-style, without extra complexity)
+        // Extract feature weights from the trained model (Vibrato-style)
+        // First try merged model approach
+        let mut feature_weights = Vec::new();
+        match model.merge() {
+            Ok(merged_model) => {
+                println!("DEBUG: merged_model.feature_sets.len() = {}", merged_model.feature_sets.len());
+
+                // Check if merged model has valid weights
+                let has_valid_weights = merged_model.feature_sets.iter()
+                    .take(self.config.surfaces.len())  // Only check relevant weights
+                    .any(|fs| fs.weight != 0.0);
+
+                println!("DEBUG: has_valid_weights = {}", has_valid_weights);
+                if let Some(first_weight) = merged_model.feature_sets.first() {
+                    println!("DEBUG: First merged weight = {}", first_weight.weight);
+                }
+
+                if has_valid_weights {
+                    // Use merged model weights
+                    for (i, _surface) in self.config.surfaces.iter().enumerate() {
+                        if i < merged_model.feature_sets.len() {
+                            feature_weights.push(merged_model.feature_sets[i].weight);
+                        } else {
+                            feature_weights.push(0.0);
+                        }
+                    }
+                    println!("DEBUG: Used merged model weights");
+                } else {
+                    // Fallback: use raw model weights directly
+                    let raw_weights = model.weights();
+                    println!("DEBUG: Fallback to raw weights, count: {}", raw_weights.len());
+
+                    // Take first N weights corresponding to our surfaces
+                    for i in 0..self.config.surfaces.len() {
+                        if i < raw_weights.len() {
+                            feature_weights.push(raw_weights[i]);
+                        } else {
+                            feature_weights.push(0.0);
+                        }
+                    }
+                    println!("DEBUG: Used raw model weights");
+                }
+            }
+            Err(e) => {
+                println!("DEBUG: merge() failed: {}, using raw weights", e);
+                // Fallback: use raw model weights directly
+                let raw_weights = model.weights();
+                for i in 0..self.config.surfaces.len() {
+                    if i < raw_weights.len() {
+                        feature_weights.push(raw_weights[i]);
+                    } else {
+                        feature_weights.push(0.0);
+                    }
+                }
+            }
+        }
+
+        println!("Extracted {} feature weights from trained model", feature_weights.len());
+        println!("DEBUG: First 10 feature weights: {:?}", &feature_weights[..std::cmp::min(10, feature_weights.len())]);
+
+        // Debug: Print what we're passing to Model::new_with_metadata
+        println!("DEBUG: Passing feature_weights to Model: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+
+        // Return the model with actual feature weights
         Ok(Model::new_with_metadata(
             model,
             self.config,
-            Vec::new(), // No need for separate feature weights extraction
+            feature_weights,
             labels,
             regularization_cost,
             max_iter,
@@ -266,11 +394,6 @@ impl Trainer {
                         .compatible_unk_index(&example.sentence, pos, pos + token_len, token.feature())
                         .map_or_else(
                             || {
-                                eprintln!(
-                                    "adding virtual edge: {} {}",
-                                    token.surface(),
-                                    token.feature()
-                                );
                                 self.provider
                                     .add_feature_set(rucrf::FeatureSet::new(&[], &[], &[]))
                             },
@@ -301,7 +424,7 @@ impl Trainer {
             // System lexicon matching with common_prefix_iterator
             for m in self.config.system_lexicon().common_prefix_iterator(suffix) {
                 has_matched = true;
-                let label_id = NonZeroU32::new(m.word_idx.word_id + 1).unwrap();
+                let label_id = NonZeroU32::new(m.word_idx.word_id + 1).unwrap(); // word_id is 0-based, NonZeroU32 needs +1
                 let pos = start_word;
                 let target = pos + m.end_char;
                 let edge = Edge::new(target, label_id);
@@ -324,7 +447,7 @@ impl Trainer {
                 self.max_grouping_len,
                 |w| {
                     let id_offset = self.config.surfaces.len() as u32;
-                    let label_id = NonZeroU32::new(id_offset + w.word_idx().word_id + 1).unwrap();
+                    let label_id = NonZeroU32::new(id_offset + w.word_idx().word_id + 1).unwrap(); // Offset for unknown words
                     let pos = start_word;
                     let target = w.end_char();
                     let edge = rucrf::Edge::new(target, label_id);
