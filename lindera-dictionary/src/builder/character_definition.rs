@@ -91,7 +91,7 @@ impl CharacterDefinitionBuilder {
             }
             _ => {
                 return Err(LinderaErrorKind::Content
-                    .with_error(anyhow::anyhow!("Invalid line: {}", line))
+                    .with_error(anyhow::anyhow!("Invalid line: {line}"))
                     .add_context(format!(
                         "Character range should have format 'START..END' or 'SINGLE', got {} parts",
                         range_bounds.len()

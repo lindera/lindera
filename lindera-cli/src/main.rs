@@ -255,7 +255,7 @@ impl FromStr for Format {
             "mecab" => Ok(Format::Mecab),
             "wakati" => Ok(Format::Wakati),
             "json" => Ok(Format::Json),
-            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid format: {}", s))),
+            _ => Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!("Invalid format: {s}"))),
         }
     }
 }

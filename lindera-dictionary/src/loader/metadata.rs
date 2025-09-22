@@ -81,8 +81,8 @@ impl MetadataLoader {
 
 #[cfg(test)]
 mod tests {
+    use crate::builder::metadata::MetadataBuilder;
     use crate::dictionary::metadata::Metadata;
-    use crate::dictionary_builder::metadata::MetadataBuilder;
 
     use super::*;
 

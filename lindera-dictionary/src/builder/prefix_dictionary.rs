@@ -258,7 +258,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid cost value: {}", s)))
+                            .with_error(anyhow!("Invalid cost value: {s}")))
                     }
                 }
             },
@@ -277,7 +277,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid left context ID: {}", s)))
+                            .with_error(anyhow!("Invalid left context ID: {s}")))
                     }
                 }
             },
@@ -296,7 +296,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid right context ID: {}", s)))
+                            .with_error(anyhow!("Invalid right context ID: {s}")))
                     }
                 }
             },

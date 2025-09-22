@@ -12,7 +12,7 @@ use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
 use lindera_dictionary::dictionary::metadata::Metadata;
 use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
+use lindera_dictionary::loader::DictionaryLoader;
 
 macro_rules! decompress_data {
     ($name: ident, $bytes: expr, $filename: literal) => {

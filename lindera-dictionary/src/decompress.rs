@@ -41,7 +41,7 @@ impl FromStr for Algorithm {
             "gzip" => Ok(Algorithm::Gzip),
             "raw" => Ok(Algorithm::Raw),
             _ => Err(LinderaErrorKind::Algorithm
-                .with_error(anyhow::anyhow!("Invalid algorithm: {}", input))),
+                .with_error(anyhow::anyhow!("Invalid algorithm: {input}"))),
         }
     }
 }

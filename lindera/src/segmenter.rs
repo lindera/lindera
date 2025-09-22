@@ -109,12 +109,12 @@ impl Segmenter {
                 if let Some(s) = v.as_str() {
                     Mode::from_str(s).map_err(|e| {
                         LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("mode field is invalid string: {}", e))
+                            .with_error(anyhow::anyhow!("mode field is invalid string: {e}"))
                     })
                 } else {
                     serde_json::from_value::<Mode>(v.clone()).map_err(|e| {
                         LinderaErrorKind::Parse
-                            .with_error(anyhow::anyhow!("mode field is invalid object: {}", e))
+                            .with_error(anyhow::anyhow!("mode field is invalid object: {e}"))
                     })
                 }
             },

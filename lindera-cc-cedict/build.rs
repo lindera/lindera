@@ -8,8 +8,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     use lindera_dictionary::{
         assets::{FetchParams, fetch},
+        builder::DictionaryBuilder,
         dictionary::metadata::Metadata,
-        dictionary_builder::DictionaryBuilder,
     };
 
     let fetch_params = FetchParams {

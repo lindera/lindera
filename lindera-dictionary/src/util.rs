@@ -90,7 +90,7 @@ pub fn mmap_file(filename: &Path) -> LinderaResult<Mmap> {
 pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaResult<String> {
     let encoding = Encoding::for_label_no_replacement(encoding_name.as_bytes());
     let encoding = encoding.ok_or_else(|| {
-        LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {}", encoding_name))
+        LinderaErrorKind::Decode.with_error(anyhow!("Invalid encoding: {encoding_name}"))
     })?;
 
     let buffer = read_file(filepath)?;
