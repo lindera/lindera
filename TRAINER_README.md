@@ -182,7 +182,7 @@ UNIGRAM:%F[0]/%F[6]   # 品詞 + 原形
 
 ## API使用例
 
-```rust
+```rust,no_run
 use std::fs::File;
 use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
 
@@ -214,7 +214,7 @@ let corpus = Corpus::from_reader(corpus_file)?;
 // 学習の実行
 let model = trainer.train(corpus)?;
 
-// モデルの保存（JSON形式）
+// モデルの保存（バイナリ形式）
 let mut output = File::create("trained_model.dat")?;
 model.write_model(&mut output)?;
 
@@ -224,6 +224,8 @@ let mut conn_out = File::create("output_conn.dat")?;
 let mut unk_out = File::create("output_unk.def")?;
 let mut user_out = File::create("output_user.csv")?;
 model.write_dictionary(&mut lex_out, &mut conn_out, &mut unk_out, &mut user_out)?;
+
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 ## 実装状況

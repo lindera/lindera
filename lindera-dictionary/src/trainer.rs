@@ -68,17 +68,32 @@ impl WordIdx {
 /// 4. Extract learned weights and create final model
 ///
 /// # Example
-/// ```no_run
-/// use lindera::dictionary::trainer::{Trainer, TrainerConfig, Corpus};
+/// ```
+/// use lindera_dictionary::trainer::{Trainer, TrainerConfig};
+/// use std::io::Cursor;
 ///
-/// let config = TrainerConfig::from_paths(
-///     "seed.csv", "char.def", "unk.def", "feature.def", "rewrite.def"
-/// )?;
-/// let trainer = Trainer::new(config)?
+/// // Create minimal training data for demonstration
+/// let seed_csv = "これ,0,0,1000,連体詞,*,*,*,*,*,これ,コレ,コレ\n";
+/// let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n";
+/// let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+/// let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
+/// let rewrite_def = "*\tUNK\n";
+///
+/// let config = TrainerConfig::from_readers(
+///     Cursor::new(seed_csv),
+///     Cursor::new(char_def),
+///     Cursor::new(unk_def),
+///     Cursor::new(feature_def),
+///     Cursor::new(rewrite_def)
+/// ).unwrap();
+///
+/// let trainer = Trainer::new(config).unwrap()
 ///     .regularization_cost(0.01)
-///     .max_iter(100);
-/// let corpus = Corpus::from_reader(corpus_file)?;
-/// let model = trainer.train(corpus)?;
+///     .max_iter(10); // Reduced for doc test
+///
+/// // Note: In practice, you would load an actual corpus file
+/// // let corpus = Corpus::from_reader(corpus_reader).unwrap();
+/// // let model = trainer.train(corpus).unwrap();
 /// ```
 pub struct Trainer {
     config: TrainerConfig,
