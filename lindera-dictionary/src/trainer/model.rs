@@ -21,6 +21,12 @@ pub struct SerializableModel {
     pub feature_templates: Vec<String>,
     /// Model metadata
     pub metadata: ModelMetadata,
+    /// Connection cost matrix: (right_id, left_id) -> cost
+    pub connection_matrix: std::collections::HashMap<usize, std::collections::HashMap<usize, f64>>,
+    /// Maximum left connection ID
+    pub max_left_id: usize,
+    /// Maximum right connection ID
+    pub max_right_id: usize,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode)]
@@ -188,6 +194,26 @@ impl Model {
         // Extract feature weights from the trained CRF model
         let feature_weights = self.extract_feature_weights();
 
+        // Extract connection cost matrix from the trained model (following Vibrato's approach)
+        let merged_model = self.raw_model.merge()?;
+        let mut connection_matrix = std::collections::HashMap::new();
+        let mut max_left_id = 0;
+        let mut max_right_id = 0;
+
+        for (right_id, left_map) in merged_model.matrix.iter().enumerate() {
+            max_right_id = max_right_id.max(right_id);
+            let mut inner_map = std::collections::HashMap::new();
+
+            for (&left_id, &weight) in left_map.iter() {
+                max_left_id = max_left_id.max(left_id as usize);
+                inner_map.insert(left_id as usize, weight);
+            }
+
+            if !inner_map.is_empty() {
+                connection_matrix.insert(right_id, inner_map);
+            }
+        }
+
         let serializable_model = SerializableModel {
             feature_weights,
             labels: self.labels.clone(),
@@ -200,6 +226,9 @@ impl Model {
                 feature_count: self.feature_weights.len(),
                 label_count: self.labels.len(),
             },
+            connection_matrix,
+            max_left_id,
+            max_right_id,
         };
 
         // Use bincode for efficient binary serialization
@@ -982,24 +1011,110 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write connection cost matrix
+    /// Write connection cost matrix using trained model (Vibrato approach)
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        // For now, create a simple connection matrix based on POS categories
-        // In a full implementation, this would use trained bigram weights
-        let num_categories = 6; // Number of distinct POS categories
+        // Check if we have trained connection matrix
+        if !self.connection_matrix.is_empty() {
+            // Use trained model to generate connection costs
+            let matrix_size = std::cmp::max(
+                self.max_right_id + 1,
+                std::cmp::max(self.max_left_id + 1, 6) // Use at least 6 for our training data
+            );
 
-        writeln!(writer, "{num_categories} {num_categories}")?;
+            // Write matrix dimensions
+            writeln!(writer, "{matrix_size} {matrix_size}")?;
 
-        for i in 0..num_categories {
-            for j in 0..num_categories {
-                let cost = if i == j { 0 } else { 200 }; // Lower penalty than before
-                write!(writer, "{cost}")?;
-                if j < num_categories - 1 {
-                    write!(writer, " ")?;
+            // Scale weights to i16 range (following Vibrato's approach)
+            let mut weight_abs_max = 0.0f64;
+            for inner_map in self.connection_matrix.values() {
+                for &weight in inner_map.values() {
+                    weight_abs_max = weight_abs_max.max(weight.abs());
                 }
             }
-            writeln!(writer)?;
+
+            let weight_scale_factor = if weight_abs_max > 0.0 {
+                f64::from(i16::MAX) / weight_abs_max
+            } else {
+                1.0
+            };
+
+            // Write connection costs from trained model
+            for right_id in 0..matrix_size {
+                for left_id in 0..matrix_size {
+                    let cost = if let Some(inner_map) = self.connection_matrix.get(&right_id) {
+                        if let Some(&weight) = inner_map.get(&left_id) {
+                            // Convert weight to cost (negative scaled weight, same as Vibrato)
+                            (-weight * weight_scale_factor) as i32
+                        } else {
+                            200 // Default cost for unseen pairs
+                        }
+                    } else {
+                        200 // Default cost for unseen pairs
+                    };
+
+                    // Write in MeCab/IPADIC format: right_id left_id cost
+                    writeln!(writer, "{} {} {}", right_id, left_id, cost)?;
+                }
+            }
+        } else {
+            // Fallback to simple implementation when no trained model
+            let num_categories = 6;
+            writeln!(writer, "{num_categories} {num_categories}")?;
+
+            for i in 0..num_categories {
+                for j in 0..num_categories {
+                    let cost = if i == j { 0 } else { 200 };
+                    writeln!(writer, "{} {} {}", i, j, cost)?;
+                }
+            }
         }
+
+        Ok(())
+    }
+
+    /// Update metadata.json with trained model values
+    pub fn update_metadata_json<W: std::io::Write>(&self, base_metadata_path: &std::path::Path, writer: &mut W) -> anyhow::Result<()> {
+        // Read the base metadata.json file
+        let base_content = std::fs::read_to_string(base_metadata_path)?;
+        let mut metadata: serde_json::Value = serde_json::from_str(&base_content)?;
+
+        // Calculate updated values based on trained model
+        let updated_default_cost = if !self.feature_weights.is_empty() {
+            // Calculate median feature weight for default cost
+            let mut weights = self.feature_weights.clone();
+            weights.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let median_weight = if weights.is_empty() {
+                0.0
+            } else {
+                weights[weights.len() / 2]
+            };
+            // Convert to appropriate cost range
+            (median_weight * 1000.0).abs() as i32 + 3000
+        } else {
+            // Keep existing value if no trained weights
+            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(5000) as i32
+        };
+
+        // Update metadata with trained model values
+        metadata["default_word_cost"] = serde_json::Value::Number(serde_json::Number::from(updated_default_cost));
+
+        // Add model_info section with training statistics
+        let max_context_id = std::cmp::max(self.max_left_id, self.max_right_id);
+        metadata["model_info"] = serde_json::json!({
+            "feature_count": self.feature_weights.len(),
+            "label_count": self.labels.len(),
+            "max_left_context_id": self.max_left_id,
+            "max_right_context_id": self.max_right_id,
+            "connection_matrix_size": format!("{}x{}", max_context_id + 1, max_context_id + 1),
+            "version": self.metadata.version,
+            "training_iterations": self.metadata.iterations,
+            "regularization": self.metadata.regularization,
+            "updated_at": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
+        });
+
+        // Write updated metadata
+        let formatted = serde_json::to_string_pretty(&metadata)?;
+        writer.write_all(formatted.as_bytes())?;
 
         Ok(())
     }

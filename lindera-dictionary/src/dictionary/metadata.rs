@@ -10,6 +10,19 @@ const DEFAULT_RIGHT_CONTEXT_ID: u16 = 1288;
 const DEFAULT_FIELD_VALUE: &str = "*";
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct ModelInfo {
+    pub feature_count: usize,
+    pub label_count: usize,
+    pub max_left_context_id: usize,
+    pub max_right_context_id: usize,
+    pub connection_matrix_size: String,
+    pub version: String,
+    pub training_iterations: u64,
+    pub regularization: f64,
+    pub updated_at: u64,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
     pub name: String,                   // Name of the dictionary
     pub encoding: String,               // Character encoding
@@ -23,6 +36,8 @@ pub struct Metadata {
     pub normalize_details: bool,        // Normalize characters
     pub dictionary_schema: Schema,      // Schema for the dictionary
     pub user_dictionary_schema: Schema, // Schema for user dictionary
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_info: Option<ModelInfo>,  // Training model information (optional)
 }
 
 impl Default for Metadata {
@@ -78,6 +93,7 @@ impl Metadata {
             skip_invalid_cost_or_id,
             normalize_details,
             user_dictionary_schema: userdic_schema,
+            model_info: None,
         }
     }
 

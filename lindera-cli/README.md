@@ -74,23 +74,23 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 ```bash
 # Build a system dictionary
 lindera build \
-  --metadata ./lindera-ipadic/metadata.json \
   --src /path/to/dictionary/csvs \
-  --dest /path/to/output/dictionary
+  --dest /path/to/output/dictionary \
+  --metadata ./lindera-ipadic/metadata.json
 
 # Build a user dictionary
 lindera build \
-  --metadata ./lindera-ipadic/metadata.json \
   --src ./user_dict.csv \
   --dest ./user_dictionary \
+  --metadata ./lindera-ipadic/metadata.json \
   --user
 ```
 
 ### Build parameters
 
-- `--metadata` / `-m`: Metadata configuration file (metadata.json) that defines dictionary structure
 - `--src` / `-s`: Source directory containing dictionary CSV files (or single CSV file for user dictionary)
 - `--dest` / `-d`: Destination directory for compiled dictionary output
+- `--metadata` / `-m`: Metadata configuration file (metadata.json) that defines dictionary structure
 - `--user` / `-u`: Build user dictionary instead of system dictionary (optional flag)
 
 ### Dictionary types
@@ -119,9 +119,9 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 # Build the dictionary
 % lindera build \
-  --metadata ./lindera-ipadic/metadata.json \
   --src /tmp/mecab-ipadic-2.7.0-20250920 \
-  --dest /tmp/lindera-ipadic-2.7.0-20250920
+  --dest /tmp/lindera-ipadic-2.7.0-20250920 \
+  --metadata ./lindera-ipadic/metadata.json
 
 % ls -al /tmp/lindera-ipadic-2.7.0-20250920
 % (cd /tmp && zip -r lindera-ipadic-2.7.0-20250920.zip lindera-ipadic-2.7.0-20250920/)
@@ -137,9 +137,9 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 # Build the dictionary
 % lindera build \
-  --metadata ./lindera-ipadic-neologd/metadata.json \
   --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
-  --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820
+  --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
+  --metadata ./lindera-ipadic-neologd/metadata.json
 
 % ls -al /tmp/lindera-ipadic-neologd-0.0.7-20200820
 % (cd /tmp && zip -r lindera-ipadic-neologd-0.0.7-20200820.zip lindera-ipadic-neologd-0.0.7-20200820/)
@@ -155,9 +155,9 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 # Build the dictionary
 % lindera build \
-  --metadata ./lindera-unidic/metadata.json \
   --src /tmp/unidic-mecab-2.1.2 \
-  --dest /tmp/lindera-unidic-2.1.2
+  --dest /tmp/lindera-unidic-2.1.2 \
+  --metadata ./lindera-unidic/metadata.json
 
 % ls -al /tmp/lindera-unidic-2.1.2
 % (cd /tmp && zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
@@ -173,9 +173,9 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 # Build the dictionary
 % lindera build \
-  --metadata ./lindera-cc-cedict/metadata.json \
   --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
-  --dest /tmp/lindera-cc-cedict-0.1.0-20200409
+  --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
+  --metadata ./lindera-cc-cedict/metadata.json
 
 % ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
 % (cd /tmp && zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
@@ -191,9 +191,9 @@ A supplementary dictionary for custom words that works alongside a system dictio
 
 # Build the dictionary
 % lindera build \
-  --metadata ./lindera-ko-dic/metadata.json \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
-  --dest /tmp/lindera-ko-dic-2.1.1-20180720
+  --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
+  --metadata ./lindera-ko-dic/metadata.json
 
 % ls -al /tmp/lindera-ko-dic-2.1.1-20180720
 % (cd /tmp && zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
@@ -210,10 +210,10 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --user \
-  --metadata ./lindera-ipadic/metadata.json \
   --src ./resources/ipadic_simple_userdic.csv \
-  --dest ./resources
+  --dest ./resources \
+  --metadata ./lindera-ipadic/metadata.json \
+  --user
 ```
 
 ### Build UniDic user dictionary (Japanese)
@@ -224,10 +224,10 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --user \
-  --metadata ./lindera-unidic/metadata.json \
   --src ./resources/unidic_simple_userdic.csv \
-  --dest ./resources
+  --dest ./resources \
+  --metadata ./lindera-unidic/metadata.json \
+  --user
 ```
 
 ### Build CC-CEDICT user dictionary (Chinese)
@@ -238,10 +238,10 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --user \
-  --metadata ./lindera-cc-cedict/metadata.json \
   --src ./resources/cc-cedict_simple_userdic.csv \
-  --dest ./resources
+  --dest ./resources \
+  --metadata ./lindera-cc-cedict/metadata.json \
+  --user
 ```
 
 ### Build ko-dic user dictionary (Korean)
@@ -252,10 +252,10 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --user \
-  --metadata ./lindera-ko-dic/metadata.json \
   --src ./resources/ko-dic_simple_userdic.csv \
-  --dest ./resources
+  --dest ./resources \
+  --metadata ./lindera-ko-dic/metadata.json \
+  --user
 ```
 
 ## Tokenize text
@@ -777,47 +777,30 @@ EOS
 
 Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the `train` feature flag enabled. (The `train` feature flag is enabled by default.)
 
-### Basic training usage
-
-```bash
-# Train a model from corpus
-lindera train \
-  --lexicon lex.csv \
-  --corpus corpus.txt \
-  --unk-def unk.def \
-  --char-def char.def \
-  --feature-def feature.def \
-  --rewrite-def rewrite.def \
-  --output trained_model.bin \
-  --lambda 0.01 \
-  --iter 100 \
-  --threads 4
-```
-
 ### Training parameters
 
-- `--lexicon`: Seed lexicon file (MeCab CSV format)
-- `--corpus`: Training corpus with correct annotations
-- `--unk-def`: Unknown word definition file
-- `--char-def`: Character type definition file
-- `--feature-def`: Feature template definition file
-- `--rewrite-def`: Feature rewriting rules file
-- `--output`: Output model file path
-- `--lambda`: L1 regularization parameter (default: 0.01)
-- `--iter`: Maximum training iterations (default: 100)
-- `--threads`: Number of threads to use (default: 1)
+- `--seed` / `-s`: Seed lexicon file (CSV format) to be weighted
+- `--corpus` / `-c`: Training corpus (annotated text)
+- `--char-def` / `-C`: Character definition file (char.def)
+- `--unk-def` / `-u`: Unknown word definition file (unk.def) to be weighted
+- `--feature-def` / `-f`: Feature definition file (feature.def)
+- `--rewrite-def` / `-r`: Rewrite rule definition file (rewrite.def)
+- `--output` / `-o`: Output model file
+- `--lambda` / `-l`: L1 regularization (0.0-1.0) (default: 0.01)
+- `--max-iterations` / `-i`: Maximum number of iterations for training (default: 100)
+- `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count, auto-adjusted based on dataset size)
 
-### Required files format
+### Basic workflow
 
-#### Lexicon file (lex.csv)
+#### 1. Prepare training files
 
+**Seed lexicon file (seed.csv):**
 ```csv
 外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 ```
 
-#### Training corpus (corpus.txt)
-
+**Training corpus (corpus.txt):**
 ```text
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
@@ -842,73 +825,27 @@ EOS
 
 For detailed information about file formats and advanced features, see [TRAINER_README.md](../TRAINER_README.md).
 
-### Training with IPADIC dictionary files
-
-When using IPADIC or other MeCab dictionaries that come as separate CSV files by part-of-speech (Noun.csv, Verb.csv, Adj.csv, etc.), you can train a model that learns weights for both existing and new words.
-
-#### 1. Combine part-of-speech CSV files
-
-```bash
-# Combine all part-of-speech CSV files into one seed dictionary
-cat /tmp/mecab-ipadic-2.7.0-20250920/*.csv > /tmp/ipadic_lex.csv
-```
-
-#### 2. Prepare training corpus
-
-Include both existing dictionary words and new words in your training corpus:
-
-```text
-外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
-人	名詞,接尾,一般,*,*,*,人,ジン,ジン
-参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
-権	名詞,接尾,一般,*,*,*,権,ケン,ケン
-EOS
-
-これ	連体詞,*,*,*,*,*,これ,コレ,コレ
-は	助詞,係助詞,*,*,*,*,は,ハ,ワ
-テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
-です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
-。	記号,句点,*,*,*,*,。,。,。
-EOS
-
-形態	名詞,一般,*,*,*,*,形態,ケイタイ,ケイタイ
-素	名詞,接尾,一般,*,*,*,素,ソ,ソ
-解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
-を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
-行う	動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
-EOS
-```
-
-#### 3. Run training
+#### 2. Train model
 
 ```bash
 lindera train \
-  --lexicon /tmp/ipadic_lex.csv \
+  --seed ./examples/training/seed.csv \
   --corpus ./examples/training/corpus.txt \
-  --unk-def /tmp/mecab-ipadic-2.7.0-20250920/unk.def \
-  --char-def /tmp/mecab-ipadic-2.7.0-20250920/char.def \
-  --feature-def /tmp/mecab-ipadic-2.7.0-20250920/feature.def \
-  --rewrite-def /tmp/mecab-ipadic-2.7.0-20250920/rewrite.def \
-  --output /tmp/ipadic_trained_model.dat
+  --unk-def ./examples/training/unk.def \
+  --char-def ./examples/training/char.def \
+  --feature-def ./examples/training/feature.def \
+  --rewrite-def ./examples/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
 ```
 
-#### 4. Training results
+#### 3. Training results
 
-The output dictionary will contain:
+The trained model will contain:
 
 - **Existing words**: All seed dictionary records with newly learned weights
 - **New words**: Words from the corpus not in the seed dictionary, added with appropriate weights
-
-Example before and after training:
-
-```csv
-# Before training (seed dictionary)
-東京,0,0,1000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
-
-# After training (output dictionary)
-東京,0,0,850,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー  # Weight optimized
-ChatGPT,0,0,900,名詞,固有名詞,一般,*,*,*,ChatGPT,チャットジーピーティー,チャットジーピーティー  # Newly added
-```
 
 ## Export trained model to dictionary
 
@@ -919,14 +856,16 @@ Export a trained model file to Lindera dictionary format files. This feature req
 ```bash
 # Export trained model to dictionary files
 lindera export \
-  --model trained_model.dat \
-  --output ./dictionary_output
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./examples/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
 ```
 
 ### Export parameters
 
 - `--model` / `-m`: Path to the trained model file (.dat format)
 - `--output` / `-o`: Directory to output the dictionary files
+- `--metadata`: Optional metadata.json file to update with trained model information
 
 ### Output files
 
@@ -936,41 +875,77 @@ The export command creates the following dictionary files in the output director
 - `matrix.def`: Connection cost matrix
 - `unk.def`: Unknown word definitions
 - `char.def`: Character type definitions
+- `metadata.json`: Updated metadata file (if `--metadata` option is provided)
 
-### Example workflow
+### Complete workflow example
 
-1. Train a model from corpus:
+#### 1. Train model
 
 ```bash
 lindera train \
-  --lexicon examples/training/sample_lex.csv \
-  --corpus examples/training/sample_corpus.txt \
-  --unk-def examples/training/sample_unk.def \
-  --char-def examples/training/sample_char.def \
-  --feature-def examples/training/sample_feature.def \
-  --rewrite-def examples/training/sample_rewrite.def \
-  --output trained_model.dat
+  --seed ./examples/training/seed.csv \
+  --corpus ./examples/training/corpus.txt \
+  --unk-def ./examples/training/unk.def \
+  --char-def ./examples/training/char.def \
+  --feature-def ./examples/training/feature.def \
+  --rewrite-def ./examples/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
 ```
 
-2. Export the trained model to dictionary format:
+#### 2. Export to dictionary format
 
 ```bash
 lindera export \
-  --model trained_model.dat \
-  --output ./my_dictionary
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./examples/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
 ```
 
-3. Build the dictionary for use with Lindera:
+#### 3. Build dictionary
 
 ```bash
-lindera build ./lindera-ipadic/metadata.json ./my_dictionary ./my_dictionary_built
+lindera build \
+  --src /tmp/lindera/training/dictionary \
+  --dest /tmp/lindera/training/compiled_dictionary \
+  --metadata /tmp/lindera/training/dictionary/metadata.json
 ```
 
-4. Use the built dictionary for tokenization:
+#### 4. Use trained dictionary
 
 ```bash
-echo "新しい辞書でテストします" | lindera tokenize ./my_dictionary_built
+echo "これは外国人参政権です。" | lindera tokenize \
+  -d /tmp/lindera/training/compiled_dictionary
 ```
+
+### Metadata update feature
+
+When the `--metadata` option is provided, the export command will:
+
+1. **Read the base metadata.json file** to preserve existing configuration
+2. **Update specific fields** with values from the trained model:
+   - `default_left_context_id`: Maximum left context ID from trained model
+   - `default_right_context_id`: Maximum right context ID from trained model
+   - `default_word_cost`: Calculated from feature weight median
+   - `model_info`: Training statistics including:
+     - `feature_count`: Number of features in the model
+     - `label_count`: Number of labels in the model
+     - `max_left_context_id`: Maximum left context ID
+     - `max_right_context_id`: Maximum right context ID
+     - `connection_matrix_size`: Size of connection cost matrix
+     - `training_iterations`: Number of training iterations performed
+     - `regularization`: L1 regularization parameter used
+     - `version`: Model version
+     - `updated_at`: Timestamp of when the model was exported
+
+3. **Preserve existing settings** such as:
+   - Dictionary name
+   - Character encoding settings
+   - Schema definitions
+   - Other user-defined configuration
+
+This allows you to maintain your base dictionary configuration while incorporating the optimized parameters learned during training.
 
 ## API reference
 

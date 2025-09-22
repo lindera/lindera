@@ -140,12 +140,12 @@ struct BuildArgs {
 )]
 struct TrainArgs {
     #[clap(
-        short = 'l',
-        long = "lexicon",
+        short = 's',
+        long = "seed",
         required = true,
         help = "Seed lexicon file (CSV format) to be weighted"
     )]
-    lexicon: PathBuf,
+    seed: PathBuf,
     #[clap(
         short = 'c',
         long = "corpus",
@@ -189,7 +189,7 @@ struct TrainArgs {
     )]
     output: PathBuf,
     #[clap(
-        short = 'L',
+        short = 'l',
         long = "lambda",
         default_value = "0.01",
         help = "L1 regularization (0.0-1.0)"
@@ -232,6 +232,11 @@ struct ExportArgs {
         help = "Output directory (creates lex.csv, matrix.def, unk.def, char.def)"
     )]
     output: PathBuf,
+    #[clap(
+        long = "metadata",
+        help = "Base metadata.json file to update with trained model values"
+    )]
+    metadata: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -417,7 +422,7 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
 
     // Load configuration
     let config = TrainerConfig::from_paths(
-        &args.lexicon,
+        &args.seed,
         &args.char_def,
         &args.unk_def,
         &args.feature_def,
@@ -446,6 +451,11 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
     // Save model
+    // Create parent directory if it doesn't exist
+    if let Some(parent) = args.output.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    }
     let mut output_file = File::create(&args.output)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
     model
@@ -543,12 +553,32 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     writeln!(char_def_file, "0x0061..0x007A ALPHA     # ASCII Lowercase")
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
+    // Handle metadata.json update if provided
+    let mut files_created = vec![
+        lexicon_path.clone(),
+        connector_path.clone(),
+        unk_path.clone(),
+        char_def_path.clone(),
+    ];
+
+    if let Some(metadata_path) = &args.metadata {
+        let output_metadata_path = args.output.join("metadata.json");
+        let mut metadata_file = File::create(&output_metadata_path)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+
+        model
+            .update_metadata_json(metadata_path, &mut metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+
+        files_created.push(output_metadata_path);
+        println!("Updated metadata.json with trained model values");
+    }
+
     println!("Dictionary files exported to: {:?}", args.output);
     println!("Files created:");
-    println!("  - {lexicon_path:?}");
-    println!("  - {connector_path:?}");
-    println!("  - {unk_path:?}");
-    println!("  - {char_def_path:?}");
+    for file in &files_created {
+        println!("  - {file:?}");
+    }
 
     Ok(())
 }
