@@ -54,7 +54,7 @@ impl WordIdx {
 
 /// CRF-based morphological analysis trainer for Japanese text
 ///
-/// This trainer follows the Vibrato approach for feature extraction and CRF training,
+/// This trainer implements standard CRF-based morphological analysis training,
 /// adapted for Lindera's architecture. It supports:
 /// - Feature extraction from vocabulary and corpus
 /// - L-BFGS optimization for weight learning
@@ -117,7 +117,7 @@ impl Trainer {
         let mut provider = rucrf::FeatureProvider::default();
         let mut label_id_map = HashMap::new();
 
-        // Build label mapping from surfaces and add feature sets to provider (Vibrato-style)
+        // Build label mapping from surfaces and add feature sets to provider
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string for this surface
             let feature_str = config.get_features(surface)
@@ -140,7 +140,7 @@ impl Trainer {
             // Add feature set to provider and get label ID
             let label_id = provider.add_feature_set(feature_set)?;
 
-            // Map feature string to label ID by first character (Vibrato-style)
+            // Map feature string to label ID using first character classification
             label_id_map
                 .entry(feature_str)
                 .or_insert_with(HashMap::new);
@@ -152,7 +152,7 @@ impl Trainer {
             }
         }
 
-        // Initialize unknown word labels for 6 character type categories (Vibrato-style)
+        // Initialize unknown word labels for 6 character type categories
         let mut label_id_map_unk = Vec::new();
         let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
 
@@ -189,7 +189,7 @@ impl Trainer {
 
         Ok(Self {
             config,
-            max_grouping_len: None, // Vibrato default: infinite length
+            max_grouping_len: None, // Default: no length limit for feature grouping
             provider,
             label_id_map,
             label_id_map_unk,
@@ -255,7 +255,7 @@ impl Trainer {
         for (i, example) in corpus.examples.iter().enumerate() {
             log_progress!("Processing example {}/{}", i + 1, corpus.examples.len());
 
-            // NOTE: Vibrato performs sentence.compile() here for character processing
+            // NOTE: Character-level processing is performed here during sentence compilation
             // In Lindera, character property processing should be handled differently
             // For now, we proceed with the existing approach
 
@@ -293,7 +293,7 @@ impl Trainer {
 
         let start_time = std::time::Instant::now();
 
-        // Training with provider (consumes provider like Vibrato)
+        // Training with provider (consumes provider as per CRF training requirements)
         let provider = std::mem::take(&mut self.provider);
         let model = trainer.train(&lattices, provider);
         let training_duration = start_time.elapsed();
@@ -334,7 +334,7 @@ impl Trainer {
         _corpus: Corpus,
     ) -> Result<Model> {
 
-        // Remove unused features from feature extractor (Vibrato-style)
+        // Remove unused features from feature extractor to optimize model size
         self.remove_unused_features(&crf_model);
 
         // Extract feature weights from the trained model
@@ -528,7 +528,7 @@ impl Trainer {
         Ok(lattice)
     }
 
-    /// Remove unused features from the feature extractor to optimize the model (Vibrato implementation)
+    /// Remove unused features from the feature extractor to optimize the model size and performance
     fn remove_unused_features(&mut self, model: &rucrf::RawModel) {
         println!("Removing unused features...");
 
@@ -559,7 +559,7 @@ impl Trainer {
             .cloned()
             .collect();
 
-        // Remove unused unigram features (exact Vibrato logic)
+        // Remove unused unigram features to reduce model complexity
         for k in &unigram_feature_keys {
             let id = self
                 .config

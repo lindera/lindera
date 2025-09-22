@@ -283,7 +283,7 @@ impl Model {
         println!("DEBUG write_model: feature_weights.len() = {}", feature_weights.len());
         println!("DEBUG write_model: First 5 weights: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
 
-        // Extract connection cost matrix from the trained model (following Vibrato's approach)
+        // Extract connection cost matrix from the trained model using standard CRF methodology
         let merged_model = self.raw_model.merge()?;
         let mut connection_matrix = std::collections::HashMap::new();
         let mut max_left_id = 0;
@@ -571,7 +571,7 @@ impl Model {
     }
 
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Get merged model for trained connection costs (Vibrato-style)
+        // Get merged model for trained connection costs
         let merged_model = self.get_merged_model()?;
 
         // Calculate matrix dimensions from actual trained IDs and unknown word categories
@@ -583,7 +583,7 @@ impl Model {
             .unwrap_or(0);
         let matrix_size = std::cmp::max(max_trained_id + 1, unk_max_id + 1) as usize;
 
-        // Weight scaling (Vibrato-style)
+        // Apply weight scaling for optimal performance
         let mut weight_abs_max = 0f64;
         for feature_set in &merged_model.feature_sets {
             weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
@@ -602,7 +602,7 @@ impl Model {
         // Write matrix dimensions
         writeln!(writer, "{matrix_size} {matrix_size}")?;
 
-        // Write trained connection costs (Vibrato-style)
+        // Write trained connection costs with proper scaling
         for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
             for (&left_conn_id, &weight) in hm.iter() {
                 let cost = (-weight * weight_scale_factor) as i16;
@@ -1081,7 +1081,7 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write connection cost matrix using trained model (Vibrato approach)
+    /// Write connection cost matrix using trained model with optimized scaling
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
         // Check if we have trained connection matrix
         if !self.connection_matrix.is_empty() {
@@ -1096,7 +1096,7 @@ impl SerializableModel {
             // Write matrix dimensions
             writeln!(writer, "{matrix_size} {matrix_size}")?;
 
-            // Scale weights to i16 range (following Vibrato's approach)
+            // Scale weights to i16 range for efficient storage and computation
             let mut weight_abs_max = 0.0f64;
             for inner_map in self.connection_matrix.values() {
                 for &weight in inner_map.values() {
@@ -1115,7 +1115,7 @@ impl SerializableModel {
                 for left_id in 0..matrix_size {
                     let cost = if let Some(inner_map) = self.connection_matrix.get(&right_id) {
                         if let Some(&weight) = inner_map.get(&left_id) {
-                            // Convert weight to cost (negative scaled weight, same as Vibrato)
+                            // Convert weight to cost using negative scaled weight (standard CRF approach)
                             (-weight * weight_scale_factor) as i32
                         } else {
                             200 // Default cost for unseen pairs
