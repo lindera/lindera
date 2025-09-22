@@ -8,6 +8,86 @@ use serde::{Deserialize, Serialize};
 use crate::trainer::corpus::Word;
 use crate::viterbi::{LexType, WordEntry, WordId};
 
+/// Cost calculation constants for trained model
+mod cost_constants {
+    // Known word cost calculation
+    pub const KNOWN_WORD_BASE_COST: i16 = 1000;
+    pub const KNOWN_WORD_COST_MULTIPLIER: f64 = 500.0;
+    pub const KNOWN_WORD_COST_MIN: i16 = 500;
+    pub const KNOWN_WORD_COST_MAX: i16 = 3000;
+    pub const KNOWN_WORD_DEFAULT_COST: i16 = 1500;
+
+    // Unknown word cost calculation
+    pub const UNK_BASE_COST: i32 = 3000;
+    pub const UNK_COST_MULTIPLIER: f64 = 500.0;
+    pub const UNK_COST_MIN: i32 = 2500;
+    pub const UNK_COST_MAX: i32 = 4500;
+
+    // Category-specific adjustments for unknown words
+    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0;     // DEFAULT category
+    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200;  // HIRAGANA - penalize known chars
+    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0;    // KATAKANA - moderate penalty
+    pub const UNK_KANJI_ADJUSTMENT: i32 = 400;     // KANJI - higher penalty
+    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100;     // ALPHA - foreign words
+    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100;  // NUMERIC - deterministic
+
+    // Weight normalization
+    pub const WEIGHT_NORMALIZATION_DIVISOR: f64 = 10.0;
+    pub const WEIGHT_NORMALIZATION_MIN: f64 = -2.0;
+    pub const WEIGHT_NORMALIZATION_MAX: f64 = 2.0;
+
+    // Default cost calculation
+    pub const DEFAULT_WORD_COST_MULTIPLIER: f64 = 500.0;
+    pub const DEFAULT_WORD_COST_BASE: i32 = 1500;
+    pub const DEFAULT_WORD_COST_FALLBACK: i32 = 2000;
+}
+
+/// Helper functions for cost calculation
+impl Model {
+    /// Calculate unknown word cost based on feature weight and category
+    fn calculate_unknown_word_cost(&self, feature_weight: f64, category: usize) -> i32 {
+        use cost_constants::*;
+
+        // Normalize the weight
+        let normalized_weight = (feature_weight / WEIGHT_NORMALIZATION_DIVISOR)
+            .clamp(WEIGHT_NORMALIZATION_MIN, WEIGHT_NORMALIZATION_MAX);
+
+        // Calculate base cost
+        let base_cost = (-normalized_weight * UNK_COST_MULTIPLIER) as i32 + UNK_BASE_COST;
+
+        // Apply category-specific adjustment
+        let category_adjustment = match category {
+            0 => UNK_DEFAULT_ADJUSTMENT,
+            1 => UNK_HIRAGANA_ADJUSTMENT,
+            2 => UNK_KATAKANA_ADJUSTMENT,
+            3 => UNK_KANJI_ADJUSTMENT,
+            4 => UNK_ALPHA_ADJUSTMENT,
+            5 => UNK_NUMERIC_ADJUSTMENT,
+            _ => UNK_DEFAULT_ADJUSTMENT,
+        };
+
+        (base_cost + category_adjustment).clamp(UNK_COST_MIN, UNK_COST_MAX)
+    }
+
+    /// Calculate known word cost based on feature weight
+    #[allow(dead_code)]
+    fn calculate_known_word_cost(&self, feature_weight: f64) -> i16 {
+        use cost_constants::*;
+
+        // Normalize the weight
+        let normalized_weight = if feature_weight.abs() > f64::EPSILON {
+            (feature_weight / WEIGHT_NORMALIZATION_DIVISOR)
+                .clamp(WEIGHT_NORMALIZATION_MIN, WEIGHT_NORMALIZATION_MAX)
+        } else {
+            feature_weight
+        };
+
+        // Calculate cost
+        let calculated_cost = (-normalized_weight * KNOWN_WORD_COST_MULTIPLIER) as i16;
+        (calculated_cost + KNOWN_WORD_BASE_COST).clamp(KNOWN_WORD_COST_MIN, KNOWN_WORD_COST_MAX)
+    }
+}
+
 /// Trained model with weights and configuration.
 #[derive(Serialize, Deserialize, Encode, Decode)]
 pub struct SerializableModel {
@@ -282,12 +362,14 @@ impl Model {
     }
 
     /// Extracts feature weights from the raw CRF model with optimized normalization
+    #[allow(dead_code)]
     fn extract_feature_weights(&self) -> Vec<f64> {
         // Use the pre-computed feature weights that were stored during training
         self.feature_weights.clone()
     }
 
     /// Normalize feature weight using advanced scaling method
+    #[allow(dead_code)]
     fn normalize_feature_weight(&self, weight: f64, feature_index: usize) -> f64 {
         // Apply feature-specific normalization based on index
         let base_normalization = if feature_index < self.config.surfaces.len() {
@@ -303,6 +385,7 @@ impl Model {
     }
 
     /// Normalize connection weight for bigram feature optimization
+    #[allow(dead_code)]
     fn normalize_connection_weight(&self, weight: f64, left_id: usize, right_id: usize) -> f64 {
         // Apply context-aware normalization
         let context_factor = if left_id == right_id {
@@ -316,6 +399,7 @@ impl Model {
     }
 
     /// Apply global weight normalization to maintain model stability
+    #[allow(dead_code)]
     fn apply_global_weight_normalization(&self, mut weights: Vec<f64>) -> Vec<f64> {
         if weights.is_empty() {
             return weights;
@@ -345,6 +429,7 @@ impl Model {
     }
 
     /// Normalize raw weight as fallback
+    #[allow(dead_code)]
     fn normalize_raw_weight(&self, weight: f64) -> f64 {
         // Simple normalization for fallback case
         weight.clamp(-5.0, 5.0)
@@ -621,25 +706,8 @@ impl Model {
     pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
         // Use trained weights for dynamic unknown word cost calculation
         if !self.feature_weights.is_empty() && category < self.feature_weights.len() {
-            // Calculate cost based on learned feature weights
-            let raw_weight = self.feature_weights[category];
-
-            // Apply scaling appropriate for unknown words with higher baseline cost
-            let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
-            let calculated_cost = (-normalized_weight * 500.0) as i32 + 3000;  // Higher base cost for UNK
-
-            // Category-specific adjustments - UNK should be more expensive than known words
-            let category_adjustment = match category {
-                0 => 0,    // DEFAULT
-                1 => 200,  // HIRAGANA - penalize since known words should be preferred
-                2 => 0,    // KATAKANA - moderate penalty
-                3 => 400,  // KANJI - higher penalty for complex words
-                4 => 100,  // ALPHA - foreign words, moderate penalty
-                5 => -100, // NUMERIC - still lower for deterministic numbers
-                _ => 0,    // Other categories
-            };
-
-            (calculated_cost + category_adjustment).clamp(2500, 4500)  // Much higher cost range for UNK
+            // Use centralized cost calculation for unknown words
+            self.calculate_unknown_word_cost(self.feature_weights[category], category)
         } else {
             // Fallback to category-specific default costs
             match category {
@@ -718,6 +786,7 @@ impl Model {
     }
 
     /// 学習データから最大文脈IDを計算
+    #[allow(dead_code)]
     fn calculate_max_context_id(&self) -> u32 {
         let mut max_id = 0u32;
 
@@ -733,6 +802,7 @@ impl Model {
     }
 
     /// 学習済みモデルに基づいて接続コストを計算
+    #[allow(dead_code)]
     fn get_trained_connection_cost(&self, from_id: usize, to_id: usize) -> i32 {
         // CRFの特徴重みを使用して接続コストを計算
         let weights = self.raw_model.weights();
@@ -905,7 +975,7 @@ impl Model {
         connector.extend_from_slice(&connection_data);
 
         // Serialize unknown word handler (simplified data)
-        let unk_data = bincode::encode_to_vec(&self.user_entries.len(), bincode::config::standard())?;
+        let unk_data = bincode::encode_to_vec(self.user_entries.len(), bincode::config::standard())?;
         unk_handler.extend_from_slice(&unk_data);
 
         // Serialize user lexicon (config info as user lexicon)
@@ -986,37 +1056,21 @@ impl SerializableModel {
             let cost = if i < self.feature_weights.len() {
                 let raw_weight = self.feature_weights[i];
 
-                // Since weights are in 40-50 range (unusually large), we need different scaling
-                // Normalize to a reasonable range first
-                let normalized_weight = if raw_weight.abs() > 1.0 {
-                    // Scale down large weights to reasonable range (-5 to +5)
-                    (raw_weight / 10.0).clamp(-5.0, 5.0)
-                } else {
-                    raw_weight
-                };
-
-                // Apply standard morphological analysis cost calculation with more reasonable range
-                let calculated_cost = (-normalized_weight * 500.0) as i16;
-                let final_cost = (calculated_cost + 1000).clamp(500, 3000);
+                // Use centralized cost calculation for known words
+                let final_cost = self.calculate_known_word_cost(raw_weight);
 
                 eprintln!(
-                    "DEBUG: label={label}, raw_weight={raw_weight:.3}, normalized={normalized_weight:.3}, calculated={calculated_cost}, final={final_cost}"
+                    "DEBUG: label={label}, raw_weight={raw_weight:.3}, final_cost={final_cost}"
                 );
 
                 final_cost
             } else {
                 eprintln!("DEBUG: label={label} using default cost");
-                1500i16 // Default cost for morphological analysis
+                cost_constants::KNOWN_WORD_DEFAULT_COST
             };
 
             // Use POS-based context IDs for compatibility
-            // Extract main POS for connection ID
-            let main_pos = pos_info.split(',').next().unwrap_or("名詞");
-            let connection_id = *pos_to_id.entry(main_pos.to_string()).or_insert_with(|| {
-                let id = next_id;
-                next_id += 1;
-                id
-            });
+            // Note: connection_id already calculated above
 
             writeln!(
                 writer,
@@ -1071,7 +1125,7 @@ impl SerializableModel {
                     };
 
                     // Write in MeCab/IPADIC format: right_id left_id cost
-                    writeln!(writer, "{} {} {}", right_id, left_id, cost)?;
+                    writeln!(writer, "{right_id} {left_id} {cost}")?;
                 }
             }
         } else {
@@ -1084,7 +1138,7 @@ impl SerializableModel {
             for i in 0..num_categories {
                 for j in 0..num_categories {
                     let cost = if i == j { 0 } else { 200 };
-                    writeln!(writer, "{} {} {}", i, j, cost)?;
+                    writeln!(writer, "{i} {j} {cost}")?;
                 }
             }
         }
@@ -1109,10 +1163,10 @@ impl SerializableModel {
                 weights[weights.len() / 2]
             };
             // Convert to appropriate cost range for practical use
-            (median_weight * 500.0).abs() as i32 + 1500
+            (median_weight * cost_constants::DEFAULT_WORD_COST_MULTIPLIER).abs() as i32 + cost_constants::DEFAULT_WORD_COST_BASE
         } else {
             // Keep existing value if no trained weights
-            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(2000) as i32
+            metadata.get("default_word_cost").and_then(|v| v.as_i64()).unwrap_or(cost_constants::DEFAULT_WORD_COST_FALLBACK as i64) as i32
         };
 
         // Update metadata with trained model values
@@ -1158,25 +1212,8 @@ impl SerializableModel {
         for (i, (category, features)) in categories.iter().enumerate() {
             // Use dynamic cost calculation based on trained model
             let cost = if !self.feature_weights.is_empty() && i < self.feature_weights.len() {
-                // Calculate cost based on learned feature weights
-                let raw_weight = self.feature_weights[i];
-
-                // Apply scaling appropriate for unknown words with higher baseline cost
-                let normalized_weight = (raw_weight / 10.0).clamp(-2.0, 2.0);
-                let calculated_cost = (-normalized_weight * 500.0) as i32 + 3000;  // Higher base cost for UNK
-
-                // Category-specific adjustments - UNK should be more expensive than known words
-                let category_adjustment = match i {
-                    0 => 0,    // DEFAULT
-                    1 => 200,  // HIRAGANA - penalize since known words should be preferred
-                    2 => 0,    // KATAKANA - moderate penalty
-                    3 => 400,  // KANJI - higher penalty for complex words
-                    4 => 100,  // ALPHA - foreign words, moderate penalty
-                    5 => -100, // NUMERIC - still lower for deterministic numbers
-                    _ => 0,    // Other categories
-                };
-
-                (calculated_cost + category_adjustment).clamp(2500, 4500)  // Much higher cost range for UNK
+                // Use centralized cost calculation for unknown words
+                self.calculate_unknown_word_cost(self.feature_weights[i], i)
             } else {
                 // Fallback to category-specific default costs
                 match i {
@@ -1195,5 +1232,35 @@ impl SerializableModel {
         }
 
         Ok(())
+    }
+
+    /// Calculate cost for known words based on feature weight
+    fn calculate_known_word_cost(&self, feature_weight: f64) -> i16 {
+        let scaled_weight = (feature_weight * cost_constants::KNOWN_WORD_COST_MULTIPLIER) as i32;
+        let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
+        final_cost.clamp(
+            cost_constants::KNOWN_WORD_COST_MIN as i32,
+            cost_constants::KNOWN_WORD_COST_MAX as i32
+        ) as i16
+    }
+
+    /// Calculate cost for unknown words based on feature weight and category
+    fn calculate_unknown_word_cost(&self, feature_weight: f64, category: usize) -> i32 {
+        let base_cost = cost_constants::UNK_BASE_COST;
+        let category_adjustment = match category {
+            0 => cost_constants::UNK_DEFAULT_ADJUSTMENT,
+            1 => cost_constants::UNK_HIRAGANA_ADJUSTMENT,
+            2 => cost_constants::UNK_KATAKANA_ADJUSTMENT,
+            3 => cost_constants::UNK_KANJI_ADJUSTMENT,
+            4 => cost_constants::UNK_ALPHA_ADJUSTMENT,
+            5 => cost_constants::UNK_NUMERIC_ADJUSTMENT,
+            _ => 0,
+        };
+        let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
+        let final_cost = base_cost + category_adjustment + scaled_weight;
+        final_cost.clamp(
+            cost_constants::UNK_COST_MIN,
+            cost_constants::UNK_COST_MAX
+        )
     }
 }

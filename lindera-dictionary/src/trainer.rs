@@ -9,6 +9,27 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
+/// Logging macros for training process
+macro_rules! log_info {
+    ($($arg:tt)*) => {
+        println!($($arg)*)
+    };
+}
+
+macro_rules! log_debug {
+    ($($arg:tt)*) => {
+        if cfg!(debug_assertions) {
+            println!("DEBUG: {}", format!($($arg)*))
+        }
+    };
+}
+
+macro_rules! log_progress {
+    ($($arg:tt)*) => {
+        println!($($arg)*)
+    };
+}
+
 pub use self::config::TrainerConfig;
 pub use self::corpus::{Corpus, Example, Word};
 pub use self::model::{Model, SerializableModel};
@@ -31,7 +52,34 @@ impl WordIdx {
     }
 }
 
-/// Trainer for morphological analyzer.
+/// CRF-based morphological analysis trainer for Japanese text
+///
+/// This trainer follows the Vibrato approach for feature extraction and CRF training,
+/// adapted for Lindera's architecture. It supports:
+/// - Feature extraction from vocabulary and corpus
+/// - L-BFGS optimization for weight learning
+/// - Unknown word categorization for 6 character types
+/// - Connection cost matrix generation
+///
+/// # Training Process
+/// 1. Initialize feature provider with vocabulary entries
+/// 2. Build lattices from training corpus
+/// 3. Execute CRF training with L-BFGS optimization
+/// 4. Extract learned weights and create final model
+///
+/// # Example
+/// ```no_run
+/// use lindera::dictionary::trainer::{Trainer, TrainerConfig, Corpus};
+///
+/// let config = TrainerConfig::from_paths(
+///     "seed.csv", "char.def", "unk.def", "feature.def", "rewrite.def"
+/// )?;
+/// let trainer = Trainer::new(config)?
+///     .regularization_cost(0.01)
+///     .max_iter(100);
+/// let corpus = Corpus::from_reader(corpus_file)?;
+/// let model = trainer.train(corpus)?;
+/// ```
 pub struct Trainer {
     config: TrainerConfig,
 
@@ -109,8 +157,16 @@ impl Trainer {
         let unk_categories = ["DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC"];
 
         for (i, category) in unk_categories.iter().enumerate() {
-            // Get unknown word feature string - simplified for now
-            let unk_feature = "名詞,一般,*,*,*,*,*,*,*".to_string();
+            // Get unknown word feature string based on category
+            let unk_feature = match *category {
+                "DEFAULT" => "名詞,一般,*,*,*,*,*,*,*",
+                "HIRAGANA" => "名詞,一般,*,*,*,*,*,*,*",
+                "KATAKANA" => "名詞,一般,*,*,*,*,*,*,*",
+                "KANJI" => "名詞,一般,*,*,*,*,*,*,*",
+                "ALPHA" => "名詞,固有名詞,*,*,*,*,*,*,*",
+                "NUMERIC" => "名詞,数,*,*,*,*,*,*,*",
+                _ => "名詞,一般,*,*,*,*,*,*,*",
+            }.to_string();
 
             // Create feature set for unknown word category
             let feature_extractor = &mut config.feature_extractor;
@@ -184,12 +240,20 @@ impl Trainer {
 
     /// Trains a model from the given corpus.
     pub fn train(mut self, corpus: Corpus) -> Result<Model> {
-        println!("Building feature lattices...");
+        let lattices = self.build_lattices_from_corpus(&corpus)?;
+        let labels = self.extract_labels();
+        let crf_model = self.train_crf_model(lattices)?;
 
-        // Build lattices from corpus (Vibrato-style)
+        self.create_final_model(crf_model, labels, corpus)
+    }
+
+    /// Build feature lattices from the training corpus
+    fn build_lattices_from_corpus(&mut self, corpus: &Corpus) -> Result<Vec<rucrf::Lattice>> {
+        log_info!("Building feature lattices...");
+
         let mut lattices = Vec::new();
         for (i, example) in corpus.examples.iter().enumerate() {
-            println!("Processing example {}/{}", i + 1, corpus.examples.len());
+            log_progress!("Processing example {}/{}", i + 1, corpus.examples.len());
 
             // NOTE: Vibrato performs sentence.compile() here for character processing
             // In Lindera, character property processing should be handled differently
@@ -199,98 +263,109 @@ impl Trainer {
             lattices.push(lattice);
         }
 
-        println!("Starting CRF training with {} lattices...", lattices.len());
+        Ok(lattices)
+    }
 
-        // Pre-extract necessary information before consuming the provider
-        let labels = self.extract_labels();
-
-        // Store training parameters for metadata
-        let regularization_cost = self.regularization_cost;
-        let max_iter = self.max_iter;
-
-        println!("Training parameters: regularization={regularization_cost}, max_iter={max_iter}, threads={}", self.num_threads);
+    /// Configure and execute CRF training
+    fn train_crf_model(&mut self, lattices: Vec<rucrf::Lattice>) -> Result<rucrf::RawModel> {
+        log_info!("Starting CRF training with {} lattices...", lattices.len());
+        log_info!("Training parameters: regularization={}, max_iter={}, threads={}",
+                  self.regularization_cost, self.max_iter, self.num_threads);
 
         // Configure the CRF trainer
         let trainer = rucrf::Trainer::new()
-            .regularization(rucrf::Regularization::L1, regularization_cost)?
-            .max_iter(max_iter)?
+            .regularization(rucrf::Regularization::L1, self.regularization_cost)?
+            .max_iter(self.max_iter)?
             .n_threads(self.num_threads)?;
 
-        // Take ownership of provider and train the model (Vibrato-style)
+        self.execute_training(trainer, lattices)
+    }
+
+    /// Execute the actual CRF training with detailed logging
+    fn execute_training(
+        &mut self,
+        trainer: rucrf::Trainer,
+        lattices: Vec<rucrf::Lattice>,
+    ) -> Result<rucrf::RawModel> {
         println!("L-BFGS optimization starting...");
         println!("Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above.");
         println!("Each 'iter:' line indicates training progress. Please wait...");
 
-        // Training starts here - L-BFGS will show its own progress
         let start_time = std::time::Instant::now();
 
-        // DEBUG: Check provider state before training
-        println!("DEBUG: Provider state before training - ready for CRF");
-        println!("DEBUG: Provider has {} feature sets", self.provider.len());
-
-        // DEBUG: Check lattices state
-        println!("DEBUG: Training with {} lattices", lattices.len());
-        for i in 0..std::cmp::min(3, lattices.len()) {
-            println!("DEBUG: Lattice {} processed", i);
-        }
-
-        // DEBUG: Floating-point environment check
-        println!("DEBUG: f64::EPSILON = {}", f64::EPSILON);
-        println!("DEBUG: regularization_cost = {:.16}", regularization_cost);
-
-        // DEBUG: Memory alignment check
-        let provider_ptr = &self.provider as *const _ as usize;
-        println!("DEBUG: Provider memory alignment: 0x{:x}", provider_ptr);
-
-        // Train with provider (consumes provider like Vibrato)
+        // Training with provider (consumes provider like Vibrato)
         let provider = std::mem::take(&mut self.provider);
-        println!("DEBUG: Moved provider to trainer, training starting...");
-
-        // DEBUG: Check for potential NaN/infinity values before training
-        println!("DEBUG: Training parameters - reg: {:.16}, iter: {}, threads: {}",
-                regularization_cost, max_iter, self.num_threads);
-
         let model = trainer.train(&lattices, provider);
         let training_duration = start_time.elapsed();
 
-        println!("DEBUG: Training completed, checking raw model...");
-        println!("DEBUG: Raw model weights count: {}", model.weights().len());
-        println!("DEBUG: Raw model first 5 weights: {:?}", &model.weights()[..std::cmp::min(5, model.weights().len())]);
+        self.log_training_results(&model);
+        println!("Training completed successfully in {:.2}s!", training_duration.as_secs_f64());
 
-        // DEBUG: Check for NaN/infinity in weights
+        Ok(model)
+    }
+
+    /// Log detailed training results for debugging
+    fn log_training_results(&self, model: &rucrf::RawModel) {
+        log_debug!("Training completed, checking raw model...");
+        log_debug!("Raw model weights count: {}", model.weights().len());
+        log_debug!("Raw model first 5 weights: {:?}",
+                   &model.weights()[..std::cmp::min(5, model.weights().len())]);
+
+        // Analyze weights for debugging
         let weights = model.weights();
         let nan_count = weights.iter().filter(|&&w| w.is_nan()).count();
         let inf_count = weights.iter().filter(|&&w| w.is_infinite()).count();
         let zero_count = weights.iter().filter(|&&w| w == 0.0).count();
-        println!("DEBUG: Weight analysis - NaN: {}, Inf: {}, Zero: {}, Total: {}",
-                 nan_count, inf_count, zero_count, weights.len());
+        log_debug!("Weight analysis - NaN: {}, Inf: {}, Zero: {}, Total: {}",
+                   nan_count, inf_count, zero_count, weights.len());
 
-        // DEBUG: Sum of weights for verification
         let weight_sum: f64 = weights.iter().sum();
-        println!("DEBUG: Sum of all weights: {:.16}", weight_sum);
+        log_debug!("Sum of all weights: {:.16}", weight_sum);
 
-        // DEBUG: Check model internal structure
-        println!("DEBUG: Model unigram_weight_indices len: {}", model.unigram_weight_indices().len());
-        println!("DEBUG: Model bigram_weight_indices len: {}", model.bigram_weight_indices().len());
+        log_debug!("Model unigram_weight_indices len: {}", model.unigram_weight_indices().len());
+        log_debug!("Model bigram_weight_indices len: {}", model.bigram_weight_indices().len());
+    }
 
-        println!("Training completed successfully in {:.2}s!", training_duration.as_secs_f64());
+    /// Create the final trained model from CRF results
+    fn create_final_model(
+        mut self,
+        crf_model: rucrf::RawModel,
+        labels: Vec<String>,
+        _corpus: Corpus,
+    ) -> Result<Model> {
 
         // Remove unused features from feature extractor (Vibrato-style)
-        self.remove_unused_features(&model);
+        self.remove_unused_features(&crf_model);
 
-        // Extract feature weights from the trained model (Vibrato-style)
-        // First try merged model approach
+        // Extract feature weights from the trained model
+        let feature_weights = self.extract_feature_weights(&crf_model);
+
+        // Create final model with metadata
+        Ok(Model::new_with_metadata(
+            crf_model,
+            self.config,
+            feature_weights,
+            labels,
+            self.regularization_cost,
+            self.max_iter,
+        ))
+    }
+
+    /// Extract feature weights from the trained CRF model
+    fn extract_feature_weights(&self, crf_model: &rucrf::RawModel) -> Vec<f64> {
+        println!("Extracted feature weights from trained model");
+
         let mut feature_weights = Vec::new();
-        match model.merge() {
+        match crf_model.merge() {
             Ok(merged_model) => {
                 println!("DEBUG: merged_model.feature_sets.len() = {}", merged_model.feature_sets.len());
 
                 // Check if merged model has valid weights
                 let has_valid_weights = merged_model.feature_sets.iter()
-                    .take(self.config.surfaces.len())  // Only check relevant weights
+                    .take(self.config.surfaces.len())
                     .any(|fs| fs.weight != 0.0);
 
-                println!("DEBUG: has_valid_weights = {}", has_valid_weights);
+                println!("DEBUG: has_valid_weights = {has_valid_weights}");
                 if let Some(first_weight) = merged_model.feature_sets.first() {
                     println!("DEBUG: First merged weight = {}", first_weight.weight);
                 }
@@ -307,49 +382,36 @@ impl Trainer {
                     println!("DEBUG: Used merged model weights");
                 } else {
                     // Fallback: use raw model weights directly
-                    let raw_weights = model.weights();
-                    println!("DEBUG: Fallback to raw weights, count: {}", raw_weights.len());
-
-                    // Take first N weights corresponding to our surfaces
-                    for i in 0..self.config.surfaces.len() {
-                        if i < raw_weights.len() {
-                            feature_weights.push(raw_weights[i]);
-                        } else {
-                            feature_weights.push(0.0);
-                        }
-                    }
-                    println!("DEBUG: Used raw model weights");
+                    self.use_raw_weights(crf_model, &mut feature_weights);
                 }
             }
             Err(e) => {
-                println!("DEBUG: merge() failed: {}, using raw weights", e);
-                // Fallback: use raw model weights directly
-                let raw_weights = model.weights();
-                for i in 0..self.config.surfaces.len() {
-                    if i < raw_weights.len() {
-                        feature_weights.push(raw_weights[i]);
-                    } else {
-                        feature_weights.push(0.0);
-                    }
-                }
+                println!("DEBUG: merge() failed: {e}, using raw weights");
+                self.use_raw_weights(crf_model, &mut feature_weights);
             }
         }
 
-        println!("Extracted {} feature weights from trained model", feature_weights.len());
-        println!("DEBUG: First 10 feature weights: {:?}", &feature_weights[..std::cmp::min(10, feature_weights.len())]);
+        println!("DEBUG: First 10 feature weights: {:?}",
+                 &feature_weights[..std::cmp::min(10, feature_weights.len())]);
+        println!("DEBUG: Passing feature_weights to Model: {:?}",
+                 &feature_weights[..std::cmp::min(5, feature_weights.len())]);
 
-        // Debug: Print what we're passing to Model::new_with_metadata
-        println!("DEBUG: Passing feature_weights to Model: {:?}", &feature_weights[..std::cmp::min(5, feature_weights.len())]);
+        feature_weights
+    }
 
-        // Return the model with actual feature weights
-        Ok(Model::new_with_metadata(
-            model,
-            self.config,
-            feature_weights,
-            labels,
-            regularization_cost,
-            max_iter,
-        ))
+    /// Use raw CRF model weights as fallback
+    fn use_raw_weights(&self, crf_model: &rucrf::RawModel, feature_weights: &mut Vec<f64>) {
+        let raw_weights = crf_model.weights();
+        println!("DEBUG: Fallback to raw weights, count: {}", raw_weights.len());
+
+        for i in 0..self.config.surfaces.len() {
+            if i < raw_weights.len() {
+                feature_weights.push(raw_weights[i]);
+            } else {
+                feature_weights.push(0.0);
+            }
+        }
+        println!("DEBUG: Used raw model weights");
     }
 
     /// Extracts labels from the configuration
