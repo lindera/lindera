@@ -412,10 +412,17 @@ impl Trainer {
                     }
                 }
 
-                println!("DEBUG: Extracted {} weights from merged model", feature_weights.len());
+                println!(
+                    "DEBUG: Extracted {} weights from merged model",
+                    feature_weights.len()
+                );
                 // Count non-zero weights
                 let non_zero_count = feature_weights.iter().filter(|&&w| w != 0.0).count();
-                println!("DEBUG: Non-zero weights: {}/{}", non_zero_count, feature_weights.len());
+                println!(
+                    "DEBUG: Non-zero weights: {}/{}",
+                    non_zero_count,
+                    feature_weights.len()
+                );
             }
             Err(e) => {
                 println!("DEBUG: merge() failed: {e}, using raw weights");
