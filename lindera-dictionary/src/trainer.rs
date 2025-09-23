@@ -398,32 +398,24 @@ impl Trainer {
                     merged_model.feature_sets.len()
                 );
 
-                // Check if merged model has valid weights
-                let has_valid_weights = merged_model
-                    .feature_sets
-                    .iter()
-                    .take(self.config.surfaces.len())
-                    .any(|fs| fs.weight != 0.0);
-
-                println!("DEBUG: has_valid_weights = {has_valid_weights}");
-                if let Some(first_weight) = merged_model.feature_sets.first() {
-                    println!("DEBUG: First merged weight = {}", first_weight.weight);
-                }
-
-                if has_valid_weights {
-                    // Use merged model weights
-                    for (i, _surface) in self.config.surfaces.iter().enumerate() {
-                        if i < merged_model.feature_sets.len() {
-                            feature_weights.push(merged_model.feature_sets[i].weight);
-                        } else {
-                            feature_weights.push(0.0);
-                        }
+                // feature_sets is indexed by label ID (0-based index corresponds to label ID)
+                // Extract weights in the order of surfaces
+                for (i, _surface) in self.config.surfaces.iter().enumerate() {
+                    // The feature_sets vector is indexed by label ID
+                    // Since label IDs are 1-based in the CRF model, but 0-based in our surfaces
+                    // we directly use the index
+                    if i < merged_model.feature_sets.len() {
+                        feature_weights.push(merged_model.feature_sets[i].weight);
+                    } else {
+                        // No weight found for this label, use 0.0
+                        feature_weights.push(0.0);
                     }
-                    println!("DEBUG: Used merged model weights");
-                } else {
-                    // Fallback: use raw model weights directly
-                    self.use_raw_weights(crf_model, &mut feature_weights);
                 }
+
+                println!("DEBUG: Extracted {} weights from merged model", feature_weights.len());
+                // Count non-zero weights
+                let non_zero_count = feature_weights.iter().filter(|&&w| w != 0.0).count();
+                println!("DEBUG: Non-zero weights: {}/{}", non_zero_count, feature_weights.len());
             }
             Err(e) => {
                 println!("DEBUG: merge() failed: {e}, using raw weights");
