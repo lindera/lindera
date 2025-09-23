@@ -64,6 +64,7 @@ mod tests {
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
+        use lindera_dictionary::viterbi::LexType;
 
         let filter = KoreanReadingFormTokenFilter::new();
 
@@ -79,6 +80,7 @@ mod tests {
                 word_id: WordId {
                     id: 770060,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -102,6 +104,7 @@ mod tests {
                 word_id: WordId {
                     id: 576336,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -125,6 +128,7 @@ mod tests {
                 word_id: WordId {
                     id: 787807,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -148,6 +152,7 @@ mod tests {
                 word_id: WordId {
                     id: 383955,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -171,6 +176,7 @@ mod tests {
                 word_id: WordId {
                     id: 574939,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -194,6 +200,7 @@ mod tests {
                 word_id: WordId {
                     id: 774117,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -217,6 +224,7 @@ mod tests {
                 word_id: WordId {
                     id: 444151,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -240,6 +248,7 @@ mod tests {
                 word_id: WordId {
                     id: 602850,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -263,6 +272,7 @@ mod tests {
                 word_id: WordId {
                     id: 458024,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

@@ -215,6 +215,7 @@ mod tests {
         use crate::token_filter::japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
         };
+        use lindera_dictionary::viterbi::LexType;
 
         let config_str = r#"
             {
@@ -237,6 +238,7 @@ mod tests {
                 word_id: WordId {
                     id: 94843,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -261,6 +263,7 @@ mod tests {
                 word_id: WordId {
                     id: 100137,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct UnknownDictionary {
@@ -28,6 +28,137 @@ impl UnknownDictionary {
     pub fn lookup_word_ids(&self, category_id: CategoryId) -> &[u32] {
         &self.category_references[category_id.0][..]
     }
+
+    /// Unknown word generation with callback system
+    pub fn gen_unk_words<F>(
+        &self,
+        sentence: &str,
+        start_pos: usize,
+        has_matched: bool,
+        max_grouping_len: Option<usize>,
+        mut callback: F,
+    ) where
+        F: FnMut(UnkWord),
+    {
+        let chars: Vec<char> = sentence.chars().collect();
+        let max_len = max_grouping_len.unwrap_or(10);
+
+        // Limit based on dictionary matches for efficiency
+        let actual_max_len = if has_matched { 1 } else { max_len.min(3) };
+
+        for length in 1..=actual_max_len {
+            if start_pos + length > chars.len() {
+                break;
+            }
+
+            let end_pos = start_pos + length;
+
+            // Classify character type for unknown word
+            let first_char = chars[start_pos];
+            let char_type = classify_char_type(first_char);
+
+            // Create unknown word entry
+            let unk_word = UnkWord {
+                word_idx: WordIdx::new(char_type as u32),
+                end_char: end_pos,
+            };
+
+            callback(unk_word);
+        }
+    }
+
+    /// Check compatibility with unknown word based on feature matching
+    pub fn compatible_unk_index(
+        &self,
+        sentence: &str,
+        start: usize,
+        _end: usize,
+        feature: &str,
+    ) -> Option<WordIdx> {
+        let chars: Vec<char> = sentence.chars().collect();
+        if start >= chars.len() {
+            return None;
+        }
+
+        let first_char = chars[start];
+        let char_type = classify_char_type(first_char);
+
+        // Simple compatibility check based on feature string
+        if feature.starts_with(&format!("名詞,{}", get_type_name(char_type))) {
+            Some(WordIdx::new(char_type as u32))
+        } else {
+            None
+        }
+    }
+}
+
+/// Unknown word structure for callback system
+#[derive(Debug, Clone)]
+pub struct UnkWord {
+    pub word_idx: WordIdx,
+    pub end_char: usize,
+}
+
+impl UnkWord {
+    pub fn word_idx(&self) -> WordIdx {
+        self.word_idx
+    }
+
+    pub fn end_char(&self) -> usize {
+        self.end_char
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WordIdx {
+    pub word_id: u32,
+}
+
+impl WordIdx {
+    pub fn new(word_id: u32) -> Self {
+        Self { word_id }
+    }
+}
+
+/// Classify character type (compatible with existing system)
+fn classify_char_type(ch: char) -> usize {
+    if ch.is_ascii_digit() {
+        5 // NUMERIC
+    } else if ch.is_ascii_alphabetic() {
+        4 // ALPHA
+    } else if is_kanji(ch) {
+        3 // KANJI
+    } else if is_katakana(ch) {
+        2 // KATAKANA
+    } else if is_hiragana(ch) {
+        1 // HIRAGANA
+    } else {
+        0 // DEFAULT
+    }
+}
+
+fn get_type_name(char_type: usize) -> &'static str {
+    match char_type {
+        1 => "一般",
+        2 => "一般",
+        3 => "一般",
+        4 => "固有名詞",
+        5 => "数",
+        _ => "一般",
+    }
+}
+
+/// Character classification helpers
+fn is_hiragana(ch: char) -> bool {
+    matches!(ch, '\u{3041}'..='\u{3096}')
+}
+
+fn is_katakana(ch: char) -> bool {
+    matches!(ch, '\u{30A1}'..='\u{30F6}' | '\u{30F7}'..='\u{30FA}' | '\u{31F0}'..='\u{31FF}')
+}
+
+fn is_kanji(ch: char) -> bool {
+    matches!(ch, '\u{4E00}'..='\u{9FAF}' | '\u{3400}'..='\u{4DBF}')
 }
 
 #[derive(Debug)]
@@ -102,10 +233,7 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
                 warn!("left id and right id are not same: {e:?}");
             }
             WordEntry {
-                word_id: WordId {
-                    id: u32::MAX,
-                    is_system: true,
-                },
+                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, u32::MAX),
                 left_id: e.left_id as u16,
                 right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,

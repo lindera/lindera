@@ -238,6 +238,7 @@ mod tests {
         use crate::token_filter::japanese_keep_tags::{
             JapaneseKeepTagsTokenFilter, JapaneseKeepTagsTokenFilterConfig,
         };
+        use lindera_dictionary::viterbi::LexType;
 
         let config_str = r#"
             {
@@ -299,6 +300,7 @@ mod tests {
                 word_id: WordId {
                     id: 36165,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -323,6 +325,7 @@ mod tests {
                 word_id: WordId {
                     id: 73246,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -347,6 +350,7 @@ mod tests {
                 word_id: WordId {
                     id: 74990,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -371,6 +375,7 @@ mod tests {
                 word_id: WordId {
                     id: 73246,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -395,6 +400,7 @@ mod tests {
                 word_id: WordId {
                     id: 74990,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -419,6 +425,7 @@ mod tests {
                 word_id: WordId {
                     id: 55831,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,
@@ -443,6 +450,7 @@ mod tests {
                 word_id: WordId {
                     id: 8029,
                     is_system: true,
+                    lex_type: LexType::System,
                 },
                 dictionary: &dictionary,
                 user_dictionary: None,

@@ -19,12 +19,12 @@ use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::metadata::Metadata;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::dictionary_loader::character_definition::CharacterDefinitionLoader;
-use crate::dictionary_loader::connection_cost_matrix::ConnectionCostMatrixLoader;
-use crate::dictionary_loader::metadata::MetadataLoader;
-use crate::dictionary_loader::prefix_dictionary::PrefixDictionaryLoader;
-use crate::dictionary_loader::unknown_dictionary::UnknownDictionaryLoader;
 use crate::error::LinderaErrorKind;
+use crate::loader::character_definition::CharacterDefinitionLoader;
+use crate::loader::connection_cost_matrix::ConnectionCostMatrixLoader;
+use crate::loader::metadata::MetadataLoader;
+use crate::loader::prefix_dictionary::PrefixDictionaryLoader;
+use crate::loader::unknown_dictionary::UnknownDictionaryLoader;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 

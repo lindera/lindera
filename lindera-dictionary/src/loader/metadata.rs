@@ -12,7 +12,7 @@ use crate::util::read_file;
 /// # Examples
 ///
 /// ```no_run
-/// use lindera_dictionary::dictionary_loader::metadata::MetadataLoader;
+/// use lindera_dictionary::loader::metadata::MetadataLoader;
 /// use std::path::Path;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -81,8 +81,8 @@ impl MetadataLoader {
 
 #[cfg(test)]
 mod tests {
+    use crate::builder::metadata::MetadataBuilder;
     use crate::dictionary::metadata::Metadata;
-    use crate::dictionary_builder::metadata::MetadataBuilder;
 
     use super::*;
 

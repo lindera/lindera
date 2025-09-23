@@ -15,7 +15,7 @@ use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::error::LinderaErrorKind;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
 
@@ -117,10 +117,7 @@ impl UserDictionaryBuilder {
             };
 
             word_entry_map.entry(surface).or_default().push(WordEntry {
-                word_id: WordId {
-                    id: row_id as u32,
-                    is_system: false,
-                },
+                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::User, row_id as u32),
                 word_cost,
                 left_id,
                 right_id,

@@ -21,7 +21,7 @@ use crate::decompress::Algorithm;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::compress_write;
-use crate::viterbi::{WordEntry, WordId};
+use crate::viterbi::WordEntry;
 
 #[derive(Builder)]
 #[builder(name = PrefixDictionaryBuilderOptions)]
@@ -212,10 +212,10 @@ impl PrefixDictionaryBuilder {
             };
 
             word_entry_map.entry(key).or_default().push(WordEntry {
-                word_id: WordId {
-                    id: row_id as u32,
-                    is_system: true,
-                },
+                word_id: crate::viterbi::WordId::new(
+                    crate::viterbi::LexType::System,
+                    row_id as u32,
+                ),
                 word_cost: word_cost.unwrap(),
                 left_id: left_id.unwrap(),
                 right_id: right_id.unwrap(),
@@ -258,7 +258,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid cost value: {}", s)))
+                            .with_error(anyhow!("Invalid cost value: {s}")))
                     }
                 }
             },
@@ -277,7 +277,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid left context ID: {}", s)))
+                            .with_error(anyhow!("Invalid left context ID: {s}")))
                     }
                 }
             },
@@ -296,7 +296,7 @@ impl PrefixDictionaryBuilder {
                         Ok(None)
                     } else {
                         Err(LinderaErrorKind::Content
-                            .with_error(anyhow!("Invalid right context ID: {}", s)))
+                            .with_error(anyhow!("Invalid right context ID: {s}")))
                     }
                 }
             },

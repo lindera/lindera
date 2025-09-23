@@ -12,9 +12,12 @@ use url::Url;
 use lindera_cc_cedict::DICTIONARY_NAME as CC_CEDICT_DICTIONARY_NAME;
 #[cfg(feature = "embedded-cc-cedict")]
 use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
-use lindera_dictionary::dictionary_loader::DictionaryLoader;
-use lindera_dictionary::dictionary_loader::FSDictionaryLoader;
-use lindera_dictionary::dictionary_loader::user_dictionary::UserDictionaryLoader;
+use lindera_dictionary::loader::DictionaryLoader;
+use lindera_dictionary::loader::FSDictionaryLoader;
+use lindera_dictionary::loader::user_dictionary::UserDictionaryLoader;
+
+#[cfg(feature = "train")]
+pub use lindera_dictionary::trainer;
 #[cfg(feature = "embedded-ipadic")]
 use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
 #[cfg(feature = "embedded-ipadic")]
@@ -39,7 +42,7 @@ pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
 pub type WordId = lindera_dictionary::viterbi::WordId;
-pub type DictionaryBuilder = lindera_dictionary::dictionary_builder::DictionaryBuilder;
+pub type DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder;
 pub type DictionaryConfig = Value;
 pub type UserDictionaryConfig = Value;
 pub type Schema = lindera_dictionary::dictionary::schema::Schema;
@@ -92,7 +95,7 @@ impl FromStr for DictionaryScheme {
             "embedded" => Ok(DictionaryScheme::Embedded),
             "file" => Ok(DictionaryScheme::File),
             _ => Err(LinderaErrorKind::Dictionary
-                .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", input))),
+                .with_error(anyhow::anyhow!("Invalid dictionary scheme: {input}"))),
         }
     }
 }
@@ -174,7 +177,7 @@ impl FromStr for DictionaryKind {
             #[cfg(feature = "embedded-cc-cedict")]
             CC_CEDICT_DICTIONARY_NAME => Ok(DictionaryKind::CcCedict),
             _ => Err(LinderaErrorKind::Dictionary
-                .with_error(anyhow::anyhow!("Invalid dictionary kind: {}", input))),
+                .with_error(anyhow::anyhow!("Invalid dictionary kind: {input}"))),
         }
     }
 }
@@ -233,7 +236,7 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                 // Parse the URI and return the appropriate dictionary
                 let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
                     LinderaErrorKind::Dictionary
-                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {err}"))
                 })?;
 
                 match scheme {
@@ -267,7 +270,7 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                         let decoded_path =
                             percent_decode_str(path_str).decode_utf8().map_err(|e| {
                                 LinderaErrorKind::Dictionary
-                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
+                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {e}"))
                             })?;
 
                         let path = Path::new(decoded_path.as_ref());
@@ -277,8 +280,10 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                     }
                 }
             }
-            Err(e) => Err(LinderaErrorKind::Dictionary
-                .with_error(anyhow::anyhow!("Invalid URI format: {}", e))),
+            Err(e) => {
+                Err(LinderaErrorKind::Dictionary
+                    .with_error(anyhow::anyhow!("Invalid URI format: {e}")))
+            }
         }
     } else {
         // Treat it as a file path directly
@@ -308,7 +313,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                 // Parse the URI and return the appropriate dictionary
                 let scheme = DictionaryScheme::from_str(parsed_uri.scheme()).map_err(|err| {
                     LinderaErrorKind::Dictionary
-                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {}", err))
+                        .with_error(anyhow::anyhow!("Invalid dictionary scheme: {err}"))
                 })?;
 
                 match scheme {
@@ -328,7 +333,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                         let decoded_path =
                             percent_decode_str(path_str).decode_utf8().map_err(|e| {
                                 LinderaErrorKind::Dictionary
-                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {}", e))
+                                    .with_error(anyhow::anyhow!("Invalid UTF-8 in path: {e}"))
                             })?;
 
                         PathBuf::from(decoded_path.as_ref())
@@ -349,7 +354,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
             }
             Err(e) => {
                 return Err(LinderaErrorKind::Dictionary
-                    .with_error(anyhow::anyhow!("Invalid URI format: {}", e)));
+                    .with_error(anyhow::anyhow!("Invalid URI format: {e}")));
             }
         }
     } else {

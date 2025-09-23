@@ -56,6 +56,7 @@ mod tests {
         use crate::token::Token;
         use crate::token_filter::TokenFilter;
         use crate::token_filter::uppercase::UppercaseTokenFilter;
+        use lindera_dictionary::viterbi::LexType;
 
         let filter = UppercaseTokenFilter::new();
 
@@ -70,6 +71,7 @@ mod tests {
             word_id: WordId {
                 id: 4294967295,
                 is_system: true,
+                lex_type: LexType::System,
             },
             dictionary: &dictionary,
             user_dictionary: None,

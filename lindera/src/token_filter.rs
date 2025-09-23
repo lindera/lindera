@@ -230,7 +230,7 @@ impl TokenFilterLoader {
             }
             _ => {
                 return Err(LinderaErrorKind::Deserialize
-                    .with_error(anyhow::anyhow!("unsupported token filter: {}", kind)));
+                    .with_error(anyhow::anyhow!("unsupported token filter: {kind}")));
             }
         };
 

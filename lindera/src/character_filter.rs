@@ -432,7 +432,7 @@ impl CharacterFilterLoader {
             }
             _ => {
                 return Err(LinderaErrorKind::Deserialize
-                    .with_error(anyhow::anyhow!("unsupported character filter: {}", kind)));
+                    .with_error(anyhow::anyhow!("unsupported character filter: {kind}")));
             }
         };
 

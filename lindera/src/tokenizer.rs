@@ -150,8 +150,7 @@ impl TokenizerBuilder {
 
     pub fn build(&self) -> LinderaResult<Tokenizer> {
         Tokenizer::from_config(&self.config).map_err(|err| {
-            LinderaErrorKind::Parse
-                .with_error(anyhow::anyhow!("failed to build tokenizer: {}", err))
+            LinderaErrorKind::Parse.with_error(anyhow::anyhow!("failed to build tokenizer: {err}"))
         })
     }
 }

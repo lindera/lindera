@@ -104,7 +104,7 @@ impl Schema {
         for (index, field_name) in self.fields.iter().enumerate() {
             if index < row.len() && row[index].trim().is_empty() {
                 return Err(LinderaErrorKind::Content
-                    .with_error(anyhow::anyhow!("Field {} is missing or empty", field_name)));
+                    .with_error(anyhow::anyhow!("Field {field_name} is missing or empty")));
             }
         }
 

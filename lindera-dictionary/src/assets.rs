@@ -8,7 +8,7 @@ use reqwest::Client;
 use tokio::time::Duration;
 use tokio::time::sleep;
 
-use crate::dictionary_builder::DictionaryBuilder;
+use crate::builder::DictionaryBuilder;
 
 const MAX_ROUND: usize = 3;
 

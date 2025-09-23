@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use crate::LinderaResult;
+use crate::builder::DictionaryBuilder;
 use crate::dictionary::UserDictionary;
-use crate::dictionary_builder::DictionaryBuilder;
 use crate::util::read_file;
 
 /// Loader for user dictionaries with support for different input formats

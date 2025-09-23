@@ -1,0 +1,11 @@
+# Rewrite rules for feature normalization
+# Format: original_pattern	replacement_pattern
+
+# Test rewrite: convert "名詞,一般" to "NOUN,GENERAL"
+名詞,一般	NOUN,GENERAL
+
+# Test rewrite: convert "助詞,係助詞" to "PARTICLE,KAKUJOSHI"
+助詞,係助詞	PARTICLE,KAKUJOSHI
+
+# Normalize numeric expressions
+数	NUM
