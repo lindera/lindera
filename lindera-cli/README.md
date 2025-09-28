@@ -795,12 +795,35 @@ Train a new morphological analysis model from annotated corpus data. To use this
 #### 1. Prepare training files
 
 **Seed lexicon file (seed.csv):**
+
+The seed lexicon file contains initial dictionary entries used for training the CRF model. Each line represents a word entry with comma-separated fields. The specific field structure varies depending on the dictionary format:
+
+- Surface
+- Left context ID
+- Right context ID
+- Word cost
+- Part-of-speech tags (multiple fields)
+- Base form
+- Reading (katakana)
+- Pronunciation
+
+Note: The exact field definitions differ between dictionary formats (IPADIC, UniDic, ko-dic, CC-CEDICT). Please refer to each dictionary's format specification for details.
+
 ```csv
 外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
 ```
 
 **Training corpus (corpus.txt):**
+
+The training corpus file contains annotated text data used to train the CRF model. Each line consists of:
+
+- A surface form (word) followed by a tab character
+- Comma-separated morphological features (part-of-speech tags, base form, reading, pronunciation)
+- Sentences are separated by "EOS" (End Of Sentence) markers
+
+Note: The morphological feature format varies depending on the dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT). Please refer to each dictionary's format specification for details.
+
 ```text
 外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
 人	名詞,接尾,一般,*,*,*,人,ジン,ジン
