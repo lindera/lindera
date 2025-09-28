@@ -1296,6 +1296,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_simple_userdic.csv");
 
         let config = serde_json::json!({
@@ -1444,6 +1445,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("unidic_simple_userdic.csv");
 
         let config = serde_json::json!({
@@ -1708,6 +1710,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ko-dic_simple_userdic.csv");
 
         let config = serde_json::json!({
@@ -1787,6 +1790,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("cc-cedict_simple_userdic.csv");
 
         let config = serde_json::json!({
@@ -1894,6 +1898,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_simple_userdic.bin");
 
         let config = serde_json::json!({
@@ -2042,6 +2047,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("unidic_simple_userdic.bin");
 
         let config = serde_json::json!({
@@ -2306,6 +2312,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ko-dic_simple_userdic.bin");
 
         let config = serde_json::json!({
@@ -2385,6 +2392,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("cc-cedict_simple_userdic.bin");
 
         let config = serde_json::json!({
@@ -2492,6 +2500,7 @@ mod tests {
 
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_detailed_userdic.csv");
 
         let config = serde_json::json!({
@@ -2639,6 +2648,7 @@ mod tests {
     fn test_user_dict_invalid_word_cost() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_userdic_invalid_word_cost.csv");
 
         let config = serde_json::json!({
@@ -2656,6 +2666,7 @@ mod tests {
     fn test_user_dict_number_of_fields_is_11() {
         let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_userdic_insufficient_number_of_fields.csv");
 
         let config = serde_json::json!({

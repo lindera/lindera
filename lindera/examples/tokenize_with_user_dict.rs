@@ -14,6 +14,7 @@ fn main() -> LinderaResult<()> {
 
         let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("user_dict")
             .join("ipadic_simple_userdic.csv");
 
         let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

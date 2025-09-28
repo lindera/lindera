@@ -50,6 +50,7 @@ fn bench_constructor_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
 
             let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
+                .join("user_dict")
                 .join("ipadic_simple_userdic.csv");
 
             let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
@@ -92,6 +93,7 @@ fn bench_tokenize_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
 
     let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("user_dict")
         .join("ipadic_simple_userdic.csv");
 
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
