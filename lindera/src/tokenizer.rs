@@ -413,6 +413,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("lindera.yml");
 
         let result = yaml_to_config(&config_file);
@@ -429,6 +430,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("lindera.yml");
 
         let tokenizer_config = yaml_to_config(&config_file).unwrap();
@@ -448,6 +450,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("lindera.yml");
 
         let builder = TokenizerBuilder::from_file(&config_file).unwrap();
@@ -737,6 +740,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("non_existent_file.yml");
 
         TokenizerBuilder::from_file(&config_file).unwrap();
@@ -752,6 +756,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("non_existent_file.yml");
 
         TokenizerBuilder::from_file(&config_file).unwrap();
@@ -766,6 +771,7 @@ mod tests {
 
         let config_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("invalid.yml");
 
         TokenizerBuilder::from_file(&config_file).unwrap();

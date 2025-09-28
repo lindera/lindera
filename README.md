@@ -82,7 +82,7 @@ lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
 For example:
 
 ```shell
-% cat ./resources/simple_userdic.csv
+% cat ./resources/user_dict/simple_userdic.csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
@@ -101,6 +101,7 @@ use lindera::tokenizer::Tokenizer;
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("user_dict")
         .join("ipadic_simple_userdic.csv");
 
     let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -303,7 +304,7 @@ segmenter:
   dictionary:
     kind: "ipadic"
   user_dictionary:
-    path: "./resources/ipadic_simple.csv"
+    path: "./resources/user_dict/ipadic_simple.csv"
     kind: "ipadic"
 
 character_filters:
@@ -368,7 +369,7 @@ token_filters:
 ```
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/lindera.yml
+% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
 ```rust
@@ -382,6 +383,7 @@ fn main() -> LinderaResult<()> {
     // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("config")
         .join("lindera.yml");
 
     let builder = TokenizerBuilder::from_file(&path)?;
@@ -428,7 +430,7 @@ When set, dictionary source files are stored in `$LINDERA_CACHE/<version>/` wher
 The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/lindera.yml
+export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
 See the [Configuration file](#configuration-file) section for details on the configuration format.

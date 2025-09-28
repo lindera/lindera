@@ -46,6 +46,7 @@ fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
 
             let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../resources")
+                .join("user_dict")
                 .join("ko-dic_simple_userdic.csv");
 
             let dictionary = load_dictionary("embedded://ko-dic").unwrap();
@@ -88,6 +89,7 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
 
     let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
+        .join("user_dict")
         .join("ko-dic_simple_userdic.csv");
 
     let dictionary = load_dictionary("embedded://ko-dic").unwrap();

@@ -9,6 +9,7 @@ fn main() -> LinderaResult<()> {
 
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
+            .join("config")
             .join("lindera.yml");
 
         let builder = TokenizerBuilder::from_file(&path)?;
