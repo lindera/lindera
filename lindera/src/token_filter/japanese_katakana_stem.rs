@@ -107,14 +107,11 @@ impl TokenFilter for JapaneseKatakanaStemTokenFilter {
 }
 
 fn is_katakana(text: &str) -> bool {
-    for ch in text.chars() {
-        let block = unicode_blocks::find_unicode_block(ch).unwrap();
-        if block != unicode_blocks::KATAKANA {
-            return false;
-        }
-    }
-
-    true
+    text.chars()
+        .all(|ch| match unicode_blocks::find_unicode_block(ch) {
+            Some(b) => b == unicode_blocks::KATAKANA,
+            None => false,
+        })
 }
 
 #[cfg(test)]
@@ -286,5 +283,27 @@ mod tests {
         assert_eq!(tokens.len(), 2);
         assert_eq!(&tokens[0].surface, "バター");
         assert_eq!(&tokens[1].surface, "メーカ");
+    }
+
+    #[test]
+    fn test_is_katakana_out_of_range_unicode() {
+        use crate::token_filter::japanese_katakana_stem::is_katakana;
+
+        let cases = [
+            ("テキスト", true),
+            ("テキスト\u{FFFFF}", false),
+            ("񣘠婆天后", false),
+        ];
+
+        for (text, expected) in cases {
+            let got = is_katakana(text);
+            assert!(
+                got == expected,
+                "is_katakana({:?}) expected {}, got {}",
+                text,
+                expected,
+                got
+            );
+        }
     }
 }
