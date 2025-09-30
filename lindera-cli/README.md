@@ -773,7 +773,7 @@ Lindera provides an analytical framework that combines character filters, tokeni
 EOS
 ```
 
-## Train dictionary
+## Dictionary Training (Experimental)
 
 Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the `train` feature flag enabled. (The `train` feature flag is enabled by default.)
 
