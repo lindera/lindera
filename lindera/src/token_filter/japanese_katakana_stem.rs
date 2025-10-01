@@ -299,10 +299,7 @@ mod tests {
             let got = is_katakana(text);
             assert!(
                 got == expected,
-                "is_katakana({:?}) expected {}, got {}",
-                text,
-                expected,
-                got
+                "is_katakana({text:?}) expected {expected}, got {got}"
             );
         }
     }
