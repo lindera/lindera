@@ -27,7 +27,7 @@ cat ~/tmp/mecab-ipadic-2.7.0-20250920/*.csv > ~/tmp/seed.csv
 
 # Train model
 [[ -f ~/tmp/lindera.model ]] && rm ~/tmp/lindera.model
-lindera train \
+./target/release/lindera train \
   --seed ~/tmp/seed.csv \
   --corpus ~/tmp/corpus.txt \
   --unk-def ~/tmp/mecab-ipadic-2.7.0-20250920/unk.def \
@@ -40,17 +40,17 @@ lindera train \
 
 # Export trained dictionary
 [[ -d ~/tmp/lindera-dict ]] && rm -rf ~/tmp/lindera-dict
-lindera export \
+./target/release/lindera export \
   --model ~/tmp/lindera.model \
   --metadata ./lindera-ipadic/metadata.json \
   --output ~/tmp/lindera-dict
 
 # Build final dictionary
 [[ -d ~/tmp/lindera-compiled-dict ]] && rm -rf ~/tmp/lindera-compiled-dict
-lindera build \
+./target/release/lindera build \
   --src ~/tmp/lindera-dict \
   --dest ~/tmp/lindera-compiled-dict \
   --metadata ./lindera-ipadic/metadata.json
 
 # Tokenize text using the compiled dictionary
-lindera tokenize -d ~/tmp/lindera-compiled-dict <<< "すもももももももものうち"
+./target/release/lindera tokenize -d ~/tmp/lindera-compiled-dict <<< "すもももももももものうち"

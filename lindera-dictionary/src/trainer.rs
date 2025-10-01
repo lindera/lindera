@@ -133,10 +133,12 @@ impl Trainer {
 
         // Build label mapping from surfaces and add feature sets to provider
         for (i, surface) in config.surfaces.iter().enumerate() {
-            // Get feature string for this surface
-            let feature_str = config
-                .get_features(surface)
-                .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string());
+            // Get feature string from config.features (parallel to surfaces)
+            let feature_str = if i < config.features.len() {
+                &config.features[i]
+            } else {
+                "名詞,一般,*,*,*,*,*,*,*"
+            };
 
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;
@@ -153,14 +155,10 @@ impl Trainer {
             let label_id = provider.add_feature_set(feature_set)?;
 
             // Map feature string to label ID using first character classification
-            label_id_map.entry(feature_str).or_insert_with(HashMap::new);
+            label_id_map.entry(feature_str.to_string()).or_insert_with(HashMap::new);
             if let Some(first_char) = surface.chars().next() {
                 label_id_map
-                    .get_mut(
-                        &config
-                            .get_features(surface)
-                            .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string()),
-                    )
+                    .get_mut(feature_str)
                     .unwrap()
                     .insert(first_char, label_id);
             }
