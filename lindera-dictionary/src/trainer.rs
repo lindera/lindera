@@ -155,7 +155,9 @@ impl Trainer {
             let label_id = provider.add_feature_set(feature_set)?;
 
             // Map feature string to label ID using first character classification
-            label_id_map.entry(feature_str.to_string()).or_insert_with(HashMap::new);
+            label_id_map
+                .entry(feature_str.to_string())
+                .or_insert_with(HashMap::new);
             if let Some(first_char) = surface.chars().next() {
                 label_id_map
                     .get_mut(feature_str)
