@@ -18,6 +18,8 @@ use super::feature_rewriter::FeatureRewriter;
 pub struct TrainerConfig {
     pub(crate) dict: Dictionary,
     pub(crate) surfaces: Vec<String>,
+    /// Feature strings for each entry (parallel to surfaces)
+    pub(crate) features: Vec<String>,
     /// Maps surface forms to their original feature strings from the lexicon
     pub(crate) surface_features: HashMap<String, String>,
     /// User lexicon entries for additional vocabulary
@@ -71,6 +73,7 @@ impl TrainerConfig {
     {
         // Parse lexicon to extract surfaces and features
         let mut surfaces = Vec::new();
+        let mut features = Vec::new();
         let mut surface_features = HashMap::new();
         let mut lexicon_content = String::new();
         {
@@ -86,9 +89,10 @@ impl TrainerConfig {
             if parts.len() >= 5 {
                 let surface = parts[0].to_string();
                 // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
-                let features = parts[4..].join(",");
+                let feature_str = parts[4..].join(",");
                 surfaces.push(surface.clone());
-                surface_features.insert(surface, features);
+                features.push(feature_str.clone());
+                surface_features.insert(surface, feature_str);
             }
         }
 
@@ -110,9 +114,17 @@ impl TrainerConfig {
             // Parse template format
             if let Some(stripped) = line.strip_prefix("UNIGRAM:") {
                 unigram_templates.push(stripped.to_string());
-            } else if let Some(template_part) = line.strip_prefix("BIGRAM:") {
-                // Parse bigram template like "BIGRAM:%L[0],%R[0]"
-                if let Some((left, right)) = template_part.split_once(',') {
+            } else if let Some(template_part) = line.strip_prefix("BIGRAM") {
+                // Parse bigram template like "BIGRAM B00:%L[0]/%R[0]"
+                // Remove label prefix (e.g., "B00:") and split by /
+                let template = template_part.trim().trim_start_matches(':').trim();
+                // Find the part after the label (after the first colon if present)
+                let template_body = if let Some(idx) = template.find(':') {
+                    &template[idx + 1..]
+                } else {
+                    template
+                };
+                if let Some((left, right)) = template_body.split_once('/') {
                     bigram_templates.push((left.to_string(), right.to_string()));
                 }
             } else {
@@ -137,6 +149,7 @@ impl TrainerConfig {
         Ok(Self {
             dict,
             surfaces,
+            features,
             surface_features,
             user_lexicon: HashMap::new(), // Initialize empty user lexicon
             feature_extractor,

@@ -8,84 +8,15 @@ use serde::{Deserialize, Serialize};
 use crate::trainer::corpus::Word;
 use crate::viterbi::{LexType, WordEntry, WordId};
 
-/// Cost calculation constants for trained model
-mod cost_constants {
-    // Known word cost calculation
-    pub const KNOWN_WORD_BASE_COST: i16 = 1000;
-    pub const KNOWN_WORD_COST_MULTIPLIER: f64 = 500.0;
-    pub const KNOWN_WORD_COST_MIN: i16 = 500;
-    pub const KNOWN_WORD_COST_MAX: i16 = 3000;
-    pub const KNOWN_WORD_DEFAULT_COST: i16 = 1500;
-
-    // Unknown word cost calculation
-    pub const UNK_BASE_COST: i32 = 3000;
-    pub const UNK_COST_MULTIPLIER: f64 = 500.0;
-    pub const UNK_COST_MIN: i32 = 2500;
-    pub const UNK_COST_MAX: i32 = 4500;
-
-    // Category-specific adjustments for unknown words
-    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0; // DEFAULT category
-    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200; // HIRAGANA - penalize known chars
-    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0; // KATAKANA - moderate penalty
-    pub const UNK_KANJI_ADJUSTMENT: i32 = 400; // KANJI - higher penalty
-    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100; // ALPHA - foreign words
-    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100; // NUMERIC - deterministic
-
-    // Weight normalization
-    pub const WEIGHT_NORMALIZATION_DIVISOR: f64 = 10.0;
-    pub const WEIGHT_NORMALIZATION_MIN: f64 = -2.0;
-    pub const WEIGHT_NORMALIZATION_MAX: f64 = 2.0;
-
-    // Default cost calculation
-    pub const DEFAULT_WORD_COST_MULTIPLIER: f64 = 500.0;
-    pub const DEFAULT_WORD_COST_BASE: i32 = 1500;
-    pub const DEFAULT_WORD_COST_FALLBACK: i32 = 2000;
-}
-
-/// Helper functions for cost calculation
-impl Model {
-    /// Calculate unknown word cost based on feature weight and category
-    fn calculate_unknown_word_cost(&self, feature_weight: f64, category: usize) -> i32 {
-        use cost_constants::*;
-
-        // Normalize the weight
-        let normalized_weight = (feature_weight / WEIGHT_NORMALIZATION_DIVISOR)
-            .clamp(WEIGHT_NORMALIZATION_MIN, WEIGHT_NORMALIZATION_MAX);
-
-        // Calculate base cost
-        let base_cost = (-normalized_weight * UNK_COST_MULTIPLIER) as i32 + UNK_BASE_COST;
-
-        // Apply category-specific adjustment
-        let category_adjustment = match category {
-            0 => UNK_DEFAULT_ADJUSTMENT,
-            1 => UNK_HIRAGANA_ADJUSTMENT,
-            2 => UNK_KATAKANA_ADJUSTMENT,
-            3 => UNK_KANJI_ADJUSTMENT,
-            4 => UNK_ALPHA_ADJUSTMENT,
-            5 => UNK_NUMERIC_ADJUSTMENT,
-            _ => UNK_DEFAULT_ADJUSTMENT,
-        };
-
-        (base_cost + category_adjustment).clamp(UNK_COST_MIN, UNK_COST_MAX)
-    }
-
-    /// Calculate known word cost based on feature weight
-    #[allow(dead_code)]
-    fn calculate_known_word_cost(&self, feature_weight: f64) -> i16 {
-        use cost_constants::*;
-
-        // Normalize the weight
-        let normalized_weight = if feature_weight.abs() > f64::EPSILON {
-            (feature_weight / WEIGHT_NORMALIZATION_DIVISOR)
-                .clamp(WEIGHT_NORMALIZATION_MIN, WEIGHT_NORMALIZATION_MAX)
-        } else {
-            feature_weight
-        };
-
-        // Calculate cost
-        let calculated_cost = (-normalized_weight * KNOWN_WORD_COST_MULTIPLIER) as i16;
-        (calculated_cost + KNOWN_WORD_BASE_COST).clamp(KNOWN_WORD_COST_MIN, KNOWN_WORD_COST_MAX)
-    }
+/// Feature set information extracted from CRF training
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
+pub struct FeatureSetInfo {
+    /// Left connection ID learned from CRF training
+    pub left_id: u32,
+    /// Right connection ID learned from CRF training
+    pub right_id: u32,
+    /// Feature weight learned from CRF training
+    pub weight: f64,
 }
 
 /// Trained model with weights and configuration.
@@ -107,6 +38,8 @@ pub struct SerializableModel {
     pub max_left_id: usize,
     /// Maximum right connection ID
     pub max_right_id: usize,
+    /// Feature set information (left_id, right_id, weight) for each label
+    pub feature_sets: Vec<FeatureSetInfo>,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode)]
@@ -303,6 +236,26 @@ impl Model {
 
         // Extract connection cost matrix from the trained model using standard CRF methodology
         let merged_model = self.raw_model.merge()?;
+
+        println!(
+            "DEBUG: merged_model.feature_sets.len() = {}",
+            merged_model.feature_sets.len()
+        );
+        println!(
+            "DEBUG: merged_model.matrix.len() = {}",
+            merged_model.matrix.len()
+        );
+        println!("DEBUG: First 10 feature_sets from merged_model:");
+        for (i, fs) in merged_model.feature_sets.iter().take(10).enumerate() {
+            println!(
+                "  [{}] left_id={}, right_id={}, weight={}",
+                i,
+                fs.left_id.get(),
+                fs.right_id.get(),
+                fs.weight
+            );
+        }
+
         let mut connection_matrix = std::collections::HashMap::new();
         let mut max_left_id = 0;
         let mut max_right_id = 0;
@@ -321,6 +274,29 @@ impl Model {
             }
         }
 
+        // Extract feature_sets information from merged_model
+        let feature_sets: Vec<FeatureSetInfo> = merged_model
+            .feature_sets
+            .iter()
+            .map(|fs| FeatureSetInfo {
+                left_id: fs.left_id.get(),
+                right_id: fs.right_id.get(),
+                weight: fs.weight,
+            })
+            .collect();
+
+        println!(
+            "DEBUG write_model: Extracted {} feature_sets",
+            feature_sets.len()
+        );
+        println!("DEBUG write_model: First 5 feature_sets:");
+        for (i, fs) in feature_sets.iter().take(5).enumerate() {
+            println!(
+                "  [{}] left_id={}, right_id={}, weight={}",
+                i, fs.left_id, fs.right_id, fs.weight
+            );
+        }
+
         let serializable_model = SerializableModel {
             feature_weights,
             labels: self.labels.clone(),
@@ -336,6 +312,7 @@ impl Model {
             connection_matrix,
             max_left_id,
             max_right_id,
+            feature_sets,
         };
 
         // Use bincode for efficient binary serialization
@@ -361,8 +338,8 @@ impl Model {
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
 
-        // Try bincode first (new format)
-        if let Ok((model, _)) =
+        // Try bincode first (new format with feature_sets)
+        if let Ok((mut model, _)) =
             bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard())
         {
             // DEBUG: Check what we read from bincode
@@ -374,6 +351,27 @@ impl Model {
                 "DEBUG read_model (bincode): First 5 weights: {:?}",
                 &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
             );
+            println!(
+                "DEBUG read_model (bincode): feature_sets.len() = {}",
+                model.feature_sets.len()
+            );
+
+            // Backward compatibility: if feature_sets is empty, generate from feature_weights
+            if model.feature_sets.is_empty() {
+                println!(
+                    "WARN: Old model format detected, generating feature_sets from feature_weights"
+                );
+                model.feature_sets = model
+                    .feature_weights
+                    .iter()
+                    .map(|&weight| FeatureSetInfo {
+                        left_id: 0,
+                        right_id: 0,
+                        weight,
+                    })
+                    .collect();
+            }
+
             return Ok(model);
         }
 
@@ -472,15 +470,15 @@ impl Model {
 
     /// Extracts part-of-speech information for each label
     fn extract_pos_info(&self) -> Vec<String> {
-        // Get POS info from config for each surface (includes user lexicon)
+        // Get POS info from config.features (parallel to surfaces/labels)
         let mut pos_info = Vec::new();
 
-        for surface in &self.labels {
-            // Look up the surface in both main lexicon and user lexicon
-            if let Some(features) = self.config.get_features(surface) {
-                pos_info.push(features.clone());
+        for (i, _surface) in self.labels.iter().enumerate() {
+            // First check if this is within the vocabulary (config.features range)
+            if i < self.config.features.len() {
+                pos_info.push(self.config.features[i].clone());
             } else {
-                // Default POS for unknown words
+                // For unknown word categories (DEFAULT, HIRAGANA, etc.), use default POS
                 pos_info.push("名詞,一般,*,*,*,*,*,*,*".to_string());
             }
         }
@@ -562,13 +560,22 @@ impl Model {
             if i < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[i];
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
-                let features = self.get_word_features(surface);
-                // Use context ID 0,0 for compatibility with Lindera dictionary format
-                writeln!(writer, "{},{},{},{},{}", surface, 0, 0, cost, features)?;
+                // Use features from config (parallel to surfaces) to preserve all entries
+                let features = &self.config.features[i];
+                // Use learned left_id, right_id from CRF training
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    surface,
+                    feature_set.left_id.get(),
+                    feature_set.right_id.get(),
+                    cost,
+                    features
+                )?;
             } else {
-                // Fallback for missing feature sets - use context ID 0,0 for compatibility
+                // Fallback for missing feature sets
                 let cost = self.get_word_cost(i);
-                let features = self.get_word_features(surface);
+                let features = &self.config.features[i];
                 writeln!(writer, "{surface},0,0,{cost},{features}")?;
             }
         }
@@ -599,57 +606,23 @@ impl Model {
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
         // Get merged model for trained connection costs
         let merged_model = self.get_merged_model()?;
+        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
 
-        // Calculate matrix dimensions from actual trained IDs and unknown word categories
-        let unk_max_id = 105; // Maximum unknown word category ID
-        let max_trained_id = merged_model
-            .feature_sets
-            .iter()
-            .map(|fs| std::cmp::max(fs.left_id.get(), fs.right_id.get()))
-            .max()
-            .unwrap_or(0);
-        let matrix_size = std::cmp::max(max_trained_id + 1, unk_max_id + 1) as usize;
-
-        // Apply weight scaling for optimal performance
-        let mut weight_abs_max = 0f64;
-        for feature_set in &merged_model.feature_sets {
-            weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
-        }
-        for hm in &merged_model.matrix {
-            for &w in hm.values() {
-                weight_abs_max = weight_abs_max.max(w.abs());
-            }
-        }
-        let weight_scale_factor = if weight_abs_max > 0.0 {
-            f64::from(i16::MAX) / weight_abs_max
-        } else {
-            1.0
-        };
-
-        // Write matrix dimensions
-        writeln!(writer, "{matrix_size} {matrix_size}")?;
+        // Write matrix dimensions (right_conn_to_left_feats.len() + 1, left_conn_to_right_feats.len() + 1)
+        writeln!(
+            writer,
+            "{} {}",
+            merged_model.right_conn_to_left_feats.len() + 1,
+            merged_model.left_conn_to_right_feats.len() + 1
+        )?;
 
         // Write trained connection costs with proper scaling
         for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
-            for (&left_conn_id, &weight) in hm.iter() {
+            let mut pairs: Vec<_> = hm.iter().map(|(&j, &w)| (j, w)).collect();
+            pairs.sort_unstable_by_key(|&(k, _)| k);
+            for (left_conn_id, weight) in pairs {
                 let cost = (-weight * weight_scale_factor) as i16;
                 writeln!(writer, "{right_conn_id} {left_conn_id} {cost}")?;
-            }
-        }
-
-        // Add connections for unknown word categories
-        for unk_id in 100..=unk_max_id {
-            // BOS to unknown word categories
-            writeln!(writer, "0 {unk_id} 200")?;
-            // Unknown word categories to EOS
-            writeln!(writer, "{unk_id} 0 200")?;
-
-            // Unknown words to trained IDs and vice versa
-            for trained_id in 0..=max_trained_id {
-                if trained_id != 0 {
-                    writeln!(writer, "{unk_id} {trained_id} 300")?;
-                    writeln!(writer, "{trained_id} {unk_id} 300")?;
-                }
             }
         }
 
@@ -661,23 +634,34 @@ impl Model {
         let merged_model = self.get_merged_model()?;
         let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
 
-        // Use config's unknown dictionary length for proper indexing
+        // Iterate over unknown dictionary entries
         let unk_dict_len = self.config.surfaces.len();
-        let unk_len = self.config.dict.unknown_dictionary.costs.len();
-        for i in 0..unk_len {
+        for i in 0..self.config.dict.unknown_dictionary.costs.len() {
             let feature_set_idx = unk_dict_len + i;
             if feature_set_idx < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[feature_set_idx];
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
 
-                // Get category string from character properties
-                let cate_string = format!("UNK_{i}"); // Simplified category naming
-                let features = "名詞,一般,*,*,*,*,*,*,*"; // Default features
+                // Get category name and features from config
+                let cate_string = match i {
+                    0 => "DEFAULT",
+                    1 => "HIRAGANA",
+                    2 => "KATAKANA",
+                    3 => "KANJI",
+                    4 => "ALPHA",
+                    5 => "NUMERIC",
+                    _ => "UNKNOWN",
+                };
+                let features = "名詞,一般,*,*,*,*,*,*,*";
 
                 writeln!(
                     writer,
-                    "{cate_string},{},{},{cost},{features}",
-                    feature_set.left_id, feature_set.right_id
+                    "{},{},{},{},{}",
+                    cate_string,
+                    feature_set.left_id.get(),
+                    feature_set.right_id.get(),
+                    cost,
+                    features
                 )?;
             }
         }
@@ -724,28 +708,24 @@ impl Model {
         }
     }
 
-    fn get_word_features(&self, _surface: &str) -> String {
-        // Return basic feature template
-        "名詞,一般,*,*,*,*,*,*,*".to_string()
+    fn get_word_features(&self, surface: &str) -> String {
+        // Get actual features from config
+        self.config
+            .get_features(surface)
+            .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string())
     }
 
     /// Calculate unknown word cost based on trained feature weights using dynamic calculation
     pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
-        // Use trained weights for dynamic unknown word cost calculation
-        if !self.feature_weights.is_empty() && category < self.feature_weights.len() {
-            // Use centralized cost calculation for unknown words
-            self.calculate_unknown_word_cost(self.feature_weights[category], category)
-        } else {
-            // Fallback to category-specific default costs
-            match category {
-                0 => 2000, // DEFAULT
-                1 => 1800, // HIRAGANA
-                2 => 1800, // KATAKANA
-                3 => 2200, // KANJI
-                4 => 2100, // ALPHA
-                5 => 1900, // NUMERIC
-                _ => 2000, // Other categories
-            }
+        // Fallback to category-specific default costs
+        match category {
+            0 => 2000, // DEFAULT
+            1 => 1800, // HIRAGANA
+            2 => 1800, // KATAKANA
+            3 => 2200, // KANJI
+            4 => 2100, // ALPHA
+            5 => 1900, // NUMERIC
+            _ => 2000, // Other categories
         }
     }
 
@@ -1032,79 +1012,52 @@ impl SerializableModel {
 
     /// Write lexicon file with proper cost calculation
     pub fn write_lexicon<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        use std::collections::HashMap;
-
         let weight_scale_factor = self.calculate_weight_scale_factor();
 
-        // DEBUG: Print feature weights information
+        // DEBUG: Print feature information
         eprintln!(
-            "DEBUG: Total feature_weights: {}",
-            self.feature_weights.len()
+            "DEBUG: Total feature_sets: {}, labels: {}, weight_scale_factor: {:.2}",
+            self.feature_sets.len(),
+            self.labels.len(),
+            weight_scale_factor
         );
-        eprintln!("DEBUG: Total labels: {}", self.labels.len());
-        eprintln!("DEBUG: Weight scale factor: {weight_scale_factor}");
-        for (i, weight) in self.feature_weights.iter().take(20).enumerate() {
-            eprintln!("DEBUG: feature_weights[{i}] = {weight}");
-        }
 
-        // Unknown word category labels for special processing
+        // Unknown word category labels to skip
         let unk_categories = [
             "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
         ];
 
-        // For SerializableModel, we need to work with stored data directly
-        // Since we don't have access to the original merged model here
-
-        // Create POS-based connection ID mapping
-        let mut pos_to_id: HashMap<String, u32> = HashMap::new();
-        let mut next_id = 0u32;
-
+        // Write lexicon entries using learned connection IDs and costs
         for (i, label) in self.labels.iter().enumerate() {
-            // Special handling for unknown word categories
-            let is_unknown_category = unk_categories.contains(&label.as_str());
-            if is_unknown_category {
-                eprintln!("DEBUG: Skipping unknown category in lex.csv: {label}");
-                continue; // 未知語カテゴリはlex.csvに含めない
+            // Skip unknown word categories (they go to unk.def)
+            if unk_categories.contains(&label.as_str()) {
+                continue;
             }
 
-            let pos_info = if i < self.pos_info.len() {
-                &self.pos_info[i]
-            } else {
-                "名詞,一般,*,*,*,*,*,*,*"
-            };
+            if i < self.feature_sets.len() {
+                let fs = &self.feature_sets[i];
+                let pos_info = if i < self.pos_info.len() {
+                    &self.pos_info[i]
+                } else {
+                    "名詞,一般,*,*,*,*,*,*,*"
+                };
 
-            // Extract main POS for connection ID
-            let main_pos = pos_info.split(',').next().unwrap_or("名詞");
-            let connection_id = *pos_to_id.entry(main_pos.to_string()).or_insert_with(|| {
-                let id = next_id;
-                next_id += 1;
-                id
-            });
+                // Use learned left_id, right_id, and weight directly
+                let cost = (-fs.weight * weight_scale_factor) as i16;
 
-            // Calculate cost with proper scaling for actual vocabulary entries
-            let cost = if i < self.feature_weights.len() {
-                let raw_weight = self.feature_weights[i];
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    label, fs.left_id, fs.right_id, cost, pos_info
+                )?;
 
-                // Use centralized cost calculation for known words
-                let final_cost = self.calculate_known_word_cost(raw_weight);
-
-                eprintln!(
-                    "DEBUG: label={label}, raw_weight={raw_weight:.3}, final_cost={final_cost}"
-                );
-
-                final_cost
-            } else {
-                eprintln!("DEBUG: label={label} using default cost");
-                cost_constants::KNOWN_WORD_DEFAULT_COST
-            };
-
-            // Use POS-based context IDs for compatibility
-            // Note: connection_id already calculated above
-
-            writeln!(
-                writer,
-                "{label},{connection_id},{connection_id},{cost},{pos_info}"
-            )?;
+                if i < 10 {
+                    eprintln!(
+                        "DEBUG: label={}, left_id={}, right_id={}, weight={:.3}, cost={}",
+                        label, fs.left_id, fs.right_id, fs.weight, cost
+                    );
+                }
+            }
         }
 
         Ok(())
@@ -1147,10 +1100,12 @@ impl SerializableModel {
                             // Convert weight to cost using negative scaled weight (standard CRF approach)
                             (-weight * weight_scale_factor) as i32
                         } else {
-                            200 // Default cost for unseen pairs
+                            // High cost for unseen pairs
+                            i16::MAX as i32
                         }
                     } else {
-                        200 // Default cost for unseen pairs
+                        // High cost for unseen pairs
+                        i16::MAX as i32
                     };
 
                     // Write in MeCab/IPADIC format: right_id left_id cost
@@ -1166,7 +1121,8 @@ impl SerializableModel {
 
             for i in 0..num_categories {
                 for j in 0..num_categories {
-                    let cost = if i == j { 0 } else { 200 };
+                    // Use high default cost for unseen connections
+                    let cost = if i == j { 0 } else { i16::MAX };
                     writeln!(writer, "{i} {j} {cost}")?;
                 }
             }
@@ -1196,14 +1152,13 @@ impl SerializableModel {
                 weights[weights.len() / 2]
             };
             // Convert to appropriate cost range for practical use
-            (median_weight * cost_constants::DEFAULT_WORD_COST_MULTIPLIER).abs() as i32
-                + cost_constants::DEFAULT_WORD_COST_BASE
+            (median_weight * 500.0).abs() as i32 + 1500
         } else {
             // Keep existing value if no trained weights
             metadata
                 .get("default_word_cost")
                 .and_then(|v| v.as_i64())
-                .unwrap_or(cost_constants::DEFAULT_WORD_COST_FALLBACK as i64) as i32
+                .unwrap_or(2000) as i32
         };
 
         // Update metadata with trained model values
@@ -1236,69 +1191,44 @@ impl SerializableModel {
         &self,
         writer: &mut W,
     ) -> anyhow::Result<()> {
-        // 未知語カテゴリの定義情報のみを出力
-        // 実際の語彙エントリではなく、カテゴリごとの設定情報
         let categories = [
-            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),   // 文字種不明
-            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),  // ひらがな
-            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),  // カタカナ
-            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),     // 漢字
-            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"), // アルファベット
-            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),     // 数字
+            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),
+            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),
+            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),
+            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),
+            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"),
+            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),
         ];
 
+        let weight_scale_factor = self.calculate_weight_scale_factor();
+
+        // Unknown word categories are at the end of labels (last 6 entries)
+        let unk_start_idx = self.labels.len().saturating_sub(6);
+
+        eprintln!("DEBUG: Writing unknown dictionary, unk_start_idx={unk_start_idx}");
+
         for (i, (category, features)) in categories.iter().enumerate() {
-            // Use dynamic cost calculation based on trained model
-            let cost = if !self.feature_weights.is_empty() && i < self.feature_weights.len() {
-                // Use centralized cost calculation for unknown words
-                self.calculate_unknown_word_cost(self.feature_weights[i], i)
-            } else {
-                // Fallback to category-specific default costs
-                match i {
-                    0 => 2000, // DEFAULT
-                    1 => 1800, // HIRAGANA
-                    2 => 1800, // KATAKANA
-                    3 => 2200, // KANJI
-                    4 => 2100, // ALPHA
-                    5 => 1900, // NUMERIC
-                    _ => 2000, // Other categories
-                }
-            };
-            // Use offset context IDs to avoid conflict with lexicon entries
-            let context_id = i + 100; // Start from 100 to avoid conflicts
-            writeln!(
-                writer,
-                "{category},{context_id},{context_id},{cost},{features}"
-            )?;
+            let feature_idx = unk_start_idx + i;
+
+            if feature_idx < self.feature_sets.len() {
+                let fs = &self.feature_sets[feature_idx];
+
+                // Use learned connection IDs and cost
+                let cost = (-fs.weight * weight_scale_factor) as i16;
+
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    category, fs.left_id, fs.right_id, cost, features
+                )?;
+
+                eprintln!(
+                    "DEBUG: unk category={}, left_id={}, right_id={}, weight={:.3}, cost={}",
+                    category, fs.left_id, fs.right_id, fs.weight, cost
+                );
+            }
         }
 
         Ok(())
-    }
-
-    /// Calculate cost for known words based on feature weight
-    fn calculate_known_word_cost(&self, feature_weight: f64) -> i16 {
-        let scaled_weight = (feature_weight * cost_constants::KNOWN_WORD_COST_MULTIPLIER) as i32;
-        let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
-        final_cost.clamp(
-            cost_constants::KNOWN_WORD_COST_MIN as i32,
-            cost_constants::KNOWN_WORD_COST_MAX as i32,
-        ) as i16
-    }
-
-    /// Calculate cost for unknown words based on feature weight and category
-    fn calculate_unknown_word_cost(&self, feature_weight: f64, category: usize) -> i32 {
-        let base_cost = cost_constants::UNK_BASE_COST;
-        let category_adjustment = match category {
-            0 => cost_constants::UNK_DEFAULT_ADJUSTMENT,
-            1 => cost_constants::UNK_HIRAGANA_ADJUSTMENT,
-            2 => cost_constants::UNK_KATAKANA_ADJUSTMENT,
-            3 => cost_constants::UNK_KANJI_ADJUSTMENT,
-            4 => cost_constants::UNK_ALPHA_ADJUSTMENT,
-            5 => cost_constants::UNK_NUMERIC_ADJUSTMENT,
-            _ => 0,
-        };
-        let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
-        let final_cost = base_cost + category_adjustment + scaled_weight;
-        final_cost.clamp(cost_constants::UNK_COST_MIN, cost_constants::UNK_COST_MAX)
     }
 }

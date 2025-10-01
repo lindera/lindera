@@ -2,19 +2,14 @@
 # These define how features are extracted from the morphological data
 
 # Unigram features (word-level features)
-UNIGRAM:%F[0]    # Part of speech (first element of features)
-UNIGRAM:%F[1]    # Sub-category 1
-UNIGRAM:%F[6]    # Base form
-UNIGRAM:%F[7]    # Reading (katakana)
+UNIGRAM U00:%F[0]    # Part of speech
+UNIGRAM U01:%F[0],%F?[1]    # POS + sub-category
+UNIGRAM U02:%F[0],%F[1],%F?[2]    # POS hierarchy
 
-# Left context features (for transition costs)
-LEFT:%L[0]       # Left word POS
-LEFT:%L[1]       # Left word sub-category
-
-# Right context features (for transition costs)
-RIGHT:%R[0]      # Right word POS
-RIGHT:%R[1]      # Right word sub-category
-
-# Bigram features (combinations)
-UNIGRAM:%F[0]/%F[1]    # POS + sub-category
-UNIGRAM:%F[0]/%F[6]    # POS + base form
+# Bigram features (transition features between words)
+# Format: BIGRAM label:%L[index]/%R[index]
+# %L = left context (previous word), %R = right context (next word)
+BIGRAM B00:%L[0]/%R[0]    # POS-to-POS transition
+BIGRAM B01:%L[0],%L?[1]/%R[0]    # Left POS hierarchy to right POS
+BIGRAM B02:%L[0]/%R[0],%R?[1]    # Left POS to right POS hierarchy
+BIGRAM B03:%L[0],%L[1],%L?[2]/%R[0]    # Detailed left to simple right
