@@ -132,12 +132,20 @@ impl Trainer {
         let mut label_id_map = HashMap::new();
 
         // Build label mapping from surfaces and add feature sets to provider
+        // Generate default features based on dictionary schema
+        let default_features = if let Some(first_feature) = config.features.first() {
+            let field_count = first_feature.split(',').count();
+            vec!["*"; field_count].join(",")
+        } else {
+            "*".to_string()
+        };
+
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string from config.features (parallel to surfaces)
             let feature_str = if i < config.features.len() {
                 &config.features[i]
             } else {
-                "名詞,一般,*,*,*,*,*,*,*"
+                &default_features
             };
 
             // Create feature set for this vocabulary entry
@@ -166,24 +174,18 @@ impl Trainer {
             }
         }
 
-        // Initialize unknown word labels for 6 character type categories
+        // Initialize unknown word labels from character definition categories
         let mut label_id_map_unk = Vec::new();
-        let unk_categories = [
-            "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
-        ];
+        let char_def = &config.dict.character_definition;
+        let unk_category_names = char_def.categories();
 
-        for (i, category) in unk_categories.iter().enumerate() {
-            // Get unknown word feature string based on category
-            let unk_feature = match *category {
-                "DEFAULT" => "名詞,一般,*,*,*,*,*,*,*",
-                "HIRAGANA" => "名詞,一般,*,*,*,*,*,*,*",
-                "KATAKANA" => "名詞,一般,*,*,*,*,*,*,*",
-                "KANJI" => "名詞,一般,*,*,*,*,*,*,*",
-                "ALPHA" => "名詞,固有名詞,*,*,*,*,*,*,*",
-                "NUMERIC" => "名詞,数,*,*,*,*,*,*,*",
-                _ => "名詞,一般,*,*,*,*,*,*,*",
-            }
-            .to_string();
+        for (i, category) in unk_category_names.iter().enumerate() {
+            // Get unknown word feature string from unk_categories
+            let unk_feature = config
+                .unk_categories
+                .get(category)
+                .cloned()
+                .unwrap_or_else(|| default_features.clone());
 
             // Create feature set for unknown word category
             let feature_extractor = &mut config.feature_extractor;
@@ -463,14 +465,12 @@ impl Trainer {
     /// Extracts labels from the configuration
     fn extract_labels(&self) -> Vec<String> {
         let mut labels = self.config.surfaces.clone();
-        labels.extend(vec![
-            "DEFAULT".to_string(),
-            "HIRAGANA".to_string(),
-            "KATAKANA".to_string(),
-            "KANJI".to_string(),
-            "ALPHA".to_string(),
-            "NUMERIC".to_string(),
-        ]);
+        // Add unknown word category labels from character definition
+        // This makes it work for any dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)
+        let char_def = &self.config.dict.character_definition;
+        for category_name in char_def.categories() {
+            labels.push(category_name.to_string());
+        }
         labels
     }
 
