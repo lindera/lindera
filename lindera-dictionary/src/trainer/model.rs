@@ -777,8 +777,8 @@ impl Model {
         }
     }
 
-    /// 表層形と素性から文脈ID（left_id, right_id）を推論
-    /// 学習済み語彙から最も類似した品詞パターンを探してそのIDを使用
+    /// Infer context IDs (left_id, right_id) from surface form and features.
+    /// Finds the most similar POS pattern from trained vocabulary and uses its ID.
     fn infer_context_ids(&self, surface: &str, features: &str) -> (u32, u32) {
         // Parse feature string to get POS information
         let feature_parts: Vec<&str> = features.split(',').collect();
@@ -851,7 +851,7 @@ impl Model {
         }
     }
 
-    /// 学習データから最大文脈IDを計算
+    /// Calculate maximum context ID from training data
     #[allow(dead_code)]
     fn calculate_max_context_id(&self) -> u32 {
         let mut max_id = 0u32;
@@ -864,24 +864,24 @@ impl Model {
         max_id
     }
 
-    /// 学習済みモデルに基づいて接続コストを計算
+    /// Calculate connection cost based on trained model
     #[allow(dead_code)]
     fn get_trained_connection_cost(&self, from_id: usize, to_id: usize) -> i32 {
-        // CRFの特徴重みを使用して接続コストを計算
+        // Use CRF feature weights to calculate connection cost
         let weights = self.raw_model.weights();
 
         if weights.is_empty() {
-            return 0; // フォールバック
+            return 0; // Fallback
         }
 
-        // 文脈IDの組み合わせに基づいてコストを計算
+        // Calculate cost based on context ID combination
         let cost_index = (from_id * 1000 + to_id) % weights.len();
         let raw_cost = weights[cost_index];
 
-        // 負の重みは低いコスト（良い接続）、正の重みは高いコスト（悪い接続）
+        // Negative weight = low cost (good connection), positive weight = high cost (bad connection)
         let scaled_cost = (-raw_cost * 1000.0) as i32;
 
-        // コストの範囲を制限（-10000 〜 10000）
+        // Limit cost range (-10000 to 10000)
         scaled_cost.clamp(-10000, 10000)
     }
 
