@@ -4,15 +4,14 @@ use std::path::Path;
 
 use anyhow::Result;
 
+use super::feature_extractor::FeatureExtractor;
+use super::feature_rewriter::FeatureRewriter;
 use crate::dictionary::Dictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::metadata::Metadata;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
-// Dictionary builders are not needed for the simplified approach
-use super::feature_extractor::FeatureExtractor;
-use super::feature_rewriter::FeatureRewriter;
 
 /// Configuration for training.
 pub struct TrainerConfig {
@@ -28,6 +27,14 @@ pub struct TrainerConfig {
     pub(crate) unigram_rewriter: FeatureRewriter,
     pub(crate) left_rewriter: FeatureRewriter,
     pub(crate) right_rewriter: FeatureRewriter,
+    /// Metadata from which encoding and schema information is derived
+    pub(crate) metadata: Metadata,
+    /// Maps unknown word category names to their feature strings from unk.def
+    /// Format: category -> "pos,feature1,feature2,..."
+    pub(crate) unk_categories: HashMap<String, String>,
+    /// Maps unknown word category names to their costs from unk.def
+    /// Format: category -> cost
+    pub(crate) unk_costs: HashMap<String, i32>,
 }
 
 impl TrainerConfig {
@@ -86,9 +93,17 @@ impl TrainerConfig {
                 continue;
             }
             let parts: Vec<&str> = line.split(',').collect();
+
+            // Accept any dictionary format with at least 5 columns
+            // Format: surface,left_id,right_id,cost,feature1,feature2,...
+            // - IPADIC:    13 columns (pos + 8 feature fields)
+            // - UniDic:    21+ columns (pos + 16+ feature fields)
+            // - ko-dic:    8 columns (pos + 3 feature fields)
+            // - CC-CEDICT: 8 columns (pos + 3 feature fields)
             if parts.len() >= 5 {
                 let surface = parts[0].to_string();
                 // Extract features from columns 4 onwards (skip surface,left_id,right_id,cost)
+                // This works for any dictionary format
                 let feature_str = parts[4..].join(",");
                 surfaces.push(surface.clone());
                 features.push(feature_str.clone());
@@ -142,9 +157,40 @@ impl TrainerConfig {
         let left_rewriter = FeatureRewriter::new();
         let right_rewriter = FeatureRewriter::from_reader(rewrite_rules_rdr)?;
 
-        // Build dictionary from readers
-        let dict =
-            Self::build_dictionary_from_readers(&lexicon_content, char_prop_rdr, unk_handler_rdr)?;
+        // Parse unk.def to extract category-to-features mapping
+        let mut unk_content = String::new();
+        {
+            let mut unk_reader = BufReader::new(unk_handler_rdr);
+            std::io::Read::read_to_string(&mut unk_reader, &mut unk_content)?;
+        }
+
+        let mut unk_categories = HashMap::new();
+        let mut unk_costs = HashMap::new();
+        for line in unk_content.lines() {
+            if line.trim().is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let parts: Vec<&str> = line.split(',').collect();
+            // Format: category,left_id,right_id,cost,feature1,feature2,...
+            if parts.len() >= 5 {
+                let category = parts[0].to_string();
+                let features = parts[4..].join(",");
+                unk_categories.insert(category.clone(), features);
+
+                // Parse cost (4th column)
+                if let Ok(cost) = parts[3].parse::<i32>() {
+                    unk_costs.insert(category, cost);
+                }
+            }
+        }
+
+        // Build dictionary from readers (need to re-create reader from unk_content)
+        use std::io::Cursor;
+        let dict = Self::build_dictionary_from_readers(
+            &lexicon_content,
+            char_prop_rdr,
+            Cursor::new(unk_content.as_bytes()),
+        )?;
 
         Ok(Self {
             dict,
@@ -156,6 +202,9 @@ impl TrainerConfig {
             unigram_rewriter,
             left_rewriter,
             right_rewriter,
+            metadata: Metadata::default(), // Use default metadata for backward compatibility
+            unk_categories,
+            unk_costs,
         })
     }
 
@@ -223,6 +272,11 @@ impl TrainerConfig {
             File::open(feature_templates_path)?,
             File::open(rewrite_rules_path)?,
         )
+    }
+
+    /// Get the metadata
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
     }
 
     /// Builds a dictionary from raw file contents
@@ -437,5 +491,270 @@ impl TrainerConfig {
         matrix_data.extend(vec![0u8; cost_data_size]);
 
         Ok(ConnectionCostMatrix::load(matrix_data))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_ipadic_format_13_columns() {
+        // IPADIC format: 13 columns
+        let seed_csv = "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                        行く,1,1,4000,動詞,自立,*,*,五段・カ行促音便,基本形,行く,イク,イク\n";
+        let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n0x3042..0x3096 HIRAGANA\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\n";
+        let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces().len(), 2);
+        assert!(config.surfaces().contains(&"東京".to_string()));
+        assert!(config.surfaces().contains(&"行く".to_string()));
+
+        // Verify features are correctly extracted (9 fields after surface,left_id,right_id,cost)
+        let tokyo_features = config.surface_features().get("東京").unwrap();
+        assert_eq!(
+            tokyo_features,
+            "名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー"
+        );
+    }
+
+    #[test]
+    fn test_ko_dic_format_8_columns() {
+        // ko-dic format: 8 columns
+        let seed_csv = "한국,0,0,5000,NNG,Korea,F,han-guk\n\
+                        안녕,1,1,4000,NNG,hello,F,an-nyeong\n";
+        let char_def = "DEFAULT 0 1 0\nHANGUL 1 1 0\n0xAC00..0xD7A3 HANGUL\n";
+        let unk_def = "DEFAULT,0,0,1500,NNG,unknown,F,*\n";
+        let feature_def = "UNIGRAM:%F[0]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces().len(), 2);
+        assert!(config.surfaces().contains(&"한국".to_string()));
+        assert!(config.surfaces().contains(&"안녕".to_string()));
+
+        // Verify features (4 fields after surface,left_id,right_id,cost)
+        let korea_features = config.surface_features().get("한국").unwrap();
+        assert_eq!(korea_features, "NNG,Korea,F,han-guk");
+    }
+
+    #[test]
+    fn test_cc_cedict_format_8_columns() {
+        // CC-CEDICT format: 8 columns
+        let seed_csv = "中国,0,0,5000,n,China,*,zhong1guo2\n\
+                        你好,1,1,4000,x,hello,*,ni3hao3\n";
+        let char_def = "DEFAULT 0 1 0\nHANZI 1 1 0\n0x4E00..0x9FFF HANZI\n";
+        let unk_def = "DEFAULT,0,0,1500,n,unknown,*,*\n";
+        let feature_def = "UNIGRAM:%F[0]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces().len(), 2);
+        assert!(config.surfaces().contains(&"中国".to_string()));
+        assert!(config.surfaces().contains(&"你好".to_string()));
+
+        // Verify features (4 fields after surface,left_id,right_id,cost)
+        let china_features = config.surface_features().get("中国").unwrap();
+        assert_eq!(china_features, "n,China,*,zhong1guo2");
+    }
+
+    #[test]
+    fn test_unidic_format_21_columns() {
+        // UniDic format: 21 columns (simplified example)
+        let seed_csv = "東京,0,0,5000,名詞,固有名詞,地名,一般,*,*,トウキョウ,東京,東京,東京,東京,東京,トウキョウ,トーキョー,東京,東京,1\n";
+        let char_def = "DEFAULT 0 1 0\nKANJI 0 0 2\n0x4E00..0x9FFF KANJI\n";
+        let unk_def = "DEFAULT,0,0,1500,名詞,普通名詞,一般,*,*,*,*,*,*,*,*,*,*,*,*,*,*\n";
+        let feature_def = "UNIGRAM:%F[0]\nUNIGRAM:%F[1]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces().len(), 1);
+        assert!(config.surfaces().contains(&"東京".to_string()));
+
+        // Verify features (17 fields after surface,left_id,right_id,cost)
+        let tokyo_features = config.surface_features().get("東京").unwrap();
+        assert_eq!(
+            tokyo_features,
+            "名詞,固有名詞,地名,一般,*,*,トウキョウ,東京,東京,東京,東京,東京,トウキョウ,トーキョー,東京,東京,1"
+        );
+    }
+
+    #[test]
+    fn test_mixed_column_counts() {
+        // Test that we can handle files with varying column counts
+        let seed_csv = "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n\
+                        한국,1,1,4000,NNG,Korea,F,han-guk\n\
+                        中国,2,2,3000,n,China,*,zhong1guo2\n";
+        let char_def = "DEFAULT 0 1 0\n";
+        let unk_def = "DEFAULT,0,0,1500,*,*,*,*\n";
+        let feature_def = "UNIGRAM:%F[0]\n";
+        let rewrite_def = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        assert_eq!(config.surfaces().len(), 3);
+
+        // Each row has different number of feature fields, all should be accepted
+        assert_eq!(
+            config.surface_features().get("東京").unwrap(),
+            "名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー"
+        );
+        assert_eq!(
+            config.surface_features().get("한국").unwrap(),
+            "NNG,Korea,F,han-guk"
+        );
+        assert_eq!(
+            config.surface_features().get("中国").unwrap(),
+            "n,China,*,zhong1guo2"
+        );
+    }
+
+    #[test]
+    fn test_trainer_config_creation() {
+        // Test that TrainerConfig can be created with minimal valid data
+        let lexicon_data = "外国,0,0,5000,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n人,1,1,5000,名詞,接尾,一般,*,*,*,人,ジン,ジン\n";
+        let char_data = "# char.def placeholder\n";
+        let unk_data = "# unk.def placeholder\n";
+        let feature_data = "UNIGRAM:%F[0]\nLEFT:%L[0]\nRIGHT:%R[0]\n";
+        let rewrite_data = "# rewrite.def placeholder\n";
+
+        let result = TrainerConfig::from_readers(
+            Cursor::new(lexicon_data.as_bytes()),
+            Cursor::new(char_data.as_bytes()),
+            Cursor::new(unk_data.as_bytes()),
+            Cursor::new(feature_data.as_bytes()),
+            Cursor::new(rewrite_data.as_bytes()),
+        );
+
+        // Config creation should now succeed with the fixed implementation
+        assert!(result.is_ok());
+        let config = result.unwrap();
+        // Verify that surfaces were extracted correctly using the getter
+        assert_eq!(config.surfaces().len(), 2);
+        assert!(config.surfaces().contains(&"外国".to_string()));
+        assert!(config.surfaces().contains(&"人".to_string()));
+    }
+
+    #[test]
+    fn test_unk_categories_ipadic() {
+        // Test that unk_categories are correctly extracted for IPADIC format
+        let lexicon_data = "東京,0,0,5000,名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー\n";
+        let char_data = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n";
+        let unk_data = "DEFAULT,0,0,1500,名詞,一般,*,*,*,*,*,*,*\nHIRAGANA,1,1,2000,名詞,代名詞,一般,*,*,*,*,*,*\n";
+        let feature_data = "UNIGRAM:%F[0]\n";
+        let rewrite_data = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(lexicon_data),
+            Cursor::new(char_data),
+            Cursor::new(unk_data),
+            Cursor::new(feature_data),
+            Cursor::new(rewrite_data),
+        )
+        .unwrap();
+
+        // Verify unk_categories extracted correctly
+        assert_eq!(config.unk_categories.len(), 2);
+        assert_eq!(
+            config.unk_categories.get("DEFAULT").unwrap(),
+            "名詞,一般,*,*,*,*,*,*,*"
+        );
+        assert_eq!(
+            config.unk_categories.get("HIRAGANA").unwrap(),
+            "名詞,代名詞,一般,*,*,*,*,*,*"
+        );
+    }
+
+    #[test]
+    fn test_unk_categories_ko_dic() {
+        // Test that unk_categories work for Korean dictionary format
+        let lexicon_data = "한국,0,0,5000,NNG,Korea,F,han-guk\n";
+        let char_data = "DEFAULT 0 1 0\n";
+        let unk_data = "DEFAULT,0,0,1500,NNG,unknown,F,*\n";
+        let feature_data = "UNIGRAM:%F[0]\n";
+        let rewrite_data = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(lexicon_data),
+            Cursor::new(char_data),
+            Cursor::new(unk_data),
+            Cursor::new(feature_data),
+            Cursor::new(rewrite_data),
+        )
+        .unwrap();
+
+        assert_eq!(config.unk_categories.len(), 1);
+        assert_eq!(
+            config.unk_categories.get("DEFAULT").unwrap(),
+            "NNG,unknown,F,*"
+        );
+    }
+
+    #[test]
+    fn test_unk_categories_cc_cedict() {
+        // Test that unk_categories work for Chinese dictionary format
+        let lexicon_data = "中国,0,0,5000,n,China,*,zhong1guo2\n";
+        let char_data = "DEFAULT 0 1 0\n";
+        let unk_data = "DEFAULT,0,0,1500,n,unknown,*,*\n";
+        let feature_data = "UNIGRAM:%F[0]\n";
+        let rewrite_data = "*\tUNK\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(lexicon_data),
+            Cursor::new(char_data),
+            Cursor::new(unk_data),
+            Cursor::new(feature_data),
+            Cursor::new(rewrite_data),
+        )
+        .unwrap();
+
+        assert_eq!(config.unk_categories.len(), 1);
+        assert_eq!(
+            config.unk_categories.get("DEFAULT").unwrap(),
+            "n,unknown,*,*"
+        );
     }
 }

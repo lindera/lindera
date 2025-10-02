@@ -108,3 +108,28 @@ impl Corpus {
         self.examples.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_corpus_from_reader() {
+        let corpus_data = r#"外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+EOS
+"#;
+
+        let cursor = Cursor::new(corpus_data.as_bytes());
+        let corpus = Corpus::from_reader(cursor).unwrap();
+
+        assert_eq!(corpus.len(), 2);
+        // Test basic properties without accessing private fields
+        // In a real implementation, we would add public accessor methods
+    }
+}

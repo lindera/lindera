@@ -40,6 +40,10 @@ pub struct SerializableModel {
     pub max_right_id: usize,
     /// Feature set information (left_id, right_id, weight) for each label
     pub feature_sets: Vec<FeatureSetInfo>,
+    /// Unknown word category names (from char.def)
+    pub unk_category_names: Vec<String>,
+    /// Unknown word category features (from unk.def)
+    pub unk_categories: std::collections::HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode)]
@@ -195,19 +199,16 @@ impl Model {
     }
 
     fn get_category_id(&self, ch: char) -> u32 {
-        // Map character to category ID for feature extraction
-        if ch.is_ascii_digit() {
-            5 // NUMERIC
-        } else if ch.is_ascii_alphabetic() {
-            4 // ALPHA
-        } else if ('\u{4E00}'..='\u{9FAF}').contains(&ch) {
-            3 // KANJI
-        } else if ('\u{30A1}'..='\u{30F6}').contains(&ch) {
-            2 // KATAKANA
-        } else if ('\u{3041}'..='\u{3096}').contains(&ch) {
-            1 // HIRAGANA
+        // Use CharacterDefinition to map character to category ID
+        // This works for any dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT, etc.)
+        let char_def = &self.config.dict.character_definition;
+        let categories = char_def.lookup_categories(ch);
+
+        // Return the first category ID, or 0 (DEFAULT) if no categories match
+        if !categories.is_empty() {
+            categories[0].0 as u32
         } else {
-            0 // DEFAULT
+            0 // DEFAULT category
         }
     }
 
@@ -297,6 +298,14 @@ impl Model {
             );
         }
 
+        // Extract unknown word category information
+        let char_def = &self.config.dict.character_definition;
+        let unk_category_names: Vec<String> = char_def
+            .categories()
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+
         let serializable_model = SerializableModel {
             feature_weights,
             labels: self.labels.clone(),
@@ -313,6 +322,8 @@ impl Model {
             max_left_id,
             max_right_id,
             feature_sets,
+            unk_category_names,
+            unk_categories: self.config.unk_categories.clone(),
         };
 
         // Use bincode for efficient binary serialization
@@ -468,18 +479,51 @@ impl Model {
         Ok(self.raw_model.merge()?)
     }
 
+    /// Generate a default feature string with appropriate number of fields
+    /// based on existing entries in the dictionary
+    fn generate_default_features(&self) -> String {
+        // Try to infer field count from existing unk_categories
+        if let Some(first_unk) = self.config.unk_categories.values().next() {
+            let field_count = first_unk.split(',').count();
+            return vec!["*"; field_count].join(",");
+        }
+
+        // Fallback: try from config.features
+        if let Some(first_feature) = self.config.features.first() {
+            let field_count = first_feature.split(',').count();
+            return vec!["*"; field_count].join(",");
+        }
+
+        // Ultimate fallback (should rarely happen)
+        "*".to_string()
+    }
+
     /// Extracts part-of-speech information for each label
     fn extract_pos_info(&self) -> Vec<String> {
         // Get POS info from config.features (parallel to surfaces/labels)
         let mut pos_info = Vec::new();
 
-        for (i, _surface) in self.labels.iter().enumerate() {
+        for (i, label) in self.labels.iter().enumerate() {
             // First check if this is within the vocabulary (config.features range)
             if i < self.config.features.len() {
                 pos_info.push(self.config.features[i].clone());
             } else {
-                // For unknown word categories (DEFAULT, HIRAGANA, etc.), use default POS
-                pos_info.push("名詞,一般,*,*,*,*,*,*,*".to_string());
+                // For unknown word categories (DEFAULT, HIRAGANA, etc.),
+                // look up POS info from unk_categories
+                let unk_features = self
+                    .config
+                    .unk_categories
+                    .get(label)
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        // Fallback: use DEFAULT category if label not found in unk_categories
+                        self.config
+                            .unk_categories
+                            .get("DEFAULT")
+                            .cloned()
+                            .unwrap_or_else(|| self.generate_default_features())
+                    });
+                pos_info.push(unk_features);
             }
         }
 
@@ -643,16 +687,22 @@ impl Model {
                 let cost = (-feature_set.weight * weight_scale_factor) as i16;
 
                 // Get category name and features from config
-                let cate_string = match i {
-                    0 => "DEFAULT",
-                    1 => "HIRAGANA",
-                    2 => "KATAKANA",
-                    3 => "KANJI",
-                    4 => "ALPHA",
-                    5 => "NUMERIC",
-                    _ => "UNKNOWN",
+                let char_def = &self.config.dict.character_definition;
+                let category_names = char_def.categories();
+                let cate_string = if i < category_names.len() {
+                    category_names[i].as_str()
+                } else {
+                    "UNKNOWN"
                 };
-                let features = "名詞,一般,*,*,*,*,*,*,*";
+                let features = self
+                    .config
+                    .unk_categories
+                    .get(cate_string)
+                    .map(|s| s.as_str())
+                    .unwrap_or_else(|| {
+                        // Use generated default features with appropriate field count
+                        Box::leak(self.generate_default_features().into_boxed_str())
+                    });
 
                 writeln!(
                     writer,
@@ -708,88 +758,97 @@ impl Model {
         }
     }
 
-    fn get_word_features(&self, surface: &str) -> String {
-        // Get actual features from config
-        self.config
-            .get_features(surface)
-            .unwrap_or_else(|| "名詞,一般,*,*,*,*,*,*,*".to_string())
-    }
-
     /// Calculate unknown word cost based on trained feature weights using dynamic calculation
     pub fn get_unknown_word_cost(&self, category: usize) -> i32 {
-        // Fallback to category-specific default costs
-        match category {
-            0 => 2000, // DEFAULT
-            1 => 1800, // HIRAGANA
-            2 => 1800, // KATAKANA
-            3 => 2200, // KANJI
-            4 => 2100, // ALPHA
-            5 => 1900, // NUMERIC
-            _ => 2000, // Other categories
+        // Get category name from character definition
+        let char_def = &self.config.dict.character_definition;
+        let category_names = char_def.categories();
+
+        if category < category_names.len() {
+            let category_name = &category_names[category];
+            // Look up cost from unk_costs, with fallback to 2000
+            self.config
+                .unk_costs
+                .get(category_name)
+                .copied()
+                .unwrap_or(2000)
+        } else {
+            2000 // Default fallback cost
         }
     }
 
     /// 表層形と素性から文脈ID（left_id, right_id）を推論
+    /// 学習済み語彙から最も類似した品詞パターンを探してそのIDを使用
     fn infer_context_ids(&self, surface: &str, features: &str) -> (u32, u32) {
-        // 素性文字列を解析して品詞情報を取得
+        // Parse feature string to get POS information
         let feature_parts: Vec<&str> = features.split(',').collect();
 
-        // 品詞（POS）に基づいてコンテキストIDを決定
-        let pos_category = if !feature_parts.is_empty() {
-            feature_parts[0]
+        // Find best matching entry from trained vocabulary by comparing features
+        // Try to match increasingly general patterns:
+        // 1. Exact feature match (all fields)
+        // 2. First 2 fields match (main POS + sub POS)
+        // 3. First field match (main POS only)
+        // 4. Same character category (via CharacterDefinition)
+
+        let char_def = &self.config.dict.character_definition;
+
+        // Strategy 1 & 2 & 3: Match by feature similarity
+        let mut best_match_idx: Option<usize> = None;
+        let mut best_match_score = 0;
+
+        for (i, _label) in self.labels.iter().enumerate() {
+            // Skip unknown word categories
+            if i >= self.config.features.len() {
+                break;
+            }
+
+            let vocab_features = &self.config.features[i];
+            let vocab_parts: Vec<&str> = vocab_features.split(',').collect();
+
+            // Calculate similarity score
+            let mut score = 0;
+            let max_fields = feature_parts.len().min(vocab_parts.len());
+
+            for j in 0..max_fields {
+                if feature_parts[j] == vocab_parts[j] {
+                    // Weight earlier fields more heavily (POS > sub-POS > details)
+                    score += (max_fields - j) * 10;
+                }
+            }
+
+            if score > best_match_score {
+                best_match_score = score;
+                best_match_idx = Some(i);
+            }
+        }
+
+        // If found a match from vocabulary, look up from user_entries
+        if let Some(idx) = best_match_idx {
+            // Try to find in user_entries first
+            if idx < self.user_entries.len() {
+                let (_, entry, _) = &self.user_entries[idx];
+                return (entry.left_id as u32, entry.right_id as u32);
+            }
+        }
+
+        // Strategy 4: If no good match found, use character category
+        if best_match_score == 0 && !surface.is_empty() {
+            let first_char = surface.chars().next().unwrap();
+            let categories = char_def.lookup_categories(first_char);
+
+            if !categories.is_empty() {
+                let category_id = categories[0].0 as u32;
+                // Use category ID as both left and right ID
+                return (category_id, category_id);
+            }
+        }
+
+        // Ultimate fallback: use first user_entry's IDs or default to 0
+        if let Some((_, entry, _)) = self.user_entries.first() {
+            (entry.left_id as u32, entry.right_id as u32)
         } else {
-            "名詞" // デフォルト
-        };
-
-        let sub_pos = if feature_parts.len() > 1 {
-            feature_parts[1]
-        } else {
-            "*"
-        };
-
-        // 品詞とサブ品詞の組み合わせから文脈IDを決定
-        let context_id = match (pos_category, sub_pos) {
-            ("名詞", "一般") => 1,
-            ("名詞", "固有名詞") => 2,
-            ("名詞", "代名詞") => 3,
-            ("動詞", "自立") => 4,
-            ("動詞", "非自立") => 5,
-            ("形容詞", "自立") => 6,
-            ("副詞", "一般") => 7,
-            ("助詞", "格助詞") => 8,
-            ("助詞", "係助詞") => 9,
-            ("助動詞", _) => 10,
-            ("記号", _) => 11,
-            _ => 0, // その他・不明
-        };
-
-        // 文字種に基づく微調整
-        let adjusted_id = if surface.chars().all(|c| c.is_ascii_alphabetic()) {
-            context_id + 100 // アルファベット
-        } else if surface.chars().all(|c| c.is_ascii_digit()) {
-            context_id + 200 // 数字
-        } else if surface
-            .chars()
-            .any(|c| ('\u{3040}'..='\u{309F}').contains(&c))
-        {
-            context_id + 300 // ひらがな
-        } else if surface
-            .chars()
-            .any(|c| ('\u{30A0}'..='\u{30FF}').contains(&c))
-        {
-            context_id + 400 // カタカナ
-        } else if surface
-            .chars()
-            .any(|c| ('\u{4E00}'..='\u{9FAF}').contains(&c))
-        {
-            context_id + 500 // 漢字
-        } else {
-            context_id
-        };
-
-        // left_idとright_idは同じ値を使用（簡単化）
-        // より高度な実装では、前後の文脈に応じて異なるIDを使用
-        (adjusted_id, adjusted_id)
+            (0, 0)
+        }
     }
 
     /// 学習データから最大文脈IDを計算
@@ -797,15 +856,12 @@ impl Model {
     fn calculate_max_context_id(&self) -> u32 {
         let mut max_id = 0u32;
 
-        // 全ての語彙について文脈IDを計算し、最大値を取得
-        for surface in &self.config.surfaces {
-            let features = self.get_word_features(surface);
-            let (left_id, right_id) = self.infer_context_ids(surface, &features);
-            max_id = max_id.max(left_id).max(right_id);
+        // Get maximum ID from all user_entries
+        for (_, entry, _) in &self.user_entries {
+            max_id = max_id.max(entry.left_id as u32).max(entry.right_id as u32);
         }
 
-        // 最小でも基本的なカテゴリ数は確保
-        max_id.max(599) // 500（漢字）+ 99（バッファ）
+        max_id
     }
 
     /// 学習済みモデルに基づいて接続コストを計算
@@ -996,6 +1052,25 @@ impl Model {
 }
 
 impl SerializableModel {
+    /// Generate a default feature string with appropriate number of fields
+    /// based on existing entries in the dictionary
+    fn generate_default_features(&self) -> String {
+        // Try to infer field count from existing unk_categories
+        if let Some(first_unk) = self.unk_categories.values().next() {
+            let field_count = first_unk.split(',').count();
+            return vec!["*"; field_count].join(",");
+        }
+
+        // Fallback: try from pos_info
+        if let Some(first_pos) = self.pos_info.first() {
+            let field_count = first_pos.split(',').count();
+            return vec!["*"; field_count].join(",");
+        }
+
+        // Ultimate fallback (should rarely happen)
+        "*".to_string()
+    }
+
     /// Calculate weight scale factor from feature weights
     pub fn calculate_weight_scale_factor(&self) -> f64 {
         let mut weight_abs_max = 0f64;
@@ -1022,24 +1097,25 @@ impl SerializableModel {
             weight_scale_factor
         );
 
-        // Unknown word category labels to skip
-        let unk_categories = [
-            "DEFAULT", "HIRAGANA", "KATAKANA", "KANJI", "ALPHA", "NUMERIC",
-        ];
+        // Get unknown word category labels to skip them
+        let unk_category_names_set: Vec<&str> =
+            self.unk_category_names.iter().map(|s| s.as_str()).collect();
 
         // Write lexicon entries using learned connection IDs and costs
         for (i, label) in self.labels.iter().enumerate() {
             // Skip unknown word categories (they go to unk.def)
-            if unk_categories.contains(&label.as_str()) {
+            if unk_category_names_set.contains(&label.as_str()) {
                 continue;
             }
 
             if i < self.feature_sets.len() {
                 let fs = &self.feature_sets[i];
+                let pos_info_str;
                 let pos_info = if i < self.pos_info.len() {
                     &self.pos_info[i]
                 } else {
-                    "名詞,一般,*,*,*,*,*,*,*"
+                    pos_info_str = self.generate_default_features();
+                    &pos_info_str
                 };
 
                 // Use learned left_id, right_id, and weight directly
@@ -1050,13 +1126,6 @@ impl SerializableModel {
                     "{},{},{},{},{}",
                     label, fs.left_id, fs.right_id, cost, pos_info
                 )?;
-
-                if i < 10 {
-                    eprintln!(
-                        "DEBUG: label={}, left_id={}, right_id={}, weight={:.3}, cost={}",
-                        label, fs.left_id, fs.right_id, fs.weight, cost
-                    );
-                }
             }
         }
 
@@ -1191,27 +1260,32 @@ impl SerializableModel {
         &self,
         writer: &mut W,
     ) -> anyhow::Result<()> {
-        let categories = [
-            ("DEFAULT", "名詞,一般,*,*,*,*,*,*,*"),
-            ("HIRAGANA", "名詞,一般,*,*,*,*,*,*,*"),
-            ("KATAKANA", "名詞,一般,*,*,*,*,*,*,*"),
-            ("KANJI", "名詞,一般,*,*,*,*,*,*,*"),
-            ("ALPHA", "名詞,固有名詞,*,*,*,*,*,*,*"),
-            ("NUMERIC", "名詞,数,*,*,*,*,*,*,*"),
-        ];
-
         let weight_scale_factor = self.calculate_weight_scale_factor();
 
-        // Unknown word categories are at the end of labels (last 6 entries)
-        let unk_start_idx = self.labels.len().saturating_sub(6);
+        // Unknown word categories are at the end of labels
+        let unk_start_idx = self
+            .labels
+            .len()
+            .saturating_sub(self.unk_category_names.len());
 
-        eprintln!("DEBUG: Writing unknown dictionary, unk_start_idx={unk_start_idx}");
+        eprintln!(
+            "DEBUG: Writing unknown dictionary, unk_start_idx={}, num_categories={}",
+            unk_start_idx,
+            self.unk_category_names.len()
+        );
 
-        for (i, (category, features)) in categories.iter().enumerate() {
+        for (i, category_name) in self.unk_category_names.iter().enumerate() {
             let feature_idx = unk_start_idx + i;
 
             if feature_idx < self.feature_sets.len() {
                 let fs = &self.feature_sets[feature_idx];
+
+                // Get features from unk_categories
+                let features = self
+                    .unk_categories
+                    .get(category_name)
+                    .cloned()
+                    .unwrap_or_else(|| self.generate_default_features());
 
                 // Use learned connection IDs and cost
                 let cost = (-fs.weight * weight_scale_factor) as i16;
@@ -1219,16 +1293,55 @@ impl SerializableModel {
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    category, fs.left_id, fs.right_id, cost, features
+                    category_name, fs.left_id, fs.right_id, cost, features
                 )?;
 
                 eprintln!(
                     "DEBUG: unk category={}, left_id={}, right_id={}, weight={:.3}, cost={}",
-                    category, fs.left_id, fs.right_id, fs.weight, cost
+                    category_name, fs.left_id, fs.right_id, fs.weight, cost
                 );
             }
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::trainer::{Trainer, TrainerConfig};
+    use std::io::Cursor;
+
+    #[test]
+    fn test_trainer_creation() {
+        // Test that Trainer can be created from a valid config
+        let lexicon_data = "外国,0,0,5000,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク\n";
+        let char_data = "# char.def placeholder\n";
+        let unk_data = "# unk.def placeholder\n";
+        let feature_data = "UNIGRAM:%F[0]\nLEFT:%L[0]\nRIGHT:%R[0]\n";
+        let rewrite_data = "# rewrite.def placeholder\n";
+
+        let config_result = TrainerConfig::from_readers(
+            Cursor::new(lexicon_data.as_bytes()),
+            Cursor::new(char_data.as_bytes()),
+            Cursor::new(unk_data.as_bytes()),
+            Cursor::new(feature_data.as_bytes()),
+            Cursor::new(rewrite_data.as_bytes()),
+        );
+
+        assert!(config_result.is_ok());
+        let config = config_result.unwrap();
+
+        // Test trainer creation with builder pattern
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(10)
+            .num_threads(1);
+
+        // Verify trainer settings using the getters
+        assert_eq!(trainer.get_regularization_cost(), 0.01);
+        assert_eq!(trainer.get_max_iter(), 10);
+        assert_eq!(trainer.get_num_threads(), 1);
     }
 }
