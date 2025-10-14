@@ -4,6 +4,7 @@ use std::str::FromStr;
 use lindera_dictionary::mode::Mode;
 
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
+use lindera_dictionary::dictionary::character_definition::CategoryId;
 use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
@@ -29,6 +30,15 @@ pub struct Segmenter {
     /// If provided, this dictionary will be used in addition to the default dictionary to improve
     /// the accuracy of segmentation for specific words or phrases.
     pub user_dictionary: Option<UserDictionary>,
+
+    /// Keep whitespace tokens in output.
+    ///
+    /// When false (default), whitespace is ignored for MeCab compatibility.
+    /// When true, whitespace tokens are included in the output.
+    pub keep_whitespace: bool,
+
+    /// The category ID for space characters, used when keep_whitespace is false.
+    space_category_id: Option<CategoryId>,
 }
 
 impl Segmenter {
@@ -54,10 +64,17 @@ impl Segmenter {
         dictionary: Dictionary,
         user_dictionary: Option<UserDictionary>,
     ) -> Self {
+        // Get SPACE category ID for MeCab compatibility (ignore whitespace by default)
+        let space_category_id = dictionary
+            .character_definition
+            .category_id_by_name("SPACE");
+
         Self {
             mode,
             dictionary,
             user_dictionary,
+            keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
+            space_category_id,
         }
     }
 
@@ -120,7 +137,41 @@ impl Segmenter {
             },
         )?;
 
-        Ok(Self::new(mode, dictionary, user_dictionary))
+        // Load the keep_whitespace option from the config
+        // Default is false (MeCab compatible - ignore whitespace)
+        // Set to true explicitly to include whitespace tokens
+        let keep_whitespace = config
+            .get("keep_whitespace")
+            .and_then(Value::as_bool)
+            .unwrap_or(false); // Default: false (ignore whitespace)
+
+        // Get the SPACE category ID if whitespace should be ignored
+        let space_category_id = if !keep_whitespace {
+            dictionary
+                .character_definition
+                .category_id_by_name("SPACE")
+                .ok_or_else(|| {
+                    LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
+                        "SPACE category is not defined in the dictionary (char.def)"
+                    ))
+                })?;
+            Some(
+                dictionary
+                    .character_definition
+                    .category_id_by_name("SPACE")
+                    .unwrap(),
+            )
+        } else {
+            None
+        };
+
+        Ok(Self {
+            mode,
+            dictionary,
+            user_dictionary,
+            keep_whitespace,
+            space_category_id,
+        })
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -221,6 +272,26 @@ impl Segmenter {
                 // Calculate absolute position in the original text
                 let absolute_start = sentence_start + byte_start;
                 let absolute_end = sentence_start + byte_end;
+
+                // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
+                if !self.keep_whitespace {
+                    if let Some(space_category_id) = self.space_category_id {
+                        // Check if this token consists only of whitespace characters
+                        let token_text = &sentence[byte_start..byte_end];
+                        let is_space = token_text.chars().all(|c| {
+                            self.dictionary
+                                .character_definition
+                                .lookup_categories(c)
+                                .contains(&space_category_id)
+                        });
+
+                        if is_space {
+                            // Update byte_position to maintain correct offsets
+                            byte_position += byte_end - byte_start;
+                            continue;
+                        }
+                    }
+                }
 
                 // Create surface Cow efficiently - avoid unnecessary string allocation for owned strings
                 let surface_cow = match &text {
@@ -2938,6 +3009,112 @@ mod tests {
             assert_eq!(token.position_length, 1);
             assert_eq!(token.details(), vec!["UNK"]);
         }
+    }
+
+    #[test]
+    #[cfg(feature = "embedded-ipadic")]
+    fn test_segment_default_ignores_space() {
+        use std::borrow::Cow;
+
+        let config_str = r#"
+        {
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
+
+        let segmenter = Segmenter::from_config(&config).unwrap();
+        let tokens = segmenter
+            .segment(Cow::Borrowed("東京 都"))
+            .unwrap();
+
+        // Default behavior: should have 2 tokens, space is ignored (MeCab compatible)
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, "都");
+    }
+
+    #[test]
+    #[cfg(feature = "embedded-ipadic")]
+    fn test_segment_with_keep_whitespace() {
+        use std::borrow::Cow;
+
+        let config_str = r#"
+        {
+            "dictionary": "embedded://ipadic",
+            "mode": "normal",
+            "keep_whitespace": true
+        }
+        "#;
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
+
+        let segmenter = Segmenter::from_config(&config).unwrap();
+        let tokens = segmenter
+            .segment(Cow::Borrowed("東京 都"))
+            .unwrap();
+
+        // With keep_whitespace=true: should have 3 tokens including space
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, " ");
+        assert_eq!(tokens[2].surface, "都");
+    }
+
+    #[test]
+    #[cfg(feature = "embedded-ipadic")]
+    fn test_segment_default_multiple_spaces() {
+        use std::borrow::Cow;
+
+        let config_str = r#"
+        {
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
+
+        let segmenter = Segmenter::from_config(&config).unwrap();
+        let tokens = segmenter
+            .segment(Cow::Borrowed("東京   都"))
+            .unwrap();
+
+        // Should have 2 tokens: "東京" and "都", multiple spaces are ignored
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, "都");
+    }
+
+    #[test]
+    #[cfg(feature = "embedded-ipadic")]
+    fn test_segment_default_leading_trailing() {
+        use std::borrow::Cow;
+
+        let config_str = r#"
+        {
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        }
+        "#;
+        let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
+
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        // Leading spaces - "   東京都" is segmented as "東京" and "都" (not "東京都")
+        let tokens = segmenter
+            .segment(Cow::Borrowed("   東京都"))
+            .unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, "都");
+
+        // Trailing spaces - "東京都   " is also segmented as "東京" and "都"
+        let tokens = segmenter
+            .segment(Cow::Borrowed("東京都   "))
+            .unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, "都");
     }
 
     #[test]

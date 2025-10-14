@@ -92,6 +92,11 @@ struct TokenizeArgs {
         help = "Token filter config (JSON)"
     )]
     token_filters: Option<Vec<String>>,
+    #[clap(
+        long = "keep-whitespace",
+        help = "Keep whitespace tokens in output (default: whitespace is ignored for MeCab compatibility)"
+    )]
+    keep_whitespace: bool,
     #[clap(help = "Input text file (default: stdin)")]
     input_file: Option<PathBuf>,
 }
@@ -333,6 +338,11 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
     // Mode
     builder.set_segmenter_mode(&args.mode);
+
+    // Keep whitespace (default is to ignore whitespace for MeCab compatibility)
+    if args.keep_whitespace {
+        builder.set_segmenter_keep_whitespace(true);
+    }
 
     // Tokenizer
     let mut tokenizer = builder

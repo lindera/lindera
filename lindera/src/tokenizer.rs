@@ -134,6 +134,11 @@ impl TokenizerBuilder {
         self
     }
 
+    pub fn set_segmenter_keep_whitespace(&mut self, keep_whitespace: bool) -> &mut Self {
+        self.config["segmenter"]["keep_whitespace"] = json!(keep_whitespace);
+        self
+    }
+
     pub fn append_character_filter(&mut self, kind: &str, args: &Value) -> &mut Self {
         if let Some(array) = self.config["character_filters"].as_array_mut() {
             array.push(json!({ "kind": kind, "args": args }));

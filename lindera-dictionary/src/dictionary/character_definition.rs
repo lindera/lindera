@@ -69,6 +69,13 @@ impl CharacterDefinition {
         &self.category_names[category_id.0]
     }
 
+    pub fn category_id_by_name(&self, name: &str) -> Option<CategoryId> {
+        self.category_names
+            .iter()
+            .position(|n| n == name)
+            .map(CategoryId)
+    }
+
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {
         self.mapping.eval(c as u32)
     }
