@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use lindera_dictionary::mode::Mode;
 
-use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::dictionary::character_definition::CategoryId;
+use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
 use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
@@ -65,9 +65,7 @@ impl Segmenter {
         user_dictionary: Option<UserDictionary>,
     ) -> Self {
         // Get SPACE category ID for MeCab compatibility (ignore whitespace by default)
-        let space_category_id = dictionary
-            .character_definition
-            .category_id_by_name("SPACE");
+        let space_category_id = dictionary.character_definition.category_id_by_name("SPACE");
 
         Self {
             mode,
@@ -3025,9 +3023,7 @@ mod tests {
         let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
-        let tokens = segmenter
-            .segment(Cow::Borrowed("東京 都"))
-            .unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("東京 都")).unwrap();
 
         // Default behavior: should have 2 tokens, space is ignored (MeCab compatible)
         assert_eq!(tokens.len(), 2);
@@ -3050,9 +3046,7 @@ mod tests {
         let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
-        let tokens = segmenter
-            .segment(Cow::Borrowed("東京 都"))
-            .unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("東京 都")).unwrap();
 
         // With keep_whitespace=true: should have 3 tokens including space
         assert_eq!(tokens.len(), 3);
@@ -3075,9 +3069,7 @@ mod tests {
         let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
-        let tokens = segmenter
-            .segment(Cow::Borrowed("東京   都"))
-            .unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("東京   都")).unwrap();
 
         // Should have 2 tokens: "東京" and "都", multiple spaces are ignored
         assert_eq!(tokens.len(), 2);
@@ -3101,17 +3093,13 @@ mod tests {
         let segmenter = Segmenter::from_config(&config).unwrap();
 
         // Leading spaces - "   東京都" is segmented as "東京" and "都" (not "東京都")
-        let tokens = segmenter
-            .segment(Cow::Borrowed("   東京都"))
-            .unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("   東京都")).unwrap();
         assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].surface, "東京");
         assert_eq!(tokens[1].surface, "都");
 
         // Trailing spaces - "東京都   " is also segmented as "東京" and "都"
-        let tokens = segmenter
-            .segment(Cow::Borrowed("東京都   "))
-            .unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("東京都   ")).unwrap();
         assert_eq!(tokens.len(), 2);
         assert_eq!(tokens[0].surface, "東京");
         assert_eq!(tokens[1].surface, "都");
