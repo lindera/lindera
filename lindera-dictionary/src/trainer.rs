@@ -541,10 +541,10 @@ impl Trainer {
                 let edge = Edge::new(target, label_id);
 
                 // Skip adding if the edge is already added as a positive edge
-                if let Some(first_edge) = lattice.nodes()[pos].edges().first() {
-                    if edge == *first_edge {
-                        continue;
-                    }
+                if let Some(first_edge) = lattice.nodes()[pos].edges().first()
+                    && edge == *first_edge
+                {
+                    continue;
                 }
                 lattice.add_edge(pos, edge)?;
             }
@@ -564,10 +564,10 @@ impl Trainer {
                     let edge = rucrf::Edge::new(target, label_id);
 
                     // Skip adding if the edge is already added as a positive edge
-                    if let Some(first_edge) = lattice.nodes()[pos].edges().first() {
-                        if edge == *first_edge {
-                            return;
-                        }
+                    if let Some(first_edge) = lattice.nodes()[pos].edges().first()
+                        && edge == *first_edge
+                    {
+                        return;
                     }
                     lattice.add_edge(pos, edge).unwrap();
                 },
@@ -642,10 +642,10 @@ impl Trainer {
                 .left_feature_ids
                 .get(k)
                 .unwrap();
-            if let Some(x) = model.bigram_weight_indices().get(id.get() as usize) {
-                if x.is_empty() {
-                    self.config.feature_extractor.left_feature_ids.remove(k);
-                }
+            if let Some(x) = model.bigram_weight_indices().get(id.get() as usize)
+                && x.is_empty()
+            {
+                self.config.feature_extractor.left_feature_ids.remove(k);
             }
         }
 

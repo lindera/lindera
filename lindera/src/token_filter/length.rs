@@ -43,15 +43,15 @@ impl TokenFilter for LengthTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         tokens.retain(|token| {
             let len = token.surface.chars().count();
-            if let Some(min) = self.min {
-                if len < min {
-                    return false;
-                }
+            if let Some(min) = self.min
+                && len < min
+            {
+                return false;
             }
-            if let Some(max) = self.max {
-                if len > max {
-                    return false;
-                }
+            if let Some(max) = self.max
+                && len > max
+            {
+                return false;
             }
             true
         });

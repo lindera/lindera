@@ -188,10 +188,10 @@ impl CharacterDefinitionBuilder {
                 }
             }
         }
-        if categories_buffer.is_empty() {
-            if let Some(default_category) = self.category_index.get(DEFAULT_CATEGORY_NAME) {
-                categories_buffer.push(*default_category);
-            }
+        if categories_buffer.is_empty()
+            && let Some(default_category) = self.category_index.get(DEFAULT_CATEGORY_NAME)
+        {
+            categories_buffer.push(*default_category);
         }
     }
 

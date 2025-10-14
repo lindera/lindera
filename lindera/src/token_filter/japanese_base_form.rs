@@ -40,10 +40,10 @@ impl TokenFilter for JapaneseBaseFormTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             // Skip tokens with "UNK" in the first detail
-            if let Some(pos) = token.get_detail(0) {
-                if pos == "UNK" {
-                    continue;
-                }
+            if let Some(pos) = token.get_detail(0)
+                && pos == "UNK"
+            {
+                continue;
             }
 
             if let Some(base_form) = token.get("base_form") {

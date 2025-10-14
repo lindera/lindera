@@ -21,8 +21,12 @@ fn hiragana_add_dakuon(c: &char) -> char {
     // Unsafe code is okay, because we know that all the characters within these ranges exist.
     match codepoint {
         0x304b..=0x3062 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
-        0x3064..=0x3069 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
-        0x306f..=0x307d if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x3064..=0x3069 if codepoint.is_multiple_of(2) => unsafe {
+            char::from_u32_unchecked(codepoint + 1)
+        },
+        0x306f..=0x307d if codepoint.is_multiple_of(3) => unsafe {
+            char::from_u32_unchecked(codepoint + 1)
+        },
         _ => *c,
     }
 }
@@ -31,7 +35,9 @@ fn hiragana_remove_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
     // Unsafe code is okay, because we know that all the characters within these ranges exist.
     match codepoint {
-        0x304b..=0x3062 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x304b..=0x3062 if codepoint.is_multiple_of(2) => unsafe {
+            char::from_u32_unchecked(codepoint - 1)
+        },
         0x3064..=0x3069 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         0x306f..=0x307d if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         _ => *c,
@@ -42,8 +48,12 @@ fn katakana_add_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
     match codepoint {
         0x30ab..=0x30c2 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint + 1) },
-        0x30c4..=0x30c9 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
-        0x30cf..=0x30dd if codepoint % 3 == 0 => unsafe { char::from_u32_unchecked(codepoint + 1) },
+        0x30c4..=0x30c9 if codepoint.is_multiple_of(2) => unsafe {
+            char::from_u32_unchecked(codepoint + 1)
+        },
+        0x30cf..=0x30dd if codepoint.is_multiple_of(3) => unsafe {
+            char::from_u32_unchecked(codepoint + 1)
+        },
         _ => *c,
     }
 }
@@ -51,7 +61,9 @@ fn katakana_add_dakuon(c: &char) -> char {
 fn katakana_remove_dakuon(c: &char) -> char {
     let codepoint = *c as u32;
     match codepoint {
-        0x30ab..=0x30c2 if codepoint % 2 == 0 => unsafe { char::from_u32_unchecked(codepoint - 1) },
+        0x30ab..=0x30c2 if codepoint.is_multiple_of(2) => unsafe {
+            char::from_u32_unchecked(codepoint - 1)
+        },
         0x30c4..=0x30c9 if codepoint % 2 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         0x30cf..=0x30dd if codepoint % 3 == 1 => unsafe { char::from_u32_unchecked(codepoint - 1) },
         _ => *c,
@@ -267,7 +279,7 @@ mod tests {
     fn hiragana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;
         // か…ぢ
-        ((0x304b..=0x3062).contains(&codepoint) && codepoint % 2 == 0) ||
+        ((0x304b..=0x3062).contains(&codepoint) && codepoint.is_multiple_of(2)) ||
         // つ…ど
         ((0x3064..=0x3069).contains(&codepoint) && codepoint % 2 == 1) ||
         // は…ぽ
@@ -277,7 +289,7 @@ mod tests {
     fn katakana_has_dakuon(c: &char) -> bool {
         let codepoint = *c as u32;
         // カ…ヂ
-        ((0x30ab..=0x30c2).contains(&codepoint) && codepoint % 2 == 0) ||
+        ((0x30ab..=0x30c2).contains(&codepoint) && codepoint.is_multiple_of(2)) ||
         // ツ…ド
         ((0x30c4..=0x30c9).contains(&codepoint) && codepoint % 2 == 1) ||
         // ハ…ポ
