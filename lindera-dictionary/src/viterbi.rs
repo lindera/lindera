@@ -289,23 +289,22 @@ impl Lattice {
             }
 
             // In the case of normal mode, it doesn't process unknown word greedily.
-            if search_mode.is_search()
-                || unknown_word_end.map(|index| index <= start).unwrap_or(true)
+            if (search_mode.is_search()
+                || unknown_word_end.map(|index| index <= start).unwrap_or(true))
+                && let Some(first_char) = suffix.chars().next()
             {
-                if let Some(first_char) = suffix.chars().next() {
-                    let categories = char_definitions.lookup_categories(first_char);
-                    for (category_ord, &category) in categories.iter().enumerate() {
-                        unknown_word_end = self.process_unknown_word(
-                            char_definitions,
-                            unknown_dictionary,
-                            category,
-                            category_ord,
-                            unknown_word_end,
-                            start,
-                            suffix,
-                            found,
-                        );
-                    }
+                let categories = char_definitions.lookup_categories(first_char);
+                for (category_ord, &category) in categories.iter().enumerate() {
+                    unknown_word_end = self.process_unknown_word(
+                        char_definitions,
+                        unknown_dictionary,
+                        category,
+                        category_ord,
+                        unknown_word_end,
+                        start,
+                        suffix,
+                        found,
+                    );
                 }
             }
         }

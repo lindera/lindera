@@ -272,22 +272,22 @@ impl Segmenter {
                 let absolute_end = sentence_start + byte_end;
 
                 // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if !self.keep_whitespace {
-                    if let Some(space_category_id) = self.space_category_id {
-                        // Check if this token consists only of whitespace characters
-                        let token_text = &sentence[byte_start..byte_end];
-                        let is_space = token_text.chars().all(|c| {
-                            self.dictionary
-                                .character_definition
-                                .lookup_categories(c)
-                                .contains(&space_category_id)
-                        });
+                if !self.keep_whitespace
+                    && let Some(space_category_id) = self.space_category_id
+                {
+                    // Check if this token consists only of whitespace characters
+                    let token_text = &sentence[byte_start..byte_end];
+                    let is_space = token_text.chars().all(|c| {
+                        self.dictionary
+                            .character_definition
+                            .lookup_categories(c)
+                            .contains(&space_category_id)
+                    });
 
-                        if is_space {
-                            // Update byte_position to maintain correct offsets
-                            byte_position += byte_end - byte_start;
-                            continue;
-                        }
+                    if is_space {
+                        // Update byte_position to maintain correct offsets
+                        byte_position += byte_end - byte_start;
+                        continue;
                     }
                 }
 

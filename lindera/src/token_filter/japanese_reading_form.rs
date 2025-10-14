@@ -73,10 +73,10 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
             // Skip unknown tokens
-            if let Some(pos) = token.get_detail(0) {
-                if pos == "UNK" {
-                    continue;
-                }
+            if let Some(pos) = token.get_detail(0)
+                && pos == "UNK"
+            {
+                continue;
             }
 
             if let Some(reading) = token.get("reading") {

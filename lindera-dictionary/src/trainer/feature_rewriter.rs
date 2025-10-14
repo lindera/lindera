@@ -73,11 +73,11 @@ impl FeatureRewriterBuilder {
                 Pattern::Exact(p.to_string())
             };
             for action in &self.nodes[cursor].actions {
-                if let Action::Transition(edge) = action {
-                    if parsed == edge.pattern {
-                        cursor = edge.target;
-                        continue 'a;
-                    }
+                if let Action::Transition(edge) = action
+                    && parsed == edge.pattern
+                {
+                    cursor = edge.target;
+                    continue 'a;
                 }
             }
             let target = self.nodes.len();
