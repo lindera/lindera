@@ -200,19 +200,10 @@ jobs:
       - name: Publish lindera-dictionary
         run: |
           LINDERA_DICTIONARY_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
-          echo "Current version: ${LINDERA_DICTIONARY_VERSION}"
-
           LINDERA_DICTIONARY_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_DICTIONARY_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-dictionary
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_DICTIONARY_VERSIONS}" | grep -Fx "${LINDERA_DICTIONARY_VERSION}" >/dev/null; then
-            echo "lindera-dictionary ${LINDERA_DICTIONARY_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_DICTIONARY_VERSIONS}" | grep -Fx "${LINDERA_DICTIONARY_VERSION}" >/dev/null; then
+            echo "lindera-dictionary ${LINDERA_DICTIONARY_VERSION} has already published"
           else
-            echo "Publishing lindera-dictionary ${LINDERA_DICTIONARY_VERSION}..."
             pushd lindera-dictionary
             cargo publish
             popd
@@ -224,19 +215,10 @@ jobs:
       - name: Publish lindera-cc-cedict
         run: |
           LINDERA_CC_CEDICT_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version')
-          echo "Current version: ${LINDERA_CC_CEDICT_VERSION}"
-
           LINDERA_CC_CEDICT_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_CC_CEDICT_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-cc-cedict
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_CC_CEDICT_VERSIONS}" | grep -Fx "${LINDERA_CC_CEDICT_VERSION}" >/dev/null; then
-            echo "lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_CC_CEDICT_VERSIONS}" | grep -Fx "${LINDERA_CC_CEDICT_VERSION}" >/dev/null; then
+            echo "lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION} has already published"
           else
-            echo "Publishing lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION}..."
             pushd lindera-cc-cedict
             cargo publish
             popd
@@ -248,19 +230,10 @@ jobs:
       - name: Publish lindera-ipadic
         run: |
           LINDERA_IPADIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
-          echo "Current version: ${LINDERA_IPADIC_VERSION}"
-
           LINDERA_IPADIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_IPADIC_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-ipadic
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_IPADIC_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_VERSION}" >/dev/null; then
-            echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_IPADIC_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_VERSION}" >/dev/null; then
+            echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already published"
           else
-            echo "Publishing lindera-ipadic ${LINDERA_IPADIC_VERSION}..."
             pushd lindera-ipadic
             cargo publish
             popd
@@ -272,19 +245,10 @@ jobs:
       - name: Publish lindera-ipadic-neologd
         run: |
           LINDERA_IPADIC_NEOLOGD_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version')
-          echo "Current version: ${LINDERA_IPADIC_NEOLOGD_VERSION}"
-
           LINDERA_IPADIC_NEOLOGD_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_IPADIC_NEOLOGD_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-ipadic-neologd
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_IPADIC_NEOLOGD_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_NEOLOGD_VERSION}" >/dev/null; then
-            echo "lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_IPADIC_NEOLOGD_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_NEOLOGD_VERSION}" >/dev/null; then
+            echo "lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION} has already published"
           else
-            echo "Publishing lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION}..."
             pushd lindera-ipadic-neologd
             cargo publish
             popd
@@ -296,19 +260,10 @@ jobs:
       - name: Publish lindera-ko-dic
         run: |
           LINDERA_KO_DIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version')
-          echo "Current version: ${LINDERA_KO_DIC_VERSION}"
-
           LINDERA_KO_DIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ko-dic | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_KO_DIC_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-ko-dic
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_KO_DIC_VERSIONS}" | grep -Fx "${LINDERA_KO_DIC_VERSION}" >/dev/null; then
-            echo "lindera-ko-dic ${LINDERA_KO_DIC_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_KO_DIC_VERSIONS}" | grep -Fx "${LINDERA_KO_DIC_VERSION}" >/dev/null; then
+            echo "lindera-ko-dic ${LINDERA_KO_DIC_VERSION} has already published"
           else
-            echo "Publishing lindera-ko-dic ${LINDERA_KO_DIC_VERSION}..."
             pushd lindera-ko-dic
             cargo publish
             popd
@@ -320,19 +275,10 @@ jobs:
       - name: Publish lindera-unidic
         run: |
           LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
-          echo "Current version: ${LINDERA_UNIDIC_VERSION}"
-
           LINDERA_UNIDIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-unidic | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_UNIDIC_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-unidic
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_UNIDIC_VERSIONS}" | grep -Fx "${LINDERA_UNIDIC_VERSION}" >/dev/null; then
-            echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_UNIDIC_VERSIONS}" | grep -Fx "${LINDERA_UNIDIC_VERSION}" >/dev/null; then
+            echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
           else
-            echo "Publishing lindera-unidic ${LINDERA_UNIDIC_VERSION}..."
             pushd lindera-unidic
             cargo publish
             popd
@@ -344,19 +290,10 @@ jobs:
       - name: Publish lindera
         run: |
           LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
-          echo "Current version: ${LINDERA_VERSION}"
-
           LINDERA_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_VERSIONS}" | grep -Fx "${LINDERA_VERSION}" >/dev/null; then
-            echo "lindera ${LINDERA_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_VERSIONS}" | grep -Fx "${LINDERA_VERSION}" >/dev/null; then
+            echo "lindera ${LINDERA_VERSION} has already published"
           else
-            echo "Publishing lindera ${LINDERA_VERSION}..."
             pushd lindera
             cargo publish
             popd
@@ -368,19 +305,10 @@ jobs:
       - name: Publish lindera-cli
         run: |
           LINDERA_CLI_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
-          echo "Current version: ${LINDERA_CLI_VERSION}"
-
           LINDERA_CLI_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num')
-
-          if [ -z "${LINDERA_CLI_VERSIONS}" ]; then
-            echo "Warning: Could not fetch version list from crates.io. Attempting to publish..."
-            pushd lindera-cli
-            cargo publish || echo "Publish failed - version may already exist"
-            popd
-          elif echo "${LINDERA_CLI_VERSIONS}" | grep -Fx "${LINDERA_CLI_VERSION}" >/dev/null; then
-            echo "lindera-cli ${LINDERA_CLI_VERSION} has already been published. Skipping."
+          if echo "${LINDERA_CLI_VERSIONS}" | grep -Fx "${LINDERA_CLI_VERSION}" >/dev/null; then
+            echo "lindera-cli ${LINDERA_CLI_VERSION} has already published"
           else
-            echo "Publishing lindera-cli ${LINDERA_CLI_VERSION}..."
             pushd lindera-cli
             cargo publish
             popd
