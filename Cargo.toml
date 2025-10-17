@@ -11,15 +11,27 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+version = "1.4.0"
+edition = "2024"
+description = "A morphological analysis libraries and command line interface."
+documentation = "https://docs.rs/lindera"
+homepage = "https://github.com/lindera/lindera"
+repository = "https://github.com/lindera/lindera"
+readme = "README.md"
+keywords = ["morphological", "analysis", "library", "dictionary", "cli"]
+categories = ["text-processing"]
+license = "MIT"
+
 [workspace.dependencies]
-lindera-dictionary = { version = "1.4.0", path = "lindera-dictionary" }
-lindera-cc-cedict = { version = "1.4.0", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "1.4.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "1.4.0", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "1.4.0", path = "lindera-ko-dic" }
-lindera-unidic = { version = "1.4.0", path = "lindera-unidic" }
-lindera = { version = "1.4.0", path = "lindera" }
-lindera-cli = { version = "1.4.0", path = "lindera-cli" }
+lindera-dictionary = { path = "lindera-dictionary" }
+lindera-cc-cedict = { path = "lindera-cc-cedict" }
+lindera-ipadic = { path = "lindera-ipadic" }
+lindera-ipadic-neologd = { path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { path = "lindera-ko-dic" }
+lindera-unidic = { path = "lindera-unidic" }
+lindera = { path = "lindera" }
+lindera-cli = { path = "lindera-cli" }
 
 anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }

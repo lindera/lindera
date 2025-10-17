@@ -1,15 +1,21 @@
 [package]
 name = "lindera-ipadic-neologd"
-version = "1.4.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 description = "A Japanese morphological dictionary for IPADIC NEologd."
 documentation = "https://docs.rs/lindera-ipadic-neologd"
-homepage = "https://github.com/lindera/lindera"
-repository = "https://github.com/lindera/lindera"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
-keywords = ["japanese", "morphological", "dictionary", "ipadic", "neologd"]
-categories = ["text-processing"]
-license = "MIT"
+keywords = [
+    "morphological",
+    "analysis",
+    "dictionary",
+    "library",
+    "ipadic-neologd",
+]
+categories.workspace = true
+license.workspace = true
 
 [features]
 embedded-ipadic-neologd = []               # Embed IPADIC-NEologd dictionary in the binary
