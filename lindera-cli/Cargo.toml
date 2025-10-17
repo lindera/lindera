@@ -1,15 +1,15 @@
 [package]
 name = "lindera-cli"
-version = "1.4.0"
-edition = "2024"
-description = "A morphological analysis command line interface."
+version.workspace = true
+edition.workspace = true
+description = "A morphological analysis CLI."
 documentation = "https://docs.rs/lindera-cli"
-homepage = "https://github.com/lindera/lindera"
-repository = "https://github.com/lindera/lindera"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["morphological", "analysis", "cli"]
-categories = ["text-processing"]
-license = "MIT"
+categories.workspace = true
+license.workspace = true
 
 [features]
 embedded-ipadic = [

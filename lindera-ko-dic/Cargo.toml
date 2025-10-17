@@ -1,15 +1,15 @@
 [package]
 name = "lindera-ko-dic"
-version = "1.4.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 description = "A Korean morphological dictionary for Ko-Dic."
 documentation = "https://docs.rs/lindera-ko-dic"
-homepage = "https://github.com/lindera/lindera"
-repository = "https://github.com/lindera/lindera"
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
-keywords = ["korean", "morphological", "dictionary", "ko-dic"]
-categories = ["text-processing"]
-license = "MIT"
+keywords = ["morphological", "analysis", "dictionary", "library", "ko-dic"]
+categories.workspace = true
+license.workspace = true
 
 [features]
 embedded-ko-dic = []                       # Embed Ko-Dic dictionary in the binary
