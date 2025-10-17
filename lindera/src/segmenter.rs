@@ -76,6 +76,34 @@ impl Segmenter {
         }
     }
 
+    /// Builder method to set whether to keep whitespace tokens in output.
+    ///
+    /// When `keep_whitespace` is false (default), whitespace is ignored for MeCab compatibility.
+    /// When true, whitespace tokens are included in the output.
+    ///
+    /// # Arguments
+    ///
+    /// * `keep_whitespace` - If true, whitespace tokens will be included in the output.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera::mode::Mode;
+    /// use lindera::dictionary::load_dictionary;
+    /// use lindera::segmenter::Segmenter;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let dictionary = load_dictionary("embedded://ipadic")?;
+    /// let segmenter = Segmenter::new(Mode::Normal, dictionary, None)
+    ///     .keep_whitespace(true);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn keep_whitespace(mut self, keep_whitespace: bool) -> Self {
+        self.keep_whitespace = keep_whitespace;
+        self
+    }
+
     /// A struct representing a segmenter for tokenizing text.
     ///
     /// The `Segmenter` struct provides methods for creating a segmenter from a configuration,
@@ -3046,6 +3074,25 @@ mod tests {
         let config = serde_json::from_str::<SegmenterConfig>(config_str).unwrap();
 
         let segmenter = Segmenter::from_config(&config).unwrap();
+        let tokens = segmenter.segment(Cow::Borrowed("東京 都")).unwrap();
+
+        // With keep_whitespace=true: should have 3 tokens including space
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(tokens[1].surface, " ");
+        assert_eq!(tokens[2].surface, "都");
+    }
+
+    #[test]
+    #[cfg(feature = "embedded-ipadic")]
+    fn test_segment_with_builder_keep_whitespace() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
         let tokens = segmenter.segment(Cow::Borrowed("東京 都")).unwrap();
 
         // With keep_whitespace=true: should have 3 tokens including space
