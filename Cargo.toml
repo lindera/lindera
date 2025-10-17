@@ -24,14 +24,14 @@ categories = ["text-processing"]
 license = "MIT"
 
 [workspace.dependencies]
-lindera-dictionary = { path = "lindera-dictionary" }
-lindera-cc-cedict = { path = "lindera-cc-cedict" }
-lindera-ipadic = { path = "lindera-ipadic" }
-lindera-ipadic-neologd = { path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { path = "lindera-ko-dic" }
-lindera-unidic = { path = "lindera-unidic" }
-lindera = { path = "lindera" }
-lindera-cli = { path = "lindera-cli" }
+lindera-dictionary = { version = "1.4.1", path = "lindera-dictionary" }
+lindera-cc-cedict = { version = "1.4.1", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "1.4.1", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "1.4.1", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "1.4.1", path = "lindera-ko-dic" }
+lindera-unidic = { version = "1.4.1", path = "lindera-unidic" }
+lindera = { version = "1.4.1", path = "lindera" }
+lindera-cli = { version = "1.4.1", path = "lindera-cli" }
 
 anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }
