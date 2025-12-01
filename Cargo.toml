@@ -37,7 +37,7 @@ anyhow = "1.0.100"
 bincode = { version = "2.0.1", features = ["serde"] }
 byteorder = "1.5.0"
 clap = { version = "4.5.49", features = ["derive", "cargo"] }
-criterion = { version = "0.7.0", default-features = false, features = [
+criterion = { version = "0.8.0", default-features = false, features = [
     "html_reports",
 ] }
 csv = "1.3.1"
