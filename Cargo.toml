@@ -34,7 +34,7 @@ lindera = { version = "1.4.2", path = "lindera" }
 lindera-cli = { version = "1.4.2", path = "lindera-cli" }
 
 anyhow = "1.0.100"
-bincode = { version = "2.0.1", features = ["serde"] }
+bincode = { version = "3.0.0", features = ["serde"] }
 byteorder = "1.5.0"
 clap = { version = "4.5.53", features = ["derive", "cargo"] }
 criterion = { version = "0.8.1", default-features = false, features = [
