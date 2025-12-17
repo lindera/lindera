@@ -32,11 +32,11 @@ fn yaml_to_config(file_path: &Path) -> LinderaResult<TokenizerConfig> {
         ))
     })?;
 
-    match serde_yaml::from_slice::<serde_yaml::Value>(&buffer) {
+    match serde_yaml_ng::from_slice::<serde_yaml_ng::Value>(&buffer) {
         Ok(value) => {
             // Check if the value is a mapping.
             match value {
-                serde_yaml::Value::Mapping(_) => {
+                serde_yaml_ng::Value::Mapping(_) => {
                     Ok(serde_json::to_value(value).map_err(|err| {
                         LinderaErrorKind::Deserialize
                             .with_error(err)
