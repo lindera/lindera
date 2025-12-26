@@ -8,12 +8,12 @@ use serde_json::{Value, json};
 
 use crate::LinderaResult;
 use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
+use crate::dictionary::Lattice;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
 use crate::segmenter::Segmenter;
 use crate::token::Token;
 use crate::token_filter::{BoxTokenFilter, TokenFilterLoader};
-use crate::dictionary::Lattice;
 
 pub type TokenizerConfig = Value;
 
@@ -420,7 +420,9 @@ impl Tokenizer {
 
         // Segment a text.
         // Segment a text.
-        let mut tokens = self.segmenter.segment_with_lattice(normalized_text, lattice)?;
+        let mut tokens = self
+            .segmenter
+            .segment_with_lattice(normalized_text, lattice)?;
 
         // Apply token filters to the tokens if they are not empty.
         for token_filter in &self.token_filters {
