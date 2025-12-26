@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 
 use crate::LinderaResult;
 use crate::character_filter::{BoxCharacterFilter, CharacterFilterLoader, OffsetMapping};
+use crate::dictionary::Lattice;
 use crate::error::LinderaErrorKind;
 use crate::mode::Mode;
 use crate::segmenter::Segmenter;
@@ -317,7 +318,81 @@ impl Tokenizer {
     /// - `Cow<'a, str>` is used for the `normalized_text`, allowing the function to either borrow the original text or create an owned version if the text needs modification.
     /// - If no character filters are applied, the original `text` is used as-is for segmentation.
     /// - Token offsets are adjusted after the tokenization process if character filters were applied to ensure the byte positions of each token are accurate relative to the original text.
+    /// Tokenizes the input text using the tokenizer's segmenter, character filters, and token filters.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A reference to the input text (`&str`) that will be tokenized.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing a vector of `Token`s, where each `Token` represents a segment of the tokenized text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Apply character filters**:
+    ///    - If any character filters are defined, they are applied to the input text before tokenization.
+    ///    - The `offsets`, `diffs`, and `text_len` are recorded for each character filter.
+    /// 2. **Segment the text**:
+    ///    - The `segmenter` divides the (potentially filtered) text into tokens.
+    /// 3. **Apply token filters**:
+    ///    - If any token filters are defined, they are applied to the segmented tokens.
+    /// 4. **Correct token offsets**:
+    ///    - If character filters were applied, the byte offsets of each token are corrected to account for changes introduced by those filters.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if any of the character or token filters fail during processing.
+    /// - Returns an error if the segmentation process fails.
+    ///
+    /// # Details
+    ///
+    /// - `Cow<'a, str>` is used for the `normalized_text`, allowing the function to either borrow the original text or create an owned version if the text needs modification.
+    /// - If no character filters are applied, the original `text` is used as-is for segmentation.
+    /// - Token offsets are adjusted after the tokenization process if character filters were applied to ensure the byte positions of each token are accurate relative to the original text.
     pub fn tokenize<'a>(&'a self, text: &'a str) -> LinderaResult<Vec<Token<'a>>> {
+        let mut lattice = Lattice::default();
+        self.tokenize_with_lattice(text, &mut lattice)
+    }
+
+    /// Tokenizes the input text using the tokenizer's segmenter, character filters, and token filters.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A reference to the input text (`&str`) that will be tokenized.
+    /// * `lattice` - A mutable reference to a `Lattice` structure. This allows reusing the lattice across multiple calls to avoid memory allocation.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult` containing a vector of `Token`s, where each `Token` represents a segment of the tokenized text.
+    ///
+    /// # Process
+    ///
+    /// 1. **Apply character filters**:
+    ///    - If any character filters are defined, they are applied to the input text before tokenization.
+    ///    - The `offsets`, `diffs`, and `text_len` are recorded for each character filter.
+    /// 2. **Segment the text**:
+    ///    - The `segmenter` divides the (potentially filtered) text into tokens.
+    /// 3. **Apply token filters**:
+    ///    - If any token filters are defined, they are applied to the segmented tokens.
+    /// 4. **Correct token offsets**:
+    ///    - If character filters were applied, the byte offsets of each token are corrected to account for changes introduced by those filters.
+    ///
+    /// # Errors
+    ///
+    /// - Returns an error if any of the character or token filters fail during processing.
+    /// - Returns an error if the segmentation process fails.
+    ///
+    /// # Details
+    ///
+    /// - `Cow<'a, str>` is used for the `normalized_text`, allowing the function to either borrow the original text or create an owned version if the text needs modification.
+    /// - If no character filters are applied, the original `text` is used as-is for segmentation.
+    /// - Token offsets are adjusted after the tokenization process if character filters were applied to ensure the byte positions of each token are accurate relative to the original text.
+    pub fn tokenize_with_lattice<'a>(
+        &'a self,
+        text: &'a str,
+        lattice: &mut Lattice,
+    ) -> LinderaResult<Vec<Token<'a>>> {
         let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
 
         let mut offset_mappings: Vec<OffsetMapping> =
@@ -344,7 +419,10 @@ impl Tokenizer {
         let final_text_len = normalized_text.len();
 
         // Segment a text.
-        let mut tokens = self.segmenter.segment(normalized_text)?;
+        // Segment a text.
+        let mut tokens = self
+            .segmenter
+            .segment_with_lattice(normalized_text, lattice)?;
 
         // Apply token filters to the tokens if they are not empty.
         for token_filter in &self.token_filters {

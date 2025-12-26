@@ -74,6 +74,20 @@ fn bench_tokenize_ipadic(c: &mut Criterion) {
 }
 
 #[cfg(feature = "embedded-ipadic")]
+fn bench_tokenize_with_lattice_ipadic(c: &mut Criterion) {
+    use lindera::dictionary::Lattice;
+
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    c.bench_function("bench-tokenize-with-lattice-ipadic", |b| {
+        let mut lattice = Lattice::default();
+        b.iter(|| tokenizer.tokenize_with_lattice("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。", &mut lattice))
+    });
+}
+
+#[cfg(feature = "embedded-ipadic")]
 fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -161,6 +175,7 @@ criterion_group!(
     bench_constructor_ipadic,
     bench_constructor_with_simple_userdic_ipadic,
     bench_tokenize_ipadic,
+    bench_tokenize_with_lattice_ipadic,
     bench_tokenize_with_simple_userdic_ipadic,
     bench_tokenize_long_text_ipadic,
     bench_tokenize_details_long_text_ipadic,
