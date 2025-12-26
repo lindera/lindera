@@ -237,8 +237,53 @@ impl Segmenter {
     ///
     /// - If the lattice fails to be processed or if there is an issue with the segmentation process, the function returns an error.
     pub fn segment<'a>(&'a self, text: Cow<'a, str>) -> LinderaResult<Vec<Token<'a>>> {
-        let mut tokens: Vec<Token> = Vec::new();
         let mut lattice = Lattice::default();
+        self.segment_with_lattice(text, &mut lattice)
+    }
+
+    /// Segments the input text into tokens based on the dictionary and user-defined rules.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - A `Cow<'a, str>` representing the input text. This can either be borrowed or owned, allowing for efficient text handling depending on the use case.
+    /// * `lattice` - A mutable reference to a `Lattice` structure. This allows reusing the lattice across multiple calls to avoid memory allocation.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<Vec<Token<'a>>>` which contains a vector of tokens segmented from the input text. Each token represents a portion of the original text, along with metadata such as byte offsets and dictionary information.
+    ///
+    /// # Process
+    ///
+    /// 1. **Sentence Splitting**:
+    ///    - The input text is split into sentences using Japanese punctuation (`。`, `、`, `\n`, `\t`). Each sentence is processed individually.
+    ///
+    /// 2. **Lattice Processing**:
+    ///    - For each sentence, a lattice structure is set up using the main dictionary and, if available, the user dictionary. The lattice helps identify possible token boundaries within the sentence.
+    ///    - The cost matrix is used to calculate the best path (i.e., the optimal sequence of tokens) through the lattice based on the mode.
+    ///
+    /// 3. **Token Generation**:
+    ///    - For each segment (determined by the lattice), a token is generated using the byte offsets. The tokens contain the original text (in `Cow::Owned` form to ensure safe return), byte start/end positions, token positions, and dictionary references.
+    ///
+    /// # Notes
+    ///
+    /// - The function ensures that each token is safely returned by converting substrings into `Cow::Owned` strings.
+    /// - Byte offsets are carefully calculated to ensure that token boundaries are correct even across multiple sentences.
+    ///
+    /// # Example Flow
+    ///
+    /// - Text is split into sentences based on punctuation.
+    /// - A lattice is created and processed for each sentence.
+    /// - Tokens are extracted from the lattice and returned in a vector.
+    ///
+    /// # Errors
+    ///
+    /// - If the lattice fails to be processed or if there is an issue with the segmentation process, the function returns an error.
+    pub fn segment_with_lattice<'a>(
+        &'a self,
+        text: Cow<'a, str>,
+        lattice: &mut Lattice,
+    ) -> LinderaResult<Vec<Token<'a>>> {
+        let mut tokens: Vec<Token> = Vec::new();
 
         let mut position = 0_usize;
         let mut byte_position = 0_usize;
@@ -300,22 +345,22 @@ impl Segmenter {
                 let absolute_end = sentence_start + byte_end;
 
                 // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if !self.keep_whitespace
-                    && let Some(space_category_id) = self.space_category_id
-                {
-                    // Check if this token consists only of whitespace characters
-                    let token_text = &sentence[byte_start..byte_end];
-                    let is_space = token_text.chars().all(|c| {
-                        self.dictionary
-                            .character_definition
-                            .lookup_categories(c)
-                            .contains(&space_category_id)
-                    });
+                if !self.keep_whitespace {
+                    if let Some(space_category_id) = self.space_category_id {
+                        // Check if this token consists only of whitespace characters
+                        let token_text = &sentence[byte_start..byte_end];
+                        let is_space = token_text.chars().all(|c| {
+                            self.dictionary
+                                .character_definition
+                                .lookup_categories(c)
+                                .contains(&space_category_id)
+                        });
 
-                    if is_space {
-                        // Update byte_position to maintain correct offsets
-                        byte_position += byte_end - byte_start;
-                        continue;
+                        if is_space {
+                            // Update byte_position to maintain correct offsets
+                            byte_position += byte_end - byte_start;
+                            continue;
+                        }
                     }
                 }
 

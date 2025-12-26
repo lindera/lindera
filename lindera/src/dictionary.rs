@@ -41,6 +41,7 @@ use crate::error::{LinderaError, LinderaErrorKind};
 pub type Dictionary = lindera_dictionary::dictionary::Dictionary;
 pub type Metadata = lindera_dictionary::dictionary::metadata::Metadata;
 pub type UserDictionary = lindera_dictionary::dictionary::UserDictionary;
+pub type Lattice = lindera_dictionary::viterbi::Lattice;
 pub type WordId = lindera_dictionary::viterbi::WordId;
 pub type DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder;
 pub type DictionaryConfig = Value;
