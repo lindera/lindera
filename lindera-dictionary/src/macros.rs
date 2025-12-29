@@ -9,12 +9,10 @@ macro_rules! decompress_data {
         static $name: once_cell::sync::Lazy<Vec<u8>> = once_cell::sync::Lazy::new(|| {
             use $crate::decompress::{CompressedData, decompress};
 
-            // First check if this is compressed data by attempting to decode as CompressedData
-            match bincode::serde::decode_from_slice::<CompressedData, _>(
-                &$bytes[..],
-                bincode::config::legacy(),
-            ) {
-                Ok((compressed_data, _)) => {
+            let mut aligned = rkyv::util::AlignedVec::<16>::new();
+            aligned.extend_from_slice(&$bytes[..]);
+            match rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned) {
+                Ok(compressed_data) => {
                     // Successfully decoded as CompressedData, now decompress it
                     match decompress(compressed_data) {
                         Ok(decompressed) => decompressed,

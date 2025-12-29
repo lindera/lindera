@@ -16,6 +16,8 @@ use crate::compress::compress;
 use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
 
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+
 #[cfg(feature = "compress")]
 pub fn compress_write<W: Write>(
     buffer: &[u8],
@@ -29,13 +31,19 @@ pub fn compress_write<W: Write>(
                 "Failed to compress data with {algorithm:?} algorithm"
             ))
     })?;
-    bincode::serde::encode_into_std_write(&compressed, writer, bincode::config::legacy()).map_err(
-        |err| {
-            LinderaErrorKind::Io
-                .with_error(err)
-                .add_context("Failed to write compressed data to output")
-        },
-    )?;
+
+    // Use rkyv to serialize the CompressedData
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&compressed).map_err(|err| {
+        LinderaErrorKind::Serialize
+            .with_error(anyhow::anyhow!(err))
+            .add_context("Failed to serialize compressed data")
+    })?;
+
+    writer.write_all(&bytes).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(err)
+            .add_context("Failed to write compressed data to output")
+    })?;
 
     Ok(())
 }
@@ -97,11 +105,40 @@ pub fn read_file_with_encoding(filepath: &Path, encoding_name: &str) -> LinderaR
     Ok(encoding.decode(&buffer).0.into_owned())
 }
 
+use std::sync::Arc;
+
+#[derive(Clone)]
 pub enum Data {
     Static(&'static [u8]),
     Vec(Vec<u8>),
     #[cfg(feature = "mmap")]
-    Map(Mmap),
+    Map(Arc<Mmap>),
+}
+
+impl Archive for Data {
+    type Archived = rkyv::vec::ArchivedVec<u8>;
+    type Resolver = rkyv::vec::VecResolver;
+
+    fn resolve(&self, resolver: Self::Resolver, out: rkyv::Place<Self::Archived>) {
+        rkyv::vec::ArchivedVec::resolve_from_slice(self.deref(), resolver, out);
+    }
+}
+
+impl<S> RkyvSerialize<S> for Data
+where
+    S: rkyv::rancor::Fallible + rkyv::ser::Writer + rkyv::ser::Allocator + ?Sized,
+{
+    fn serialize(&self, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
+        rkyv::vec::ArchivedVec::serialize_from_slice(self.deref(), serializer)
+    }
+}
+
+impl<D: rkyv::rancor::Fallible + ?Sized> RkyvDeserialize<Data, D> for rkyv::vec::ArchivedVec<u8> {
+    fn deserialize(&self, _deserializer: &mut D) -> Result<Data, D::Error> {
+        let mut vec = Vec::with_capacity(self.len());
+        vec.extend_from_slice(self.as_slice());
+        Ok(Data::Vec(vec))
+    }
 }
 
 impl Deref for Data {
@@ -137,18 +174,7 @@ impl From<Vec<u8>> for Data {
 #[cfg(feature = "mmap")]
 impl From<Mmap> for Data {
     fn from(m: Mmap) -> Self {
-        Self::Map(m)
-    }
-}
-
-impl Clone for Data {
-    fn clone(&self) -> Self {
-        match self {
-            Data::Static(s) => Data::Static(s),
-            Data::Vec(v) => Data::Vec(v.clone()),
-            #[cfg(feature = "mmap")]
-            Data::Map(m) => Data::Vec(m.to_vec()),
-        }
+        Self::Map(Arc::new(m))
     }
 }
 
@@ -157,12 +183,7 @@ impl Serialize for Data {
     where
         S: serde::Serializer,
     {
-        match self {
-            Self::Static(s) => serializer.serialize_bytes(s),
-            Self::Vec(v) => serializer.serialize_bytes(v),
-            #[cfg(feature = "mmap")]
-            Self::Map(m) => serializer.serialize_bytes(m),
-        }
+        serializer.serialize_bytes(self.deref())
     }
 }
 
@@ -171,6 +192,7 @@ impl<'de> Deserialize<'de> for Data {
     where
         D: serde::Deserializer<'de>,
     {
-        Vec::<u8>::deserialize(deserializer).map(Self::Vec)
+        let v = <Vec<u8> as serde::Deserialize>::deserialize(deserializer)?;
+        Ok(Data::Vec(v))
     }
 }

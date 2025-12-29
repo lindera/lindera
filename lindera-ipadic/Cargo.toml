@@ -1,6 +1,6 @@
 [package]
 name = "lindera-ipadic"
-version.workspace = true
+version = { workspace = true }
 edition.workspace = true
 description = "A Japanese morphological dictionary for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic"
@@ -18,7 +18,7 @@ default = ["compress"]
 
 [dependencies]
 anyhow.workspace = true
-bincode.workspace = true
+rkyv.workspace = true
 byteorder.workspace = true
 csv.workspace = true
 once_cell.workspace = true

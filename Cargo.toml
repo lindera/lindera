@@ -31,10 +31,8 @@ lindera-ipadic-neologd = { version = "1.4.2", path = "lindera-ipadic-neologd" }
 lindera-ko-dic = { version = "1.4.2", path = "lindera-ko-dic" }
 lindera-unidic = { version = "1.4.2", path = "lindera-unidic" }
 lindera = { version = "1.4.2", path = "lindera" }
-lindera-cli = { version = "1.4.2", path = "lindera-cli" }
 
 anyhow = "1.0.100"
-bincode = { version = "2.0.1", features = ["serde"] }
 byteorder = "1.5.0"
 clap = { version = "4.5.53", features = ["derive", "cargo"] }
 criterion = { version = "0.8.1", default-features = false, features = [
@@ -60,7 +58,8 @@ rand = { version = "0.9.2", default-features = false, features = [
 regex = "1.12.2"
 reqwest = { version = "0.12.26", features = [
     "rustls-tls",
-], default-features = false } # use rustls-tls instead of native-tls which avoids the need to link openssl
+], default-features = false }
+rkyv = { version = "0.8.12", features = ["bytecheck"] }
 rucrf = "0.3.3"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"

@@ -1,4 +1,5 @@
 use csv::StringRecord;
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -6,7 +7,8 @@ use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 
 /// Dictionary schema that defines the structure of dictionary entries
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct Schema {
     /// All field names including common fields (surface, left_context_id, right_context_id, cost, ...)
     pub fields: Vec<String>,
@@ -25,13 +27,43 @@ impl<'de> serde::Deserialize<'de> for Schema {
             fields: Vec<String>,
         }
 
-        let helper = DictionarySchemaHelper::deserialize(deserializer)?;
+        let helper = <DictionarySchemaHelper as serde::Deserialize>::deserialize(deserializer)?;
         let mut schema = Schema {
             fields: helper.fields,
             field_index_map: None,
         };
         schema.build_index_map();
         Ok(schema)
+    }
+}
+
+impl Default for Schema {
+    fn default() -> Self {
+        let fields = vec![
+            "surface",
+            "left_context_id",
+            "right_context_id",
+            "cost",
+            "major_pos",
+            "pos_detail_1",
+            "pos_detail_2",
+            "pos_detail_3",
+            "conjugation_type",
+            "conjugation_form",
+            "base_form",
+            "reading",
+            "pronunciation",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        let mut schema = Self {
+            fields,
+            field_index_map: None,
+        };
+        schema.build_index_map();
+        schema
     }
 }
 
@@ -136,7 +168,8 @@ impl Schema {
 }
 
 // Backward compatibility types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct FieldDefinition {
     pub index: usize,
     pub name: String,
@@ -144,33 +177,16 @@ pub struct FieldDefinition {
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Archive, RkyvSerialize, RkyvDeserialize,
+)]
+
 pub enum FieldType {
     Surface,
     LeftContextId,
     RightContextId,
     Cost,
     Custom,
-}
-
-impl Default for Schema {
-    fn default() -> Self {
-        Self::new(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ])
-    }
 }
 
 #[cfg(test)]

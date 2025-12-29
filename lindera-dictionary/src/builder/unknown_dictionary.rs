@@ -36,12 +36,16 @@ impl UnknownDictionaryBuilder {
         let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
 
         let mut unk_buffer = Vec::new();
-        bincode::serde::encode_into_std_write(
-            &unknown_dictionary,
-            &mut unk_buffer,
-            bincode::config::legacy(),
-        )
-        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&unknown_dictionary).map_err(|err| {
+            LinderaErrorKind::Serialize
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to serialize unknown dictionary data")
+        })?;
+        unk_buffer.write_all(&bytes).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write unknown dictionary data to buffer")
+        })?;
 
         let wtr_unk_path = output_dir.join(Path::new("unk.bin"));
         let mut wtr_unk = io::BufWriter::new(

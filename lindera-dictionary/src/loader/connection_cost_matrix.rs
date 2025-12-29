@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::LinderaResult;
 #[cfg(feature = "compress")]
-use crate::decompress::decompress;
+use crate::decompress::{CompressedData, decompress};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
@@ -19,13 +19,17 @@ impl ConnectionCostMatrixLoader {
 
         #[cfg(feature = "compress")]
         {
-            let (compressed_data, _) =
-                bincode::serde::decode_from_slice(data.as_slice(), bincode::config::legacy())
-                    .map_err(|err| {
+            let mut aligned_data = rkyv::util::AlignedVec::<16>::new();
+            aligned_data.extend_from_slice(&data);
+
+            let compressed_data: CompressedData =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned_data).map_err(
+                    |err| {
                         LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!(err))
+                            .with_error(anyhow::anyhow!(err.to_string()))
                             .add_context("Failed to deserialize matrix.mtx data")
-                    })?;
+                    },
+                )?;
             data = decompress(compressed_data).map_err(|err| {
                 LinderaErrorKind::Compression
                     .with_error(err)

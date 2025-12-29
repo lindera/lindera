@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::LinderaResult;
 #[cfg(feature = "compress")]
-use crate::decompress::decompress;
+use crate::decompress::{CompressedData, decompress};
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 #[cfg(feature = "compress")]
 use crate::error::LinderaErrorKind;
@@ -22,13 +22,16 @@ impl PrefixDictionaryLoader {
 
         #[cfg(feature = "compress")]
         {
-            let (compressed_data, _) =
-                bincode::serde::decode_from_slice(da_data.as_slice(), bincode::config::legacy())
-                    .map_err(|err| {
+            let mut aligned = rkyv::util::AlignedVec::<16>::new();
+            aligned.extend_from_slice(&da_data);
+            let compressed_data: CompressedData =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned).map_err(
+                    |err| {
                         LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!(err))
+                            .with_error(anyhow::anyhow!(err.to_string()))
                             .add_context("Failed to deserialize dict.da data")
-                    })?;
+                    },
+                )?;
             da_data = decompress(compressed_data).map_err(|err| {
                 LinderaErrorKind::Compression
                     .with_error(err)
@@ -37,13 +40,16 @@ impl PrefixDictionaryLoader {
         }
         #[cfg(feature = "compress")]
         {
-            let (compressed_data, _) =
-                bincode::serde::decode_from_slice(vals_data.as_slice(), bincode::config::legacy())
-                    .map_err(|err| {
+            let mut aligned = rkyv::util::AlignedVec::<16>::new();
+            aligned.extend_from_slice(&vals_data);
+            let compressed_data: CompressedData =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned).map_err(
+                    |err| {
                         LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!(err))
+                            .with_error(anyhow::anyhow!(err.to_string()))
                             .add_context("Failed to deserialize dict.vals data")
-                    })?;
+                    },
+                )?;
             vals_data = decompress(compressed_data).map_err(|err| {
                 LinderaErrorKind::Compression
                     .with_error(err)
@@ -52,15 +58,16 @@ impl PrefixDictionaryLoader {
         }
         #[cfg(feature = "compress")]
         {
-            let (compressed_data, _) = bincode::serde::decode_from_slice(
-                words_idx_data.as_slice(),
-                bincode::config::legacy(),
-            )
-            .map_err(|err| {
-                LinderaErrorKind::Deserialize
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context("Failed to deserialize dict.wordsidx data")
-            })?;
+            let mut aligned = rkyv::util::AlignedVec::<16>::new();
+            aligned.extend_from_slice(&words_idx_data);
+            let compressed_data: CompressedData =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned).map_err(
+                    |err| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!(err.to_string()))
+                            .add_context("Failed to deserialize dict.wordsidx data")
+                    },
+                )?;
             words_idx_data = decompress(compressed_data).map_err(|err| {
                 LinderaErrorKind::Compression
                     .with_error(err)
@@ -69,13 +76,16 @@ impl PrefixDictionaryLoader {
         }
         #[cfg(feature = "compress")]
         {
-            let (compressed_data, _) =
-                bincode::serde::decode_from_slice(words_data.as_slice(), bincode::config::legacy())
-                    .map_err(|err| {
+            let mut aligned = rkyv::util::AlignedVec::<16>::new();
+            aligned.extend_from_slice(&words_data);
+            let compressed_data: CompressedData =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned).map_err(
+                    |err| {
                         LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!(err))
+                            .with_error(anyhow::anyhow!(err.to_string()))
                             .add_context("Failed to deserialize dict.words data")
-                    })?;
+                    },
+                )?;
             words_data = decompress(compressed_data).map_err(|err| {
                 LinderaErrorKind::Compression
                     .with_error(err)
