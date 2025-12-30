@@ -1,15 +1,15 @@
 [package]
 name = "lindera-ipadic"
 version = { workspace = true }
-edition.workspace = true
+edition = { workspace = true }
 description = "A Japanese morphological dictionary for IPADIC."
 documentation = "https://docs.rs/lindera-ipadic"
-homepage.workspace = true
-repository.workspace = true
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "dictionary", "library", "ipadic"]
-categories.workspace = true
-license.workspace = true
+categories = { workspace = true }
+license = { workspace = true }
 
 [features]
 embedded-ipadic = []                       # Embed IPADIC dictionary in the binary
@@ -17,16 +17,16 @@ compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 
 [dependencies]
-anyhow.workspace = true
-rkyv.workspace = true
-byteorder.workspace = true
-csv.workspace = true
-once_cell.workspace = true
-serde_json.workspace = true
+anyhow = { workspace = true }
+byteorder = { workspace = true }
+csv = { workspace = true }
+once_cell = { workspace = true }
+rkyv = { workspace = true }
+serde_json = { workspace = true }
 
-lindera-dictionary.workspace = true
+lindera-dictionary = { workspace = true }
 
 [build-dependencies]
-serde_json.workspace = true
-tokio.workspace = true
+serde_json = { workspace = true }
+tokio = { workspace = true }
 lindera-dictionary = { workspace = true, features = ["build_rs"] }

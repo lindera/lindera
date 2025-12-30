@@ -4,12 +4,12 @@ version = { workspace = true }
 edition = { workspace = true }
 description = "A morphological analysis CLI."
 documentation = "https://docs.rs/lindera-cli"
-homepage.workspace = true
-repository.workspace = true
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "cli"]
-categories.workspace = true
-license.workspace = true
+categories = ["morphological", "analysis", "cli"]
+license = { workspace = true }
 
 [features]
 embedded-ipadic = [
@@ -44,12 +44,12 @@ train = ["lindera/train"]               # Enable training functionality
 default = ["compress", "mmap", "train"]
 
 [dependencies]
-anyhow.workspace = true
-clap.workspace = true
-num_cpus.workspace = true
-serde_json.workspace = true
+anyhow = { workspace = true }
+clap = { workspace = true }
+num_cpus = { workspace = true }
+serde_json = { workspace = true }
 
-lindera.workspace = true
+lindera = { workspace = true }
 
 [[bin]]
 name = "lindera"

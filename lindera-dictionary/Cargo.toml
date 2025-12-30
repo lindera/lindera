@@ -8,8 +8,8 @@ homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "dictionary", "library"]
-categories.workspace = true
-license.workspace = true
+categories = { workspace = true }
+license = { workspace = true }
 
 [features]
 build_rs = ["dep:reqwest"]
@@ -19,34 +19,34 @@ train = ["dep:rucrf"]
 default = ["compress", "mmap"]
 
 [dependencies]
-anyhow.workspace = true
-byteorder.workspace = true
-csv.workspace = true
-derive_builder.workspace = true
-encoding.workspace = true
-encoding_rs.workspace = true
-encoding_rs_io.workspace = true
+anyhow = { workspace = true }
+byteorder = { workspace = true }
+csv = { workspace = true }
+derive_builder = { workspace = true }
+encoding = { workspace = true }
+encoding_rs = { workspace = true }
+encoding_rs_io = { workspace = true }
 flate2 = { workspace = true }
-glob.workspace = true
-log.workspace = true
-md5.workspace = true
+glob = { workspace = true }
+log = { workspace = true }
+md5 = { workspace = true }
 memmap2 = { workspace = true, optional = true }
-num_cpus.workspace = true
-once_cell.workspace = true
-rand.workspace = true
-regex.workspace = true
+num_cpus = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+regex = { workspace = true }
 reqwest = { workspace = true, optional = true }
-rkyv.workspace = true
+rkyv = { workspace = true }
 rucrf = { workspace = true, optional = true }
-serde.workspace = true
-serde_json.workspace = true
-strum.workspace = true
-strum_macros.workspace = true
-tar.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-yada.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tar = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+yada = { workspace = true }
 
 [dev-dependencies]
-rand.workspace = true
+rand = { workspace = true }
 tempfile = "3.23.0"
