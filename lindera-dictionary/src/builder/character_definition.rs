@@ -234,15 +234,15 @@ impl CharacterDefinitionBuilder {
         let char_definitions = self.get_character_definition().clone();
 
         let mut chardef_buffer = Vec::new();
-        bincode::serde::encode_into_std_write(
-            &char_definitions,
-            &mut chardef_buffer,
-            bincode::config::legacy(),
-        )
-        .map_err(|err| {
+        let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&char_definitions).map_err(|err| {
             LinderaErrorKind::Serialize
                 .with_error(anyhow::anyhow!(err))
                 .add_context("Failed to serialize character definition data")
+        })?;
+        chardef_buffer.write_all(&bytes).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write character definition data to buffer")
         })?;
 
         let wtr_chardef_path = output_dir.join(Path::new("char_def.bin"));

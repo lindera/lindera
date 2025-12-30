@@ -1,11 +1,11 @@
 [package]
 name = "lindera"
-version.workspace = true
-edition.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
-homepage.workspace = true
-repository.workspace = true
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "library"]
 categories.workspace = true
@@ -56,7 +56,6 @@ default = ["compress", "mmap"]
 
 [dependencies]
 anyhow.workspace = true
-bincode.workspace = true
 byteorder.workspace = true
 csv.workspace = true
 kanaria.workspace = true

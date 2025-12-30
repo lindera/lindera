@@ -601,7 +601,7 @@ UNIGRAM:%F[0]/%F[6]   # POS + base form
 #### 7. **Output Model Format**
 
 **Role**: Output model file
-**Format**: Binary (bincode) format is standard, JSON format also supported
+**Format**: Binary (rkyv) format is standard, JSON format also supported
 
 The model contains the following information:
 
@@ -689,7 +689,7 @@ model.write_dictionary(&mut lex_out, &mut conn_out, &mut unk_out, &mut user_out)
 - **Corpus processing**: Full MeCab format corpus support
 - **Dictionary integration**: Dictionary construction from seed.csv, char.def, unk.def
 - **Feature extraction**: Extraction and transformation of unigram/bigram features
-- **Model saving**: Output trained models in JSON/bincode format
+- **Model saving**: Output trained models in JSON/rkyv format
 - **Dictionary output**: Generate Lindera format dictionary files
 
 ##### **Advanced Unknown Word Processing**
@@ -801,7 +801,7 @@ fn calculate_unknown_word_cost(&self, feature_weight: f64, category: usize) -> i
 
 - **Lazy evaluation**: Create merged_model only when needed
 - **Unused feature removal**: Automatic deletion of unnecessary features after training
-- **Efficient binary format**: Fast serialization using bincode
+- **Efficient binary format**: Fast serialization using rkyv
 
 #### Parallel Processing Support
 

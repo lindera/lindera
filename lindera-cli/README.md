@@ -74,7 +74,7 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 ```bash
 # Build a system dictionary
 lindera build \
-  --src /path/to/dictionary/csvs \
+  --src /path/to/dictionary/csv \
   --dest /path/to/output/dictionary \
   --metadata ./lindera-ipadic/metadata.json
 
@@ -210,8 +210,8 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --src ./resources/ipadic_simple_userdic.csv \
-  --dest ./resources \
+  --src ./resources/user_dict/ipadic_simple_userdic.csv \
+  --dest ./resources/user_dict \
   --metadata ./lindera-ipadic/metadata.json \
   --user
 ```
@@ -224,8 +224,8 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --src ./resources/unidic_simple_userdic.csv \
-  --dest ./resources \
+  --src ./resources/user_dict/unidic_simple_userdic.csv \
+  --dest ./resources/user_dict \
   --metadata ./lindera-unidic/metadata.json \
   --user
 ```
@@ -238,8 +238,8 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --src ./resources/cc-cedict_simple_userdic.csv \
-  --dest ./resources \
+  --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
+  --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
   --user
 ```
@@ -252,8 +252,8 @@ For more details about user dictionary format please refer to the following URL:
 
 ```shell
 % lindera build \
-  --src ./resources/ko-dic_simple_userdic.csv \
-  --dest ./resources \
+  --src ./resources/user_dict/ko-dic_simple_userdic.csv \
+  --dest ./resources/user_dict \
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 ```

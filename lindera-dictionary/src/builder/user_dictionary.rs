@@ -260,14 +260,20 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
                 "Failed to create user dictionary output file: {output_file:?}"
             ))
     })?);
-    bincode::serde::encode_into_std_write(&user_dict, &mut wtr, bincode::config::legacy())
-        .map_err(|err| {
-            LinderaErrorKind::Serialize
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to serialize user dictionary to file: {output_file:?}"
-                ))
-        })?;
+    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&user_dict).map_err(|err| {
+        LinderaErrorKind::Serialize
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to serialize user dictionary to file: {output_file:?}"
+            ))
+    })?;
+    wtr.write_all(&bytes).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to write user dictionary to file: {output_file:?}"
+            ))
+    })?;
     wtr.flush().map_err(|err| {
         LinderaErrorKind::Io
             .with_error(anyhow::anyhow!(err))

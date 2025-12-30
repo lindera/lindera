@@ -1,11 +1,11 @@
 [package]
 name = "lindera-dictionary"
-version.workspace = true
-edition.workspace = true
+version = { workspace = true }
+edition = { workspace = true }
 description = "A morphological dictionary library."
 documentation = "https://docs.rs/lindera-dictionary"
-homepage.workspace = true
-repository.workspace = true
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "dictionary", "library"]
 categories.workspace = true
@@ -20,7 +20,6 @@ default = ["compress", "mmap"]
 
 [dependencies]
 anyhow.workspace = true
-bincode.workspace = true
 byteorder.workspace = true
 csv.workspace = true
 derive_builder.workspace = true
@@ -37,12 +36,13 @@ once_cell.workspace = true
 rand.workspace = true
 regex.workspace = true
 reqwest = { workspace = true, optional = true }
+rkyv.workspace = true
 rucrf = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
-tar = { workspace = true }
+tar.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 yada.workspace = true

@@ -1,19 +1,37 @@
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct CategoryData {
     pub invoke: bool,
     pub group: bool,
     pub length: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Copy, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Debug,
+    Hash,
+    Copy,
+    PartialOrd,
+    Ord,
+    Eq,
+    PartialEq,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+)]
+
 pub struct CategoryId(pub usize);
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct LookupTable<T: Copy + Clone> {
     boundaries: Vec<u32>,
     values: Vec<Vec<T>>,
@@ -43,7 +61,19 @@ impl<T: Copy + Clone> LookupTable<T> {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+impl<T: Copy + Clone + Archive> ArchivedLookupTable<T> {
+    pub fn eval(&self, target: u32) -> &[T::Archived] {
+        let target_le = rkyv::rend::u32_le::from_native(target);
+        let idx = self
+            .boundaries
+            .binary_search(&target_le)
+            .unwrap_or_else(|val| val - 1);
+        self.values[idx].as_slice()
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct CharacterDefinition {
     pub category_definitions: Vec<CategoryData>,
     pub category_names: Vec<String>,
@@ -56,9 +86,11 @@ impl CharacterDefinition {
     }
 
     pub fn load(char_def_data: &[u8]) -> LinderaResult<CharacterDefinition> {
-        bincode::serde::decode_from_slice(char_def_data, bincode::config::legacy())
-            .map(|(result, _len)| result)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
+        let mut aligned = rkyv::util::AlignedVec::<16>::new();
+        aligned.extend_from_slice(char_def_data);
+        rkyv::from_bytes::<CharacterDefinition, rkyv::rancor::Error>(&aligned).map_err(|err| {
+            LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+        })
     }
 
     pub fn lookup_definition(&self, category_id: CategoryId) -> &CategoryData {
@@ -77,6 +109,24 @@ impl CharacterDefinition {
     }
 
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {
+        self.mapping.eval(c as u32)
+    }
+}
+
+impl ArchivedCharacterDefinition {
+    pub fn categories(&self) -> &[rkyv::string::ArchivedString] {
+        &self.category_names[..]
+    }
+
+    pub fn lookup_definition(&self, category_id: usize) -> &ArchivedCategoryData {
+        &self.category_definitions[category_id]
+    }
+
+    pub fn category_name(&self, category_id: usize) -> &str {
+        self.category_names[category_id].as_str()
+    }
+
+    pub fn lookup_categories(&self, c: char) -> &[ArchivedCategoryId] {
         self.mapping.eval(c as u32)
     }
 }

@@ -1,6 +1,7 @@
 use std::io;
 
 use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
@@ -12,7 +13,20 @@ use crate::mode::Mode;
 const EOS_NODE: EdgeId = EdgeId(1u32);
 
 /// Type of lexicon containing the word
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Default,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+)]
+
 pub enum LexType {
     /// System dictionary (base dictionary)
     #[default]
@@ -23,7 +37,19 @@ pub enum LexType {
     Unknown,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Archive,
+    RkyvDeserialize,
+    RkyvSerialize,
+)]
+
 pub struct WordId {
     pub id: u32,
     pub is_system: bool,
@@ -63,7 +89,20 @@ impl Default for WordId {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Default,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+)]
+
 pub struct WordEntry {
     pub word_id: WordId,
     pub word_cost: i16,

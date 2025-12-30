@@ -2,14 +2,15 @@ use std::io::{Read, Write};
 use std::num::NonZeroU32;
 
 use anyhow::Result;
-use bincode::{Decode, Encode};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::trainer::corpus::Word;
 use crate::viterbi::{LexType, WordEntry, WordId};
 
 /// Feature set information extracted from CRF training
-#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
+#[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
+
 pub struct FeatureSetInfo {
     /// Left connection ID learned from CRF training
     pub left_id: u32,
@@ -20,7 +21,8 @@ pub struct FeatureSetInfo {
 }
 
 /// Trained model with weights and configuration.
-#[derive(Serialize, Deserialize, Encode, Decode)]
+#[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct SerializableModel {
     /// Feature weights from CRF training
     pub feature_weights: Vec<f64>,
@@ -46,7 +48,8 @@ pub struct SerializableModel {
     pub unk_categories: std::collections::HashMap<String, String>,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode)]
+#[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct ModelMetadata {
     pub version: String,
     pub regularization: f64,
@@ -326,8 +329,9 @@ impl Model {
             unk_categories: self.config.unk_categories.clone(),
         };
 
-        // Use bincode for efficient binary serialization
-        let encoded = bincode::encode_to_vec(&serializable_model, bincode::config::standard())?;
+        // Use rkyv for efficient binary serialization
+        let encoded = rkyv::to_bytes::<rkyv::rancor::Error>(&serializable_model)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize model: {}", e))?;
         writer.write_all(&encoded)?;
 
         Ok(())
@@ -349,21 +353,19 @@ impl Model {
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
 
-        // Try bincode first (new format with feature_sets)
-        if let Ok((mut model, _)) =
-            bincode::decode_from_slice::<SerializableModel, _>(&buffer, bincode::config::standard())
-        {
-            // DEBUG: Check what we read from bincode
+        // Try rkyv first (new format with feature_sets)
+        if let Ok(mut model) = rkyv::from_bytes::<SerializableModel, rkyv::rancor::Error>(&buffer) {
+            // DEBUG: Check what we read from rkyv
             println!(
-                "DEBUG read_model (bincode): feature_weights.len() = {}",
+                "DEBUG read_model (rkyv): feature_weights.len() = {}",
                 model.feature_weights.len()
             );
             println!(
-                "DEBUG read_model (bincode): First 5 weights: {:?}",
+                "DEBUG read_model (rkyv): First 5 weights: {:?}",
                 &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
             );
             println!(
-                "DEBUG read_model (bincode): feature_sets.len() = {}",
+                "DEBUG read_model (rkyv): feature_sets.len() = {}",
                 model.feature_sets.len()
             );
 
@@ -1030,21 +1032,23 @@ impl Model {
         user_lexicon: &mut Vec<u8>,
     ) -> Result<()> {
         // Serialize lexicon data
-        let lexicon_data = bincode::encode_to_vec(&self.labels, bincode::config::standard())?;
+        let lexicon_data = rkyv::to_bytes::<rkyv::rancor::Error>(&self.labels)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize lexicon: {}", e))?;
         lexicon.extend_from_slice(&lexicon_data);
 
         // Serialize connection costs (feature weights as connection matrix)
-        let connection_data =
-            bincode::encode_to_vec(&self.feature_weights, bincode::config::standard())?;
+        let connection_data = rkyv::to_bytes::<rkyv::rancor::Error>(&self.feature_weights)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize connector: {}", e))?;
         connector.extend_from_slice(&connection_data);
 
         // Serialize unknown word handler (simplified data)
-        let unk_data =
-            bincode::encode_to_vec(self.user_entries.len(), bincode::config::standard())?;
+        let unk_data = rkyv::to_bytes::<rkyv::rancor::Error>(&self.user_entries.len())
+            .map_err(|e| anyhow::anyhow!("Failed to serialize unknown handler: {}", e))?;
         unk_handler.extend_from_slice(&unk_data);
 
         // Serialize user lexicon (config info as user lexicon)
-        let user_data = bincode::encode_to_vec(&self.config.surfaces, bincode::config::standard())?;
+        let user_data = rkyv::to_bytes::<rkyv::rancor::Error>(&self.config.surfaces)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize user lexicon: {}", e))?;
         user_lexicon.extend_from_slice(&user_data);
 
         Ok(())

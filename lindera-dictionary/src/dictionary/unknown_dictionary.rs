@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use log::warn;
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
@@ -8,7 +9,8 @@ use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
 use crate::viterbi::WordEntry;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct UnknownDictionary {
     pub category_references: Vec<Vec<u32>>,
     pub costs: Vec<WordEntry>,
@@ -16,9 +18,11 @@ pub struct UnknownDictionary {
 
 impl UnknownDictionary {
     pub fn load(unknown_data: &[u8]) -> LinderaResult<UnknownDictionary> {
-        bincode::serde::decode_from_slice(unknown_data, bincode::config::legacy())
-            .map(|(result, _len)| result)
-            .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))
+        let mut aligned = rkyv::util::AlignedVec::<16>::new();
+        aligned.extend_from_slice(unknown_data);
+        rkyv::from_bytes::<UnknownDictionary, rkyv::rancor::Error>(&aligned).map_err(|err| {
+            LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+        })
     }
 
     pub fn word_entry(&self, word_id: u32) -> WordEntry {
@@ -256,4 +260,19 @@ pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<Unk
         category_references,
         costs,
     })
+}
+
+impl ArchivedUnknownDictionary {
+    pub fn word_entry(&self, word_id: u32) -> WordEntry {
+        // We have to deserialize the single entry or extract fields.
+        // Simple Archive usually preserves layout for primitives.
+        // Using deserialize ensures we get the native struct.
+        // Since WordEntry is small and Copy, this is efficient enough.
+        let archived_entry = &self.costs[word_id as usize];
+        rkyv::deserialize::<WordEntry, rkyv::rancor::Error>(archived_entry).unwrap()
+    }
+
+    pub fn lookup_word_ids(&self, category_id: CategoryId) -> &[rkyv::rend::u32_le] {
+        self.category_references[category_id.0].as_slice()
+    }
 }

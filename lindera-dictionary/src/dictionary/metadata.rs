@@ -1,3 +1,4 @@
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::decompress::Algorithm;
@@ -9,7 +10,8 @@ const DEFAULT_LEFT_CONTEXT_ID: u16 = 1288;
 const DEFAULT_RIGHT_CONTEXT_ID: u16 = 1288;
 const DEFAULT_FIELD_VALUE: &str = "*";
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct ModelInfo {
     pub feature_count: usize,
     pub label_count: usize,
@@ -22,7 +24,8 @@ pub struct ModelInfo {
     pub updated_at: u64,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct Metadata {
     pub name: String,                   // Name of the dictionary
     pub encoding: String,               // Character encoding
@@ -111,19 +114,19 @@ impl Metadata {
             return Ok(metadata);
         }
 
-        // If JSON fails, try to decompress as bincode-encoded compressed data
+        // If JSON fails, try to decompress as rkyv-encoded compressed data
         #[cfg(feature = "compress")]
         {
             use crate::decompress::{CompressedData, decompress};
 
-            if let Ok((compressed_data, _)) = bincode::serde::decode_from_slice::<CompressedData, _>(
-                data,
-                bincode::config::legacy(),
-            ) && let Ok(decompressed) = decompress(compressed_data)
+            if let Ok(compressed_data) =
+                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(data)
             {
-                // Try to parse the decompressed data as JSON
-                if let Ok(metadata) = serde_json::from_slice(&decompressed) {
-                    return Ok(metadata);
+                if let Ok(decompressed) = decompress(compressed_data) {
+                    // Try to parse the decompressed data as JSON
+                    if let Ok(metadata) = serde_json::from_slice(&decompressed) {
+                        return Ok(metadata);
+                    }
                 }
             }
         }

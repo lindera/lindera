@@ -1,15 +1,29 @@
 use std::{io::Read, str::FromStr};
 
 use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use crate::error::{LinderaError, LinderaErrorKind};
 
-#[derive(Debug, Clone, EnumIter, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    EnumIter,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    Archive,
+    RkyvSerialize,
+    RkyvDeserialize,
+)]
 #[repr(u32)] // explicit representation for consistency
 #[serde(rename_all = "lowercase")]
+
 pub enum Algorithm {
     Deflate = 0,
     Zlib = 1,
@@ -46,10 +60,11 @@ impl FromStr for Algorithm {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+
 pub struct CompressedData {
-    algorithm: Algorithm,
-    data: Vec<u8>,
+    pub algorithm: Algorithm,
+    pub data: Vec<u8>,
 }
 
 impl CompressedData {
