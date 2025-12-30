@@ -8,7 +8,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
 keywords = ["morphological", "analysis", "library"]
-categories = ["morphological", "analysis", "library"]
+categories = { workspace = true }
 license = { workspace = true }
 
 [features]
