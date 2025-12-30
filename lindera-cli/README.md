@@ -539,7 +539,7 @@ Lindera supports user dictionaries to add custom words alongside system dictiona
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
   --dict embedded://ipadic \
-  --user-dict ./resources/ipadic_simple_userdic.csv
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 ```
 
 ```text
@@ -557,7 +557,7 @@ EOS
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
   --dict /tmp/lindera-ipadic-2.7.0-20250920 \
-  --user-dict ./resources/ipadic_simple_userdic.bin
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.bin
 ```
 
 ```text
