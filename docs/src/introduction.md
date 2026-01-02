@@ -5,21 +5,3 @@
 A morphological analysis library in Rust. This project is forked from [kuromoji-rs](https://github.com/fulmicoton/kuromoji-rs).
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
-
-## Documentation
-
-- [English Documentation](https://lindera.github.io/lindera/)
-- [Japanese Documentation (日本語ドキュメント)](https://lindera.github.io/lindera/ja/)
-
-## Installation
-
-Put the following in Cargo.toml:
-
-```toml
-[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
-```
-
-## License
-
-MIT

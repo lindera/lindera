@@ -1,0 +1,792 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Advanced Usage - Lindera User Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera User Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="advanced-usage"><a class="header" href="#advanced-usage">Advanced Usage</a></h1>
+<h2 id="tokenization-with-user-dictionary"><a class="header" href="#tokenization-with-user-dictionary">Tokenization with user dictionary</a></h2>
+<p>You can give user dictionary entries along with the default system dictionary. User dictionary should be a CSV with following format.</p>
+<pre><code class="language-csv">&lt;surface&gt;,&lt;part_of_speech&gt;,&lt;reading&gt;
+</code></pre>
+<p>Put the following in Cargo.toml:</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>For example:</p>
+<pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
+東京スカイツリー,カスタム名詞,トウキョウスカイツリー
+東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
+とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
+</code></pre>
+<p>With an user dictionary, <code>Tokenizer</code> will be created as follows:</p>
+<pre><pre class="playground"><code class="language-rust">use std::fs::File;
+use std::path::PathBuf;
+
+use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
+use lindera::error::LinderaErrorKind;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("user_dict")
+        .join("ipadic_simple_userdic.csv");
+
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../lindera-ipadic")
+        .join("metadata.json");
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        Some(user_dictionary), // Using the loaded user dictionary
+    );
+
+    // Create a tokenizer.
+    let tokenizer = Tokenizer::new(segmenter);
+
+    // Tokenize a text.
+    let text = "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です";
+    let mut tokens = tokenizer.tokenize(text)?;
+
+    // Print the text and tokens.
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>The above example can be run by <code>cargo run --example</code>:</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
+token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
+token:  最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+token:  は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+</code></pre>
+<h2 id="tokenize-with-filters"><a class="header" href="#tokenize-with-filters">Tokenize with filters</a></h2>
+<p>Put the following in Cargo.toml:</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>This example covers the basic usage of Lindera Analysis Framework.</p>
+<p>It will:</p>
+<ul>
+<li>Apply character filter for Unicode normalization (NFKC)</li>
+<li>Tokenize the input text with IPADIC</li>
+<li>Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust">use lindera::character_filter::BoxCharacterFilter;
+use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera::character_filter::unicode_normalize::{
+    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+};
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::token_filter::BoxTokenFilter;
+use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        None, // No user dictionary for this example
+    );
+
+    let unicode_normalize_char_filter =
+        UnicodeNormalizeCharacterFilter::new(UnicodeNormalizeKind::NFKC);
+
+    let japanese_iteration_mark_char_filter =
+        JapaneseIterationMarkCharacterFilter::new(true, true);
+
+    let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
+        vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
+            .into_iter()
+            .collect(),
+        Some("複合語".to_string()),
+    );
+
+    let japanese_number_token_filter =
+        JapaneseNumberTokenFilter::new(Some(vec!["名詞,数".to_string()].into_iter().collect()));
+
+    let japanese_stop_tags_token_filter = JapaneseStopTagsTokenFilter::new(
+        vec![
+            "接続詞".to_string(),
+            "助詞".to_string(),
+            "助詞,格助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,格助詞,引用".to_string(),
+            "助詞,格助詞,連語".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,副助詞".to_string(),
+            "助詞,間投助詞".to_string(),
+            "助詞,並立助詞".to_string(),
+            "助詞,終助詞".to_string(),
+            "助詞,副助詞／並立助詞／終助詞".to_string(),
+            "助詞,連体化".to_string(),
+            "助詞,副詞化".to_string(),
+            "助詞,特殊".to_string(),
+            "助動詞".to_string(),
+            "記号".to_string(),
+            "記号,一般".to_string(),
+            "記号,読点".to_string(),
+            "記号,句点".to_string(),
+            "記号,空白".to_string(),
+            "記号,括弧閉".to_string(),
+            "その他,間投".to_string(),
+            "フィラー".to_string(),
+            "非言語音".to_string(),
+        ]
+        .into_iter()
+        .collect(),
+    );
+
+    // Create a tokenizer.
+    let mut tokenizer = Tokenizer::new(segmenter);
+
+    tokenizer
+        .append_character_filter(BoxCharacterFilter::from(unicode_normalize_char_filter))
+        .append_character_filter(BoxCharacterFilter::from(
+            japanese_iteration_mark_char_filter,
+        ))
+        .append_token_filter(BoxTokenFilter::from(japanese_compound_word_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_number_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_stop_tags_token_filter));
+
+    // Tokenize a text.
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。";
+    let tokens = tokenizer.tokenize(text)?;
+
+    // Print the text and tokens.
+    println!("text: {}", text);
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.surface, token.byte_start, token.byte_end, token.details
+        );
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>The above example can be run as follows:</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+</code></pre>
+<p>You can see the result as follows:</p>
+<pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
+token: "Lindera", start: 0, end: 21, details: Some(["UNK"])
+token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
+token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
+token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
+token: "ユーザー", start: 63, end: 75, details: Some(["名詞", "一般", "*", "*", "*", "*", "ユーザー", "ユーザー", "ユーザー"])
+token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
+token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
+token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
+</code></pre>
+<h2 id="dictionary-training-experimental"><a class="header" href="#dictionary-training-experimental">Dictionary Training (Experimental)</a></h2>
+<p>Lindera provides CRF-based dictionary training functionality for creating custom morphological analysis models.</p>
+<h3 id="overview"><a class="header" href="#overview">Overview</a></h3>
+<p>Lindera Trainer is a Conditional Random Field (CRF) based morphological analyzer training system with the following advanced features:</p>
+<ul>
+<li><strong>CRF-based statistical learning</strong>: Efficient implementation using rucrf crate</li>
+<li><strong>L1 regularization</strong>: Prevents overfitting</li>
+<li><strong>Multi-threaded training</strong>: Parallel processing for faster training</li>
+<li><strong>Comprehensive Unicode support</strong>: Full CJK extension support</li>
+<li><strong>Advanced unknown word handling</strong>: Intelligent mixed character type classification</li>
+<li><strong>Multi-stage weight optimization</strong>: Advanced normalization system for trained weights</li>
+<li><strong>Lindera dictionary compatibility</strong>: Full compatibility with existing dictionary formats</li>
+</ul>
+<h3 id="cli-usage"><a class="header" href="#cli-usage">CLI Usage</a></h3>
+<p>For detailed CLI command usage, see <a href="https://github.com/lindera/lindera/blob/main/lindera-cli/README.md#train-dictionary">lindera-cli/README.md</a>.</p>
+<h3 id="required-file-format-specifications"><a class="header" href="#required-file-format-specifications">Required File Format Specifications</a></h3>
+<h4 id="1-vocabulary-dictionary-seedcsv"><a class="header" href="#1-vocabulary-dictionary-seedcsv">1. <strong>Vocabulary Dictionary (seed.csv)</strong></a></h4>
+<p><strong>Role</strong>: Base vocabulary dictionary
+<strong>Format</strong>: MeCab format CSV</p>
+<pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政,0,0,0,名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Define basic words and their part-of-speech information for training</li>
+<li><strong>Structure</strong>: <code>surface,left_id,right_id,cost,pos,pos_detail1,pos_detail2,pos_detail3,inflection_type,inflection_form,base_form,reading,pronunciation</code></li>
+</ul>
+<h4 id="2-unknown-word-definition-unkdef"><a class="header" href="#2-unknown-word-definition-unkdef">2. <strong>Unknown Word Definition (unk.def)</strong></a></h4>
+<p><strong>Role</strong>: Unknown word processing definition
+<strong>Format</strong>: Unknown word parameters by character type</p>
+<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
+ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Define processing methods for out-of-vocabulary words by character type</li>
+<li><strong>Note</strong>: These labels are for internal processing and are not output in the final dictionary file</li>
+</ul>
+<h4 id="3-training-corpus-corpustxt"><a class="header" href="#3-training-corpus-corpustxt">3. <strong>Training Corpus (corpus.txt)</strong></a></h4>
+<p><strong>Role</strong>: Training data (annotated corpus)
+<strong>Format</strong>: Tab-separated tokenized text</p>
+<pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+EOS
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Sentences and their correct analysis results for training</li>
+<li><strong>Format</strong>: Each line is <code>surface\tpos_info</code>, sentences end with <code>EOS</code></li>
+<li><strong>Important</strong>: Training quality heavily depends on the quantity and quality of this corpus</li>
+</ul>
+<h4 id="4-character-type-definition-chardef"><a class="header" href="#4-character-type-definition-chardef">4. <strong>Character Type Definition (char.def)</strong></a></h4>
+<p><strong>Role</strong>: Character type definition
+<strong>Format</strong>: Character categories and character code ranges</p>
+<pre><code class="language-text"># Character category definition (category_name compatibility_flag continuity_flag length)
+DEFAULT 0 1 0
+HIRAGANA 1 1 0
+KATAKANA 1 1 0
+KANJI 0 0 2
+ALPHA 1 1 0
+NUMERIC 1 1 0
+
+# Character range mapping
+0x3041..0x3096 HIRAGANA  # Hiragana
+0x30A1..0x30F6 KATAKANA  # Katakana
+0x4E00..0x9FAF KANJI     # Kanji
+0x0030..0x0039 NUMERIC   # Numbers
+0x0041..0x005A ALPHA     # Uppercase letters
+0x0061..0x007A ALPHA     # Lowercase letters
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Define which characters belong to which category</li>
+<li><strong>Parameters</strong>: Settings for compatibility, continuity, default length, etc.</li>
+</ul>
+<h4 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. <strong>Feature Template (feature.def)</strong></a></h4>
+<p><strong>Role</strong>: Feature template definition
+<strong>Format</strong>: Feature extraction patterns</p>
+<pre><code class="language-text"># Unigram features (word-level features)
+UNIGRAM:%F[0]         # POS (feature element 0)
+UNIGRAM:%F[1]         # POS detail 1
+UNIGRAM:%F[6]         # Base form
+UNIGRAM:%F[7]         # Reading (Katakana)
+
+# Left context features
+LEFT:%L[0]            # POS of left word
+LEFT:%L[1]            # POS detail of left word
+
+# Right context features
+RIGHT:%R[0]           # POS of right word
+RIGHT:%R[1]           # POS detail of right word
+
+# Bigram features (combination features)
+UNIGRAM:%F[0]/%F[1]   # POS + POS detail
+UNIGRAM:%F[0]/%F[6]   # POS + base form
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Define which information to extract features from</li>
+<li><strong>Templates</strong>: <code>%F[n]</code> (feature), <code>%L[n]</code> (left context), <code>%R[n]</code> (right context)</li>
+</ul>
+<h4 id="6-feature-normalization-rules-rewritedef"><a class="header" href="#6-feature-normalization-rules-rewritedef">6. <strong>Feature Normalization Rules (rewrite.def)</strong></a></h4>
+<p><strong>Role</strong>: Feature normalization rules
+<strong>Format</strong>: Replacement rules (tab-separated)</p>
+<pre><code class="language-text"># Normalize numeric expressions
+数	NUM
+*	UNK
+
+# Normalize proper nouns
+名詞,固有名詞	名詞,一般
+
+# Simplify auxiliary verbs
+助動詞,*,*,*,特殊・デス	助動詞
+助動詞,*,*,*,特殊・ダ	助動詞
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Normalize features to improve training efficiency</li>
+<li><strong>Format</strong>: <code>original_pattern\treplacement_pattern</code></li>
+<li><strong>Effect</strong>: Generalize rare features to reduce sparsity problems</li>
+</ul>
+<h4 id="7-output-model-format"><a class="header" href="#7-output-model-format">7. <strong>Output Model Format</strong></a></h4>
+<p><strong>Role</strong>: Output model file
+<strong>Format</strong>: Binary (rkyv) format is standard, JSON format also supported</p>
+<p>The model contains the following information:</p>
+<pre><code class="language-json">{
+  "feature_weights": [0.0, 0.084, 0.091, ...],
+  "labels": ["外国", "人", "参政", "権", ...],
+  "pos_info": ["名詞,一般,*,*,*,*,*,*,*", "名詞,接尾,一般,*,*,*,*,*,*", ...],
+  "feature_templates": ["UNIGRAM:%F[0]", ...],
+  "metadata": {
+    "version": "1.0.0",
+    "regularization": 0.01,
+    "iterations": 100,
+    "feature_count": 13,
+    "label_count": 19
+  }
+}
+</code></pre>
+<ul>
+<li><strong>Purpose</strong>: Save training results for later dictionary generation</li>
+</ul>
+<h3 id="training-parameter-specifications"><a class="header" href="#training-parameter-specifications">Training Parameter Specifications</a></h3>
+<ul>
+<li><strong>Regularization coefficient (lambda)</strong>: Controls L1 regularization strength (default: 0.01)</li>
+<li><strong>Maximum iterations (iter)</strong>: Maximum number of training iterations (default: 100)</li>
+<li><strong>Parallel threads (threads)</strong>: Number of parallel processing threads (default: 1)</li>
+</ul>
+<h3 id="api-usage-example"><a class="header" href="#api-usage-example">API Usage Example</a></h3>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::File;
+use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+
+// Load configuration from files
+let seed_file = File::open("resources/training/seed.csv")?;
+let char_file = File::open("resources/training/char.def")?;
+let unk_file = File::open("resources/training/unk.def")?;
+let feature_file = File::open("resources/training/feature.def")?;
+let rewrite_file = File::open("resources/training/rewrite.def")?;
+
+let config = TrainerConfig::from_readers(
+    seed_file,
+    char_file,
+    unk_file,
+    feature_file,
+    rewrite_file
+)?;
+
+// Initialize and configure trainer
+let trainer = Trainer::new(config)?
+    .regularization_cost(0.01)
+    .max_iter(100)
+    .num_threads(4);
+
+// Load corpus
+let corpus_file = File::open("resources/training/corpus.txt")?;
+let corpus = Corpus::from_reader(corpus_file)?;
+
+// Execute training
+let model = trainer.train(corpus)?;
+
+// Save model (binary format)
+let mut output = File::create("trained_model.dat")?;
+model.write_model(&amp;mut output)?;
+
+// Output in Lindera dictionary format
+let mut lex_out = File::create("output_lex.csv")?;
+let mut conn_out = File::create("output_conn.dat")?;
+let mut unk_out = File::create("output_unk.def")?;
+let mut user_out = File::create("output_user.csv")?;
+model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &amp;mut user_out)?;
+
+<span class="boring">Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+</span><span class="boring">}</span></code></pre></pre>
+<h3 id="implementation-status"><a class="header" href="#implementation-status">Implementation Status</a></h3>
+<h4 id="completed-features"><a class="header" href="#completed-features">Completed Features</a></h4>
+<h5 id="core-features"><a class="header" href="#core-features"><strong>Core Features</strong></a></h5>
+<ul>
+<li><strong>Core architecture</strong>: Complete trainer module structure</li>
+<li><strong>CRF training</strong>: Conditional Random Field training via rucrf integration</li>
+<li><strong>CLI integration</strong>: <code>lindera train</code> command with full parameter support</li>
+<li><strong>Corpus processing</strong>: Full MeCab format corpus support</li>
+<li><strong>Dictionary integration</strong>: Dictionary construction from seed.csv, char.def, unk.def</li>
+<li><strong>Feature extraction</strong>: Extraction and transformation of unigram/bigram features</li>
+<li><strong>Model saving</strong>: Output trained models in JSON/rkyv format</li>
+<li><strong>Dictionary output</strong>: Generate Lindera format dictionary files</li>
+</ul>
+<h5 id="advanced-unknown-word-processing"><a class="header" href="#advanced-unknown-word-processing"><strong>Advanced Unknown Word Processing</strong></a></h5>
+<ul>
+<li><strong>Comprehensive Unicode support</strong>: Full support for CJK extensions, Katakana extensions, Hiragana extensions</li>
+<li><strong>Category-specific POS assignment</strong>: Automatic assignment of appropriate POS information by character type
+<ul>
+<li>DEFAULT: 名詞,一般 (unknown character type)</li>
+<li>HIRAGANA/KATAKANA/KANJI: 名詞,一般 (Japanese characters)</li>
+<li>ALPHA: 名詞,固有名詞 (alphabetic characters)</li>
+<li>NUMERIC: 名詞,数 (numeric characters)</li>
+</ul>
+</li>
+<li><strong>Surface form analysis</strong>: Feature generation based on character patterns, length, and position information</li>
+<li><strong>Dynamic cost calculation</strong>: Adaptive cost considering character type and context</li>
+</ul>
+<h5 id="refactored-implementation-september-2024-latest"><a class="header" href="#refactored-implementation-september-2024-latest"><strong>Refactored Implementation (September 2024 Latest)</strong></a></h5>
+<ul>
+<li><strong>Constant management</strong>: Magic number elimination via cost_constants module</li>
+<li><strong>Method splitting</strong>: Improved readability by splitting large methods
+<ul>
+<li><code>train()</code> → <code>build_lattices_from_corpus()</code>, <code>extract_labels()</code>, <code>train_crf_model()</code>, <code>create_final_model()</code></li>
+</ul>
+</li>
+<li><strong>Unified cost calculation</strong>: Improved maintainability by unifying duplicate code
+<ul>
+<li><code>calculate_known_word_cost()</code>: Known word cost calculation</li>
+<li><code>calculate_unknown_word_cost()</code>: Unknown word cost calculation</li>
+</ul>
+</li>
+<li><strong>Organized debug output</strong>: Structured logging via log_debug! macro</li>
+<li><strong>Enhanced error handling</strong>: Comprehensive error handling and documentation</li>
+</ul>
+<h3 id="architecture"><a class="header" href="#architecture">Architecture</a></h3>
+<pre><code class="language-text">lindera-dictionary/src/trainer.rs  # Main Trainer struct
+lindera-dictionary/src/trainer/
+├── config.rs           # Configuration management
+├── corpus.rs           # Corpus processing
+├── feature_extractor.rs # Feature extraction
+├── feature_rewriter.rs  # Feature rewriting
+└── model.rs            # Trained model
+</code></pre>
+<h3 id="advanced-unknown-word-processing-system"><a class="header" href="#advanced-unknown-word-processing-system">Advanced Unknown Word Processing System</a></h3>
+<h4 id="comprehensive-unicode-character-type-detection"><a class="header" href="#comprehensive-unicode-character-type-detection">Comprehensive Unicode Character Type Detection</a></h4>
+<p>The latest implementation significantly extends the basic Unicode ranges and fully supports the following character sets. (See the Category-specific POS assignment details in the Advanced Unknown Word Processing section above.)</p>
+<h4 id="feature-weight-optimization"><a class="header" href="#feature-weight-optimization">Feature Weight Optimization</a></h4>
+<h5 id="cost-calculation-constants"><a class="header" href="#cost-calculation-constants"><strong>Cost Calculation Constants</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>mod cost_constants {
+    // Known word cost calculation
+    pub const KNOWN_WORD_BASE_COST: i16 = 1000;
+    pub const KNOWN_WORD_COST_MULTIPLIER: f64 = 500.0;
+    pub const KNOWN_WORD_COST_MIN: i16 = 500;
+    pub const KNOWN_WORD_COST_MAX: i16 = 3000;
+    pub const KNOWN_WORD_DEFAULT_COST: i16 = 1500;
+
+    // Unknown word cost calculation
+    pub const UNK_BASE_COST: i32 = 3000;
+    pub const UNK_COST_MULTIPLIER: f64 = 500.0;
+    pub const UNK_COST_MIN: i32 = 2500;
+    pub const UNK_COST_MAX: i32 = 4500;
+
+    // Category-specific adjustments
+    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0;     // DEFAULT
+    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200;  // HIRAGANA - minor penalty
+    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0;    // KATAKANA - medium
+    pub const UNK_KANJI_ADJUSTMENT: i32 = 400;     // KANJI - high penalty
+    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100;     // ALPHA - mild penalty
+    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100;  // NUMERIC - bonus (regular)
+}
+<span class="boring">}</span></code></pre></pre>
+<h5 id="unified-cost-calculation"><a class="header" href="#unified-cost-calculation"><strong>Unified Cost Calculation</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Known word cost calculation
+fn calculate_known_word_cost(&amp;self, feature_weight: f64) -&gt; i16 {
+    let scaled_weight = (feature_weight * cost_constants::KNOWN_WORD_COST_MULTIPLIER) as i32;
+    let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
+    final_cost.clamp(
+        cost_constants::KNOWN_WORD_COST_MIN as i32,
+        cost_constants::KNOWN_WORD_COST_MAX as i32
+    ) as i16
+}
+
+// Unknown word cost calculation
+fn calculate_unknown_word_cost(&amp;self, feature_weight: f64, category: usize) -&gt; i32 {
+    let base_cost = cost_constants::UNK_BASE_COST;
+    let category_adjustment = match category {
+        0 =&gt; cost_constants::UNK_DEFAULT_ADJUSTMENT,
+        1 =&gt; cost_constants::UNK_HIRAGANA_ADJUSTMENT,
+        2 =&gt; cost_constants::UNK_KATAKANA_ADJUSTMENT,
+        3 =&gt; cost_constants::UNK_KANJI_ADJUSTMENT,
+        4 =&gt; cost_constants::UNK_ALPHA_ADJUSTMENT,
+        5 =&gt; cost_constants::UNK_NUMERIC_ADJUSTMENT,
+        _ =&gt; 0,
+    };
+    let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
+    let final_cost = base_cost + category_adjustment + scaled_weight;
+    final_cost.clamp(
+        cost_constants::UNK_COST_MIN,
+        cost_constants::UNK_COST_MAX
+    )
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="performance-optimization"><a class="header" href="#performance-optimization">Performance Optimization</a></h3>
+<h4 id="memory-efficiency"><a class="header" href="#memory-efficiency">Memory Efficiency</a></h4>
+<ul>
+<li><strong>Lazy evaluation</strong>: Create merged_model only when needed</li>
+<li><strong>Unused feature removal</strong>: Automatic deletion of unnecessary features after training</li>
+<li><strong>Efficient binary format</strong>: Fast serialization using rkyv</li>
+</ul>
+<h4 id="parallel-processing-support"><a class="header" href="#parallel-processing-support">Parallel Processing Support</a></h4>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let trainer = rucrf::Trainer::new()
+    .regularization(rucrf::Regularization::L1, regularization_cost)?
+    .max_iter(max_iter)?
+    .n_threads(self.num_threads)?;  // Multi-threaded training
+<span class="boring">}</span></code></pre></pre>
+<h3 id="practical-training-data-requirements"><a class="header" href="#practical-training-data-requirements">Practical Training Data Requirements</a></h3>
+<h4 id="recommended-corpus-specifications"><a class="header" href="#recommended-corpus-specifications">Recommended Corpus Specifications</a></h4>
+<p>Recommendations for generating effective dictionaries for real applications:</p>
+<ol>
+<li>
+<p><strong>Corpus Size</strong></p>
+<ul>
+<li><strong>Minimum</strong>: 100 sentences (for basic operation verification)</li>
+<li><strong>Recommended</strong>: 1,000+ sentences (practical level)</li>
+<li><strong>Ideal</strong>: 10,000+ sentences (commercial quality)</li>
+</ul>
+</li>
+<li>
+<p><strong>Vocabulary Diversity</strong></p>
+<ul>
+<li>Balanced distribution of different parts of speech</li>
+<li>Coverage of inflections and suffixes</li>
+<li>Appropriate inclusion of technical terms and proper nouns</li>
+</ul>
+</li>
+<li>
+<p><strong>Quality Control</strong></p>
+<ul>
+<li>Manual verification of morphological analysis results</li>
+<li>Consistent application of analysis criteria</li>
+<li>Maintain error rate below 5%</li>
+</ul>
+</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

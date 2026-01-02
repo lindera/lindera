@@ -1,0 +1,58 @@
+# Lindera CC-CE-DICT
+
+## Dictionary version
+
+This repository contains [CC-CEDICT-MeCab](https://github.com/lindera/CC-CEDICT-MeCab).
+
+## Dictionary format
+
+Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf) for details on the unidic-mecab dictionary format and part-of-speech tags.
+
+| Index | Name (Chinese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 左语境ID | Left context ID | |
+| 2 | 右语境ID | Right context ID | |
+| 3 | 成本 | Cost | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 词类1 | Part-of-speech subcategory 1 | |
+| 6 | 词类2 | Part-of-speech subcategory 2 | |
+| 7 | 词类3 | Part-of-speech subcategory 3 | |
+| 8 | 併音 | Pinyin | |
+| 9 | 繁体字 | Traditional | |
+| 10 | 簡体字 | Simplified | |
+| 11 | 定义 | Definition | |
+
+## User dictionary format (CSV)
+
+### Simple version
+
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 词类 | Part-of-speech | |
+| 2 | 併音 | Pinyin | |
+
+### Detailed version
+
+| Index | Name (Japanese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 左语境ID | Left context ID | |
+| 2 | 右语境ID | Right context ID | |
+| 3 | 成本 | Cost | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 词类1 | Part-of-speech subcategory 1 | |
+| 6 | 词类2 | Part-of-speech subcategory 2 | |
+| 7 | 词类3 | Part-of-speech subcategory 3 | |
+| 8 | 併音 | Pinyin | |
+| 9 | 繁体字 | Traditional | |
+| 10 | 簡体字 | Simplified | |
+| 11 | 定义 | Definition | |
+| 12 | - | - | After 12, it can be freely expanded. |
+
+## API reference
+
+The API reference is available. Please see following URL:
+
+- [lindera-cc-cedict](https://docs.rs/lindera-cc-cedict)
