@@ -192,19 +192,27 @@ pub struct Lattice {
     // Buffer reuse optimization: pre-allocated vectors for reuse
     edge_buffer: Vec<Edge>,
     edge_id_buffer: Vec<EdgeId>,
+    left_cache_buffer: Vec<(u32, i32, i32, EdgeId)>,
+    char_info_buffer: Vec<CharData>,
+    categories_buffer: Vec<CategoryId>,
+    // Fast path cache for character properties (first 256 characters)
+    char_category_cache: Vec<Vec<CategoryId>>,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct CharData {
+    byte_offset: u32,
+    is_kanji: bool,
+    categories_start: u32,
+    categories_len: u16,
+    kanji_run_byte_len: u32,
 }
 
 #[inline]
-fn is_kanji(c: char) -> bool {
+pub fn is_kanji(c: char) -> bool {
     let c = c as u32;
-    // Direct comparison is faster than range.contains()
-    (19968..=40879).contains(&c)
-}
-
-#[inline]
-fn is_kanji_only(s: &str) -> bool {
-    // Early exit for empty strings
-    !s.is_empty() && s.chars().all(is_kanji)
+    // CJK Unified Ideographs (4E00-9FAF) and Extension A (3400-4DBF)
+    (0x4E00..=0x9FAF).contains(&c) || (0x3400..=0x4DBF).contains(&c)
 }
 
 impl Lattice {
@@ -239,6 +247,9 @@ impl Lattice {
         // Clear buffers but preserve capacity for reuse
         self.edge_buffer.clear();
         self.edge_id_buffer.clear();
+        self.left_cache_buffer.clear();
+        self.char_info_buffer.clear();
+        self.categories_buffer.clear();
     }
 
     /// Get a reusable edge buffer with preserved capacity
@@ -251,6 +262,17 @@ impl Lattice {
     pub fn get_edge_id_buffer(&mut self) -> &mut Vec<EdgeId> {
         self.edge_id_buffer.clear();
         &mut self.edge_id_buffer
+    }
+
+    #[inline]
+    fn is_kanji_all(&self, char_idx: usize, byte_len: usize) -> bool {
+        self.char_info_buffer[char_idx].kanji_run_byte_len >= byte_len as u32
+    }
+
+    #[inline]
+    fn get_cached_category(&self, char_idx: usize, category_ord: usize) -> CategoryId {
+        let char_data = &self.char_info_buffer[char_idx];
+        self.categories_buffer[char_data.categories_start as usize + category_ord]
     }
 
     fn set_capacity(&mut self, text_len: usize) {
@@ -276,6 +298,66 @@ impl Lattice {
         let len = text.len();
         self.set_capacity(len);
 
+        // Pre-calculate character information for the text
+        self.char_info_buffer.clear();
+        self.categories_buffer.clear();
+
+        if self.char_category_cache.is_empty() {
+            self.char_category_cache.resize(256, Vec::new());
+        }
+
+        for (byte_offset, c) in text.char_indices() {
+            let categories_start = self.categories_buffer.len() as u32;
+
+            if (c as u32) < 256 {
+                let cached = &mut self.char_category_cache[c as usize];
+                if cached.is_empty() {
+                    let cats = char_definitions.lookup_categories(c);
+                    for &category in cats {
+                        cached.push(category);
+                    }
+                }
+                for &category in cached.iter() {
+                    self.categories_buffer.push(category);
+                }
+            } else {
+                let categories = char_definitions.lookup_categories(c);
+                for &category in categories {
+                    self.categories_buffer.push(category);
+                }
+            }
+
+            let categories_len = (self.categories_buffer.len() as u32 - categories_start) as u16;
+
+            self.char_info_buffer.push(CharData {
+                byte_offset: byte_offset as u32,
+                is_kanji: is_kanji(c),
+                categories_start,
+                categories_len,
+                kanji_run_byte_len: 0,
+            });
+        }
+        // Sentinel for end of text
+        self.char_info_buffer.push(CharData {
+            byte_offset: len as u32,
+            is_kanji: false,
+            categories_start: 0,
+            categories_len: 0,
+            kanji_run_byte_len: 0,
+        });
+
+        // Pre-calculate Kanji run lengths (backwards)
+        for i in (0..self.char_info_buffer.len() - 1).rev() {
+            if self.char_info_buffer[i].is_kanji {
+                let next_byte_offset = self.char_info_buffer[i + 1].byte_offset;
+                let char_byte_len = next_byte_offset - self.char_info_buffer[i].byte_offset;
+                self.char_info_buffer[i].kanji_run_byte_len =
+                    char_byte_len + self.char_info_buffer[i + 1].kanji_run_byte_len;
+            } else {
+                self.char_info_buffer[i].kanji_run_byte_len = 0;
+            }
+        }
+
         let start_edge_id = self.add_edge(Edge::default());
         let end_edge_id = self.add_edge(Edge::default());
 
@@ -286,7 +368,9 @@ impl Lattice {
         // index of the last character of unknown word
         let mut unknown_word_end: Option<usize> = None;
 
-        for start in 0..len {
+        for char_idx in 0..self.char_info_buffer.len() - 1 {
+            let start = self.char_info_buffer[char_idx].byte_offset as usize;
+
             // No arc is ending here.
             // No need to check if a valid word starts here.
             if self.ends_at[start].is_empty() {
@@ -301,12 +385,13 @@ impl Lattice {
             if user_dict.is_some() {
                 let dict = user_dict.as_ref().unwrap();
                 for (prefix_len, word_entry) in dict.prefix(suffix) {
+                    let kanji_only = self.is_kanji_all(char_idx, prefix_len);
                     let edge = Self::create_edge(
                         EdgeType::KNOWN,
                         word_entry,
                         start,
                         start + prefix_len,
-                        is_kanji_only(&suffix[..prefix_len]),
+                        kanji_only,
                     );
                     self.add_edge_in_lattice(edge);
                     found = true;
@@ -316,12 +401,13 @@ impl Lattice {
             // we check all word starting at start, using the double array, like we would use
             // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
+                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
                 let edge = Self::create_edge(
                     EdgeType::KNOWN,
                     word_entry,
                     start,
                     start + prefix_len,
-                    is_kanji_only(&suffix[..prefix_len]),
+                    kanji_only,
                 );
                 self.add_edge_in_lattice(edge);
                 found = true;
@@ -330,10 +416,11 @@ impl Lattice {
             // In the case of normal mode, it doesn't process unknown word greedily.
             if (search_mode.is_search()
                 || unknown_word_end.map(|index| index <= start).unwrap_or(true))
-                && let Some(first_char) = suffix.chars().next()
+                && char_idx < self.char_info_buffer.len() - 1
             {
-                let categories = char_definitions.lookup_categories(first_char);
-                for (category_ord, &category) in categories.iter().enumerate() {
+                let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
+                for category_ord in 0..num_categories {
+                    let category = self.get_cached_category(char_idx, category_ord);
                     unknown_word_end = self.process_unknown_word(
                         char_definitions,
                         unknown_dictionary,
@@ -341,7 +428,7 @@ impl Lattice {
                         category_ord,
                         unknown_word_end,
                         start,
-                        suffix,
+                        char_idx,
                         found,
                     );
                 }
@@ -358,7 +445,7 @@ impl Lattice {
         category_ord: usize,
         unknown_word_index: Option<usize>,
         start: usize,
-        suffix: &str,
+        char_idx: usize,
         found: bool,
     ) -> Option<usize> {
         let mut unknown_word_num_chars: usize = 0;
@@ -366,35 +453,46 @@ impl Lattice {
         if category_data.invoke || !found {
             unknown_word_num_chars = 1;
             if category_data.group {
-                for c in suffix.chars().skip(1) {
-                    let categories = char_definitions.lookup_categories(c);
-                    if categories.len() > category_ord && categories[category_ord] == category {
-                        unknown_word_num_chars += 1;
-                    } else {
+                for i in 1.. {
+                    let next_idx = char_idx + i;
+                    if next_idx >= self.char_info_buffer.len() - 1 {
+                        break;
+                    }
+                    let num_categories = self.char_info_buffer[next_idx].categories_len as usize;
+                    let mut found_cat = false;
+                    if category_ord < num_categories {
+                        let cat = self.get_cached_category(next_idx, category_ord);
+                        if cat == category {
+                            unknown_word_num_chars += 1;
+                            found_cat = true;
+                        }
+                    }
+                    if !found_cat {
                         break;
                     }
                 }
             }
         }
         if unknown_word_num_chars > 0 {
-            // Optimized: Direct byte boundary calculation
-            let byte_end = suffix
-                .char_indices()
-                .nth(unknown_word_num_chars)
-                .map_or(suffix.len(), |(pos, _)| pos);
-            let unknown_word = &suffix[..byte_end];
+            let byte_end_offset =
+                self.char_info_buffer[char_idx + unknown_word_num_chars].byte_offset;
+            let byte_len = byte_end_offset as usize - start;
+
+            // Check Kanji status using pre-calculated buffer
+            let kanji_only = self.is_kanji_all(char_idx, byte_len);
+
             for &word_id in unknown_dictionary.lookup_word_ids(category) {
                 let word_entry = unknown_dictionary.word_entry(word_id);
                 let edge = Self::create_edge(
                     EdgeType::UNKNOWN,
                     word_entry,
                     start,
-                    start + unknown_word.len(),
-                    is_kanji_only(unknown_word),
+                    start + byte_len,
+                    kanji_only,
                 );
                 self.add_edge_in_lattice(edge);
             }
-            return Some(start + unknown_word.len());
+            return Some(start + byte_len);
         }
         unknown_word_index
     }
@@ -424,6 +522,23 @@ impl Lattice {
             let left_edge_ids = &self.ends_at[i];
             let right_edge_ids = &self.starts_at[i];
 
+            if right_edge_ids.is_empty() || left_edge_ids.is_empty() {
+                continue;
+            }
+
+            // Cache left edge data to avoid repeated access and penalty calculation
+            // We use mem::take to temporarily own the buffer and avoid borrow checker conflicts with self.edges
+            let mut left_cache = std::mem::take(&mut self.left_cache_buffer);
+            for &left_edge_id in left_edge_ids {
+                let left_edge = &self.edges[left_edge_id.0 as usize];
+                left_cache.push((
+                    left_edge.word_entry.right_id(),
+                    left_edge.path_cost,
+                    mode.penalty_cost(left_edge),
+                    left_edge_id,
+                ));
+            }
+
             for &right_edge_id in right_edge_ids {
                 // Cache right edge data to avoid repeated access
                 let right_edge = &self.edges[right_edge_id.0 as usize];
@@ -434,14 +549,13 @@ impl Lattice {
                 let mut best_cost = i32::MAX;
                 let mut best_left = None;
 
-                for &left_edge_id in left_edge_ids {
-                    let left_edge = &self.edges[left_edge_id.0 as usize];
-                    let left_right_id = left_edge.word_entry.right_id();
-
+                for &(left_right_id, left_path_cost, left_penalty, left_edge_id) in
+                    left_cache.iter()
+                {
                     // Calculate path cost directly
                     let mut path_cost =
-                        left_edge.path_cost + cost_matrix.cost(left_right_id, right_left_id);
-                    path_cost += mode.penalty_cost(left_edge);
+                        left_path_cost + cost_matrix.cost(left_right_id, right_left_id);
+                    path_cost += left_penalty;
 
                     // Track minimum cost with branch-free comparison when possible
                     if path_cost < best_cost {
@@ -457,6 +571,8 @@ impl Lattice {
                     edge.path_cost = right_word_entry.word_cost as i32 + best_cost;
                 }
             }
+            left_cache.clear();
+            self.left_cache_buffer = left_cache;
         }
     }
 
