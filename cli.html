@@ -1,0 +1,1001 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>CLI - Lindera User Guide</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> Dictionaries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> Advanced Usage</a></li><li class="chapter-item expanded "><a href="cli.html" class="active"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> API Reference</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera User Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="lindera-cli"><a class="header" href="#lindera-cli">Lindera CLI</a></h1>
+<p>A morphological analysis command-line interface for <a href="https://github.com/lindera-morphology/lindera">Lindera</a>.</p>
+<h2 id="install"><a class="header" href="#install">Install</a></h2>
+<p>You can install binary via cargo as follows:</p>
+<pre><code class="language-shell script">% cargo install lindera-cli
+</code></pre>
+<p>Alternatively, you can download a binary from the following release page:</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/releases">https://github.com/lindera-morphology/lindera/releases</a></li>
+</ul>
+<h2 id="build"><a class="header" href="#build">Build</a></h2>
+<h3 id="build-with-ipadic-japanese-dictionary"><a class="header" href="#build-with-ipadic-japanese-dictionary">Build with IPADIC (Japanese dictionary)</a></h3>
+<p>The "ipadic" feature flag allows Lindera to include IPADIC.</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-ipadic
+</code></pre>
+<h3 id="build-with-unidic-japanese-dictionary"><a class="header" href="#build-with-unidic-japanese-dictionary">Build with UniDic (Japanese dictionary)</a></h3>
+<p>The "unidic" feature flag allows Lindera to include UniDic.</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-unidic
+</code></pre>
+<h3 id="build-with-ko-dic-korean-dictionary"><a class="header" href="#build-with-ko-dic-korean-dictionary">Build with ko-dic (Korean dictionary)</a></h3>
+<p>The "ko-dic" feature flag allows Lindera to include ko-dic.</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-ko-dic
+</code></pre>
+<h3 id="build-with-cc-cedict-chinese-dictionary"><a class="header" href="#build-with-cc-cedict-chinese-dictionary">Build with CC-CEDICT (Chinese dictionary)</a></h3>
+<p>The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-cc-cedict
+</code></pre>
+<h3 id="build-without-dictionaries"><a class="header" href="#build-without-dictionaries">Build without dictionaries</a></h3>
+<p>To reduce Lindera's binary size, omit the feature flag.
+This results in a binary containing only the tokenizer and trainer, as it no longer includes the dictionary.</p>
+<pre><code class="language-shell script">% cargo build --release
+</code></pre>
+<h3 id="build-with-all-features"><a class="header" href="#build-with-all-features">Build with all features</a></h3>
+<pre><code class="language-shell script">% cargo build --release --all-features
+</code></pre>
+<h2 id="build-dictionary"><a class="header" href="#build-dictionary">Build dictionary</a></h2>
+<p>Build (compile) a morphological analysis dictionary from source CSV files for use with Lindera.</p>
+<h3 id="basic-build-usage"><a class="header" href="#basic-build-usage">Basic build usage</a></h3>
+<pre><code class="language-bash"># Build a system dictionary
+lindera build \
+  --src /path/to/dictionary/csv \
+  --dest /path/to/output/dictionary \
+  --metadata ./lindera-ipadic/metadata.json
+
+# Build a user dictionary
+lindera build \
+  --src ./user_dict.csv \
+  --dest ./user_dictionary \
+  --metadata ./lindera-ipadic/metadata.json \
+  --user
+</code></pre>
+<h3 id="build-parameters"><a class="header" href="#build-parameters">Build parameters</a></h3>
+<ul>
+<li><code>--src</code> / <code>-s</code>: Source directory containing dictionary CSV files (or single CSV file for user dictionary)</li>
+<li><code>--dest</code> / <code>-d</code>: Destination directory for compiled dictionary output</li>
+<li><code>--metadata</code> / <code>-m</code>: Metadata configuration file (metadata.json) that defines dictionary structure</li>
+<li><code>--user</code> / <code>-u</code>: Build user dictionary instead of system dictionary (optional flag)</li>
+</ul>
+<h3 id="dictionary-types"><a class="header" href="#dictionary-types">Dictionary types</a></h3>
+<h4 id="system-dictionary"><a class="header" href="#system-dictionary">System dictionary</a></h4>
+<p>A full morphological analysis dictionary containing:</p>
+<ul>
+<li>Lexicon entries (word definitions)</li>
+<li>Connection cost matrix</li>
+<li>Unknown word handling rules</li>
+<li>Character type definitions</li>
+</ul>
+<h4 id="user-dictionary"><a class="header" href="#user-dictionary">User dictionary</a></h4>
+<p>A supplementary dictionary for custom words that works alongside a system dictionary.</p>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<h4 id="build-ipadic-japanese-dictionary"><a class="header" href="#build-ipadic-japanese-dictionary">Build IPADIC (Japanese dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract IPADIC source files
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/mecab-ipadic-2.7.0-20250920 \
+  --dest /tmp/lindera-ipadic-2.7.0-20250920 \
+  --metadata ./lindera-ipadic/metadata.json
+
+% ls -al /tmp/lindera-ipadic-2.7.0-20250920
+% (cd /tmp &amp;&amp; zip -r lindera-ipadic-2.7.0-20250920.zip lindera-ipadic-2.7.0-20250920/)
+% tar -czf /tmp/lindera-ipadic-2.7.0-20250920.tar.gz -C /tmp lindera-ipadic-2.7.0-20250920
+</code></pre>
+<h4 id="build-ipadic-neologd-japanese-dictionary"><a class="header" href="#build-ipadic-neologd-japanese-dictionary">Build IPADIC NEologd (Japanese dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract IPADIC NEologd source files
+% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
+  --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
+  --metadata ./lindera-ipadic-neologd/metadata.json
+
+% ls -al /tmp/lindera-ipadic-neologd-0.0.7-20200820
+% (cd /tmp &amp;&amp; zip -r lindera-ipadic-neologd-0.0.7-20200820.zip lindera-ipadic-neologd-0.0.7-20200820/)
+% tar -czf /tmp/lindera-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp lindera-ipadic-neologd-0.0.7-20200820
+</code></pre>
+<h4 id="build-unidic-japanese-dictionary"><a class="header" href="#build-unidic-japanese-dictionary">Build UniDic (Japanese dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract UniDic source files
+% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
+% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/unidic-mecab-2.1.2 \
+  --dest /tmp/lindera-unidic-2.1.2 \
+  --metadata ./lindera-unidic/metadata.json
+
+% ls -al /tmp/lindera-unidic-2.1.2
+% (cd /tmp &amp;&amp; zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
+% tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
+</code></pre>
+<h4 id="build-cc-cedict-chinese-dictionary"><a class="header" href="#build-cc-cedict-chinese-dictionary">Build CC-CEDICT (Chinese dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract CC-CEDICT source files
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
+  --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
+  --metadata ./lindera-cc-cedict/metadata.json
+
+% ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
+% (cd /tmp &amp;&amp; zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
+% tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
+</code></pre>
+<h4 id="build-ko-dic-korean-dictionary"><a class="header" href="#build-ko-dic-korean-dictionary">Build ko-dic (Korean dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract ko-dic source files
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/mecab-ko-dic-2.1.1-20180720 \
+  --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
+  --metadata ./lindera-ko-dic/metadata.json
+
+% ls -al /tmp/lindera-ko-dic-2.1.1-20180720
+% (cd /tmp &amp;&amp; zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
+% tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
+</code></pre>
+<h2 id="build-user-dictionary"><a class="header" href="#build-user-dictionary">Build user dictionary</a></h2>
+<h3 id="build-ipadic-user-dictionary-japanese"><a class="header" href="#build-ipadic-user-dictionary-japanese">Build IPADIC user dictionary (Japanese)</a></h3>
+<p>For more details about user dictionary format please refer to the following URL:</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv">Lindera IPADIC Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/ipadic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-ipadic/metadata.json \
+  --user
+</code></pre>
+<h3 id="build-unidic-user-dictionary-japanese"><a class="header" href="#build-unidic-user-dictionary-japanese">Build UniDic user dictionary (Japanese)</a></h3>
+<p>For more details about user dictionary format please refer to the following URL:</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv">Lindera UniDic Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/unidic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-unidic/metadata.json \
+  --user
+</code></pre>
+<h3 id="build-cc-cedict-user-dictionary-chinese"><a class="header" href="#build-cc-cedict-user-dictionary-chinese">Build CC-CEDICT user dictionary (Chinese)</a></h3>
+<p>For more details about user dictionary format please refer to the following URL:</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv">Lindera CC-CEDICT Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+</code></pre>
+<h3 id="build-ko-dic-user-dictionary-korean"><a class="header" href="#build-ko-dic-user-dictionary-korean">Build ko-dic user dictionary (Korean)</a></h3>
+<p>For more details about user dictionary format please refer to the following URL:</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv">Lindera ko-dic Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/ko-dic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-ko-dic/metadata.json \
+  --user
+</code></pre>
+<h2 id="tokenize-text"><a class="header" href="#tokenize-text">Tokenize text</a></h2>
+<p>Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean text using various dictionaries.</p>
+<h3 id="basic-tokenization-usage"><a class="header" href="#basic-tokenization-usage">Basic tokenization usage</a></h3>
+<pre><code class="language-bash"># Tokenize text using a dictionary directory
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /path/to/dictionary
+
+# Tokenize text using embedded dictionary
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic
+
+# Tokenize with different output format
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output json
+
+# Tokenize text from file
+lindera tokenize \
+  --dict /path/to/dictionary \
+  --output wakati \
+  input.txt
+</code></pre>
+<h3 id="tokenization-parameters"><a class="header" href="#tokenization-parameters">Tokenization parameters</a></h3>
+<ul>
+<li><code>--dict</code> / <code>-d</code>: Dictionary path or URI (required)
+<ul>
+<li>File path: <code>/path/to/dictionary</code></li>
+<li>Embedded: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+</ul>
+</li>
+<li><code>--output</code> / <code>-o</code>: Output format (default: mecab)
+<ul>
+<li><code>mecab</code>: MeCab-compatible format with part-of-speech info</li>
+<li><code>wakati</code>: Space-separated tokens only</li>
+<li><code>json</code>: Detailed JSON format with all token information</li>
+</ul>
+</li>
+<li><code>--user-dict</code> / <code>-u</code>: User dictionary path (optional)</li>
+<li><code>--mode</code> / <code>-m</code>: Tokenization mode (default: normal)
+<ul>
+<li><code>normal</code>: Standard tokenization</li>
+<li><code>decompose</code>: Decompose compound words</li>
+</ul>
+</li>
+<li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
+<li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
+<li>Input file: Optional file path (default: stdin)</li>
+</ul>
+<h3 id="examples-with-external-dictionaries"><a class="header" href="#examples-with-external-dictionaries">Examples with external dictionaries</a></h3>
+<h4 id="tokenize-with-external-ipadic-japanese-dictionary"><a class="header" href="#tokenize-with-external-ipadic-japanese-dictionary">Tokenize with external IPADIC (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="tokenize-with-external-ipadic-neologd-japanese-dictionary"><a class="header" href="#tokenize-with-external-ipadic-neologd-japanese-dictionary">Tokenize with external IPADIC Neologd (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-neologd-0.0.7-20200820
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="tokenize-with-external-unidic-japanese-dictionary"><a class="header" href="#tokenize-with-external-unidic-japanese-dictionary">Tokenize with external UniDic (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-unidic-2.1.2
+</code></pre>
+<pre><code class="language-text">日本    名詞,固有名詞,地名,国,*,*,ニッポン,日本,日本,ニッポン,日本,ニッポン,固,*,*,*,*
+語      名詞,普通名詞,一般,*,*,*,ゴ,語,語,ゴ,語,ゴ,漢,*,*,*,*
+の      助詞,格助詞,*,*,*,*,ノ,の,の,ノ,の,ノ,和,*,*,*,*
+形態    名詞,普通名詞,一般,*,*,*,ケイタイ,形態,形態,ケータイ,形態,ケータイ,漢,*,*,*,*
+素      接尾辞,名詞的,一般,*,*,*,ソ,素,素,ソ,素,ソ,漢,*,*,*,*
+解析    名詞,普通名詞,サ変可能,*,*,*,カイセキ,解析,解析,カイセキ,解析,カイセキ,漢,*,*,*,*
+を      助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+行う    動詞,一般,*,*,五段-ワア行,連体形-一般,オコナウ,行う,行う,オコナウ,行う,オコナウ,和,*,*,*,*
+こと    名詞,普通名詞,一般,*,*,*,コト,事,こと,コト,こと,コト,和,コ濁,基本形,*,*
+が      助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+でき    動詞,非自立可能,*,*,上一段-カ行,連用形-一般,デキル,出来る,でき,デキ,できる,デキル,和,*,*,*,*
+ます    助動詞,*,*,*,助動詞-マス,終止形-一般,マス,ます,ます,マス,ます,マス,和,*,*,*,*
+。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<h4 id="tokenize-with-external-ko-dic-korean-dictionary"><a class="header" href="#tokenize-with-external-ko-dic-korean-dictionary">Tokenize with external ko-dic (Korean dictionary)</a></h4>
+<pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
+  --dict /tmp/lindera-ko-dic-2.1.1-20180720
+</code></pre>
+<pre><code class="language-text">한국어  NNG,*,F,한국어,Compound,*,*,한국/NNG/*+어/NNG/*
+의      JKG,*,F,의,*,*,*,*
+형태    NNG,*,F,형태,*,*,*,*
+해석    NNG,행위,T,해석,*,*,*,*
+을      JKO,*,T,을,*,*,*,*
+실시    NNG,행위,F,실시,*,*,*,*
+할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
+수      NNG,*,F,수,*,*,*,*
+있      VX,*,T,있,*,*,*,*
+습니다  EF,*,F,습니다,*,*,*,*
+.       UNK
+EOS
+</code></pre>
+<h4 id="tokenize-with-external-cc-cedict-chinese-dictionary"><a class="header" href="#tokenize-with-external-cc-cedict-chinese-dictionary">Tokenize with external CC-CEDICT (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-cc-cedict-0.1.0-20200409
+</code></pre>
+<pre><code class="language-text">可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
+形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+。      UNK
+EOS
+</code></pre>
+<h3 id="examples-with-embedded-dictionaries"><a class="header" href="#examples-with-embedded-dictionaries">Examples with embedded dictionaries</a></h3>
+<p>Lindera can include dictionaries directly in the binary when built with specific feature flags. This allows tokenization without external dictionary files.</p>
+<h4 id="tokenize-with-embedded-ipadic-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-ipadic-japanese-dictionary">Tokenize with embedded IPADIC (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p>NOTE: To include IPADIC dictionary in the binary, you must build with the <code>--features=embedded-ipadic</code> option.</p>
+<h4 id="tokenize-with-embedded-unidic-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-unidic-japanese-dictionary">Tokenize with embedded UniDic (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://unidic
+</code></pre>
+<pre><code class="language-text">日本    名詞,固有名詞,地名,国,*,*,ニッポン,日本,日本,ニッポン,日本,ニッポン,固,*,*,*,*
+語      名詞,普通名詞,一般,*,*,*,ゴ,語,語,ゴ,語,ゴ,漢,*,*,*,*
+の      助詞,格助詞,*,*,*,*,ノ,の,の,ノ,の,ノ,和,*,*,*,*
+形態    名詞,普通名詞,一般,*,*,*,ケイタイ,形態,形態,ケータイ,形態,ケータイ,漢,*,*,*,*
+素      接尾辞,名詞的,一般,*,*,*,ソ,素,素,ソ,素,ソ,漢,*,*,*,*
+解析    名詞,普通名詞,サ変可能,*,*,*,カイセキ,解析,解析,カイセキ,解析,カイセキ,漢,*,*,*,*
+を      助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+行う    動詞,一般,*,*,五段-ワア行,連体形-一般,オコナウ,行う,行う,オコナウ,行う,オコナウ,和,*,*,*,*
+こと    名詞,普通名詞,一般,*,*,*,コト,事,こと,コト,こと,コト,和,コ濁,基本形,*,*
+が      助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+でき    動詞,非自立可能,*,*,上一段-カ行,連用形-一般,デキル,出来る,でき,デキ,できる,デキル,和,*,*,*,*
+ます    助動詞,*,*,*,助動詞-マス,終止形-一般,マス,ます,ます,マス,ます,マス,和,*,*,*,*
+。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embedded-unidic</code> option.</p>
+<h4 id="tokenize-with-embedded-ipadic-neologd-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-ipadic-neologd-japanese-dictionary">Tokenize with embedded IPADIC NEologd (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic-neologd
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embedded-ipadic-neologd</code> option.</p>
+<h4 id="tokenize-with-embedded-ko-dic-korean-dictionary"><a class="header" href="#tokenize-with-embedded-ko-dic-korean-dictionary">Tokenize with embedded ko-dic (Korean dictionary)</a></h4>
+<pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
+  --dict embedded://ko-dic
+</code></pre>
+<pre><code class="language-text">한국어  NNG,*,F,한국어,Compound,*,*,한국/NNG/*+어/NNG/*
+의      JKG,*,F,의,*,*,*,*
+형태    NNG,*,F,형태,*,*,*,*
+해석    NNG,행위,T,해석,*,*,*,*
+을      JKO,*,T,을,*,*,*,*
+실시    NNG,행위,F,실시,*,*,*,*
+할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
+수      NNG,*,F,수,*,*,*,*
+있      VX,*,T,있,*,*,*,*
+습니다  EF,*,F,습니다,*,*,*,*
+.       UNK
+EOS
+</code></pre>
+<p>NOTE: To include ko-dic dictionary in the binary, you must build with the <code>--features=embedded-ko-dic</code> option.</p>
+<h4 id="tokenize-with-embedded-cc-cedict-chinese-dictionary"><a class="header" href="#tokenize-with-embedded-cc-cedict-chinese-dictionary">Tokenize with embedded CC-CEDICT (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://cc-cedict
+</code></pre>
+<pre><code class="language-text">可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
+形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+。      UNK
+EOS
+</code></pre>
+<p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embedded-cc-cedict</code> option.</p>
+<h3 id="user-dictionary-examples"><a class="header" href="#user-dictionary-examples">User dictionary examples</a></h3>
+<p>Lindera supports user dictionaries to add custom words alongside system dictionaries. User dictionaries can be in CSV or binary format.</p>
+<h4 id="use-user-dictionary-csv-format"><a class="header" href="#use-user-dictionary-csv-format">Use user dictionary (CSV format)</a></h4>
+<pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict embedded://ipadic \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
+</code></pre>
+<pre><code class="language-text">東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+</code></pre>
+<h4 id="use-user-dictionary-binary-format"><a class="header" href="#use-user-dictionary-binary-format">Use user dictionary (Binary format)</a></h4>
+<pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920 \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.bin
+</code></pre>
+<pre><code class="language-text">東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+</code></pre>
+<h3 id="tokenization-modes"><a class="header" href="#tokenization-modes">Tokenization modes</a></h3>
+<p>Lindera provides two tokenization modes: <code>normal</code> and <code>decompose</code>.</p>
+<h4 id="normal-mode-default"><a class="header" href="#normal-mode-default">Normal mode (default)</a></h4>
+<p>Tokenizes faithfully based on words registered in the dictionary:</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
+  --dict embedded://ipadic \
+  --mode normal
+</code></pre>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
+<h4 id="decompose-mode"><a class="header" href="#decompose-mode">Decompose mode</a></h4>
+<p>Tokenizes compound noun words additionally:</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
+  --dict embedded://ipadic \
+  --mode decompose
+</code></pre>
+<pre><code class="language-text">関西    名詞,固有名詞,地域,一般,*,*,関西,カンサイ,カンサイ
+国際    名詞,一般,*,*,*,*,国際,コクサイ,コクサイ
+空港    名詞,一般,*,*,*,*,空港,クウコウ,クーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
+<h3 id="output-formats"><a class="header" href="#output-formats">Output formats</a></h3>
+<p>Lindera provides three output formats: <code>mecab</code>, <code>wakati</code> and <code>json</code>.</p>
+<h4 id="mecab-format-default"><a class="header" href="#mecab-format-default">MeCab format (default)</a></h4>
+<p>Outputs results in MeCab-compatible format with part-of-speech information:</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output mecab
+</code></pre>
+<pre><code class="language-text">お待ち  名詞,サ変接続,*,*,*,*,お待ち,オマチ,オマチ
+し  動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
+て  助詞,接続助詞,*,*,*,*,て,テ,テ
+おり  動詞,非自立,*,*,五段・ラ行,連用形,おる,オリ,オリ
+ます  助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。  記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="wakati-format"><a class="header" href="#wakati-format">Wakati format</a></h4>
+<p>Outputs only the token text separated by spaces:</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output wakati
+</code></pre>
+<pre><code class="language-text">お待ち し て おり ます 。
+</code></pre>
+<h4 id="json-format"><a class="header" href="#json-format">JSON format</a></h4>
+<p>Outputs detailed token information in JSON format:</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output json
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "base_form": "お待ち",
+    "byte_end": 9,
+    "byte_start": 0,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "名詞",
+    "part_of_speech_subcategory_1": "サ変接続",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オマチ",
+    "reading": "オマチ",
+    "surface": "お待ち",
+    "word_id": 14698
+  },
+  {
+    "base_form": "する",
+    "byte_end": 12,
+    "byte_start": 9,
+    "conjugation_form": "サ変・スル",
+    "conjugation_type": "連用形",
+    "part_of_speech": "動詞",
+    "part_of_speech_subcategory_1": "自立",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "シ",
+    "reading": "シ",
+    "surface": "し",
+    "word_id": 30763
+  },
+  {
+    "base_form": "て",
+    "byte_end": 15,
+    "byte_start": 12,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "助詞",
+    "part_of_speech_subcategory_1": "接続助詞",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "テ",
+    "reading": "テ",
+    "surface": "て",
+    "word_id": 46603
+  },
+  {
+    "base_form": "おる",
+    "byte_end": 21,
+    "byte_start": 15,
+    "conjugation_form": "五段・ラ行",
+    "conjugation_type": "連用形",
+    "part_of_speech": "動詞",
+    "part_of_speech_subcategory_1": "非自立",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オリ",
+    "reading": "オリ",
+    "surface": "おり",
+    "word_id": 14239
+  },
+  {
+    "base_form": "ます",
+    "byte_end": 27,
+    "byte_start": 21,
+    "conjugation_form": "特殊・マス",
+    "conjugation_type": "基本形",
+    "part_of_speech": "助動詞",
+    "part_of_speech_subcategory_1": "*",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "マス",
+    "reading": "マス",
+    "surface": "ます",
+    "word_id": 68733
+  },
+  {
+    "base_form": "。",
+    "byte_end": 30,
+    "byte_start": 27,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "記号",
+    "part_of_speech_subcategory_1": "句点",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "。",
+    "reading": "。",
+    "surface": "。",
+    "word_id": 101
+  }
+]
+</code></pre>
+<h2 id="advanced-tokenization"><a class="header" href="#advanced-tokenization">Advanced tokenization</a></h2>
+<p>Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.</p>
+<h3 id="tokenize-with-character-and-token-filters"><a class="header" href="#tokenize-with-character-and-token-filters">Tokenize with character and token filters</a></h3>
+<pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
+  --dict embedded://ipadic \
+  --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
+  --token-filter 'japanese_keep_tags:{"tags":["名詞,一般"]}'
+</code></pre>
+<pre><code class="language-text">すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+EOS
+</code></pre>
+<h2 id="dictionary-training-experimental"><a class="header" href="#dictionary-training-experimental">Dictionary Training (Experimental)</a></h2>
+<p>Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the <code>train</code> feature flag enabled. (The <code>train</code> feature flag is enabled by default.)</p>
+<h3 id="training-parameters"><a class="header" href="#training-parameters">Training parameters</a></h3>
+<ul>
+<li><code>--seed</code> / <code>-s</code>: Seed lexicon file (CSV format) to be weighted</li>
+<li><code>--corpus</code> / <code>-c</code>: Training corpus (annotated text)</li>
+<li><code>--char-def</code> / <code>-C</code>: Character definition file (char.def)</li>
+<li><code>--unk-def</code> / <code>-u</code>: Unknown word definition file (unk.def) to be weighted</li>
+<li><code>--feature-def</code> / <code>-f</code>: Feature definition file (feature.def)</li>
+<li><code>--rewrite-def</code> / <code>-r</code>: Rewrite rule definition file (rewrite.def)</li>
+<li><code>--output</code> / <code>-o</code>: Output model file</li>
+<li><code>--lambda</code> / <code>-l</code>: L1 regularization (0.0-1.0) (default: 0.01)</li>
+<li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training (default: 100)</li>
+<li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count, auto-adjusted based on dataset size)</li>
+</ul>
+<h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
+<h4 id="1-prepare-training-files"><a class="header" href="#1-prepare-training-files">1. Prepare training files</a></h4>
+<p><strong>Seed lexicon file (seed.csv):</strong></p>
+<p>The seed lexicon file contains initial dictionary entries used for training the CRF model. Each line represents a word entry with comma-separated fields. The specific field structure varies depending on the dictionary format:</p>
+<ul>
+<li>Surface</li>
+<li>Left context ID</li>
+<li>Right context ID</li>
+<li>Word cost</li>
+<li>Part-of-speech tags (multiple fields)</li>
+<li>Base form</li>
+<li>Reading (katakana)</li>
+<li>Pronunciation</li>
+</ul>
+<p>Note: The exact field definitions differ between dictionary formats (IPADIC, UniDic, ko-dic, CC-CEDICT). Please refer to each dictionary's format specification for details.</p>
+<pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
+</code></pre>
+<p><strong>Training corpus (corpus.txt):</strong></p>
+<p>The training corpus file contains annotated text data used to train the CRF model. Each line consists of:</p>
+<ul>
+<li>A surface form (word) followed by a tab character</li>
+<li>Comma-separated morphological features (part-of-speech tags, base form, reading, pronunciation)</li>
+<li>Sentences are separated by "EOS" (End Of Sentence) markers</li>
+</ul>
+<p>Note: The morphological feature format varies depending on the dictionary (IPADIC, UniDic, ko-dic, CC-CEDICT). Please refer to each dictionary's format specification for details.</p>
+<pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+
+形態	名詞,一般,*,*,*,*,形態,ケイタイ,ケイタイ
+素	名詞,接尾,一般,*,*,*,素,ソ,ソ
+解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う	動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+EOS
+</code></pre>
+<p>For detailed information about file formats and advanced features, see <a href="../TRAINER_README.html">TRAINER_README.md</a>.</p>
+<h4 id="2-train-model"><a class="header" href="#2-train-model">2. Train model</a></h4>
+<pre><code class="language-bash">lindera train \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
+</code></pre>
+<h4 id="3-training-results"><a class="header" href="#3-training-results">3. Training results</a></h4>
+<p>The trained model will contain:</p>
+<ul>
+<li><strong>Existing words</strong>: All seed dictionary records with newly learned weights</li>
+<li><strong>New words</strong>: Words from the corpus not in the seed dictionary, added with appropriate weights</li>
+</ul>
+<h2 id="export-trained-model-to-dictionary"><a class="header" href="#export-trained-model-to-dictionary">Export trained model to dictionary</a></h2>
+<p>Export a trained model file to Lindera dictionary format files. This feature requires building with the <code>train</code> feature flag enabled.</p>
+<h3 id="basic-export-usage"><a class="header" href="#basic-export-usage">Basic export usage</a></h3>
+<pre><code class="language-bash"># Export trained model to dictionary files
+lindera export \
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./resources/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
+</code></pre>
+<h3 id="export-parameters"><a class="header" href="#export-parameters">Export parameters</a></h3>
+<ul>
+<li><code>--model</code> / <code>-m</code>: Path to the trained model file (.dat format)</li>
+<li><code>--output</code> / <code>-o</code>: Directory to output the dictionary files</li>
+<li><code>--metadata</code>: Optional metadata.json file to update with trained model information</li>
+</ul>
+<h3 id="output-files"><a class="header" href="#output-files">Output files</a></h3>
+<p>The export command creates the following dictionary files in the output directory:</p>
+<ul>
+<li><code>lex.csv</code>: Lexicon file with learned weights</li>
+<li><code>matrix.def</code>: Connection cost matrix</li>
+<li><code>unk.def</code>: Unknown word definitions</li>
+<li><code>char.def</code>: Character type definitions</li>
+<li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
+</ul>
+<h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>
+<h4 id="1-train-model"><a class="header" href="#1-train-model">1. Train model</a></h4>
+<pre><code class="language-bash">lindera train \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
+</code></pre>
+<h4 id="2-export-to-dictionary-format"><a class="header" href="#2-export-to-dictionary-format">2. Export to dictionary format</a></h4>
+<pre><code class="language-bash">lindera export \
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./resources/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
+</code></pre>
+<h4 id="3-build-dictionary"><a class="header" href="#3-build-dictionary">3. Build dictionary</a></h4>
+<pre><code class="language-bash">lindera build \
+  --src /tmp/lindera/training/dictionary \
+  --dest /tmp/lindera/training/compiled_dictionary \
+  --metadata /tmp/lindera/training/dictionary/metadata.json
+</code></pre>
+<h4 id="4-use-trained-dictionary"><a class="header" href="#4-use-trained-dictionary">4. Use trained dictionary</a></h4>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  -d /tmp/lindera/training/compiled_dictionary
+</code></pre>
+<h3 id="metadata-update-feature"><a class="header" href="#metadata-update-feature">Metadata update feature</a></h3>
+<p>When the <code>--metadata</code> option is provided, the export command will:</p>
+<ol>
+<li>
+<p><strong>Read the base metadata.json file</strong> to preserve existing configuration</p>
+</li>
+<li>
+<p><strong>Update specific fields</strong> with values from the trained model:</p>
+<ul>
+<li><code>default_left_context_id</code>: Maximum left context ID from trained model</li>
+<li><code>default_right_context_id</code>: Maximum right context ID from trained model</li>
+<li><code>default_word_cost</code>: Calculated from feature weight median</li>
+<li><code>model_info</code>: Training statistics including:
+<ul>
+<li><code>feature_count</code>: Number of features in the model</li>
+<li><code>label_count</code>: Number of labels in the model</li>
+<li><code>max_left_context_id</code>: Maximum left context ID</li>
+<li><code>max_right_context_id</code>: Maximum right context ID</li>
+<li><code>connection_matrix_size</code>: Size of connection cost matrix</li>
+<li><code>training_iterations</code>: Number of training iterations performed</li>
+<li><code>regularization</code>: L1 regularization parameter used</li>
+<li><code>version</code>: Model version</li>
+<li><code>updated_at</code>: Timestamp of when the model was exported</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Preserve existing settings</strong> such as:</p>
+<ul>
+<li>Dictionary name</li>
+<li>Character encoding settings</li>
+<li>Schema definitions</li>
+<li>Other user-defined configuration</li>
+</ul>
+</li>
+</ol>
+<p>This allows you to maintain your base dictionary configuration while incorporating the optimized parameters learned during training.</p>
+<h2 id="api-reference"><a class="header" href="#api-reference">API reference</a></h2>
+<p>The API reference is available. Please see following URL:</p>
+<ul>
+<li><a href="https://docs.rs/lindera-cli">lindera-cli</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="advanced_usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="api_reference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="advanced_usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="api_reference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,2021 @@
+<!DOCTYPE HTML>
+<html lang="ja" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Lindera ユーザーガイド</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> はじめに</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> インストール</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> 辞書</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> 設定</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> 高度な使い方</a></li><li class="chapter-item expanded "><a href="cli.html"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> APIリファレンス</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> 貢献ガイド</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera ユーザーガイド</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="lindera"><a class="header" href="#lindera">Lindera</a></h1>
+<p><a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a> <a href="https://crates.io/crates/lindera"><img src="https://img.shields.io/crates/v/lindera.svg" alt="Crates.io" /></a></p>
+<p>Rust製の形態素解析ライブラリです。このプロジェクトは <a href="https://github.com/fulmicoton/kuromoji-rs">kuromoji-rs</a> からフォークされました。</p>
+<p>Linderaは、インストールが簡単で、様々なRustアプリケーション向けに簡潔なAPIを提供することを目指しています。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
+<p>Cargo.tomlに以下を追加してください：</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
+<h3 id="lindera_cache"><a class="header" href="#lindera_cache">LINDERA_CACHE</a></h3>
+<p><code>LINDERA_CACHE</code> 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：</p>
+<ul>
+<li><strong>オフラインビルド</strong>: 一度ダウンロードすれば、将来のビルドのために辞書ソースファイルが保存されます</li>
+<li><strong>ビルドの高速化</strong>: 有効なキャッシュファイルが存在する場合、次回のビルドではダウンロードがスキップされます</li>
+<li><strong>再現可能なビルド</strong>: ビルド間での辞書バージョンの一貫性を保ちます</li>
+</ul>
+<p>使用方法：</p>
+<pre><code class="language-shell">export LINDERA_CACHE=/path/to/cache
+cargo build --features=ipadic
+</code></pre>
+<p>設定された場合、辞書ソースファイルは <code>$LINDERA_CACHE/&lt;version&gt;/</code> （<code>&lt;version&gt;</code> は lindera-dictionary クレートのバージョン）に保存されます。キャッシュはMD5チェックサムを使用してファイルを検証し、無効なファイルは自動的に再ダウンロードされます。</p>
+<h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
+<p><code>LINDERA_CONFIG_PATH</code> 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。</p>
+<pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+</code></pre>
+<p>設定フォーマットの詳細は <a href="./configuration.html">設定</a> セクションを参照してください。</p>
+<h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
+<p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
+<p>これは主にdocs.rs内部で使用されるものであり、通常ユーザーが設定する必要はありません。</p>
+<h3 id="lindera_workdir"><a class="header" href="#lindera_workdir">LINDERA_WORKDIR</a></h3>
+<p><code>LINDERA_WORKDIR</code> 環境変数は、ビルドプロセス中に lindera-dictionary クレートによって自動的に設定されます。これはビルドされた辞書データファイルを含むディレクトリを指し、辞書クレートがデータファイルの場所を特定するために内部で使用されます。</p>
+<p>この変数は自動的に設定されるため、ユーザーが変更する必要はありません。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート"><a class="header" href="#クイックスタート">クイックスタート</a></h1>
+<p>この例では、Linderaの基本的な使い方を説明します。</p>
+<p>以下の処理を行います：</p>
+<ul>
+<li>Normalモードでトークナイザーを作成</li>
+<li>入力テキストをトークナイズ（形態素解析）</li>
+<li>トークンを出力</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "関西国際空港限定トートバッグ";
+    let mut tokens = tokenizer.tokenize(text)?;
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>上記の例は以下のように実行できます：</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize
+</code></pre>
+<p>実行結果は以下のようになります：</p>
+<pre><code class="language-text">text:   関西国際空港限定トートバッグ
+token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+token:  限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+token:  トートバッグ    UNK
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="辞書"><a class="header" href="#辞書">辞書</a></h1>
+<p>Linderaは様々な辞書をサポートしています。このセクションでは、各辞書のフォーマットおよびユーザー辞書のフォーマットについて説明します。</p>
+<ul>
+<li><a href="./dictionaries/ipadic.html">IPADIC</a> - 日本語で最も一般的な辞書。</li>
+<li><a href="./dictionaries/ipadic_neologd.html">IPADIC NEologd</a> - 新語に対応したIPADIC。</li>
+<li><a href="./dictionaries/unidic.html">UniDic</a> - 均一な単語単位定義を持つ辞書。</li>
+<li><a href="./dictionaries/ko_dic.html">ko-dic</a> - 韓国語用辞書。</li>
+<li><a href="./dictionaries/cc_cedict.html">CC-CEDICT</a> - 中国語用辞書。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ipadic"><a class="header" href="#lindera-ipadic">Lindera IPADIC</a></h1>
+<h2 id="辞書バージョン"><a class="header" href="#辞書バージョン">辞書バージョン</a></h2>
+<p>このリポジトリは <a href="https://github.com/lindera-morphology/mecab-ipadic">mecab-ipadic</a> を含んでいます。</p>
+<h2 id="辞書フォーマット"><a class="header" href="#辞書フォーマット">辞書フォーマット</a></h2>
+<p>IPADICの辞書フォーマットと品詞タグの詳細については <a href="https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manual-en.pdf/en/1/ipadic-2.7.0-manual-en.pdf.pdf">マニュアル</a> を参照してください。</p>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞細分類1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞細分類2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>9</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>10</td><td>原形</td><td>Base form</td><td></td></tr>
+<tr><td>11</td><td>読み</td><td>Reading</td><td></td></tr>
+<tr><td>12</td><td>発音</td><td>Pronunciation</td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="ユーザー辞書フォーマット-csv"><a class="header" href="#ユーザー辞書フォーマット-csv">ユーザー辞書フォーマット (CSV)</a></h2>
+<h3 id="シンプル版-simple-version"><a class="header" href="#シンプル版-simple-version">シンプル版 (Simple version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>2</td><td>読み</td><td>Reading</td><td></td></tr>
+</tbody></table>
+</div>
+<h3 id="詳細版-detailed-version"><a class="header" href="#詳細版-detailed-version">詳細版 (Detailed version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞細分類1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞細分類2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>9</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>10</td><td>原形</td><td>Base form</td><td></td></tr>
+<tr><td>11</td><td>読み</td><td>Reading</td><td></td></tr>
+<tr><td>12</td><td>発音</td><td>Pronunciation</td><td></td></tr>
+<tr><td>13</td><td>-</td><td>-</td><td>13以降は自由に拡張可能です。</td></tr>
+</tbody></table>
+</div>
+<h2 id="apiリファレンス"><a class="header" href="#apiリファレンス">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-ipadic">lindera-ipadic</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ipadic-neologd"><a class="header" href="#lindera-ipadic-neologd">Lindera IPADIC NEologd</a></h1>
+<h2 id="辞書バージョン-1"><a class="header" href="#辞書バージョン-1">辞書バージョン</a></h2>
+<p>このリポジトリは <a href="https://github.com/lindera-morphology/mecab-ipadic-neologd">mecab-ipadic-neologd</a> を含んでいます。</p>
+<h2 id="辞書フォーマット-1"><a class="header" href="#辞書フォーマット-1">辞書フォーマット</a></h2>
+<p>IPADICの辞書フォーマットと品詞タグの詳細については <a href="https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manual-en.pdf/en/1/ipadic-2.7.0-manual-en.pdf.pdf">マニュアル</a> を参照してください。</p>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞細分類1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞細分類2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>9</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>10</td><td>原形</td><td>Base form</td><td></td></tr>
+<tr><td>11</td><td>読み</td><td>Reading</td><td></td></tr>
+<tr><td>12</td><td>発音</td><td>Pronunciation</td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="ユーザー辞書フォーマット-csv-1"><a class="header" href="#ユーザー辞書フォーマット-csv-1">ユーザー辞書フォーマット (CSV)</a></h2>
+<h3 id="シンプル版-simple-version-1"><a class="header" href="#シンプル版-simple-version-1">シンプル版 (Simple version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>2</td><td>読み</td><td>Reading</td><td></td></tr>
+</tbody></table>
+</div>
+<h3 id="詳細版-detailed-version-1"><a class="header" href="#詳細版-detailed-version-1">詳細版 (Detailed version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞細分類1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞細分類2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>9</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>10</td><td>原形</td><td>Base form</td><td></td></tr>
+<tr><td>11</td><td>読み</td><td>Reading</td><td></td></tr>
+<tr><td>12</td><td>発音</td><td>Pronunciation</td><td></td></tr>
+<tr><td>13</td><td>-</td><td>-</td><td>13以降は自由に拡張可能です。</td></tr>
+</tbody></table>
+</div>
+<h2 id="apiリファレンス-1"><a class="header" href="#apiリファレンス-1">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-ipadic-neologd">lindera-ipadic-neologd</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-unidic"><a class="header" href="#lindera-unidic">Lindera UniDic</a></h1>
+<h2 id="辞書バージョン-2"><a class="header" href="#辞書バージョン-2">辞書バージョン</a></h2>
+<p>このリポジトリは <a href="https://github.com/lindera-morphology/unidic-mecab">unidic-mecab</a> を含んでいます。</p>
+<h2 id="辞書フォーマット-2"><a class="header" href="#辞書フォーマット-2">辞書フォーマット</a></h2>
+<p>unidic-mecabの辞書フォーマットと品詞タグの詳細については <a href="ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf">マニュアル</a> を参照してください。</p>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞大分類</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞中分類</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞小分類</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>9</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>10</td><td>語彙素読み</td><td>Reading</td><td></td></tr>
+<tr><td>11</td><td>語彙素（語彙素表記 + 語彙素細分類）</td><td>Lexeme</td><td></td></tr>
+<tr><td>12</td><td>書字形出現形</td><td>Orthographic surface form</td><td></td></tr>
+<tr><td>13</td><td>発音形出現形</td><td>Phonological surface form</td><td></td></tr>
+<tr><td>14</td><td>書字形基本形</td><td>Orthographic base form</td><td></td></tr>
+<tr><td>15</td><td>発音形基本形</td><td>Phonological base form</td><td></td></tr>
+<tr><td>16</td><td>語種</td><td>Word type</td><td></td></tr>
+<tr><td>17</td><td>語頭変化型</td><td>Initial mutation type</td><td></td></tr>
+<tr><td>18</td><td>語頭変化形</td><td>Initial mutation form</td><td></td></tr>
+<tr><td>19</td><td>語末変化型</td><td>Final mutation type</td><td></td></tr>
+<tr><td>20</td><td>語末変化形</td><td>Final mutation form</td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="ユーザー辞書フォーマット-csv-2"><a class="header" href="#ユーザー辞書フォーマット-csv-2">ユーザー辞書フォーマット (CSV)</a></h2>
+<h3 id="シンプル版-simple-version-2"><a class="header" href="#シンプル版-simple-version-2">シンプル版 (Simple version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>品詞大分類</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>2</td><td>語彙素読み</td><td>Reading</td><td></td></tr>
+</tbody></table>
+</div>
+<h3 id="詳細版-detailed-version-2"><a class="header" href="#詳細版-detailed-version-2">詳細版 (Detailed version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (日本語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表層形</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左文脈ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右文脈ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>コスト</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>品詞大分類</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>品詞中分類</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>品詞小分類</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>品詞細分類</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>活用型</td><td>Conjugation type</td><td></td></tr>
+<tr><td>9</td><td>活用形</td><td>Conjugation form</td><td></td></tr>
+<tr><td>10</td><td>語彙素読み</td><td>Reading</td><td></td></tr>
+<tr><td>11</td><td>語彙素（語彙素表記 + 語彙素細分類）</td><td>Lexeme</td><td></td></tr>
+<tr><td>12</td><td>書字形出現形</td><td>Orthographic surface form</td><td></td></tr>
+<tr><td>13</td><td>発音形出現形</td><td>Phonological surface form</td><td></td></tr>
+<tr><td>14</td><td>書字形基本形</td><td>Orthographic base form</td><td></td></tr>
+<tr><td>15</td><td>発音形基本形</td><td>Phonological base form</td><td></td></tr>
+<tr><td>16</td><td>語種</td><td>Word type</td><td></td></tr>
+<tr><td>17</td><td>語頭変化型</td><td>Initial mutation type</td><td></td></tr>
+<tr><td>18</td><td>語頭変化形</td><td>Initial mutation form</td><td></td></tr>
+<tr><td>19</td><td>語末変化型</td><td>Final mutation type</td><td></td></tr>
+<tr><td>20</td><td>語末変化形</td><td>Final mutation form</td><td></td></tr>
+<tr><td>21</td><td>-</td><td>-</td><td>21以降は自由に拡張可能です。</td></tr>
+</tbody></table>
+</div>
+<h2 id="apiリファレンス-2"><a class="header" href="#apiリファレンス-2">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-unidic">lindera-unidic</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ko-dic"><a class="header" href="#lindera-ko-dic">Lindera ko-dic</a></h1>
+<h2 id="辞書バージョン-3"><a class="header" href="#辞書バージョン-3">辞書バージョン</a></h2>
+<p>このリポジトリは <a href="https://github.com/lindera-morphology/mecab-ko-dic">mecab-ko-dic</a> を含んでいます。</p>
+<h2 id="辞書フォーマット-3"><a class="header" href="#辞書フォーマット-3">辞書フォーマット</a></h2>
+<p>mecab-ko-dicで使用されている辞書フォーマットと品詞タグに関する情報は、mecab-ko-dicの <a href="https://bitbucket.org/eunjeon/mecab-ko-dic/src/master/README.md">リポジトリreadme</a> からリンクされている <a href="https://docs.google.com/spreadsheets/d/1-9blXKjtjeKZqsf4NzHeYJCrr49-nXeRF6D80udfcwY/edit#gid=589544265">Googleスプレッドシート</a> にドキュメント化されています。</p>
+<p>ko-dicはNAIST JDICよりも機能列が1つ少なく、全く異なる情報セットを持っています（例：「原形」を提供していません）。</p>
+<p>タグはSejongによって指定されたものを少し修正したものです。Sejongからmecab-ko-dicのタグ名へのマッピングは、上記スプレッドシートの <code>태그 v2.0</code> タブに記載されています。</p>
+<p>辞書フォーマットは、スプレッドシートの <code>사전 형식 v2.0</code> タブに（韓国語で）完全に指定されています。空の値は <code>*</code> がデフォルトとなります。</p>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (韓国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>표면</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>왼쪽 문맥 ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>오른쪽 문맥 ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>비용</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>품사 태그</td><td>Part-of-speech tag</td><td>スプレッドシートの <code>태그 v2.0</code> タブを参照</td></tr>
+<tr><td>5</td><td>의미 부류</td><td>Meaning</td><td></td></tr>
+<tr><td>6</td><td>종성 유무</td><td>Presence or absence</td><td><code>T</code> (真)、<code>F</code> (偽)、その他は <code>*</code></td></tr>
+<tr><td>7</td><td>읽기</td><td>Reading</td><td>通常は表層形と一致しますが、漢字語などの外来語では異なる場合があります</td></tr>
+<tr><td>8</td><td>타입</td><td>Type</td><td>次のいずれか: <code>Inflect</code> (활용)、<code>Compound</code> (복합명사)、または <code>Preanalysis</code> (기분석)</td></tr>
+<tr><td>9</td><td>첫번째 품사</td><td>First part-of-speech</td><td>例: 品詞タグが "VV+EM+VX+EP" の場合、<code>VV</code> を返します</td></tr>
+<tr><td>10</td><td>마지막 품사</td><td>Last part-of-speech</td><td>例: 品詞タグが "VV+EM+VX+EP" の場合、<code>EP</code> を返します</td></tr>
+<tr><td>11</td><td>표현</td><td>Expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> – 活用、複合名詞、既分析がどのように構成されているかを示すフィールド</td></tr>
+</tbody></table>
+</div>
+<h2 id="ユーザー辞書フォーマット-csv-3"><a class="header" href="#ユーザー辞書フォーマット-csv-3">ユーザー辞書フォーマット (CSV)</a></h2>
+<h3 id="シンプル版-simple-version-3"><a class="header" href="#シンプル版-simple-version-3">シンプル版 (Simple version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (韓国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>표면</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>품사 태그</td><td>part-of-speech tag</td><td>スプレッドシートの <code>태그 v2.0</code> タブを参照</td></tr>
+<tr><td>2</td><td>읽기</td><td>reading</td><td>通常は表層形と一致しますが、漢字語などの外来語では異なる場合があります</td></tr>
+</tbody></table>
+</div>
+<h3 id="詳細版-detailed-version-3"><a class="header" href="#詳細版-detailed-version-3">詳細版 (Detailed version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (韓国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>표면</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>왼쪽 문맥 ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>오른쪽 문맥 ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>비용</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>품사 태그</td><td>part-of-speech tag</td><td>スプレッドシートの <code>태그 v2.0</code> タブを参照</td></tr>
+<tr><td>5</td><td>의미 부류</td><td>meaning</td><td></td></tr>
+<tr><td>6</td><td>종성 유무</td><td>presence or absence</td><td><code>T</code> (真)、<code>F</code> (偽)、その他は <code>*</code></td></tr>
+<tr><td>7</td><td>읽기</td><td>reading</td><td>通常は表層形と一致しますが、漢字語などの外来語では異なる場合があります</td></tr>
+<tr><td>8</td><td>타입</td><td>type</td><td>次のいずれか: <code>Inflect</code> (활용)、<code>Compound</code> (복합명사)、または <code>Preanalysis</code> (기분석)</td></tr>
+<tr><td>9</td><td>첫번째 품사</td><td>first part-of-speech</td><td>例: 品詞タグが "VV+EM+VX+EP" の場合、<code>VV</code> を返します</td></tr>
+<tr><td>10</td><td>마지막 품사</td><td>last part-of-speech</td><td>例: 品詞タグが "VV+EM+VX+EP" の場合、<code>EP</code> を返します</td></tr>
+<tr><td>11</td><td>표현</td><td>expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> – 活用、複合名詞、既分析がどのように構成されているかを示すフィールド</td></tr>
+<tr><td>12</td><td>-</td><td>-</td><td>12以降は自由に拡張可能です。</td></tr>
+</tbody></table>
+</div>
+<h2 id="apiリファレンス-3"><a class="header" href="#apiリファレンス-3">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-ko-dic">lindera-ko-dic</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-cc-ce-dict"><a class="header" href="#lindera-cc-ce-dict">Lindera CC-CE-DICT</a></h1>
+<h2 id="辞書バージョン-4"><a class="header" href="#辞書バージョン-4">辞書バージョン</a></h2>
+<p>このリポジトリは <a href="https://github.com/lindera/CC-CEDICT-MeCab">CC-CEDICT-MeCab</a> を含んでいます。</p>
+<h2 id="辞書フォーマット-4"><a class="header" href="#辞書フォーマット-4">辞書フォーマット</a></h2>
+<p>辞書フォーマットと品詞タグの詳細については <a href="ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf">マニュアル</a> を参照してください。</p>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (中国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左语境ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右语境ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>成本</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>词类1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>词类2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>词类3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>併音</td><td>Pinyin</td><td></td></tr>
+<tr><td>9</td><td>繁体字</td><td>Traditional</td><td></td></tr>
+<tr><td>10</td><td>簡体字</td><td>Simplified</td><td></td></tr>
+<tr><td>11</td><td>定义</td><td>Definition</td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="ユーザー辞書フォーマット-csv-4"><a class="header" href="#ユーザー辞書フォーマット-csv-4">ユーザー辞書フォーマット (CSV)</a></h2>
+<h3 id="シンプル版-simple-version-4"><a class="header" href="#シンプル版-simple-version-4">シンプル版 (Simple version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (中国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>2</td><td>併音</td><td>Pinyin</td><td></td></tr>
+</tbody></table>
+</div>
+<h3 id="詳細版-detailed-version-4"><a class="header" href="#詳細版-detailed-version-4">詳細版 (Detailed version)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>インデックス</th><th>名前 (中国語)</th><th>名前 (英語)</th><th>備考</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左语境ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右语境ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>成本</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>词类1</td><td>Part-of-speech subcategory 1</td><td></td></tr>
+<tr><td>6</td><td>词类2</td><td>Part-of-speech subcategory 2</td><td></td></tr>
+<tr><td>7</td><td>词类3</td><td>Part-of-speech subcategory 3</td><td></td></tr>
+<tr><td>8</td><td>併音</td><td>Pinyin</td><td></td></tr>
+<tr><td>9</td><td>繁体字</td><td>Traditional</td><td></td></tr>
+<tr><td>10</td><td>簡体字</td><td>Simplified</td><td></td></tr>
+<tr><td>11</td><td>定义</td><td>Definition</td><td></td></tr>
+<tr><td>12</td><td>-</td><td>-</td><td>12以降は自由に拡張可能です。</td></tr>
+</tbody></table>
+</div>
+<h2 id="apiリファレンス-4"><a class="header" href="#apiリファレンス-4">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-cc-cedict">lindera-cc-cedict</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="設定"><a class="header" href="#設定">設定</a></h1>
+<p>LinderaはYAML形式の設定ファイルを読み込むことができます。
+環境変数 <code>LINDERA_CONFIG_PATH</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
+<pre><code class="language-yaml">segmenter:
+  mode: "normal"
+  dictionary:
+    kind: "ipadic"
+  user_dictionary:
+    path: "./resources/user_dict/ipadic_simple.csv"
+    kind: "ipadic"
+
+character_filters:
+  - kind: "unicode_normalize"
+    args:
+      kind: "nfkc"
+  - kind: "japanese_iteration_mark"
+    args:
+      normalize_kanji: true
+      normalize_kana: true
+  - kind: mapping
+    args:
+       mapping:
+         リンデラ: Lindera
+
+token_filters:
+  - kind: "japanese_compound_word"
+    args:
+      tags:
+        - "名詞,数"
+        - "名詞,接尾,助数詞"
+      new_tag: "名詞,数"
+  - kind: "japanese_number"
+    args:
+      tags:
+        - "名詞,数"
+  - kind: "japanese_stop_tags"
+    args:
+      tags:
+        - "接続詞"
+        - "助詞"
+        - "助詞,格助詞"
+        - "助詞,格助詞,一般"
+        - "助詞,格助詞,引用"
+        - "助詞,格助詞,連語"
+        - "助詞,係助詞"
+        - "助詞,副助詞"
+        - "助詞,間投助詞"
+        - "助詞,並立助詞"
+        - "助詞,終助詞"
+        - "助詞,副助詞／並立助詞／終助詞"
+        - "助詞,連体化"
+        - "助詞,副詞化"
+        - "助詞,特殊"
+        - "助動詞"
+        - "記号"
+        - "記号,一般"
+        - "記号,読点"
+        - "記号,句点"
+        - "記号,空白"
+        - "記号,括弧閉"
+        - "その他,間投"
+        - "フィラー"
+        - "非言語音"
+  - kind: "japanese_katakana_stem"
+    args:
+      min: 3
+  - kind: "remove_diacritical_mark"
+    args:
+      japanese: false
+</code></pre>
+<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+</code></pre>
+<pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
+
+use lindera::tokenizer::TokenizerBuilder;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    // 設定ファイルからトークナイザーの設定を読み込む
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("config")
+        .join("lindera.yml");
+
+    let builder = TokenizerBuilder::from_file(&amp;path)?;
+
+    let tokenizer = builder.build()?;
+
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。".to_string();
+    println!("text: {text}");
+
+    let tokens = tokenizer.tokenize(&amp;text)?;
+
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.surface, token.byte_start, token.byte_end, token.details
+        );
+    }
+
+    Ok(())
+}</code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="高度な使い方"><a class="header" href="#高度な使い方">高度な使い方</a></h1>
+<h2 id="ユーザー辞書を使用したトークナイズ"><a class="header" href="#ユーザー辞書を使用したトークナイズ">ユーザー辞書を使用したトークナイズ</a></h2>
+<p>デフォルトのシステム辞書に加えて、ユーザー辞書のエントリーを指定することができます。ユーザー辞書は以下のフォーマットのCSVである必要があります。</p>
+<pre><code class="language-csv">&lt;surface&gt;,&lt;part_of_speech&gt;,&lt;reading&gt;
+</code></pre>
+<p>Cargo.tomlに以下を追加してください：</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>例：</p>
+<pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
+東京スカイツリー,カスタム名詞,トウキョウスカイツリー
+東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
+とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
+</code></pre>
+<p>ユーザー辞書を使用する場合、<code>Tokenizer</code> は以下のように作成します：</p>
+<pre><pre class="playground"><code class="language-rust">use std::fs::File;
+use std::path::PathBuf;
+
+use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
+use lindera::error::LinderaErrorKind;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("user_dict")
+        .join("ipadic_simple_userdic.csv");
+
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../lindera-ipadic")
+        .join("metadata.json");
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        Some(user_dictionary), // 読み込んだユーザー辞書を使用
+    );
+
+    // トークナイザーを作成
+    let tokenizer = Tokenizer::new(segmenter);
+
+    // テキストをトークナイズ
+    let text = "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です";
+    let mut tokens = tokenizer.tokenize(text)?;
+
+    // テキストとトークンを表示
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>上記の例は以下のように実行できます：</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
+token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
+token:  最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+token:  は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+</code></pre>
+<h2 id="フィルタを使用したトークナイズ"><a class="header" href="#フィルタを使用したトークナイズ">フィルタを使用したトークナイズ</a></h2>
+<p>Cargo.tomlに以下を追加してください：</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>この例では、Lindera解析フレームワークの基本的な使い方を説明します。</p>
+<p>以下の処理を行います：</p>
+<ul>
+<li>Unicode正規化(NFKC)のための文字フィルタを適用</li>
+<li>IPADICで入力テキストをトークナイズ</li>
+<li>ストップタグ（品詞）の除去と日本語カタカナ語幹フィルタのためのトークンフィルタを適用</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust">use lindera::character_filter::BoxCharacterFilter;
+use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera::character_filter::unicode_normalize::{
+    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+};
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::token_filter::BoxTokenFilter;
+use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        None, // この例ではユーザー辞書は使用しません
+    );
+
+    let unicode_normalize_char_filter =
+        UnicodeNormalizeCharacterFilter::new(UnicodeNormalizeKind::NFKC);
+
+    let japanese_iteration_mark_char_filter =
+        JapaneseIterationMarkCharacterFilter::new(true, true);
+
+    let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
+        vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
+            .into_iter()
+            .collect(),
+        Some("複合語".to_string()),
+    );
+
+    let japanese_number_token_filter =
+        JapaneseNumberTokenFilter::new(Some(vec!["名詞,数".to_string()].into_iter().collect()));
+
+    let japanese_stop_tags_token_filter = JapaneseStopTagsTokenFilter::new(
+        vec![
+            "接続詞".to_string(),
+            "助詞".to_string(),
+            "助詞,格助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,格助詞,引用".to_string(),
+            "助詞,格助詞,連語".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,副助詞".to_string(),
+            "助詞,間投助詞".to_string(),
+            "助詞,並立助詞".to_string(),
+            "助詞,終助詞".to_string(),
+            "助詞,副助詞／並立助詞／終助詞".to_string(),
+            "助詞,連体化".to_string(),
+            "助詞,副詞化".to_string(),
+            "助詞,特殊".to_string(),
+            "助動詞".to_string(),
+            "記号".to_string(),
+            "記号,一般".to_string(),
+            "記号,読点".to_string(),
+            "記号,句点".to_string(),
+            "記号,空白".to_string(),
+            "記号,括弧閉".to_string(),
+            "その他,間投".to_string(),
+            "フィラー".to_string(),
+            "非言語音".to_string(),
+        ]
+        .into_iter()
+        .collect(),
+    );
+
+    // トークナイザーを作成
+    let mut tokenizer = Tokenizer::new(segmenter);
+
+    tokenizer
+        .append_character_filter(BoxCharacterFilter::from(unicode_normalize_char_filter))
+        .append_character_filter(BoxCharacterFilter::from(
+            japanese_iteration_mark_char_filter,
+        ))
+        .append_token_filter(BoxTokenFilter::from(japanese_compound_word_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_number_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_stop_tags_token_filter));
+
+    // テキストをトークナイズ
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。";
+    let tokens = tokenizer.tokenize(text)?;
+
+    // テキストとトークンを表示
+    println!("text: {}", text);
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.surface, token.byte_start, token.byte_end, token.details
+        );
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>上記の例は以下のように実行できます：</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+</code></pre>
+<p>実行結果は以下のようになります：</p>
+<pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
+token: "Lindera", start: 0, end: 21, details: Some(["UNK"])
+token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
+token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
+token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
+token: "ユーザー", start: 63, end: 75, details: Some(["名詞", "一般", "*", "*", "*", "*", "ユーザー", "ユーザー", "ユーザー"])
+token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
+token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
+token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
+</code></pre>
+<h2 id="辞書の学習実験的機能"><a class="header" href="#辞書の学習実験的機能">辞書の学習（実験的機能）</a></h2>
+<p>Linderaは、カスタム形態素解析モデルを作成するためのCRFベースの辞書学習機能を提供しています。</p>
+<h3 id="概要"><a class="header" href="#概要">概要</a></h3>
+<p>Lindera Trainerは、以下の高度な機能を備えたCondition Random Field (CRF)ベースの形態素解析器学習システムです：</p>
+<ul>
+<li><strong>CRFベースの統計学習</strong>: rucrfクレートを使用した効率的な実装</li>
+<li><strong>L1正則化</strong>: 過学習の防止</li>
+<li><strong>マルチスレッド学習</strong>: 並行処理による学習の高速化</li>
+<li><strong>包括的なUnicodeサポート</strong>: CJK拡張の完全サポート</li>
+<li><strong>高度な未知語処理</strong>: インテリジェントな混合文字種分類</li>
+<li><strong>多段階の重み最適化</strong>: 学習済み重みのための高度な正規化システム</li>
+<li><strong>Lindera辞書互換性</strong>: 既存の辞書フォーマットとの完全互換</li>
+</ul>
+<h3 id="cliの使用方法"><a class="header" href="#cliの使用方法">CLIの使用方法</a></h3>
+<p>詳細なCLIコマンドの使用方法については、<a href="https://github.com/lindera/lindera/blob/main/lindera-cli/README.md#train-dictionary">lindera-cli/README.md</a> を参照してください。</p>
+<h3 id="必須ファイルフォーマット仕様"><a class="header" href="#必須ファイルフォーマット仕様">必須ファイルフォーマット仕様</a></h3>
+<h4 id="1-語彙辞書-seedcsv"><a class="header" href="#1-語彙辞書-seedcsv">1. <strong>語彙辞書 (seed.csv)</strong></a></h4>
+<p><strong>役割</strong>: 基礎語彙辞書
+<strong>フォーマット</strong>: MeCab形式のCSV</p>
+<pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政,0,0,0,名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 学習のための基本的な単語とその品詞情報を定義</li>
+<li><strong>構造</strong>: <code>表層形,左文脈ID,右文脈ID,コスト,品詞,品詞細分類1,品詞細分類2,品詞細分類3,活用型,活用形,原形,読み,発音</code></li>
+</ul>
+<h4 id="2-未知語定義-unkdef"><a class="header" href="#2-未知語定義-unkdef">2. <strong>未知語定義 (unk.def)</strong></a></h4>
+<p><strong>役割</strong>: 未知語処理の定義
+<strong>フォーマット</strong>: 文字種ごとの未知語パラメータ</p>
+<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
+ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 文字種ごとの未知語の処理方法を定義</li>
+<li><strong>注意</strong>: これらのラベルは内部処理用であり、最終的な辞書ファイルには出力されません</li>
+</ul>
+<h4 id="3-学習コーパス-corpustxt"><a class="header" href="#3-学習コーパス-corpustxt">3. <strong>学習コーパス (corpus.txt)</strong></a></h4>
+<p><strong>役割</strong>: 学習データ（注釈付きコーパス）
+<strong>フォーマット</strong>: タブ区切りの分かち書きテキスト</p>
+<pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+EOS
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 学習のための文と正解の解析結果</li>
+<li><strong>フォーマット</strong>: 各行は <code>表層形\t品詞情報</code>、文は <code>EOS</code> で終了</li>
+<li><strong>重要</strong>: 学習の質はこのコーパスの量と質に大きく依存します</li>
+</ul>
+<h4 id="4-文字種定義-chardef"><a class="header" href="#4-文字種定義-chardef">4. <strong>文字種定義 (char.def)</strong></a></h4>
+<p><strong>役割</strong>: 文字種の定義
+<strong>フォーマット</strong>: 文字カテゴリと文字コード範囲</p>
+<pre><code class="language-text"># Character category definition (category_name compatibility_flag continuity_flag length)
+DEFAULT 0 1 0
+HIRAGANA 1 1 0
+KATAKANA 1 1 0
+KANJI 0 0 2
+ALPHA 1 1 0
+NUMERIC 1 1 0
+
+# Character range mapping
+0x3041..0x3096 HIRAGANA  # Hiragana
+0x30A1..0x30F6 KATAKANA  # Katakana
+0x4E00..0x9FAF KANJI     # Kanji
+0x0030..0x0039 NUMERIC   # Numbers
+0x0041..0x005A ALPHA     # Uppercase letters
+0x0061..0x007A ALPHA     # Lowercase letters
+</code></pre>
+<ul>
+<li><strong>目的</strong>: どの文字がどのカテゴリに属するかを定義</li>
+<li><strong>パラメータ</strong>: 互換性、連続性、デフォルト長などの設定</li>
+</ul>
+<h4 id="5-機能テンプレート-featuredef"><a class="header" href="#5-機能テンプレート-featuredef">5. <strong>機能テンプレート (feature.def)</strong></a></h4>
+<p><strong>役割</strong>: 素性テンプレート定義
+<strong>フォーマット</strong>: 素性抽出パターン</p>
+<pre><code class="language-text"># Unigram features (word-level features)
+UNIGRAM:%F[0]         # POS (feature element 0)
+UNIGRAM:%F[1]         # POS detail 1
+UNIGRAM:%F[6]         # Base form
+UNIGRAM:%F[7]         # Reading (Katakana)
+
+# Left context features
+LEFT:%L[0]            # POS of left word
+LEFT:%L[1]            # POS detail of left word
+
+# Right context features
+RIGHT:%R[0]           # POS of right word
+RIGHT:%R[1]           # POS detail of right word
+
+# Bigram features (combination features)
+UNIGRAM:%F[0]/%F[1]   # POS + POS detail
+UNIGRAM:%F[0]/%F[6]   # POS + base form
+</code></pre>
+<ul>
+<li><strong>目的</strong>: どの情報から素性を抽出するかを定義</li>
+<li><strong>テンプレート</strong>: <code>%F[n]</code> (素性), <code>%L[n]</code> (左文脈), <code>%R[n]</code> (右文脈)</li>
+</ul>
+<h4 id="6-素性正規化ルール-rewritedef"><a class="header" href="#6-素性正規化ルール-rewritedef">6. <strong>素性正規化ルール (rewrite.def)</strong></a></h4>
+<p><strong>役割</strong>: 素性正規化ルール
+<strong>フォーマット</strong>: 置換ルール（タブ区切り）</p>
+<pre><code class="language-text"># Normalize numeric expressions
+数	NUM
+*	UNK
+
+# Normalize proper nouns
+名詞,固有名詞	名詞,一般
+
+# Simplify auxiliary verbs
+助動詞,*,*,*,特殊・デス	助動詞
+助動詞,*,*,*,特殊・ダ	助動詞
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 素性を正規化して学習効率を向上させる</li>
+<li><strong>フォーマット</strong>: <code>original_pattern\treplacement_pattern</code></li>
+<li><strong>効果</strong>: 希少な素性を一般化し、スパース性の問題を軽減する</li>
+</ul>
+<h4 id="7-出力モデルフォーマット"><a class="header" href="#7-出力モデルフォーマット">7. <strong>出力モデルフォーマット</strong></a></h4>
+<p><strong>役割</strong>: 出力モデルファイル
+<strong>フォーマット</strong>: 標準はバイナリ(rkyv)形式、JSON形式もサポート</p>
+<p>モデルには以下の情報が含まれます：</p>
+<pre><code class="language-json">{
+  "feature_weights": [0.0, 0.084, 0.091, ...],
+  "labels": ["外国", "人", "参政", "権", ...],
+  "pos_info": ["名詞,一般,*,*,*,*,*,*,*", "名詞,接尾,一般,*,*,*,*,*,*", ...],
+  "feature_templates": ["UNIGRAM:%F[0]", ...],
+  "metadata": {
+    "version": "1.0.0",
+    "regularization": 0.01,
+    "iterations": 100,
+    "feature_count": 13,
+    "label_count": 19
+  }
+}
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 後の辞書生成のために学習結果を保存</li>
+</ul>
+<h3 id="学習パラメータ仕様"><a class="header" href="#学習パラメータ仕様">学習パラメータ仕様</a></h3>
+<ul>
+<li><strong>正則化係数 (lambda)</strong>: L1正則化の強さを制御 (デフォルト: 0.01)</li>
+<li><strong>最大反復回数 (iter)</strong>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><strong>並列スレッド数 (threads)</strong>: 並行処理スレッド数 (デフォルト: 1)</li>
+</ul>
+<h3 id="api使用例"><a class="header" href="#api使用例">API使用例</a></h3>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::File;
+use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+
+// Load configuration from files
+let seed_file = File::open("resources/training/seed.csv")?;
+let char_file = File::open("resources/training/char.def")?;
+let unk_file = File::open("resources/training/unk.def")?;
+let feature_file = File::open("resources/training/feature.def")?;
+let rewrite_file = File::open("resources/training/rewrite.def")?;
+
+let config = TrainerConfig::from_readers(
+    seed_file,
+    char_file,
+    unk_file,
+    feature_file,
+    rewrite_file
+)?;
+
+// Initialize and configure trainer
+let trainer = Trainer::new(config)?
+    .regularization_cost(0.01)
+    .max_iter(100)
+    .num_threads(4);
+
+// Load corpus
+let corpus_file = File::open("resources/training/corpus.txt")?;
+let corpus = Corpus::from_reader(corpus_file)?;
+
+// Execute training
+let model = trainer.train(corpus)?;
+
+// Save model (binary format)
+let mut output = File::create("trained_model.dat")?;
+model.write_model(&amp;mut output)?;
+
+// Output in Lindera dictionary format
+let mut lex_out = File::create("output_lex.csv")?;
+let mut conn_out = File::create("output_conn.dat")?;
+let mut unk_out = File::create("output_unk.def")?;
+let mut user_out = File::create("output_user.csv")?;
+model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &amp;mut user_out)?;
+
+<span class="boring">Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+</span><span class="boring">}</span></code></pre></pre>
+<h3 id="実装状況"><a class="header" href="#実装状況">実装状況</a></h3>
+<h4 id="完了した機能"><a class="header" href="#完了した機能">完了した機能</a></h4>
+<h5 id="コア機能"><a class="header" href="#コア機能"><strong>コア機能</strong></a></h5>
+<ul>
+<li><strong>コアアーキテクチャ</strong>: トレーナーモジュール構造の完成</li>
+<li><strong>CRF学習</strong>: rucrf統合によるCondition Random Field学習</li>
+<li><strong>CLI統合</strong>: パラメータを完全にサポートした <code>lindera train</code> コマンド</li>
+<li><strong>コーパス処理</strong>: MeCab形式コーパスの完全サポート</li>
+<li><strong>辞書統合</strong>: seed.csv, char.def, unk.def からの辞書構築</li>
+<li><strong>素性抽出</strong>: ユニグラム/バイグラム素性の抽出と変換</li>
+<li><strong>モデル保存</strong>: JSON/rkyv形式での学習済みモデル出力</li>
+<li><strong>辞書出力</strong>: Lindera形式辞書ファイルの生成</li>
+</ul>
+<h5 id="高度な未知語処理"><a class="header" href="#高度な未知語処理"><strong>高度な未知語処理</strong></a></h5>
+<ul>
+<li><strong>包括的なUnicodeサポート</strong>: CJK拡張、カタカナ拡張、ひらがな拡張の完全サポート</li>
+<li><strong>カテゴリ別の品詞割り当て</strong>: 文字種による適切な品詞情報の自動割り当て
+<ul>
+<li>DEFAULT: 名詞,一般 (未知の文字種)</li>
+<li>HIRAGANA/KATAKANA/KANJI: 名詞,一般 (日本語文字)</li>
+<li>ALPHA: 名詞,固有名詞 (アルファベット)</li>
+<li>NUMERIC: 名詞,数 (数字)</li>
+</ul>
+</li>
+<li><strong>表層形分析</strong>: 文字パターン、長さ、位置情報に基づく素性生成</li>
+<li><strong>動的コスト計算</strong>: 文字種と文脈を考慮した適応的コスト計算</li>
+</ul>
+<h5 id="リファクタリング2024年9月最新"><a class="header" href="#リファクタリング2024年9月最新"><strong>リファクタリング（2024年9月最新）</strong></a></h5>
+<ul>
+<li><strong>定数管理</strong>: cost_constantsモジュールによるマジックナンバーの排除</li>
+<li><strong>メソッド分割</strong>: 大きなメソッドの分割による可読性向上
+<ul>
+<li><code>train()</code> → <code>build_lattices_from_corpus()</code>, <code>extract_labels()</code>, <code>train_crf_model()</code>, <code>create_final_model()</code></li>
+</ul>
+</li>
+<li><strong>統一されたコスト計算</strong>: 重複コードの統一による保守性向上
+<ul>
+<li><code>calculate_known_word_cost()</code>: 既知語コスト計算</li>
+<li><code>calculate_unknown_word_cost()</code>: 未知語コスト計算</li>
+</ul>
+</li>
+<li><strong>整理されたデバッグ出力</strong>: log_debug!マクロによる構造化ロギング</li>
+<li><strong>強化されたエラーハンドリング</strong>: 包括的なエラーハンドリングとドキュメント</li>
+</ul>
+<h3 id="アーキテクチャ"><a class="header" href="#アーキテクチャ">アーキテクチャ</a></h3>
+<pre><code class="language-text">lindera-dictionary/src/trainer.rs  # Main Trainer struct
+lindera-dictionary/src/trainer/
+├── config.rs           # Configuration management
+├── corpus.rs           # Corpus processing
+├── feature_extractor.rs # Feature extraction
+├── feature_rewriter.rs  # Feature rewriting
+└── model.rs            # Trained model
+</code></pre>
+<h3 id="高度な未知語処理システム"><a class="header" href="#高度な未知語処理システム">高度な未知語処理システム</a></h3>
+<h4 id="包括的なunicode文字種検出"><a class="header" href="#包括的なunicode文字種検出">包括的なUnicode文字種検出</a></h4>
+<p>最新の実装では、基本的なUnicode範囲を大幅に拡張し、以下の文字セットを完全にサポートしています。（上記の「高度な未知語処理」セクションの「カテゴリ別の品詞割り当て」の詳細を参照してください。）</p>
+<h4 id="素性重み最適化"><a class="header" href="#素性重み最適化">素性重み最適化</a></h4>
+<h5 id="コスト計算定数"><a class="header" href="#コスト計算定数"><strong>コスト計算定数</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>mod cost_constants {
+    // Known word cost calculation
+    pub const KNOWN_WORD_BASE_COST: i16 = 1000;
+    pub const KNOWN_WORD_COST_MULTIPLIER: f64 = 500.0;
+    pub const KNOWN_WORD_COST_MIN: i16 = 500;
+    pub const KNOWN_WORD_COST_MAX: i16 = 3000;
+    pub const KNOWN_WORD_DEFAULT_COST: i16 = 1500;
+
+    // Unknown word cost calculation
+    pub const UNK_BASE_COST: i32 = 3000;
+    pub const UNK_COST_MULTIPLIER: f64 = 500.0;
+    pub const UNK_COST_MIN: i32 = 2500;
+    pub const UNK_COST_MAX: i32 = 4500;
+
+    // Category-specific adjustments
+    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0;     // DEFAULT
+    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200;  // HIRAGANA - minor penalty
+    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0;    // KATAKANA - medium
+    pub const UNK_KANJI_ADJUSTMENT: i32 = 400;     // KANJI - high penalty
+    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100;     // ALPHA - mild penalty
+    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100;  // NUMERIC - bonus (regular)
+}
+<span class="boring">}</span></code></pre></pre>
+<h5 id="統一されたコスト計算"><a class="header" href="#統一されたコスト計算"><strong>統一されたコスト計算</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Known word cost calculation
+fn calculate_known_word_cost(&amp;self, feature_weight: f64) -&gt; i16 {
+    let scaled_weight = (feature_weight * cost_constants::KNOWN_WORD_COST_MULTIPLIER) as i32;
+    let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
+    final_cost.clamp(
+        cost_constants::KNOWN_WORD_COST_MIN as i32,
+        cost_constants::KNOWN_WORD_COST_MAX as i32
+    ) as i16
+}
+
+// Unknown word cost calculation
+fn calculate_unknown_word_cost(&amp;self, feature_weight: f64, category: usize) -&gt; i32 {
+    let base_cost = cost_constants::UNK_BASE_COST;
+    let category_adjustment = match category {
+        0 =&gt; cost_constants::UNK_DEFAULT_ADJUSTMENT,
+        1 =&gt; cost_constants::UNK_HIRAGANA_ADJUSTMENT,
+        2 =&gt; cost_constants::UNK_KATAKANA_ADJUSTMENT,
+        3 =&gt; cost_constants::UNK_KANJI_ADJUSTMENT,
+        4 =&gt; cost_constants::UNK_ALPHA_ADJUSTMENT,
+        5 =&gt; cost_constants::UNK_NUMERIC_ADJUSTMENT,
+        _ =&gt; 0,
+    };
+    let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
+    let final_cost = base_cost + category_adjustment + scaled_weight;
+    final_cost.clamp(
+        cost_constants::UNK_COST_MIN,
+        cost_constants::UNK_COST_MAX
+    )
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="パフォーマンス最適化"><a class="header" href="#パフォーマンス最適化">パフォーマンス最適化</a></h3>
+<h4 id="メモリ効率"><a class="header" href="#メモリ効率">メモリ効率</a></h4>
+<ul>
+<li><strong>遅延評価</strong>: 必要な場合にのみ merged_model を作成</li>
+<li><strong>未使用素性の削除</strong>: 学習後に不要な素性を自動削除</li>
+<li><strong>効率的なバイナリ形式</strong>: rkyvを使用した高速シリアライゼーション</li>
+</ul>
+<h4 id="並列処理サポート"><a class="header" href="#並列処理サポート">並列処理サポート</a></h4>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let trainer = rucrf::Trainer::new()
+    .regularization(rucrf::Regularization::L1, regularization_cost)?
+    .max_iter(max_iter)?
+    .n_threads(self.num_threads)?;  // Multi-threaded training
+<span class="boring">}</span></code></pre></pre>
+<h3 id="実践的な学習データ要件"><a class="header" href="#実践的な学習データ要件">実践的な学習データ要件</a></h3>
+<h4 id="推奨コーパス仕様"><a class="header" href="#推奨コーパス仕様">推奨コーパス仕様</a></h4>
+<p>実際のアプリケーション向けに効果的な辞書を生成するための推奨事項：</p>
+<ol>
+<li>
+<p><strong>コーパスサイズ</strong></p>
+<ul>
+<li><strong>最小</strong>: 100文 (基本的な動作検証用)</li>
+<li><strong>推奨</strong>: 1,000文以上 (実用レベル)</li>
+<li><strong>理想</strong>: 10,000文以上 (商用品質)</li>
+</ul>
+</li>
+<li>
+<p><strong>語彙の多様性</strong></p>
+<ul>
+<li>異なる品詞のバランスの取れた分布</li>
+<li>活用語尾や接尾辞の網羅</li>
+<li>専門用語や固有名詞の適切な包含</li>
+</ul>
+</li>
+<li>
+<p><strong>品質管理</strong></p>
+<ul>
+<li>形態素解析結果の手動検証</li>
+<li>解析基準の一貫した適用</li>
+<li>エラー率を5%以下に維持</li>
+</ul>
+</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-cli"><a class="header" href="#lindera-cli">Lindera CLI</a></h1>
+<p><a href="https://github.com/lindera-morphology/lindera">Lindera</a> のための形態素解析コマンドラインインターフェースです。</p>
+<h2 id="インストール-1"><a class="header" href="#インストール-1">インストール</a></h2>
+<p>cargo経由でバイナリをインストールできます：</p>
+<pre><code class="language-shell script">% cargo install lindera-cli
+</code></pre>
+<p>または、以下のリリースページからバイナリをダウンロードすることもできます：</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/releases">https://github.com/lindera-morphology/lindera/releases</a></li>
+</ul>
+<h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
+<h3 id="ipadic日本語辞書を含めてビルド"><a class="header" href="#ipadic日本語辞書を含めてビルド">IPADIC（日本語辞書）を含めてビルド</a></h3>
+<p>"ipadic" 機能フラグを使用すると、LinderaにIPADICを含めることができます。</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-ipadic
+</code></pre>
+<h3 id="unidic日本語辞書を含めてビルド"><a class="header" href="#unidic日本語辞書を含めてビルド">UniDic（日本語辞書）を含めてビルド</a></h3>
+<p>"unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-unidic
+</code></pre>
+<h3 id="ko-dic韓国語辞書を含めてビルド"><a class="header" href="#ko-dic韓国語辞書を含めてビルド">ko-dic（韓国語辞書）を含めてビルド</a></h3>
+<p>"ko-dic" 機能フラグを使用すると、Linderaにko-dicを含めることができます。</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-ko-dic
+</code></pre>
+<h3 id="cc-cedict中国語辞書を含めてビルド"><a class="header" href="#cc-cedict中国語辞書を含めてビルド">CC-CEDICT（中国語辞書）を含めてビルド</a></h3>
+<p>"cc-cedict" 機能フラグを使用すると、LinderaにCC-CEDICTを含めることができます。</p>
+<pre><code class="language-shell script">% cargo build --release --features=embedded-cc-cedict
+</code></pre>
+<h3 id="辞書なしでビルド"><a class="header" href="#辞書なしでビルド">辞書なしでビルド</a></h3>
+<p>Linderaのバイナリサイズを削減するには、機能フラグを省略します。
+これにより、辞書が含まれなくなるため、トークナイザーとトレーナーのみを含むバイナリになります。</p>
+<pre><code class="language-shell script">% cargo build --release
+</code></pre>
+<h3 id="全機能を含めてビルド"><a class="header" href="#全機能を含めてビルド">全機能を含めてビルド</a></h3>
+<pre><code class="language-shell script">% cargo build --release --all-features
+</code></pre>
+<h2 id="辞書のビルド"><a class="header" href="#辞書のビルド">辞書のビルド</a></h2>
+<p>Linderaで使用するための形態素解析辞書をCSVソースファイルからビルド（コンパイル）します。</p>
+<h3 id="基本的なビルド方法"><a class="header" href="#基本的なビルド方法">基本的なビルド方法</a></h3>
+<pre><code class="language-bash"># システム辞書のビルド
+lindera build \
+  --src /path/to/dictionary/csv \
+  --dest /path/to/output/dictionary \
+  --metadata ./lindera-ipadic/metadata.json
+
+# ユーザー辞書のビルド
+lindera build \
+  --src ./user_dict.csv \
+  --dest ./user_dictionary \
+  --metadata ./lindera-ipadic/metadata.json \
+  --user
+</code></pre>
+<h3 id="ビルドパラメータ"><a class="header" href="#ビルドパラメータ">ビルドパラメータ</a></h3>
+<ul>
+<li><code>--src</code> / <code>-s</code>: 辞書CSVファイルを含むソースディレクトリ（ユーザー辞書の場合は単一CSVファイル）</li>
+<li><code>--dest</code> / <code>-d</code>: コンパイルされた辞書の出力先ディレクトリ</li>
+<li><code>--metadata</code> / <code>-m</code>: 辞書構造を定義するメタデータ設定ファイル (metadata.json)</li>
+<li><code>--user</code> / <code>-u</code>: システム辞書の代わりにユーザー辞書をビルドする（オプションフラグ）</li>
+</ul>
+<h3 id="辞書の種類"><a class="header" href="#辞書の種類">辞書の種類</a></h3>
+<h4 id="システム辞書-system-dictionary"><a class="header" href="#システム辞書-system-dictionary">システム辞書 (System dictionary)</a></h4>
+<p>以下を含む完全な形態素解析辞書です：</p>
+<ul>
+<li>語彙エントリ（単語定義）</li>
+<li>接続コスト行列</li>
+<li>未知語処理ルール</li>
+<li>文字種定義</li>
+</ul>
+<h4 id="ユーザー辞書-user-dictionary"><a class="header" href="#ユーザー辞書-user-dictionary">ユーザー辞書 (User dictionary)</a></h4>
+<p>システム辞書と一緒に動作する、カスタム単語のための補助辞書です。</p>
+<h3 id="例"><a class="header" href="#例">例</a></h3>
+<h4 id="ipadic日本語辞書のビルド"><a class="header" href="#ipadic日本語辞書のビルド">IPADIC（日本語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># IPADICソースファイルのダウンロードと展開
+% curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-2.7.0-20250920.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/mecab-ipadic-2.7.0-20250920 \
+  --dest /tmp/lindera-ipadic-2.7.0-20250920 \
+  --metadata ./lindera-ipadic/metadata.json
+
+% ls -al /tmp/lindera-ipadic-2.7.0-20250920
+% (cd /tmp &amp;&amp; zip -r lindera-ipadic-2.7.0-20250920.zip lindera-ipadic-2.7.0-20250920/)
+% tar -czf /tmp/lindera-ipadic-2.7.0-20250920.tar.gz -C /tmp lindera-ipadic-2.7.0-20250920
+</code></pre>
+<h4 id="ipadic-neologd日本語辞書のビルド"><a class="header" href="#ipadic-neologd日本語辞書のビルド">IPADIC NEologd（日本語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># IPADIC NEologdソースファイルのダウンロードと展開
+% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
+% tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/mecab-ipadic-neologd-0.0.7-20200820 \
+  --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
+  --metadata ./lindera-ipadic-neologd/metadata.json
+
+% ls -al /tmp/lindera-ipadic-neologd-0.0.7-20200820
+% (cd /tmp &amp;&amp; zip -r lindera-ipadic-neologd-0.0.7-20200820.zip lindera-ipadic-neologd-0.0.7-20200820/)
+% tar -czf /tmp/lindera-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp lindera-ipadic-neologd-0.0.7-20200820
+</code></pre>
+<h4 id="unidic日本語辞書のビルド"><a class="header" href="#unidic日本語辞書のビルド">UniDic（日本語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># UniDicソースファイルのダウンロードと展開
+% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
+% tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/unidic-mecab-2.1.2 \
+  --dest /tmp/lindera-unidic-2.1.2 \
+  --metadata ./lindera-unidic/metadata.json
+
+% ls -al /tmp/lindera-unidic-2.1.2
+% (cd /tmp &amp;&amp; zip -r lindera-unidic-2.1.2.zip lindera-unidic-2.1.2/)
+% tar -czf /tmp/lindera-unidic-2.1.2.tar.gz -C /tmp lindera-unidic-2.1.2
+</code></pre>
+<h4 id="cc-cedict中国語辞書のビルド"><a class="header" href="#cc-cedict中国語辞書のビルド">CC-CEDICT（中国語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># CC-CEDICTソースファイルのダウンロードと展開
+% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
+% tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/CC-CEDICT-MeCab-0.1.0-20200409 \
+  --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
+  --metadata ./lindera-cc-cedict/metadata.json
+
+% ls -al /tmp/lindera-cc-cedict-0.1.0-20200409
+% (cd /tmp &amp;&amp; zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
+% tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
+</code></pre>
+<h4 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># ko-dicソースファイルのダウンロードと展開
+% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
+% tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/mecab-ko-dic-2.1.1-20180720 \
+  --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
+  --metadata ./lindera-ko-dic/metadata.json
+
+% ls -al /tmp/lindera-ko-dic-2.1.1-20180720
+% (cd /tmp &amp;&amp; zip -r lindera-ko-dic-2.1.1-20180720.zip lindera-ko-dic-2.1.1-20180720/)
+% tar -czf /tmp/lindera-ko-dic-2.1.1-20180720.tar.gz -C /tmp lindera-ko-dic-2.1.1-20180720
+</code></pre>
+<h2 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h2>
+<h3 id="ipadicユーザー辞書日本語のビルド"><a class="header" href="#ipadicユーザー辞書日本語のビルド">IPADICユーザー辞書（日本語）のビルド</a></h3>
+<p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv">Lindera IPADIC Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/ipadic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-ipadic/metadata.json \
+  --user
+</code></pre>
+<h3 id="unidicユーザー辞書日本語のビルド"><a class="header" href="#unidicユーザー辞書日本語のビルド">UniDicユーザー辞書（日本語）のビルド</a></h3>
+<p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv">Lindera UniDic Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/unidic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-unidic/metadata.json \
+  --user
+</code></pre>
+<h3 id="cc-cedictユーザー辞書中国語のビルド"><a class="header" href="#cc-cedictユーザー辞書中国語のビルド">CC-CEDICTユーザー辞書（中国語）のビルド</a></h3>
+<p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv">Lindera CC-CEDICT Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+</code></pre>
+<h3 id="ko-dicユーザー辞書韓国語のビルド"><a class="header" href="#ko-dicユーザー辞書韓国語のビルド">ko-dicユーザー辞書（韓国語）のビルド</a></h3>
+<p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
+<ul>
+<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv">Lindera ko-dic Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/ko-dic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-ko-dic/metadata.json \
+  --user
+</code></pre>
+<h2 id="テキストのトークナイズ"><a class="header" href="#テキストのトークナイズ">テキストのトークナイズ</a></h2>
+<p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
+<h3 id="基本的なトークナイズ方法"><a class="header" href="#基本的なトークナイズ方法">基本的なトークナイズ方法</a></h3>
+<pre><code class="language-bash"># 辞書ディレクトリを指定してトークナイズ
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /path/to/dictionary
+
+# 埋め込み辞書を指定してトークナイズ
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic
+
+# 出力形式を指定してトークナイズ
+echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output json
+
+# ファイルからテキストを読み込んでトークナイズ
+lindera tokenize \
+  --dict /path/to/dictionary \
+  --output wakati \
+  input.txt
+</code></pre>
+<h3 id="トークナイズパラメータ"><a class="header" href="#トークナイズパラメータ">トークナイズパラメータ</a></h3>
+<ul>
+<li><code>--dict</code> / <code>-d</code>: 辞書のパスまたはURI（必須）
+<ul>
+<li>ファイルパス: <code>/path/to/dictionary</code></li>
+<li>埋め込み: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+</ul>
+</li>
+<li><code>--output</code> / <code>-o</code>: 出力形式 (デフォルト: mecab)
+<ul>
+<li><code>mecab</code>: 品詞情報を含むMeCab互換形式</li>
+<li><code>wakati</code>: スペース区切りのトークンのみ</li>
+<li><code>json</code>: すべてのトークン情報を含む詳細なJSON形式</li>
+</ul>
+</li>
+<li><code>--user-dict</code> / <code>-u</code>: ユーザー辞書のパス（オプション）</li>
+<li><code>--mode</code> / <code>-m</code>: トークナイズモード (デフォルト: normal)
+<ul>
+<li><code>normal</code>: 標準的なトークナイズ</li>
+<li><code>decompose</code>: 複合語を分解する</li>
+</ul>
+</li>
+<li><code>--char-filter</code> / <code>-c</code>: 文字フィルタ設定 (JSON)</li>
+<li><code>--token-filter</code> / <code>-t</code>: トークンフィルタ設定 (JSON)</li>
+<li>入力ファイル: オプションのファイルパス (デフォルト: 標準入力)</li>
+</ul>
+<h3 id="外部辞書を使用した例"><a class="header" href="#外部辞書を使用した例">外部辞書を使用した例</a></h3>
+<h4 id="外部ipadic日本語辞書を使用したトークナイズ"><a class="header" href="#外部ipadic日本語辞書を使用したトークナイズ">外部IPADIC（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="外部ipadic-neologd日本語辞書を使用したトークナイズ"><a class="header" href="#外部ipadic-neologd日本語辞書を使用したトークナイズ">外部IPADIC NEologd（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-neologd-0.0.7-20200820
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="外部unidic日本語辞書を使用したトークナイズ"><a class="header" href="#外部unidic日本語辞書を使用したトークナイズ">外部UniDic（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-unidic-2.1.2
+</code></pre>
+<pre><code class="language-text">日本    名詞,固有名詞,地名,国,*,*,ニッポン,日本,日本,ニッポン,日本,ニッポン,固,*,*,*,*
+語      名詞,普通名詞,一般,*,*,*,ゴ,語,語,ゴ,語,ゴ,漢,*,*,*,*
+の      助詞,格助詞,*,*,*,*,ノ,の,の,ノ,の,ノ,和,*,*,*,*
+形態    名詞,普通名詞,一般,*,*,*,ケイタイ,形態,形態,ケータイ,形態,ケータイ,漢,*,*,*,*
+素      接尾辞,名詞的,一般,*,*,*,ソ,素,素,ソ,素,ソ,漢,*,*,*,*
+解析    名詞,普通名詞,サ変可能,*,*,*,カイセキ,解析,解析,カイセキ,解析,カイセキ,漢,*,*,*,*
+を      助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+行う    動詞,一般,*,*,五段-ワア行,連体形-一般,オコナウ,行う,行う,オコナウ,行う,オコナウ,和,*,*,*,*
+こと    名詞,普通名詞,一般,*,*,*,コト,事,こと,コト,こと,コト,和,コ濁,基本形,*,*
+が      助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+でき    動詞,非自立可能,*,*,上一段-カ行,連用形-一般,デキル,出来る,でき,デキ,できる,デキル,和,*,*,*,*
+ます    助動詞,*,*,*,助動詞-マス,終止形-一般,マス,ます,ます,マス,ます,マス,和,*,*,*,*
+。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<h4 id="外部ko-dic韓国語辞書を使用したトークナイズ"><a class="header" href="#外部ko-dic韓国語辞書を使用したトークナイズ">外部ko-dic（韓国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
+  --dict /tmp/lindera-ko-dic-2.1.1-20180720
+</code></pre>
+<pre><code class="language-text">한국어  NNG,*,F,한국어,Compound,*,*,한국/NNG/*+어/NNG/*
+의      JKG,*,F,의,*,*,*,*
+형태    NNG,*,F,형태,*,*,*,*
+해석    NNG,행위,T,해석,*,*,*,*
+을      JKO,*,T,을,*,*,*,*
+실시    NNG,행위,F,실시,*,*,*,*
+할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
+수      NNG,*,F,수,*,*,*,*
+있      VX,*,T,있,*,*,*,*
+습니다  EF,*,F,습니다,*,*,*,*
+.       UNK
+EOS
+</code></pre>
+<h4 id="外部cc-cedict中国語辞書を使用したトークナイズ"><a class="header" href="#外部cc-cedict中国語辞書を使用したトークナイズ">外部CC-CEDICT（中国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-cc-cedict-0.1.0-20200409
+</code></pre>
+<pre><code class="language-text">可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
+形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+。      UNK
+EOS
+</code></pre>
+<h3 id="埋め込み辞書を使用した例"><a class="header" href="#埋め込み辞書を使用した例">埋め込み辞書を使用した例</a></h3>
+<p>Linderaは、特定の機能フラグを指定してビルドすることで、バイナリに辞書を直接含めることができます。これにより、外部辞書ファイルなしでトークナイズが可能になります。</p>
+<h4 id="埋め込みipadic日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みipadic日本語辞書を使用したトークナイズ">埋め込みIPADIC（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p>注意: IPADIC辞書をバイナリに含めるには、<code>--features=embedded-ipadic</code> オプションを使用してビルドする必要があります。</p>
+<h4 id="埋め込みunidic日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みunidic日本語辞書を使用したトークナイズ">埋め込みUniDic（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://unidic
+</code></pre>
+<pre><code class="language-text">日本    名詞,固有名詞,地名,国,*,*,ニッポン,日本,日本,ニッポン,日本,ニッポン,固,*,*,*,*
+語      名詞,普通名詞,一般,*,*,*,ゴ,語,語,ゴ,語,ゴ,漢,*,*,*,*
+の      助詞,格助詞,*,*,*,*,ノ,の,の,ノ,の,ノ,和,*,*,*,*
+形態    名詞,普通名詞,一般,*,*,*,ケイタイ,形態,形態,ケータイ,形態,ケータイ,漢,*,*,*,*
+素      接尾辞,名詞的,一般,*,*,*,ソ,素,素,ソ,素,ソ,漢,*,*,*,*
+解析    名詞,普通名詞,サ変可能,*,*,*,カイセキ,解析,解析,カイセキ,解析,カイセキ,漢,*,*,*,*
+を      助詞,格助詞,*,*,*,*,ヲ,を,を,オ,を,オ,和,*,*,*,*
+行う    動詞,一般,*,*,五段-ワア行,連体形-一般,オコナウ,行う,行う,オコナウ,行う,オコナウ,和,*,*,*,*
+こと    名詞,普通名詞,一般,*,*,*,コト,事,こと,コト,こと,コト,和,コ濁,基本形,*,*
+が      助詞,格助詞,*,*,*,*,ガ,が,が,ガ,が,ガ,和,*,*,*,*
+でき    動詞,非自立可能,*,*,上一段-カ行,連用形-一般,デキル,出来る,でき,デキ,できる,デキル,和,*,*,*,*
+ます    助動詞,*,*,*,助動詞-マス,終止形-一般,マス,ます,ます,マス,ます,マス,和,*,*,*,*
+。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
+EOS
+</code></pre>
+<p>注意: UniDic辞書をバイナリに含めるには、<code>--features=embedded-unidic</code> オプションを使用してビルドする必要があります。</p>
+<h4 id="埋め込みipadic-neologd日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みipadic-neologd日本語辞書を使用したトークナイズ">埋め込みIPADIC NEologd（日本語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic-neologd
+</code></pre>
+<pre><code class="language-text">日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素解析      名詞,固有名詞,一般,*,*,*,形態素解析,ケイタイソカイセキ,ケイタイソカイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<p>注意: IPADIC NEologd辞書をバイナリに含めるには、<code>--features=embedded-ipadic-neologd</code> オプションを使用してビルドする必要があります。</p>
+<h4 id="埋め込みko-dic韓国語辞書を使用したトークナイズ"><a class="header" href="#埋め込みko-dic韓国語辞書を使用したトークナイズ">埋め込みko-dic（韓国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
+  --dict embedded://ko-dic
+</code></pre>
+<pre><code class="language-text">한국어  NNG,*,F,한국어,Compound,*,*,한국/NNG/*+어/NNG/*
+의      JKG,*,F,의,*,*,*,*
+형태    NNG,*,F,형태,*,*,*,*
+해석    NNG,행위,T,해석,*,*,*,*
+을      JKO,*,T,을,*,*,*,*
+실시    NNG,행위,F,실시,*,*,*,*
+할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
+수      NNG,*,F,수,*,*,*,*
+있      VX,*,T,있,*,*,*,*
+습니다  EF,*,F,습니다,*,*,*,*
+.       UNK
+EOS
+</code></pre>
+<p>注意: ko-dic辞書をバイナリに含めるには、<code>--features=embedded-ko-dic</code> オプションを使用してビルドする必要があります。</p>
+<h4 id="埋め込みcc-cedict中国語辞書を使用したトークナイズ"><a class="header" href="#埋め込みcc-cedict中国語辞書を使用したトークナイズ">埋め込みCC-CEDICT（中国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://cc-cedict
+</code></pre>
+<pre><code class="language-text">可以    *,*,*,*,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good/
+进行    *,*,*,*,jin4 xing2,進行,进行,to advance/to conduct/underway/in progress/to do/to carry out/to carry on/to execute/
+中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
+形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
+分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
+。      UNK
+EOS
+</code></pre>
+<p>注意: CC-CEDICT辞書をバイナリに含めるには、<code>--features=embedded-cc-cedict</code> オプションを使用してビルドする必要があります。</p>
+<h3 id="ユーザー辞書の例"><a class="header" href="#ユーザー辞書の例">ユーザー辞書の例</a></h3>
+<p>Linderaは、システム辞書と一緒にカスタム単語を追加するためのユーザー辞書をサポートしています。ユーザー辞書はCSVまたはバイナリ形式にすることができます。</p>
+<h4 id="ユーザー辞書の使用csv形式"><a class="header" href="#ユーザー辞書の使用csv形式">ユーザー辞書の使用（CSV形式）</a></h4>
+<pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict embedded://ipadic \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
+</code></pre>
+<pre><code class="language-text">東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+</code></pre>
+<h4 id="ユーザー辞書の使用バイナリ形式"><a class="header" href="#ユーザー辞書の使用バイナリ形式">ユーザー辞書の使用（バイナリ形式）</a></h4>
+<pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920 \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.bin
+</code></pre>
+<pre><code class="language-text">東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+</code></pre>
+<h3 id="トークナイズモード"><a class="header" href="#トークナイズモード">トークナイズモード</a></h3>
+<p>Linderaは2つのトークナイズモードを提供します：<code>normal</code> と <code>decompose</code> です。</p>
+<h4 id="normal-モードデフォルト"><a class="header" href="#normal-モードデフォルト">Normal モード（デフォルト）</a></h4>
+<p>辞書に登録された単語に基づいて忠実にトークナイズします：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
+  --dict embedded://ipadic \
+  --mode normal
+</code></pre>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
+<h4 id="decompose-モード"><a class="header" href="#decompose-モード">Decompose モード</a></h4>
+<p>複合語をさらに分解してトークナイズします：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
+  --dict embedded://ipadic \
+  --mode decompose
+</code></pre>
+<pre><code class="language-text">関西    名詞,固有名詞,地域,一般,*,*,関西,カンサイ,カンサイ
+国際    名詞,一般,*,*,*,*,国際,コクサイ,コクサイ
+空港    名詞,一般,*,*,*,*,空港,クウコウ,クーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
+<h3 id="出力形式"><a class="header" href="#出力形式">出力形式</a></h3>
+<p>Linderaは3つの出力形式を提供します：<code>mecab</code>, <code>wakati</code>, <code>json</code>。</p>
+<h4 id="mecab-形式デフォルト"><a class="header" href="#mecab-形式デフォルト">MeCab 形式（デフォルト）</a></h4>
+<p>品詞情報を含むMeCab互換形式で結果を出力します：</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output mecab
+</code></pre>
+<pre><code class="language-text">お待ち  名詞,サ変接続,*,*,*,*,お待ち,オマチ,オマチ
+し  動詞,自立,*,*,サ変・スル,連用形,する,シ,シ
+て  助詞,接続助詞,*,*,*,*,て,テ,テ
+おり  動詞,非自立,*,*,五段・ラ行,連用形,おる,オリ,オリ
+ます  助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。  記号,句点,*,*,*,*,。,。,。
+EOS
+</code></pre>
+<h4 id="wakati-形式"><a class="header" href="#wakati-形式">Wakati 形式</a></h4>
+<p>トークンテキストのみをスペース区切りで出力します：</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output wakati
+</code></pre>
+<pre><code class="language-text">お待ち し て おり ます 。
+</code></pre>
+<h4 id="json-形式"><a class="header" href="#json-形式">JSON 形式</a></h4>
+<p>すべてのトークン情報を含む詳細なJSON形式で出力します：</p>
+<pre><code class="language-shell">% echo "お待ちしております。" | lindera tokenize \
+  --dict embedded://ipadic \
+  --output json
+</code></pre>
+<pre><code class="language-json">[
+  {
+    "base_form": "お待ち",
+    "byte_end": 9,
+    "byte_start": 0,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "名詞",
+    "part_of_speech_subcategory_1": "サ変接続",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オマチ",
+    "reading": "オマチ",
+    "surface": "お待ち",
+    "word_id": 14698
+  },
+  {
+    "base_form": "する",
+    "byte_end": 12,
+    "byte_start": 9,
+    "conjugation_form": "サ変・スル",
+    "conjugation_type": "連用形",
+    "part_of_speech": "動詞",
+    "part_of_speech_subcategory_1": "自立",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "シ",
+    "reading": "シ",
+    "surface": "し",
+    "word_id": 30763
+  },
+  {
+    "base_form": "て",
+    "byte_end": 15,
+    "byte_start": 12,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "助詞",
+    "part_of_speech_subcategory_1": "接続助詞",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "テ",
+    "reading": "テ",
+    "surface": "て",
+    "word_id": 46603
+  },
+  {
+    "base_form": "おる",
+    "byte_end": 21,
+    "byte_start": 15,
+    "conjugation_form": "五段・ラ行",
+    "conjugation_type": "連用形",
+    "part_of_speech": "動詞",
+    "part_of_speech_subcategory_1": "非自立",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "オリ",
+    "reading": "オリ",
+    "surface": "おり",
+    "word_id": 14239
+  },
+  {
+    "base_form": "ます",
+    "byte_end": 27,
+    "byte_start": 21,
+    "conjugation_form": "特殊・マス",
+    "conjugation_type": "基本形",
+    "part_of_speech": "助動詞",
+    "part_of_speech_subcategory_1": "*",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "マス",
+    "reading": "マス",
+    "surface": "ます",
+    "word_id": 68733
+  },
+  {
+    "base_form": "。",
+    "byte_end": 30,
+    "byte_start": 27,
+    "conjugation_form": "*",
+    "conjugation_type": "*",
+    "part_of_speech": "記号",
+    "part_of_speech_subcategory_1": "句点",
+    "part_of_speech_subcategory_2": "*",
+    "part_of_speech_subcategory_3": "*",
+    "pronunciation": "。",
+    "reading": "。",
+    "surface": "。",
+    "word_id": 101
+  }
+]
+</code></pre>
+<h2 id="高度なトークナイズ"><a class="header" href="#高度なトークナイズ">高度なトークナイズ</a></h2>
+<p>Linderaは、文字フィルタ、トークナイザー、トークンフィルタを組み合わせた分析フレームワークを提供します。フィルタはJSONを使用して構成します。</p>
+<h3 id="文字フィルタとトークンフィルタの使用"><a class="header" href="#文字フィルタとトークンフィルタの使用">文字フィルタとトークンフィルタの使用</a></h3>
+<pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
+  --dict embedded://ipadic \
+  --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
+  --token-filter 'japanese_keep_tags:{"tags":["名詞,一般"]}'
+</code></pre>
+<pre><code class="language-text">すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+EOS
+</code></pre>
+<h2 id="辞書の学習実験的機能-1"><a class="header" href="#辞書の学習実験的機能-1">辞書の学習（実験的機能）</a></h2>
+<p>注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。（<code>train</code> 機能フラグはデフォルトで有効になっています。）</p>
+<h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>
+<ul>
+<li><code>--seed</code> / <code>-s</code>: 重み付けを行うシード語彙ファイル（CSV形式）</li>
+<li><code>--corpus</code> / <code>-c</code>: 学習用コーパス（注釈付きテキスト）</li>
+<li><code>--char-def</code> / <code>-C</code>: 文字定義ファイル (char.def)</li>
+<li><code>--unk-def</code> / <code>-u</code>: 未知語定義ファイル (unk.def) - 重み付けの対象</li>
+<li><code>--feature-def</code> / <code>-f</code>: 素性定義ファイル (feature.def)</li>
+<li><code>--rewrite-def</code> / <code>-r</code>: 書換えルール定義ファイル (rewrite.def)</li>
+<li><code>--output</code> / <code>-o</code>: 出力モデルファイル</li>
+<li><code>--lambda</code> / <code>-l</code>: L1正則化 (0.0-1.0) (デフォルト: 0.01)</li>
+<li><code>--max-iterations</code> / <code>-i</code>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><code>--max-threads</code> / <code>-t</code>: 最大スレッド数 (デフォルトはCPUコア数、データセットサイズに基づいて自動調整)</li>
+</ul>
+<h3 id="基本的なワークフロー"><a class="header" href="#基本的なワークフロー">基本的なワークフロー</a></h3>
+<h4 id="1-学習用ファイルの準備"><a class="header" href="#1-学習用ファイルの準備">1. 学習用ファイルの準備</a></h4>
+<p><strong>シード語彙ファイル (seed.csv):</strong></p>
+<p>シード語彙ファイルは、CRFモデルの学習に使用される初期辞書エントリを含みます。各行はカンマ区切りのフィールドを持つ単語エントリを表します。具体的なフィールド構成は辞書フォーマットによって異なります：</p>
+<ul>
+<li>表層形</li>
+<li>左文脈ID</li>
+<li>右文脈ID</li>
+<li>単語コスト</li>
+<li>品詞タグ（複数のフィールド）</li>
+<li>原形</li>
+<li>読み（カタカナ）</li>
+<li>発音</li>
+</ul>
+<p>注意: 正確なフィールド定義は辞書フォーマット（IPADIC, UniDic, ko-dic, CC-CEDICT）によって異なります。詳細は各辞書のフォーマット仕様を参照してください。</p>
+<pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
+</code></pre>
+<p><strong>学習用コーパス (corpus.txt):</strong></p>
+<p>学習用コーパスファイルは、CRFモデルの学習に使用される注釈付きテキストデータを含みます。各行は以下で構成されます：</p>
+<ul>
+<li>表層形（単語）とそれに続くタブ文字</li>
+<li>カンマ区切りの形態素素性（品詞タグ、原形、読み、発音）</li>
+<li>文は "EOS" (End Of Sentence) マーカーで区切られます</li>
+</ul>
+<p>注意: 形態素素性のフォーマットは辞書（IPADIC, UniDic, ko-dic, CC-CEDICT）によって異なります。詳細は各辞書のフォーマット仕様を参照してください。</p>
+<pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+です	助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+。	記号,句点,*,*,*,*,。,。,。
+EOS
+
+形態	名詞,一般,*,*,*,*,形態,ケイタイ,ケイタイ
+素	名詞,接尾,一般,*,*,*,素,ソ,ソ
+解析	名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を	助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う	動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+EOS
+</code></pre>
+<p>ファイルフォーマットや高度な機能の詳細については、<a href="../TRAINER_README.html">TRAINER_README.md</a> を参照してください。</p>
+<h4 id="2-モデルの学習"><a class="header" href="#2-モデルの学習">2. モデルの学習</a></h4>
+<pre><code class="language-bash">lindera train \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
+</code></pre>
+<h4 id="3-学習結果"><a class="header" href="#3-学習結果">3. 学習結果</a></h4>
+<p>学習済みモデルには以下が含まれます：</p>
+<ul>
+<li><strong>既存単語</strong>: 新しく学習された重みを持つすべてのシード辞書レコード</li>
+<li><strong>新語</strong>: シード辞書にはないがコーパスに含まれる単語（適切な重み付きで追加）</li>
+</ul>
+<h2 id="学習済みモデルの辞書へのエクスポート"><a class="header" href="#学習済みモデルの辞書へのエクスポート">学習済みモデルの辞書へのエクスポート</a></h2>
+<p>学習済みモデルファイルをLindera辞書フォーマットのファイルにエクスポートします。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。</p>
+<h3 id="基本的なエクスポート方法"><a class="header" href="#基本的なエクスポート方法">基本的なエクスポート方法</a></h3>
+<pre><code class="language-bash"># 学習済みモデルを辞書ファイルにエクスポート
+lindera export \
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./resources/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
+</code></pre>
+<h3 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h3>
+<ul>
+<li><code>--model</code> / <code>-m</code>: 学習済みモデルファイル（.dat形式）のパス</li>
+<li><code>--output</code> / <code>-o</code>: 辞書ファイルの出力先ディレクトリ</li>
+<li><code>--metadata</code>: オプションの metadata.json ファイル（学習済みモデル情報で更新されます）</li>
+</ul>
+<h3 id="出力ファイル"><a class="header" href="#出力ファイル">出力ファイル</a></h3>
+<p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
+<ul>
+<li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル</li>
+<li><code>matrix.def</code>: 接続コスト行列</li>
+<li><code>unk.def</code>: 未知語定義</li>
+<li><code>char.def</code>: 文字種定義</li>
+<li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
+</ul>
+<h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
+<h4 id="1-モデルの学習"><a class="header" href="#1-モデルの学習">1. モデルの学習</a></h4>
+<pre><code class="language-bash">lindera train \
+  --seed ./resources/training/seed.csv \
+  --corpus ./resources/training/corpus.txt \
+  --unk-def ./resources/training/unk.def \
+  --char-def ./resources/training/char.def \
+  --feature-def ./resources/training/feature.def \
+  --rewrite-def ./resources/training/rewrite.def \
+  --output /tmp/lindera/training/model.dat \
+  --lambda 0.01 \
+  --max-iterations 100
+</code></pre>
+<h4 id="2-辞書フォーマットへのエクスポート"><a class="header" href="#2-辞書フォーマットへのエクスポート">2. 辞書フォーマットへのエクスポート</a></h4>
+<pre><code class="language-bash">lindera export \
+  --model /tmp/lindera/training/model.dat \
+  --metadata ./resources/training/metadata.json \
+  --output /tmp/lindera/training/dictionary
+</code></pre>
+<h4 id="3-辞書のビルド"><a class="header" href="#3-辞書のビルド">3. 辞書のビルド</a></h4>
+<pre><code class="language-bash">lindera build \
+  --src /tmp/lindera/training/dictionary \
+  --dest /tmp/lindera/training/compiled_dictionary \
+  --metadata /tmp/lindera/training/dictionary/metadata.json
+</code></pre>
+<h4 id="4-学習済み辞書の使用"><a class="header" href="#4-学習済み辞書の使用">4. 学習済み辞書の使用</a></h4>
+<pre><code class="language-bash">echo "これは外国人参政権です。" | lindera tokenize \
+  -d /tmp/lindera/training/compiled_dictionary
+</code></pre>
+<h3 id="メタデータ更新機能"><a class="header" href="#メタデータ更新機能">メタデータ更新機能</a></h3>
+<p><code>--metadata</code> オプションが指定されると、エクスポートコマンドは以下の処理を行います：</p>
+<ol>
+<li>
+<p><strong>ベースとなる metadata.json ファイルを読み込み</strong>、既存の設定を保持します</p>
+</li>
+<li>
+<p><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：</p>
+<ul>
+<li><code>default_left_context_id</code>: 学習済みモデルからの最大左文脈ID</li>
+<li><code>default_right_context_id</code>: 学習済みモデルからの最大右文脈ID</li>
+<li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
+<li><code>model_info</code>: 以下の学習統計情報を含む：
+<ul>
+<li><code>feature_count</code>: モデル内の素性数</li>
+<li><code>label_count</code>: モデル内のラベル数</li>
+<li><code>max_left_context_id</code>: 最大左文脈ID</li>
+<li><code>max_right_context_id</code>: 最大右文脈ID</li>
+<li><code>connection_matrix_size</code>: 接続コスト行列のサイズ</li>
+<li><code>training_iterations</code>: 実行された学習反復回数</li>
+<li><code>regularization</code>: 使用されたL1正則化パラメータ</li>
+<li><code>version</code>: モデルバージョン</li>
+<li><code>updated_at</code>: モデルがエクスポートされたタイムスタンプ</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>既存の設定を保持</strong>します（以下など）：</p>
+<ul>
+<li>辞書名</li>
+<li>文字エンコード設定</li>
+<li>スキーマ定義</li>
+<li>その他のユーザー定義設定</li>
+</ul>
+</li>
+</ol>
+<p>これにより、基本となる辞書設定を維持しながら、学習中に最適化されたパラメータを取り込むことができます。</p>
+<h2 id="apiリファレンス-5"><a class="header" href="#apiリファレンス-5">APIリファレンス</a></h2>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera-cli">lindera-cli</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="apiリファレンス-6"><a class="header" href="#apiリファレンス-6">APIリファレンス</a></h1>
+<p>APIリファレンスは以下で公開されています：</p>
+<ul>
+<li><a href="https://docs.rs/lindera">lindera</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="貢献ガイド"><a class="header" href="#貢献ガイド">貢献ガイド</a></h1>
+<p>(貢献ガイドの内容をここに記述します)</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+    </div>
+    </body>
+</html>

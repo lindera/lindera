@@ -1,0 +1,789 @@
+<!DOCTYPE HTML>
+<html lang="ja" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>高度な使い方 - Lindera ユーザーガイド</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> はじめに</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> インストール</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> 辞書</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> 設定</a></li><li class="chapter-item expanded "><a href="advanced_usage.html" class="active"><strong aria-hidden="true">6.</strong> 高度な使い方</a></li><li class="chapter-item expanded "><a href="cli.html"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> APIリファレンス</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> 貢献ガイド</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera ユーザーガイド</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="高度な使い方"><a class="header" href="#高度な使い方">高度な使い方</a></h1>
+<h2 id="ユーザー辞書を使用したトークナイズ"><a class="header" href="#ユーザー辞書を使用したトークナイズ">ユーザー辞書を使用したトークナイズ</a></h2>
+<p>デフォルトのシステム辞書に加えて、ユーザー辞書のエントリーを指定することができます。ユーザー辞書は以下のフォーマットのCSVである必要があります。</p>
+<pre><code class="language-csv">&lt;surface&gt;,&lt;part_of_speech&gt;,&lt;reading&gt;
+</code></pre>
+<p>Cargo.tomlに以下を追加してください：</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>例：</p>
+<pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
+東京スカイツリー,カスタム名詞,トウキョウスカイツリー
+東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
+とうきょうスカイツリー駅,カスタム名詞,トウキョウスカイツリーエキ
+</code></pre>
+<p>ユーザー辞書を使用する場合、<code>Tokenizer</code> は以下のように作成します：</p>
+<pre><pre class="playground"><code class="language-rust">use std::fs::File;
+use std::path::PathBuf;
+
+use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
+use lindera::error::LinderaErrorKind;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../resources")
+        .join("user_dict")
+        .join("ipadic_simple_userdic.csv");
+
+    let metadata_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../lindera-ipadic")
+        .join("metadata.json");
+    let metadata: Metadata = serde_json::from_reader(
+        File::open(metadata_file)
+            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+            .unwrap(),
+    )
+    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))
+    .unwrap();
+
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let user_dictionary = load_user_dictionary(user_dict_path.to_str().unwrap(), &amp;metadata)?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        Some(user_dictionary), // 読み込んだユーザー辞書を使用
+    );
+
+    // トークナイザーを作成
+    let tokenizer = Tokenizer::new(segmenter);
+
+    // テキストをトークナイズ
+    let text = "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です";
+    let mut tokens = tokenizer.tokenize(text)?;
+
+    // テキストとトークンを表示
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>上記の例は以下のように実行できます：</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
+token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
+token:  最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+token:  は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+</code></pre>
+<h2 id="フィルタを使用したトークナイズ"><a class="header" href="#フィルタを使用したトークナイズ">フィルタを使用したトークナイズ</a></h2>
+<p>Cargo.tomlに以下を追加してください：</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+</code></pre>
+<p>この例では、Lindera解析フレームワークの基本的な使い方を説明します。</p>
+<p>以下の処理を行います：</p>
+<ul>
+<li>Unicode正規化(NFKC)のための文字フィルタを適用</li>
+<li>IPADICで入力テキストをトークナイズ</li>
+<li>ストップタグ（品詞）の除去と日本語カタカナ語幹フィルタのためのトークンフィルタを適用</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust">use lindera::character_filter::BoxCharacterFilter;
+use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera::character_filter::unicode_normalize::{
+    UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
+};
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::token_filter::BoxTokenFilter;
+use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(
+        Mode::Normal,
+        dictionary,
+        None, // この例ではユーザー辞書は使用しません
+    );
+
+    let unicode_normalize_char_filter =
+        UnicodeNormalizeCharacterFilter::new(UnicodeNormalizeKind::NFKC);
+
+    let japanese_iteration_mark_char_filter =
+        JapaneseIterationMarkCharacterFilter::new(true, true);
+
+    let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
+        vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
+            .into_iter()
+            .collect(),
+        Some("複合語".to_string()),
+    );
+
+    let japanese_number_token_filter =
+        JapaneseNumberTokenFilter::new(Some(vec!["名詞,数".to_string()].into_iter().collect()));
+
+    let japanese_stop_tags_token_filter = JapaneseStopTagsTokenFilter::new(
+        vec![
+            "接続詞".to_string(),
+            "助詞".to_string(),
+            "助詞,格助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,格助詞,引用".to_string(),
+            "助詞,格助詞,連語".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,副助詞".to_string(),
+            "助詞,間投助詞".to_string(),
+            "助詞,並立助詞".to_string(),
+            "助詞,終助詞".to_string(),
+            "助詞,副助詞／並立助詞／終助詞".to_string(),
+            "助詞,連体化".to_string(),
+            "助詞,副詞化".to_string(),
+            "助詞,特殊".to_string(),
+            "助動詞".to_string(),
+            "記号".to_string(),
+            "記号,一般".to_string(),
+            "記号,読点".to_string(),
+            "記号,句点".to_string(),
+            "記号,空白".to_string(),
+            "記号,括弧閉".to_string(),
+            "その他,間投".to_string(),
+            "フィラー".to_string(),
+            "非言語音".to_string(),
+        ]
+        .into_iter()
+        .collect(),
+    );
+
+    // トークナイザーを作成
+    let mut tokenizer = Tokenizer::new(segmenter);
+
+    tokenizer
+        .append_character_filter(BoxCharacterFilter::from(unicode_normalize_char_filter))
+        .append_character_filter(BoxCharacterFilter::from(
+            japanese_iteration_mark_char_filter,
+        ))
+        .append_token_filter(BoxTokenFilter::from(japanese_compound_word_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_number_token_filter))
+        .append_token_filter(BoxTokenFilter::from(japanese_stop_tags_token_filter));
+
+    // テキストをトークナイズ
+    let text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。";
+    let tokens = tokenizer.tokenize(text)?;
+
+    // テキストとトークンを表示
+    println!("text: {}", text);
+    for token in tokens {
+        println!(
+            "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
+            token.surface, token.byte_start, token.byte_end, token.details
+        );
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>上記の例は以下のように実行できます：</p>
+<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+</code></pre>
+<p>実行結果は以下のようになります：</p>
+<pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
+token: "Lindera", start: 0, end: 21, details: Some(["UNK"])
+token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
+token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
+token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
+token: "ユーザー", start: 63, end: 75, details: Some(["名詞", "一般", "*", "*", "*", "*", "ユーザー", "ユーザー", "ユーザー"])
+token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*", "*", "*", "辞書", "ジショ", "ジショ"])
+token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
+token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
+</code></pre>
+<h2 id="辞書の学習実験的機能"><a class="header" href="#辞書の学習実験的機能">辞書の学習（実験的機能）</a></h2>
+<p>Linderaは、カスタム形態素解析モデルを作成するためのCRFベースの辞書学習機能を提供しています。</p>
+<h3 id="概要"><a class="header" href="#概要">概要</a></h3>
+<p>Lindera Trainerは、以下の高度な機能を備えたCondition Random Field (CRF)ベースの形態素解析器学習システムです：</p>
+<ul>
+<li><strong>CRFベースの統計学習</strong>: rucrfクレートを使用した効率的な実装</li>
+<li><strong>L1正則化</strong>: 過学習の防止</li>
+<li><strong>マルチスレッド学習</strong>: 並行処理による学習の高速化</li>
+<li><strong>包括的なUnicodeサポート</strong>: CJK拡張の完全サポート</li>
+<li><strong>高度な未知語処理</strong>: インテリジェントな混合文字種分類</li>
+<li><strong>多段階の重み最適化</strong>: 学習済み重みのための高度な正規化システム</li>
+<li><strong>Lindera辞書互換性</strong>: 既存の辞書フォーマットとの完全互換</li>
+</ul>
+<h3 id="cliの使用方法"><a class="header" href="#cliの使用方法">CLIの使用方法</a></h3>
+<p>詳細なCLIコマンドの使用方法については、<a href="https://github.com/lindera/lindera/blob/main/lindera-cli/README.md#train-dictionary">lindera-cli/README.md</a> を参照してください。</p>
+<h3 id="必須ファイルフォーマット仕様"><a class="header" href="#必須ファイルフォーマット仕様">必須ファイルフォーマット仕様</a></h3>
+<h4 id="1-語彙辞書-seedcsv"><a class="header" href="#1-語彙辞書-seedcsv">1. <strong>語彙辞書 (seed.csv)</strong></a></h4>
+<p><strong>役割</strong>: 基礎語彙辞書
+<strong>フォーマット</strong>: MeCab形式のCSV</p>
+<pre><code class="language-csv">外国,0,0,0,名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人,0,0,0,名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政,0,0,0,名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 学習のための基本的な単語とその品詞情報を定義</li>
+<li><strong>構造</strong>: <code>表層形,左文脈ID,右文脈ID,コスト,品詞,品詞細分類1,品詞細分類2,品詞細分類3,活用型,活用形,原形,読み,発音</code></li>
+</ul>
+<h4 id="2-未知語定義-unkdef"><a class="header" href="#2-未知語定義-unkdef">2. <strong>未知語定義 (unk.def)</strong></a></h4>
+<p><strong>役割</strong>: 未知語処理の定義
+<strong>フォーマット</strong>: 文字種ごとの未知語パラメータ</p>
+<pre><code class="language-csv">DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*
+HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*
+KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*
+ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*
+NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 文字種ごとの未知語の処理方法を定義</li>
+<li><strong>注意</strong>: これらのラベルは内部処理用であり、最終的な辞書ファイルには出力されません</li>
+</ul>
+<h4 id="3-学習コーパス-corpustxt"><a class="header" href="#3-学習コーパス-corpustxt">3. <strong>学習コーパス (corpus.txt)</strong></a></h4>
+<p><strong>役割</strong>: 学習データ（注釈付きコーパス）
+<strong>フォーマット</strong>: タブ区切りの分かち書きテキスト</p>
+<pre><code class="language-text">外国	名詞,一般,*,*,*,*,外国,ガイコク,ガイコク
+人	名詞,接尾,一般,*,*,*,人,ジン,ジン
+参政	名詞,サ変接続,*,*,*,*,参政,サンセイ,サンセイ
+権	名詞,接尾,一般,*,*,*,権,ケン,ケン
+EOS
+
+これ	連体詞,*,*,*,*,*,これ,コレ,コレ
+は	助詞,係助詞,*,*,*,*,は,ハ,ワ
+テスト	名詞,サ変接続,*,*,*,*,テスト,テスト,テスト
+EOS
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 学習のための文と正解の解析結果</li>
+<li><strong>フォーマット</strong>: 各行は <code>表層形\t品詞情報</code>、文は <code>EOS</code> で終了</li>
+<li><strong>重要</strong>: 学習の質はこのコーパスの量と質に大きく依存します</li>
+</ul>
+<h4 id="4-文字種定義-chardef"><a class="header" href="#4-文字種定義-chardef">4. <strong>文字種定義 (char.def)</strong></a></h4>
+<p><strong>役割</strong>: 文字種の定義
+<strong>フォーマット</strong>: 文字カテゴリと文字コード範囲</p>
+<pre><code class="language-text"># Character category definition (category_name compatibility_flag continuity_flag length)
+DEFAULT 0 1 0
+HIRAGANA 1 1 0
+KATAKANA 1 1 0
+KANJI 0 0 2
+ALPHA 1 1 0
+NUMERIC 1 1 0
+
+# Character range mapping
+0x3041..0x3096 HIRAGANA  # Hiragana
+0x30A1..0x30F6 KATAKANA  # Katakana
+0x4E00..0x9FAF KANJI     # Kanji
+0x0030..0x0039 NUMERIC   # Numbers
+0x0041..0x005A ALPHA     # Uppercase letters
+0x0061..0x007A ALPHA     # Lowercase letters
+</code></pre>
+<ul>
+<li><strong>目的</strong>: どの文字がどのカテゴリに属するかを定義</li>
+<li><strong>パラメータ</strong>: 互換性、連続性、デフォルト長などの設定</li>
+</ul>
+<h4 id="5-機能テンプレート-featuredef"><a class="header" href="#5-機能テンプレート-featuredef">5. <strong>機能テンプレート (feature.def)</strong></a></h4>
+<p><strong>役割</strong>: 素性テンプレート定義
+<strong>フォーマット</strong>: 素性抽出パターン</p>
+<pre><code class="language-text"># Unigram features (word-level features)
+UNIGRAM:%F[0]         # POS (feature element 0)
+UNIGRAM:%F[1]         # POS detail 1
+UNIGRAM:%F[6]         # Base form
+UNIGRAM:%F[7]         # Reading (Katakana)
+
+# Left context features
+LEFT:%L[0]            # POS of left word
+LEFT:%L[1]            # POS detail of left word
+
+# Right context features
+RIGHT:%R[0]           # POS of right word
+RIGHT:%R[1]           # POS detail of right word
+
+# Bigram features (combination features)
+UNIGRAM:%F[0]/%F[1]   # POS + POS detail
+UNIGRAM:%F[0]/%F[6]   # POS + base form
+</code></pre>
+<ul>
+<li><strong>目的</strong>: どの情報から素性を抽出するかを定義</li>
+<li><strong>テンプレート</strong>: <code>%F[n]</code> (素性), <code>%L[n]</code> (左文脈), <code>%R[n]</code> (右文脈)</li>
+</ul>
+<h4 id="6-素性正規化ルール-rewritedef"><a class="header" href="#6-素性正規化ルール-rewritedef">6. <strong>素性正規化ルール (rewrite.def)</strong></a></h4>
+<p><strong>役割</strong>: 素性正規化ルール
+<strong>フォーマット</strong>: 置換ルール（タブ区切り）</p>
+<pre><code class="language-text"># Normalize numeric expressions
+数	NUM
+*	UNK
+
+# Normalize proper nouns
+名詞,固有名詞	名詞,一般
+
+# Simplify auxiliary verbs
+助動詞,*,*,*,特殊・デス	助動詞
+助動詞,*,*,*,特殊・ダ	助動詞
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 素性を正規化して学習効率を向上させる</li>
+<li><strong>フォーマット</strong>: <code>original_pattern\treplacement_pattern</code></li>
+<li><strong>効果</strong>: 希少な素性を一般化し、スパース性の問題を軽減する</li>
+</ul>
+<h4 id="7-出力モデルフォーマット"><a class="header" href="#7-出力モデルフォーマット">7. <strong>出力モデルフォーマット</strong></a></h4>
+<p><strong>役割</strong>: 出力モデルファイル
+<strong>フォーマット</strong>: 標準はバイナリ(rkyv)形式、JSON形式もサポート</p>
+<p>モデルには以下の情報が含まれます：</p>
+<pre><code class="language-json">{
+  "feature_weights": [0.0, 0.084, 0.091, ...],
+  "labels": ["外国", "人", "参政", "権", ...],
+  "pos_info": ["名詞,一般,*,*,*,*,*,*,*", "名詞,接尾,一般,*,*,*,*,*,*", ...],
+  "feature_templates": ["UNIGRAM:%F[0]", ...],
+  "metadata": {
+    "version": "1.0.0",
+    "regularization": 0.01,
+    "iterations": 100,
+    "feature_count": 13,
+    "label_count": 19
+  }
+}
+</code></pre>
+<ul>
+<li><strong>目的</strong>: 後の辞書生成のために学習結果を保存</li>
+</ul>
+<h3 id="学習パラメータ仕様"><a class="header" href="#学習パラメータ仕様">学習パラメータ仕様</a></h3>
+<ul>
+<li><strong>正則化係数 (lambda)</strong>: L1正則化の強さを制御 (デフォルト: 0.01)</li>
+<li><strong>最大反復回数 (iter)</strong>: 学習の最大反復回数 (デフォルト: 100)</li>
+<li><strong>並列スレッド数 (threads)</strong>: 並行処理スレッド数 (デフォルト: 1)</li>
+</ul>
+<h3 id="api使用例"><a class="header" href="#api使用例">API使用例</a></h3>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::fs::File;
+use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+
+// Load configuration from files
+let seed_file = File::open("resources/training/seed.csv")?;
+let char_file = File::open("resources/training/char.def")?;
+let unk_file = File::open("resources/training/unk.def")?;
+let feature_file = File::open("resources/training/feature.def")?;
+let rewrite_file = File::open("resources/training/rewrite.def")?;
+
+let config = TrainerConfig::from_readers(
+    seed_file,
+    char_file,
+    unk_file,
+    feature_file,
+    rewrite_file
+)?;
+
+// Initialize and configure trainer
+let trainer = Trainer::new(config)?
+    .regularization_cost(0.01)
+    .max_iter(100)
+    .num_threads(4);
+
+// Load corpus
+let corpus_file = File::open("resources/training/corpus.txt")?;
+let corpus = Corpus::from_reader(corpus_file)?;
+
+// Execute training
+let model = trainer.train(corpus)?;
+
+// Save model (binary format)
+let mut output = File::create("trained_model.dat")?;
+model.write_model(&amp;mut output)?;
+
+// Output in Lindera dictionary format
+let mut lex_out = File::create("output_lex.csv")?;
+let mut conn_out = File::create("output_conn.dat")?;
+let mut unk_out = File::create("output_unk.def")?;
+let mut user_out = File::create("output_user.csv")?;
+model.write_dictionary(&amp;mut lex_out, &amp;mut conn_out, &amp;mut unk_out, &amp;mut user_out)?;
+
+<span class="boring">Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+</span><span class="boring">}</span></code></pre></pre>
+<h3 id="実装状況"><a class="header" href="#実装状況">実装状況</a></h3>
+<h4 id="完了した機能"><a class="header" href="#完了した機能">完了した機能</a></h4>
+<h5 id="コア機能"><a class="header" href="#コア機能"><strong>コア機能</strong></a></h5>
+<ul>
+<li><strong>コアアーキテクチャ</strong>: トレーナーモジュール構造の完成</li>
+<li><strong>CRF学習</strong>: rucrf統合によるCondition Random Field学習</li>
+<li><strong>CLI統合</strong>: パラメータを完全にサポートした <code>lindera train</code> コマンド</li>
+<li><strong>コーパス処理</strong>: MeCab形式コーパスの完全サポート</li>
+<li><strong>辞書統合</strong>: seed.csv, char.def, unk.def からの辞書構築</li>
+<li><strong>素性抽出</strong>: ユニグラム/バイグラム素性の抽出と変換</li>
+<li><strong>モデル保存</strong>: JSON/rkyv形式での学習済みモデル出力</li>
+<li><strong>辞書出力</strong>: Lindera形式辞書ファイルの生成</li>
+</ul>
+<h5 id="高度な未知語処理"><a class="header" href="#高度な未知語処理"><strong>高度な未知語処理</strong></a></h5>
+<ul>
+<li><strong>包括的なUnicodeサポート</strong>: CJK拡張、カタカナ拡張、ひらがな拡張の完全サポート</li>
+<li><strong>カテゴリ別の品詞割り当て</strong>: 文字種による適切な品詞情報の自動割り当て
+<ul>
+<li>DEFAULT: 名詞,一般 (未知の文字種)</li>
+<li>HIRAGANA/KATAKANA/KANJI: 名詞,一般 (日本語文字)</li>
+<li>ALPHA: 名詞,固有名詞 (アルファベット)</li>
+<li>NUMERIC: 名詞,数 (数字)</li>
+</ul>
+</li>
+<li><strong>表層形分析</strong>: 文字パターン、長さ、位置情報に基づく素性生成</li>
+<li><strong>動的コスト計算</strong>: 文字種と文脈を考慮した適応的コスト計算</li>
+</ul>
+<h5 id="リファクタリング2024年9月最新"><a class="header" href="#リファクタリング2024年9月最新"><strong>リファクタリング（2024年9月最新）</strong></a></h5>
+<ul>
+<li><strong>定数管理</strong>: cost_constantsモジュールによるマジックナンバーの排除</li>
+<li><strong>メソッド分割</strong>: 大きなメソッドの分割による可読性向上
+<ul>
+<li><code>train()</code> → <code>build_lattices_from_corpus()</code>, <code>extract_labels()</code>, <code>train_crf_model()</code>, <code>create_final_model()</code></li>
+</ul>
+</li>
+<li><strong>統一されたコスト計算</strong>: 重複コードの統一による保守性向上
+<ul>
+<li><code>calculate_known_word_cost()</code>: 既知語コスト計算</li>
+<li><code>calculate_unknown_word_cost()</code>: 未知語コスト計算</li>
+</ul>
+</li>
+<li><strong>整理されたデバッグ出力</strong>: log_debug!マクロによる構造化ロギング</li>
+<li><strong>強化されたエラーハンドリング</strong>: 包括的なエラーハンドリングとドキュメント</li>
+</ul>
+<h3 id="アーキテクチャ"><a class="header" href="#アーキテクチャ">アーキテクチャ</a></h3>
+<pre><code class="language-text">lindera-dictionary/src/trainer.rs  # Main Trainer struct
+lindera-dictionary/src/trainer/
+├── config.rs           # Configuration management
+├── corpus.rs           # Corpus processing
+├── feature_extractor.rs # Feature extraction
+├── feature_rewriter.rs  # Feature rewriting
+└── model.rs            # Trained model
+</code></pre>
+<h3 id="高度な未知語処理システム"><a class="header" href="#高度な未知語処理システム">高度な未知語処理システム</a></h3>
+<h4 id="包括的なunicode文字種検出"><a class="header" href="#包括的なunicode文字種検出">包括的なUnicode文字種検出</a></h4>
+<p>最新の実装では、基本的なUnicode範囲を大幅に拡張し、以下の文字セットを完全にサポートしています。（上記の「高度な未知語処理」セクションの「カテゴリ別の品詞割り当て」の詳細を参照してください。）</p>
+<h4 id="素性重み最適化"><a class="header" href="#素性重み最適化">素性重み最適化</a></h4>
+<h5 id="コスト計算定数"><a class="header" href="#コスト計算定数"><strong>コスト計算定数</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>mod cost_constants {
+    // Known word cost calculation
+    pub const KNOWN_WORD_BASE_COST: i16 = 1000;
+    pub const KNOWN_WORD_COST_MULTIPLIER: f64 = 500.0;
+    pub const KNOWN_WORD_COST_MIN: i16 = 500;
+    pub const KNOWN_WORD_COST_MAX: i16 = 3000;
+    pub const KNOWN_WORD_DEFAULT_COST: i16 = 1500;
+
+    // Unknown word cost calculation
+    pub const UNK_BASE_COST: i32 = 3000;
+    pub const UNK_COST_MULTIPLIER: f64 = 500.0;
+    pub const UNK_COST_MIN: i32 = 2500;
+    pub const UNK_COST_MAX: i32 = 4500;
+
+    // Category-specific adjustments
+    pub const UNK_DEFAULT_ADJUSTMENT: i32 = 0;     // DEFAULT
+    pub const UNK_HIRAGANA_ADJUSTMENT: i32 = 200;  // HIRAGANA - minor penalty
+    pub const UNK_KATAKANA_ADJUSTMENT: i32 = 0;    // KATAKANA - medium
+    pub const UNK_KANJI_ADJUSTMENT: i32 = 400;     // KANJI - high penalty
+    pub const UNK_ALPHA_ADJUSTMENT: i32 = 100;     // ALPHA - mild penalty
+    pub const UNK_NUMERIC_ADJUSTMENT: i32 = -100;  // NUMERIC - bonus (regular)
+}
+<span class="boring">}</span></code></pre></pre>
+<h5 id="統一されたコスト計算"><a class="header" href="#統一されたコスト計算"><strong>統一されたコスト計算</strong></a></h5>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Known word cost calculation
+fn calculate_known_word_cost(&amp;self, feature_weight: f64) -&gt; i16 {
+    let scaled_weight = (feature_weight * cost_constants::KNOWN_WORD_COST_MULTIPLIER) as i32;
+    let final_cost = cost_constants::KNOWN_WORD_BASE_COST as i32 + scaled_weight;
+    final_cost.clamp(
+        cost_constants::KNOWN_WORD_COST_MIN as i32,
+        cost_constants::KNOWN_WORD_COST_MAX as i32
+    ) as i16
+}
+
+// Unknown word cost calculation
+fn calculate_unknown_word_cost(&amp;self, feature_weight: f64, category: usize) -&gt; i32 {
+    let base_cost = cost_constants::UNK_BASE_COST;
+    let category_adjustment = match category {
+        0 =&gt; cost_constants::UNK_DEFAULT_ADJUSTMENT,
+        1 =&gt; cost_constants::UNK_HIRAGANA_ADJUSTMENT,
+        2 =&gt; cost_constants::UNK_KATAKANA_ADJUSTMENT,
+        3 =&gt; cost_constants::UNK_KANJI_ADJUSTMENT,
+        4 =&gt; cost_constants::UNK_ALPHA_ADJUSTMENT,
+        5 =&gt; cost_constants::UNK_NUMERIC_ADJUSTMENT,
+        _ =&gt; 0,
+    };
+    let scaled_weight = (feature_weight * cost_constants::UNK_COST_MULTIPLIER) as i32;
+    let final_cost = base_cost + category_adjustment + scaled_weight;
+    final_cost.clamp(
+        cost_constants::UNK_COST_MIN,
+        cost_constants::UNK_COST_MAX
+    )
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="パフォーマンス最適化"><a class="header" href="#パフォーマンス最適化">パフォーマンス最適化</a></h3>
+<h4 id="メモリ効率"><a class="header" href="#メモリ効率">メモリ効率</a></h4>
+<ul>
+<li><strong>遅延評価</strong>: 必要な場合にのみ merged_model を作成</li>
+<li><strong>未使用素性の削除</strong>: 学習後に不要な素性を自動削除</li>
+<li><strong>効率的なバイナリ形式</strong>: rkyvを使用した高速シリアライゼーション</li>
+</ul>
+<h4 id="並列処理サポート"><a class="header" href="#並列処理サポート">並列処理サポート</a></h4>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let trainer = rucrf::Trainer::new()
+    .regularization(rucrf::Regularization::L1, regularization_cost)?
+    .max_iter(max_iter)?
+    .n_threads(self.num_threads)?;  // Multi-threaded training
+<span class="boring">}</span></code></pre></pre>
+<h3 id="実践的な学習データ要件"><a class="header" href="#実践的な学習データ要件">実践的な学習データ要件</a></h3>
+<h4 id="推奨コーパス仕様"><a class="header" href="#推奨コーパス仕様">推奨コーパス仕様</a></h4>
+<p>実際のアプリケーション向けに効果的な辞書を生成するための推奨事項：</p>
+<ol>
+<li>
+<p><strong>コーパスサイズ</strong></p>
+<ul>
+<li><strong>最小</strong>: 100文 (基本的な動作検証用)</li>
+<li><strong>推奨</strong>: 1,000文以上 (実用レベル)</li>
+<li><strong>理想</strong>: 10,000文以上 (商用品質)</li>
+</ul>
+</li>
+<li>
+<p><strong>語彙の多様性</strong></p>
+<ul>
+<li>異なる品詞のバランスの取れた分布</li>
+<li>活用語尾や接尾辞の網羅</li>
+<li>専門用語や固有名詞の適切な包含</li>
+</ul>
+</li>
+<li>
+<p><strong>品質管理</strong></p>
+<ul>
+<li>形態素解析結果の手動検証</li>
+<li>解析基準の一貫した適用</li>
+<li>エラー率を5%以下に維持</li>
+</ul>
+</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
