@@ -1,0 +1,38 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # To push to the gh-pages branch.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: |
+          mkdir mdbook
+          curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.37/mdbook-v0.4.37-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C mdbook
+          echo "$PWD/mdbook" >> $GITHUB_PATH
+
+      - name: Build Book (English)
+        run: mdbook build docs
+
+      - name: Build Book (Japanese)
+        run: mdbook build docs/ja
+
+      - name: Setup Pages Directory
+        run: |
+          mv docs/ja/book docs/book/ja
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/book
