@@ -1,14 +1,21 @@
 use std::error::Error;
-use std::path::Path;
+use std::fs::{self, File, rename};
+use std::io::{self, Cursor, Read, Write};
+use std::path::{Path, PathBuf};
 
+use encoding::all::UTF_8;
+use encoding::{EncoderTrap, Encoding};
+use flate2::read::GzDecoder;
 use log::{debug, error, info, warn};
 use md5::Context;
 use rand::{SeedableRng, rngs::SmallRng, seq::SliceRandom};
 use reqwest::Client;
-use tokio::time::Duration;
-use tokio::time::sleep;
+use tar::Archive;
+use tokio::time::{Duration, sleep};
 
+use crate::LinderaResult;
 use crate::builder::DictionaryBuilder;
+use crate::error::LinderaErrorKind;
 
 const MAX_ROUND: usize = 3;
 
@@ -32,39 +39,100 @@ pub struct FetchParams {
     pub md5_hash: &'static str,
 }
 
-#[cfg(not(target_os = "windows"))]
-fn empty_directory(dir: &Path) -> Result<(), Box<dyn Error>> {
-    if dir.is_dir() {
-        for entry in std::fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                std::fs::remove_dir_all(&path)?;
-            } else {
-                std::fs::remove_file(&path)?;
-            }
-        }
-    }
-    Ok(())
-}
-
 #[cfg(target_os = "windows")]
-fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), Box<dyn Error>> {
-    if !dst.exists() {
-        std::fs::create_dir(dst)?;
+fn copy_dir_all(src: &Path, dst: &Path) -> LinderaResult<()> {
+    if !dst.is_dir() {
+        fs::create_dir_all(dst).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to create directory: {dst:?}"))
+        })?;
     }
 
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
+    for entry in fs::read_dir(src).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to read directory: {src:?}"))
+    })? {
+        let entry = entry.map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to get directory entry in: {src:?}"))
+        })?;
         let entry_path = entry.path();
         let dst_path = dst.join(entry.file_name());
 
         if entry_path.is_dir() {
             copy_dir_all(&entry_path, &dst_path)?;
         } else {
-            std::fs::copy(&entry_path, &dst_path)?;
+            fs::copy(&entry_path, &dst_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to copy file: {entry_path:?} to {dst_path:?}"
+                    ))
+            })?;
         }
     }
+    Ok(())
+}
+
+fn empty_directory(dir: &Path) -> LinderaResult<()> {
+    if dir.exists() {
+        fs::remove_dir_all(dir).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to remove directory: {dir:?}"))
+        })?;
+    }
+
+    fs::create_dir_all(dir).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to create directory: {dir:?}"))
+    })?;
+
+    Ok(())
+}
+
+fn rename_directory(dir: &Path, new_dir: &Path) -> LinderaResult<()> {
+    // Ensure parent directory of new_dir exists
+    if let Some(parent) = new_dir.parent() {
+        fs::create_dir_all(parent).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!("Failed to create parent directory: {parent:?}"))
+        })?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        rename(dir, new_dir).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to rename directory: {dir:?} to {new_dir:?}"
+                ))
+        })?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        copy_dir_all(dir, new_dir).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!("{err}"))
+                .add_context(format!("Failed to copy directory: {dir:?} to {new_dir:?}"))
+        })?;
+
+        fs::remove_dir_all(dir).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to remove source directory after copy: {dir:?}"
+                ))
+        })?;
+    }
+
     Ok(())
 }
 
@@ -81,7 +149,12 @@ async fn download_with_retry(
     for round in 0..max_rounds {
         let mut urls = download_urls.clone();
 
-        let mut rng = SmallRng::seed_from_u64(0);
+        let mut rng = SmallRng::seed_from_u64(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos() as u64,
+        );
         urls.shuffle(&mut rng);
 
         debug!(
@@ -142,33 +215,39 @@ async fn download_with_retry(
 }
 
 /// Fetch the necessary assets and then build the dictionary using `builder`
-pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<(), Box<dyn Error>> {
-    use std::env;
-    use std::fs::{File, create_dir, rename};
-    use std::io::{self, Cursor, Read, Write};
-    use std::path::{Path, PathBuf};
-
-    use encoding::all::UTF_8;
-    use encoding::{EncoderTrap, Encoding};
-    use flate2::read::GzDecoder;
-    use tar::Archive;
-
+pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
+    println!("cargo:rerun-if-env-changed=LINDERA_CACHE");
+    println!("cargo:rerun-if-env-changed=DOCS_RS");
 
     // Directory path for build package
     // if the `LINDERA_CACHE` variable is defined, behaves like a cache, where data is invalidated only:
     // - on new lindera-assets version
     // - if the LINDERA_CACHE dir changed
     // otherwise, keeps behavior of always redownloading and rebuilding
-    let (build_dir, is_cache) = if let Some(lindera_cache_dir) = env::var_os("LINDERA_CACHE") {
+    let (build_dir, is_cache) = if let Some(lindera_cache_dir) = std::env::var_os("LINDERA_CACHE") {
+        let mut cache_dir = PathBuf::from(lindera_cache_dir);
+        if !cache_dir.is_absolute() {
+            if let Ok(current_dir) = std::env::current_dir() {
+                // If current_dir is a crate directory in a workspace, try to find the workspace root
+                let mut root_dir = current_dir.clone();
+                if let Some(parent) = current_dir.parent() {
+                    if parent.join("Cargo.toml").exists() {
+                        root_dir = parent.to_path_buf();
+                    }
+                }
+                cache_dir = root_dir.join(cache_dir);
+            }
+        }
+
         (
-            PathBuf::from(lindera_cache_dir).join(env::var_os("CARGO_PKG_VERSION").unwrap()),
+            cache_dir.join(std::env::var_os("CARGO_PKG_VERSION").unwrap()),
             true,
         )
     } else {
         (
-            PathBuf::from(env::var_os("OUT_DIR").unwrap()), /* ex) target/debug/build/<pkg>/out */
+            PathBuf::from(std::env::var_os("OUT_DIR").unwrap()), /* ex) target/debug/build/<pkg>/out */
             false,
         )
     };
@@ -176,7 +255,11 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
     // environment variable passed to dependents, that will actually be used to include the dictionary in the library
     println!("cargo::rustc-env=LINDERA_WORKDIR={}", build_dir.display());
 
-    std::fs::create_dir_all(&build_dir)?;
+    fs::create_dir_all(&build_dir).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to create build directory: {build_dir:?}"))
+    })?;
 
     let input_dir = build_dir.join(params.input_dir);
 
@@ -189,24 +272,74 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
 
     if std::env::var("DOCS_RS").is_ok() {
         // Create directory for dummy input directory for build docs
-        create_dir(&input_dir)?;
+        fs::create_dir(&input_dir).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create dummy input directory: {input_dir:?}"
+                ))
+        })?;
 
         // Create dummy char.def
-        let mut dummy_char_def = File::create(input_dir.join("char.def"))?;
-        dummy_char_def.write_all(b"DEFAULT 0 1 0\n")?;
+        let mut dummy_char_def = File::create(input_dir.join("char.def")).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create dummy char.def: {:?}",
+                    input_dir.join("char.def")
+                ))
+        })?;
+        dummy_char_def
+            .write_all(b"DEFAULT 0 1 0\n")
+            .map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context("Failed to write to dummy char.def")
+            })?;
 
         // Create dummy CSV file
-        let mut dummy_dict_csv = File::create(input_dir.join("dummy_dict.csv"))?;
-        dummy_dict_csv.write_all(
-            &UTF_8
-                .encode(params.dummy_input, EncoderTrap::Ignore)
-                .unwrap(),
-        )?;
+        let mut dummy_dict_csv = File::create(input_dir.join("dummy_dict.csv")).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create dummy CSV file: {:?}",
+                    input_dir.join("dummy_dict.csv")
+                ))
+        })?;
+        dummy_dict_csv
+            .write_all(
+                &UTF_8
+                    .encode(params.dummy_input, EncoderTrap::Ignore)
+                    .unwrap(),
+            )
+            .map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context("Failed to write to dummy CSV file")
+            })?;
 
         // Create dummy unk.def
-        File::create(input_dir.join("unk.def"))?;
-        let mut dummy_matrix_def = File::create(input_dir.join("matrix.def"))?;
-        dummy_matrix_def.write_all(b"0 1 0\n")?;
+        File::create(input_dir.join("unk.def")).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create dummy unk.def: {:?}",
+                    input_dir.join("unk.def")
+                ))
+        })?;
+        let mut dummy_matrix_def = File::create(input_dir.join("matrix.def")).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create dummy matrix.def: {:?}",
+                    input_dir.join("matrix.def")
+                ))
+        })?;
+        dummy_matrix_def.write_all(b"0 1 0\n").map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write to dummy matrix.def")
+        })?;
     } else {
         // Source file path for build package
         let source_path_for_build = &build_dir.join(params.file_name);
@@ -219,12 +352,28 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
             );
 
             // Verify MD5 hash
-            let mut file = File::open(source_path_for_build)?;
-            let mut buffer = Vec::new();
-            file.read_to_end(&mut buffer)?;
-
+            let mut file = File::open(source_path_for_build).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to open source file for MD5 check: {source_path_for_build:?}"
+                    ))
+            })?;
             let mut context = Context::new();
-            context.consume(&buffer);
+            let mut buffer = [0; 8192];
+            loop {
+                let count = file.read(&mut buffer).map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to read source file for MD5 check: {source_path_for_build:?}"
+                        ))
+                })?;
+                if count == 0 {
+                    break;
+                }
+                context.consume(&buffer[..count]);
+            }
             let actual_md5 = format!("{:x}", context.finalize());
 
             if actual_md5 == params.md5_hash {
@@ -236,7 +385,13 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
                     params.md5_hash, actual_md5
                 );
                 // Remove invalid file
-                std::fs::remove_file(source_path_for_build)?;
+                fs::remove_file(source_path_for_build).map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to remove invalid source file: {source_path_for_build:?}"
+                        ))
+                })?;
                 true
             }
         } else {
@@ -246,31 +401,65 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
 
         if need_download {
             // Download source file to build directory
-            let tmp_path = Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
+            let tmp_download_path =
+                Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
 
             // Download a tarball
             let client = Client::builder()
                 .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
-                .build()?;
+                .build()
+                .map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to build HTTP client")
+                })?;
 
             debug!("Downloading {:?}", params.download_urls);
-            let mut dest = File::create(tmp_path.as_path())?;
+            let mut dest = File::create(tmp_download_path.as_path()).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create temporary download file: {tmp_download_path:?}"
+                    ))
+            })?;
             let content = download_with_retry(
                 &client,
                 params.download_urls.to_vec(),
                 MAX_ROUND,
                 params.md5_hash,
             )
-            .await?;
+            .await
+            .map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!("{err}"))
+                    .add_context("Failed to download dictionary assets")
+            })?;
 
-            io::copy(&mut Cursor::new(content.as_slice()), &mut dest)?;
-            dest.flush()?;
+            io::copy(&mut Cursor::new(content.as_slice()), &mut dest).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to copy downloaded content to file: {tmp_download_path:?}"
+                    ))
+            })?;
+            dest.flush().map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to flush download file: {tmp_download_path:?}"
+                    ))
+            })?;
             drop(dest);
 
             debug!("Content-Length: {}", content.len());
-            debug!("Downloaded to {}", tmp_path.display());
-            rename(tmp_path.clone(), source_path_for_build)
-                .expect("Failed to rename temporary file");
+            debug!("Downloaded to {}", tmp_download_path.display());
+            rename(tmp_download_path.clone(), source_path_for_build).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to rename temporary download file: {tmp_download_path:?} to {source_path_for_build:?}"
+                    ))
+            })?;
 
             info!("Source file cached at: {}", source_path_for_build.display());
         }
@@ -279,80 +468,67 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> Result<()
         let tmp_extract_path =
             Path::new(&build_dir).join(format!("tmp-archive-{}", params.input_dir));
         let tmp_extracted_path = tmp_extract_path.join(params.input_dir);
-        let _ = std::fs::remove_dir_all(&tmp_extract_path);
-        std::fs::create_dir_all(&tmp_extract_path)?;
+        let _ = fs::remove_dir_all(&tmp_extract_path);
+        fs::create_dir_all(&tmp_extract_path).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to create temporary extraction directory: {tmp_extract_path:?}"
+                ))
+        })?;
 
-        let mut tar_gz = File::open(source_path_for_build)?;
+        let mut tar_gz = File::open(source_path_for_build).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to open source file: {source_path_for_build:?}"
+                ))
+        })?;
         let mut buffer = Vec::new();
-        tar_gz.read_to_end(&mut buffer)?;
+        tar_gz.read_to_end(&mut buffer).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to read source file: {source_path_for_build:?}"
+                ))
+        })?;
         let cursor = Cursor::new(buffer);
         let decoder = GzDecoder::new(cursor);
         let mut archive = Archive::new(decoder);
-        archive.unpack(&tmp_extract_path)?;
+        archive.unpack(&tmp_extract_path).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to unpack archive: {source_path_for_build:?} to {tmp_extract_path:?}"
+                ))
+        })?;
 
-        #[cfg(target_os = "windows")]
-        {
-            // Recreate input_dir to avoid conflicts when copying the directory on Windows systems (which do not support overwriting directories).
-            // Check if output_dir exists
-            if input_dir.exists() {
-                // Remove input_dir
-                std::fs::remove_dir_all(&input_dir).expect("Failed to remove input directory");
+        // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
+        empty_directory(&input_dir)?;
 
-                // Make input_dir
-                std::fs::create_dir_all(&input_dir).expect("Failed to create input directory");
-            }
+        rename_directory(&tmp_extracted_path, &input_dir)?;
 
-            // Copy tmp_path to input_dir
-            copy_dir_all(&tmp_extracted_path, &input_dir)
-                .expect("Failed to copy files from temporary directory to input directory");
-
-            // remove tmp_path
-            std::fs::remove_dir_all(&tmp_extracted_path)
-                .expect("Failed to remove temporary directory");
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            // Empty the input directory first to avoid conflicts when renaming the directory later on Linux and macOS systems (which do not support overwriting directories).
-            empty_directory(&input_dir).expect("Failed to empty input directory");
-            rename(tmp_extracted_path, &input_dir).expect("Failed to rename archive directory");
-        }
-
-        let _ = std::fs::remove_dir_all(&tmp_extract_path);
+        let _ = fs::remove_dir_all(&tmp_extract_path);
     }
 
-    let tmp_path = build_dir.join(format!("tmp-output-{}", params.output_dir));
-    let _ = std::fs::remove_dir_all(&tmp_path);
+    let tmp_output_path = build_dir.join(format!("tmp-output-{}", params.output_dir));
+    let _ = fs::remove_dir_all(&tmp_output_path);
 
-    builder.build_dictionary(&input_dir, &tmp_path)?;
+    builder
+        .build_dictionary(&input_dir, &tmp_output_path)
+        .map_err(|err| {
+            LinderaErrorKind::Build
+                .with_error(anyhow::anyhow!("{err}"))
+                .add_context("Failed to build dictionary")
+        })?;
 
-    #[cfg(target_os = "windows")]
-    {
-        // Check if output_dir exists
-        if output_dir.exists() {
-            // Remove output_dir
-            std::fs::remove_dir_all(&output_dir).expect("Failed to remove output directory");
+    // Empty the output directory
+    empty_directory(&output_dir)?;
 
-            // Make output_dir
-            std::fs::create_dir_all(&output_dir).expect("Failed to create output directory");
-        }
+    // Rename tmp_output_path to output_dir
+    rename_directory(&tmp_output_path, &output_dir)?;
 
-        // Copy tmp_path to output_dir
-        copy_dir_all(&tmp_path, &output_dir).expect("Failed to copy output directory");
-
-        // remove tmp_path
-        std::fs::remove_dir_all(&tmp_path).expect("Failed to copy output directory");
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        // Empty the output directory
-        empty_directory(&output_dir).expect("Failed to empty output directory");
-
-        // Rename tmp_path to output_dir
-        rename(tmp_path, &output_dir).expect("Failed to rename output directory");
-    }
-
-    let _ = std::fs::remove_dir_all(&input_dir);
+    let _ = fs::remove_dir_all(input_dir);
 
     Ok(())
 }

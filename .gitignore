@@ -16,3 +16,5 @@ flamegraph.svg
 .claude
 .mcp.json
 .serena
+
+tmp/
