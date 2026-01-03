@@ -28,7 +28,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let builder = DictionaryBuilder::new(metadata);
 
-    fetch(fetch_params, builder).await
+    fetch(fetch_params, builder).await?;
+
+    Ok(())
 }
 
 #[cfg(not(feature = "embedded-unidic"))]

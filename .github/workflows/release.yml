@@ -73,7 +73,56 @@ jobs:
           generate_release_notes: true
           make_latest: true
 
-  release:
+  build-dictionary:
+    name: Build Dictionary
+    needs: [create-release]
+    strategy:
+      matrix:
+        dictionary:
+          - name: "lindera-ipadic"
+            feature: "embedded-ipadic"
+          - name: "lindera-unidic"
+            feature: "embedded-unidic"
+          - name: "lindera-ko-dic"
+            feature: "embedded-ko-dic"
+          - name: "lindera-cc-cedict"
+            feature: "embedded-cc-cedict"
+          - name: "lindera-ipadic-neologd"
+            feature: "embedded-ipadic-neologd"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build dictionary
+        run: |
+          LINDERA_CACHE=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="${{ matrix.dictionary.name }}") | .version')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create artifact
+        run: |
+          cd dictionaries/${{ steps.get_version.outputs.version }}
+          zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }}
+
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip
+          tag_name: ${{ github.ref_name }}
+
+  build:
     name: Build
     needs: [create-release]
     strategy:
@@ -179,7 +228,7 @@ jobs:
 
   publish-crates:
     name: Publish crate
-    needs: [release]
+    needs: [build]
     strategy:
       matrix:
         platform:
