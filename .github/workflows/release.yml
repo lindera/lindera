@@ -73,7 +73,7 @@ jobs:
           generate_release_notes: true
           make_latest: true
 
-  dictionary:
+  build-dictionary:
     name: Build Dictionary
     needs: [create-release]
     strategy:
@@ -122,7 +122,7 @@ jobs:
           files: ${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip
           tag_name: ${{ github.ref_name }}
 
-  release:
+  build:
     name: Build
     needs: [create-release]
     strategy:
@@ -228,7 +228,7 @@ jobs:
 
   publish-crates:
     name: Publish crate
-    needs: [release]
+    needs: [build]
     strategy:
       matrix:
         platform:
