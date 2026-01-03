@@ -12,7 +12,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.5.0"
+version = "1.5.1"
 edition = "2024"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
@@ -24,17 +24,17 @@ categories = ["text-processing"]
 license = "MIT"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "1.5.0", path = "lindera-dictionary" }
-lindera-cc-cedict = { version = "1.5.0", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "1.5.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "1.5.0", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "1.5.0", path = "lindera-ko-dic" }
-lindera-unidic = { version = "1.5.0", path = "lindera-unidic" }
-lindera = { version = "1.5.0", path = "lindera" }
+lindera-dictionary = { version = "1.5.1", path = "lindera-dictionary" }
+lindera-cc-cedict = { version = "1.5.1", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "1.5.1", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "1.5.1", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "1.5.1", path = "lindera-ko-dic" }
+lindera-unidic = { version = "1.5.1", path = "lindera-unidic" }
+lindera = { version = "1.5.1", path = "lindera" }
 
 anyhow = "1.0.100"
 byteorder = "1.5.0"
-clap = { version = "4.5.53", features = ["derive", "cargo"] }
+clap = { version = "4.5.54", features = ["derive", "cargo"] }
 criterion = { version = "0.8.1", default-features = false, features = [
     "html_reports",
 ] }
@@ -56,8 +56,8 @@ rand = { version = "0.9.2", default-features = false, features = [
     "small_rng",
 ] } # Specify `default-features` and `features` to support WebAssembly
 regex = "1.12.2"
-reqwest = { version = "0.12.28", features = [
-    "rustls-tls",
+reqwest = { version = "0.13.1", features = [
+    "rustls",
 ], default-features = false }
 rkyv = { version = "0.8.12", features = ["bytecheck"] }
 rucrf = "0.3.3"
