@@ -172,7 +172,6 @@ pub struct Edge {
 }
 
 impl Edge {
-    // TODO fix em
     pub fn num_chars(&self) -> usize {
         (self.stop_index - self.start_index) as usize / 3
     }
