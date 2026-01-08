@@ -324,10 +324,12 @@ impl Segmenter {
                 &self.user_dictionary.as_ref().map(|d| &d.dict),
                 &self.dictionary.character_definition,
                 &self.dictionary.unknown_dictionary,
+                &self.dictionary.connection_cost_matrix,
                 sentence,
                 &self.mode,
             );
-            lattice.calculate_path_costs(&self.dictionary.connection_cost_matrix, &self.mode);
+            // Forward Viterbi implementation handles cost calculation within `set_text`.
+            // `calculate_path_costs` is no longer needed.
 
             let offsets = lattice.tokens_offset();
 
