@@ -17,10 +17,8 @@ impl ConnectionCostMatrix {
         let conn_data = conn_data.into();
         let backward_size = LittleEndian::read_i16(&conn_data[2..4]);
         let size = conn_data.len() / 2 - 2;
-        let mut costs_data = Vec::with_capacity(size);
-        for i in 0..size {
-            costs_data.push(LittleEndian::read_i16(&conn_data[4 + i * 2..]));
-        }
+        let mut costs_data = vec![0i16; size];
+        LittleEndian::read_i16_into(&conn_data[4..], &mut costs_data);
 
         ConnectionCostMatrix {
             costs_data,
