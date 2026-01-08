@@ -329,7 +329,6 @@ impl Segmenter {
                 &self.mode,
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
-            // `calculate_path_costs` is no longer needed.
 
             let offsets = lattice.tokens_offset();
 

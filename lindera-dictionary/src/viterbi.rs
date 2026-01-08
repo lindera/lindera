@@ -10,8 +10,6 @@ use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::mode::Mode;
 
-// const EOS_NODE: EdgeId = EdgeId(1u32); // Removed
-
 /// Type of lexicon containing the word
 #[derive(
     Clone,
@@ -159,19 +157,6 @@ pub enum EdgeType {
     INSERTED,
 }
 
-// #[derive(Eq, PartialEq, Clone, Copy, Debug)]
-// pub struct EdgeId(pub u32);
-// EdgeId is removed/deprecated in favor of direct vector storage
-// We keep the type definition if needed for compilation, but we will remove it from internal structures.
-// Actually, let's keep it for now but alias it or unused it.
-// To avoid breaking external code that might import it?
-// The grep showed only usage in viterbi.rs.
-// But let's check if it's pub. Yes it is.
-// Let's redefine it as a dummy or remove it if possible.
-// Wait, EdgeId(pub u32) means it wraps u32.
-// If I change it to (usize, u16), it breaks size.
-// Let's rely on internal logic change only.
-
 #[derive(Default, Clone, Debug)]
 pub struct Edge {
     pub edge_type: EdgeType,
@@ -196,16 +181,9 @@ impl Edge {
 #[derive(Clone, Default)]
 pub struct Lattice {
     capacity: usize,
-    // edges: Vec<Edge>, // Removed
-    // starts_at: Vec<Vec<EdgeId>>, // Removed
     ends_at: Vec<Vec<Edge>>, // Now stores edges directly
-    // Buffer reuse optimization: pre-allocated vectors for reuse
-    // edge_buffer: Vec<Edge>, // Replaced by ends_at logic
-    // edge_id_buffer: Vec<EdgeId>, // Removed
-    // left_cache_buffer: Vec<(u32, i32, i32, EdgeId)>, // Removed, accessing edges directly now
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
-    // Fast path cache for character properties (first 256 characters)
     char_category_cache: Vec<Vec<CategoryId>>,
 }
 
@@ -358,7 +336,7 @@ impl Lattice {
         start_edge.left_index = u16::MAX;
         self.ends_at[0].push(start_edge);
 
-        // index of the last character of unknown word
+        // Index of the last character of unknown word
         let mut unknown_word_end: Option<usize> = None;
 
         for char_idx in 0..self.char_info_buffer.len() - 1 {
@@ -374,7 +352,7 @@ impl Lattice {
 
             let mut found: bool = false;
 
-            // lookup user dictionary
+            // Lookup user dictionary
             if user_dict.is_some() {
                 let dict = user_dict.as_ref().unwrap();
                 for (prefix_len, word_entry) in dict.prefix(suffix) {
@@ -391,7 +369,7 @@ impl Lattice {
                 }
             }
 
-            // we check all word starting at start, using the double array, like we would use
+            // Check all word starting at start, using the double array, like we would use
             // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
                 let kanji_only = self.is_kanji_all(char_idx, prefix_len);
