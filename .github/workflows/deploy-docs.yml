@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: write  # To push to the gh-pages branch.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install mdBook
         run: |
