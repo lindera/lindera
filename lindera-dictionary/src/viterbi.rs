@@ -10,8 +10,6 @@ use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::mode::Mode;
 
-const EOS_NODE: EdgeId = EdgeId(1u32);
-
 /// Type of lexicon containing the word
 #[derive(
     Clone,
@@ -159,16 +157,13 @@ pub enum EdgeType {
     INSERTED,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-pub struct EdgeId(pub u32);
-
 #[derive(Default, Clone, Debug)]
 pub struct Edge {
     pub edge_type: EdgeType,
     pub word_entry: WordEntry,
 
     pub path_cost: i32,
-    pub left_edge: Option<EdgeId>,
+    pub left_index: u16, // Index in the previous position's vector
 
     pub start_index: u32,
     pub stop_index: u32,
@@ -186,16 +181,9 @@ impl Edge {
 #[derive(Clone, Default)]
 pub struct Lattice {
     capacity: usize,
-    edges: Vec<Edge>,
-    starts_at: Vec<Vec<EdgeId>>,
-    ends_at: Vec<Vec<EdgeId>>,
-    // Buffer reuse optimization: pre-allocated vectors for reuse
-    edge_buffer: Vec<Edge>,
-    edge_id_buffer: Vec<EdgeId>,
-    left_cache_buffer: Vec<(u32, i32, i32, EdgeId)>,
+    ends_at: Vec<Vec<Edge>>, // Now stores edges directly
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
-    // Fast path cache for character properties (first 256 characters)
     char_category_cache: Vec<Vec<CategoryId>>,
 }
 
@@ -228,7 +216,7 @@ impl Lattice {
         Edge {
             edge_type,
             word_entry,
-            left_edge: None,
+            left_index: u16::MAX,
             start_index: start as u32,
             stop_index: stop as u32,
             path_cost: i32::MAX,
@@ -237,31 +225,11 @@ impl Lattice {
     }
 
     pub fn clear(&mut self) {
-        for edge_vec in &mut self.starts_at {
-            edge_vec.clear();
-        }
         for edge_vec in &mut self.ends_at {
             edge_vec.clear();
         }
-        self.edges.clear();
-        // Clear buffers but preserve capacity for reuse
-        self.edge_buffer.clear();
-        self.edge_id_buffer.clear();
-        self.left_cache_buffer.clear();
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
-    }
-
-    /// Get a reusable edge buffer with preserved capacity
-    pub fn get_edge_buffer(&mut self) -> &mut Vec<Edge> {
-        self.edge_buffer.clear();
-        &mut self.edge_buffer
-    }
-
-    /// Get a reusable edge ID buffer with preserved capacity
-    pub fn get_edge_id_buffer(&mut self) -> &mut Vec<EdgeId> {
-        self.edge_id_buffer.clear();
-        &mut self.edge_id_buffer
     }
 
     #[inline]
@@ -277,21 +245,26 @@ impl Lattice {
 
     fn set_capacity(&mut self, text_len: usize) {
         self.clear();
-        if self.capacity < text_len {
+        if self.capacity <= text_len {
             self.capacity = text_len;
-            self.edges.clear();
-            self.starts_at.resize(text_len + 1, Vec::new());
             self.ends_at.resize(text_len + 1, Vec::new());
+        }
+        for vec in &mut self.ends_at {
+            vec.clear();
         }
     }
 
     #[inline(never)]
+    // Forward Viterbi implementation:
+    // Constructs the lattice and calculates the path costs simultaneously.
+    // This improves performance by avoiding a separate lattice traversal pass.
     pub fn set_text(
         &mut self,
         dict: &PrefixDictionary,
         user_dict: &Option<&PrefixDictionary>,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
         text: &str,
         search_mode: &Mode,
     ) {
@@ -358,14 +331,12 @@ impl Lattice {
             }
         }
 
-        let start_edge_id = self.add_edge(Edge::default());
-        let end_edge_id = self.add_edge(Edge::default());
+        let mut start_edge = Edge::default();
+        start_edge.path_cost = 0;
+        start_edge.left_index = u16::MAX;
+        self.ends_at[0].push(start_edge);
 
-        assert_eq!(EOS_NODE, end_edge_id);
-        self.ends_at[0].push(start_edge_id);
-        self.starts_at[len].push(end_edge_id);
-
-        // index of the last character of unknown word
+        // Index of the last character of unknown word
         let mut unknown_word_end: Option<usize> = None;
 
         for char_idx in 0..self.char_info_buffer.len() - 1 {
@@ -381,7 +352,7 @@ impl Lattice {
 
             let mut found: bool = false;
 
-            // lookup user dictionary
+            // Lookup user dictionary
             if user_dict.is_some() {
                 let dict = user_dict.as_ref().unwrap();
                 for (prefix_len, word_entry) in dict.prefix(suffix) {
@@ -393,12 +364,12 @@ impl Lattice {
                         start + prefix_len,
                         kanji_only,
                     );
-                    self.add_edge_in_lattice(edge);
+                    self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                     found = true;
                 }
             }
 
-            // we check all word starting at start, using the double array, like we would use
+            // Check all word starting at start, using the double array, like we would use
             // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
                 let kanji_only = self.is_kanji_all(char_idx, prefix_len);
@@ -409,7 +380,7 @@ impl Lattice {
                     start + prefix_len,
                     kanji_only,
                 );
-                self.add_edge_in_lattice(edge);
+                self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                 found = true;
             }
 
@@ -424,6 +395,8 @@ impl Lattice {
                     unknown_word_end = self.process_unknown_word(
                         char_definitions,
                         unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -434,6 +407,33 @@ impl Lattice {
                 }
             }
         }
+
+        // Connect EOS
+        if !self.ends_at[len].is_empty() {
+            let mut eos_edge = Edge::default();
+            eos_edge.start_index = len as u32;
+            eos_edge.stop_index = len as u32;
+            // Calculate cost for EOS
+            let left_edges = &self.ends_at[len];
+            let mut best_cost = i32::MAX;
+            let mut best_left = None;
+            let right_left_id = 0; // EOS default left_id
+
+            for (i, left_edge) in left_edges.iter().enumerate() {
+                let left_right_id = left_edge.word_entry.right_id();
+                let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
+                let path_cost = left_edge.path_cost.saturating_add(conn_cost);
+                if path_cost < best_cost {
+                    best_cost = path_cost;
+                    best_left = Some(i as u16);
+                }
+            }
+            if let Some(left_idx) = best_left {
+                eos_edge.left_index = left_idx;
+                eos_edge.path_cost = best_cost;
+                self.ends_at[len].push(eos_edge);
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -441,6 +441,8 @@ impl Lattice {
         &mut self,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -490,107 +492,93 @@ impl Lattice {
                     start + byte_len,
                     kanji_only,
                 );
-                self.add_edge_in_lattice(edge);
+                self.add_edge_in_lattice(edge, cost_matrix, search_mode);
             }
             return Some(start + byte_len);
         }
         unknown_word_index
     }
 
-    fn add_edge_in_lattice(&mut self, edge: Edge) {
+    // Adds an edge to the lattice and calculates the minimum cost to reach it.
+    fn add_edge_in_lattice(
+        &mut self,
+        mut edge: Edge,
+        cost_matrix: &ConnectionCostMatrix,
+        mode: &Mode,
+    ) {
         let start_index = edge.start_index as usize;
         let stop_index = edge.stop_index as usize;
-        let edge_id = self.add_edge(edge);
-        self.starts_at[start_index].push(edge_id);
-        self.ends_at[stop_index].push(edge_id);
-    }
 
-    fn add_edge(&mut self, edge: Edge) -> EdgeId {
-        let edge_id = EdgeId(self.edges.len() as u32);
-        self.edges.push(edge);
-        edge_id
-    }
+        let left_edges = &self.ends_at[start_index];
+        if left_edges.is_empty() {
+            return;
+        }
 
-    pub fn edge(&self, edge_id: EdgeId) -> &Edge {
-        &self.edges[edge_id.0 as usize]
-    }
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let right_left_id = edge.word_entry.left_id();
 
-    #[inline(never)]
-    pub fn calculate_path_costs(&mut self, cost_matrix: &ConnectionCostMatrix, mode: &Mode) {
-        let text_len = self.starts_at.len();
-        for i in 0..text_len {
-            let left_edge_ids = &self.ends_at[i];
-            let right_edge_ids = &self.starts_at[i];
+        for (i, left_edge) in left_edges.iter().enumerate() {
+            let left_right_id = left_edge.word_entry.right_id();
+            let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
+            let penalty = mode.penalty_cost(left_edge);
+            let total_cost = left_edge
+                .path_cost
+                .saturating_add(conn_cost)
+                .saturating_add(penalty);
 
-            if right_edge_ids.is_empty() || left_edge_ids.is_empty() {
-                continue;
+            if total_cost < best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u16);
             }
+        }
 
-            // Cache left edge data to avoid repeated access and penalty calculation
-            // We use mem::take to temporarily own the buffer and avoid borrow checker conflicts with self.edges
-            let mut left_cache = std::mem::take(&mut self.left_cache_buffer);
-            for &left_edge_id in left_edge_ids {
-                let left_edge = &self.edges[left_edge_id.0 as usize];
-                left_cache.push((
-                    left_edge.word_entry.right_id(),
-                    left_edge.path_cost,
-                    mode.penalty_cost(left_edge),
-                    left_edge_id,
-                ));
-            }
-
-            for &right_edge_id in right_edge_ids {
-                // Cache right edge data to avoid repeated access
-                let right_edge = &self.edges[right_edge_id.0 as usize];
-                let right_word_entry = right_edge.word_entry;
-                let right_left_id = right_word_entry.left_id();
-
-                // Manual loop for better performance (avoids iterator overhead)
-                let mut best_cost = i32::MAX;
-                let mut best_left = None;
-
-                for &(left_right_id, left_path_cost, left_penalty, left_edge_id) in
-                    left_cache.iter()
-                {
-                    // Calculate path cost directly
-                    let mut path_cost =
-                        left_path_cost + cost_matrix.cost(left_right_id, right_left_id);
-                    path_cost += left_penalty;
-
-                    // Track minimum cost with branch-free comparison when possible
-                    if path_cost < best_cost {
-                        best_cost = path_cost;
-                        best_left = Some(left_edge_id);
-                    }
-                }
-
-                // Update edge with best path if found
-                if let Some(best_left_id) = best_left {
-                    let edge = &mut self.edges[right_edge_id.0 as usize];
-                    edge.left_edge = Some(best_left_id);
-                    edge.path_cost = right_word_entry.word_cost as i32 + best_cost;
-                }
-            }
-            left_cache.clear();
-            self.left_cache_buffer = left_cache;
+        if let Some(best_left_idx) = best_left {
+            edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
+            edge.left_index = best_left_idx;
+            self.ends_at[stop_index].push(edge);
         }
     }
 
     pub fn tokens_offset(&self) -> Vec<(usize, WordId)> {
         let mut offsets = Vec::new();
-        let mut edge_id = EOS_NODE;
-        let _edge = self.edge(EOS_NODE);
+
+        if self.ends_at.is_empty() {
+            return offsets;
+        }
+
+        let mut last_idx = self.ends_at.len() - 1;
+        while last_idx > 0 && self.ends_at[last_idx].is_empty() {
+            last_idx -= 1;
+        }
+
+        if self.ends_at[last_idx].is_empty() {
+            return offsets;
+        }
+
+        let idx = self.ends_at[last_idx].len() - 1;
+        let mut edge = &self.ends_at[last_idx][idx];
+
+        if edge.left_index == u16::MAX {
+            return offsets;
+        }
+
         loop {
-            let edge = self.edge(edge_id);
-            if let Some(left_edge_id) = edge.left_edge {
-                offsets.push((edge.start_index as usize, edge.word_entry.word_id));
-                edge_id = left_edge_id;
-            } else {
+            if edge.left_index == u16::MAX {
                 break;
             }
+
+            offsets.push((edge.start_index as usize, edge.word_entry.word_id));
+
+            let left_idx = edge.left_index as usize;
+            let start_idx = edge.start_index as usize;
+
+            edge = &self.ends_at[start_idx][left_idx];
         }
+
         offsets.reverse();
-        offsets.pop();
+        offsets.pop(); // Remove EOS
+
         offsets
     }
 }
