@@ -12,7 +12,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embedded-unidic = []                       # Embed UniDic dictionary in the binary
+embed-unidic = []                       # Embed UniDic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

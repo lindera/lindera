@@ -1,19 +1,19 @@
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use std::path::PathBuf;
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera::dictionary::{load_dictionary, load_user_dictionary};
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera::mode::Mode;
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera::tokenizer::Tokenizer;
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 fn bench_constructor_cc_cedict(c: &mut Criterion) {
     c.bench_function("bench-constructor-cc-cedict", |b| {
         b.iter(|| {
@@ -24,7 +24,7 @@ fn bench_constructor_cc_cedict(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 fn bench_constructor_with_simple_userdic_cc_cedict(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-cc-cedict", |b| {
         b.iter(|| {
@@ -58,7 +58,7 @@ fn bench_constructor_with_simple_userdic_cc_cedict(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 fn bench_tokenize_cc_cedict(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://cc-cedict").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -69,7 +69,7 @@ fn bench_tokenize_cc_cedict(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 fn bench_tokenize_with_simple_userdic_cc_cedict(c: &mut Criterion) {
     use std::fs::File;
 
@@ -102,7 +102,7 @@ fn bench_tokenize_with_simple_userdic_cc_cedict(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 criterion_group!(
     benches,
     bench_constructor_cc_cedict,
@@ -111,10 +111,10 @@ criterion_group!(
     bench_tokenize_with_simple_userdic_cc_cedict,
 );
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "embedded-cc-cedict"))]
+#[cfg(not(feature = "embed-cc-cedict"))]
 fn main() {
     println!("Embedded CC-CEDICT feature is not enabled");
 }

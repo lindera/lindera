@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "ko-dic";

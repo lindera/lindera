@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "embedded-ko-dic")]
+    #[cfg(feature = "embed-ko-dic")]
     fn test_korean_stop_tags_token_filter_apply() {
         use std::borrow::Cow;
 

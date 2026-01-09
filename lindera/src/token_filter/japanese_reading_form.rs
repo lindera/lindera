@@ -90,7 +90,7 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "embedded-ipadic")]
+    #[cfg(feature = "embed-ipadic")]
     #[test]
     fn test_japanese_reading_form_token_filter_apply_ipadic() {
         use std::borrow::Cow;
@@ -181,7 +181,7 @@ mod tests {
         assert_eq!(&tokens[2].surface, "トートバッグ");
     }
 
-    #[cfg(feature = "embedded-unidic")]
+    #[cfg(feature = "embed-unidic")]
     #[test]
     fn test_japanese_reading_form_token_filter_apply_unidic() {
         use std::borrow::Cow;

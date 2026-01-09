@@ -1,23 +1,23 @@
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use std::fs::File;
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use std::io::{BufReader, Read};
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera::dictionary::{load_dictionary, load_user_dictionary};
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera::mode::Mode;
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera::tokenizer::Tokenizer;
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_constructor_unidic(c: &mut Criterion) {
     c.bench_function("bench-constructor-unidic", |b| {
         b.iter(|| {
@@ -28,7 +28,7 @@ fn bench_constructor_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_constructor_with_simple_userdic_unidic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-unidic", |b| {
         b.iter(|| {
@@ -62,7 +62,7 @@ fn bench_constructor_with_simple_userdic_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_tokenize_unidic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://unidic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -73,7 +73,7 @@ fn bench_tokenize_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -106,7 +106,7 @@ fn bench_tokenize_with_simple_userdic_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_tokenize_long_text_unidic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -128,7 +128,7 @@ fn bench_tokenize_long_text_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 fn bench_tokenize_details_long_text_unidic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -155,7 +155,7 @@ fn bench_tokenize_details_long_text_unidic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 criterion_group!(
     benches,
     bench_constructor_unidic,
@@ -166,10 +166,10 @@ criterion_group!(
     bench_tokenize_details_long_text_unidic,
 );
 
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "embedded-unidic"))]
+#[cfg(not(feature = "embed-unidic"))]
 fn main() {
     println!("Embedded UniDic feature is not enabled");
 }

@@ -17,7 +17,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "2.0.0", features = ["embed-ipadic"] }
 ```
 
 ## License

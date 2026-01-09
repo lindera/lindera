@@ -12,35 +12,35 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embedded-ipadic = [
-    "lindera-ipadic/embedded-ipadic",
+embed-ipadic = [
+    "lindera-ipadic/embed-ipadic",
 ] # Embed IPADIC dictionary in the binary
-embedded-ipadic-neologd = [
-    "lindera-ipadic-neologd/embedded-ipadic-neologd",
+embed-ipadic-neologd = [
+    "lindera-ipadic-neologd/embed-ipadic-neologd",
 ] # Embed IPADIC-NEologd dictionary in the binary
-embedded-unidic = [
-    "lindera-unidic/embedded-unidic",
+embed-unidic = [
+    "lindera-unidic/embed-unidic",
 ] # Embed UniDic dictionary in the binary
-embedded-ko-dic = [
-    "lindera-ko-dic/embedded-ko-dic",
+embed-ko-dic = [
+    "lindera-ko-dic/embed-ko-dic",
 ] # Embed ko-dic dictionary in the binary
-embedded-cc-cedict = [
-    "lindera-cc-cedict/embedded-cc-cedict",
+embed-cc-cedict = [
+    "lindera-cc-cedict/embed-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
-embedded-cjk = [
-    "embedded-ipadic",
-    "embedded-ko-dic",
-    "embedded-cc-cedict",
+embed-cjk = [
+    "embed-ipadic",
+    "embed-ko-dic",
+    "embed-cc-cedict",
 ] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) in the binary
-embedded-cjk2 = [
-    "embedded-unidic",
-    "embedded-ko-dic",
-    "embedded-cc-cedict",
+embed-cjk2 = [
+    "embed-unidic",
+    "embed-ko-dic",
+    "embed-cc-cedict",
 ] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT) in the binary
-embedded-cjk3 = [
-    "embedded-ipadic-neologd",
-    "embedded-ko-dic",
-    "embedded-cc-cedict",
+embed-cjk3 = [
+    "embed-ipadic-neologd",
+    "embed-ko-dic",
+    "embed-cc-cedict",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
 compress = [
     "lindera-dictionary/compress",
@@ -89,24 +89,24 @@ criterion = { workspace = true }
 [[bench]]
 name = "bench_ipadic"
 harness = false
-required-features = ["embedded-ipadic"]
+required-features = ["embed-ipadic"]
 
 [[bench]]
 name = "bench_unidic"
 harness = false
-required-features = ["embedded-unidic"]
+required-features = ["embed-unidic"]
 
 [[bench]]
 name = "bench_ko_dic"
 harness = false
-required-features = ["embedded-ko-dic"]
+required-features = ["embed-ko-dic"]
 
 [[bench]]
 name = "bench_cc_cedict"
 harness = false
-required-features = ["embedded-cc-cedict"]
+required-features = ["embed-cc-cedict"]
 
 [[bench]]
 name = "bench_ipadic_neologd"
 harness = false
-required-features = ["embedded-ipadic-neologd"]
+required-features = ["embed-ipadic-neologd"]

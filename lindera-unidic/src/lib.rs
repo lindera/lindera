@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "unidic";

@@ -12,7 +12,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embedded-ko-dic = []                       # Embed Ko-Dic dictionary in the binary
+embed-ko-dic = []                       # Embed Ko-Dic dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

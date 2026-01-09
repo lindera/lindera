@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -45,13 +45,13 @@ macro_rules! decompress_data {
 
 macro_rules! cccedict_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-cc-cedict")]
+        #[cfg(feature = "embed-cc-cedict")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "embedded-cc-cedict"))]
+        #[cfg(not(feature = "embed-cc-cedict"))]
         decompress_data!($name, &[], $filename);
     };
 }
@@ -59,9 +59,9 @@ macro_rules! cccedict_data {
 // Metadata-specific macro (skips compression/decompression processing)
 macro_rules! cccedict_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-cc-cedict")]
+        #[cfg(feature = "embed-cc-cedict")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "embedded-cc-cedict"))]
+        #[cfg(not(feature = "embed-cc-cedict"))]
         const $name: &'static [u8] = &[];
     };
 }
