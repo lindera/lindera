@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "ipadic";

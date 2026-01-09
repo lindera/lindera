@@ -14,7 +14,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.1.0", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -52,7 +52,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize
+% cargo run --features=embed-ipadic --example=tokenize
 ```
 
 You can see the result as follows:
@@ -76,7 +76,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.1.0", features = ["embed-ipadic"] }
 ```
 
 For example:
@@ -143,7 +143,7 @@ fn main() -> LinderaResult<()> {
 The above example can be by `cargo run --example`:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -159,7 +159,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.1.0", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -275,7 +275,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+% cargo run --features=embed-ipadic --example=tokenize_with_filters
 ```
 
 You can see the result as follows:
@@ -295,7 +295,7 @@ token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語�
 ## Configuration file
 
 Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable LINDERA_CONFIG_PATH. You can use it easily without having to code the behavior of the tokenizer in Rust code.
+Specify the path to the following file in the environment variable LINDERA_CONFIG. You can use it easily without having to code the behavior of the tokenizer in Rust code.
 
 ```yaml
 segmenter:
@@ -368,7 +368,7 @@ token_filters:
 ```
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/lindera.yml
+% export LINDERA_CONFIG=./resources/lindera.yml
 ```
 
 ```rust
@@ -379,7 +379,7 @@ use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     // Creates a new `TokenizerConfigBuilder` instance.
-    // If the `LINDERA_CONFIG_PATH` environment variable is set, it will attempt to load the initial settings from the specified path.
+    // If the `LINDERA_CONFIG` environment variable is set, it will attempt to load the initial settings from the specified path.
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../resources")
         .join("lindera.yml");
@@ -406,9 +406,9 @@ fn main() -> LinderaResult<()> {
 
 ## Environment Variables
 
-### LINDERA_CACHE
+### LINDERA_DICTS
 
-The `LINDERA_CACHE` environment variable specifies a directory for caching dictionary source files. This enables:
+The `LINDERA_DICTS` environment variable specifies a directory for caching dictionary source files. This enables:
 
 - **Offline builds**: Once downloaded, dictionary source files are preserved for future builds
 - **Faster builds**: Subsequent builds skip downloading if valid cached files exist
@@ -417,18 +417,18 @@ The `LINDERA_CACHE` environment variable specifies a directory for caching dicti
 Usage:
 
 ```shell
-export LINDERA_CACHE=/path/to/cache
+export LINDERA_DICTS=/path/to/cache
 cargo build --features=ipadic
 ```
 
-When set, dictionary source files are stored in `$LINDERA_CACHE/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
+When set, dictionary source files are stored in `$LINDERA_DICTS/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
 
-### LINDERA_CONFIG_PATH
+### LINDERA_CONFIG
 
-The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
+The `LINDERA_CONFIG` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/lindera.yml
+export LINDERA_CONFIG=./resources/lindera.yml
 ```
 
 See the [Configuration file](#configuration-file) section for details on the configuration format.

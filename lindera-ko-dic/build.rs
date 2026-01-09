@@ -1,8 +1,14 @@
 use std::error::Error;
 
-#[cfg(feature = "embedded-ko-dic")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
+    if std::env::var_os("LINDERA_DICTS").is_none()
+        && std::env::var_os("LINDERA_CACHE").is_none()
+        && cfg!(not(feature = "embed-ko-dic"))
+    {
+        return Ok(());
+    }
+
     use std::fs;
     use std::path::Path;
 
@@ -30,10 +36,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     fetch(fetch_params, builder).await?;
 
-    Ok(())
-}
-
-#[cfg(not(feature = "embedded-ko-dic"))]
-fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }

@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -45,13 +45,13 @@ macro_rules! decompress_data {
 
 macro_rules! ipadicneologd_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-ipadic-neologd")]
+        #[cfg(feature = "embed-ipadic-neologd")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "embedded-ipadic-neologd"))]
+        #[cfg(not(feature = "embed-ipadic-neologd"))]
         decompress_data!($name, &[], $filename);
     };
 }
@@ -59,9 +59,9 @@ macro_rules! ipadicneologd_data {
 // Metadata-specific macro (skips compression/decompression processing)
 macro_rules! ipadicneologd_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-ipadic-neologd")]
+        #[cfg(feature = "embed-ipadic-neologd")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "embedded-ipadic-neologd"))]
+        #[cfg(not(feature = "embed-ipadic-neologd"))]
         const $name: &'static [u8] = &[];
     };
 }

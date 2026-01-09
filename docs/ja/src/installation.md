@@ -4,7 +4,7 @@ Cargo.tomlに以下を追加してください：
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 ```
 
 ## 環境変数

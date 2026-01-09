@@ -12,7 +12,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 ```
 
 For example:
@@ -83,7 +83,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run by `cargo run --example`:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -99,7 +99,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -214,7 +214,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+% cargo run --features=embed-ipadic --example=tokenize_with_filters
 ```
 
 You can see the result as follows:

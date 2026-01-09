@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "cc-cedict";

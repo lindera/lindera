@@ -277,9 +277,9 @@ fn to_arabic_numerals(from_str: &str) -> String {
 #[cfg(test)]
 mod tests {
     #[cfg(any(
-        feature = "embedded-ipadic",
-        feature = "embedded-ipadic-neologd",
-        feature = "embedded-unidic",
+        feature = "embed-ipadic",
+        feature = "embed-ipadic-neologd",
+        feature = "embed-unidic",
     ))]
     use crate::token_filter::japanese_number::{
         JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
@@ -287,9 +287,9 @@ mod tests {
 
     #[test]
     #[cfg(any(
-        feature = "embedded-ipadic",
-        feature = "embedded-ipadic-neologd",
-        feature = "embedded-unidic",
+        feature = "embed-ipadic",
+        feature = "embed-ipadic-neologd",
+        feature = "embed-unidic",
     ))]
     fn test_to_number_str() {
         use std::str::FromStr;
@@ -834,9 +834,9 @@ mod tests {
 
     #[test]
     #[cfg(any(
-        feature = "embedded-ipadic",
-        feature = "embedded-ipadic-neologd",
-        feature = "embedded-unidic",
+        feature = "embed-ipadic",
+        feature = "embed-ipadic-neologd",
+        feature = "embed-unidic",
     ))]
     fn test_japanese_number_token_filter_config() {
         {
@@ -875,9 +875,9 @@ mod tests {
 
     #[test]
     #[cfg(any(
-        feature = "embedded-ipadic",
-        feature = "embedded-ipadic-neologd",
-        feature = "embedded-unidic",
+        feature = "embed-ipadic",
+        feature = "embed-ipadic-neologd",
+        feature = "embed-unidic",
     ))]
     fn test_japanese_number_token_filter() {
         {
@@ -908,7 +908,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "embedded-ipadic")]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_number_token_filter_apply_numbers_ipadic() {
         use std::borrow::Cow;
 
@@ -1092,7 +1092,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "embedded-ipadic")]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_number_token_filter_apply_empty_ipadic() {
         use std::borrow::Cow;
 

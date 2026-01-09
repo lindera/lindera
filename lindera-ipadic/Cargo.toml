@@ -12,7 +12,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embedded-ipadic = []                       # Embed IPADIC dictionary in the binary
+embed-ipadic = []                       # Embed IPADIC dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

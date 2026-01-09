@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use std::env;
 #[cfg(feature = "compress")]
 use std::ops::Deref;
@@ -45,13 +45,13 @@ macro_rules! decompress_data {
 
 macro_rules! kodic_data {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-ko-dic")]
+        #[cfg(feature = "embed-ko-dic")]
         decompress_data!(
             $name,
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path)),
             $filename
         );
-        #[cfg(not(feature = "embedded-ko-dic"))]
+        #[cfg(not(feature = "embed-ko-dic"))]
         decompress_data!($name, &[], $filename);
     };
 }
@@ -59,9 +59,9 @@ macro_rules! kodic_data {
 // Metadata-specific macro (skips compression/decompression processing)
 macro_rules! kodic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
-        #[cfg(feature = "embedded-ko-dic")]
+        #[cfg(feature = "embed-ko-dic")]
         const $name: &'static [u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $path));
-        #[cfg(not(feature = "embedded-ko-dic"))]
+        #[cfg(not(feature = "embed-ko-dic"))]
         const $name: &'static [u8] = &[];
     };
 }

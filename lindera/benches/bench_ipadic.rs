@@ -1,23 +1,23 @@
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use std::fs::File;
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use std::io::{BufReader, Read};
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera::dictionary::{load_dictionary, load_user_dictionary};
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera::mode::Mode;
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera::tokenizer::Tokenizer;
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_constructor_ipadic(c: &mut Criterion) {
     c.bench_function("bench-constructor-ipadic", |b| {
         b.iter(|| {
@@ -28,7 +28,7 @@ fn bench_constructor_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ipadic", |b| {
         b.iter(|| {
@@ -62,7 +62,7 @@ fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_ipadic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -73,7 +73,7 @@ fn bench_tokenize_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_with_lattice_ipadic(c: &mut Criterion) {
     use lindera::dictionary::Lattice;
 
@@ -87,7 +87,7 @@ fn bench_tokenize_with_lattice_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -120,7 +120,7 @@ fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -142,7 +142,7 @@ fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -169,7 +169,7 @@ fn bench_tokenize_details_long_text_ipadic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 criterion_group!(
     benches,
     bench_constructor_ipadic,
@@ -181,10 +181,10 @@ criterion_group!(
     bench_tokenize_details_long_text_ipadic,
 );
 
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "embedded-ipadic"))]
+#[cfg(not(feature = "embed-ipadic"))]
 fn main() {
     println!("Embedded IPADIC feature is not enabled");
 }

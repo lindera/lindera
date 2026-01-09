@@ -21,7 +21,7 @@ Alternatively, you can download a binary from the following release page:
 The "ipadic" feature flag allows Lindera to include IPADIC.
 
 ```shell script
-% cargo build --release --features=embedded-ipadic
+% cargo build --release --features=embed-ipadic
 ```
 
 ### Build with UniDic (Japanese dictionary)
@@ -29,7 +29,7 @@ The "ipadic" feature flag allows Lindera to include IPADIC.
 The "unidic" feature flag allows Lindera to include UniDic.
 
 ```shell script
-% cargo build --release --features=embedded-unidic
+% cargo build --release --features=embed-unidic
 ```
 
 ### Build with ko-dic (Korean dictionary)
@@ -37,7 +37,7 @@ The "unidic" feature flag allows Lindera to include UniDic.
 The "ko-dic" feature flag allows Lindera to include ko-dic.
 
 ```shell script
-% cargo build --release --features=embedded-ko-dic
+% cargo build --release --features=embed-ko-dic
 ```
 
 ### Build with CC-CEDICT (Chinese dictionary)
@@ -45,7 +45,7 @@ The "ko-dic" feature flag allows Lindera to include ko-dic.
 The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.
 
 ```shell script
-% cargo build --release --features=embedded-cc-cedict
+% cargo build --release --features=embed-cc-cedict
 ```
 
 ### Build without dictionaries
@@ -434,7 +434,7 @@ Lindera can include dictionaries directly in the binary when built with specific
 EOS
 ```
 
-NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=embedded-ipadic` option.
+NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=embed-ipadic` option.
 
 #### Tokenize with embedded UniDic (Japanese dictionary)
 
@@ -460,7 +460,7 @@ NOTE: To include IPADIC dictionary in the binary, you must build with the `--fea
 EOS
 ```
 
-NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embedded-unidic` option.
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embed-unidic` option.
 
 #### Tokenize with embedded IPADIC NEologd (Japanese dictionary)
 
@@ -483,7 +483,7 @@ NOTE: To include UniDic dictionary in the binary, you must build with the `--fea
 EOS
 ```
 
-NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embedded-ipadic-neologd` option.
+NOTE: To include UniDic dictionary in the binary, you must build with the `--features=embed-ipadic-neologd` option.
 
 #### Tokenize with embedded ko-dic (Korean dictionary)
 
@@ -507,7 +507,7 @@ NOTE: To include UniDic dictionary in the binary, you must build with the `--fea
 EOS
 ```
 
-NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=embedded-ko-dic` option.
+NOTE: To include ko-dic dictionary in the binary, you must build with the `--features=embed-ko-dic` option.
 
 #### Tokenize with embedded CC-CEDICT (Chinese dictionary)
 
@@ -526,7 +526,7 @@ NOTE: To include ko-dic dictionary in the binary, you must build with the `--fea
 EOS
 ```
 
-NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=embedded-cc-cedict` option.
+NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=embed-cc-cedict` option.
 
 ### User dictionary examples
 

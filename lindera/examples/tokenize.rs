@@ -1,7 +1,7 @@
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    #[cfg(feature = "embedded-ipadic")]
+    #[cfg(feature = "embed-ipadic")]
     {
         use lindera::dictionary::load_dictionary;
         use lindera::mode::Mode;
@@ -21,15 +21,15 @@ fn main() -> LinderaResult<()> {
         }
     }
 
-    #[cfg(not(feature = "embedded-ipadic"))]
+    #[cfg(not(feature = "embed-ipadic"))]
     {
         eprintln!(
             "This example requires the '{}' feature to be enabled.",
-            "embedded-ipadic"
+            "embed-ipadic"
         );
         eprintln!(
             "Run with: cargo run --features {} --example tokenize",
-            "embedded-ipadic"
+            "embed-ipadic"
         );
     }
 

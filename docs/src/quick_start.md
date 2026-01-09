@@ -35,7 +35,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embedded-ipadic --example=tokenize
+% cargo run --features=embed-ipadic --example=tokenize
 ```
 
 You can see the result as follows:

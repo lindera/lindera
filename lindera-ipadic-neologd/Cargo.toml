@@ -18,7 +18,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embedded-ipadic-neologd = []               # Embed IPADIC-NEologd dictionary in the binary
+embed-ipadic-neologd = []               # Embed IPADIC-NEologd dictionary in the binary
 compress = ["lindera-dictionary/compress"]
 default = ["compress"]
 

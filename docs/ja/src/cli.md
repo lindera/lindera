@@ -21,7 +21,7 @@ cargo経由でバイナリをインストールできます：
 "ipadic" 機能フラグを使用すると、LinderaにIPADICを含めることができます。
 
 ```shell script
-% cargo build --release --features=embedded-ipadic
+% cargo build --release --features=embed-ipadic
 ```
 
 ### UniDic（日本語辞書）を含めてビルド
@@ -29,7 +29,7 @@ cargo経由でバイナリをインストールできます：
 "unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。
 
 ```shell script
-% cargo build --release --features=embedded-unidic
+% cargo build --release --features=embed-unidic
 ```
 
 ### ko-dic（韓国語辞書）を含めてビルド
@@ -37,7 +37,7 @@ cargo経由でバイナリをインストールできます：
 "ko-dic" 機能フラグを使用すると、Linderaにko-dicを含めることができます。
 
 ```shell script
-% cargo build --release --features=embedded-ko-dic
+% cargo build --release --features=embed-ko-dic
 ```
 
 ### CC-CEDICT（中国語辞書）を含めてビルド
@@ -45,7 +45,7 @@ cargo経由でバイナリをインストールできます：
 "cc-cedict" 機能フラグを使用すると、LinderaにCC-CEDICTを含めることができます。
 
 ```shell script
-% cargo build --release --features=embedded-cc-cedict
+% cargo build --release --features=embed-cc-cedict
 ```
 
 ### 辞書なしでビルド
@@ -434,7 +434,7 @@ Linderaは、特定の機能フラグを指定してビルドすることで、�
 EOS
 ```
 
-注意: IPADIC辞書をバイナリに含めるには、`--features=embedded-ipadic` オプションを使用してビルドする必要があります。
+注意: IPADIC辞書をバイナリに含めるには、`--features=embed-ipadic` オプションを使用してビルドする必要があります。
 
 #### 埋め込みUniDic（日本語辞書）を使用したトークナイズ
 
@@ -460,7 +460,7 @@ EOS
 EOS
 ```
 
-注意: UniDic辞書をバイナリに含めるには、`--features=embedded-unidic` オプションを使用してビルドする必要があります。
+注意: UniDic辞書をバイナリに含めるには、`--features=embed-unidic` オプションを使用してビルドする必要があります。
 
 #### 埋め込みIPADIC NEologd（日本語辞書）を使用したトークナイズ
 
@@ -483,7 +483,7 @@ EOS
 EOS
 ```
 
-注意: IPADIC NEologd辞書をバイナリに含めるには、`--features=embedded-ipadic-neologd` オプションを使用してビルドする必要があります。
+注意: IPADIC NEologd辞書をバイナリに含めるには、`--features=embed-ipadic-neologd` オプションを使用してビルドする必要があります。
 
 #### 埋め込みko-dic（韓国語辞書）を使用したトークナイズ
 
@@ -507,7 +507,7 @@ EOS
 EOS
 ```
 
-注意: ko-dic辞書をバイナリに含めるには、`--features=embedded-ko-dic` オプションを使用してビルドする必要があります。
+注意: ko-dic辞書をバイナリに含めるには、`--features=embed-ko-dic` オプションを使用してビルドする必要があります。
 
 #### 埋め込みCC-CEDICT（中国語辞書）を使用したトークナイズ
 
@@ -526,7 +526,7 @@ EOS
 EOS
 ```
 
-注意: CC-CEDICT辞書をバイナリに含めるには、`--features=embedded-cc-cedict` オプションを使用してビルドする必要があります。
+注意: CC-CEDICT辞書をバイナリに含めるには、`--features=embed-cc-cedict` オプションを使用してビルドする必要があります。
 
 ### ユーザー辞書の例
 

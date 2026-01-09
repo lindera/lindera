@@ -1,23 +1,23 @@
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use std::fs::File;
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use std::io::{BufReader, Read};
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use std::path::PathBuf;
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera::dictionary::{load_dictionary, load_user_dictionary};
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera::mode::Mode;
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera::tokenizer::Tokenizer;
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_constructor_ipadic_neologd(c: &mut Criterion) {
     c.bench_function("bench-constructor-ipadic-neologd", |b| {
         b.iter(|| {
@@ -28,7 +28,7 @@ fn bench_constructor_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_constructor_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ipadic-neologd", |b| {
         b.iter(|| {
@@ -62,7 +62,7 @@ fn bench_constructor_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_tokenize_ipadic_neologd(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -73,7 +73,7 @@ fn bench_tokenize_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_tokenize_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
     use std::fs::File;
 
@@ -106,7 +106,7 @@ fn bench_tokenize_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_tokenize_long_text_ipadic_neologd(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -128,7 +128,7 @@ fn bench_tokenize_long_text_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 fn bench_tokenize_details_long_text_ipadic_neologd(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
         File::open(
@@ -155,7 +155,7 @@ fn bench_tokenize_details_long_text_ipadic_neologd(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 criterion_group!(
     benches,
     bench_constructor_ipadic_neologd,
@@ -166,10 +166,10 @@ criterion_group!(
     bench_tokenize_details_long_text_ipadic_neologd,
 );
 
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "embedded-ipadic-neologd"))]
+#[cfg(not(feature = "embed-ipadic-neologd"))]
 fn main() {
     println!("Embedded IPADIC-NEologd feature is not enabled");
 }

@@ -1,4 +1,4 @@
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 pub mod embedded;
 
 pub const DICTIONARY_NAME: &str = "ipadic-neologd";

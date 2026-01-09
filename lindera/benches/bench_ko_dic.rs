@@ -1,19 +1,19 @@
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use std::path::PathBuf;
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera::dictionary::{load_dictionary, load_user_dictionary};
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera::mode::Mode;
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera::tokenizer::Tokenizer;
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 fn bench_constructor_ko_dic(c: &mut Criterion) {
     c.bench_function("bench-constructor-ko-dic", |b| {
         b.iter(|| {
@@ -24,7 +24,7 @@ fn bench_constructor_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
     c.bench_function("bench-constructor-simple-userdic-ko-dic", |b| {
         b.iter(|| {
@@ -58,7 +58,7 @@ fn bench_constructor_with_simple_userdic_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 fn bench_tokenize_ko_dic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ko-dic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -69,7 +69,7 @@ fn bench_tokenize_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     use std::fs::File;
 
@@ -102,7 +102,7 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 criterion_group!(
     benches,
     bench_constructor_ko_dic,
@@ -111,10 +111,10 @@ criterion_group!(
     bench_tokenize_with_simple_userdic_ko_dic,
 );
 
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 criterion_main!(benches);
 
-#[cfg(not(feature = "embedded-ko-dic"))]
+#[cfg(not(feature = "embed-ko-dic"))]
 fn main() {
     println!("Embedded KO-DIC feature is not enabled");
 }

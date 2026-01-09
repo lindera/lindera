@@ -8,9 +8,9 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use url::Url;
 
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera_cc_cedict::DICTIONARY_NAME as CC_CEDICT_DICTIONARY_NAME;
-#[cfg(feature = "embedded-cc-cedict")]
+#[cfg(feature = "embed-cc-cedict")]
 use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
 use lindera_dictionary::loader::DictionaryLoader;
 use lindera_dictionary::loader::FSDictionaryLoader;
@@ -18,21 +18,21 @@ use lindera_dictionary::loader::user_dictionary::UserDictionaryLoader;
 
 #[cfg(feature = "train")]
 pub use lindera_dictionary::trainer;
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
-#[cfg(feature = "embedded-ipadic")]
+#[cfg(feature = "embed-ipadic")]
 use lindera_ipadic::embedded::EmbeddedIPADICLoader;
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
-#[cfg(feature = "embedded-ipadic-neologd")]
+#[cfg(feature = "embed-ipadic-neologd")]
 use lindera_ipadic_neologd::embedded::EmbeddedIPADICNEologdLoader;
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera_ko_dic::DICTIONARY_NAME as KO_DIC_DICTIONARY_NAME;
-#[cfg(feature = "embedded-ko-dic")]
+#[cfg(feature = "embed-ko-dic")]
 use lindera_ko_dic::embedded::EmbeddedKoDicLoader;
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
-#[cfg(feature = "embedded-unidic")]
+#[cfg(feature = "embed-unidic")]
 use lindera_unidic::embedded::EmbeddedUniDicLoader;
 
 use crate::LinderaResult;
@@ -54,11 +54,11 @@ pub type CompressionAlgorithm = lindera_dictionary::decompress::Algorithm;
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryScheme {
     #[cfg(any(
-        feature = "embedded-ipadic",
-        feature = "embedded-ipadic-neologd",
-        feature = "embedded-unidic",
-        feature = "embedded-ko-dic",
-        feature = "embedded-cc-cedict",
+        feature = "embed-ipadic",
+        feature = "embed-ipadic-neologd",
+        feature = "embed-unidic",
+        feature = "embed-ko-dic",
+        feature = "embed-cc-cedict",
     ))]
     #[serde(rename = "embedded")]
     Embedded,
@@ -70,11 +70,11 @@ impl DictionaryScheme {
     pub fn as_str(&self) -> &str {
         match self {
             #[cfg(any(
-                feature = "embedded-ipadic",
-                feature = "embedded-ipadic-neologd",
-                feature = "embedded-unidic",
-                feature = "embedded-ko-dic",
-                feature = "embedded-cc-cedict",
+                feature = "embed-ipadic",
+                feature = "embed-ipadic-neologd",
+                feature = "embed-unidic",
+                feature = "embed-ko-dic",
+                feature = "embed-cc-cedict",
             ))]
             DictionaryScheme::Embedded => "embedded",
             DictionaryScheme::File => "file",
@@ -87,11 +87,11 @@ impl FromStr for DictionaryScheme {
     fn from_str(input: &str) -> Result<DictionaryScheme, Self::Err> {
         match input {
             #[cfg(any(
-                feature = "embedded-ipadic",
-                feature = "embedded-ipadic-neologd",
-                feature = "embedded-unidic",
-                feature = "embedded-ko-dic",
-                feature = "embedded-cc-cedict",
+                feature = "embed-ipadic",
+                feature = "embed-ipadic-neologd",
+                feature = "embed-unidic",
+                feature = "embed-ko-dic",
+                feature = "embed-cc-cedict",
             ))]
             "embedded" => Ok(DictionaryScheme::Embedded),
             "file" => Ok(DictionaryScheme::File),
@@ -103,19 +103,19 @@ impl FromStr for DictionaryScheme {
 
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryKind {
-    #[cfg(feature = "embedded-ipadic")]
+    #[cfg(feature = "embed-ipadic")]
     #[serde(rename = "ipadic")]
     IPADIC,
-    #[cfg(feature = "embedded-ipadic-neologd")]
+    #[cfg(feature = "embed-ipadic-neologd")]
     #[serde(rename = "ipadic-neologd")]
     IPADICNEologd,
-    #[cfg(feature = "embedded-unidic")]
+    #[cfg(feature = "embed-unidic")]
     #[serde(rename = "unidic")]
     UniDic,
-    #[cfg(feature = "embedded-ko-dic")]
+    #[cfg(feature = "embed-ko-dic")]
     #[serde(rename = "ko-dic")]
     KoDic,
-    #[cfg(feature = "embedded-cc-cedict")]
+    #[cfg(feature = "embed-cc-cedict")]
     #[serde(rename = "cc-cedict")]
     CcCedict,
 }
@@ -129,16 +129,16 @@ impl DictionaryKind {
         DictionaryKind::variants()
             .into_iter()
             .filter(|kind| match kind {
-                #[cfg(feature = "embedded-ipadic")]
-                DictionaryKind::IPADIC => cfg!(feature = "embedded-ipadic"),
-                #[cfg(feature = "embedded-ipadic-neologd")]
-                DictionaryKind::IPADICNEologd => cfg!(feature = "embedded-ipadic-neologd"),
-                #[cfg(feature = "embedded-unidic")]
-                DictionaryKind::UniDic => cfg!(feature = "embedded-unidic"),
-                #[cfg(feature = "embedded-ko-dic")]
-                DictionaryKind::KoDic => cfg!(feature = "embedded-ko-dic"),
-                #[cfg(feature = "embedded-cc-cedict")]
-                DictionaryKind::CcCedict => cfg!(feature = "embedded-cc-cedict"),
+                #[cfg(feature = "embed-ipadic")]
+                DictionaryKind::IPADIC => cfg!(feature = "embed-ipadic"),
+                #[cfg(feature = "embed-ipadic-neologd")]
+                DictionaryKind::IPADICNEologd => cfg!(feature = "embed-ipadic-neologd"),
+                #[cfg(feature = "embed-unidic")]
+                DictionaryKind::UniDic => cfg!(feature = "embed-unidic"),
+                #[cfg(feature = "embed-ko-dic")]
+                DictionaryKind::KoDic => cfg!(feature = "embed-ko-dic"),
+                #[cfg(feature = "embed-cc-cedict")]
+                DictionaryKind::CcCedict => cfg!(feature = "embed-cc-cedict"),
                 #[allow(unreachable_patterns)]
                 _ => false,
             })
@@ -147,15 +147,15 @@ impl DictionaryKind {
 
     pub fn as_str(&self) -> &str {
         match self {
-            #[cfg(feature = "embedded-ipadic")]
+            #[cfg(feature = "embed-ipadic")]
             DictionaryKind::IPADIC => IPADIC_DICTIONARY_NAME,
-            #[cfg(feature = "embedded-ipadic-neologd")]
+            #[cfg(feature = "embed-ipadic-neologd")]
             DictionaryKind::IPADICNEologd => IPADIC_NEOLOGD_DICTIONARY_NAME,
-            #[cfg(feature = "embedded-unidic")]
+            #[cfg(feature = "embed-unidic")]
             DictionaryKind::UniDic => UNIDIC_DICTIONARY_NAME,
-            #[cfg(feature = "embedded-ko-dic")]
+            #[cfg(feature = "embed-ko-dic")]
             DictionaryKind::KoDic => KO_DIC_DICTIONARY_NAME,
-            #[cfg(feature = "embedded-cc-cedict")]
+            #[cfg(feature = "embed-cc-cedict")]
             DictionaryKind::CcCedict => CC_CEDICT_DICTIONARY_NAME,
             #[allow(unreachable_patterns)]
             _ => "",
@@ -167,15 +167,15 @@ impl FromStr for DictionaryKind {
     type Err = LinderaError;
     fn from_str(input: &str) -> Result<DictionaryKind, Self::Err> {
         match input {
-            #[cfg(feature = "embedded-ipadic")]
+            #[cfg(feature = "embed-ipadic")]
             IPADIC_DICTIONARY_NAME => Ok(DictionaryKind::IPADIC),
-            #[cfg(feature = "embedded-ipadic-neologd")]
+            #[cfg(feature = "embed-ipadic-neologd")]
             IPADIC_NEOLOGD_DICTIONARY_NAME => Ok(DictionaryKind::IPADICNEologd),
-            #[cfg(feature = "embedded-unidic")]
+            #[cfg(feature = "embed-unidic")]
             UNIDIC_DICTIONARY_NAME => Ok(DictionaryKind::UniDic),
-            #[cfg(feature = "embedded-ko-dic")]
+            #[cfg(feature = "embed-ko-dic")]
             KO_DIC_DICTIONARY_NAME => Ok(DictionaryKind::KoDic),
-            #[cfg(feature = "embedded-cc-cedict")]
+            #[cfg(feature = "embed-cc-cedict")]
             CC_CEDICT_DICTIONARY_NAME => Ok(DictionaryKind::CcCedict),
             _ => Err(LinderaErrorKind::Dictionary
                 .with_error(anyhow::anyhow!("Invalid dictionary kind: {input}"))),
@@ -187,30 +187,30 @@ pub fn resolve_embedded_loader(
     dictionary_type: DictionaryKind,
 ) -> LinderaResult<Box<dyn DictionaryLoader>> {
     match dictionary_type {
-        #[cfg(feature = "embedded-ipadic")]
+        #[cfg(feature = "embed-ipadic")]
         DictionaryKind::IPADIC => Ok(Box::new(EmbeddedIPADICLoader::new())),
-        // #[cfg(not(feature = "embedded-ipadic"))]
+        // #[cfg(not(feature = "embed-ipadic"))]
         // DictionaryKind::IPADIC => Err(LinderaErrorKind::FeatureDisabled
         //     .with_error(anyhow::anyhow!("IPADIC embedded feature is not enabled"))),
-        #[cfg(feature = "embedded-ipadic-neologd")]
+        #[cfg(feature = "embed-ipadic-neologd")]
         DictionaryKind::IPADICNEologd => Ok(Box::new(EmbeddedIPADICNEologdLoader::new())),
-        // #[cfg(not(feature = "embedded-ipadic-neologd"))]
+        // #[cfg(not(feature = "embed-ipadic-neologd"))]
         // DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::FeatureDisabled.with_error(
         //     anyhow::anyhow!("IPADIC-NEologd embedded feature is not enabled"),
         // )),
-        #[cfg(feature = "embedded-unidic")]
+        #[cfg(feature = "embed-unidic")]
         DictionaryKind::UniDic => Ok(Box::new(EmbeddedUniDicLoader::new())),
-        // #[cfg(not(feature = "embedded-unidic"))]
+        // #[cfg(not(feature = "embed-unidic"))]
         // DictionaryKind::UniDic => Err(LinderaErrorKind::FeatureDisabled
         //     .with_error(anyhow::anyhow!("UniDic embedded feature is not enabled"))),
-        #[cfg(feature = "embedded-ko-dic")]
+        #[cfg(feature = "embed-ko-dic")]
         DictionaryKind::KoDic => Ok(Box::new(EmbeddedKoDicLoader::new())),
-        // #[cfg(not(feature = "embedded-ko-dic"))]
+        // #[cfg(not(feature = "embed-ko-dic"))]
         // DictionaryKind::KoDic => Err(LinderaErrorKind::FeatureDisabled
         //     .with_error(anyhow::anyhow!("KO-DIC embedded feature is not enabled"))),
-        #[cfg(feature = "embedded-cc-cedict")]
+        #[cfg(feature = "embed-cc-cedict")]
         DictionaryKind::CcCedict => Ok(Box::new(EmbeddedCcCedictLoader::new())),
-        // #[cfg(not(feature = "embedded-cc-cedict"))]
+        // #[cfg(not(feature = "embed-cc-cedict"))]
         // DictionaryKind::CcCedict => Err(LinderaErrorKind::FeatureDisabled
         //     .with_error(anyhow::anyhow!("CC-CEDICT embedded feature is not enabled"))),
     }
@@ -242,11 +242,11 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
 
                 match scheme {
                     #[cfg(any(
-                        feature = "embedded-ipadic",
-                        feature = "embedded-ipadic-neologd",
-                        feature = "embedded-unidic",
-                        feature = "embedded-ko-dic",
-                        feature = "embedded-cc-cedict",
+                        feature = "embed-ipadic",
+                        feature = "embed-ipadic-neologd",
+                        feature = "embed-unidic",
+                        feature = "embed-ko-dic",
+                        feature = "embed-cc-cedict",
                     ))]
                     DictionaryScheme::Embedded => {
                         let kind = DictionaryKind::from_str(parsed_uri.host_str().unwrap_or(""))
@@ -340,11 +340,11 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                         PathBuf::from(decoded_path.as_ref())
                     }
                     #[cfg(any(
-                        feature = "embedded-ipadic",
-                        feature = "embedded-ipadic-neologd",
-                        feature = "embedded-unidic",
-                        feature = "embedded-ko-dic",
-                        feature = "embedded-cc-cedict",
+                        feature = "embed-ipadic",
+                        feature = "embed-ipadic-neologd",
+                        feature = "embed-unidic",
+                        feature = "embed-ko-dic",
+                        feature = "embed-cc-cedict",
                     ))]
                     _ => {
                         // Unsupported dictionary scheme
