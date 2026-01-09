@@ -122,9 +122,15 @@ jobs:
           files: ${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip
           tag_name: ${{ github.ref_name }}
 
+      - name: Upload dictionary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.dictionary.name }}
+          path: dictionaries/
+
   build:
     name: Build
-    needs: [create-release]
+    needs: [create-release, build-dictionary]
     strategy:
       matrix:
         platform:
@@ -149,7 +155,7 @@ jobs:
             package_name: "lindera-ipadic"
             package_description: "Lindera with Japanese dictionary (IPADIC)"
           - value: "embed-ipadic-neologd"
-            package_name: "lindera-ipadic-nelneologd"
+            package_name: "lindera-ipadic-neologd"
             package_description: "Lindera with Japanese dictionary (IPADIC-NEologd)"
           - value: "embed-unidic"
             package_name: "lindera-unidic"
@@ -203,8 +209,15 @@ jobs:
         if: matrix.platform.runner == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
 
+      - name: Download dictionary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dictionaries
+          pattern: lindera-*
+          merge-multiple: true
+
       - name: Compile
-        run: cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
+        run: LINDERA_DICTS=dictionaries cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
 
       - name: Create artifact for Linux
         if: matrix.platform.runner == 'ubuntu-latest'
