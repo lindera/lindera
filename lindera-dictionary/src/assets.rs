@@ -218,7 +218,7 @@ async fn download_with_retry(
 pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
-    println!("cargo:rerun-if-env-changed=LINDERA_DICTS");
+    println!("cargo:rerun-if-env-changed=LINDERA_DICTIONARIES_PATH");
     println!("cargo:rerun-if-env-changed=LINDERA_CACHE");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
 
@@ -227,11 +227,11 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
     // - on new lindera-assets version
     // - if the LINDERA_DICTS dir changed
     // otherwise, keeps behavior of always redownloading and rebuilding
-    let (build_dir, is_cache) = if let Some(path) =
-        std::env::var_os("LINDERA_DICTS").or_else(|| {
+    let (build_dir, is_cache) = if let Some(path) = std::env::var_os("LINDERA_DICTIONARIES_PATH")
+        .or_else(|| {
             std::env::var_os("LINDERA_CACHE").map(|p| {
                 println!(
-                    "cargo:warning=LINDERA_CACHE is deprecated. Please use LINDERA_DICTS instead."
+                    "cargo:warning=LINDERA_CACHE is deprecated. Please use LINDERA_DICTIONARIES_PATH instead."
                 );
                 p
             })
