@@ -42,7 +42,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
           - runner: macOS-latest
             target: aarch64-apple-darwin
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
