@@ -9,9 +9,9 @@ lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
 
 ## Environment Variables
 
-### LINDERA_CACHE
+### LINDERA_DICTS
 
-The `LINDERA_CACHE` environment variable specifies a directory for caching dictionary source files. This enables:
+The `LINDERA_DICTS` environment variable specifies a directory for caching dictionary source files. This enables:
 
 - **Offline builds**: Once downloaded, dictionary source files are preserved for future builds
 - **Faster builds**: Subsequent builds skip downloading if valid cached files exist
@@ -20,21 +20,27 @@ The `LINDERA_CACHE` environment variable specifies a directory for caching dicti
 Usage:
 
 ```shell
-export LINDERA_CACHE=/path/to/cache
+export LINDERA_DICTS=/path/to/dicts
 cargo build --features=ipadic
 ```
 
-When set, dictionary source files are stored in `$LINDERA_CACHE/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
+When set, dictionary source files are stored in `$LINDERA_DICTS/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
 
-### LINDERA_CONFIG_PATH
+> [!NOTE]
+> `LINDERA_CACHE` is deprecated but still supported for backward compatibility. It will be used if `LINDERA_DICTS` is not set.
 
-The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
+### LINDERA_CONFIG
+
+The `LINDERA_CONFIG` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+export LINDERA_CONFIG=./resources/config/lindera.yml
 ```
 
 See the [Configuration](./configuration.md) section for details on the configuration format.
+
+> [!NOTE]
+> `LINDERA_CONFIG_PATH` is deprecated but still supported for backward compatibility. It will be used if `LINDERA_CONFIG` is not set.
 
 ### DOCS_RS
 

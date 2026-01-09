@@ -97,7 +97,10 @@ pub struct TokenizerBuilder {
 
 impl TokenizerBuilder {
     pub fn new() -> LinderaResult<Self> {
-        if let Ok(config_path) = env::var("LINDERA_CONFIG_PATH") {
+        if let Ok(config_path) = env::var("LINDERA_CONFIG") {
+            Self::from_file(Path::new(&config_path))
+        } else if let Ok(config_path) = env::var("LINDERA_CONFIG_PATH") {
+            log::warn!("LINDERA_CONFIG_PATH is deprecated. Please use LINDERA_CONFIG instead.");
             Self::from_file(Path::new(&config_path))
         } else {
             Ok(Self {

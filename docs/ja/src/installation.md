@@ -9,9 +9,9 @@ lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
 
 ## 環境変数
 
-### LINDERA_CACHE
+### LINDERA_DICTS
 
-`LINDERA_CACHE` 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：
+`LINDERA_DICTS` 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：
 
 - **オフラインビルド**: 一度ダウンロードすれば、将来のビルドのために辞書ソースファイルが保存されます
 - **ビルドの高速化**: 有効なキャッシュファイルが存在する場合、次回のビルドではダウンロードがスキップされます
@@ -20,21 +20,27 @@ lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
 使用方法：
 
 ```shell
-export LINDERA_CACHE=/path/to/cache
+export LINDERA_DICTS=/path/to/dicts
 cargo build --features=ipadic
 ```
 
-設定された場合、辞書ソースファイルは `$LINDERA_CACHE/<version>/` （`<version>` は lindera-dictionary クレートのバージョン）に保存されます。キャッシュはMD5チェックサムを使用してファイルを検証し、無効なファイルは自動的に再ダウンロードされます。
+設定された場合、辞書ソースファイルは `$LINDERA_DICTS/<version>/` （`<version>` は lindera-dictionary クレートのバージョン）に保存されます。キャッシュはMD5チェックサムを使用してファイルを検証し、無効なファイルは自動的に再ダウンロードされます。
 
-### LINDERA_CONFIG_PATH
+> [!NOTE]
+> `LINDERA_CACHE` は非推奨ですが、後方互換性のために引き続きサポートされています。`LINDERA_DICTS` が設定されていない場合に使用されます。
 
-`LINDERA_CONFIG_PATH` 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。
+### LINDERA_CONFIG
+
+`LINDERA_CONFIG` 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。
 
 ```shell
-export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+export LINDERA_CONFIG=./resources/config/lindera.yml
 ```
 
 設定フォーマットの詳細は [設定](./configuration.md) セクションを参照してください。
+
+> [!NOTE]
+> `LINDERA_CONFIG_PATH` は非推奨ですが、後方互換性のために引き続きサポートされています。`LINDERA_CONFIG` が設定されていない場合に使用されます。
 
 ### DOCS_RS
 
