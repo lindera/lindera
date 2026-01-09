@@ -186,19 +186,19 @@
 <h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
 <h3 id="ipadic日本語辞書を含めてビルド"><a class="header" href="#ipadic日本語辞書を含めてビルド">IPADIC（日本語辞書）を含めてビルド</a></h3>
 <p>"ipadic" 機能フラグを使用すると、LinderaにIPADICを含めることができます。</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-ipadic
+<pre><code class="language-shell script">% cargo build --release --features=embed-ipadic
 </code></pre>
 <h3 id="unidic日本語辞書を含めてビルド"><a class="header" href="#unidic日本語辞書を含めてビルド">UniDic（日本語辞書）を含めてビルド</a></h3>
 <p>"unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-unidic
+<pre><code class="language-shell script">% cargo build --release --features=embed-unidic
 </code></pre>
 <h3 id="ko-dic韓国語辞書を含めてビルド"><a class="header" href="#ko-dic韓国語辞書を含めてビルド">ko-dic（韓国語辞書）を含めてビルド</a></h3>
 <p>"ko-dic" 機能フラグを使用すると、Linderaにko-dicを含めることができます。</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-ko-dic
+<pre><code class="language-shell script">% cargo build --release --features=embed-ko-dic
 </code></pre>
 <h3 id="cc-cedict中国語辞書を含めてビルド"><a class="header" href="#cc-cedict中国語辞書を含めてビルド">CC-CEDICT（中国語辞書）を含めてビルド</a></h3>
 <p>"cc-cedict" 機能フラグを使用すると、LinderaにCC-CEDICTを含めることができます。</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-cc-cedict
+<pre><code class="language-shell script">% cargo build --release --features=embed-cc-cedict
 </code></pre>
 <h3 id="辞書なしでビルド"><a class="header" href="#辞書なしでビルド">辞書なしでビルド</a></h3>
 <p>Linderaのバイナリサイズを削減するには、機能フラグを省略します。
@@ -512,7 +512,7 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p>注意: IPADIC辞書をバイナリに含めるには、<code>--features=embedded-ipadic</code> オプションを使用してビルドする必要があります。</p>
+<p>注意: IPADIC辞書をバイナリに含めるには、<code>--features=embed-ipadic</code> オプションを使用してビルドする必要があります。</p>
 <h4 id="埋め込みunidic日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みunidic日本語辞書を使用したトークナイズ">埋め込みUniDic（日本語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
   --dict embedded://unidic
@@ -532,7 +532,7 @@ EOS
 。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
 EOS
 </code></pre>
-<p>注意: UniDic辞書をバイナリに含めるには、<code>--features=embedded-unidic</code> オプションを使用してビルドする必要があります。</p>
+<p>注意: UniDic辞書をバイナリに含めるには、<code>--features=embed-unidic</code> オプションを使用してビルドする必要があります。</p>
 <h4 id="埋め込みipadic-neologd日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みipadic-neologd日本語辞書を使用したトークナイズ">埋め込みIPADIC NEologd（日本語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
   --dict embedded://ipadic-neologd
@@ -549,7 +549,7 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p>注意: IPADIC NEologd辞書をバイナリに含めるには、<code>--features=embedded-ipadic-neologd</code> オプションを使用してビルドする必要があります。</p>
+<p>注意: IPADIC NEologd辞書をバイナリに含めるには、<code>--features=embed-ipadic-neologd</code> オプションを使用してビルドする必要があります。</p>
 <h4 id="埋め込みko-dic韓国語辞書を使用したトークナイズ"><a class="header" href="#埋め込みko-dic韓国語辞書を使用したトークナイズ">埋め込みko-dic（韓国語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
   --dict embedded://ko-dic
@@ -567,7 +567,7 @@ EOS
 .       UNK
 EOS
 </code></pre>
-<p>注意: ko-dic辞書をバイナリに含めるには、<code>--features=embedded-ko-dic</code> オプションを使用してビルドする必要があります。</p>
+<p>注意: ko-dic辞書をバイナリに含めるには、<code>--features=embed-ko-dic</code> オプションを使用してビルドする必要があります。</p>
 <h4 id="埋め込みcc-cedict中国語辞書を使用したトークナイズ"><a class="header" href="#埋め込みcc-cedict中国語辞書を使用したトークナイズ">埋め込みCC-CEDICT（中国語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
   --dict embedded://cc-cedict
@@ -580,7 +580,7 @@ EOS
 。      UNK
 EOS
 </code></pre>
-<p>注意: CC-CEDICT辞書をバイナリに含めるには、<code>--features=embedded-cc-cedict</code> オプションを使用してビルドする必要があります。</p>
+<p>注意: CC-CEDICT辞書をバイナリに含めるには、<code>--features=embed-cc-cedict</code> オプションを使用してビルドする必要があります。</p>
 <h3 id="ユーザー辞書の例"><a class="header" href="#ユーザー辞書の例">ユーザー辞書の例</a></h3>
 <p>Linderaは、システム辞書と一緒にカスタム単語を追加するためのユーザー辞書をサポートしています。ユーザー辞書はCSVまたはバイナリ形式にすることができます。</p>
 <h4 id="ユーザー辞書の使用csv形式"><a class="header" href="#ユーザー辞書の使用csv形式">ユーザー辞書の使用（CSV形式）</a></h4>

@@ -180,7 +180,7 @@
 </code></pre>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>例：</p>
 <pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
@@ -241,7 +241,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>上記の例は以下のように実行できます：</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -253,7 +253,7 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 <h2 id="フィルタを使用したトークナイズ"><a class="header" href="#フィルタを使用したトークナイズ">フィルタを使用したトークナイズ</a></h2>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>この例では、Lindera解析フレームワークの基本的な使い方を説明します。</p>
 <p>以下の処理を行います：</p>
@@ -361,7 +361,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>上記の例は以下のように実行できます：</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_filters
 </code></pre>
 <p>実行結果は以下のようになります：</p>
 <pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。

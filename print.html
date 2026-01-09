@@ -181,7 +181,7 @@
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
 <h3 id="lindera_dicts"><a class="header" href="#lindera_dicts">LINDERA_DICTS</a></h3>
@@ -245,7 +245,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run as follows:</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize
 </code></pre>
 <p>You can see the result as follows:</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ
@@ -646,7 +646,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>For example:</p>
 <pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
@@ -707,7 +707,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run by <code>cargo run --example</code>:</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -719,7 +719,7 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 <h2 id="tokenize-with-filters"><a class="header" href="#tokenize-with-filters">Tokenize with filters</a></h2>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>This example covers the basic usage of Lindera Analysis Framework.</p>
 <p>It will:</p>
@@ -827,7 +827,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run as follows:</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_filters
 </code></pre>
 <p>You can see the result as follows:</p>
 <pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
@@ -1214,19 +1214,19 @@ fn calculate_unknown_word_cost(&amp;self, feature_weight: f64, category: usize) 
 <h2 id="build"><a class="header" href="#build">Build</a></h2>
 <h3 id="build-with-ipadic-japanese-dictionary"><a class="header" href="#build-with-ipadic-japanese-dictionary">Build with IPADIC (Japanese dictionary)</a></h3>
 <p>The "ipadic" feature flag allows Lindera to include IPADIC.</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-ipadic
+<pre><code class="language-shell script">% cargo build --release --features=embed-ipadic
 </code></pre>
 <h3 id="build-with-unidic-japanese-dictionary"><a class="header" href="#build-with-unidic-japanese-dictionary">Build with UniDic (Japanese dictionary)</a></h3>
 <p>The "unidic" feature flag allows Lindera to include UniDic.</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-unidic
+<pre><code class="language-shell script">% cargo build --release --features=embed-unidic
 </code></pre>
 <h3 id="build-with-ko-dic-korean-dictionary"><a class="header" href="#build-with-ko-dic-korean-dictionary">Build with ko-dic (Korean dictionary)</a></h3>
 <p>The "ko-dic" feature flag allows Lindera to include ko-dic.</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-ko-dic
+<pre><code class="language-shell script">% cargo build --release --features=embed-ko-dic
 </code></pre>
 <h3 id="build-with-cc-cedict-chinese-dictionary"><a class="header" href="#build-with-cc-cedict-chinese-dictionary">Build with CC-CEDICT (Chinese dictionary)</a></h3>
 <p>The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.</p>
-<pre><code class="language-shell script">% cargo build --release --features=embedded-cc-cedict
+<pre><code class="language-shell script">% cargo build --release --features=embed-cc-cedict
 </code></pre>
 <h3 id="build-without-dictionaries"><a class="header" href="#build-without-dictionaries">Build without dictionaries</a></h3>
 <p>To reduce Lindera's binary size, omit the feature flag.
@@ -1540,7 +1540,7 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p>NOTE: To include IPADIC dictionary in the binary, you must build with the <code>--features=embedded-ipadic</code> option.</p>
+<p>NOTE: To include IPADIC dictionary in the binary, you must build with the <code>--features=embed-ipadic</code> option.</p>
 <h4 id="tokenize-with-embedded-unidic-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-unidic-japanese-dictionary">Tokenize with embedded UniDic (Japanese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
   --dict embedded://unidic
@@ -1560,7 +1560,7 @@ EOS
 。      補助記号,句点,*,*,*,*,,。,。,,。,,記号,*,*,*,*
 EOS
 </code></pre>
-<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embedded-unidic</code> option.</p>
+<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embed-unidic</code> option.</p>
 <h4 id="tokenize-with-embedded-ipadic-neologd-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-ipadic-neologd-japanese-dictionary">Tokenize with embedded IPADIC NEologd (Japanese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
   --dict embedded://ipadic-neologd
@@ -1577,7 +1577,7 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embedded-ipadic-neologd</code> option.</p>
+<p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embed-ipadic-neologd</code> option.</p>
 <h4 id="tokenize-with-embedded-ko-dic-korean-dictionary"><a class="header" href="#tokenize-with-embedded-ko-dic-korean-dictionary">Tokenize with embedded ko-dic (Korean dictionary)</a></h4>
 <pre><code class="language-shell">% echo "한국어의형태해석을실시할수있습니다." | lindera tokenize \
   --dict embedded://ko-dic
@@ -1595,7 +1595,7 @@ EOS
 .       UNK
 EOS
 </code></pre>
-<p>NOTE: To include ko-dic dictionary in the binary, you must build with the <code>--features=embedded-ko-dic</code> option.</p>
+<p>NOTE: To include ko-dic dictionary in the binary, you must build with the <code>--features=embed-ko-dic</code> option.</p>
 <h4 id="tokenize-with-embedded-cc-cedict-chinese-dictionary"><a class="header" href="#tokenize-with-embedded-cc-cedict-chinese-dictionary">Tokenize with embedded CC-CEDICT (Chinese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
   --dict embedded://cc-cedict
@@ -1608,7 +1608,7 @@ EOS
 。      UNK
 EOS
 </code></pre>
-<p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embedded-cc-cedict</code> option.</p>
+<p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embed-cc-cedict</code> option.</p>
 <h3 id="user-dictionary-examples"><a class="header" href="#user-dictionary-examples">User dictionary examples</a></h3>
 <p>Lindera supports user dictionaries to add custom words alongside system dictionaries. User dictionaries can be in CSV or binary format.</p>
 <h4 id="use-user-dictionary-csv-format"><a class="header" href="#use-user-dictionary-csv-format">Use user dictionary (CSV format)</a></h4>

@@ -180,7 +180,7 @@
 </code></pre>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>For example:</p>
 <pre><code class="language-shell">% cat ./resources/user_dict/ipadic_simple_userdic.csv
@@ -241,7 +241,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run by <code>cargo run --example</code>:</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_user_dict
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -253,7 +253,7 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 <h2 id="tokenize-with-filters"><a class="header" href="#tokenize-with-filters">Tokenize with filters</a></h2>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
+lindera = { version = "1.2.0", features = ["embed-ipadic"] }
 </code></pre>
 <p>This example covers the basic usage of Lindera Analysis Framework.</p>
 <p>It will:</p>
@@ -361,7 +361,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run as follows:</p>
-<pre><code class="language-shell">% cargo run --features=embedded-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize_with_filters
 </code></pre>
 <p>You can see the result as follows:</p>
 <pre><code class="language-text">text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
