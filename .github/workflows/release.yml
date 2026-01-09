@@ -108,7 +108,7 @@ jobs:
 
       - name: Build dictionary
         run: |
-          LINDERA_DICTS=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
+          LINDERA_DICTIONARIES_PATH=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 
       - name: Get version
         id: get_version
@@ -238,7 +238,7 @@ jobs:
       - name: Compile
         run: cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
         env:
-          LINDERA_DICTS: dictionaries
+          LINDERA_DICTIONARIES_PATH: dictionaries
 
       - name: Create artifact for Linux
         if: startsWith(matrix.platform.runner, 'ubuntu')

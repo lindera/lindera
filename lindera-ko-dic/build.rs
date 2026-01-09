@@ -2,7 +2,7 @@ use std::error::Error;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
-    if std::env::var_os("LINDERA_DICTS").is_none()
+    if std::env::var_os("LINDERA_DICTIONARIES_PATH").is_none()
         && std::env::var_os("LINDERA_CACHE").is_none()
         && cfg!(not(feature = "embed-ko-dic"))
     {

@@ -1,7 +1,7 @@
 # 設定
 
 LinderaはYAML形式の設定ファイルを読み込むことができます。
-環境変数 `LINDERA_CONFIG` にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。
+環境変数 `LINDERA_CONFIG_PATH` にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。
 
 ```yaml
 segmenter:
@@ -73,7 +73,7 @@ token_filters:
 ```
 
 ```shell
-% export LINDERA_CONFIG=./resources/config/lindera.yml
+% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
 ```rust
