@@ -225,7 +225,7 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Add msbuild to PATH
-        if: matrix.platform.runner == 'windows-latest'
+        if: startsWith(matrix.platform.runner, 'windows')
         uses: microsoft/setup-msbuild@v2
 
       - name: Download dictionary artifacts
@@ -241,15 +241,15 @@ jobs:
           LINDERA_DICTS: dictionaries
 
       - name: Create artifact for Linux
-        if: matrix.platform.runner == 'ubuntu-latest'
+        if: startsWith(matrix.platform.runner, 'ubuntu')
         run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
-        if: matrix.platform.runner == 'windows-latest'
+        if: startsWith(matrix.platform.runner, 'windows')
         run: powershell Compress-Archive -DestinationPath ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for OSX
-        if: matrix.platform.runner == 'macos-latest'
+        if: startsWith(matrix.platform.runner, 'macos')
         run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
