@@ -179,23 +179,31 @@
 lindera = { version = "1.2.0", features = ["embedded-ipadic"] }
 </code></pre>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
-<h3 id="lindera_cache"><a class="header" href="#lindera_cache">LINDERA_CACHE</a></h3>
-<p>The <code>LINDERA_CACHE</code> environment variable specifies a directory for caching dictionary source files. This enables:</p>
+<h3 id="lindera_dicts"><a class="header" href="#lindera_dicts">LINDERA_DICTS</a></h3>
+<p>The <code>LINDERA_DICTS</code> environment variable specifies a directory for caching dictionary source files. This enables:</p>
 <ul>
 <li><strong>Offline builds</strong>: Once downloaded, dictionary source files are preserved for future builds</li>
 <li><strong>Faster builds</strong>: Subsequent builds skip downloading if valid cached files exist</li>
 <li><strong>Reproducible builds</strong>: Ensures consistent dictionary versions across builds</li>
 </ul>
 <p>Usage:</p>
-<pre><code class="language-shell">export LINDERA_CACHE=/path/to/cache
+<pre><code class="language-shell">export LINDERA_DICTS=/path/to/dicts
 cargo build --features=ipadic
 </code></pre>
-<p>When set, dictionary source files are stored in <code>$LINDERA_CACHE/&lt;version&gt;/</code> where <code>&lt;version&gt;</code> is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.</p>
-<h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
-<p>The <code>LINDERA_CONFIG_PATH</code> environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.</p>
-<pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<p>When set, dictionary source files are stored in <code>$LINDERA_DICTS/&lt;version&gt;/</code> where <code>&lt;version&gt;</code> is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.</p>
+<blockquote>
+<p>[!NOTE]
+<code>LINDERA_CACHE</code> is deprecated but still supported for backward compatibility. It will be used if <code>LINDERA_DICTS</code> is not set.</p>
+</blockquote>
+<h3 id="lindera_config"><a class="header" href="#lindera_config">LINDERA_CONFIG</a></h3>
+<p>The <code>LINDERA_CONFIG</code> environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.</p>
+<pre><code class="language-shell">export LINDERA_CONFIG=./resources/config/lindera.yml
 </code></pre>
 <p>See the <a href="./configuration.html">Configuration</a> section for details on the configuration format.</p>
+<blockquote>
+<p>[!NOTE]
+<code>LINDERA_CONFIG_PATH</code> is deprecated but still supported for backward compatibility. It will be used if <code>LINDERA_CONFIG</code> is not set.</p>
+</blockquote>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p>The <code>DOCS_RS</code> environment variable is automatically set by docs.rs when building documentation. When this variable is detected, Lindera creates dummy dictionary files instead of downloading actual dictionary data, allowing documentation to be built without network access or large file downloads.</p>
 <p>This is primarily used internally by docs.rs and typically doesn't need to be set by users.</p>

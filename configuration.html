@@ -175,7 +175,7 @@
                     <main>
                         <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_PATH</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
+Specify the path to the following file in the environment variable <code>LINDERA_CONFIG</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
   dictionary:
@@ -243,7 +243,7 @@ token_filters:
     args:
       japanese: false
 </code></pre>
-<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+<pre><code class="language-shell">% export LINDERA_CONFIG=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 
