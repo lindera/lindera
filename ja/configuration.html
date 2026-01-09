@@ -175,7 +175,7 @@
                     <main>
                         <h1 id="設定"><a class="header" href="#設定">設定</a></h1>
 <p>LinderaはYAML形式の設定ファイルを読み込むことができます。
-環境変数 <code>LINDERA_CONFIG</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
+環境変数 <code>LINDERA_CONFIG_PATH</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
   dictionary:
@@ -243,7 +243,7 @@ token_filters:
     args:
       japanese: false
 </code></pre>
-<pre><code class="language-shell">% export LINDERA_CONFIG=./resources/config/lindera.yml
+<pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 
