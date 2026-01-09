@@ -38,14 +38,15 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-          - runner: macOS-latest
+          - runner: macos-latest
             target: aarch64-apple-darwin
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
           - runner: windows-latest
             target: aarch64-pc-windows-msvc
+            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -60,7 +61,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test --target "${{ matrix.platform.target }}" --all-features ${{ matrix.platform.skip_test_run == true && '--no-run' || '' }}
 
   create-release:
     name: Create Release
@@ -152,7 +153,7 @@ jobs:
             target: aarch64-apple-darwin
             archive: .zip
             extension: ""
-          - runner: macos-13
+          - runner: macos-15-intel
             target: x86_64-apple-darwin
             archive: .zip
             extension: ""
@@ -235,7 +236,9 @@ jobs:
           merge-multiple: true
 
       - name: Compile
-        run: LINDERA_DICTS=dictionaries cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
+        run: cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
+        env:
+          LINDERA_DICTS: dictionaries
 
       - name: Create artifact for Linux
         if: matrix.platform.runner == 'ubuntu-latest'

@@ -12,7 +12,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "1.5.1"
+version = "2.0.0"
 edition = "2024"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
@@ -24,13 +24,13 @@ categories = ["text-processing"]
 license = "MIT"
 
 [workspace.dependencies]
-lindera-dictionary = { version = "1.5.1", path = "lindera-dictionary" }
-lindera-cc-cedict = { version = "1.5.1", path = "lindera-cc-cedict" }
-lindera-ipadic = { version = "1.5.1", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "1.5.1", path = "lindera-ipadic-neologd" }
-lindera-ko-dic = { version = "1.5.1", path = "lindera-ko-dic" }
-lindera-unidic = { version = "1.5.1", path = "lindera-unidic" }
-lindera = { version = "1.5.1", path = "lindera" }
+lindera-dictionary = { version = "2.0.0", path = "lindera-dictionary" }
+lindera-cc-cedict = { version = "2.0.0", path = "lindera-cc-cedict" }
+lindera-ipadic = { version = "2.0.0", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "2.0.0", path = "lindera-ipadic-neologd" }
+lindera-ko-dic = { version = "2.0.0", path = "lindera-ko-dic" }
+lindera-unidic = { version = "2.0.0", path = "lindera-unidic" }
+lindera = { version = "2.0.0", path = "lindera" }
 
 anyhow = "1.0.100"
 byteorder = "1.5.0"
@@ -59,10 +59,10 @@ regex = "1.12.2"
 reqwest = { version = "0.13.1", features = [
     "rustls",
 ], default-features = false }
-rkyv = { version = "0.8.12", features = ["bytecheck"] }
+rkyv = { version = "0.8.13", features = ["bytecheck"] }
 rucrf = "0.3.3"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 serde_yaml_ng = "0.10.0"
 strum = { version = "0.27.2", features = ["derive"] }
 strum_macros = "0.27.2"
@@ -78,7 +78,7 @@ tokio = { version = "1.49.0", features = [
 unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.25"
 unicode-segmentation = "1.12.0"
-url = "2.5.7"
+url = "2.5.8"
 yada = "0.5.1"
 
 [profile.release]
