@@ -218,16 +218,25 @@ async fn download_with_retry(
 pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
+    println!("cargo:rerun-if-env-changed=LINDERA_DICTS");
     println!("cargo:rerun-if-env-changed=LINDERA_CACHE");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
 
     // Directory path for build package
-    // if the `LINDERA_CACHE` variable is defined, behaves like a cache, where data is invalidated only:
+    // if the `LINDERA_DICTS` variable is defined, behaves like a cache, where data is invalidated only:
     // - on new lindera-assets version
-    // - if the LINDERA_CACHE dir changed
+    // - if the LINDERA_DICTS dir changed
     // otherwise, keeps behavior of always redownloading and rebuilding
-    let (build_dir, is_cache) = if let Some(lindera_cache_dir) = std::env::var_os("LINDERA_CACHE") {
-        let mut cache_dir = PathBuf::from(lindera_cache_dir);
+    let (build_dir, is_cache) = if let Some(path) =
+        std::env::var_os("LINDERA_DICTS").or_else(|| {
+            std::env::var_os("LINDERA_CACHE").map(|p| {
+                println!(
+                    "cargo:warning=LINDERA_CACHE is deprecated. Please use LINDERA_DICTS instead."
+                );
+                p
+            })
+        }) {
+        let mut cache_dir = PathBuf::from(path);
         if !cache_dir.is_absolute() {
             if let Ok(current_dir) = std::env::current_dir() {
                 // If current_dir is a crate directory in a workspace, try to find the workspace root

@@ -1,7 +1,7 @@
 # Configuration
 
 Lindera is able to read YAML format configuration files.
-Specify the path to the following file in the environment variable `LINDERA_CONFIG_PATH`. You can use it easily without having to code the behavior of the tokenizer in Rust code.
+Specify the path to the following file in the environment variable `LINDERA_CONFIG`. You can use it easily without having to code the behavior of the tokenizer in Rust code.
 
 ```yaml
 segmenter:
@@ -73,7 +73,7 @@ token_filters:
 ```
 
 ```shell
-% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
+% export LINDERA_CONFIG=./resources/config/lindera.yml
 ```
 
 ```rust

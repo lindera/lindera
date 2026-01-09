@@ -59,6 +59,7 @@ anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
 kanaria = { workspace = true }
+log = { workspace = true }
 once_cell = { workspace = true }
 percent-encoding = { workspace = true }
 regex = { workspace = true }
