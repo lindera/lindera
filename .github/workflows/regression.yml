@@ -48,6 +48,7 @@ jobs:
             target: x86_64-pc-windows-msvc
           - runner: windows-latest
             target: aarch64-pc-windows-msvc
+            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -62,4 +63,4 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test --target "${{ matrix.platform.target }}" --all-features ${{ matrix.platform.skip_test_run == true && '--no-run' || '' }}
