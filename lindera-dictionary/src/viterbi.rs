@@ -184,9 +184,6 @@ pub struct Lattice {
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
     char_category_cache: Vec<Vec<CategoryId>>,
-    word_entry_buffer: Vec<(usize, WordEntry)>,
-    left_path_costs: Vec<i32>,
-    left_right_ids: Vec<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -232,9 +229,6 @@ impl Lattice {
         }
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
-        self.word_entry_buffer.clear();
-        self.left_path_costs.clear();
-        self.left_right_ids.clear();
     }
 
     #[inline]
@@ -353,43 +347,39 @@ impl Lattice {
                 continue;
             }
 
-            // Optimization: Cache left edges information to SoA buffers
-            // to improve cache locality for the inner loops of batch processing.
-            self.left_path_costs.clear();
-            self.left_right_ids.clear();
-            for left_edge in &self.ends_at[start] {
-                self.left_path_costs.push(left_edge.path_cost);
-                self.left_right_ids.push(left_edge.word_entry.right_id());
-            }
-
             let suffix = &text[start..];
+
             let mut found: bool = false;
 
-            // Dictionary prefix match
-            self.word_entry_buffer.clear();
-
             // Lookup user dictionary
-            if let Some(user_dict) = user_dict {
-                for (prefix_len, word_entry) in user_dict.prefix(suffix) {
-                    self.word_entry_buffer.push((prefix_len, word_entry));
+            if user_dict.is_some() {
+                let dict = user_dict.as_ref().unwrap();
+                for (prefix_len, word_entry) in dict.prefix(suffix) {
+                    let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                    let edge = Self::create_edge(
+                        EdgeType::KNOWN,
+                        word_entry,
+                        start,
+                        start + prefix_len,
+                        kanji_only,
+                    );
+                    self.add_edge_in_lattice(edge, cost_matrix, search_mode);
+                    found = true;
                 }
             }
 
-            // Lookup system dictionary
+            // Check all word starting at start, using the double array, like we would use
+            // a prefix trie, and populate the lattice with as many edges
             for (prefix_len, word_entry) in dict.prefix(suffix) {
-                self.word_entry_buffer.push((prefix_len, word_entry));
-            }
-
-            if !self.word_entry_buffer.is_empty() {
-                let words = std::mem::take(&mut self.word_entry_buffer);
-                self.add_edges_in_lattice_batched(
-                    &words,
-                    char_idx,
+                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                let edge = Self::create_edge(
+                    EdgeType::KNOWN,
+                    word_entry,
                     start,
-                    cost_matrix,
-                    search_mode,
+                    start + prefix_len,
+                    kanji_only,
                 );
-                self.word_entry_buffer = words;
+                self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                 found = true;
             }
 
@@ -546,101 +536,6 @@ impl Lattice {
             edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
             edge.left_index = best_left_idx;
             self.ends_at[stop_index].push(edge);
-        }
-    }
-
-    // Adds multiple edges to the lattice and calculates the minimum cost to reach them.
-    // This method is optimized to process words in batches.
-    fn add_edges_in_lattice_batched(
-        &mut self,
-        words: &[(usize, WordEntry)],
-        char_idx: usize,
-        start_index: usize,
-        cost_matrix: &ConnectionCostMatrix,
-        mode: &Mode,
-    ) {
-        if self.left_path_costs.is_empty() {
-            return;
-        }
-
-        match mode {
-            Mode::Normal => {
-                let backward_size = cost_matrix.backward_size;
-                let costs_data = &cost_matrix.costs_data;
-
-                for &(prefix_len, word_entry) in words {
-                    let mut best_cost = i32::MAX;
-                    let mut best_left = None;
-                    let right_left_id = word_entry.left_id();
-
-                    for (i, &left_path_cost) in self.left_path_costs.iter().enumerate() {
-                        let left_right_id = self.left_right_ids[i];
-                        let cost_id = (right_left_id + left_right_id * backward_size) as usize;
-                        let conn_cost = costs_data[cost_id] as i32;
-                        let total_cost = left_path_cost.saturating_add(conn_cost);
-
-                        if total_cost < best_cost {
-                            best_cost = total_cost;
-                            best_left = Some(i as u16);
-                        }
-                    }
-
-                    if let Some(best_left_idx) = best_left {
-                        let stop_index = start_index + prefix_len;
-                        let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                        let mut edge = Self::create_edge(
-                            EdgeType::KNOWN,
-                            word_entry,
-                            start_index,
-                            stop_index,
-                            kanji_only,
-                        );
-                        edge.path_cost = best_cost.saturating_add(word_entry.word_cost as i32);
-                        edge.left_index = best_left_idx;
-                        self.ends_at[stop_index].push(edge);
-                    }
-                }
-            }
-            _ => {
-                // For other modes, fallback to single edge addition
-                for &(prefix_len, word_entry) in words {
-                    let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                    let mut edge = Self::create_edge(
-                        EdgeType::KNOWN,
-                        word_entry,
-                        start_index,
-                        start_index + prefix_len,
-                        kanji_only,
-                    );
-
-                    // Manual inlining of add_edge_in_lattice to avoid borrow conflict
-                    let left_edges = &self.ends_at[start_index];
-                    let mut best_cost = i32::MAX;
-                    let mut best_left = None;
-                    let right_left_id = edge.word_entry.left_id();
-
-                    for (i, left_edge) in left_edges.iter().enumerate() {
-                        let left_right_id = left_edge.word_entry.right_id();
-                        let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-                        let penalty = mode.penalty_cost(left_edge);
-                        let total_cost = left_edge
-                            .path_cost
-                            .saturating_add(conn_cost)
-                            .saturating_add(penalty);
-
-                        if total_cost < best_cost {
-                            best_cost = total_cost;
-                            best_left = Some(i as u16);
-                        }
-                    }
-
-                    if let Some(best_left_idx) = best_left {
-                        edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
-                        edge.left_index = best_left_idx;
-                        self.ends_at[start_index + prefix_len].push(edge);
-                    }
-                }
-            }
         }
     }
 
