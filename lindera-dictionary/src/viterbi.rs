@@ -184,8 +184,7 @@ pub struct Lattice {
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
     char_category_cache: Vec<Vec<CategoryId>>,
-    // (prefix_len, offset, len, is_system)
-    indices_buffer: Vec<(usize, usize, usize, bool)>,
+    word_entry_buffer: Vec<(usize, WordEntry)>,
     left_path_costs: Vec<i32>,
     left_right_ids: Vec<u32>,
 }
@@ -233,7 +232,7 @@ impl Lattice {
         }
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
-        self.indices_buffer.clear();
+        self.word_entry_buffer.clear();
         self.left_path_costs.clear();
         self.left_right_ids.clear();
     }
@@ -364,38 +363,34 @@ impl Lattice {
             }
 
             let suffix = &text[start..];
-            self.indices_buffer.clear();
+            let mut found: bool = false;
+
+            // Dictionary prefix match
+            self.word_entry_buffer.clear();
 
             // Lookup user dictionary
-            let user_dict_ref = user_dict.as_ref();
-            if let Some(udict) = user_dict_ref {
-                for (prefix_len, offset, len) in udict.prefix_indices(suffix) {
-                    self.indices_buffer.push((prefix_len, offset, len, false));
+            if let Some(user_dict) = user_dict {
+                for (prefix_len, word_entry) in user_dict.prefix(suffix) {
+                    self.word_entry_buffer.push((prefix_len, word_entry));
                 }
             }
 
             // Lookup system dictionary
-            for (prefix_len, offset, len) in dict.prefix_indices(suffix) {
-                self.indices_buffer.push((prefix_len, offset, len, true));
+            for (prefix_len, word_entry) in dict.prefix(suffix) {
+                self.word_entry_buffer.push((prefix_len, word_entry));
             }
 
-            let mut found = false;
-            if !self.indices_buffer.is_empty() {
-                // Use std::mem::take to avoid clone()
-                let mut indices = std::mem::take(&mut self.indices_buffer);
+            if !self.word_entry_buffer.is_empty() {
+                let words = std::mem::take(&mut self.word_entry_buffer);
                 self.add_edges_in_lattice_batched(
-                    &indices,
-                    dict,
-                    user_dict.as_deref(),
+                    &words,
                     char_idx,
                     start,
                     cost_matrix,
                     search_mode,
                 );
+                self.word_entry_buffer = words;
                 found = true;
-                // Move it back and clear for next position
-                indices.clear();
-                self.indices_buffer = indices;
             }
 
             // In the case of normal mode, it doesn't process unknown word greedily.
@@ -558,9 +553,7 @@ impl Lattice {
     // This method is optimized to process words in batches.
     fn add_edges_in_lattice_batched(
         &mut self,
-        words_indices: &[(usize, usize, usize, bool)], // prefix_len, offset, len, is_system
-        dict: &PrefixDictionary,
-        user_dict: Option<&PrefixDictionary>,
+        words: &[(usize, WordEntry)],
         char_idx: usize,
         start_index: usize,
         cost_matrix: &ConnectionCostMatrix,
@@ -572,301 +565,79 @@ impl Lattice {
 
         match mode {
             Mode::Normal => {
-                let forward_size = cost_matrix.forward_size;
+                let backward_size = cost_matrix.backward_size;
                 let costs_data = &cost_matrix.costs_data;
 
-                // Pre-calculate slices for system dictionary
-                let (sys_c_pre, sys_c_slice, sys_c_post) =
-                    unsafe { dict.vals_costs_data.align_to::<i16>() };
-                let (sys_l_pre, sys_l_slice, sys_l_post) =
-                    unsafe { dict.vals_left_ids_data.align_to::<u16>() };
-                let (sys_r_pre, sys_r_slice, sys_r_post) =
-                    unsafe { dict.vals_right_ids_data.align_to::<u16>() };
-                let sys_use_fast = sys_c_pre.is_empty()
-                    && sys_c_post.is_empty()
-                    && !sys_c_slice.is_empty()
-                    && sys_l_pre.is_empty()
-                    && sys_l_post.is_empty()
-                    && !sys_l_slice.is_empty()
-                    && sys_r_pre.is_empty()
-                    && sys_r_post.is_empty()
-                    && !sys_r_slice.is_empty();
+                for &(prefix_len, word_entry) in words {
+                    let mut best_cost = i32::MAX;
+                    let mut best_left = None;
+                    let right_left_id = word_entry.left_id();
 
-                // Pre-calculate slices for user dictionary if it exists
-                let (user_slices, user_use_fast) = if let Some(udict) = user_dict {
-                    let (u_c_pre, u_c_slice, u_c_post) =
-                        unsafe { udict.vals_costs_data.align_to::<i16>() };
-                    let (u_l_pre, u_l_slice, u_l_post) =
-                        unsafe { udict.vals_left_ids_data.align_to::<u16>() };
-                    let (u_r_pre, u_r_slice, u_r_post) =
-                        unsafe { udict.vals_right_ids_data.align_to::<u16>() };
-                    let u_fast = u_c_pre.is_empty()
-                        && u_c_post.is_empty()
-                        && !u_c_slice.is_empty()
-                        && u_l_pre.is_empty()
-                        && u_l_post.is_empty()
-                        && !u_l_slice.is_empty()
-                        && u_r_pre.is_empty()
-                        && u_r_post.is_empty()
-                        && !u_r_slice.is_empty();
-                    (Some((u_c_slice, u_l_slice, u_r_slice)), u_fast)
-                } else {
-                    (None, false)
-                };
+                    for (i, &left_path_cost) in self.left_path_costs.iter().enumerate() {
+                        let left_right_id = self.left_right_ids[i];
+                        let cost_id = (right_left_id + left_right_id * backward_size) as usize;
+                        let conn_cost = costs_data[cost_id] as i32;
+                        let total_cost = left_path_cost.saturating_add(conn_cost);
 
-                for &(prefix_len, offset, len, is_system) in words_indices {
-                    let active_dict = if is_system { dict } else { user_dict.unwrap() };
-                    let word_ids_data = &active_dict.vals_word_ids_data;
-
-                    let use_fast_path = if is_system {
-                        sys_use_fast
-                    } else {
-                        user_use_fast
-                    };
-
-                    if use_fast_path {
-                        let (costs, lefts, rights) = if is_system {
-                            (
-                                &sys_c_slice[offset..offset + len],
-                                &sys_l_slice[offset..offset + len],
-                                &sys_r_slice[offset..offset + len],
-                            )
-                        } else {
-                            let (u_c, u_l, u_r) = user_slices.unwrap();
-                            (
-                                &u_c[offset..offset + len],
-                                &u_l[offset..offset + len],
-                                &u_r[offset..offset + len],
-                            )
-                        };
-
-                        for i in 0..len {
-                            let word_cost = costs[i];
-                            let left_id = lefts[i];
-                            let right_id = rights[i];
-
-                            let right_left_id = left_id as u32;
-                            let mut best_cost = i32::MAX;
-                            let mut best_left = None;
-                            let base_cost_offset = (right_left_id * forward_size) as usize;
-
-                            let mut j = 0;
-                            let limit = self.left_path_costs.len();
-                            while j + 8 <= limit {
-                                let c0 = self.left_path_costs[j].saturating_add(
-                                    costs_data[self.left_right_ids[j] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c1 = self.left_path_costs[j + 1].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 1] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c2 = self.left_path_costs[j + 2].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 2] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c3 = self.left_path_costs[j + 3].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 3] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c4 = self.left_path_costs[j + 4].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 4] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c5 = self.left_path_costs[j + 5].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 5] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c6 = self.left_path_costs[j + 6].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 6] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                let c7 = self.left_path_costs[j + 7].saturating_add(
-                                    costs_data
-                                        [self.left_right_ids[j + 7] as usize + base_cost_offset]
-                                        as i32,
-                                );
-
-                                if c0 < best_cost {
-                                    best_cost = c0;
-                                    best_left = Some(j as u16);
-                                }
-                                if c1 < best_cost {
-                                    best_cost = c1;
-                                    best_left = Some((j + 1) as u16);
-                                }
-                                if c2 < best_cost {
-                                    best_cost = c2;
-                                    best_left = Some((j + 2) as u16);
-                                }
-                                if c3 < best_cost {
-                                    best_cost = c3;
-                                    best_left = Some((j + 3) as u16);
-                                }
-                                if c4 < best_cost {
-                                    best_cost = c4;
-                                    best_left = Some((j + 4) as u16);
-                                }
-                                if c5 < best_cost {
-                                    best_cost = c5;
-                                    best_left = Some((j + 5) as u16);
-                                }
-                                if c6 < best_cost {
-                                    best_cost = c6;
-                                    best_left = Some((j + 6) as u16);
-                                }
-                                if c7 < best_cost {
-                                    best_cost = c7;
-                                    best_left = Some((j + 7) as u16);
-                                }
-                                j += 8;
-                            }
-                            while j < limit {
-                                let total_cost = self.left_path_costs[j].saturating_add(
-                                    costs_data[self.left_right_ids[j] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                if total_cost < best_cost {
-                                    best_cost = total_cost;
-                                    best_left = Some(j as u16);
-                                }
-                                j += 1;
-                            }
-
-                            if let Some(best_left_idx) = best_left {
-                                let idx = offset + i;
-                                let word_id_val =
-                                    LittleEndian::read_u32(&word_ids_data[idx * 4..idx * 4 + 4]);
-                                let stop_index = start_index + prefix_len;
-                                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                                let word_id = WordId::new(
-                                    if is_system {
-                                        LexType::System
-                                    } else {
-                                        LexType::User
-                                    },
-                                    word_id_val,
-                                );
-                                let word_entry = WordEntry {
-                                    word_id,
-                                    word_cost,
-                                    left_id,
-                                    right_id,
-                                };
-                                let mut edge = Self::create_edge(
-                                    EdgeType::KNOWN,
-                                    word_entry,
-                                    start_index,
-                                    stop_index,
-                                    kanji_only,
-                                );
-                                edge.path_cost = best_cost.saturating_add(word_cost as i32);
-                                edge.left_index = best_left_idx;
-                                self.ends_at[stop_index].push(edge);
-                            }
+                        if total_cost < best_cost {
+                            best_cost = total_cost;
+                            best_left = Some(i as u16);
                         }
-                    } else {
-                        // Fallback path
-                        let word_costs = &active_dict.vals_costs_data;
-                        let left_ids = &active_dict.vals_left_ids_data;
-                        let right_ids = &active_dict.vals_right_ids_data;
-                        for i in 0..len {
-                            let idx = offset + i;
-                            let word_cost = LittleEndian::read_i16(&word_costs[idx * 2..]);
-                            let left_id = LittleEndian::read_u16(&left_ids[idx * 2..]);
-                            let right_id = LittleEndian::read_u16(&right_ids[idx * 2..]);
+                    }
 
-                            let mut best_cost = i32::MAX;
-                            let mut best_left = None;
-                            let base_cost_offset = (left_id as u32 * forward_size) as usize;
-
-                            for (j, &lp) in self.left_path_costs.iter().enumerate() {
-                                let total_cost = lp.saturating_add(
-                                    costs_data[self.left_right_ids[j] as usize + base_cost_offset]
-                                        as i32,
-                                );
-                                if total_cost < best_cost {
-                                    best_cost = total_cost;
-                                    best_left = Some(j as u16);
-                                }
-                            }
-
-                            if let Some(best_left_idx) = best_left {
-                                let word_id_val =
-                                    LittleEndian::read_u32(&word_ids_data[idx * 4..idx * 4 + 4]);
-                                let stop_index = start_index + prefix_len;
-                                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                                let word_id = WordId::new(
-                                    if is_system {
-                                        LexType::System
-                                    } else {
-                                        LexType::User
-                                    },
-                                    word_id_val,
-                                );
-                                let word_entry = WordEntry {
-                                    word_id,
-                                    word_cost,
-                                    left_id,
-                                    right_id,
-                                };
-                                let mut edge = Self::create_edge(
-                                    EdgeType::KNOWN,
-                                    word_entry,
-                                    start_index,
-                                    stop_index,
-                                    kanji_only,
-                                );
-                                edge.path_cost = best_cost.saturating_add(word_cost as i32);
-                                edge.left_index = best_left_idx;
-                                self.ends_at[stop_index].push(edge);
-                            }
-                        }
+                    if let Some(best_left_idx) = best_left {
+                        let stop_index = start_index + prefix_len;
+                        let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                        let mut edge = Self::create_edge(
+                            EdgeType::KNOWN,
+                            word_entry,
+                            start_index,
+                            stop_index,
+                            kanji_only,
+                        );
+                        edge.path_cost = best_cost.saturating_add(word_entry.word_cost as i32);
+                        edge.left_index = best_left_idx;
+                        self.ends_at[stop_index].push(edge);
                     }
                 }
             }
             _ => {
-                for &(prefix_len, offset, len, is_system) in words_indices {
-                    let active_dict = if is_system { dict } else { user_dict.unwrap() };
-                    let word_costs = &active_dict.vals_costs_data;
-                    let left_ids = &active_dict.vals_left_ids_data;
-                    let right_ids = &active_dict.vals_right_ids_data;
-                    let word_ids = &active_dict.vals_word_ids_data;
+                // For other modes, fallback to single edge addition
+                for &(prefix_len, word_entry) in words {
+                    let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                    let mut edge = Self::create_edge(
+                        EdgeType::KNOWN,
+                        word_entry,
+                        start_index,
+                        start_index + prefix_len,
+                        kanji_only,
+                    );
 
-                    for i in 0..len {
-                        let idx = offset + i;
-                        let word_cost = LittleEndian::read_i16(&word_costs[idx * 2..]);
-                        let left_id = LittleEndian::read_u16(&left_ids[idx * 2..]);
-                        let right_id = LittleEndian::read_u16(&right_ids[idx * 2..]);
-                        let word_id_val = LittleEndian::read_u32(&word_ids[idx * 4..]);
-                        let word_id = WordId::new(
-                            if is_system {
-                                LexType::System
-                            } else {
-                                LexType::User
-                            },
-                            word_id_val,
-                        );
-                        let word_entry = WordEntry {
-                            word_id,
-                            word_cost,
-                            left_id,
-                            right_id,
-                        };
-                        let edge = Self::create_edge(
-                            EdgeType::KNOWN,
-                            word_entry,
-                            start_index,
-                            start_index + prefix_len,
-                            self.is_kanji_all(char_idx, prefix_len),
-                        );
-                        self.add_edge_in_lattice(edge, cost_matrix, mode);
+                    // Manual inlining of add_edge_in_lattice to avoid borrow conflict
+                    let left_edges = &self.ends_at[start_index];
+                    let mut best_cost = i32::MAX;
+                    let mut best_left = None;
+                    let right_left_id = edge.word_entry.left_id();
+
+                    for (i, left_edge) in left_edges.iter().enumerate() {
+                        let left_right_id = left_edge.word_entry.right_id();
+                        let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
+                        let penalty = mode.penalty_cost(left_edge);
+                        let total_cost = left_edge
+                            .path_cost
+                            .saturating_add(conn_cost)
+                            .saturating_add(penalty);
+
+                        if total_cost < best_cost {
+                            best_cost = total_cost;
+                            best_left = Some(i as u16);
+                        }
+                    }
+
+                    if let Some(best_left_idx) = best_left {
+                        edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
+                        edge.left_index = best_left_idx;
+                        self.ends_at[start_index + prefix_len].push(edge);
                     }
                 }
             }

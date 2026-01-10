@@ -216,65 +216,21 @@ impl UserDictionaryBuilder {
         })?;
 
         // building values
-        let mut vals_costs_buffer = Vec::<u8>::new();
-        let mut vals_left_ids_buffer = Vec::<u8>::new();
-        let mut vals_right_ids_buffer = Vec::<u8>::new();
-        let mut vals_word_ids_buffer = Vec::<u8>::new();
+        let mut vals_data = Vec::<u8>::new();
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
-                vals_costs_buffer
-                    .write_i16::<LittleEndian>(word_entry.word_cost)
-                    .map_err(|err| {
-                        LinderaErrorKind::Serialize
-                            .with_error(anyhow::anyhow!(err))
-                            .add_context(format!(
-                                "Failed to serialize word cost (id: {})",
-                                word_entry.word_id.id
-                            ))
-                    })?;
-                vals_left_ids_buffer
-                    .write_u16::<LittleEndian>(word_entry.left_id)
-                    .map_err(|err| {
-                        LinderaErrorKind::Serialize
-                            .with_error(anyhow::anyhow!(err))
-                            .add_context(format!(
-                                "Failed to serialize left id (id: {})",
-                                word_entry.word_id.id
-                            ))
-                    })?;
-                vals_right_ids_buffer
-                    .write_u16::<LittleEndian>(word_entry.right_id)
-                    .map_err(|err| {
-                        LinderaErrorKind::Serialize
-                            .with_error(anyhow::anyhow!(err))
-                            .add_context(format!(
-                                "Failed to serialize right id (id: {})",
-                                word_entry.word_id.id
-                            ))
-                    })?;
-                vals_word_ids_buffer
-                    .write_u32::<LittleEndian>(word_entry.word_id.id)
-                    .map_err(|err| {
-                        LinderaErrorKind::Serialize
-                            .with_error(anyhow::anyhow!(err))
-                            .add_context(format!(
-                                "Failed to serialize word id (id: {})",
-                                word_entry.word_id.id
-                            ))
-                    })?;
+                word_entry.serialize(&mut vals_data).map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context(format!(
+                            "Failed to serialize user dictionary word entry (id: {})",
+                            word_entry.word_id.id
+                        ))
+                })?;
             }
         }
 
-        let dict = PrefixDictionary::load(
-            da_bytes,
-            vals_costs_buffer,
-            vals_left_ids_buffer,
-            vals_right_ids_buffer,
-            vals_word_ids_buffer,
-            words_idx_data,
-            words_data,
-            false,
-        );
+        let dict = PrefixDictionary::load(da_bytes, vals_data, words_idx_data, words_data, false);
 
         Ok(UserDictionary { dict })
     }

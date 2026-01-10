@@ -77,26 +77,7 @@ cccedict_data!(
     "matrix.mtx"
 );
 cccedict_data!(DA_DATA, "/lindera-cc-cedict/dict.da", "dict.da");
-cccedict_data!(
-    VALS_COSTS_DATA,
-    "/lindera-cc-cedict/dict.vals.cost",
-    "dict.vals.cost"
-);
-cccedict_data!(
-    VALS_LEFT_IDS_DATA,
-    "/lindera-cc-cedict/dict.vals.left",
-    "dict.vals.left"
-);
-cccedict_data!(
-    VALS_RIGHT_IDS_DATA,
-    "/lindera-cc-cedict/dict.vals.right",
-    "dict.vals.right"
-);
-cccedict_data!(
-    VALS_WORD_IDS_DATA,
-    "/lindera-cc-cedict/dict.vals.idx",
-    "dict.vals.idx"
-);
+cccedict_data!(VALS_DATA, "/lindera-cc-cedict/dict.vals", "dict.vals");
 cccedict_data!(UNKNOWN_DATA, "/lindera-cc-cedict/unk.bin", "unk.bin");
 cccedict_data!(
     WORDS_IDX_DATA,
@@ -119,10 +100,7 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA.deref(),
-                VALS_COSTS_DATA.deref(),
-                VALS_LEFT_IDS_DATA.deref(),
-                VALS_RIGHT_IDS_DATA.deref(),
-                VALS_WORD_IDS_DATA.deref(),
+                VALS_DATA.deref(),
                 WORDS_IDX_DATA.deref(),
                 WORDS_DATA.deref(),
                 true,
@@ -138,10 +116,7 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA,
-                VALS_COSTS_DATA,
-                VALS_LEFT_IDS_DATA,
-                VALS_RIGHT_IDS_DATA,
-                VALS_WORD_IDS_DATA,
+                VALS_DATA,
                 WORDS_IDX_DATA,
                 WORDS_DATA,
                 true,
