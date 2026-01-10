@@ -461,12 +461,12 @@ impl TrainerConfig {
 
     fn build_prefix_dict_from_content(_content: &str) -> Result<PrefixDictionary> {
         use crate::util::Data;
-        use yada::DoubleArray;
+        use daachorse::DoubleArrayAhoCorasickBuilder;
 
         // Create minimal prefix dictionary structure for training
         // In production, this would parse the lexicon CSV format
-        let da_data = Data::from(vec![]);
-        let da = DoubleArray::new(da_data);
+        let keys: &[&str] = &["\0"];
+        let da = DoubleArrayAhoCorasickBuilder::new().build(keys).unwrap();
 
         Ok(PrefixDictionary {
             da,

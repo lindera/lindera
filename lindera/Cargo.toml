@@ -58,6 +58,7 @@ default = ["compress", "mmap"]
 anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
+daachorse = { workspace = true }
 kanaria = { workspace = true }
 log = { workspace = true }
 once_cell = { workspace = true }
@@ -72,7 +73,6 @@ unicode-blocks = { workspace = true }
 unicode-normalization = { workspace = true }
 unicode-segmentation = { workspace = true }
 url = { workspace = true }
-yada = { workspace = true }
 
 lindera-dictionary = { workspace = true }
 lindera-ipadic = { workspace = true, optional = true }

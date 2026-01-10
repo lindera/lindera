@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use daachorse::DoubleArrayAhoCorasick;
+use daachorse::DoubleArrayAhoCorasickBuilder;
 use serde_json::Value;
-use yada::DoubleArray;
-use yada::builder::DoubleArrayBuilder;
 
 use crate::LinderaResult;
 use crate::error::LinderaErrorKind;
@@ -19,7 +19,7 @@ pub type MappingTokenFilterConfig = Value;
 #[derive(Clone)]
 pub struct MappingTokenFilter {
     mapping: HashMap<String, String>,
-    trie: DoubleArray<Vec<u8>>,
+    trie: DoubleArrayAhoCorasick<u32>,
 }
 
 impl MappingTokenFilter {
@@ -31,11 +31,9 @@ impl MappingTokenFilter {
             keyset.push((key.as_bytes(), value as u32));
         }
 
-        let data = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Build.with_error(anyhow::anyhow!("DoubleArray build error."))
-        })?;
-
-        let trie = DoubleArray::new(data);
+        let trie = DoubleArrayAhoCorasickBuilder::new()
+            .build_with_values(keyset)
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?;
 
         Ok(Self { mapping, trie })
     }
@@ -70,9 +68,10 @@ impl TokenFilter for MappingTokenFilter {
                 let suffix = &token.surface[start..];
                 match self
                     .trie
-                    .common_prefix_search(suffix.as_bytes())
+                    .find_overlapping_iter(suffix.as_bytes())
+                    .filter(|m| m.start() == 0)
                     .last()
-                    .map(|(_offset_len, prefix_len)| prefix_len)
+                    .map(|m| m.end())
                 {
                     Some(prefix_len) => {
                         let surface = &token.surface[start..start + prefix_len];

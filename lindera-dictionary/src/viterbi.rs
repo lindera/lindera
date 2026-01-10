@@ -338,6 +338,63 @@ impl Lattice {
         // Index of the last character of unknown word
         let mut unknown_word_end: Option<usize> = None;
 
+        // Pre-scan text with Aho-Corasick to report all matches
+        // Optimization: Use flat vectors instead of Vec<Vec<_>> to avoid many small allocations.
+        // Linked list structure: matches_head[start_idx] -> index in matches_store
+        let mut matches_head = vec![usize::MAX; len + 1];
+        let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
+
+        // System dictionary scan
+        for m in dict.da.find_overlapping_iter(text) {
+            let start = m.start();
+            let id = m.value();
+            let count = id & ((1u32 << 5) - 1u32);
+            let offset = id >> 5u32;
+            let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
+
+            // Bounds check for safety, though daachorse should guarantee valid ids if built correctly
+            if offset_bytes < dict.vals_data.len() {
+                let data_slice = &dict.vals_data[offset_bytes..];
+                for i in 0..count {
+                    let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
+                    if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
+                        let entry = WordEntry::deserialize(&data_slice[entry_offset..], true);
+                        if start < matches_head.len() {
+                            let next = matches_head[start];
+                            matches_head[start] = matches_store.len();
+                            matches_store.push((m.end(), entry, next));
+                        }
+                    }
+                }
+            }
+        }
+
+        // User dictionary scan
+        if let Some(ud) = user_dict {
+            for m in ud.da.find_overlapping_iter(text) {
+                let start = m.start();
+                let id = m.value();
+                let count = id & ((1u32 << 5) - 1u32);
+                let offset = id >> 5u32;
+                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
+
+                if offset_bytes < ud.vals_data.len() {
+                    let data_slice = &ud.vals_data[offset_bytes..];
+                    for i in 0..count {
+                        let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
+                        if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
+                            let entry = WordEntry::deserialize(&data_slice[entry_offset..], false);
+                            if start < matches_head.len() {
+                                let next = matches_head[start];
+                                matches_head[start] = matches_store.len();
+                                matches_store.push((m.end(), entry, next));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         for char_idx in 0..self.char_info_buffer.len() - 1 {
             let start = self.char_info_buffer[char_idx].byte_offset as usize;
 
@@ -347,40 +404,28 @@ impl Lattice {
                 continue;
             }
 
-            let suffix = &text[start..];
-
             let mut found: bool = false;
 
-            // Lookup user dictionary
-            if user_dict.is_some() {
-                let dict = user_dict.as_ref().unwrap();
-                for (prefix_len, word_entry) in dict.prefix(suffix) {
+            // Use cached matches
+            if start < matches_head.len() {
+                let mut match_idx = matches_head[start];
+                while match_idx != usize::MAX {
+                    let (end, word_entry, next) = matches_store[match_idx];
+
+                    let prefix_len = end - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
                     let edge = Self::create_edge(
                         EdgeType::KNOWN,
-                        word_entry,
+                        word_entry, // WordEntry is Copy
                         start,
-                        start + prefix_len,
+                        end,
                         kanji_only,
                     );
                     self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                     found = true;
-                }
-            }
 
-            // Check all word starting at start, using the double array, like we would use
-            // a prefix trie, and populate the lattice with as many edges
-            for (prefix_len, word_entry) in dict.prefix(suffix) {
-                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                let edge = Self::create_edge(
-                    EdgeType::KNOWN,
-                    word_entry,
-                    start,
-                    start + prefix_len,
-                    kanji_only,
-                );
-                self.add_edge_in_lattice(edge, cost_matrix, search_mode);
-                found = true;
+                    match_idx = next;
+                }
             }
 
             // In the case of normal mode, it doesn't process unknown word greedily.
