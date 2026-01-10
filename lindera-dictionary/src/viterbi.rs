@@ -507,6 +507,7 @@ impl Lattice {
     ) {
         let start_index = edge.start_index as usize;
         let stop_index = edge.stop_index as usize;
+        let right_left_id = edge.word_entry.left_id();
 
         let left_edges = &self.ends_at[start_index];
         if left_edges.is_empty() {
@@ -515,20 +516,35 @@ impl Lattice {
 
         let mut best_cost = i32::MAX;
         let mut best_left = None;
-        let right_left_id = edge.word_entry.left_id();
 
-        for (i, left_edge) in left_edges.iter().enumerate() {
-            let left_right_id = left_edge.word_entry.right_id();
-            let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-            let penalty = mode.penalty_cost(left_edge);
-            let total_cost = left_edge
-                .path_cost
-                .saturating_add(conn_cost)
-                .saturating_add(penalty);
+        match mode {
+            Mode::Normal => {
+                for (i, left_edge) in left_edges.iter().enumerate() {
+                    let left_right_id = left_edge.word_entry.right_id();
+                    let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
+                    let total_cost = left_edge.path_cost.saturating_add(conn_cost);
 
-            if total_cost < best_cost {
-                best_cost = total_cost;
-                best_left = Some(i as u16);
+                    if total_cost < best_cost {
+                        best_cost = total_cost;
+                        best_left = Some(i as u16);
+                    }
+                }
+            }
+            Mode::Decompose(penalty) => {
+                for (i, left_edge) in left_edges.iter().enumerate() {
+                    let left_right_id = left_edge.word_entry.right_id();
+                    let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
+                    let penalty_cost = penalty.penalty(left_edge);
+                    let total_cost = left_edge
+                        .path_cost
+                        .saturating_add(conn_cost)
+                        .saturating_add(penalty_cost);
+
+                    if total_cost < best_cost {
+                        best_cost = total_cost;
+                        best_left = Some(i as u16);
+                    }
+                }
             }
         }
 
