@@ -25,6 +25,7 @@ impl Default for Penalty {
 }
 
 impl Penalty {
+    #[inline]
     pub fn penalty(&self, edge: &Edge) -> i32 {
         let num_chars = edge.num_chars();
         if num_chars <= self.kanji_penalty_length_threshold {
@@ -51,6 +52,7 @@ pub enum Mode {
 }
 
 impl Mode {
+    #[inline]
     pub fn is_search(&self) -> bool {
         match self {
             Mode::Normal => false,
@@ -58,6 +60,7 @@ impl Mode {
         }
     }
 
+    #[inline]
     pub fn penalty_cost(&self, edge: &Edge) -> i32 {
         match self {
             Mode::Normal => 0i32,

@@ -44,15 +44,16 @@ impl ConnectionCostMatrixBuilder {
         })?;
         let forward_size = header[0] as u32;
         let backward_size = header[1] as u32;
-        let len = 2 + (forward_size * backward_size) as usize;
+        let len = 3 + (forward_size * backward_size) as usize;
         let mut costs = vec![i16::MAX; len];
-        costs[0] = forward_size as i16;
-        costs[1] = backward_size as i16;
+        costs[0] = -1; // Version flag for transposed layout
+        costs[1] = forward_size as i16;
+        costs[2] = backward_size as i16;
         for fields in lines_it {
             let forward_id = fields[0] as u32;
             let backward_id = fields[1] as u32;
             let cost = fields[2] as u16;
-            costs[2 + (backward_id + forward_id * backward_size) as usize] = cost as i16;
+            costs[3 + (forward_id + backward_id * forward_size) as usize] = cost as i16;
         }
 
         let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));
