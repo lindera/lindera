@@ -9,12 +9,12 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
+use daachorse::DoubleArrayAhoCorasickBuilder;
 use derive_builder::Builder;
 use encoding_rs::{Encoding, UTF_8};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
 use log::debug;
-use yada::builder::DoubleArrayBuilder;
 
 use crate::LinderaResult;
 use crate::decompress::Algorithm;
@@ -443,14 +443,20 @@ impl PrefixDictionaryBuilder {
             id += len;
         }
 
-        let dict_da_buffer = DoubleArrayBuilder::build(&keyset).ok_or_else(|| {
-            LinderaErrorKind::Build
-                .with_error(anyhow::anyhow!("DoubleArray build error."))
-                .add_context(format!(
-                    "Failed to build DoubleArray with {} keys for prefix dictionary",
-                    keyset.len()
-                ))
-        })?;
+        let keyset_len = keyset.len();
+
+        let dict_da = DoubleArrayAhoCorasickBuilder::new()
+            .build_with_values(keyset)
+            .map_err(|err| {
+                LinderaErrorKind::Build
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to build DoubleArray with {} keys for prefix dictionary",
+                        keyset_len
+                    ))
+            })?;
+
+        let dict_da_buffer = dict_da.serialize();
 
         let dict_da_path = output_dir.join(Path::new("dict.da"));
         let mut dict_da_writer =

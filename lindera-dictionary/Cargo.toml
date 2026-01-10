@@ -22,6 +22,7 @@ default = ["compress", "mmap"]
 anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
+daachorse = { workspace = true }
 derive_builder = { workspace = true }
 encoding = { workspace = true }
 encoding_rs = { workspace = true }
@@ -45,7 +46,6 @@ strum_macros = { workspace = true }
 tar = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-yada = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }
