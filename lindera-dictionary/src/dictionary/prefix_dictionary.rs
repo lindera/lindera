@@ -1,11 +1,13 @@
 use std::ops::Deref;
 
+use byteorder::{ByteOrder, LittleEndian};
 use rkyv::rancor::Fallible;
 use rkyv::with::{ArchiveWith, DeserializeWith, SerializeWith};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Place, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 use yada::DoubleArray;
 
+use crate::viterbi::{LexType, WordId};
 use crate::{util::Data, viterbi::WordEntry};
 
 /// Match structure for common prefix iterator compatibility
@@ -77,7 +79,10 @@ pub struct PrefixDictionary {
     #[serde(with = "DoubleArrayDef")]
     #[rkyv(with = DoubleArrayArchiver)]
     pub da: DoubleArray<Data>,
-    pub vals_data: Data,
+    pub vals_costs_data: Data,
+    pub vals_left_ids_data: Data,
+    pub vals_right_ids_data: Data,
+    pub vals_word_ids_data: Data,
     pub words_idx_data: Data,
     pub words_data: Data,
     pub is_system: bool,
@@ -86,7 +91,10 @@ pub struct PrefixDictionary {
 impl PrefixDictionary {
     pub fn load(
         da_data: impl Into<Data>,
-        vals_data: impl Into<Data>,
+        vals_costs_data: impl Into<Data>,
+        vals_left_ids_data: impl Into<Data>,
+        vals_right_ids_data: impl Into<Data>,
+        vals_word_ids_data: impl Into<Data>,
         words_idx_data: impl Into<Data>,
         words_data: impl Into<Data>,
         is_system: bool,
@@ -95,7 +103,10 @@ impl PrefixDictionary {
 
         PrefixDictionary {
             da,
-            vals_data: vals_data.into(),
+            vals_costs_data: vals_costs_data.into(),
+            vals_left_ids_data: vals_left_ids_data.into(),
+            vals_right_ids_data: vals_right_ids_data.into(),
+            vals_word_ids_data: vals_word_ids_data.into(),
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
             is_system,
@@ -108,17 +119,49 @@ impl PrefixDictionary {
             .flat_map(move |(offset_len, prefix_len)| {
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data: &[u8] = &self.vals_data[offset_bytes..];
                 (0..len as usize).map(move |i| {
+                    let idx = (offset as usize) + i;
+                    let word_cost =
+                        LittleEndian::read_i16(&self.vals_costs_data[idx * 2..idx * 2 + 2]);
+                    let left_id =
+                        LittleEndian::read_u16(&self.vals_left_ids_data[idx * 2..idx * 2 + 2]);
+                    let right_id =
+                        LittleEndian::read_u16(&self.vals_right_ids_data[idx * 2..idx * 2 + 2]);
+                    let word_id_val =
+                        LittleEndian::read_u32(&self.vals_word_ids_data[idx * 4..idx * 4 + 4]);
+
+                    let word_id = WordId::new(
+                        if self.is_system {
+                            LexType::System
+                        } else {
+                            LexType::User
+                        },
+                        word_id_val,
+                    );
+
                     (
                         prefix_len,
-                        WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        ),
+                        WordEntry {
+                            word_id,
+                            word_cost,
+                            left_id,
+                            right_id,
+                        },
                     )
                 })
+            })
+    }
+
+    pub fn prefix_indices<'a>(
+        &'a self,
+        s: &'a str,
+    ) -> impl Iterator<Item = (usize, usize, usize)> + 'a {
+        self.da
+            .common_prefix_search(s)
+            .map(move |(offset_len, prefix_len)| {
+                let len = offset_len & ((1u32 << 5) - 1u32);
+                let offset = offset_len >> 5u32;
+                (prefix_len, offset as usize, len as usize)
             })
     }
 
@@ -127,15 +170,34 @@ impl PrefixDictionary {
         match self.da.exact_match_search(surface) {
             Some(offset_len) => {
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data: &[u8] = &self.vals_data[offset_bytes..];
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 (0..len as usize)
                     .map(|i| {
-                        WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        )
+                        let idx = (offset as usize) + i;
+                        let word_cost =
+                            LittleEndian::read_i16(&self.vals_costs_data[idx * 2..idx * 2 + 2]);
+                        let left_id =
+                            LittleEndian::read_u16(&self.vals_left_ids_data[idx * 2..idx * 2 + 2]);
+                        let right_id =
+                            LittleEndian::read_u16(&self.vals_right_ids_data[idx * 2..idx * 2 + 2]);
+                        let word_id_val =
+                            LittleEndian::read_u32(&self.vals_word_ids_data[idx * 4..idx * 4 + 4]);
+
+                        let word_id = WordId::new(
+                            if self.is_system {
+                                LexType::System
+                            } else {
+                                LexType::User
+                            },
+                            word_id_val,
+                        );
+
+                        WordEntry {
+                            word_id,
+                            word_cost,
+                            left_id,
+                            right_id,
+                        }
                     })
                     .collect::<Vec<WordEntry>>()
             }
@@ -150,11 +212,33 @@ impl PrefixDictionary {
             .exact_match_search(surface)
             .map(|offset_len| {
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data = &self.vals_data[offset_bytes..];
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 (0..len as usize).map(move |i| {
-                    WordEntry::deserialize(&data[WordEntry::SERIALIZED_LEN * i..], self.is_system)
+                    let idx = (offset as usize) + i;
+                    let word_cost =
+                        LittleEndian::read_i16(&self.vals_costs_data[idx * 2..idx * 2 + 2]);
+                    let left_id =
+                        LittleEndian::read_u16(&self.vals_left_ids_data[idx * 2..idx * 2 + 2]);
+                    let right_id =
+                        LittleEndian::read_u16(&self.vals_right_ids_data[idx * 2..idx * 2 + 2]);
+                    let word_id_val =
+                        LittleEndian::read_u32(&self.vals_word_ids_data[idx * 4..idx * 4 + 4]);
+
+                    let word_id = WordId::new(
+                        if self.is_system {
+                            LexType::System
+                        } else {
+                            LexType::User
+                        },
+                        word_id_val,
+                    );
+
+                    WordEntry {
+                        word_id,
+                        word_cost,
+                        left_id,
+                        right_id,
+                    }
                 })
             })
             .into_iter()
@@ -164,7 +248,7 @@ impl PrefixDictionary {
     /// Common prefix iterator using character array input
     pub fn common_prefix_iterator(&self, suffix: &[char]) -> Vec<Match> {
         // 空の辞書の場合は空のマッチを返す
-        if self.vals_data.is_empty() {
+        if self.vals_costs_data.is_empty() {
             return Vec::new();
         }
 
@@ -174,28 +258,30 @@ impl PrefixDictionary {
             .flat_map(|(offset_len, prefix_len)| {
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
                 // 範囲チェックを追加
-                if offset_bytes >= self.vals_data.len() {
+                let max_idx = (offset as usize) + len as usize;
+                if max_idx * 2 > self.vals_costs_data.len() {
                     return vec![].into_iter();
                 }
 
-                let data: &[u8] = &self.vals_data[offset_bytes..];
                 (0..len as usize)
-                    .filter_map(move |i| {
-                        let required_bytes = WordEntry::SERIALIZED_LEN * (i + 1);
-                        if required_bytes <= data.len() {
-                            let word_entry = WordEntry::deserialize(
-                                &data[WordEntry::SERIALIZED_LEN * i..],
-                                self.is_system,
-                            );
-                            Some(Match {
-                                word_idx: WordIdx::new(word_entry.word_id.id),
-                                end_char: prefix_len,
-                            })
-                        } else {
-                            None
+                    .map(move |i| {
+                        let idx = (offset as usize) + i;
+                        let word_id_val =
+                            LittleEndian::read_u32(&self.vals_word_ids_data[idx * 4..idx * 4 + 4]);
+
+                        let word_entry = WordId::new(
+                            if self.is_system {
+                                LexType::System
+                            } else {
+                                LexType::User
+                            },
+                            word_id_val,
+                        );
+                        Match {
+                            word_idx: WordIdx::new(word_entry.id),
+                            end_char: prefix_len,
                         }
                     })
                     .collect::<Vec<_>>()
@@ -215,15 +301,42 @@ impl ArchivedPrefixDictionary {
             .flat_map(move |(offset_len, prefix_len)| {
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data: &[u8] = &self.vals_data.as_slice()[offset_bytes..];
                 (0..len as usize).map(move |i| {
+                    let idx = (offset as usize) + i;
+                    let word_cost = self.vals_costs_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(i16::from_le_bytes)
+                        .unwrap_or(0);
+                    let left_id = self.vals_left_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(u16::from_le_bytes)
+                        .unwrap_or(0);
+                    let right_id = self.vals_right_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(u16::from_le_bytes)
+                        .unwrap_or(0);
+                    let word_id_val = self.vals_word_ids_data.as_slice()[idx * 4..idx * 4 + 4]
+                        .try_into()
+                        .map(u32::from_le_bytes)
+                        .unwrap_or(0);
+
+                    let word_id = WordId::new(
+                        if self.is_system {
+                            LexType::System
+                        } else {
+                            LexType::User
+                        },
+                        word_id_val,
+                    );
+
                     (
                         prefix_len,
-                        WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        ),
+                        WordEntry {
+                            word_id,
+                            word_cost,
+                            left_id,
+                            right_id,
+                        },
                     )
                 })
             })
@@ -234,15 +347,42 @@ impl ArchivedPrefixDictionary {
         match da.exact_match_search(surface) {
             Some(offset_len) => {
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data: &[u8] = &self.vals_data.as_slice()[offset_bytes..];
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 (0..len as usize)
                     .map(|i| {
-                        WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        )
+                        let idx = (offset as usize) + i;
+                        let word_cost = self.vals_costs_data.as_slice()[idx * 2..idx * 2 + 2]
+                            .try_into()
+                            .map(i16::from_le_bytes)
+                            .unwrap_or(0);
+                        let left_id = self.vals_left_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                            .try_into()
+                            .map(u16::from_le_bytes)
+                            .unwrap_or(0);
+                        let right_id = self.vals_right_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                            .try_into()
+                            .map(u16::from_le_bytes)
+                            .unwrap_or(0);
+                        let word_id_val = self.vals_word_ids_data.as_slice()[idx * 4..idx * 4 + 4]
+                            .try_into()
+                            .map(u32::from_le_bytes)
+                            .unwrap_or(0);
+
+                        let word_id = WordId::new(
+                            if self.is_system {
+                                LexType::System
+                            } else {
+                                LexType::User
+                            },
+                            word_id_val,
+                        );
+
+                        WordEntry {
+                            word_id,
+                            word_cost,
+                            left_id,
+                            right_id,
+                        }
                     })
                     .collect::<Vec<WordEntry>>()
             }
@@ -255,11 +395,41 @@ impl ArchivedPrefixDictionary {
         da.exact_match_search(surface)
             .map(|offset_len| {
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data = &self.vals_data.as_slice()[offset_bytes..];
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 (0..len as usize).map(move |i| {
-                    WordEntry::deserialize(&data[WordEntry::SERIALIZED_LEN * i..], self.is_system)
+                    let idx = (offset as usize) + i;
+                    let word_cost = self.vals_costs_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(i16::from_le_bytes)
+                        .unwrap_or(0);
+                    let left_id = self.vals_left_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(u16::from_le_bytes)
+                        .unwrap_or(0);
+                    let right_id = self.vals_right_ids_data.as_slice()[idx * 2..idx * 2 + 2]
+                        .try_into()
+                        .map(u16::from_le_bytes)
+                        .unwrap_or(0);
+                    let word_id_val = self.vals_word_ids_data.as_slice()[idx * 4..idx * 4 + 4]
+                        .try_into()
+                        .map(u32::from_le_bytes)
+                        .unwrap_or(0);
+
+                    let word_id = WordId::new(
+                        if self.is_system {
+                            LexType::System
+                        } else {
+                            LexType::User
+                        },
+                        word_id_val,
+                    );
+
+                    WordEntry {
+                        word_id,
+                        word_cost,
+                        left_id,
+                        right_id,
+                    }
                 })
             })
             .into_iter()
@@ -267,7 +437,8 @@ impl ArchivedPrefixDictionary {
     }
 
     pub fn common_prefix_iterator(&self, suffix: &[char]) -> Vec<Match> {
-        if self.vals_data.as_slice().is_empty() {
+        // 空の辞書の場合は空のマッチを返す
+        if self.vals_costs_data.as_slice().is_empty() {
             return Vec::new();
         }
 
@@ -278,27 +449,32 @@ impl ArchivedPrefixDictionary {
             .flat_map(|(offset_len, prefix_len)| {
                 let len = offset_len & ((1u32 << 5) - 1u32);
                 let offset = offset_len >> 5u32;
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
-                if offset_bytes >= self.vals_data.as_slice().len() {
+                // 範囲チェックを追加
+                let max_idx = (offset as usize) + len as usize;
+                if max_idx * 2 > self.vals_costs_data.as_slice().len() {
                     return vec![].into_iter();
                 }
 
-                let data: &[u8] = &self.vals_data.as_slice()[offset_bytes..];
                 (0..len as usize)
-                    .filter_map(move |i| {
-                        let required_bytes = WordEntry::SERIALIZED_LEN * (i + 1);
-                        if required_bytes <= data.len() {
-                            let word_entry = WordEntry::deserialize(
-                                &data[WordEntry::SERIALIZED_LEN * i..],
-                                self.is_system,
-                            );
-                            Some(Match {
-                                word_idx: WordIdx::new(word_entry.word_id.id),
-                                end_char: prefix_len,
-                            })
-                        } else {
-                            None
+                    .map(move |i| {
+                        let idx = (offset as usize) + i;
+                        let word_id_val = self.vals_word_ids_data.as_slice()[idx * 4..idx * 4 + 4]
+                            .try_into()
+                            .map(u32::from_le_bytes)
+                            .unwrap_or(0);
+
+                        let word_entry = WordId::new(
+                            if self.is_system {
+                                LexType::System
+                            } else {
+                                LexType::User
+                            },
+                            word_id_val,
+                        );
+                        Match {
+                            word_idx: WordIdx::new(word_entry.id),
+                            end_char: prefix_len,
                         }
                     })
                     .collect::<Vec<_>>()

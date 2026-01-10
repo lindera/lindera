@@ -470,7 +470,10 @@ impl TrainerConfig {
 
         Ok(PrefixDictionary {
             da,
-            vals_data: Data::from(vec![]),
+            vals_costs_data: Data::from(vec![]),
+            vals_left_ids_data: Data::from(vec![]),
+            vals_right_ids_data: Data::from(vec![]),
+            vals_word_ids_data: Data::from(vec![]),
             words_idx_data: Data::from(vec![]),
             words_data: Data::from(vec![]),
             is_system: true,

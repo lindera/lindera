@@ -469,47 +469,151 @@ impl PrefixDictionaryBuilder {
         Ok(())
     }
 
-    /// Write values file (dict.vals)
+    /// Write values file (dict.vals.cost, dict.vals.left, dict.vals.right, dict.vals.idx)
     fn write_values_file(
         &self,
         output_dir: &Path,
         word_entry_map: &BTreeMap<String, Vec<WordEntry>>,
     ) -> LinderaResult<()> {
-        let mut dict_vals_buffer = Vec::new();
+        let mut costs_buffer = Vec::new();
+        let mut left_ids_buffer = Vec::new();
+        let mut right_ids_buffer = Vec::new();
+        let mut word_ids_buffer = Vec::new();
+
         for word_entries in word_entry_map.values() {
             for word_entry in word_entries {
-                word_entry.serialize(&mut dict_vals_buffer).map_err(|err| {
-                    LinderaErrorKind::Serialize
-                        .with_error(anyhow::anyhow!(err))
-                        .add_context(format!(
-                            "Failed to serialize word entry (id: {})",
-                            word_entry.word_id.id
-                        ))
-                })?;
+                costs_buffer
+                    .write_i16::<LittleEndian>(word_entry.word_cost)
+                    .map_err(|err| {
+                        LinderaErrorKind::Serialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context(format!(
+                                "Failed to serialize word cost (id: {})",
+                                word_entry.word_id.id
+                            ))
+                    })?;
+                left_ids_buffer
+                    .write_u16::<LittleEndian>(word_entry.left_id)
+                    .map_err(|err| {
+                        LinderaErrorKind::Serialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context(format!(
+                                "Failed to serialize left id (id: {})",
+                                word_entry.word_id.id
+                            ))
+                    })?;
+                right_ids_buffer
+                    .write_u16::<LittleEndian>(word_entry.right_id)
+                    .map_err(|err| {
+                        LinderaErrorKind::Serialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context(format!(
+                                "Failed to serialize right id (id: {})",
+                                word_entry.word_id.id
+                            ))
+                    })?;
+                word_ids_buffer
+                    .write_u32::<LittleEndian>(word_entry.word_id.id)
+                    .map_err(|err| {
+                        LinderaErrorKind::Serialize
+                            .with_error(anyhow::anyhow!(err))
+                            .add_context(format!(
+                                "Failed to serialize word id (id: {})",
+                                word_entry.word_id.id
+                            ))
+                    })?;
             }
         }
 
-        let dict_vals_path = output_dir.join(Path::new("dict.vals"));
-        let mut dict_vals_writer =
-            io::BufWriter::new(File::create(&dict_vals_path).map_err(|err| {
+        // Write dict.vals.cost
+        let dict_vals_cost_path = output_dir.join(Path::new("dict.vals.cost"));
+        let mut dict_vals_cost_writer =
+            io::BufWriter::new(File::create(&dict_vals_cost_path).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to create dict.vals file: {dict_vals_path:?}"
+                        "Failed to create dict.vals.cost file: {dict_vals_cost_path:?}"
                     ))
             })?);
-
         compress_write(
-            &dict_vals_buffer,
+            &costs_buffer,
             self.compress_algorithm,
-            &mut dict_vals_writer,
+            &mut dict_vals_cost_writer,
         )?;
-
-        dict_vals_writer.flush().map_err(|err| {
+        dict_vals_cost_writer.flush().map_err(|err| {
             LinderaErrorKind::Io
                 .with_error(anyhow::anyhow!(err))
                 .add_context(format!(
-                    "Failed to flush dict.vals file: {dict_vals_path:?}"
+                    "Failed to flush dict.vals.cost file: {dict_vals_cost_path:?}"
+                ))
+        })?;
+
+        // Write dict.vals.left
+        let dict_vals_left_path = output_dir.join(Path::new("dict.vals.left"));
+        let mut dict_vals_left_writer =
+            io::BufWriter::new(File::create(&dict_vals_left_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.vals.left file: {dict_vals_left_path:?}"
+                    ))
+            })?);
+        compress_write(
+            &left_ids_buffer,
+            self.compress_algorithm,
+            &mut dict_vals_left_writer,
+        )?;
+        dict_vals_left_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.vals.left file: {dict_vals_left_path:?}"
+                ))
+        })?;
+
+        // Write dict.vals.right
+        let dict_vals_right_path = output_dir.join(Path::new("dict.vals.right"));
+        let mut dict_vals_right_writer =
+            io::BufWriter::new(File::create(&dict_vals_right_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.vals.right file: {dict_vals_right_path:?}"
+                    ))
+            })?);
+        compress_write(
+            &right_ids_buffer,
+            self.compress_algorithm,
+            &mut dict_vals_right_writer,
+        )?;
+        dict_vals_right_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.vals.right file: {dict_vals_right_path:?}"
+                ))
+        })?;
+
+        // Write dict.vals.idx
+        let dict_vals_idx_path = output_dir.join(Path::new("dict.vals.idx"));
+        let mut dict_vals_idx_writer =
+            io::BufWriter::new(File::create(&dict_vals_idx_path).map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!(
+                        "Failed to create dict.vals.idx file: {dict_vals_idx_path:?}"
+                    ))
+            })?);
+        compress_write(
+            &word_ids_buffer,
+            self.compress_algorithm,
+            &mut dict_vals_idx_writer,
+        )?;
+        dict_vals_idx_writer.flush().map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to flush dict.vals.idx file: {dict_vals_idx_path:?}"
                 ))
         })?;
 

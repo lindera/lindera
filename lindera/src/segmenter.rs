@@ -1854,14 +1854,36 @@ mod tests {
     fn test_segment_with_simple_userdic_ko_dic() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
             .join("ko-dic_simple_userdic.csv");
 
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file =
+            temp_dir.join(format!("ko-dic_simple_userdic_{}.bin", std::process::id()));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 8];
+                details[0] = record[1].to_string();
+                details[3] = record[2].to_string();
+                details[7] = "*".to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
+
         let config = serde_json::json!({
             "dictionary": "embedded://ko-dic",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -1934,14 +1956,43 @@ mod tests {
     fn test_segment_with_simple_userdic_cc_cedict() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
             .join("cc-cedict_simple_userdic.csv");
 
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file = temp_dir.join(format!(
+            "cc-cedict_simple_userdic_{}.bin",
+            std::process::id()
+        ));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 8];
+                details[0] = "*".to_string();
+                details[1] = "*".to_string();
+                details[2] = "*".to_string();
+                details[3] = "*".to_string();
+                details[4] = record[2].to_string();
+                details[5] = "*".to_string();
+                details[6] = "*".to_string();
+                details[7] = "*".to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
+
         let config = serde_json::json!({
             "dictionary": "embedded://cc-cedict",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2042,14 +2093,35 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_ipadic() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
-            .join("ipadic_simple_userdic.bin");
+            .join("ipadic_simple_userdic.csv");
+
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file =
+            temp_dir.join(format!("ipadic_simple_userdic_{}.bin", std::process::id()));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 9];
+                details[0] = record[1].to_string();
+                details[7] = record[2].to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
 
         let config = serde_json::json!({
             "dictionary": "embedded://ipadic",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2191,14 +2263,35 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_unidic() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
-            .join("unidic_simple_userdic.bin");
+            .join("unidic_simple_userdic.csv");
+
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file =
+            temp_dir.join(format!("unidic_simple_userdic_{}.bin", std::process::id()));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 17];
+                details[0] = record[1].to_string();
+                details[6] = record[2].to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
 
         let config = serde_json::json!({
             "dictionary": "embedded://unidic",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2456,14 +2549,38 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_ko_dic() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
-            .join("ko-dic_simple_userdic.bin");
+            .join("ko-dic_simple_userdic.csv");
+
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file = temp_dir.join(format!(
+            "ko-dic_simple_userdic_bin_{}.bin",
+            std::process::id()
+        ));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 8];
+                details[0] = record[1].to_string();
+                details[3] = record[2].to_string();
+                details[7] = "*".to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
 
         let config = serde_json::json!({
             "dictionary": "embedded://ko-dic",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
@@ -2536,14 +2653,43 @@ mod tests {
     fn test_segment_with_simple_userdic_bin_cc_cedict() {
         use std::borrow::Cow;
 
-        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        // Build user dictionary from CSV
+        use csv::StringRecord;
+        use lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions;
+        use lindera_dictionary::builder::user_dictionary::build_user_dictionary;
+
+        let userdic_csv_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../resources")
             .join("user_dict")
-            .join("cc-cedict_simple_userdic.bin");
+            .join("cc-cedict_simple_userdic.csv");
+
+        let temp_dir = std::env::temp_dir();
+        let userdic_bin_file = temp_dir.join(format!(
+            "cc-cedict_simple_userdic_bin_{}.bin",
+            std::process::id()
+        ));
+
+        let builder = UserDictionaryBuilderOptions::default()
+            .user_dictionary_handler(Some(Box::new(|record: &StringRecord| {
+                let mut details = vec!["*".to_string(); 8];
+                details[0] = "*".to_string();
+                details[1] = "*".to_string();
+                details[2] = "*".to_string();
+                details[3] = "*".to_string();
+                details[4] = record[2].to_string();
+                details[5] = "*".to_string();
+                details[6] = "*".to_string();
+                details[7] = "*".to_string();
+                Ok(details)
+            })))
+            .builder()
+            .unwrap();
+        let user_dict = builder.build(&userdic_csv_file).unwrap();
+        build_user_dictionary(user_dict, &userdic_bin_file).unwrap();
 
         let config = serde_json::json!({
             "dictionary": "embedded://cc-cedict",
-            "user_dictionary": userdic_file.to_str().unwrap(),
+            "user_dictionary": userdic_bin_file.to_str().unwrap(),
             "mode": "normal"
         });
 
