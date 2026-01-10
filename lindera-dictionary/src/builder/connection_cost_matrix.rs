@@ -52,7 +52,9 @@ impl ConnectionCostMatrixBuilder {
             let forward_id = fields[0] as u32;
             let backward_id = fields[1] as u32;
             let cost = fields[2] as u16;
-            costs[2 + (backward_id + forward_id * backward_size) as usize] = cost as i16;
+            // Transpose the matrix: store as [backward_id][forward_id]
+            // Index = forward_id + backward_id * forward_size
+            costs[2 + (forward_id + backward_id * forward_size) as usize] = cost as i16;
         }
 
         let wtr_matrix_mtx_path = output_dir.join(Path::new("matrix.mtx"));

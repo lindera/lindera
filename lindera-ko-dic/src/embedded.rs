@@ -73,7 +73,26 @@ kodic_data!(
 );
 kodic_data!(CONNECTION_DATA, "/lindera-ko-dic/matrix.mtx", "matrix.mtx");
 kodic_data!(DA_DATA, "/lindera-ko-dic/dict.da", "dict.da");
-kodic_data!(VALS_DATA, "/lindera-ko-dic/dict.vals", "dict.vals");
+kodic_data!(
+    VALS_COSTS_DATA,
+    "/lindera-ko-dic/dict.vals.cost",
+    "dict.vals.cost"
+);
+kodic_data!(
+    VALS_LEFT_IDS_DATA,
+    "/lindera-ko-dic/dict.vals.left",
+    "dict.vals.left"
+);
+kodic_data!(
+    VALS_RIGHT_IDS_DATA,
+    "/lindera-ko-dic/dict.vals.right",
+    "dict.vals.right"
+);
+kodic_data!(
+    VALS_WORD_IDS_DATA,
+    "/lindera-ko-dic/dict.vals.idx",
+    "dict.vals.idx"
+);
 kodic_data!(UNKNOWN_DATA, "/lindera-ko-dic/unk.bin", "unk.bin");
 kodic_data!(
     WORDS_IDX_DATA,
@@ -96,7 +115,10 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA.deref(),
-                VALS_DATA.deref(),
+                VALS_COSTS_DATA.deref(),
+                VALS_LEFT_IDS_DATA.deref(),
+                VALS_RIGHT_IDS_DATA.deref(),
+                VALS_WORD_IDS_DATA.deref(),
                 WORDS_IDX_DATA.deref(),
                 WORDS_DATA.deref(),
                 true,
@@ -112,7 +134,10 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA,
-                VALS_DATA,
+                VALS_COSTS_DATA,
+                VALS_LEFT_IDS_DATA,
+                VALS_RIGHT_IDS_DATA,
+                VALS_WORD_IDS_DATA,
                 WORDS_IDX_DATA,
                 WORDS_DATA,
                 true,

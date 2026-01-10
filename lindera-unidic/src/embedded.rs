@@ -73,7 +73,26 @@ unidic_data!(
 );
 unidic_data!(CONNECTION_DATA, "/lindera-unidic/matrix.mtx", "matrix.mtx");
 unidic_data!(DA_DATA, "/lindera-unidic/dict.da", "dict.da");
-unidic_data!(VALS_DATA, "/lindera-unidic/dict.vals", "dict.vals");
+unidic_data!(
+    VALS_COSTS_DATA,
+    "/lindera-unidic/dict.vals.cost",
+    "dict.vals.cost"
+);
+unidic_data!(
+    VALS_LEFT_IDS_DATA,
+    "/lindera-unidic/dict.vals.left",
+    "dict.vals.left"
+);
+unidic_data!(
+    VALS_RIGHT_IDS_DATA,
+    "/lindera-unidic/dict.vals.right",
+    "dict.vals.right"
+);
+unidic_data!(
+    VALS_WORD_IDS_DATA,
+    "/lindera-unidic/dict.vals.idx",
+    "dict.vals.idx"
+);
 unidic_data!(UNKNOWN_DATA, "/lindera-unidic/unk.bin", "unk.bin");
 unidic_data!(
     WORDS_IDX_DATA,
@@ -96,7 +115,10 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA.deref(),
-                VALS_DATA.deref(),
+                VALS_COSTS_DATA.deref(),
+                VALS_LEFT_IDS_DATA.deref(),
+                VALS_RIGHT_IDS_DATA.deref(),
+                VALS_WORD_IDS_DATA.deref(),
                 WORDS_IDX_DATA.deref(),
                 WORDS_DATA.deref(),
                 true,
@@ -112,7 +134,10 @@ pub fn load() -> LinderaResult<Dictionary> {
         Ok(Dictionary {
             prefix_dictionary: PrefixDictionary::load(
                 DA_DATA,
-                VALS_DATA,
+                VALS_COSTS_DATA,
+                VALS_LEFT_IDS_DATA,
+                VALS_RIGHT_IDS_DATA,
+                VALS_WORD_IDS_DATA,
                 WORDS_IDX_DATA,
                 WORDS_DATA,
                 true,
