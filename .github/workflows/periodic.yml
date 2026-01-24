@@ -59,5 +59,16 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+
       - name: Run test
-        run: cargo test --target "${{ matrix.platform.target }}" --all-features ${{ matrix.platform.skip_test_run == true && '--no-run' || '' }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
+            cargo check --target "${{ matrix.platform.target }}" --all-features
+          else
+            cargo test --target "${{ matrix.platform.target }}" --all-features
+          fi

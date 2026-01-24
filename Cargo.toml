@@ -8,6 +8,7 @@ members = [
     "lindera-unidic",
     "lindera",
     "lindera-cli",
+    "lindera-python",
 ]
 resolver = "2"
 
