@@ -1,0 +1,47 @@
+[package]
+name = "lindera-python"
+version = { workspace = true }
+edition = { workspace = true }
+description = { workspace = true }
+documentation = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = { workspace = true }
+categories = { workspace = true }
+license = { workspace = true }
+
+[lib]
+name = "lindera"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[features]
+embed-ipadic = [
+    "lindera/embed-ipadic",
+] # Include Japanese dictionary (IPADIC)
+embed-ipadic-neologd = [
+    "lindera/embed-ipadic-neologd",
+] # Include Japanese dictionary (IPADIC NEologd)
+embed-unidic = [
+    "lindera/embed-unidic",
+] # Include Japanese dictionary (UniDic)
+embed-ko-dic = [
+    "lindera/embed-ko-dic",
+] # Include Korean dictionary (ko-dic)
+embed-cc-cedict = [
+    "lindera/embed-cc-cedict",
+] # Include Chinese dictionary (CC-CEDICT)
+embed-cjk = [
+    "lindera/embed-cjk",
+] # Include CJK dictionary (CC-CEDICT, IPADIC, ko-dic)
+train = ["lindera/train"] # Enable training functionality
+default = ["train"] # No directories included
+
+[dependencies]
+pyo3 = { version = "0.27.2", features = ["extension-module", "abi3-py310", "generate-import-lib"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+num_cpus = { workspace = true }
+
+lindera = { workspace = true }

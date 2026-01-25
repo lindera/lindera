@@ -18,3 +18,8 @@ flamegraph.svg
 .serena
 
 tmp/
+
+# Python
+.venv
+.pytest_cache
+**/__pycache__/

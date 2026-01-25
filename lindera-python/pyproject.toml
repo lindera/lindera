@@ -1,0 +1,56 @@
+[tool.maturin]
+module-name = "lindera"
+features = ["pyo3/abi3-py310", "pyo3/generate-import-lib"]
+
+[project]
+name = "lindera-python"
+version = "2.0.0"
+description = "Python binding for Lindera (no embedded dictionaries)"
+authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["morphological", "analysis", "library", "python"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10,<3.15"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.15"
+maturin = "^1.11.5"
+patchelf = "^0.17.2.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.2"
+black = "^25.12.0"
+isort = "^7.0.0"
+autopep8 = "^2.3.2"
+flake8 = "^7.3.0"
+flake8-pyproject = "^1.2.4"
+mypy = "^1.19.1"
+
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[tool.black]
+line-length = 119
+
+[tool.flake8]
+ignore = "E203,E501"
+max-line-length = 119
+
+[tool.isort]
+profile = "black"
+line_length = 119
+
+[tool.mypy]
+ignore_missing_imports = true
