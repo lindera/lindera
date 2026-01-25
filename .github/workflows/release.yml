@@ -261,15 +261,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
   publish-crates:
-    name: Publish crate
+    name: Publish crates
     needs: [build]
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-        toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -277,124 +271,165 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+          toolchain: stable
 
-      - name: Publish lindera-dictionary
+      - name: Publish crates
         run: |
-          LINDERA_DICTIONARY_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version')
-          LINDERA_DICTIONARY_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-dictionary | jq -r '.versions[].num')
-          if echo "${LINDERA_DICTIONARY_VERSIONS}" | grep -Fx "${LINDERA_DICTIONARY_VERSION}" >/dev/null; then
-            echo "lindera-dictionary ${LINDERA_DICTIONARY_VERSION} has already published"
-          else
-            pushd lindera-dictionary
-            cargo publish
-            popd
-          fi
-          sleep 20
+          for crate in lindera-dictionary lindera-cc-cedict lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-cli lindera-python; do
+            VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
+            PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
+            if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
+              echo "$crate $VERSION has already published"
+            else
+              echo "Publishing $crate $VERSION..."
+              pushd $crate
+              cargo publish
+              popd
+              sleep 20
+            fi
+          done
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
 
-      - name: Publish lindera-cc-cedict
-        run: |
-          LINDERA_CC_CEDICT_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version')
-          LINDERA_CC_CEDICT_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-cc-cedict | jq -r '.versions[].num')
-          if echo "${LINDERA_CC_CEDICT_VERSIONS}" | grep -Fx "${LINDERA_CC_CEDICT_VERSION}" >/dev/null; then
-            echo "lindera-cc-cedict ${LINDERA_CC_CEDICT_VERSION} has already published"
-          else
-            pushd lindera-cc-cedict
-            cargo publish
-            popd
-          fi
-          sleep 20
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+  build-python-wheels:
+    name: Build wheels for ${{ matrix.platform.target }}
+    needs: [create-release]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+        features:
+          - value: "default"
+            package_name: "lindera-python"
+            package_description: "Python binding for Lindera (no embedded dictionaries)"
+          - value: "embed-cjk"
+            package_name: "lindera-python-cjk"
+            package_description: "Python binding for Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
+          - value: "embed-ipadic"
+            package_name: "lindera-python-ipadic"
+            package_description: "Python binding for Lindera with IPADIC dictionary"
+          - value: "embed-unidic"
+            package_name: "lindera-python-unidic"
+            package_description: "Python binding for Lindera with UniDic dictionary"
+          - value: "embed-ko-dic"
+            package_name: "lindera-python-ko-dic"
+            package_description: "Python binding for Lindera with ko-dic Korean dictionary"
+          - value: "embed-cc-cedict"
+            package_name: "lindera-python-cc-cedict"
+            package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
 
-      - name: Publish lindera-ipadic
-        run: |
-          LINDERA_IPADIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version')
-          LINDERA_IPADIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ipadic | jq -r '.versions[].num')
-          if echo "${LINDERA_IPADIC_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_VERSION}" >/dev/null; then
-            echo "lindera-ipadic ${LINDERA_IPADIC_VERSION} has already published"
-          else
-            pushd lindera-ipadic
-            cargo publish
-            popd
-          fi
-          sleep 20
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
 
-      - name: Publish lindera-ipadic-neologd
+      - name: Create package-specific pyproject.toml
+        shell: bash
         run: |
-          LINDERA_IPADIC_NEOLOGD_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version')
-          LINDERA_IPADIC_NEOLOGD_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ipadic-neologd | jq -r '.versions[].num')
-          if echo "${LINDERA_IPADIC_NEOLOGD_VERSIONS}" | grep -Fx "${LINDERA_IPADIC_NEOLOGD_VERSION}" >/dev/null; then
-            echo "lindera-ipadic-neologd ${LINDERA_IPADIC_NEOLOGD_VERSION} has already published"
-          else
-            pushd lindera-ipadic-neologd
-            cargo publish
-            popd
-          fi
-          sleep 20
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          python -c "
+          import sys
+          import re
+          path = 'lindera-python/pyproject.toml'
+          with open(path, 'r') as f:
+              content = f.read()
+          content = re.sub(r'^name = \"lindera-python\"', 'name = \"${{ matrix.features.package_name }}\"', content, flags=re.MULTILINE)
+          content = re.sub(r'^description = \".*\"', 'description = \"${{ matrix.features.package_description }}\"', content, flags=re.MULTILINE)
+          with open(path, 'w') as f:
+              f.write(content)
+          "
 
-      - name: Publish lindera-ko-dic
-        run: |
-          LINDERA_KO_DIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version')
-          LINDERA_KO_DIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-ko-dic | jq -r '.versions[].num')
-          if echo "${LINDERA_KO_DIC_VERSIONS}" | grep -Fx "${LINDERA_KO_DIC_VERSION}" >/dev/null; then
-            echo "lindera-ko-dic ${LINDERA_KO_DIC_VERSION} has already published"
-          else
-            pushd lindera-ko-dic
-            cargo publish
-            popd
-          fi
-          sleep 20
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          NODE_OPTIONS: "--max-old-space-size=8192"
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --find-interpreter --features=${{ matrix.features.value }} --manifest-path lindera-python/Cargo.toml
+          sccache: "true"
+          manylinux: auto
+          before-script-linux: |
+            if command -v yum >/dev/null 2>&1; then
+              yum install openssl-devel devtoolset-10-libatomic-devel perl-IPC-Cmd -y
+            elif command -v apt-get >/dev/null 2>&1; then
+              apt-get update && apt-get install libssl-dev pkg-config -y
+            fi
 
-      - name: Publish lindera-unidic
-        run: |
-          LINDERA_UNIDIC_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version')
-          LINDERA_UNIDIC_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-unidic | jq -r '.versions[].num')
-          if echo "${LINDERA_UNIDIC_VERSIONS}" | grep -Fx "${LINDERA_UNIDIC_VERSION}" >/dev/null; then
-            echo "lindera-unidic ${LINDERA_UNIDIC_VERSION} has already published"
-          else
-            pushd lindera-unidic
-            cargo publish
-            popd
-          fi
-          sleep 20
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v2
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}
 
-      - name: Publish lindera
-        run: |
-          LINDERA_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
-          LINDERA_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera | jq -r '.versions[].num')
-          if echo "${LINDERA_VERSIONS}" | grep -Fx "${LINDERA_VERSION}" >/dev/null; then
-            echo "lindera ${LINDERA_VERSION} has already published"
-          else
-            pushd lindera
-            cargo publish
-            popd
-          fi
-          sleep 20
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+      - name: Upload to workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.features.package_name }}-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
+          path: dist
 
-      - name: Publish lindera-cli
-        run: |
-          LINDERA_CLI_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
-          LINDERA_CLI_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" https://crates.io/api/v1/crates/lindera-cli | jq -r '.versions[].num')
-          if echo "${LINDERA_CLI_VERSIONS}" | grep -Fx "${LINDERA_CLI_VERSION}" >/dev/null; then
-            echo "lindera-cli ${LINDERA_CLI_VERSION} has already published"
-          else
-            pushd lindera-cli
-            cargo publish
-            popd
-          fi
+  build-python-sdist:
+    name: Build Python sdist
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path lindera-python/Cargo.toml
+
+      - name: Upload artifact
+        uses: softprops/action-gh-release@v2
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/*
+          tag_name: ${{ github.ref_name }}
+
+      - name: Upload to workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build-python-wheels, build-python-sdist]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        with:
+          command: upload
+          args: --non-interactive --skip-existing dist/*

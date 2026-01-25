@@ -1,0 +1,35 @@
+{
+  "name": "ko-dic",
+  "encoding": "UTF-8",
+  "compress_algorithm": "deflate",
+  "default_word_cost": -10000,
+  "default_left_context_id": 0,
+  "default_right_context_id": 0,
+  "default_field_value": "*",
+  "flexible_csv": false,
+  "skip_invalid_cost_or_id": false,
+  "normalize_details": false,
+  "dictionary_schema": {
+    "fields": [
+      "surface",
+      "left_context_id",
+      "right_context_id",
+      "cost",
+      "part_of_speech_tag",
+      "meaning",
+      "presence_absence",
+      "reading",
+      "type",
+      "first_part_of_speech",
+      "last_part_of_speech",
+      "expression"
+    ]
+  },
+  "user_dictionary_schema": {
+    "fields": [
+      "surface",
+      "part_of_speech_tag",
+      "reading"
+    ]
+  }
+}
