@@ -384,12 +384,48 @@ jobs:
           path: dist
 
   build-python-sdist:
-    name: Build Python sdist
+    name: Build sdist for ${{ matrix.features.package_name }}
     needs: [create-release]
+    strategy:
+      matrix:
+        features:
+          - value: "default"
+            package_name: "lindera-python"
+            package_description: "Python binding for Lindera (no embedded dictionaries)"
+          - value: "embed-cjk"
+            package_name: "lindera-python-cjk"
+            package_description: "Python binding for Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
+          - value: "embed-ipadic"
+            package_name: "lindera-python-ipadic"
+            package_description: "Python binding for Lindera with IPADIC dictionary"
+          - value: "embed-unidic"
+            package_name: "lindera-python-unidic"
+            package_description: "Python binding for Lindera with UniDic dictionary"
+          - value: "embed-ko-dic"
+            package_name: "lindera-python-ko-dic"
+            package_description: "Python binding for Lindera with ko-dic Korean dictionary"
+          - value: "embed-cc-cedict"
+            package_name: "lindera-python-cc-cedict"
+            package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
+
+      - name: Create package-specific pyproject.toml
+        shell: bash
+        run: |
+          python -c "
+          import sys
+          import re
+          path = 'lindera-python/pyproject.toml'
+          with open(path, 'r') as f:
+              content = f.read()
+          content = re.sub(r'^name = \"lindera-python\"', 'name = \"${{ matrix.features.package_name }}\"', content, flags=re.MULTILINE)
+          content = re.sub(r'^description = \".*\"', 'description = \"${{ matrix.features.package_description }}\"', content, flags=re.MULTILINE)
+          with open(path, 'w') as f:
+              f.write(content)
+          "
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -408,7 +444,7 @@ jobs:
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-sdist
+          name: sdist-${{ matrix.features.package_name }}-${{ github.ref_name }}
           path: dist
 
   publish-pypi:
