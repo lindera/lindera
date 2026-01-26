@@ -11,14 +11,20 @@ Lindera aims to build a library which is easy to install and provides concise AP
 - [English Documentation](https://lindera.github.io/lindera/)
 - [Japanese Documentation (日本語ドキュメント)](https://lindera.github.io/lindera/ja/)
 
-## Installation
-
-Put the following in Cargo.toml:
-
 ```toml
 [dependencies]
 lindera = { version = "2.0.0", features = ["embed-ipadic"] }
 ```
+
+## Python Bindings
+
+Lindera also provides Python bindings. You can install it via pip:
+
+```bash
+pip install lindera-python
+```
+
+For more details, see the [lindera-python](lindera-python/) directory.
 
 ## License
 

@@ -63,29 +63,23 @@ lindera-python provides a comprehensive Python interface to the Lindera 1.1.1 mo
 ## Setup repository and activate virtual environment
 
 ```shell
-# Clone lindera-python project repository
-% git clone git@github.com:lindera/lindera-python.git
-% cd lindera-python
+# Clone lindera project repository
+% git clone git@github.com:lindera/lindera.git
+% cd lindera
 
-# Set Python version for this project
-% pyenv local 3.13.5
-
-# Make Python virtual environment
-% python -m venv .venv
+# Create Python virtual environment and initialize
+% make init
 
 # Activate Python virtual environment
 % source .venv/bin/activate
-
-# Initialize lindera-python project
-(.venv) % make init
 ```
 
-## Install lindera-python as a library in the virtual environment
+## Install lindera-python in the virtual environment
 
-This command takes a long time because it builds a library that includes all the dictionaries.
+This command builds the library with development settings (debug build).
 
 ```shell
-(.venv) % make develop
+(.venv) % make python-develop
 ```
 
 ## Quick Start
@@ -93,20 +87,21 @@ This command takes a long time because it builds a library that includes all the
 ### Basic Tokenization
 
 ```python
-from lindera import TokenizerBuilder
+from lindera.dictionary import load_dictionary
+from lindera.tokenizer import Tokenizer
 
-# Create a tokenizer with default settings
-builder = TokenizerBuilder()
-builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
-tokenizer = builder.build()
+# Load dictionary
+dictionary = load_dictionary("embedded://ipadic")
+
+# Create a tokenizer
+tokenizer = Tokenizer(dictionary, mode="normal")
 
 # Tokenize Japanese text
 text = "すもももももももものうち"
 tokens = tokenizer.tokenize(text)
 
 for token in tokens:
-    print(f"Text: {token.text}, Position: {token.position}")
+    print(f"Text: {token.surface}, Position: {token.byte_start}-{token.byte_end}")
 ```
 
 ### Using Character Filters
@@ -267,10 +262,10 @@ lindera-python supports training custom morphological analysis models from annot
 ### Training a Model
 
 ```python
-import lindera
+import lindera.trainer
 
 # Train a model from corpus
-lindera.train(
+lindera.trainer.train(
     seed="path/to/seed.csv",           # Seed lexicon
     corpus="path/to/corpus.txt",       # Training corpus
     char_def="path/to/char.def",       # Character definitions
@@ -288,7 +283,7 @@ lindera.train(
 
 ```python
 # Export trained model to dictionary files
-lindera.export(
+lindera.trainer.export(
     model="model.dat",              # Trained model
     output="exported_dict/",        # Output directory
     metadata="metadata.json"        # Optional metadata file

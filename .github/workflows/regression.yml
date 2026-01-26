@@ -75,3 +75,10 @@ jobs:
           else
             cargo test --target "${{ matrix.platform.target }}" --all-features
           fi
+
+      - name: Run Python test
+        if: matrix.platform.runner == 'ubuntu-latest' && matrix.platform.skip_test_run != true
+        shell: bash
+        run: |
+          make init
+          make python-test
