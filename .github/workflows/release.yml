@@ -130,7 +130,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload dictionary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.dictionary.name }}
           path: dictionaries/
@@ -378,7 +378,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload to workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ matrix.features.package_name }}-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
           path: dist
@@ -442,7 +442,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload to workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sdist-${{ matrix.features.package_name }}-${{ github.ref_name }}
           path: dist
