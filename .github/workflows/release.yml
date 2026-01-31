@@ -274,7 +274,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Download dictionary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dictionaries
           pattern: lindera-*
@@ -501,7 +501,7 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: wheels-*
           merge-multiple: true
