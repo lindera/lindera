@@ -193,6 +193,30 @@
         .token-table small {
             color: #64748b;
         }
+
+        /* ローディングアニメーション */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .loading #runButton::after {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-left: 10px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 

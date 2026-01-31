@@ -1,3 +1,50 @@
+//! # lindera-wasm
+//!
+//! WebAssembly bindings for [Lindera](https://github.com/lindera/lindera), a morphological analysis library.
+//!
+//! This crate provides WASM bindings that enable Japanese, Korean, and Chinese text tokenization
+//! in web browsers and Node.js environments.
+//!
+//! ## Features
+//!
+//! - **Multiple dictionaries**: IPADIC, UniDic (Japanese), ko-dic (Korean), CC-CEDICT (Chinese)
+//! - **Flexible tokenization modes**: Normal and decompose modes
+//! - **Character filters**: Unicode normalization and more
+//! - **Token filters**: Lowercase, compound word handling, number normalization
+//! - **Custom user dictionaries**: Support for user-defined dictionaries
+//!
+//! ## Usage
+//!
+//! ### Web (Browser)
+//!
+//! ```javascript
+//! import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+//!
+//! __wbg_init().then(() => {
+//!     const builder = new TokenizerBuilder();
+//!     builder.set_dictionary("embedded://ipadic");
+//!     builder.set_mode("normal");
+//!
+//!     const tokenizer = builder.build();
+//!     const tokens = tokenizer.tokenize("関西国際空港");
+//!     console.log(tokens);
+//! });
+//! ```
+//!
+//! ### Node.js
+//!
+//! ```javascript
+//! const { TokenizerBuilder } = require('lindera-wasm-nodejs-ipadic');
+//!
+//! const builder = new TokenizerBuilder();
+//! builder.set_dictionary("embedded://ipadic");
+//! builder.set_mode("normal");
+//!
+//! const tokenizer = builder.build();
+//! const tokens = tokenizer.tokenize("関西国際空港");
+//! console.log(tokens);
+//! ```
+
 pub mod character_filter;
 pub mod dictionary;
 pub mod error;
