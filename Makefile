@@ -20,7 +20,7 @@ HOSTNAME ?= $(shell hostname)
 # Python Configuration
 PYTHON_DIR = lindera-python
 PYTHON_FEATURES = embed-ipadic,train
-POETRY = cd $(PYTHON_DIR) && poetry
+POETRY = cd $(PYTHON_DIR) && ../.venv/bin/poetry
 POETRY_RUN = $(POETRY) run
 
 # WASM Configuration
