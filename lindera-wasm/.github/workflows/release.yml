@@ -1,0 +1,241 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  format:
+    name: Format
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64
+        toolchain: [stable]
+        features: [embed-cjk]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Check format
+        run: cargo fmt --all -- --check
+
+  test:
+    name: Test
+    needs: [format]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            test-runner: --node
+        toolchain: [stable]
+        features: [embed-cjk]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Run test
+        run: wasm-pack test ${{ matrix.platform.test-runner }} --features "${{ matrix.features }}"
+
+  create-release:
+    name: Create GitHub Release
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      # Use to sign the release artifacts
+      id-token: write
+      # Used to upload release artifacts
+      contents: write
+      # Used to generate artifact attestation
+      attestations: write
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: [create-release]
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            wasm-target: web
+        toolchain: [stable]
+        features: [embed-ipadic]
+    runs-on: ${{ matrix.platform.runner }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Compile
+        run: wasm-pack build --release --features="${{ matrix.features }}" --target=${{ matrix.platform.wasm-target }}
+
+      - name: Build example application
+        run: |
+          cd lindera-wasm
+          jq '.version = "${{ github.ref_name }}"' ./package.json > ./temp.json && mv ./temp.json ./package.json
+          npm install
+          npm run build
+          cp index.html dist/index.html
+          cd ..
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./lindera-wasm/dist
+
+  publish-crates:
+    name: Publish crate
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        toolchain: [stable]
+    needs: [deploy-pages]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Publish lindera-wasm
+        run: |
+          LINDERA_WASM_VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version')
+          LINDERA_WASM_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera-wasm)" https://crates.io/api/v1/crates/lindera-wasm | jq -r '.versions[].num')
+          if echo "${LINDERA_WASM_VERSIONS}" | grep -Fx "${LINDERA_WASM_VERSION}" >/dev/null; then
+            echo "lindera-wasm ${LINDERA_WASM_VERSION} has already published"
+          else
+            cargo publish
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+
+  build-and-publish-npm:
+    needs: [publish-crates]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - value: "web"
+            name: "web"
+          - value: "nodejs"
+            name: "nodejs"
+        features:
+          - value: "embed-ipadic"
+            name: "ipadic"
+            package_description: "Lindera WASM with Japanese dictionary (IPADIC)"
+          - value: "embed-unidic"
+            name: "unidic"
+            package_description: "Lindera WASM with Japanese dictionary (UniDic)"
+          - value: "embed-ko-dic"
+            name: "ko-dic"
+            package_description: "Lindera WASM with Korean dictionary (ko-dic)"
+          - value: "embed-cc-cedict"
+            name: "cc-cedict"
+            package_description: "Lindera WASM with Chinese dictionary (CC-CEDICT)"
+          - value: "embed-cjk"
+            name: "cjk"
+            package_description: "Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WASM for lindera-wasm-${{ matrix.target.name }}-${{ matrix.features.name }}
+        run: wasm-pack build --target ${{ matrix.target.value }} --out-dir pkg-${{ matrix.target.value }}-${{ matrix.features.value }} --features "${{ matrix.features.value }}"
+
+      - name: Update package.json for lindera-wasm-${{ matrix.target.name }}-${{ matrix.features.name }}
+        run: |
+          cd pkg-${{ matrix.target.value }}-${{ matrix.features.value }}
+          jq '.name = "lindera-wasm-${{ matrix.target.name }}-${{ matrix.features.name }}" | .description = "${{ matrix.features.package_description }} (${{ matrix.target.value }} target)"' package.json > package.json.tmp
+          mv package.json.tmp package.json
+
+      - name: Install npm dependencies for lindera-wasm-${{ matrix.target.name }}-${{ matrix.features.name }}
+        run: |
+          cd pkg-${{ matrix.target.value }}-${{ matrix.features.value }}
+          pnpm install
+
+      - name: Publish lindera-wasm-${{ matrix.target.name }}-${{ matrix.features.name }} to npm
+        run: |
+          cd pkg-${{ matrix.target.value }}-${{ matrix.features.value }}
+          pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}

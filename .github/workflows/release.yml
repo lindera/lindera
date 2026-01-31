@@ -60,12 +60,57 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
-      - name: Run test
+       - name: Run test
         run: cargo test --target "${{ matrix.platform.target }}" --all-features ${{ matrix.platform.skip_test_run == true && '--no-run' || '' }}
+
+  test-python:
+    name: Test Python
+    needs: [format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+
+      - name: Run Python test
+        shell: bash
+        run: |
+          make init
+          make python-test
+
+  test-wasm:
+    name: Test WASM
+    needs: [format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Run WASM test
+        run: make wasm-test
 
   create-release:
     name: Create Release
-    needs: [test]
+    needs: [test, test-python, test-wasm]
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release
@@ -275,7 +320,7 @@ jobs:
 
       - name: Publish crates
         run: |
-          for crate in lindera-dictionary lindera-cc-cedict lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-cli lindera-python; do
+          for crate in lindera-dictionary lindera-cc-cedict lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
@@ -469,3 +514,95 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing dist/*
+
+  build-wasm:
+    name: Build WASM
+    needs: [publish-crates]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      matrix:
+        features:
+          - value: ""
+            package_name: "lindera-wasm"
+          - value: "embed-ipadic"
+            package_name: "lindera-wasm-ipadic"
+          - value: "embed-unidic"
+            package_name: "lindera-wasm-unidic"
+          - value: "embed-ko-dic"
+            package_name: "lindera-wasm-ko-dic"
+          - value: "embed-cc-cedict"
+            package_name: "lindera-wasm-cc-cedict"
+          - value: "embed-cjk"
+            package_name: "lindera-wasm-cjk"
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update package name and build
+        shell: bash
+        run: |
+          sed -i 's/^name = "lindera-wasm"$/name = "${{ matrix.features.package_name }}"/' lindera-wasm/Cargo.toml
+          cd lindera-wasm
+          wasm-pack build --release --target web ${{ matrix.features.value != '' && format('--features {0}', matrix.features.value) || '' }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-pkg-${{ matrix.features.package_name }}
+          path: lindera-wasm/pkg
+
+  publish-npm:
+    name: Publish to npm
+    needs: [build-wasm]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      matrix:
+        features:
+          - value: ""
+            package_name: "lindera-wasm"
+          - value: "embed-ipadic"
+            package_name: "lindera-wasm-ipadic"
+          - value: "embed-unidic"
+            package_name: "lindera-wasm-unidic"
+          - value: "embed-ko-dic"
+            package_name: "lindera-wasm-ko-dic"
+          - value: "embed-cc-cedict"
+            package_name: "lindera-wasm-cc-cedict"
+          - value: "embed-cjk"
+            package_name: "lindera-wasm-cjk"
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg-${{ matrix.features.package_name }}
+          path: lindera-wasm/pkg
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish to npm
+        run: |
+          cd lindera-wasm/pkg
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

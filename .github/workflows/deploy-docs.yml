@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'lindera-wasm/**'
 
 jobs:
   deploy:
@@ -21,15 +22,29 @@ jobs:
           curl -L https://github.com/rust-lang/mdBook/releases/download/v0.4.37/mdbook-v0.4.37-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C mdbook
           echo "$PWD/mdbook" >> $GITHUB_PATH
 
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Build Book (English)
         run: mdbook build docs
 
       - name: Build Book (Japanese)
         run: mdbook build docs/ja
 
+      - name: Build WASM example
+        run: make wasm-build-example
+
       - name: Setup Pages Directory
         run: |
           mv docs/ja/book docs/book/ja
+          mkdir -p docs/book/demo
+          cp -r lindera-wasm/example/dist/* docs/book/demo/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
