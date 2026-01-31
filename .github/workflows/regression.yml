@@ -62,10 +62,6 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.x
 
       - name: Run test
         shell: bash
@@ -76,9 +72,47 @@ jobs:
             cargo test --target "${{ matrix.platform.target }}" --all-features
           fi
 
+  test-python:
+    name: Test Python
+    needs: [format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: 3.x
+
       - name: Run Python test
-        if: matrix.platform.runner == 'ubuntu-latest' && matrix.platform.skip_test_run != true
         shell: bash
         run: |
           make init
           make python-test
+
+  test-wasm:
+    name: Test WASM
+    needs: [format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Run WASM test
+        run: make wasm-test

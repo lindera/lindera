@@ -26,6 +26,16 @@ pip install lindera-python
 
 For more details, see the [lindera-python](lindera-python/) directory.
 
+## WebAssembly Bindings
+
+Lindera also provides WebAssembly bindings. You can install it via npm:
+
+```bash
+npm install lindera-wasm
+```
+
+For more details and a demo application, see the [lindera-wasm](lindera-wasm/) directory.
+
 ## License
 
 MIT

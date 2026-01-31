@@ -1,25 +1,67 @@
+# General
 .vscode
 .idea
 .DS_Store
+.claude
+.mcp.json
+.serena
+.python-version
 
+# Rust
 target
-perf.data*
-
 Cargo.lock
+perf.data*
+flamegraph.svg
 
+# Python
+.venv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.spec
+
+# Python Testing & Coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+
+# WASM
+pkg/
+**/node_modules/
+**/dist/
+
+# Lindera specific dictionaries (if manually downloaded)
 lindera-ipadic-2.7.0-20070801
 mecab-ipadic-neologd-0.0.7
 CC-CEDICT-MeCab-master
 
-flamegraph.svg
-
-.claude
-.mcp.json
-.serena
-
+# Temporary files
 tmp/
-
-# Python
-.venv
-.pytest_cache
-**/__pycache__/

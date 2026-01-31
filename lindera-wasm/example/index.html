@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lindera WASM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        #inputText {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+
+        #inputText:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #runButton {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 30px;
+        }
+
+        #runButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        #runButton:active {
+            transform: translateY(0);
+        }
+
+        .results-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+        }
+
+        .results-title {
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        #resultList {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #resultList li {
+            background: white;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            font-family: 'Courier New', monospace;
+            transition: transform 0.2s ease;
+        }
+
+        #resultList li:hover {
+            transform: translateX(5px);
+        }
+
+        #resultList:empty::after {
+            content: "Analysis results will be displayed here";
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            display: block;
+            padding: 40px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            #inputText,
+            #runButton {
+                font-size: 16px;
+                /* Prevent zoom on iOS */
+            }
+        }
+
+        /* ローディングアニメーション */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .loading #runButton::after {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-left: 10px;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="title">Lindera WASM</h1>
+        <p class="subtitle">WebAssembly Morphological Analysis Library</p>
+
+        <div class="input-section">
+            <label for="inputText">Enter text to analyze:</label>
+            <textarea id="inputText" placeholder="Enter text here (e.g., I go to school)" rows="4"></textarea>
+        </div>
+
+        <button id="runButton">Run Morphological Analysis</button>
+
+        <div class="results-section">
+            <div class="results-title">Analysis Results:</div>
+            <ul id="resultList"></ul>
+        </div>
+    </div>
+
+    <script src="bundle.js"></script>
+</body>
+
+</html>
