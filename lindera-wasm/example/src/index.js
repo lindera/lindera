@@ -1,4 +1,4 @@
-import __wbg_init, { TokenizerBuilder, getVersion } from '../../pkg/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder, Tokenizer, Mode, load_dictionary, get_version } from '../../pkg/lindera_wasm.js';
 
 // Initialize the tokenizer
 let tokenizer = null;
@@ -7,7 +7,7 @@ let tokenizer = null;
 __wbg_init().then(() => {
     // Show the version in the title
     try {
-        const version = getVersion();
+        const version = get_version();
         document.title = `Lindera WASM v${version}`;
         document.getElementById('title').textContent = `Lindera WASM v${version}`;
     } catch (e) {
@@ -15,36 +15,17 @@ __wbg_init().then(() => {
     }
 
     try {
-        // Create a TokenizerBuilder instance
+        // Option 1: Using TokenizerBuilder (WASM style, snake_case is also supported)
         let builder = new TokenizerBuilder();
-        // Set the dictionary to "ipadic" (Japanese)
-        // You can also use "ko-dic" (Korean) or "cc-cedict" (Chinese) as the dictionary
-        builder.setDictionary("embedded://ipadic");
-
-        // Set the tokenizer mode to "normal"
-        // You can also use "decompose" for decomposing the compound words into their components
-        builder.setMode("normal");
-
-        // Set to not keep whitespace tokens
-        // You can set it to true if you want to keep whitespace tokens
-        builder.setKeepWhitespace(false);
-
-        // Append character filters
-        builder.appendCharacterFilter("unicode_normalize", { "kind": "nfkc" });
-
-        // Append token filters
-        builder.appendTokenFilter("lowercase");
-        builder.appendTokenFilter("japanese_compound_word", {
-            "kind": "ipadic",
-            "tags": [
-                "名詞,数"
-            ],
-            "new_tag": "名詞,数"
-        });
-        builder.appendTokenFilter("japanese_number", { "tags": ["名詞,数"] });
-
-        // Build the Tokenizer instance
+        builder.set_dictionary("embedded://ipadic");
+        builder.set_mode("normal");
         tokenizer = builder.build();
+
+        // Option 2: Using load_dictionary and Tokenizer constructor (Python style)
+        /*
+        const dict = load_dictionary("embedded://ipadic");
+        tokenizer = new Tokenizer(dict, "normal");
+        */
 
         console.log("Tokenizer is ready.");
     } catch (e) {
@@ -75,18 +56,38 @@ document.getElementById('runButton').addEventListener('click', () => {
     // Clear the previous results
     resultList.innerHTML = '';
 
-    // Display the tokens
-    console.log('All tokens:', tokens); // Log the entire tokens array
+    // Create table for results
+    const table = document.createElement('table');
+    table.className = 'token-table';
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th>Surface</th>
+                <th>Position</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    `;
+    const tbody = table.querySelector('tbody');
 
     tokens.forEach((token, index) => {
-        const li = document.createElement('li');
-        const pre = document.createElement('pre');
+        const tr = document.createElement('tr');
 
-        console.log(`Token ${index}:`, token); // Log each individual token object
+        // Accessing properties directly from Token object
+        const surface = token.surface;
+        const position = token.position;
+        // Using getDetail(index) method
+        const detail = token.getDetail(0) || '*';
+        const allDetails = token.details.join(', ');
 
-        pre.textContent = JSON.stringify(token, null, 2);
-        li.appendChild(pre);
-
-        resultList.appendChild(li);
+        tr.innerHTML = `
+            <td><strong>${surface}</strong></td>
+            <td>${position}</td>
+            <td><small>${allDetails}</small></td>
+        `;
+        tbody.appendChild(tr);
     });
+
+    resultList.appendChild(table);
 });
