@@ -60,7 +60,7 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
-       - name: Run test
+      - name: Run test
         run: cargo test --target "${{ matrix.platform.target }}" --all-features ${{ matrix.platform.skip_test_run == true && '--no-run' || '' }}
 
   test-python:
