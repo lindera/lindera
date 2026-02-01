@@ -26,7 +26,7 @@ eval("{__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpa
   \***********************************/
 (module, __unused_webpack_exports, __webpack_require__) {
 
-eval("{module.exports = __webpack_require__.p + \"0d3ad43e7ccd8120fefb.wasm\";\n\n//# sourceURL=webpack://lindera-wasm-example/../pkg/lindera_wasm_bg.wasm?\n}");
+eval("{module.exports = __webpack_require__.p + \"b92692a28b175cb49d8d.wasm\";\n\n//# sourceURL=webpack://lindera-wasm-example/../pkg/lindera_wasm_bg.wasm?\n}");
 
 /***/ },
 
