@@ -62,7 +62,6 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
-
       - name: Run test
         shell: bash
         run: |
