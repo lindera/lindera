@@ -281,7 +281,7 @@ jobs:
           merge-multiple: true
 
       - name: Compile
-        run: cargo build --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
+        run: cargo build -p lindera-cli --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
         env:
           LINDERA_DICTIONARIES_PATH: dictionaries
 
@@ -338,7 +338,7 @@ jobs:
 
   build-python-wheels:
     name: Build wheels for ${{ matrix.platform.target }}
-    needs: [create-release]
+    needs: [create-release, build-dictionary]
     strategy:
       matrix:
         platform:
@@ -383,6 +383,13 @@ jobs:
         with:
           python-version: 3.x
 
+      - name: Download dictionary artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dictionaries
+          pattern: lindera-*
+          merge-multiple: true
+
       - name: Create package-specific pyproject.toml
         shell: bash
         run: |
@@ -402,6 +409,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
+          LINDERA_DICTIONARIES_PATH: dictionaries
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter --features=${{ matrix.features.value }} --manifest-path lindera-python/Cargo.toml
@@ -517,7 +525,7 @@ jobs:
 
   build-wasm:
     name: Build WASM
-    needs: [publish-crates]
+    needs: [publish-crates, build-dictionary]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
@@ -539,6 +547,13 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
+      - name: Download dictionary artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dictionaries
+          pattern: lindera-*
+          merge-multiple: true
+
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -556,6 +571,8 @@ jobs:
 
       - name: Update package name and build
         shell: bash
+        env:
+          LINDERA_DICTIONARIES_PATH: dictionaries
         run: |
           sed -i 's/^name = "lindera-wasm"$/name = "${{ matrix.features.package_name }}"/' lindera-wasm/Cargo.toml
           cd lindera-wasm
