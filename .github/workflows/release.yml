@@ -524,25 +524,44 @@ jobs:
           args: --non-interactive --skip-existing dist/*
 
   build-wasm:
-    name: Build WASM
+    name: Build WASM (${{ matrix.target.name }}, ${{ matrix.features.name }})
     needs: [publish-crates, build-dictionary]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       matrix:
+        target:
+          - value: "web"
+            name: "web"
+          - value: "bundler"
+            name: "bundler"
+          - value: "nodejs"
+            name: "nodejs"
         features:
           - value: ""
+            name: "default"
             package_name: "lindera-wasm"
+            package_description: "Lindera WASM (no embedded dictionaries)"
           - value: "embed-ipadic"
+            name: "ipadic"
             package_name: "lindera-wasm-ipadic"
+            package_description: "Lindera WASM with Japanese dictionary (IPADIC)"
           - value: "embed-unidic"
+            name: "unidic"
             package_name: "lindera-wasm-unidic"
+            package_description: "Lindera WASM with Japanese dictionary (UniDic)"
           - value: "embed-ko-dic"
+            name: "ko-dic"
             package_name: "lindera-wasm-ko-dic"
+            package_description: "Lindera WASM with Korean dictionary (ko-dic)"
           - value: "embed-cc-cedict"
+            name: "cc-cedict"
             package_name: "lindera-wasm-cc-cedict"
+            package_description: "Lindera WASM with Chinese dictionary (CC-CEDICT)"
           - value: "embed-cjk"
+            name: "cjk"
             package_name: "lindera-wasm-cjk"
+            package_description: "Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -569,46 +588,65 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Update package name and build
+      - name: Build WASM
         shell: bash
         env:
           LINDERA_DICTIONARIES_PATH: dictionaries
         run: |
-          sed -i 's/^name = "lindera-wasm"$/name = "${{ matrix.features.package_name }}"/' lindera-wasm/Cargo.toml
           cd lindera-wasm
-          wasm-pack build --release --target web ${{ matrix.features.value != '' && format('--features {0}', matrix.features.value) || '' }}
+          wasm-pack build --release --target ${{ matrix.target.value }} ${{ matrix.features.value != '' && format('--features {0}', matrix.features.value) || '' }}
+
+      - name: Update package.json
+        shell: bash
+        run: |
+          cd lindera-wasm/pkg
+          jq '.name = "${{ matrix.features.package_name }}-${{ matrix.target.name }}" | .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)"' package.json > package.json.tmp
+          mv package.json.tmp package.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wasm-pkg-${{ matrix.features.package_name }}
+          name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
 
   publish-npm:
-    name: Publish to npm
+    name: Publish to npm (${{ matrix.target.name }}, ${{ matrix.features.name }})
     needs: [build-wasm]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       matrix:
+        target:
+          - value: "web"
+            name: "web"
+          - value: "bundler"
+            name: "bundler"
+          - value: "nodejs"
+            name: "nodejs"
         features:
           - value: ""
+            name: "default"
             package_name: "lindera-wasm"
           - value: "embed-ipadic"
+            name: "ipadic"
             package_name: "lindera-wasm-ipadic"
           - value: "embed-unidic"
+            name: "unidic"
             package_name: "lindera-wasm-unidic"
           - value: "embed-ko-dic"
+            name: "ko-dic"
             package_name: "lindera-wasm-ko-dic"
           - value: "embed-cc-cedict"
+            name: "cc-cedict"
             package_name: "lindera-wasm-cc-cedict"
           - value: "embed-cjk"
+            name: "cjk"
             package_name: "lindera-wasm-cjk"
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: wasm-pkg-${{ matrix.features.package_name }}
+          name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
 
       - name: Setup Node.js

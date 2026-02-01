@@ -4,7 +4,7 @@ features = ["pyo3/abi3-py310", "pyo3/generate-import-lib"]
 
 [project]
 name = "lindera-python"
-version = "2.0.0"
+version = "2.1.1"
 description = "Python binding for Lindera (no embedded dictionaries)"
 authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]
 license = { text = "MIT" }
@@ -30,7 +30,7 @@ patchelf = "^0.17.2.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.0.2"
-black = "^25.12.0"
+black = "^26.1.0"
 isort = "^7.0.0"
 autopep8 = "^2.3.2"
 flake8 = "^7.3.0"
