@@ -46,6 +46,8 @@ init: ## Initialize the project
 	$(POETRY) self add poetry-plugin-export
 	$(POETRY) config virtualenvs.in-project true
 	$(POETRY) install --no-root
+	@echo "Initialization complete. To activate the virtual environment, run:"
+	@echo "  source .venv/bin/activate"
 
 clean: python-clean wasm-clean ## Clean the project
 	cargo clean
