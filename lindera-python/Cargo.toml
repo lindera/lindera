@@ -39,7 +39,7 @@ train = ["lindera/train"] # Enable training functionality
 default = ["train"] # No directories included
 
 [dependencies]
-pyo3 = { version = "0.27.2", features = ["extension-module", "abi3-py310", "generate-import-lib"] }
+pyo3 = { version = "0.28.0", features = ["extension-module", "abi3-py310", "generate-import-lib"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 num_cpus = { workspace = true }
