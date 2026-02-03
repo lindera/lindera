@@ -6,7 +6,7 @@ module.exports = {
     output: {
         filename: 'bundle.js',
         path: path.resolve(__dirname, 'dist'),
-        publicPath: '/lindera-wasm/',
+        publicPath: './',
     },
     mode: 'development',
     experiments: {
