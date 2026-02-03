@@ -644,7 +644,7 @@ jobs:
             package_name: "lindera-wasm-cjk"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
