@@ -6,79 +6,214 @@ WebAssembly of Lindera
 
 ## Demo Application
 
-- <https://lindera.github.io/lindera-wasm/>
+- <https://lindera.github.io/lindera/demo/>
 
 ## npm
 
-### Web
+### For Web
 
-- <https://www.npmjs.com/package/lindera-wasm-web-cjk>  
+- <https://www.npmjs.com/package/lindera-wasm-web>
+Lindera WASM without a dictionary for Web
+
+- <https://www.npmjs.com/package/lindera-wasm-cjk-web>  
 Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-web-ipadic>  
+- <https://www.npmjs.com/package/lindera-wasm-ipadic-web>  
 Lindera WASM with Japanese dictionary (IPADIC) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-web-unidic>  
+- <https://www.npmjs.com/package/lindera-wasm-unidic-web>  
 Lindera WASM with Japanese dictionary (UniDic) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-web-ko-dic>  
+- <https://www.npmjs.com/package/lindera-wasm-ko-dic-web>  
 Lindera WASM with Korean dictionary (ko-dic) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-web-cc-cedict>  
+- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-web>  
 Lindera WASM with Chinese dictionary (CC-CEDICT) for Web
 
-### Node.js
+### For Node.js
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs-cjk>  
+- <https://www.npmjs.com/package/lindera-wasm-nodejs>
+Lindera WASM without a dictionary for Node.js
+
+- <https://www.npmjs.com/package/lindera-wasm-cjk-nodejs>  
 Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Node.js
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs-ipadic>  
+- <https://www.npmjs.com/package/lindera-wasm-ipadic-nodejs>  
 Lindera WASM with Japanese dictionary (IPADIC) for Node.js
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs-unidic>  
+- <https://www.npmjs.com/package/lindera-wasm-unidic-nodejs>  
 Lindera WASM with Japanese dictionary (UniDic) for Node.js
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs-ko-dic>  
+- <https://www.npmjs.com/package/lindera-wasm-ko-dic-nodejs>  
 Lindera WASM with Korean dictionary (ko-dic) for Node.js
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs-cc-cedict>  
+- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-nodejs>  
 Lindera WASM with Chinese dictionary (CC-CEDICT) for Node.js
+
+### For bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-bundler>
+Lindera WASM without a dictionary for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-cjk-bundler>  
+Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-ipadic-bundler>  
+Lindera WASM with Japanese dictionary (IPADIC) for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-unidic-bundler>  
+Lindera WASM with Japanese dictionary (UniDic) for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-ko-dic-bundler>  
+Lindera WASM with Korean dictionary (ko-dic) for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-bundler>  
+Lindera WASM with Chinese dictionary (CC-CEDICT) for Bundler
 
 ## Usage
 
-init the wasm module before construct `TokenizerBuilder`:
+### Web Usage
 
-```ts
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm'
+Use the `-web` packages for browser environments with `<script type="module">`:
 
-__wbg_init.then(() => {
-    const builder = new TokenizerBuilder()
-    //...
-})
+```html
+<script type="module">
+import __wbg_init, { TokenizerBuilder } from 'https://cdn.jsdelivr.net/npm/lindera-wasm-ipadic-web/lindera_wasm.js';
+
+__wbg_init().then(() => {
+    const builder = new TokenizerBuilder();
+    builder.setDictionary("embedded://ipadic");
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("すもももももももものうち");
+    tokens.forEach(token => {
+        console.log(`${token.surface}: ${token.details.join(", ")}`);
+    });
+});
+</script>
 ```
 
-### for [Vite](https://vite.dev/) base project
+Or with a bundler:
+
+```js
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+
+async function main() {
+    await __wbg_init();
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionary("embedded://ipadic");
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("すもももももももものうち");
+    tokens.forEach(token => {
+        console.log(`${token.surface}: ${token.details.join(", ")}`);
+    });
+}
+
+main();
+```
+
+### Node.js Usage
+
+Use the `-nodejs` packages for Node.js environments:
+
+```js
+const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
+
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.setMode("normal");
+const tokenizer = builder.build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+tokens.forEach(token => {
+    console.log(`${token.surface}: ${token.details.join(", ")}`);
+});
+```
+
+Or with ESM:
+
+```js
+import { TokenizerBuilder } from 'lindera-wasm-ipadic-nodejs';
+
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.setMode("normal");
+const tokenizer = builder.build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+tokens.forEach(token => {
+    console.log(`${token.surface}: ${token.details.join(", ")}`);
+});
+```
+
+### Bundler Usage (Webpack, Rollup, etc.)
+
+Use the `-bundler` packages for bundler environments:
+
+```js
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+
+async function main() {
+    await __wbg_init();
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionary("embedded://ipadic");
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("すもももももももものうち");
+    tokens.forEach(token => {
+        console.log(`${token.surface}: ${token.details.join(", ")}`);
+    });
+}
+
+main();
+```
+
+### Token Properties
+
+Each token object has the following properties:
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `surface` | `string` | Surface form of the token |
+| `byteStart` | `number` | Start byte position in the original text |
+| `byteEnd` | `number` | End byte position in the original text |
+| `position` | `number` | Position index of the token |
+| `wordId` | `number` | Word ID in the dictionary |
+| `details` | `string[]` | Morphological details array |
+
+Methods:
+
+- `getDetail(index)`: Returns the detail at the specified index, or `undefined` if not found
+- `toJSON()`: Returns the token as a plain JavaScript object
+
+### For Vite Projects
 
 You should exclude this package in the `optimizeDeps`:
 
-```ts
+```js
 // vite.config.js
 import { defineConfig } from 'vite'
 
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "lindera-wasm"
+      "lindera-wasm-ipadic-web"
     ]
   },
 })
 ```
 
-### for Browser extension development
+### For Browser Extension Development
 
-Set the `cors` config in vite.config.js
+Set the `cors` config in vite.config.js:
 
-```ts
+```js
 // vite.config.js
 import { defineConfig } from 'vite'
 
@@ -93,7 +228,7 @@ export default defineConfig({
 })
 ```
 
-and set the `content_security_policy` to contains `wasm-unsafe-eval` in manifest.json:
+And set the `content_security_policy` to contain `wasm-unsafe-eval` in manifest.json:
 
 ```json
 "content_security_policy": {

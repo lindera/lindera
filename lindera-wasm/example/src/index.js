@@ -1,4 +1,4 @@
-import __wbg_init, { TokenizerBuilder, Tokenizer, Mode, load_dictionary, get_version } from '../../pkg/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder, Tokenizer, Mode, load_dictionary, getVersion } from '../../pkg/lindera_wasm.js';
 
 // Initialize the tokenizer
 let tokenizer = null;
@@ -7,7 +7,7 @@ let tokenizer = null;
 __wbg_init().then(() => {
     // Show the version in the title
     try {
-        const version = get_version();
+        const version = getVersion();
         document.title = `Lindera WASM v${version}`;
         document.getElementById('title').textContent = `Lindera WASM v${version}`;
     } catch (e) {
@@ -17,13 +17,13 @@ __wbg_init().then(() => {
     try {
         // Option 1: Using TokenizerBuilder (WASM style, snake_case is also supported)
         let builder = new TokenizerBuilder();
-        builder.set_dictionary("embedded://ipadic");
-        builder.set_mode("normal");
+        builder.setDictionary("embedded://ipadic");
+        builder.setMode("normal");
         tokenizer = builder.build();
 
-        // Option 2: Using load_dictionary and Tokenizer constructor (Python style)
+        // Option 2: Using loadDictionary and Tokenizer constructor (Python style)
         /*
-        const dict = load_dictionary("embedded://ipadic");
+        const dict = loadDictionary("embedded://ipadic");
         tokenizer = new Tokenizer(dict, "normal");
         */
 

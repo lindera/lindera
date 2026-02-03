@@ -28,7 +28,7 @@ pub struct JsToken {
     pub details: Vec<String>,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Token")]
 impl JsToken {
     /// Returns the detail at the specified index.
     ///
