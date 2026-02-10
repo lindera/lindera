@@ -174,14 +174,14 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="lindera-cli"><a class="header" href="#lindera-cli">Lindera CLI</a></h1>
-<p>A morphological analysis command-line interface for <a href="https://github.com/lindera-morphology/lindera">Lindera</a>.</p>
+<p>A morphological analysis command-line interface for <a href="https://github.com/lindera/lindera">Lindera</a>.</p>
 <h2 id="install"><a class="header" href="#install">Install</a></h2>
 <p>You can install binary via cargo as follows:</p>
 <pre><code class="language-shell script">% cargo install lindera-cli
 </code></pre>
 <p>Alternatively, you can download a binary from the following release page:</p>
 <ul>
-<li><a href="https://github.com/lindera-morphology/lindera/releases">https://github.com/lindera-morphology/lindera/releases</a></li>
+<li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="build"><a class="header" href="#build">Build</a></h2>
 <h3 id="build-with-ipadic-japanese-dictionary"><a class="header" href="#build-with-ipadic-japanese-dictionary">Build with IPADIC (Japanese dictionary)</a></h3>
@@ -322,7 +322,7 @@ lindera build \
 <h3 id="build-ipadic-user-dictionary-japanese"><a class="header" href="#build-ipadic-user-dictionary-japanese">Build IPADIC user dictionary (Japanese)</a></h3>
 <p>For more details about user dictionary format please refer to the following URL:</p>
 <ul>
-<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv">Lindera IPADIC Builder/User Dictionary Format</a></li>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-ipadic#user-dictionary-format-csv">Lindera IPADIC Builder/User Dictionary Format</a></li>
 </ul>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -333,7 +333,7 @@ lindera build \
 <h3 id="build-unidic-user-dictionary-japanese"><a class="header" href="#build-unidic-user-dictionary-japanese">Build UniDic user dictionary (Japanese)</a></h3>
 <p>For more details about user dictionary format please refer to the following URL:</p>
 <ul>
-<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv">Lindera UniDic Builder/User Dictionary Format</a></li>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-unidic#user-dictionary-format-csv">Lindera UniDic Builder/User Dictionary Format</a></li>
 </ul>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
@@ -344,7 +344,7 @@ lindera build \
 <h3 id="build-cc-cedict-user-dictionary-chinese"><a class="header" href="#build-cc-cedict-user-dictionary-chinese">Build CC-CEDICT user dictionary (Chinese)</a></h3>
 <p>For more details about user dictionary format please refer to the following URL:</p>
 <ul>
-<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv">Lindera CC-CEDICT Builder/User Dictionary Format</a></li>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-cc-cedict#user-dictionary-format-csv">Lindera CC-CEDICT Builder/User Dictionary Format</a></li>
 </ul>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
@@ -355,7 +355,7 @@ lindera build \
 <h3 id="build-ko-dic-user-dictionary-korean"><a class="header" href="#build-ko-dic-user-dictionary-korean">Build ko-dic user dictionary (Korean)</a></h3>
 <p>For more details about user dictionary format please refer to the following URL:</p>
 <ul>
-<li><a href="https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv">Lindera ko-dic Builder/User Dictionary Format</a></li>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-ko-dic#user-dictionary-format-csv">Lindera ko-dic Builder/User Dictionary Format</a></li>
 </ul>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
@@ -474,11 +474,11 @@ EOS
 해석    NNG,행위,T,해석,*,*,*,*
 을      JKO,*,T,을,*,*,*,*
 실시    NNG,행위,F,실시,*,*,*,*
-할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
-수      NNG,*,F,수,*,*,*,*
-있      VX,*,T,있,*,*,*,*
+할      XSV+ETM,*,T,할,Inflect,XSV,ETM,하/XSV/*+ᆯ/ETM/*
+수      NNB,*,F,수,*,*,*,*
+있      VV,*,T,있,*,*,*,*
 습니다  EF,*,F,습니다,*,*,*,*
-.       UNK
+.       SF,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <h4 id="tokenize-with-external-cc-cedict-chinese-dictionary"><a class="header" href="#tokenize-with-external-cc-cedict-chinese-dictionary">Tokenize with external CC-CEDICT (Chinese dictionary)</a></h4>
@@ -490,7 +490,7 @@ EOS
 中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
 形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
 分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
-。      UNK
+。      *,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <h3 id="examples-with-embedded-dictionaries"><a class="header" href="#examples-with-embedded-dictionaries">Examples with embedded dictionaries</a></h3>
@@ -560,11 +560,11 @@ EOS
 해석    NNG,행위,T,해석,*,*,*,*
 을      JKO,*,T,을,*,*,*,*
 실시    NNG,행위,F,실시,*,*,*,*
-할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
-수      NNG,*,F,수,*,*,*,*
-있      VX,*,T,있,*,*,*,*
+할      XSV+ETM,*,T,할,Inflect,XSV,ETM,하/XSV/*+ᆯ/ETM/*
+수      NNB,*,F,수,*,*,*,*
+있      VV,*,T,있,*,*,*,*
 습니다  EF,*,F,습니다,*,*,*,*
-.       UNK
+.       SF,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <p>NOTE: To include ko-dic dictionary in the binary, you must build with the <code>--features=embed-ko-dic</code> option.</p>
@@ -577,7 +577,7 @@ EOS
 中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
 形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
 分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
-。      UNK
+。      *,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embed-cc-cedict</code> option.</p>
@@ -619,7 +619,7 @@ EOS
 </code></pre>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK,*,*,*,*,*,*,*,*
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <h4 id="decompose-mode"><a class="header" href="#decompose-mode">Decompose mode</a></h4>
@@ -632,7 +632,7 @@ EOS
 国際    名詞,一般,*,*,*,*,国際,コクサイ,コクサイ
 空港    名詞,一般,*,*,*,*,空港,クウコウ,クーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK,*,*,*,*,*,*,*,*
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 EOS
 </code></pre>
 <h3 id="output-formats"><a class="header" href="#output-formats">Output formats</a></h3>

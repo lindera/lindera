@@ -176,7 +176,7 @@
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "1.2.0", features = ["embed-ipadic"] }
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
@@ -202,7 +202,7 @@ cargo build --features=ipadic
 <p>設定フォーマットの詳細は <a href="./configuration.html">設定</a> セクションを参照してください。</p>
 <blockquote>
 <p>[!NOTE]
-<code>LINDERA_CONFIG_PATH_PATH</code> は非推奨ですが、後方互換性のために引き続きサポートされています。<code>LINDERA_CONFIG_PATH</code> が設定されていない場合に使用されます。</p>
+<code>LINDERA_CONFIG_PATH</code> は非推奨ですが、後方互換性のために引き続きサポートされています。<code>LINDERA_CONFIG_PATH</code> が設定されていない場合に使用されます。</p>
 </blockquote>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
