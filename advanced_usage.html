@@ -374,6 +374,73 @@ token: "辞書", start: 75, end: 81, details: Some(["名詞", "一般", "*", "*"
 token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "利用", "リヨウ", "リヨー"])
 token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 </code></pre>
+<h2 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-Best tokenization</a></h2>
+<p>Lindera supports N-Best tokenization, which enumerates the top N tokenization candidates ordered by total path cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
+<h3 id="basic-n-best-usage"><a class="header" href="#basic-n-best-usage">Basic N-Best usage</a></h3>
+<p>Put the following in Cargo.toml:</p>
+<pre><code class="language-toml">[dependencies]
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+</code></pre>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "すもももももももものうち";
+
+    // Get top 3 tokenization results
+    let results = tokenizer.tokenize_nbest(text, 3, false, None)?;
+
+    for (rank, (tokens, cost)) in results.iter().enumerate() {
+        println!("--- NBEST {} (cost={}) ---", rank + 1, cost);
+        for token in tokens {
+            let details = token.details().join(",");
+            println!("{}\t{}", token.surface.as_ref(), details);
+        }
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>Output:</p>
+<pre><code class="language-text">--- NBEST 1 (cost=7546) ---
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+--- NBEST 2 (cost=7914) ---
+...
+</code></pre>
+<h3 id="n-best-with-unique-results-and-cost-threshold"><a class="header" href="#n-best-with-unique-results-and-cost-threshold">N-Best with unique results and cost threshold</a></h3>
+<p>The <code>tokenize_nbest</code> method accepts the following parameters:</p>
+<ul>
+<li><code>text</code>: The text to tokenize.</li>
+<li><code>n</code>: Number of N-best results to return.</li>
+<li><code>unique</code>: When <code>true</code>, deduplicates results that produce the same segmentation (same word boundary positions).</li>
+<li><code>cost_threshold</code>: When <code>Some(threshold)</code>, only returns paths with cost within <code>best_cost + threshold</code>.</li>
+</ul>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Get top 10 unique results within cost threshold of 5000
+let results = tokenizer.tokenize_nbest(text, 10, true, Some(5000))?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="n-best-with-lattice-reuse"><a class="header" href="#n-best-with-lattice-reuse">N-Best with lattice reuse</a></h3>
+<p>For repeated tokenization, you can reuse a <code>Lattice</code> to reduce memory allocations:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera_dictionary::viterbi::Lattice;
+
+let mut lattice = Lattice::default();
+let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, false, None)?;
+<span class="boring">}</span></code></pre></pre>
 <h2 id="dictionary-training-experimental"><a class="header" href="#dictionary-training-experimental">Dictionary Training (Experimental)</a></h2>
 <p>Lindera provides CRF-based dictionary training functionality for creating custom morphological analysis models.</p>
 <h3 id="overview"><a class="header" href="#overview">Overview</a></h3>

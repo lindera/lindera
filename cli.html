@@ -758,6 +758,77 @@ EOS
   }
 ]
 </code></pre>
+<h2 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-Best tokenization</a></h2>
+<p>Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A* algorithm, compatible with MeCab's N-Best implementation.</p>
+<h3 id="n-best-parameters"><a class="header" href="#n-best-parameters">N-Best parameters</a></h3>
+<ul>
+<li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
+<li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation. Different tokenizations that happen to split at the same positions are collapsed into one.</li>
+<li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best path. Only paths with cost within <code>best_cost + threshold</code> are returned. This is useful for filtering out unlikely tokenizations.</li>
+</ul>
+<h3 id="basic-n-best-example"><a class="header" href="#basic-n-best-example">Basic N-Best example</a></h3>
+<pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 3
+</code></pre>
+<pre><code class="language-text">NBEST 1 (cost=7546)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+NBEST 2 (cost=7914)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+NBEST 3 (cost=10060)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+</code></pre>
+<h3 id="n-best-with-unique-results"><a class="header" href="#n-best-with-unique-results">N-Best with unique results</a></h3>
+<p>When the same segmentation appears in multiple paths (differing only in internal Viterbi states), use <code>--nbest-unique</code> to deduplicate:</p>
+<pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 5 --nbest-unique -o wakati
+</code></pre>
+<pre><code class="language-text">NBEST 1 (cost=15760)
+営業 部長 谷川 です
+NBEST 2 (cost=17758)
+営業 部長 谷 川 です
+NBEST 3 (cost=18816)
+営業 部 長谷川 です
+NBEST 4 (cost=19320)
+営業 部長 谷川 で す
+NBEST 5 (cost=20814)
+営業 部 長谷 川 です
+</code></pre>
+<h3 id="n-best-with-cost-threshold"><a class="header" href="#n-best-with-cost-threshold">N-Best with cost threshold</a></h3>
+<p>Use <code>--nbest-cost-threshold</code> to limit results to paths within a certain cost range of the best path:</p>
+<pre><code class="language-shell">% echo "営業部長谷川です" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 10 --nbest-unique --nbest-cost-threshold 5000 -o wakati
+</code></pre>
+<pre><code class="language-text">NBEST 1 (cost=15760)
+営業 部長 谷川 です
+NBEST 2 (cost=17758)
+営業 部長 谷 川 です
+NBEST 3 (cost=18816)
+営業 部 長谷川 です
+</code></pre>
+<p>Only 3 results are returned because the remaining candidates exceed <code>15760 + 5000 = 20760</code>.</p>
 <h2 id="advanced-tokenization"><a class="header" href="#advanced-tokenization">Advanced tokenization</a></h2>
 <p>Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.</p>
 <h3 id="tokenize-with-character-and-token-filters"><a class="header" href="#tokenize-with-character-and-token-filters">Tokenize with character and token filters</a></h3>
