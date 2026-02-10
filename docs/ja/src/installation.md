@@ -4,7 +4,7 @@ Cargo.tomlに以下を追加してください：
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embed-ipadic"] }
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
 ```
 
 ## 環境変数
@@ -40,7 +40,7 @@ export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 設定フォーマットの詳細は [設定](./configuration.md) セクションを参照してください。
 
 > [!NOTE]
-> `LINDERA_CONFIG_PATH_PATH` は非推奨ですが、後方互換性のために引き続きサポートされています。`LINDERA_CONFIG_PATH` が設定されていない場合に使用されます。
+> `LINDERA_CONFIG_PATH` は非推奨ですが、後方互換性のために引き続きサポートされています。`LINDERA_CONFIG_PATH` が設定されていない場合に使用されます。
 
 ### DOCS_RS
 

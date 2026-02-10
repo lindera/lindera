@@ -4,7 +4,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embed-ipadic"] }
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
 ```
 
 ## Environment Variables
