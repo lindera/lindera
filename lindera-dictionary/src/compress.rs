@@ -35,7 +35,7 @@ pub fn compress(data: &[u8], algorithm: Algorithm) -> anyhow::Result<CompressedD
 
 #[cfg(test)]
 mod tests {
-    use rand::{Rng, SeedableRng, rngs::SmallRng};
+    use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
     use crate::decompress::decompress;
 

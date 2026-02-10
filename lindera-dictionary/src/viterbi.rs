@@ -257,6 +257,7 @@ impl Lattice {
     // Forward Viterbi implementation:
     // Constructs the lattice and calculates the path costs simultaneously.
     // This improves performance by avoiding a separate lattice traversal pass.
+    #[allow(clippy::too_many_arguments)]
     pub fn set_text(
         &mut self,
         dict: &PrefixDictionary,
@@ -330,9 +331,11 @@ impl Lattice {
             }
         }
 
-        let mut start_edge = Edge::default();
-        start_edge.path_cost = 0;
-        start_edge.left_index = u16::MAX;
+        let start_edge = Edge {
+            path_cost: 0,
+            left_index: u16::MAX,
+            ..Default::default()
+        };
         self.ends_at[0].push(start_edge);
 
         // Index of the last character of unknown word
@@ -454,9 +457,11 @@ impl Lattice {
 
         // Connect EOS
         if !self.ends_at[len].is_empty() {
-            let mut eos_edge = Edge::default();
-            eos_edge.start_index = len as u32;
-            eos_edge.stop_index = len as u32;
+            let mut eos_edge = Edge {
+                start_index: len as u32,
+                stop_index: len as u32,
+                ..Default::default()
+            };
             // Calculate cost for EOS
             let left_edges = &self.ends_at[len];
             let mut best_cost = i32::MAX;

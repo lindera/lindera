@@ -23,7 +23,6 @@ use crate::error::{LinderaError, LinderaErrorKind};
 )]
 #[repr(u32)] // explicit representation for consistency
 #[serde(rename_all = "lowercase")]
-
 pub enum Algorithm {
     Deflate = 0,
     Zlib = 1,

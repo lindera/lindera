@@ -11,7 +11,7 @@ use pyo3::prelude::*;
 ///
 /// Represents errors that can occur during tokenization, dictionary operations,
 /// or other Lindera functionality.
-#[pyclass(name = "LinderaError")]
+#[pyclass(name = "LinderaError", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PyLinderaError {
     message: String,

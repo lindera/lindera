@@ -32,7 +32,7 @@ use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 /// Field type in dictionary schema.
 ///
 /// Defines the type of a field in the dictionary entry.
-#[pyclass(name = "FieldType")]
+#[pyclass(name = "FieldType", from_py_object)]
 #[derive(Debug, Clone)]
 pub enum PyFieldType {
     /// Surface form (word text)
@@ -91,7 +91,7 @@ impl From<PyFieldType> for FieldType {
 /// Field definition in dictionary schema.
 ///
 /// Describes a single field in the dictionary entry format.
-#[pyclass(name = "FieldDefinition")]
+#[pyclass(name = "FieldDefinition", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PyFieldDefinition {
     #[pyo3(get)]
@@ -169,7 +169,7 @@ impl From<PyFieldDefinition> for FieldDefinition {
 /// index = schema.get_field_index("pos")
 /// field = schema.get_field_by_name("reading")
 /// ```
-#[pyclass(name = "Schema")]
+#[pyclass(name = "Schema", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PySchema {
     #[pyo3(get)]

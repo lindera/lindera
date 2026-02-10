@@ -31,7 +31,7 @@ use crate::schema::PySchema;
 /// Compression algorithm for dictionary data.
 ///
 /// Determines how dictionary data is compressed when saved to disk.
-#[pyclass(name = "CompressionAlgorithm")]
+#[pyclass(name = "CompressionAlgorithm", from_py_object)]
 #[derive(Debug, Clone)]
 pub enum PyCompressionAlgorithm {
     /// DEFLATE compression algorithm
@@ -100,7 +100,7 @@ impl From<CompressionAlgorithm> for PyCompressionAlgorithm {
 /// * `normalize_details` - Normalize morphological details (default: false)
 /// * `dictionary_schema` - Schema for main dictionary
 /// * `user_dictionary_schema` - Schema for user dictionary
-#[pyclass(name = "Metadata")]
+#[pyclass(name = "Metadata", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PyMetadata {
     name: String,

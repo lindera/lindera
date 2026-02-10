@@ -50,7 +50,7 @@ use crate::metadata::PyMetadata;
 /// print(dictionary.metadata_name())
 /// print(dictionary.metadata_encoding())
 /// ```
-#[pyclass(name = "Dictionary")]
+#[pyclass(name = "Dictionary", from_py_object)]
 #[derive(Clone)]
 pub struct PyDictionary {
     pub inner: Dictionary,
@@ -104,7 +104,7 @@ impl PyDictionary {
 /// metadata = lindera.Metadata()
 /// user_dict = lindera.load_user_dictionary("/path/to/output", metadata)
 /// ```
-#[pyclass(name = "UserDictionary")]
+#[pyclass(name = "UserDictionary", from_py_object)]
 #[derive(Clone)]
 pub struct PyUserDictionary {
     pub inner: UserDictionary,

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use wasm_bindgen::prelude::*;
 
 /// Error type for Lindera operations.
@@ -8,6 +10,12 @@ pub struct JsLinderaError {
     pub message: String,
 }
 
+impl fmt::Display for JsLinderaError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
 #[wasm_bindgen]
 impl JsLinderaError {
     #[wasm_bindgen(constructor)]
@@ -16,7 +24,7 @@ impl JsLinderaError {
     }
 
     #[wasm_bindgen(js_name = "toString")]
-    pub fn to_string(&self) -> String {
-        self.message.clone()
+    pub fn js_to_string(&self) -> String {
+        self.to_string()
     }
 }
