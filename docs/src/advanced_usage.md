@@ -231,6 +231,88 @@ token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*
 token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 ```
 
+## N-Best tokenization
+
+Lindera supports N-Best tokenization, which enumerates the top N tokenization candidates ordered by total path cost (lower cost = better). This is based on the Forward-DP Backward-A\* algorithm, compatible with MeCab's N-Best implementation.
+
+### Basic N-Best usage
+
+Put the following in Cargo.toml:
+
+```toml
+[dependencies]
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+```
+
+```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "すもももももももものうち";
+
+    // Get top 3 tokenization results
+    let results = tokenizer.tokenize_nbest(text, 3, false, None)?;
+
+    for (rank, (tokens, cost)) in results.iter().enumerate() {
+        println!("--- NBEST {} (cost={}) ---", rank + 1, cost);
+        for token in tokens {
+            let details = token.details().join(",");
+            println!("{}\t{}", token.surface.as_ref(), details);
+        }
+    }
+
+    Ok(())
+}
+```
+
+Output:
+
+```text
+--- NBEST 1 (cost=7546) ---
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+--- NBEST 2 (cost=7914) ---
+...
+```
+
+### N-Best with unique results and cost threshold
+
+The `tokenize_nbest` method accepts the following parameters:
+
+- `text`: The text to tokenize.
+- `n`: Number of N-best results to return.
+- `unique`: When `true`, deduplicates results that produce the same segmentation (same word boundary positions).
+- `cost_threshold`: When `Some(threshold)`, only returns paths with cost within `best_cost + threshold`.
+
+```rust
+// Get top 10 unique results within cost threshold of 5000
+let results = tokenizer.tokenize_nbest(text, 10, true, Some(5000))?;
+```
+
+### N-Best with lattice reuse
+
+For repeated tokenization, you can reuse a `Lattice` to reduce memory allocations:
+
+```rust
+use lindera_dictionary::viterbi::Lattice;
+
+let mut lattice = Lattice::default();
+let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;
+```
+
 ## Dictionary Training (Experimental)
 
 Lindera provides CRF-based dictionary training functionality for creating custom morphological analysis models.
