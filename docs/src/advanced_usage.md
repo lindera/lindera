@@ -12,7 +12,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embed-ipadic"] }
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
 ```
 
 For example:
@@ -99,7 +99,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.2.0", features = ["embed-ipadic"] }
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -221,7 +221,7 @@ You can see the result as follows:
 
 ```text
 text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
-token: "Lindera", start: 0, end: 21, details: Some(["UNK"])
+token: "Lindera", start: 0, end: 21, details: Some(["名詞", "固有名詞", "組織", "*", "*", "*", "*", "*", "*"])
 token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
 token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
 token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])

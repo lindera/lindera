@@ -1,6 +1,6 @@
 # Lindera CLI
 
-[Lindera](https://github.com/lindera-morphology/lindera) のための形態素解析コマンドラインインターフェースです。
+[Lindera](https://github.com/lindera/lindera) のための形態素解析コマンドラインインターフェースです。
 
 ## インストール
 
@@ -12,7 +12,7 @@ cargo経由でバイナリをインストールできます：
 
 または、以下のリリースページからバイナリをダウンロードすることもできます：
 
-- [https://github.com/lindera-morphology/lindera/releases](https://github.com/lindera-morphology/lindera/releases)
+- [https://github.com/lindera/lindera/releases](https://github.com/lindera/lindera/releases)
 
 ## ビルド
 
@@ -204,7 +204,7 @@ lindera build \
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
-- [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ipadic-builder#user-dictionary-format-csv)
+- [Lindera IPADIC Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ipadic#user-dictionary-format-csv)
 
 ```shell
 % lindera build \
@@ -218,7 +218,7 @@ lindera build \
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
-- [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-unidic-builder#user-dictionary-format-csv)
+- [Lindera UniDic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-unidic#user-dictionary-format-csv)
 
 ```shell
 % lindera build \
@@ -232,7 +232,7 @@ lindera build \
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
-- [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-cc-cedict-builder#user-dictionary-format-csv)
+- [Lindera CC-CEDICT Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-cc-cedict#user-dictionary-format-csv)
 
 ```shell
 % lindera build \
@@ -246,7 +246,7 @@ lindera build \
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
 
-- [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera-morphology/lindera/tree/main/lindera-ko-dic-builder#user-dictionary-format-csv)
+- [Lindera ko-dic Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-ko-dic#user-dictionary-format-csv)
 
 ```shell
 % lindera build \
@@ -383,11 +383,11 @@ EOS
 해석    NNG,행위,T,해석,*,*,*,*
 을      JKO,*,T,을,*,*,*,*
 실시    NNG,행위,F,실시,*,*,*,*
-할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
-수      NNG,*,F,수,*,*,*,*
+할      XSV+ETM,*,T,할,Inflect,XSV,ETM,하/XSV/*+ᆯ/ETM/*
+수      NNB,*,F,수,*,*,*,*
 있      VX,*,T,있,*,*,*,*
 습니다  EF,*,F,습니다,*,*,*,*
-.       UNK
+.       SF,*,*,*,*,*,*,*
 EOS
 ```
 
@@ -404,7 +404,7 @@ EOS
 中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
 形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
 分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
-。      UNK
+。      *,*,*,*,*,*,*,*
 EOS
 ```
 
@@ -499,11 +499,11 @@ EOS
 해석    NNG,행위,T,해석,*,*,*,*
 을      JKO,*,T,을,*,*,*,*
 실시    NNG,행위,F,실시,*,*,*,*
-할      VV+ETM,*,T,할,Inflect,VV,ETM,하/VV/*+ᆯ/ETM/*
-수      NNG,*,F,수,*,*,*,*
+할      XSV+ETM,*,T,할,Inflect,XSV,ETM,하/XSV/*+ᆯ/ETM/*
+수      NNB,*,F,수,*,*,*,*
 있      VX,*,T,있,*,*,*,*
 습니다  EF,*,F,습니다,*,*,*,*
-.       UNK
+.       SF,*,*,*,*,*,*,*
 EOS
 ```
 
@@ -522,7 +522,7 @@ EOS
 中文    *,*,*,*,Zhong1 wen2,中文,中文,Chinese language/
 形态学  *,*,*,*,xing2 tai4 xue2,形態學,形态学,morphology (in biology or linguistics)/
 分析    *,*,*,*,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4]/
-。      UNK
+。      *,*,*,*,*,*,*,*
 EOS
 ```
 
@@ -585,7 +585,7 @@ Linderaは2つのトークナイズモードを提供します：`normal` と `d
 ```text
 関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK,*,*,*,*,*,*,*,*
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 EOS
 ```
 
@@ -604,7 +604,7 @@ EOS
 国際    名詞,一般,*,*,*,*,国際,コクサイ,コクサイ
 空港    名詞,一般,*,*,*,*,空港,クウコウ,クーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK,*,*,*,*,*,*,*,*
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 EOS
 ```
 
