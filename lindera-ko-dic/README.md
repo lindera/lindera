@@ -22,7 +22,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 1 | 왼쪽 문맥 ID | Left context ID | |
 | 2 | 오른쪽 문맥 ID | Right context ID | |
 | 3 | 비용 | Cost | |
-| 4 | 품사 태그 | Part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 4 | 품사 태그 | Part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 5 | 의미 부류 | Meaning | (too few examples for me to be sure) |
 | 6 | 종성 유무 | Presence or absence | `T` for true; `F` for false; else `*` |
 | 7 | 읽기 | Reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
@@ -38,7 +38,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 표면 | Surface | |
-| 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 2 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
 
 ### Detailed version
@@ -49,7 +49,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 1 | 왼쪽 문맥 ID | Left context ID | |
 | 2 | 오른쪽 문맥 ID | Right context ID | |
 | 3 | 비용 | Cost | |
-| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
 | 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
 | 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |

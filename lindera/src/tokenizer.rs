@@ -519,7 +519,21 @@ mod tests {
                 assert_eq!(token.byte_end, 15);
                 assert_eq!(token.position, 0);
                 assert_eq!(token.position_length, 1);
-                assert_eq!(token.details, Some(vec![Cow::Borrowed("UNK")]));
+                assert!(token.word_id.is_unknown());
+                assert_eq!(
+                    token.details,
+                    Some(vec![
+                        Cow::Borrowed("名詞"),
+                        Cow::Borrowed("固有名詞"),
+                        Cow::Borrowed("組織"),
+                        Cow::Borrowed("*"),
+                        Cow::Borrowed("*"),
+                        Cow::Borrowed("*"),
+                        Cow::Borrowed("*"),
+                        Cow::Borrowed("*"),
+                        Cow::Borrowed("*"),
+                    ])
+                );
             }
             {
                 let token = tokens_iter.next().unwrap();
@@ -603,35 +617,14 @@ mod tests {
             let mut tokens = tokenizer.tokenize(text).unwrap();
             let mut tokens_iter = tokens.iter_mut();
             {
+                // "10" (unknown NUMERIC) and "ガロン" (名詞,接尾,助数詞) are merged
+                // by the japanese_compound_word filter into "10ガロン" with tag "名詞,数".
                 let token = tokens_iter.next().unwrap();
-                assert_eq!(token.surface, Cow::Borrowed("10"));
+                assert_eq!(token.surface, Cow::Owned::<str>("10ガロン".into()));
                 assert_eq!(token.byte_start, 0);
-                assert_eq!(token.byte_end, 6);
-                assert_eq!(token.position, 0);
-                assert_eq!(token.position_length, 1);
-                assert_eq!(token.details, Some(vec![Cow::Borrowed("UNK")]));
-            }
-            {
-                let token = tokens_iter.next().unwrap();
-                assert_eq!(token.surface, Cow::Borrowed("ガロン"));
-                assert_eq!(token.byte_start, 6);
                 assert_eq!(token.byte_end, 9);
-                assert_eq!(token.position, 1);
-                assert_eq!(token.position_length, 1);
-                assert_eq!(
-                    token.details,
-                    Some(vec![
-                        Cow::Borrowed("名詞"),
-                        Cow::Borrowed("接尾"),
-                        Cow::Borrowed("助数詞"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("*"),
-                        Cow::Borrowed("ガロン"),
-                        Cow::Borrowed("ガロン"),
-                        Cow::Borrowed("ガロン"),
-                    ])
-                );
+                assert_eq!(token.position, 0);
+                assert_eq!(token.position_length, 2);
             }
             {
                 let token = tokens_iter.next().unwrap();
@@ -658,18 +651,12 @@ mod tests {
 
             let mut tokens_iter = tokens.iter();
             {
+                // "10" and "ガロン" are merged by the japanese_compound_word filter
                 let token = tokens_iter.next().unwrap();
                 let start = token.byte_start;
                 let end = token.byte_end;
-                assert_eq!(token.surface, Cow::Borrowed("10"));
-                assert_eq!(&text[start..end], "１０");
-            }
-            {
-                let token = tokens_iter.next().unwrap();
-                let start = token.byte_start;
-                let end = token.byte_end;
-                assert_eq!(token.surface, Cow::Borrowed("ガロン"));
-                assert_eq!(&text[start..end], "㌎");
+                assert_eq!(token.surface, Cow::Owned::<str>("10ガロン".into()));
+                assert_eq!(&text[start..end], "１０㌎");
             }
             {
                 let token = tokens_iter.next().unwrap();

@@ -64,4 +64,4 @@ mecab-ipadic-neologd-0.0.7
 CC-CEDICT-MeCab-master
 
 # Temporary files
-tmp/
+.tmp/

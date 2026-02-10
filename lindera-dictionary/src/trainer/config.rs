@@ -456,6 +456,8 @@ impl TrainerConfig {
         Ok(UnknownDictionary {
             category_references: vec![vec![0]; 6], // One for each category
             costs: vec![],                         // Will be filled during training
+            words_idx_data: vec![],
+            words_data: vec![],
         })
     }
 

@@ -27,6 +27,10 @@ pub struct PyToken {
     #[pyo3(get)]
     pub word_id: u32,
 
+    /// Whether this token is an unknown word (not found in the dictionary).
+    #[pyo3(get)]
+    pub is_unknown: bool,
+
     /// Morphological details of the token.
     #[pyo3(get)]
     pub details: Option<Vec<String>>,
@@ -51,8 +55,8 @@ impl PyToken {
     /// Returns a string representation of the token.
     fn __repr__(&self) -> String {
         format!(
-            "<Token surface='{}', start={}, end={}, position={}, word_id={}>",
-            self.surface, self.byte_start, self.byte_end, self.position, self.word_id
+            "<Token surface='{}', start={}, end={}, position={}, word_id={}, is_unknown={}>",
+            self.surface, self.byte_start, self.byte_end, self.position, self.word_id, self.is_unknown
         )
     }
 }
@@ -69,6 +73,7 @@ impl PyToken {
             byte_end: token.byte_end,
             position: token.position,
             word_id: token.word_id.id,
+            is_unknown: token.word_id.is_unknown(),
             details: Some(details),
         }
     }

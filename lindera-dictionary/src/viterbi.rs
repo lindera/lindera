@@ -65,7 +65,7 @@ impl WordId {
     }
 
     pub fn is_unknown(&self) -> bool {
-        self.id == u32::MAX || matches!(self.lex_type, LexType::Unknown)
+        matches!(self.lex_type, LexType::Unknown)
     }
 
     pub fn is_system(&self) -> bool {

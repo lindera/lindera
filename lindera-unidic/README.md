@@ -31,8 +31,8 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Initial mutation type | |
 | 18 | 語頭変化形 | Initial mutation form | |
-| 19 | 語末変化型 | Final mutation type  | |
-| 20 | 語末変化形 | Final mutation form  | |
+| 19 | 語末変化型 | Final mutation type | |
+| 20 | 語末変化形 | Final mutation form | |
 
 ## User dictionary format (CSV)
 
@@ -67,8 +67,8 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Initial mutation type | |
 | 18 | 語頭変化形 | Initial mutation form | |
-| 19 | 語末変化型 | Final mutation type  | |
-| 20 | 語末変化形 | Final mutation form  | |
+| 19 | 語末変化型 | Final mutation type | |
+| 20 | 語末変化形 | Final mutation form | |
 | 21 | - | - | After 21, it can be freely expanded. |
 
 ## API reference

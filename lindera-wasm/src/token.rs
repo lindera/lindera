@@ -23,6 +23,9 @@ pub struct JsToken {
     /// Word ID in the dictionary.
     pub word_id: u32,
 
+    /// Whether this token is an unknown word (not found in the dictionary).
+    pub is_unknown: bool,
+
     /// Morphological details of the token.
     #[wasm_bindgen(getter_with_clone)]
     pub details: Vec<String>,
@@ -56,6 +59,11 @@ impl JsToken {
         let _ = js_sys::Reflect::set(&js_obj, &"byteEnd".into(), &(self.byte_end as f64).into());
         let _ = js_sys::Reflect::set(&js_obj, &"position".into(), &(self.position as f64).into());
         let _ = js_sys::Reflect::set(&js_obj, &"wordId".into(), &(self.word_id as f64).into());
+        let _ = js_sys::Reflect::set(
+            &js_obj,
+            &"isUnknown".into(),
+            &self.is_unknown.into(),
+        );
 
         let js_details = js_sys::Array::new();
         for detail in &self.details {
@@ -77,6 +85,7 @@ impl JsToken {
             byte_end: token.byte_end,
             position: token.position,
             word_id: token.word_id.id,
+            is_unknown: token.word_id.is_unknown(),
             details,
         }
     }

@@ -14,6 +14,11 @@ use crate::viterbi::WordEntry;
 pub struct UnknownDictionary {
     pub category_references: Vec<Vec<u32>>,
     pub costs: Vec<WordEntry>,
+    /// Byte offset for each entry's details in `words_data`.
+    pub words_idx_data: Vec<u32>,
+    /// Packed details bytes: for each entry, 4-byte LE length followed by
+    /// NUL-separated detail fields (e.g. "名詞\0一般\0*\0...").
+    pub words_data: Vec<u8>,
 }
 
 impl UnknownDictionary {
@@ -31,6 +36,25 @@ impl UnknownDictionary {
 
     pub fn lookup_word_ids(&self, category_id: CategoryId) -> &[u32] {
         &self.category_references[category_id.0][..]
+    }
+
+    /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
+    pub fn word_details(&self, word_id: u32) -> Option<Vec<&str>> {
+        let idx = word_id as usize;
+        if idx >= self.words_idx_data.len() {
+            return None;
+        }
+        let offset = self.words_idx_data[idx] as usize;
+        if offset + 4 > self.words_data.len() {
+            return None;
+        }
+        let len =
+            u32::from_le_bytes(self.words_data[offset..offset + 4].try_into().ok()?) as usize;
+        if offset + 4 + len > self.words_data.len() {
+            return None;
+        }
+        let text = std::str::from_utf8(&self.words_data[offset + 4..offset + 4 + len]).ok()?;
+        Some(text.split('\0').collect())
     }
 
     /// Unknown word generation with callback system
@@ -230,14 +254,15 @@ fn make_category_references(
 fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
     entries
         .iter()
-        .map(|e| {
+        .enumerate()
+        .map(|(i, e)| {
             // Do not perform strict checks on left context id and right context id in unk.def.
             // Just output a warning.
             if e.left_id != e.right_id {
                 warn!("left id and right id are not same: {e:?}");
             }
             WordEntry {
-                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, u32::MAX),
+                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, i as u32),
                 left_id: e.left_id as u16,
                 right_id: e.right_id as u16,
                 word_cost: e.word_cost as i16,
@@ -248,10 +273,27 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
 
 pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
+    let mut words_idx_data = Vec::new();
+    let mut words_data: Vec<u8> = Vec::new();
+
     for line in file_content.lines() {
         let fields: Vec<&str> = line.split(',').collect::<Vec<&str>>();
         let entry = parse_dictionary_entry(&fields[..], fields.len())?;
         unknown_dict_entries.push(entry);
+
+        // Store detail fields (columns after the first 4: category, left_id, right_id, cost)
+        let offset = words_data.len() as u32;
+        words_idx_data.push(offset);
+
+        let details = if fields.len() > 4 {
+            fields[4..].join("\0")
+        } else {
+            String::new()
+        };
+        let details_bytes = details.as_bytes();
+        let len = details_bytes.len() as u32;
+        words_data.extend_from_slice(&len.to_le_bytes());
+        words_data.extend_from_slice(details_bytes);
     }
 
     let category_references = make_category_references(categories, &unknown_dict_entries[..]);
@@ -259,6 +301,8 @@ pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<Unk
     Ok(UnknownDictionary {
         category_references,
         costs,
+        words_idx_data,
+        words_data,
     })
 }
 
@@ -274,5 +318,24 @@ impl ArchivedUnknownDictionary {
 
     pub fn lookup_word_ids(&self, category_id: CategoryId) -> &[rkyv::rend::u32_le] {
         self.category_references[category_id.0].as_slice()
+    }
+
+    /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
+    pub fn word_details(&self, word_id: u32) -> Option<Vec<&str>> {
+        let idx = word_id as usize;
+        if idx >= self.words_idx_data.len() {
+            return None;
+        }
+        let offset = u32::from(self.words_idx_data[idx]) as usize;
+        if offset + 4 > self.words_data.len() {
+            return None;
+        }
+        let len_bytes: [u8; 4] = self.words_data[offset..offset + 4].try_into().ok()?;
+        let len = u32::from_le_bytes(len_bytes) as usize;
+        if offset + 4 + len > self.words_data.len() {
+            return None;
+        }
+        let text = std::str::from_utf8(&self.words_data[offset + 4..offset + 4 + len]).ok()?;
+        Some(text.split('\0').collect())
     }
 }
