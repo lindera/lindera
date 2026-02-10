@@ -59,11 +59,7 @@ impl JsToken {
         let _ = js_sys::Reflect::set(&js_obj, &"byteEnd".into(), &(self.byte_end as f64).into());
         let _ = js_sys::Reflect::set(&js_obj, &"position".into(), &(self.position as f64).into());
         let _ = js_sys::Reflect::set(&js_obj, &"wordId".into(), &(self.word_id as f64).into());
-        let _ = js_sys::Reflect::set(
-            &js_obj,
-            &"isUnknown".into(),
-            &self.is_unknown.into(),
-        );
+        let _ = js_sys::Reflect::set(&js_obj, &"isUnknown".into(), &self.is_unknown.into());
 
         let js_details = js_sys::Array::new();
         for detail in &self.details {

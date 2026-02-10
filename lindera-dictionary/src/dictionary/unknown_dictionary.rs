@@ -48,8 +48,7 @@ impl UnknownDictionary {
         if offset + 4 > self.words_data.len() {
             return None;
         }
-        let len =
-            u32::from_le_bytes(self.words_data[offset..offset + 4].try_into().ok()?) as usize;
+        let len = u32::from_le_bytes(self.words_data[offset..offset + 4].try_into().ok()?) as usize;
         if offset + 4 + len > self.words_data.len() {
             return None;
         }

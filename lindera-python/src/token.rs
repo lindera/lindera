@@ -56,7 +56,12 @@ impl PyToken {
     fn __repr__(&self) -> String {
         format!(
             "<Token surface='{}', start={}, end={}, position={}, word_id={}, is_unknown={}>",
-            self.surface, self.byte_start, self.byte_end, self.position, self.word_id, self.is_unknown
+            self.surface,
+            self.byte_start,
+            self.byte_end,
+            self.position,
+            self.word_id,
+            self.is_unknown
         )
     }
 }

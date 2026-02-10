@@ -138,7 +138,8 @@ impl<'a> Token<'a> {
     fn ensure_details(&mut self) {
         if self.details.is_none() {
             let tmp = if self.word_id.is_unknown() {
-                self.dictionary.unknown_word_details(self.word_id.id as usize)
+                self.dictionary
+                    .unknown_word_details(self.word_id.id as usize)
             } else if self.word_id.is_system() {
                 self.dictionary.word_details(self.word_id.id as usize)
             } else {
@@ -148,8 +149,7 @@ impl<'a> Token<'a> {
                 }
             };
 
-            let mut details: Vec<Cow<'a, str>> =
-                tmp.into_iter().map(Cow::Borrowed).collect();
+            let mut details: Vec<Cow<'a, str>> = tmp.into_iter().map(Cow::Borrowed).collect();
 
             // Pad details to match the dictionary schema's custom field count so that
             // token filters can safely access any field by index.
