@@ -751,6 +751,97 @@ Outputs detailed token information in JSON format:
 ]
 ```
 
+## N-Best tokenization
+
+Lindera supports N-Best tokenization, which returns the top N tokenization candidates ordered by cost (lower cost = better). This is based on the Forward-DP Backward-A\* algorithm, compatible with MeCab's N-Best implementation.
+
+### N-Best parameters
+
+- `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
+- `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation. Different tokenizations that happen to split at the same positions are collapsed into one.
+- `--nbest-cost-threshold`: Maximum cost difference from the best path. Only paths with cost within `best_cost + threshold` are returned. This is useful for filtering out unlikely tokenizations.
+
+### Basic N-Best example
+
+```shell
+% echo "すもももももももものうち" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 3
+```
+
+```text
+NBEST 1 (cost=7546)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+NBEST 2 (cost=7914)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+NBEST 3 (cost=10060)
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+EOS
+```
+
+### N-Best with unique results
+
+When the same segmentation appears in multiple paths (differing only in internal Viterbi states), use `--nbest-unique` to deduplicate:
+
+```shell
+% echo "営業部長谷川です" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 5 --nbest-unique -o wakati
+```
+
+```text
+NBEST 1 (cost=15760)
+営業 部長 谷川 です
+NBEST 2 (cost=17758)
+営業 部長 谷 川 です
+NBEST 3 (cost=18816)
+営業 部 長谷川 です
+NBEST 4 (cost=19320)
+営業 部長 谷川 で す
+NBEST 5 (cost=20814)
+営業 部 長谷 川 です
+```
+
+### N-Best with cost threshold
+
+Use `--nbest-cost-threshold` to limit results to paths within a certain cost range of the best path:
+
+```shell
+% echo "営業部長谷川です" | lindera tokenize \
+  --dict embedded://ipadic \
+  -N 10 --nbest-unique --nbest-cost-threshold 5000 -o wakati
+```
+
+```text
+NBEST 1 (cost=15760)
+営業 部長 谷川 です
+NBEST 2 (cost=17758)
+営業 部長 谷 川 です
+NBEST 3 (cost=18816)
+営業 部 長谷川 です
+```
+
+Only 3 results are returned because the remaining candidates exceed `15760 + 5000 = 20760`.
+
 ## Advanced tokenization
 
 Lindera provides an analytical framework that combines character filters, tokenizers, and token filters for advanced text processing. Filters are configured using JSON.

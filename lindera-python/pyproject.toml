@@ -4,7 +4,7 @@ features = ["pyo3/abi3-py310", "pyo3/generate-import-lib"]
 
 [project]
 name = "lindera-python"
-version = "2.1.1"
+version = "2.2.0"
 description = "Python binding for Lindera (no embedded dictionaries)"
 authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]
 license = { text = "MIT" }

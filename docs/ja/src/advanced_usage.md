@@ -231,6 +231,88 @@ token: "利用", start: 84, end: 90, details: Some(["名詞", "サ変接続", "*
 token: "可能", start: 90, end: 96, details: Some(["名詞", "形容動詞語幹", "*", "*", "*", "*", "可能", "カノウ", "カノー"])
 ```
 
+## N-Best トークナイズ
+
+Linderaは N-Best トークナイズをサポートしており、パスの総コスト順（低コスト＝高精度）に上位 N 件のトークナイズ候補を列挙します。これは MeCab の N-Best 実装と互換性のある Forward-DP Backward-A\* アルゴリズムに基づいています。
+
+### 基本的な N-Best の使い方
+
+Cargo.tomlに以下を追加してください：
+
+```toml
+[dependencies]
+lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+```
+
+```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "すもももももももものうち";
+
+    // 上位3件のトークナイズ結果を取得
+    let results = tokenizer.tokenize_nbest(text, 3, false, None)?;
+
+    for (rank, (tokens, cost)) in results.iter().enumerate() {
+        println!("--- NBEST {} (cost={}) ---", rank + 1, cost);
+        for token in tokens {
+            let details = token.details().join(",");
+            println!("{}\t{}", token.surface.as_ref(), details);
+        }
+    }
+
+    Ok(())
+}
+```
+
+出力:
+
+```text
+--- NBEST 1 (cost=7546) ---
+すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+も      助詞,係助詞,*,*,*,*,も,モ,モ
+もも    名詞,一般,*,*,*,*,もも,モモ,モモ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
+--- NBEST 2 (cost=7914) ---
+...
+```
+
+### ユニーク結果とコスト閾値を使用した N-Best
+
+`tokenize_nbest` メソッドは以下のパラメータを受け取ります:
+
+- `text`: トークナイズするテキスト。
+- `n`: 返す N-best 結果の数。
+- `unique`: `true` の場合、同じ分割（同じ単語境界位置）を生成する結果の重複を排除します。
+- `cost_threshold`: `Some(threshold)` の場合、`best_cost + threshold` 以内のコストを持つパスのみを返します。
+
+```rust
+// コスト閾値5000以内のユニークな上位10件を取得
+let results = tokenizer.tokenize_nbest(text, 10, true, Some(5000))?;
+```
+
+### Lattice を再利用した N-Best
+
+繰り返しトークナイズを行う場合、`Lattice` を再利用してメモリ割り当てを削減できます:
+
+```rust
+use lindera_dictionary::viterbi::Lattice;
+
+let mut lattice = Lattice::default();
+let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;
+```
+
 ## 辞書の学習（実験的機能）
 
 Linderaは、カスタム形態素解析モデルを作成するためのCRFベースの辞書学習機能を提供しています。

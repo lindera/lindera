@@ -400,6 +400,152 @@ impl Segmenter {
 
         Ok(tokens)
     }
+
+    /// Segments the input text and returns the top-N segmentation results.
+    ///
+    /// Each result is a `Vec<Token>` representing one possible segmentation.
+    /// Results are ordered by cost (best first).
+    /// If `unique` is true, results with the same word boundaries but different
+    /// POS tags are deduplicated (only the lowest-cost variant is kept).
+    pub fn segment_nbest<'a>(
+        &'a self,
+        text: Cow<'a, str>,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+    ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
+        let mut lattice = Lattice::default();
+        self.segment_nbest_with_lattice(text, &mut lattice, n, unique, cost_threshold)
+    }
+
+    /// Segments the input text and returns the top-N segmentation results with costs.
+    /// Each result is a (tokens, cost) pair.
+    /// If `unique` is true, results with the same word boundaries but different
+    /// POS tags are deduplicated (only the lowest-cost variant is kept).
+    /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
+    /// are discarded.
+    pub fn segment_nbest_with_lattice<'a>(
+        &'a self,
+        text: Cow<'a, str>,
+        lattice: &mut Lattice,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+    ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
+        let mut all_results: Vec<(Vec<Token>, i64)> = Vec::with_capacity(n);
+
+        let text_bytes = text.as_bytes();
+        let text_len = text.len();
+        let mut sentence_start = 0;
+
+        while sentence_start < text_len {
+            // Find the end of the current sentence
+            let mut sentence_end = sentence_start;
+            while sentence_end < text_len {
+                let ch = text_bytes[sentence_end];
+                sentence_end += 1;
+                if ch == b'\n' || ch == b'\t' {
+                    break;
+                }
+                if sentence_end >= 3 && sentence_end <= text_len {
+                    let last_3 = &text_bytes[sentence_end - 3..sentence_end];
+                    if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
+                        break;
+                    }
+                }
+            }
+
+            let sentence = &text[sentence_start..sentence_end];
+            if sentence.is_empty() {
+                sentence_start = sentence_end;
+                continue;
+            }
+
+            // Process the sentence through N-Best lattice
+            lattice.set_text_nbest(
+                &self.dictionary.prefix_dictionary,
+                &self.user_dictionary.as_ref().map(|d| &d.dict),
+                &self.dictionary.character_definition,
+                &self.dictionary.unknown_dictionary,
+                &self.dictionary.connection_cost_matrix,
+                sentence,
+                &self.mode,
+            );
+
+            let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);
+
+            for (rank, (offsets, cost)) in nbest_offsets.into_iter().enumerate() {
+                if rank >= all_results.len() {
+                    all_results.resize_with(rank + 1, || (Vec::new(), 0));
+                }
+
+                // Accumulate cost across sentences
+                all_results[rank].1 += cost;
+
+                let mut position = all_results[rank].0.len();
+                let mut byte_position: usize = if all_results[rank].0.is_empty() {
+                    0
+                } else {
+                    all_results[rank].0.last().map_or(0, |t| t.byte_end)
+                };
+
+                for i in 0..offsets.len() {
+                    let (byte_start, word_id) = offsets[i];
+                    let byte_end = if i == offsets.len() - 1 {
+                        sentence.len()
+                    } else {
+                        offsets[i + 1].0
+                    };
+
+                    let absolute_start = sentence_start + byte_start;
+                    let absolute_end = sentence_start + byte_end;
+
+                    // Skip whitespace tokens if keep_whitespace is false
+                    if !self.keep_whitespace
+                        && let Some(space_category_id) = self.space_category_id
+                    {
+                        let token_text = &sentence[byte_start..byte_end];
+                        let is_space = token_text.chars().all(|c| {
+                            self.dictionary
+                                .character_definition
+                                .lookup_categories(c)
+                                .contains(&space_category_id)
+                        });
+
+                        if is_space {
+                            byte_position += byte_end - byte_start;
+                            continue;
+                        }
+                    }
+
+                    let surface_cow = match &text {
+                        Cow::Borrowed(s) => Cow::Borrowed(&s[absolute_start..absolute_end]),
+                        Cow::Owned(s) => Cow::Owned(s[absolute_start..absolute_end].to_owned()),
+                    };
+
+                    let token_start = byte_position;
+                    byte_position += byte_end - byte_start;
+                    let token_end = byte_position;
+
+                    all_results[rank].0.push(Token::new(
+                        surface_cow,
+                        token_start,
+                        token_end,
+                        position,
+                        word_id,
+                        &self.dictionary,
+                        self.user_dictionary.as_ref(),
+                    ));
+
+                    position += 1;
+                }
+            }
+
+            sentence_start = sentence_end;
+        }
+
+        Ok(all_results)
+    }
 }
 
 #[cfg(test)]
@@ -3252,5 +3398,131 @@ mod tests {
             .segment(Cow::Borrowed(large_text.as_str()))
             .unwrap();
         assert!(!tokens.is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_1best_matches_segment() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        let text = "すもももももももものうち";
+
+        // 1-best result should match normal segment
+        let normal_tokens = segmenter.segment(Cow::Borrowed(text)).unwrap();
+        let nbest_results = segmenter
+            .segment_nbest(Cow::Borrowed(text), 1, false, None)
+            .unwrap();
+
+        assert_eq!(nbest_results.len(), 1);
+        let (nbest_tokens, _cost) = &nbest_results[0];
+        assert_eq!(normal_tokens.len(), nbest_tokens.len());
+        for (normal, nbest) in normal_tokens.iter().zip(nbest_tokens.iter()) {
+            assert_eq!(normal.surface.as_ref(), nbest.surface.as_ref());
+            assert_eq!(normal.byte_start, nbest.byte_start);
+            assert_eq!(normal.byte_end, nbest.byte_end);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_multiple_results() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        let text = "すもももももももものうち";
+        let results = segmenter
+            .segment_nbest(Cow::Borrowed(text), 3, false, None)
+            .unwrap();
+
+        // Should return at least 2 different results for this ambiguous text
+        assert!(results.len() >= 2);
+
+        // All results should cover the full text
+        for (tokens, _cost) in &results {
+            assert!(!tokens.is_empty());
+            // First token starts at 0
+            assert_eq!(tokens[0].byte_start, 0);
+            // Last token ends at the end of the text
+            let last = tokens.last().unwrap();
+            assert_eq!(last.byte_end, text.len());
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_empty_input() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        let results = segmenter
+            .segment_nbest(Cow::Borrowed(""), 3, false, None)
+            .unwrap();
+        assert!(results.is_empty() || results.iter().all(|(r, _)| r.is_empty()));
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_zero_n() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": "normal"
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        let results = segmenter
+            .segment_nbest(Cow::Borrowed("テスト"), 0, false, None)
+            .unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_nbest_decompose_mode() {
+        use std::borrow::Cow;
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "mode": {
+                "decompose": {
+                    "kanji_penalty_length_threshold": 2,
+                    "kanji_penalty_length_penalty": 3000,
+                    "other_penalty_length_threshold": 7,
+                    "other_penalty_length_penalty": 1700
+                }
+            }
+        });
+        let segmenter = Segmenter::from_config(&config).unwrap();
+
+        let text = "関西国際空港限定トートバッグ";
+        let results = segmenter
+            .segment_nbest(Cow::Borrowed(text), 2, false, None)
+            .unwrap();
+
+        // Should get at least 1 result
+        assert!(!results.is_empty());
+        // All tokens should cover the full text
+        for (tokens, _cost) in &results {
+            assert!(!tokens.is_empty());
+            assert_eq!(tokens[0].byte_start, 0);
+            assert_eq!(tokens.last().unwrap().byte_end, text.len());
+        }
     }
 }

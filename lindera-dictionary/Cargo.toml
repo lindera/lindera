@@ -49,4 +49,4 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 rand = { workspace = true }
-tempfile = "3.23.0"
+tempfile = "3.25.0"

@@ -97,6 +97,23 @@ struct TokenizeArgs {
         help = "Keep whitespace tokens in output (default: whitespace is ignored for MeCab compatibility)"
     )]
     keep_whitespace: bool,
+    #[clap(
+        short = 'N',
+        long = "nbest",
+        default_value = "1",
+        help = "Number of N-best results (default: 1)"
+    )]
+    nbest: usize,
+    #[clap(
+        long = "nbest-unique",
+        help = "Deduplicate N-best results with the same word boundaries (keeps only the lowest-cost POS variant)"
+    )]
+    nbest_unique: bool,
+    #[clap(
+        long = "nbest-cost-threshold",
+        help = "Maximum cost difference from best path for N-best results (e.g. 10000)"
+    )]
+    nbest_cost_threshold: Option<i64>,
     #[clap(help = "Input text file (default: stdin)")]
     input_file: Option<PathBuf>,
 }
@@ -373,6 +390,10 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         Box::new(BufReader::new(io::stdin()))
     };
 
+    let nbest = args.nbest;
+    let nbest_unique = args.nbest_unique;
+    let nbest_cost_threshold = args.nbest_cost_threshold;
+
     loop {
         // read the text to be tokenized from stdin
         let mut text = String::new();
@@ -384,17 +405,37 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             break;
         }
 
-        let tokens = tokenizer.tokenize(text.trim())?;
-
-        match output_format {
-            Format::Mecab => {
-                mecab_output(tokens)?;
+        if nbest >= 2 {
+            let results =
+                tokenizer.tokenize_nbest(text.trim(), nbest, nbest_unique, nbest_cost_threshold)?;
+            for (rank, (tokens, cost)) in results.into_iter().enumerate() {
+                match output_format {
+                    Format::Mecab => {
+                        println!("NBEST {} (cost={})", rank + 1, cost);
+                        mecab_output(tokens)?;
+                    }
+                    Format::Json => {
+                        println!("NBEST {} (cost={})", rank + 1, cost);
+                        json_output(tokens)?;
+                    }
+                    Format::Wakati => {
+                        println!("NBEST {} (cost={})", rank + 1, cost);
+                        wakati_output(tokens)?;
+                    }
+                }
             }
-            Format::Json => {
-                json_output(tokens)?;
-            }
-            Format::Wakati => {
-                wakati_output(tokens)?;
+        } else {
+            let tokens = tokenizer.tokenize(text.trim())?;
+            match output_format {
+                Format::Mecab => {
+                    mecab_output(tokens)?;
+                }
+                Format::Json => {
+                    json_output(tokens)?;
+                }
+                Format::Wakati => {
+                    wakati_output(tokens)?;
+                }
             }
         }
     }

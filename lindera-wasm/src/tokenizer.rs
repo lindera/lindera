@@ -178,6 +178,50 @@ impl Tokenizer {
 
         Ok(js_tokens)
     }
+
+    /// Tokenizes the input text and returns N-best results.
+    ///
+    /// Returns an array of arrays, where each inner array contains Token JSON objects.
+    #[wasm_bindgen(js_name = "tokenizeNbest")]
+    pub fn tokenize_nbest(
+        &self,
+        input_text: &str,
+        n: usize,
+        unique: Option<bool>,
+        cost_threshold: Option<i64>,
+    ) -> Result<JsValue, JsValue> {
+        let results = self
+            .inner
+            .tokenize_nbest(input_text, n, unique.unwrap_or(false), cost_threshold)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+        let outer = js_sys::Array::new();
+        for (tokens, cost) in results {
+            let entry = js_sys::Object::new();
+            let inner = js_sys::Array::new();
+            for token in tokens {
+                let js_token = JsToken::from_token(token);
+                inner.push(&js_token.to_json());
+            }
+            js_sys::Reflect::set(&entry, &"tokens".into(), &inner).unwrap();
+            js_sys::Reflect::set(&entry, &"cost".into(), &JsValue::from(cost as f64)).unwrap();
+            outer.push(&entry);
+        }
+
+        Ok(outer.into())
+    }
+
+    /// Tokenizes the input text and returns N-best results (snake_case alias).
+    #[wasm_bindgen(js_name = "tokenize_nbest")]
+    pub fn py_tokenize_nbest(
+        &self,
+        input_text: &str,
+        n: usize,
+        unique: Option<bool>,
+        cost_threshold: Option<i64>,
+    ) -> Result<JsValue, JsValue> {
+        self.tokenize_nbest(input_text, n, unique, cost_threshold)
+    }
 }
 
 #[cfg(test)]
