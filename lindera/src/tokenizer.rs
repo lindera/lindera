@@ -413,6 +413,78 @@ impl Tokenizer {
 
         Ok(tokens)
     }
+
+    /// Tokenizes the input text and returns the top-N results.
+    ///
+    /// Each result is a `Vec<Token>` with character/token filters applied.
+    /// Results are ordered by cost (best first).
+    pub fn tokenize_nbest<'a>(
+        &'a self,
+        text: &'a str,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+    ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
+        let mut lattice = Lattice::default();
+        self.tokenize_nbest_with_lattice(text, &mut lattice, n, unique, cost_threshold)
+    }
+
+    /// Tokenizes the input text and returns the top-N results with costs.
+    /// Each result is a (tokens, cost) pair.
+    /// If `unique` is true, results with the same word boundaries are deduplicated.
+    /// If `cost_threshold` is Some(t), paths whose cost exceeds best_cost + t
+    /// are discarded.
+    pub fn tokenize_nbest_with_lattice<'a>(
+        &'a self,
+        text: &'a str,
+        lattice: &mut Lattice,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+    ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
+        let mut normalized_text: Cow<'a, str> = Cow::Borrowed(text);
+
+        let mut offset_mappings: Vec<OffsetMapping> =
+            Vec::with_capacity(self.character_filters.len());
+
+        if !self.character_filters.is_empty() {
+            let text_mut = normalized_text.to_mut();
+            for character_filter in &self.character_filters {
+                let mapping = character_filter.apply(text_mut)?;
+                if !mapping.is_empty() {
+                    offset_mappings.push(mapping);
+                }
+            }
+        }
+
+        let final_text_len = normalized_text.len();
+
+        let mut all_results = self.segmenter.segment_nbest_with_lattice(
+            normalized_text,
+            lattice,
+            n,
+            unique,
+            cost_threshold,
+        )?;
+
+        // Apply token filters and offset corrections to each result
+        for (tokens, _cost) in &mut all_results {
+            for token_filter in &self.token_filters {
+                token_filter.apply(tokens)?;
+            }
+
+            if !offset_mappings.is_empty() {
+                for token in tokens.iter_mut() {
+                    for mapping in offset_mappings.iter().rev() {
+                        token.byte_start = mapping.correct_offset(token.byte_start, final_text_len);
+                        token.byte_end = mapping.correct_offset(token.byte_end, final_text_len);
+                    }
+                }
+            }
+        }
+
+        Ok(all_results)
+    }
 }
 
 impl Clone for Tokenizer {
@@ -813,5 +885,49 @@ mod tests {
             .join("invalid.yml");
 
         TokenizerBuilder::from_file(&config_file).unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_tokenize_nbest_1best_matches_tokenize() {
+        use crate::tokenizer::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_segmenter_dictionary("embedded://ipadic");
+
+        let tokenizer = builder.build().unwrap();
+
+        let text = "すもももももももものうち";
+        let normal_tokens = tokenizer.tokenize(text).unwrap();
+        let nbest_results = tokenizer.tokenize_nbest(text, 1, false, None).unwrap();
+
+        assert_eq!(nbest_results.len(), 1);
+        let (nbest_tokens, _cost) = &nbest_results[0];
+        assert_eq!(normal_tokens.len(), nbest_tokens.len());
+        for (normal, nbest) in normal_tokens.iter().zip(nbest_tokens.iter()) {
+            assert_eq!(normal.surface.as_ref(), nbest.surface.as_ref());
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_tokenize_nbest_multiple_results() {
+        use crate::tokenizer::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_segmenter_dictionary("embedded://ipadic");
+
+        let tokenizer = builder.build().unwrap();
+
+        let text = "すもももももももものうち";
+        let results = tokenizer.tokenize_nbest(text, 5, false, None).unwrap();
+
+        // Should return multiple results for ambiguous text
+        assert!(results.len() >= 2);
+
+        // All results should cover the full text
+        for (tokens, _cost) in &results {
+            assert!(!tokens.is_empty());
+        }
     }
 }

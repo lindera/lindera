@@ -8,6 +8,7 @@ pub mod error;
 pub mod loader;
 pub mod macros;
 pub mod mode;
+pub mod nbest;
 pub mod util;
 pub mod viterbi;
 

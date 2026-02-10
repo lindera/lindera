@@ -312,6 +312,43 @@ impl PyTokenizer {
 
         Ok(py_tokens)
     }
+
+    /// Tokenizes the given text and returns N-best results.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    /// * `n` - Number of N-best results to return.
+    ///
+    /// # Returns
+    ///
+    /// A list of lists of Token objects, ordered by cost (best first).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if tokenization fails.
+    #[pyo3(signature = (text, n, unique=false, cost_threshold=None))]
+    fn tokenize_nbest(
+        &self,
+        text: &str,
+        n: usize,
+        unique: bool,
+        cost_threshold: Option<i64>,
+    ) -> PyResult<Vec<(Vec<PyToken>, i64)>> {
+        let results = self
+            .inner
+            .tokenize_nbest(text, n, unique, cost_threshold)
+            .map_err(|err| {
+                PyValueError::new_err(format!("Failed to tokenize_nbest text: {err}"))
+            })?;
+
+        let py_results: Vec<(Vec<PyToken>, i64)> = results
+            .into_iter()
+            .map(|(tokens, cost)| (tokens.into_iter().map(PyToken::from_token).collect(), cost))
+            .collect();
+
+        Ok(py_results)
+    }
 }
 
 pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
