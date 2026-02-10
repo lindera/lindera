@@ -121,12 +121,11 @@ impl Metadata {
 
             if let Ok(compressed_data) =
                 rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(data)
+                && let Ok(decompressed) = decompress(compressed_data)
             {
-                if let Ok(decompressed) = decompress(compressed_data) {
-                    // Try to parse the decompressed data as JSON
-                    if let Ok(metadata) = serde_json::from_slice(&decompressed) {
-                        return Ok(metadata);
-                    }
+                // Try to parse the decompressed data as JSON
+                if let Ok(metadata) = serde_json::from_slice(&decompressed) {
+                    return Ok(metadata);
                 }
             }
         }

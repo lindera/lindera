@@ -31,7 +31,7 @@ use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
 /// Tokenization mode.
 ///
 /// Determines how text is segmented into tokens.
-#[pyclass(name = "Mode")]
+#[pyclass(name = "Mode", from_py_object)]
 #[derive(Debug, Clone, Copy)]
 pub enum PyMode {
     /// Standard tokenization based on dictionary cost
@@ -112,7 +112,7 @@ impl From<LinderaMode> for PyMode {
 ///     other_penalty_length_penalty=1700
 /// )
 /// ```
-#[pyclass(name = "Penalty")]
+#[pyclass(name = "Penalty", from_py_object)]
 #[derive(Debug, Clone, Copy)]
 pub struct PyPenalty {
     kanji_penalty_length_threshold: usize,

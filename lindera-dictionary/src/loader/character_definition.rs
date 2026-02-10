@@ -38,7 +38,7 @@ impl CharacterDefinitionLoader {
             let mut aligned_decompressed = rkyv::util::AlignedVec::<16>::new();
             aligned_decompressed.extend_from_slice(&decompressed_data);
 
-            return CharacterDefinition::load(&aligned_decompressed);
+            CharacterDefinition::load(&aligned_decompressed)
         }
 
         #[cfg(not(feature = "compress"))]

@@ -3,7 +3,7 @@
 use pyo3::prelude::*;
 
 /// Core segmenter for morphological analysis.
-#[pyclass(name = "Segmenter")]
+#[pyclass(name = "Segmenter", from_py_object)]
 #[derive(Clone)]
 pub struct PySegmenter {
     pub inner: lindera::segmenter::Segmenter,
