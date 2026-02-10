@@ -1431,7 +1431,11 @@ mod tests {
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 5);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["*", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 
@@ -2033,7 +2037,11 @@ mod tests {
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["*", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 
@@ -2635,7 +2643,11 @@ mod tests {
             assert_eq!(token.byte_end, 30);
             assert_eq!(token.position, 4);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["*", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 
@@ -2890,7 +2902,11 @@ mod tests {
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 2);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["名詞", "一般", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 
@@ -2989,7 +3005,11 @@ mod tests {
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 3);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["名詞", "一般", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 
@@ -3082,7 +3102,11 @@ mod tests {
             assert_eq!(token.byte_end, 36);
             assert_eq!(token.position, 3);
             assert_eq!(token.position_length, 1);
-            assert_eq!(token.details(), vec!["UNK"]);
+            assert!(token.word_id.is_unknown());
+            assert_eq!(
+                token.details(),
+                vec!["名詞", "一般", "*", "*", "*", "*", "*", "*", "*"]
+            );
         }
     }
 

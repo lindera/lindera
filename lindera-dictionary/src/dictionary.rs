@@ -39,6 +39,14 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
+    /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
+    pub fn unknown_word_details(&self, word_id: usize) -> Vec<&str> {
+        match self.unknown_dictionary.word_details(word_id as u32) {
+            Some(details) => details,
+            None => UNK.to_vec(),
+        }
+    }
+
     pub fn word_details(&self, word_id: usize) -> Vec<&str> {
         if 4 * word_id >= self.prefix_dictionary.words_idx_data.len() {
             return vec![];
