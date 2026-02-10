@@ -131,7 +131,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 4 | 品詞大分類 | Major POS classification | |
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
-| 7 | 品詞細分類 | Fine POS classification  | |
+| 7 | 品詞細分類 | Fine POS classification | |
 | 8 | 活用型 | Conjugation form | |
 | 9 | 活用形 | Conjugation type | |
 | 10 | 語彙素読み | Lexeme reading | |
@@ -143,8 +143,8 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Prefix of a word form | |
 | 18 | 語頭変化形 | Prefix of a word type | |
-| 19 | 語末変化型 | Suffix of a word form  | |
-| 20 | 語末変化形 | Suffix of a word type  | |
+| 19 | 語末変化型 | Suffix of a word form | |
+| 20 | 語末変化形 | Suffix of a word type | |
 
 #### UniDic user dictionary format (CSV)
 
@@ -167,7 +167,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 4 | 品詞大分類 | Major POS classification | |
 | 5 | 品詞中分類 | Middle POS classification | |
 | 6 | 品詞小分類 | Small POS classification | |
-| 7 | 品詞細分類 | Fine POS classification  | |
+| 7 | 品詞細分類 | Fine POS classification | |
 | 8 | 活用型 | Conjugation form | |
 | 9 | 活用形 | Conjugation type | |
 | 10 | 語彙素読み | Lexeme reading | |
@@ -179,8 +179,8 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Prefix of a word form | |
 | 18 | 語頭変化形 | Prefix of a word type | |
-| 19 | 語末変化型 | Suffix of a word form  | |
-| 20 | 語末変化形 | Suffix of a word type  | |
+| 19 | 語末変化型 | Suffix of a word form | |
+| 20 | 語末変化形 | Suffix of a word type | |
 | 21 | - | - | After 21, it can be freely expanded. |
 
 ### ko-dic
@@ -203,7 +203,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 1 | 왼쪽 문맥 ID | Left context ID | |
 | 2 | 오른쪽 문맥 ID | Right context ID | |
 | 3 | 비용 | Cost | |
-| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
 | 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
 | 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
@@ -219,7 +219,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | Index | Name (Japanese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 표면 | Surface | |
-| 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 2 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
 
 ##### ko-dic user dictionary detailed version
@@ -230,7 +230,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 1 | 왼쪽 문맥 ID | Left context ID | |
 | 2 | 오른쪽 문맥 ID | Right context ID | |
 | 3 | 비용 | Cost | |
-| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet  |
+| 4 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |
 | 5 | 의미 부류 | meaning | (too few examples for me to be sure) |
 | 6 | 종성 유무 | presence or absence | `T` for true; `F` for false; else `*` |
 | 7 | 읽기 | reading | usually matches surface, but may differ for foreign words e.g. Chinese character words |
