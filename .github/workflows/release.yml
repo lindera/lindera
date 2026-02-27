@@ -274,7 +274,7 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Download dictionary artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dictionaries
           pattern: lindera-*
@@ -384,7 +384,7 @@ jobs:
           python-version: 3.x
 
       - name: Download dictionary artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dictionaries
           pattern: lindera-*
@@ -509,7 +509,7 @@ jobs:
       id-token: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           merge-multiple: true
@@ -567,7 +567,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download dictionary artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dictionaries
           pattern: lindera-*
@@ -644,7 +644,7 @@ jobs:
             package_name: "lindera-wasm-cjk"
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
