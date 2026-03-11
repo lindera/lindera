@@ -348,7 +348,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload dictionary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.dictionary.name }}
           path: dictionaries/
@@ -604,7 +604,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload to workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.features.package_name }}-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
           path: dist
@@ -668,7 +668,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
       - name: Upload to workflow artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sdist-${{ matrix.features.package_name }}-${{ github.ref_name }}
           path: dist
@@ -777,7 +777,7 @@ jobs:
           mv package.json.tmp package.json
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
