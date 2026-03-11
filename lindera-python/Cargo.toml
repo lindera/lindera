@@ -26,9 +26,10 @@ embed-ko-dic = ["lindera/embed-ko-dic"] # Include Korean dictionary (ko-dic)
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",
 ] # Include Chinese dictionary (CC-CEDICT)
+embed-jieba = ["lindera/embed-jieba"] # Include Chinese dictionary (Jieba)
 embed-cjk = [
     "lindera/embed-cjk",
-] # Include CJK dictionary (CC-CEDICT, IPADIC, ko-dic)
+] # Include CJK dictionary (CC-CEDICT, Jieba, IPADIC, ko-dic)
 train = ["lindera/train"] # Enable training functionality
 default = ["train"] # No directories included
 

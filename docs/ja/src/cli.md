@@ -48,6 +48,14 @@ cargo経由でバイナリをインストールできます：
 % cargo build --release --features=embed-cc-cedict
 ```
 
+### Jieba（中国語辞書）を含めてビルド
+
+"jieba" 機能フラグを使用すると、LinderaにJiebaを含めることができます。
+
+```shell script
+% cargo build --release --features=embed-jieba
+```
+
 ### 辞書なしでビルド
 
 Linderaのバイナリサイズを削減するには、機能フラグを省略します。
@@ -180,6 +188,24 @@ lindera build \
 % tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
 ```
 
+#### Jieba（中国語辞書）のビルド
+
+```shell script
+# Jiebaソースファイルのダウンロードと展開
+% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/mecab-jieba-0.1.0-20260310 \
+  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --metadata ./lindera-jieba/metadata.json
+
+% ls -al /tmp/lindera-jieba-0.1.0-20260310
+% (cd /tmp && zip -r lindera-jieba-0.1.0-20260310.zip lindera-jieba-0.1.0-20260310/)
+% tar -czf /tmp/lindera-jieba-0.1.0-20260310.tar.gz -C /tmp lindera-jieba-0.1.0-20260310
+```
+
 #### ko-dic（韓国語辞書）のビルド
 
 ```shell script
@@ -239,6 +265,20 @@ lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+```
+
+### Jiebaユーザー辞書（中国語）のビルド
+
+ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
+
+- [Lindera Jieba Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv)
+
+```shell
+% lindera build \
+  --src ./resources/user_dict/jieba_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-jieba/metadata.json \
   --user
 ```
 
@@ -408,6 +448,13 @@ EOS
 EOS
 ```
 
+#### 外部Jieba（中国語辞書）を使用したトークナイズ
+
+```shell
+% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-jieba-0.1.0-20260310
+```
+
 ### 埋め込み辞書を使用した例
 
 Linderaは、特定の機能フラグを指定してビルドすることで、バイナリに辞書を直接含めることができます。これにより、外部辞書ファイルなしでトークナイズが可能になります。
@@ -527,6 +574,15 @@ EOS
 ```
 
 注意: CC-CEDICT辞書をバイナリに含めるには、`--features=embed-cc-cedict` オプションを使用してビルドする必要があります。
+
+#### 埋め込みJieba（中国語辞書）を使用したトークナイズ
+
+```shell
+% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://jieba
+```
+
+注意: Jieba辞書をバイナリに含めるには、`--features=embed-jieba` オプションを使用してビルドする必要があります。
 
 ### ユーザー辞書の例
 

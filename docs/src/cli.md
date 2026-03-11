@@ -48,6 +48,14 @@ The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.
 % cargo build --release --features=embed-cc-cedict
 ```
 
+### Build with Jieba (Chinese dictionary)
+
+The "jieba" feature flag allows Lindera to include Jieba.
+
+```shell script
+% cargo build --release --features=embed-jieba
+```
+
 ### Build without dictionaries
 
 To reduce Lindera's binary size, omit the feature flag.
@@ -180,6 +188,24 @@ A supplementary dictionary for custom words that works alongside a system dictio
 % tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
 ```
 
+#### Build Jieba (Chinese dictionary)
+
+```shell script
+# Download and extract Jieba source files
+% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/mecab-jieba-0.1.0-20260310 \
+  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --metadata ./lindera-jieba/metadata.json
+
+% ls -al /tmp/lindera-jieba-0.1.0-20260310
+% (cd /tmp && zip -r lindera-jieba-0.1.0-20260310.zip lindera-jieba-0.1.0-20260310/)
+% tar -czf /tmp/lindera-jieba-0.1.0-20260310.tar.gz -C /tmp lindera-jieba-0.1.0-20260310
+```
+
 #### Build ko-dic (Korean dictionary)
 
 ```shell script
@@ -239,6 +265,20 @@ For more details about user dictionary format please refer to the following URL:
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+```
+
+### Build Jieba user dictionary (Chinese)
+
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera Jieba Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv)
+
+```shell
+% lindera build \
+  --src ./resources/user_dict/jieba_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-jieba/metadata.json \
   --user
 ```
 
@@ -408,6 +448,13 @@ EOS
 EOS
 ```
 
+#### Tokenize with external Jieba (Chinese dictionary)
+
+```shell
+% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-jieba-0.1.0-20260310
+```
+
 ### Examples with embedded dictionaries
 
 Lindera can include dictionaries directly in the binary when built with specific feature flags. This allows tokenization without external dictionary files.
@@ -527,6 +574,15 @@ EOS
 ```
 
 NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=embed-cc-cedict` option.
+
+#### Tokenize with embedded Jieba (Chinese dictionary)
+
+```shell
+% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://jieba
+```
+
+NOTE: To include Jieba dictionary in the binary, you must build with the `--features=embed-jieba` option.
 
 ### User dictionary examples
 

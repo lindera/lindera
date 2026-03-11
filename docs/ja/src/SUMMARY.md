@@ -9,6 +9,7 @@
     - [UniDic](./dictionaries/unidic.md)
     - [ko-dic](./dictionaries/ko_dic.md)
     - [CC-CEDICT](./dictionaries/cc_cedict.md)
+    - [Jieba](./dictionaries/jieba.md)
 - [設定](./configuration.md)
 - [高度な使い方](./advanced_usage.md)
 - [CLI](./cli.md)

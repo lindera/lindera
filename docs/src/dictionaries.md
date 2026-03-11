@@ -7,3 +7,4 @@ Lindera supports various dictionaries. This section describes the format of each
 - [UniDic](./dictionaries/unidic.md) - A dictionary with uniform word unit definitions.
 - [ko-dic](./dictionaries/ko_dic.md) - A dictionary for Korean.
 - [CC-CEDICT](./dictionaries/cc_cedict.md) - A dictionary for Chinese.
+- [Jieba](./dictionaries/jieba.md) - A dictionary for Chinese based on Jieba.
