@@ -71,11 +71,7 @@ jieba_data!(
     "/lindera-jieba/char_def.bin",
     "char_def.bin"
 );
-jieba_data!(
-    CONNECTION_DATA,
-    "/lindera-jieba/matrix.mtx",
-    "matrix.mtx"
-);
+jieba_data!(CONNECTION_DATA, "/lindera-jieba/matrix.mtx", "matrix.mtx");
 jieba_data!(DA_DATA, "/lindera-jieba/dict.da", "dict.da");
 jieba_data!(VALS_DATA, "/lindera-jieba/dict.vals", "dict.vals");
 jieba_data!(UNKNOWN_DATA, "/lindera-jieba/unk.bin", "unk.bin");
