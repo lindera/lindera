@@ -29,8 +29,8 @@ unidic-mecabの辞書フォーマットと品詞タグの詳細については [
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Initial mutation type | |
 | 18 | 語頭変化形 | Initial mutation form | |
-| 19 | 語末変化型 | Final mutation type  | |
-| 20 | 語末変化形 | Final mutation form  | |
+| 19 | 語末変化型 | Final mutation type | |
+| 20 | 語末変化形 | Final mutation form | |
 
 ## ユーザー辞書フォーマット (CSV)
 
@@ -65,8 +65,8 @@ unidic-mecabの辞書フォーマットと品詞タグの詳細については [
 | 16 | 語種 | Word type | |
 | 17 | 語頭変化型 | Initial mutation type | |
 | 18 | 語頭変化形 | Initial mutation form | |
-| 19 | 語末変化型 | Final mutation type  | |
-| 20 | 語末変化形 | Final mutation form  | |
+| 19 | 語末変化型 | Final mutation type | |
+| 20 | 語末変化形 | Final mutation form | |
 | 21 | - | - | 21以降は自由に拡張可能です。 |
 
 ## APIリファレンス

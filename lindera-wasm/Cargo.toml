@@ -21,22 +21,23 @@ embed-ko-dic = ["lindera/embed-ko-dic"] # Embed ko-dic dictionary (Korean)
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",
 ] # Embed CC-CEDICT dictionary (Chinese)
+embed-jieba = ["lindera/embed-jieba"] # Embed Jieba dictionary (Chinese)
 embed-cjk = [
     "lindera/embed-cjk",
-] # Embed IPADIC dictionary (Japanese), ko-dic dictionary (Korean), CC-CEDICT dictionary (Chinese)
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 default = []
 
 [dependencies]
-js-sys = "0.3.85"
+js-sys = "0.3.91"
 once_cell = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde-wasm-bindgen = "0.6.5"
-wasm-bindgen = { version = "0.2.108" }
+wasm-bindgen = { version = "0.2.114" }
 
 lindera = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
-wasm-bindgen-test = "0.3.58"
-wasm-bindgen = { version = "0.2.108" }
+wasm-bindgen-test = "0.3.64"
+wasm-bindgen = { version = "0.2.114" }

@@ -1,4 +1,4 @@
-name: Regression
+name: Regression Test
 
 on:
   workflow_dispatch:
@@ -30,9 +30,116 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
-  test:
-    name: Test
-    needs: [format]
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      lindera-dictionary: ${{ steps.filter.outputs.lindera-dictionary }}
+      lindera-ipadic: ${{ steps.filter.outputs.lindera-ipadic }}
+      lindera-ipadic-neologd: ${{ steps.filter.outputs.lindera-ipadic-neologd }}
+      lindera-unidic: ${{ steps.filter.outputs.lindera-unidic }}
+      lindera-ko-dic: ${{ steps.filter.outputs.lindera-ko-dic }}
+      lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
+      lindera-jieba: ${{ steps.filter.outputs.lindera-jieba }}
+      lindera: ${{ steps.filter.outputs.lindera }}
+      lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
+      lindera-python: ${{ steps.filter.outputs.lindera-python }}
+      lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            lindera-dictionary:
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-ipadic:
+              - 'lindera-ipadic/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-ipadic-neologd:
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-unidic:
+              - 'lindera-unidic/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-ko-dic:
+              - 'lindera-ko-dic/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-cc-cedict:
+              - 'lindera-cc-cedict/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-jieba:
+              - 'lindera-jieba/**'
+              - 'lindera-dictionary/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera:
+              - 'lindera/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-cli:
+              - 'lindera-cli/**'
+              - 'lindera/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-python:
+              - 'lindera-python/**'
+              - 'lindera/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            lindera-wasm:
+              - 'lindera-wasm/**'
+              - 'lindera/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
+  test-lindera-dictionary:
+    name: Test lindera-dictionary (${{ matrix.platform.target }})
+    needs: [format, detect-changes]
+    if: github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-dictionary == 'true'
     strategy:
       matrix:
         platform:
@@ -66,14 +173,209 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check --target "${{ matrix.platform.target }}" --all-features
+            cargo check -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
           else
-            cargo test --target "${{ matrix.platform.target }}" --all-features
+            cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
           fi
 
-  test-python:
-    name: Test Python
-    needs: [format]
+  test-lindera-ipadic:
+    name: Test lindera-ipadic
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ipadic == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ipadic --all-features
+
+  test-lindera-ipadic-neologd:
+    name: Test lindera-ipadic-neologd
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ipadic-neologd == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ipadic-neologd --all-features
+
+  test-lindera-unidic:
+    name: Test lindera-unidic
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-unidic == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-unidic --all-features
+
+  test-lindera-ko-dic:
+    name: Test lindera-ko-dic
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ko-dic == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ko-dic --all-features
+
+  test-lindera-cc-cedict:
+    name: Test lindera-cc-cedict
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cc-cedict == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-cc-cedict --all-features
+
+  test-lindera-jieba:
+    name: Test lindera-jieba
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-jieba == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-jieba --all-features
+
+  test-lindera:
+    name: Test lindera (${{ matrix.platform.target }})
+    needs:
+      - test-lindera-dictionary
+      - test-lindera-ipadic
+      - test-lindera-ipadic-neologd
+      - test-lindera-unidic
+      - test-lindera-ko-dic
+      - test-lindera-cc-cedict
+      - test-lindera-jieba
+      - detect-changes
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+            skip_test_run: true
+        toolchain: [stable]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
+            cargo check -p lindera --target "${{ matrix.platform.target }}" --all-features
+          else
+            cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+          fi
+
+  test-lindera-cli:
+    name: Test lindera-cli
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cli == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-cli --all-features
+
+  test-lindera-python:
+    name: Test lindera-python
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-python == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
@@ -96,9 +398,12 @@ jobs:
           make init
           make python-test
 
-  test-wasm:
-    name: Test WASM
-    needs: [format]
+  test-lindera-wasm:
+    name: Test lindera-wasm
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-wasm == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout

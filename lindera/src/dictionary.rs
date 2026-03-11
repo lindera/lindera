@@ -15,7 +15,6 @@ use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
 use lindera_dictionary::loader::DictionaryLoader;
 use lindera_dictionary::loader::FSDictionaryLoader;
 use lindera_dictionary::loader::user_dictionary::UserDictionaryLoader;
-
 #[cfg(feature = "train")]
 pub use lindera_dictionary::trainer;
 #[cfg(feature = "embed-ipadic")]
@@ -26,6 +25,10 @@ use lindera_ipadic::embedded::EmbeddedIPADICLoader;
 use lindera_ipadic_neologd::DICTIONARY_NAME as IPADIC_NEOLOGD_DICTIONARY_NAME;
 #[cfg(feature = "embed-ipadic-neologd")]
 use lindera_ipadic_neologd::embedded::EmbeddedIPADICNEologdLoader;
+#[cfg(feature = "embed-jieba")]
+use lindera_jieba::DICTIONARY_NAME as JIEBA_DICTIONARY_NAME;
+#[cfg(feature = "embed-jieba")]
+use lindera_jieba::embedded::EmbeddedJiebaLoader;
 #[cfg(feature = "embed-ko-dic")]
 use lindera_ko_dic::DICTIONARY_NAME as KO_DIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-ko-dic")]
@@ -59,6 +62,7 @@ pub enum DictionaryScheme {
         feature = "embed-unidic",
         feature = "embed-ko-dic",
         feature = "embed-cc-cedict",
+        feature = "embed-jieba",
     ))]
     #[serde(rename = "embedded")]
     Embedded,
@@ -75,6 +79,7 @@ impl DictionaryScheme {
                 feature = "embed-unidic",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
+                feature = "embed-jieba",
             ))]
             DictionaryScheme::Embedded => "embedded",
             DictionaryScheme::File => "file",
@@ -92,6 +97,7 @@ impl FromStr for DictionaryScheme {
                 feature = "embed-unidic",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
+                feature = "embed-jieba",
             ))]
             "embedded" => Ok(DictionaryScheme::Embedded),
             "file" => Ok(DictionaryScheme::File),
@@ -118,6 +124,9 @@ pub enum DictionaryKind {
     #[cfg(feature = "embed-cc-cedict")]
     #[serde(rename = "cc-cedict")]
     CcCedict,
+    #[cfg(feature = "embed-jieba")]
+    #[serde(rename = "jieba")]
+    Jieba,
 }
 
 impl DictionaryKind {
@@ -139,6 +148,8 @@ impl DictionaryKind {
                 DictionaryKind::KoDic => cfg!(feature = "embed-ko-dic"),
                 #[cfg(feature = "embed-cc-cedict")]
                 DictionaryKind::CcCedict => cfg!(feature = "embed-cc-cedict"),
+                #[cfg(feature = "embed-jieba")]
+                DictionaryKind::Jieba => cfg!(feature = "embed-jieba"),
                 #[allow(unreachable_patterns)]
                 _ => false,
             })
@@ -157,6 +168,8 @@ impl DictionaryKind {
             DictionaryKind::KoDic => KO_DIC_DICTIONARY_NAME,
             #[cfg(feature = "embed-cc-cedict")]
             DictionaryKind::CcCedict => CC_CEDICT_DICTIONARY_NAME,
+            #[cfg(feature = "embed-jieba")]
+            DictionaryKind::Jieba => JIEBA_DICTIONARY_NAME,
             #[allow(unreachable_patterns)]
             _ => "",
         }
@@ -177,6 +190,8 @@ impl FromStr for DictionaryKind {
             KO_DIC_DICTIONARY_NAME => Ok(DictionaryKind::KoDic),
             #[cfg(feature = "embed-cc-cedict")]
             CC_CEDICT_DICTIONARY_NAME => Ok(DictionaryKind::CcCedict),
+            #[cfg(feature = "embed-jieba")]
+            JIEBA_DICTIONARY_NAME => Ok(DictionaryKind::Jieba),
             _ => Err(LinderaErrorKind::Dictionary
                 .with_error(anyhow::anyhow!("Invalid dictionary kind: {input}"))),
         }
@@ -213,6 +228,11 @@ pub fn resolve_embedded_loader(
         // #[cfg(not(feature = "embed-cc-cedict"))]
         // DictionaryKind::CcCedict => Err(LinderaErrorKind::FeatureDisabled
         //     .with_error(anyhow::anyhow!("CC-CEDICT embedded feature is not enabled"))),
+        #[cfg(feature = "embed-jieba")]
+        DictionaryKind::Jieba => Ok(Box::new(EmbeddedJiebaLoader::new())),
+        // #[cfg(not(feature = "embed-jieba"))]
+        // DictionaryKind::Jieba => Err(LinderaErrorKind::FeatureDisabled
+        //     .with_error(anyhow::anyhow!("Jieba embedded feature is not enabled"))),
     }
 }
 
@@ -247,6 +267,7 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                         feature = "embed-unidic",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",
+                        feature = "embed-jieba",
                     ))]
                     DictionaryScheme::Embedded => {
                         let kind = DictionaryKind::from_str(parsed_uri.host_str().unwrap_or(""))
@@ -345,6 +366,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                         feature = "embed-unidic",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",
+                        feature = "embed-jieba",
                     ))]
                     _ => {
                         // Unsupported dictionary scheme

@@ -27,21 +27,24 @@ embed-ko-dic = [
 embed-cc-cedict = [
     "lindera-cc-cedict/embed-cc-cedict",
 ] # Embed CC-CEDICT dictionary in the binary
+embed-jieba = [
+    "lindera-jieba/embed-jieba",
+] # Embed Jieba dictionary in the binary
 embed-cjk = [
     "embed-ipadic",
     "embed-ko-dic",
-    "embed-cc-cedict",
-] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) in the binary
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba) in the binary
 embed-cjk2 = [
     "embed-unidic",
     "embed-ko-dic",
-    "embed-cc-cedict",
-] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT) in the binary
+    "embed-jieba",
+] # Embed CJK dictionaries (UniDic, ko-dic, Jieba) in the binary
 embed-cjk3 = [
     "embed-ipadic-neologd",
     "embed-ko-dic",
-    "embed-cc-cedict",
-] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT) in the binary
+    "embed-jieba",
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",
@@ -49,6 +52,7 @@ compress = [
     "lindera-unidic?/compress",
     "lindera-ko-dic?/compress",
     "lindera-cc-cedict?/compress",
+    "lindera-jieba?/compress",
 ] # Compress dictionaries
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
 train = ["lindera-dictionary/train"] # Enable training functionality
@@ -80,6 +84,7 @@ lindera-ipadic-neologd = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
 lindera-cc-cedict = { workspace = true, optional = true }
+lindera-jieba = { workspace = true, optional = true }
 
 
 [dev-dependencies]
@@ -110,3 +115,8 @@ required-features = ["embed-cc-cedict"]
 name = "bench_ipadic_neologd"
 harness = false
 required-features = ["embed-ipadic-neologd"]
+
+[[bench]]
+name = "bench_jieba"
+harness = false
+required-features = ["embed-jieba"]
