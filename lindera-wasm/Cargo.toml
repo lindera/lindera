@@ -24,7 +24,7 @@ embed-cc-cedict = [
 embed-jieba = ["lindera/embed-jieba"] # Embed Jieba dictionary (Chinese)
 embed-cjk = [
     "lindera/embed-cjk",
-] # Embed IPADIC dictionary (Japanese), ko-dic dictionary (Korean), CC-CEDICT dictionary (Chinese), Jieba dictionary (Chinese)
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 default = []
 
 [dependencies]

@@ -70,11 +70,11 @@ rucrf = "0.3.3"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 serde_yaml_ng = "0.10.0"
-strum = { version = "0.27.2", features = ["derive"] }
-strum_macros = "0.27.2"
+strum = { version = "0.28.0", features = ["derive"] }
+strum_macros = "0.28.0"
 tar = "0.4.44"
 thiserror = "2.0.18"
-tokio = { version = "1.49.0", features = [
+tokio = { version = "1.50.0", features = [
     "rt",
     "macros",
     "time",

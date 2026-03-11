@@ -25,13 +25,13 @@ embed-jieba = ["lindera/embed-jieba"] # Embed Jieba dictionary in the binary
 
 embed-cjk = [
     "lindera/embed-cjk",
-] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba) in the binary
 embed-cjk2 = [
     "lindera/embed-cjk2",
-] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (UniDic, ko-dic, Jieba) in the binary
 embed-cjk3 = [
     "lindera/embed-cjk3",
-] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 
 compress = ["lindera/compress"]         # Compress dictionaries
 mmap = ["lindera/mmap"]                 # Use memory-mapped file

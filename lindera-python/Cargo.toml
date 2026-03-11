@@ -29,12 +29,12 @@ embed-cc-cedict = [
 embed-jieba = ["lindera/embed-jieba"] # Include Chinese dictionary (Jieba)
 embed-cjk = [
     "lindera/embed-cjk",
-] # Include CJK dictionary (CC-CEDICT, Jieba, IPADIC, ko-dic)
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba)
 train = ["lindera/train"] # Enable training functionality
 default = ["train"] # No directories included
 
 [dependencies]
-pyo3 = { version = "0.28.0", features = [
+pyo3 = { version = "0.28.2", features = [
     "extension-module",
     "abi3-py310",
     "generate-import-lib",

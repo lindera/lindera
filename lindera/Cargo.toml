@@ -34,17 +34,17 @@ embed-cjk = [
     "embed-ipadic",
     "embed-ko-dic",
     "embed-jieba",
-] # Embed CJK dictionaries (IPADIC, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (IPADIC, ko-dic, Jieba) in the binary
 embed-cjk2 = [
     "embed-unidic",
     "embed-ko-dic",
     "embed-jieba",
-] # Embed CJK dictionaries (UniDic, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (UniDic, ko-dic, Jieba) in the binary
 embed-cjk3 = [
     "embed-ipadic-neologd",
     "embed-ko-dic",
     "embed-jieba",
-] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT, Jieba) in the binary
+] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 compress = [
     "lindera-dictionary/compress",
     "lindera-ipadic?/compress",
