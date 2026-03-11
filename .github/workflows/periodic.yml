@@ -1,4 +1,4 @@
-name: Periodic
+name: Periodic Test
 
 on:
   workflow_dispatch:
@@ -27,8 +27,8 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
-  test:
-    name: Test
+  test-lindera-dictionary:
+    name: Test lindera-dictionary (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
     needs: [format]
     strategy:
       matrix:
@@ -59,23 +59,206 @@ jobs:
           target: ${{ matrix.platform.target }}
           components: rustfmt, clippy
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - name: Run test
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
+            cargo check -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+          else
+            cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+          fi
+
+  test-lindera-ipadic:
+    name: Test lindera-ipadic (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
-          python-version: 3.x
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ipadic --all-features
+
+  test-lindera-ipadic-neologd:
+    name: Test lindera-ipadic-neologd (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ipadic-neologd --all-features
+
+  test-lindera-unidic:
+    name: Test lindera-unidic (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-unidic --all-features
+
+  test-lindera-ko-dic:
+    name: Test lindera-ko-dic (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-ko-dic --all-features
+
+  test-lindera-cc-cedict:
+    name: Test lindera-cc-cedict (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-cc-cedict --all-features
+
+  test-lindera-jieba:
+    name: Test lindera-jieba (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-jieba --all-features
+
+  test-lindera:
+    name: Test lindera (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
+    needs:
+      - test-lindera-dictionary
+      - test-lindera-ipadic
+      - test-lindera-ipadic-neologd
+      - test-lindera-unidic
+      - test-lindera-ko-dic
+      - test-lindera-cc-cedict
+      - test-lindera-jieba
+    strategy:
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+            skip_test_run: true
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          target: ${{ matrix.platform.target }}
+          components: rustfmt, clippy
 
       - name: Run test
         shell: bash
         run: |
           if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check --target "${{ matrix.platform.target }}" --all-features
+            cargo check -p lindera --target "${{ matrix.platform.target }}" --all-features
           else
-            cargo test --target "${{ matrix.platform.target }}" --all-features
+            cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
           fi
 
-  test-python:
-    name: Test Python
-    needs: [format]
+  test-lindera-cli:
+    name: Test lindera-cli (${{ matrix.toolchain }})
+    needs: [test-lindera]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-cli --all-features
+
+  test-lindera-python:
+    name: Test lindera-python
+    needs: [test-lindera]
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
@@ -98,9 +281,9 @@ jobs:
           make init
           make python-test
 
-  test-wasm:
-    name: Test WASM
-    needs: [format]
+  test-lindera-wasm:
+    name: Test lindera-wasm
+    needs: [test-lindera]
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
