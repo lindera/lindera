@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> はじめに</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> インストール</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> 辞書</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> 設定</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> 高度な使い方</a></li><li class="chapter-item expanded "><a href="cli.html" class="active"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> APIリファレンス</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> 貢献ガイド</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> はじめに</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> インストール</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> クイックスタート</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> 辞書</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li><li class="chapter-item expanded "><a href="dictionaries/jieba.html"><strong aria-hidden="true">4.6.</strong> Jieba</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> 設定</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> 高度な使い方</a></li><li class="chapter-item expanded "><a href="cli.html" class="active"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> APIリファレンス</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> 貢献ガイド</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -200,6 +200,10 @@
 <p>"cc-cedict" 機能フラグを使用すると、LinderaにCC-CEDICTを含めることができます。</p>
 <pre><code class="language-shell script">% cargo build --release --features=embed-cc-cedict
 </code></pre>
+<h3 id="jieba中国語辞書を含めてビルド"><a class="header" href="#jieba中国語辞書を含めてビルド">Jieba（中国語辞書）を含めてビルド</a></h3>
+<p>"jieba" 機能フラグを使用すると、LinderaにJiebaを含めることができます。</p>
+<pre><code class="language-shell script">% cargo build --release --features=embed-jieba
+</code></pre>
 <h3 id="辞書なしでビルド"><a class="header" href="#辞書なしでビルド">辞書なしでビルド</a></h3>
 <p>Linderaのバイナリサイズを削減するには、機能フラグを省略します。
 これにより、辞書が含まれなくなるため、トークナイザーとトレーナーのみを含むバイナリになります。</p>
@@ -303,6 +307,21 @@ lindera build \
 % (cd /tmp &amp;&amp; zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
 % tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
 </code></pre>
+<h4 id="jieba中国語辞書のビルド"><a class="header" href="#jieba中国語辞書のビルド">Jieba（中国語辞書）のビルド</a></h4>
+<pre><code class="language-shell script"># Jiebaソースファイルのダウンロードと展開
+% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+
+# 辞書のビルド
+% lindera build \
+  --src /tmp/mecab-jieba-0.1.0-20260310 \
+  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --metadata ./lindera-jieba/metadata.json
+
+% ls -al /tmp/lindera-jieba-0.1.0-20260310
+% (cd /tmp &amp;&amp; zip -r lindera-jieba-0.1.0-20260310.zip lindera-jieba-0.1.0-20260310/)
+% tar -czf /tmp/lindera-jieba-0.1.0-20260310.tar.gz -C /tmp lindera-jieba-0.1.0-20260310
+</code></pre>
 <h4 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h4>
 <pre><code class="language-shell script"># ko-dicソースファイルのダウンロードと展開
 % curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
@@ -350,6 +369,17 @@ lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+</code></pre>
+<h3 id="jiebaユーザー辞書中国語のビルド"><a class="header" href="#jiebaユーザー辞書中国語のビルド">Jiebaユーザー辞書（中国語）のビルド</a></h3>
+<p>ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：</p>
+<ul>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv">Lindera Jieba Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/jieba_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-jieba/metadata.json \
   --user
 </code></pre>
 <h3 id="ko-dicユーザー辞書韓国語のビルド"><a class="header" href="#ko-dicユーザー辞書韓国語のビルド">ko-dicユーザー辞書（韓国語）のビルド</a></h3>
@@ -493,6 +523,10 @@ EOS
 。      *,*,*,*,*,*,*,*
 EOS
 </code></pre>
+<h4 id="外部jieba中国語辞書を使用したトークナイズ"><a class="header" href="#外部jieba中国語辞書を使用したトークナイズ">外部Jieba（中国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-jieba-0.1.0-20260310
+</code></pre>
 <h3 id="埋め込み辞書を使用した例"><a class="header" href="#埋め込み辞書を使用した例">埋め込み辞書を使用した例</a></h3>
 <p>Linderaは、特定の機能フラグを指定してビルドすることで、バイナリに辞書を直接含めることができます。これにより、外部辞書ファイルなしでトークナイズが可能になります。</p>
 <h4 id="埋め込みipadic日本語辞書を使用したトークナイズ"><a class="header" href="#埋め込みipadic日本語辞書を使用したトークナイズ">埋め込みIPADIC（日本語辞書）を使用したトークナイズ</a></h4>
@@ -581,6 +615,11 @@ EOS
 EOS
 </code></pre>
 <p>注意: CC-CEDICT辞書をバイナリに含めるには、<code>--features=embed-cc-cedict</code> オプションを使用してビルドする必要があります。</p>
+<h4 id="埋め込みjieba中国語辞書を使用したトークナイズ"><a class="header" href="#埋め込みjieba中国語辞書を使用したトークナイズ">埋め込みJieba（中国語辞書）を使用したトークナイズ</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://jieba
+</code></pre>
+<p>注意: Jieba辞書をバイナリに含めるには、<code>--features=embed-jieba</code> オプションを使用してビルドする必要があります。</p>
 <h3 id="ユーザー辞書の例"><a class="header" href="#ユーザー辞書の例">ユーザー辞書の例</a></h3>
 <p>Linderaは、システム辞書と一緒にカスタム単語を追加するためのユーザー辞書をサポートしています。ユーザー辞書はCSVまたはバイナリ形式にすることができます。</p>
 <h4 id="ユーザー辞書の使用csv形式"><a class="header" href="#ユーザー辞書の使用csv形式">ユーザー辞書の使用（CSV形式）</a></h4>

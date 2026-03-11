@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> Dictionaries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> Advanced Usage</a></li><li class="chapter-item expanded "><a href="cli.html"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> API Reference</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="quick_start.html"><strong aria-hidden="true">3.</strong> Quick Start</a></li><li class="chapter-item expanded "><a href="dictionaries.html"><strong aria-hidden="true">4.</strong> Dictionaries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dictionaries/ipadic.html"><strong aria-hidden="true">4.1.</strong> IPADIC</a></li><li class="chapter-item expanded "><a href="dictionaries/ipadic_neologd.html"><strong aria-hidden="true">4.2.</strong> IPADIC NEologd</a></li><li class="chapter-item expanded "><a href="dictionaries/unidic.html"><strong aria-hidden="true">4.3.</strong> UniDic</a></li><li class="chapter-item expanded "><a href="dictionaries/ko_dic.html"><strong aria-hidden="true">4.4.</strong> ko-dic</a></li><li class="chapter-item expanded "><a href="dictionaries/cc_cedict.html"><strong aria-hidden="true">4.5.</strong> CC-CEDICT</a></li><li class="chapter-item expanded "><a href="dictionaries/jieba.html"><strong aria-hidden="true">4.6.</strong> Jieba</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">5.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="advanced_usage.html"><strong aria-hidden="true">6.</strong> Advanced Usage</a></li><li class="chapter-item expanded "><a href="cli.html"><strong aria-hidden="true">7.</strong> CLI</a></li><li class="chapter-item expanded "><a href="api_reference.html"><strong aria-hidden="true">8.</strong> API Reference</a></li><li class="chapter-item expanded "><a href="contributing.html"><strong aria-hidden="true">9.</strong> Contributing</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -257,6 +257,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <li><a href="./dictionaries/unidic.html">UniDic</a> - A dictionary with uniform word unit definitions.</li>
 <li><a href="./dictionaries/ko_dic.html">ko-dic</a> - A dictionary for Korean.</li>
 <li><a href="./dictionaries/cc_cedict.html">CC-CEDICT</a> - A dictionary for Chinese.</li>
+<li><a href="./dictionaries/jieba.html">Jieba</a> - A dictionary for Chinese based on Jieba.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ipadic"><a class="header" href="#lindera-ipadic">Lindera IPADIC</a></h1>
 <h2 id="dictionary-version"><a class="header" href="#dictionary-version">Dictionary version</a></h2>
@@ -532,6 +533,49 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <p>The API reference is available. Please see following URL:</p>
 <ul>
 <li><a href="https://docs.rs/lindera-cc-cedict">lindera-cc-cedict</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-jieba"><a class="header" href="#lindera-jieba">Lindera Jieba</a></h1>
+<h2 id="dictionary-version-5"><a class="header" href="#dictionary-version-5">Dictionary version</a></h2>
+<p>This repository contains <a href="https://github.com/lindera/mecab-jieba">mecab-jieba</a>.</p>
+<h2 id="dictionary-format-5"><a class="header" href="#dictionary-format-5">Dictionary format</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Chinese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左语境ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右语境ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>成本</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>併音</td><td>Pinyin</td><td></td></tr>
+<tr><td>6</td><td>繁体字</td><td>Traditional</td><td></td></tr>
+<tr><td>7</td><td>簡体字</td><td>Simplified</td><td></td></tr>
+<tr><td>8</td><td>定义</td><td>Definition</td><td></td></tr>
+</tbody></table>
+</div>
+<h2 id="user-dictionary-format-csv-5"><a class="header" href="#user-dictionary-format-csv-5">User dictionary format (CSV)</a></h2>
+<h3 id="simple-version-5"><a class="header" href="#simple-version-5">Simple version</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Chinese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>2</td><td>併音</td><td>Pinyin</td><td></td></tr>
+</tbody></table>
+</div>
+<h3 id="detailed-version-5"><a class="header" href="#detailed-version-5">Detailed version</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Chinese)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
+<tr><td>0</td><td>表面形式</td><td>Surface</td><td></td></tr>
+<tr><td>1</td><td>左语境ID</td><td>Left context ID</td><td></td></tr>
+<tr><td>2</td><td>右语境ID</td><td>Right context ID</td><td></td></tr>
+<tr><td>3</td><td>成本</td><td>Cost</td><td></td></tr>
+<tr><td>4</td><td>词类</td><td>Part-of-speech</td><td></td></tr>
+<tr><td>5</td><td>併音</td><td>Pinyin</td><td></td></tr>
+<tr><td>6</td><td>繁体字</td><td>Traditional</td><td></td></tr>
+<tr><td>7</td><td>簡体字</td><td>Simplified</td><td></td></tr>
+<tr><td>8</td><td>定义</td><td>Definition</td><td></td></tr>
+<tr><td>9</td><td>-</td><td>-</td><td>After 9, it can be freely expanded.</td></tr>
+</tbody></table>
+</div>
+<h2 id="api-reference-5"><a class="header" href="#api-reference-5">API reference</a></h2>
+<p>The API reference is available. Please see following URL:</p>
+<ul>
+<li><a href="https://docs.rs/lindera-jieba">lindera-jieba</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>Lindera is able to read YAML format configuration files.
@@ -1291,6 +1335,10 @@ fn calculate_unknown_word_cost(&amp;self, feature_weight: f64, category: usize) 
 <p>The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.</p>
 <pre><code class="language-shell script">% cargo build --release --features=embed-cc-cedict
 </code></pre>
+<h3 id="build-with-jieba-chinese-dictionary"><a class="header" href="#build-with-jieba-chinese-dictionary">Build with Jieba (Chinese dictionary)</a></h3>
+<p>The "jieba" feature flag allows Lindera to include Jieba.</p>
+<pre><code class="language-shell script">% cargo build --release --features=embed-jieba
+</code></pre>
 <h3 id="build-without-dictionaries"><a class="header" href="#build-without-dictionaries">Build without dictionaries</a></h3>
 <p>To reduce Lindera's binary size, omit the feature flag.
 This results in a binary containing only the tokenizer and trainer, as it no longer includes the dictionary.</p>
@@ -1394,6 +1442,21 @@ lindera build \
 % (cd /tmp &amp;&amp; zip -r lindera-cc-cedict-0.1.0-20200409.zip lindera-cc-cedict-0.1.0-20200409/)
 % tar -czf /tmp/lindera-cc-cedict-0.1.0-20200409.tar.gz -C /tmp lindera-cc-cedict-0.1.0-20200409
 </code></pre>
+<h4 id="build-jieba-chinese-dictionary"><a class="header" href="#build-jieba-chinese-dictionary">Build Jieba (Chinese dictionary)</a></h4>
+<pre><code class="language-shell script"># Download and extract Jieba source files
+% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+
+# Build the dictionary
+% lindera build \
+  --src /tmp/mecab-jieba-0.1.0-20260310 \
+  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --metadata ./lindera-jieba/metadata.json
+
+% ls -al /tmp/lindera-jieba-0.1.0-20260310
+% (cd /tmp &amp;&amp; zip -r lindera-jieba-0.1.0-20260310.zip lindera-jieba-0.1.0-20260310/)
+% tar -czf /tmp/lindera-jieba-0.1.0-20260310.tar.gz -C /tmp lindera-jieba-0.1.0-20260310
+</code></pre>
 <h4 id="build-ko-dic-korean-dictionary"><a class="header" href="#build-ko-dic-korean-dictionary">Build ko-dic (Korean dictionary)</a></h4>
 <pre><code class="language-shell script"># Download and extract ko-dic source files
 % curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
@@ -1441,6 +1504,17 @@ lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
   --metadata ./lindera-cc-cedict/metadata.json \
+  --user
+</code></pre>
+<h3 id="build-jieba-user-dictionary-chinese"><a class="header" href="#build-jieba-user-dictionary-chinese">Build Jieba user dictionary (Chinese)</a></h3>
+<p>For more details about user dictionary format please refer to the following URL:</p>
+<ul>
+<li><a href="https://github.com/lindera/lindera/tree/main/lindera-jieba#user-dictionary-format-csv">Lindera Jieba Builder/User Dictionary Format</a></li>
+</ul>
+<pre><code class="language-shell">% lindera build \
+  --src ./resources/user_dict/jieba_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-jieba/metadata.json \
   --user
 </code></pre>
 <h3 id="build-ko-dic-user-dictionary-korean"><a class="header" href="#build-ko-dic-user-dictionary-korean">Build ko-dic user dictionary (Korean)</a></h3>
@@ -1584,6 +1658,10 @@ EOS
 。      *,*,*,*,*,*,*,*
 EOS
 </code></pre>
+<h4 id="tokenize-with-external-jieba-chinese-dictionary"><a class="header" href="#tokenize-with-external-jieba-chinese-dictionary">Tokenize with external Jieba (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict /tmp/lindera-jieba-0.1.0-20260310
+</code></pre>
 <h3 id="examples-with-embedded-dictionaries"><a class="header" href="#examples-with-embedded-dictionaries">Examples with embedded dictionaries</a></h3>
 <p>Lindera can include dictionaries directly in the binary when built with specific feature flags. This allows tokenization without external dictionary files.</p>
 <h4 id="tokenize-with-embedded-ipadic-japanese-dictionary"><a class="header" href="#tokenize-with-embedded-ipadic-japanese-dictionary">Tokenize with embedded IPADIC (Japanese dictionary)</a></h4>
@@ -1672,6 +1750,11 @@ EOS
 EOS
 </code></pre>
 <p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embed-cc-cedict</code> option.</p>
+<h4 id="tokenize-with-embedded-jieba-chinese-dictionary"><a class="header" href="#tokenize-with-embedded-jieba-chinese-dictionary">Tokenize with embedded Jieba (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
+  --dict embedded://jieba
+</code></pre>
+<p>NOTE: To include Jieba dictionary in the binary, you must build with the <code>--features=embed-jieba</code> option.</p>
 <h3 id="user-dictionary-examples"><a class="header" href="#user-dictionary-examples">User dictionary examples</a></h3>
 <p>Lindera supports user dictionaries to add custom words alongside system dictionaries. User dictionaries can be in CSV or binary format.</p>
 <h4 id="use-user-dictionary-csv-format"><a class="header" href="#use-user-dictionary-csv-format">Use user dictionary (CSV format)</a></h4>
@@ -2104,12 +2187,12 @@ lindera export \
 </li>
 </ol>
 <p>This allows you to maintain your base dictionary configuration while incorporating the optimized parameters learned during training.</p>
-<h2 id="api-reference-5"><a class="header" href="#api-reference-5">API reference</a></h2>
+<h2 id="api-reference-6"><a class="header" href="#api-reference-6">API reference</a></h2>
 <p>The API reference is available. Please see following URL:</p>
 <ul>
 <li><a href="https://docs.rs/lindera-cli">lindera-cli</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference-6"><a class="header" href="#api-reference-6">API Reference</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference-7"><a class="header" href="#api-reference-7">API Reference</a></h1>
 <p>The API reference is available. Please see following URL:</p>
 <ul>
 <li><a href="https://docs.rs/lindera">lindera</a></li>
