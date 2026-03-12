@@ -63,33 +63,33 @@ anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
 daachorse = { workspace = true }
-kanaria = { workspace = true }
-log = { workspace = true }
-once_cell = { workspace = true }
-percent-encoding = { workspace = true }
-regex = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-serde_yaml_ng = { workspace = true }
-strum = { workspace = true }
-strum_macros = { workspace = true }
-unicode-blocks = { workspace = true }
-unicode-normalization = { workspace = true }
-unicode-segmentation = { workspace = true }
-url = { workspace = true }
-
+kanaria = "0.2.0"
+lindera-cc-cedict = { workspace = true, optional = true }
 lindera-dictionary = { workspace = true }
 lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }
-lindera-unidic = { workspace = true, optional = true }
-lindera-ko-dic = { workspace = true, optional = true }
-lindera-cc-cedict = { workspace = true, optional = true }
 lindera-jieba = { workspace = true, optional = true }
-
+lindera-ko-dic = { workspace = true, optional = true }
+lindera-unidic = { workspace = true, optional = true }
+log = { workspace = true }
+once_cell = { workspace = true }
+percent-encoding = "2.3.2"
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml_ng = "0.10.0"
+strum = { workspace = true }
+strum_macros = { workspace = true }
+unicode-blocks = "0.1.9"
+unicode-normalization = "0.1.25"
+unicode-segmentation = "1.12.0"
+url = "2.5.8"
 
 [dev-dependencies]
+criterion = { version = "0.8.2", default-features = false, features = [
+    "html_reports",
+] }
 serde_json = { workspace = true }
-criterion = { workspace = true }
 
 [[bench]]
 name = "bench_ipadic"

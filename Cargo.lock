@@ -1263,7 +1263,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1295,7 +1295,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1354,7 +1354,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1368,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-jieba"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1396,7 +1396,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ko-dic"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1410,7 +1410,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "lindera",
  "num_cpus",
@@ -1421,7 +1421,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1435,7 +1435,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-wasm"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "js-sys",
  "lindera",
@@ -1598,9 +1598,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.21.3"
+version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "once_cell_polyfill"

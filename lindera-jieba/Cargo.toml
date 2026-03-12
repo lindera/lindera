@@ -20,12 +20,12 @@ default = ["compress"]
 anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
-serde_json = { workspace = true }
+lindera-dictionary = { workspace = true }
 once_cell = { workspace = true }
 rkyv = { workspace = true }
-lindera-dictionary = { workspace = true }
+serde_json = { workspace = true }
 
 [build-dependencies]
+lindera-dictionary = { workspace = true, features = ["build_rs"] }
 serde_json = { workspace = true }
 tokio = { workspace = true }
-lindera-dictionary = { workspace = true, features = ["build_rs"] }
