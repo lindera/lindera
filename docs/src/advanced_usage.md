@@ -417,52 +417,63 @@ NUMERIC 1 1 0
 #### 5. **Feature Template (feature.def)**
 
 **Role**: Feature template definition
-**Format**: Feature extraction patterns
+**Format**: MeCab-compatible feature extraction patterns
 
 ```text
 # Unigram features (word-level features)
-UNIGRAM:%F[0]         # POS (feature element 0)
-UNIGRAM:%F[1]         # POS detail 1
-UNIGRAM:%F[6]         # Base form
-UNIGRAM:%F[7]         # Reading (Katakana)
+UNIGRAM U00:%F[0]           # POS (feature element 0)
+UNIGRAM U01:%F[0],%F?[1]    # POS + POS detail (%F?[n] = optional, skipped if *)
+UNIGRAM U02:%F[6]           # Base form
+UNIGRAM U03:%w              # Surface form (meta character)
 
-# Left context features
-LEFT:%L[0]            # POS of left word
-LEFT:%L[1]            # POS detail of left word
-
-# Right context features
-RIGHT:%R[0]           # POS of right word
-RIGHT:%R[1]           # POS detail of right word
-
-# Bigram features (combination features)
-UNIGRAM:%F[0]/%F[1]   # POS + POS detail
-UNIGRAM:%F[0]/%F[6]   # POS + base form
+# Bigram features (context combination features)
+BIGRAM B00:%L[0]/%R[0]      # Left POS / Right POS
+BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 ```
 
 - **Purpose**: Define which information to extract features from
-- **Templates**: `%F[n]` (feature), `%L[n]` (left context), `%R[n]` (right context)
+- **Format**: Each line starts with `UNIGRAM` or `BIGRAM`, followed by a label (e.g. `U00:`, `B00:`) and a template pattern
+- **Template variables**:
+  - `%F[n]` / `%F?[n]`: Feature field at index n (`?` = optional, skipped if value is `*`)
+  - `%L[n]`: Left context feature field at index n (from rewrite.def left section)
+  - `%R[n]`: Right context feature field at index n (from rewrite.def right section)
+  - `%w`: Surface form of the word
+  - `%u`: Unigram rewritten feature string (from rewrite.def unigram section)
+  - `%l`: Left rewritten feature string (from rewrite.def left section)
+  - `%r`: Right rewritten feature string (from rewrite.def right section)
 
-#### 6. **Feature Normalization Rules (rewrite.def)**
+#### 6. **Feature Rewrite Rules (rewrite.def)**
 
-**Role**: Feature normalization rules
-**Format**: Replacement rules (tab-separated)
+**Role**: Feature rewrite rules for normalizing features before CRF training
+**Format**: MeCab-compatible 3-section format separated by blank lines
+
+The file consists of three sections, each separated by a blank line:
+
+1. **Unigram section**: Rewrites features for unigram templates (`%F[n]`, `%u`)
+2. **Left section**: Rewrites features for left context (`%L[n]`, `%l`)
+3. **Right section**: Rewrites features for right context (`%R[n]`, `%r`)
 
 ```text
-# Normalize numeric expressions
-数	NUM
-*	UNK
+# Section 1: Unigram rewrite rules
+名詞,固有名詞,*  名詞,固有名詞
+助動詞,*,*,*,特殊・デス  助動詞
+*  *
 
-# Normalize proper nouns
-名詞,固有名詞	名詞,一般
+# Section 2: Left context rewrite rules (blank line above separates sections)
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 
-# Simplify auxiliary verbs
-助動詞,*,*,*,特殊・デス	助動詞
-助動詞,*,*,*,特殊・ダ	助動詞
+# Section 3: Right context rewrite rules (blank line above separates sections)
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 ```
 
-- **Purpose**: Normalize features to improve training efficiency
-- **Format**: `original_pattern\treplacement_pattern`
-- **Effect**: Generalize rare features to reduce sparsity problems
+- **Purpose**: Normalize features to reduce sparsity and improve training efficiency
+- **Format**: Each line is `pattern\treplacement` (tab-separated). Pattern uses `*` as wildcard
+- **Matching**: Patterns are matched by prefix. The first matching rule in each section is applied
+- **Effect**: Different rewrite rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization
 
 #### 7. **Output Model Format**
 

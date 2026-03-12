@@ -1034,15 +1034,20 @@ lindera export \
 - `--model` / `-m`: Path to the trained model file (.dat format)
 - `--output` / `-o`: Directory to output the dictionary files
 - `--metadata`: Optional metadata.json file to update with trained model information
+- `--cost-factor`: Override cost factor for weight-to-cost conversion (default: value from trained model, typically 700)
 
 ### Output files
 
 The export command creates the following dictionary files in the output directory:
 
-- `lex.csv`: Lexicon file with learned weights
-- `matrix.def`: Connection cost matrix
+- `lex.csv`: Lexicon file with learned weights (MeCab-compatible cost via `tocost()`)
+- `matrix.def`: Dense connection cost matrix covering all (right\_id, left\_id) pairs
 - `unk.def`: Unknown word definitions
 - `char.def`: Character type definitions
+- `feature.def`: Feature template definitions (copied from trained model)
+- `rewrite.def`: Feature rewrite rules (copied from trained model)
+- `left-id.def`: Left context ID to feature string mapping
+- `right-id.def`: Right context ID to feature string mapping
 - `metadata.json`: Updated metadata file (if `--metadata` option is provided)
 
 ### Complete workflow example
