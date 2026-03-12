@@ -135,24 +135,31 @@ impl TrainerConfig {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
             }
-            // Parse template format
-            if let Some(stripped) = line.strip_prefix("UNIGRAM:") {
-                unigram_templates.push(stripped.to_string());
-            } else if let Some(template_part) = line.strip_prefix("BIGRAM") {
-                // Parse bigram template like "BIGRAM B00:%L[0]/%R[0]"
-                // Remove label prefix (e.g., "B00:") and split by /
-                let template = template_part.trim().trim_start_matches(':').trim();
-                // Find the part after the label (after the first colon if present)
-                let template_body = if let Some(idx) = template.find(':') {
-                    &template[idx + 1..]
+            // Parse template format: MeCab-compatible feature.def
+            // UNIGRAM U00:%F[0]  or  UNIGRAM:%F[0]
+            // BIGRAM B00:%L[0]/%R[0]  or  BIGRAM:%L[0]/%R[0]
+            if let Some(rest) = line.strip_prefix("UNIGRAM") {
+                // Extract the template part after optional label (e.g., "U00:")
+                let rest = rest.trim_start().trim_start_matches(':').trim_start();
+                let template = if let Some(idx) = rest.find('%') {
+                    &rest[idx..]
                 } else {
-                    template
+                    rest
                 };
-                if let Some((left, right)) = template_body.split_once('/') {
+                unigram_templates.push(template.to_string());
+            } else if let Some(rest) = line.strip_prefix("BIGRAM") {
+                // Extract the template part after optional label (e.g., "B00:")
+                let rest = rest.trim_start().trim_start_matches(':').trim_start();
+                let template = if let Some(idx) = rest.find('%') {
+                    &rest[idx..]
+                } else {
+                    rest
+                };
+                if let Some((left, right)) = template.split_once('/') {
                     bigram_templates.push((left.to_string(), right.to_string()));
                 }
             } else {
-                // Default unigram template
+                // Default unigram template (bare template without prefix)
                 unigram_templates.push(line.to_string());
             }
         }

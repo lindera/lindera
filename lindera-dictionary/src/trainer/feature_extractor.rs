@@ -167,8 +167,8 @@ impl FeatureExtractor {
                             ));
                         }
                         _ => {
-                            let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
-                            match m.get(1).unwrap().as_str() {
+                            let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
+                            match m.get(2).unwrap().as_str() {
                                 "L" => {
                                     captures.push((
                                         pattern.start()..pattern.end(),
@@ -218,8 +218,8 @@ impl FeatureExtractor {
                             ));
                         }
                         _ => {
-                            let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
-                            match m.get(1).unwrap().as_str() {
+                            let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
+                            match m.get(2).unwrap().as_str() {
                                 "R" => {
                                     captures.push((
                                         pattern.start()..pattern.end(),
