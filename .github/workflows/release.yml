@@ -493,7 +493,7 @@ jobs:
 
       - name: Publish crates
         run: |
-          for crate in lindera-dictionary lindera-cc-cedict lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
+          for crate in lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
