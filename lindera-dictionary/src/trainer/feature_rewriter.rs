@@ -156,7 +156,7 @@ impl FeatureRewriter {
                                 Pattern::Exact(s) => f == s,
                             };
                             if is_match {
-                                stack.push((node_idx, i));
+                                stack.push((node_idx, i + 1));
                                 stack.push((edge.target, 0));
                                 continue 'a;
                             }

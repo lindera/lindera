@@ -663,3 +663,40 @@ impl Trainer {
         println!("Feature cleanup completed");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_train_with_bigram_template() {
+        let seed_csv = "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト,0,0,0,名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\n";
+        let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\nKATAKANA 1 1 0\nKANJI 0 0 2\nALPHA 1 1 0\nNUMERIC 1 1 0\n\n0x3041..0x3096 HIRAGANA\n0x30A1..0x30F6 KATAKANA\n0x4E00..0x9FAF KANJI\n0x0030..0x0039 NUMERIC\n0x0041..0x005A ALPHA\n0x0061..0x007A ALPHA\n";
+        let unk_def = "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\nHIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*\nALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*\nNUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*\n";
+        let feature_def = "UNIGRAM U00:%F[0]\nUNIGRAM U01:%F[0],%F?[1]\nBIGRAM B00:%L[0]/%R[0]\n";
+        let rewrite_def = "名詞,一般\tNOUN,GENERAL\n";
+        let corpus_text = "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは\t助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト\t名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\nEOS\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+
+        let model = trainer.train(corpus);
+
+        assert!(model.is_ok());
+    }
+}
