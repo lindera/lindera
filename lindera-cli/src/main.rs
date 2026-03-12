@@ -251,7 +251,7 @@ struct ExportArgs {
         short = 'o',
         long = "output",
         required = true,
-        help = "Output directory (creates lex.csv, matrix.def, unk.def, char.def)"
+        help = "Output directory (creates lex.csv, matrix.def, unk.def, char.def, feature.def, rewrite.def)"
     )]
     output: PathBuf,
     #[clap(
@@ -259,6 +259,11 @@ struct ExportArgs {
         help = "Base metadata.json file to update with trained model values"
     )]
     metadata: Option<PathBuf>,
+    #[clap(
+        long = "cost-factor",
+        help = "Override cost factor for weight-to-cost conversion (default: value from trained model, typically 700)"
+    )]
+    cost_factor: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -521,14 +526,18 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
 fn export(args: ExportArgs) -> LinderaResult<()> {
     use lindera::dictionary::trainer::SerializableModel;
     use std::fs::{self, File};
-    use std::io::Write;
 
     // Load trained model
     let model_file = File::open(&args.model)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    let model: SerializableModel =
+    let mut model: SerializableModel =
         lindera::dictionary::trainer::model::Model::read_model(model_file)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
+
+    // Override cost factor if specified
+    if let Some(cost_factor) = args.cost_factor {
+        model.cost_factor = cost_factor;
+    }
 
     // Create output directory
     fs::create_dir_all(&args.output)
@@ -539,6 +548,8 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     let connector_path = args.output.join("matrix.def");
     let unk_path = args.output.join("unk.def");
     let char_def_path = args.output.join("char.def");
+    let feature_def_path = args.output.join("feature.def");
+    let rewrite_def_path = args.output.join("rewrite.def");
 
     // Write lexicon file using SerializableModel methods
     let mut lexicon_file = File::create(&lexicon_path)
@@ -564,45 +575,39 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     // Write character definition file
     let mut char_def_file = File::create(&char_def_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    model
+        .write_char_def(&mut char_def_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    writeln!(
-        char_def_file,
-        "# Character definition file generated from trained model"
-    )
-    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "# Format: CATEGORY_NAME invoke group length")
+    // Write feature definition file
+    let mut feature_def_file = File::create(&feature_def_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "DEFAULT 0 1 0")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "HIRAGANA 1 1 0")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "KATAKANA 1 1 0")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "KANJI 0 0 2")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "ALPHA 1 1 0")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "NUMERIC 1 1 0")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file).map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    model
+        .write_feature_def(&mut feature_def_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
-    writeln!(char_def_file, "# Character mappings")
+    // Write rewrite rule definition file
+    let mut rewrite_def_file = File::create(&rewrite_def_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x3041..0x3096 HIRAGANA  # Hiragana")
+    model
+        .write_rewrite_def(&mut rewrite_def_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+
+    // Write left-id.def
+    let left_id_path = args.output.join("left-id.def");
+    let mut left_id_file = File::create(&left_id_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x30A1..0x30F6 KATAKANA  # Katakana")
+    model
+        .write_left_id_def(&mut left_id_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
+
+    // Write right-id.def
+    let right_id_path = args.output.join("right-id.def");
+    let mut right_id_file = File::create(&right_id_path)
         .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(
-        char_def_file,
-        "0x4E00..0x9FAF KANJI     # CJK Unified Ideographs"
-    )
-    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x0030..0x0039 NUMERIC   # ASCII Digits")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x0041..0x005A ALPHA     # ASCII Uppercase")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
-    writeln!(char_def_file, "0x0061..0x007A ALPHA     # ASCII Lowercase")
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    model
+        .write_right_id_def(&mut right_id_file)
+        .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Handle metadata.json update if provided
     let mut files_created = vec![
@@ -610,6 +615,10 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
         connector_path.clone(),
         unk_path.clone(),
         char_def_path.clone(),
+        feature_def_path.clone(),
+        rewrite_def_path.clone(),
+        left_id_path.clone(),
+        right_id_path.clone(),
     ];
 
     if let Some(metadata_path) = &args.metadata {

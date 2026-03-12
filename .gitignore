@@ -2,18 +2,19 @@
 .vscode
 .idea
 .DS_Store
-.claude
+
+# Agent files
+CLAUDE.md
+.serena/
 .mcp.json
-.serena
-.python-version
 
 # Rust
 target
-Cargo.lock
 perf.data*
 flamegraph.svg
 
 # Python
+.python-version
 .venv
 __pycache__/
 *.py[cod]

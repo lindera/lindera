@@ -9,6 +9,8 @@ use std::num::NonZeroU32;
 
 use anyhow::Result;
 
+use self::feature_extractor::TemplateContext;
+
 /// Logging macros for training process
 macro_rules! log_info {
     ($($arg:tt)*) => {
@@ -143,19 +145,31 @@ impl Trainer {
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string from config.features (parallel to surfaces)
             let feature_str = if i < config.features.len() {
-                &config.features[i]
+                config.features[i].clone()
             } else {
-                &default_features
+                default_features.clone()
             };
+
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
+            let (ufeature, lfeature, rfeature) =
+                config.dictionary_rewriter.rewrite_cached(&feature_str);
+            let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
+            let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
+            let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
 
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;
-            let features_vec: Vec<String> = feature_str.split(',').map(|s| s.to_string()).collect();
+            let ctx = TemplateContext {
+                surface: Some(surface),
+                ufeature: Some(&ufeature),
+                lfeature: Some(&lfeature),
+                rfeature: Some(&rfeature),
+            };
 
             let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
-            let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
-            let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
+                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, i as u32, &ctx);
+            let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
+            let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
             let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
@@ -168,7 +182,7 @@ impl Trainer {
                 .or_insert_with(HashMap::new);
             if let Some(first_char) = surface.chars().next() {
                 label_id_map
-                    .get_mut(feature_str)
+                    .get_mut(&feature_str)
                     .unwrap()
                     .insert(first_char, label_id);
             }
@@ -187,14 +201,26 @@ impl Trainer {
                 .cloned()
                 .unwrap_or_else(|| default_features.clone());
 
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
+            let (ufeature, lfeature, rfeature) =
+                config.dictionary_rewriter.rewrite_cached(&unk_feature);
+            let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
+            let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
+            let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
+
             // Create feature set for unknown word category
             let feature_extractor = &mut config.feature_extractor;
-            let features_vec: Vec<String> = unk_feature.split(',').map(|s| s.to_string()).collect();
+            let ctx = TemplateContext {
+                surface: None,
+                ufeature: Some(&ufeature),
+                lfeature: Some(&lfeature),
+                rfeature: Some(&rfeature),
+            };
 
             let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids(&features_vec, i as u32);
-            let left_ids = feature_extractor.extract_left_feature_ids(&features_vec);
-            let right_ids = feature_extractor.extract_right_feature_ids(&features_vec);
+                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, i as u32, &ctx);
+            let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
+            let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
             let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
@@ -390,56 +416,32 @@ impl Trainer {
 
     /// Extract feature weights from the trained CRF model
     fn extract_feature_weights(&self, crf_model: &rucrf::RawModel) -> Vec<f64> {
-        println!("Extracted feature weights from trained model");
+        log_info!("Extracting feature weights from trained model...");
 
         let mut feature_weights = Vec::new();
         match crf_model.merge() {
             Ok(merged_model) => {
-                println!(
-                    "DEBUG: merged_model.feature_sets.len() = {}",
-                    merged_model.feature_sets.len()
-                );
-
-                // feature_sets is indexed by label ID (0-based index corresponds to label ID)
                 // Extract weights in the order of surfaces
                 for (i, _surface) in self.config.surfaces.iter().enumerate() {
-                    // The feature_sets vector is indexed by label ID
-                    // Since label IDs are 1-based in the CRF model, but 0-based in our surfaces
-                    // we directly use the index
                     if i < merged_model.feature_sets.len() {
                         feature_weights.push(merged_model.feature_sets[i].weight);
                     } else {
-                        // No weight found for this label, use 0.0
                         feature_weights.push(0.0);
                     }
                 }
 
-                println!(
-                    "DEBUG: Extracted {} weights from merged model",
-                    feature_weights.len()
-                );
-                // Count non-zero weights
                 let non_zero_count = feature_weights.iter().filter(|&&w| w != 0.0).count();
-                println!(
-                    "DEBUG: Non-zero weights: {}/{}",
-                    non_zero_count,
-                    feature_weights.len()
+                log_info!(
+                    "Extracted {} weights ({} non-zero) from merged model",
+                    feature_weights.len(),
+                    non_zero_count
                 );
             }
             Err(e) => {
-                println!("DEBUG: merge() failed: {e}, using raw weights");
+                log_info!("Model merge failed: {e}, falling back to raw weights");
                 self.use_raw_weights(crf_model, &mut feature_weights);
             }
         }
-
-        println!(
-            "DEBUG: First 10 feature weights: {:?}",
-            &feature_weights[..std::cmp::min(10, feature_weights.len())]
-        );
-        println!(
-            "DEBUG: Passing feature_weights to Model: {:?}",
-            &feature_weights[..std::cmp::min(5, feature_weights.len())]
-        );
 
         feature_weights
     }
@@ -447,10 +449,6 @@ impl Trainer {
     /// Use raw CRF model weights as fallback
     fn use_raw_weights(&self, crf_model: &rucrf::RawModel, feature_weights: &mut Vec<f64>) {
         let raw_weights = crf_model.weights();
-        println!(
-            "DEBUG: Fallback to raw weights, count: {}",
-            raw_weights.len()
-        );
 
         for i in 0..self.config.surfaces.len() {
             if i < raw_weights.len() {
@@ -459,7 +457,7 @@ impl Trainer {
                 feature_weights.push(0.0);
             }
         }
-        println!("DEBUG: Used raw model weights");
+        log_info!("Used {} raw model weights", feature_weights.len());
     }
 
     /// Extracts labels from the configuration
@@ -663,5 +661,42 @@ impl Trainer {
         }
 
         println!("Feature cleanup completed");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn test_train_with_bigram_template() {
+        let seed_csv = "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト,0,0,0,名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\n";
+        let char_def = "DEFAULT 0 1 0\nHIRAGANA 1 1 0\nKATAKANA 1 1 0\nKANJI 0 0 2\nALPHA 1 1 0\nNUMERIC 1 1 0\n\n0x3041..0x3096 HIRAGANA\n0x30A1..0x30F6 KATAKANA\n0x4E00..0x9FAF KANJI\n0x0030..0x0039 NUMERIC\n0x0041..0x005A ALPHA\n0x0061..0x007A ALPHA\n";
+        let unk_def = "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\nHIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*\nALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*\nNUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*\n";
+        let feature_def = "UNIGRAM U00:%F[0]\nUNIGRAM U01:%F[0],%F?[1]\nBIGRAM B00:%L[0]/%R[0]\n";
+        let rewrite_def = "名詞,一般\tNOUN,GENERAL\n";
+        let corpus_text = "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは\t助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト\t名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\nEOS\n";
+
+        let config = TrainerConfig::from_readers(
+            Cursor::new(seed_csv),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        )
+        .unwrap();
+
+        let trainer = Trainer::new(config)
+            .unwrap()
+            .regularization_cost(0.01)
+            .max_iter(5)
+            .num_threads(1);
+
+        let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
+
+        let model = trainer.train(corpus);
+
+        assert!(model.is_ok());
     }
 }

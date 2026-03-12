@@ -8,6 +8,14 @@ use std::ops::Range;
 enum FeatureType {
     Index(usize),
     CharacterType,
+    /// %w — surface form (unigram only)
+    SurfaceForm,
+    /// %u — full ufeature string (unigram only)
+    AllUnigramFeature,
+    /// %l — full lfeature string (bigram left)
+    AllLeftFeature,
+    /// %r — full rfeature string (bigram right)
+    AllRightFeature,
 }
 
 /// Parsed template structure
@@ -16,6 +24,20 @@ struct ParsedTemplate {
     raw_template: String,
     required_indices: Vec<usize>,
     captures: Vec<(Range<usize>, FeatureType)>,
+}
+
+/// Context for template application, providing additional information
+/// for meta characters like %w, %u, %l, %r.
+#[derive(Debug, Clone, Default)]
+pub struct TemplateContext<'a> {
+    /// Surface form (%w)
+    pub surface: Option<&'a str>,
+    /// Full ufeature string (%u)
+    pub ufeature: Option<&'a str>,
+    /// Full lfeature string (%l) — used in bigram left template
+    pub lfeature: Option<&'a str>,
+    /// Full rfeature string (%r) — used in bigram right template
+    pub rfeature: Option<&'a str>,
 }
 
 /// Feature extractor for training with advanced capabilities.
@@ -59,9 +81,11 @@ impl FeatureExtractor {
         S: ToString,
     {
         // Regex patterns for advanced feature parsing
-        let unigram_feature_pattern = Regex::new(r"%((F|F\?)\[([0-9]+)\]|t)").unwrap();
-        let left_feature_pattern = Regex::new(r"%(L|L\?)\[([0-9]+)\]").unwrap();
-        let right_feature_pattern = Regex::new(r"%(R|R\?)\[([0-9]+)\]").unwrap();
+        // %F[n], %F?[n], %t, %w (surface), %u (all ufeature)
+        let unigram_feature_pattern = Regex::new(r"%((F|F\?)\[([0-9]+)\]|t|w|u)").unwrap();
+        // %L[n], %L?[n], %l (all lfeature), %r (all rfeature)
+        let left_feature_pattern = Regex::new(r"%((L|L\?)\[([0-9]+)\]|l|r)").unwrap();
+        let right_feature_pattern = Regex::new(r"%((R|R\?)\[([0-9]+)\]|l|r)").unwrap();
 
         // Parse unigram templates
         let mut parsed_unigram_templates = Vec::new();
@@ -72,21 +96,38 @@ impl FeatureExtractor {
 
             for m in unigram_feature_pattern.captures_iter(&raw_template) {
                 let pattern = m.get(0).unwrap();
-                if m.get(1).unwrap().as_str() == "t" {
-                    captures.push((pattern.start()..pattern.end(), FeatureType::CharacterType));
-                } else {
-                    let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
-                    match m.get(2).unwrap().as_str() {
-                        "F" => {
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                let matched = m.get(1).unwrap().as_str();
+                match matched {
+                    "t" => {
+                        captures.push((pattern.start()..pattern.end(), FeatureType::CharacterType));
+                    }
+                    "w" => {
+                        captures.push((pattern.start()..pattern.end(), FeatureType::SurfaceForm));
+                    }
+                    "u" => {
+                        captures.push((
+                            pattern.start()..pattern.end(),
+                            FeatureType::AllUnigramFeature,
+                        ));
+                    }
+                    _ => {
+                        let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
+                        match m.get(2).unwrap().as_str() {
+                            "F" => {
+                                captures.push((
+                                    pattern.start()..pattern.end(),
+                                    FeatureType::Index(idx),
+                                ));
+                            }
+                            "F?" => {
+                                required_indices.push(idx);
+                                captures.push((
+                                    pattern.start()..pattern.end(),
+                                    FeatureType::Index(idx),
+                                ));
+                            }
+                            _ => unreachable!(),
                         }
-                        "F?" => {
-                            required_indices.push(idx);
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
-                        }
-                        _ => unreachable!(),
                     }
                 }
             }
@@ -111,18 +152,39 @@ impl FeatureExtractor {
 
                 for m in left_feature_pattern.captures_iter(&raw_template) {
                     let pattern = m.get(0).unwrap();
-                    let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
-                    match m.get(1).unwrap().as_str() {
-                        "L" => {
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                    let matched = m.get(1).unwrap().as_str();
+                    match matched {
+                        "l" => {
+                            captures.push((
+                                pattern.start()..pattern.end(),
+                                FeatureType::AllLeftFeature,
+                            ));
                         }
-                        "L?" => {
-                            required_indices.push(idx);
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                        "r" => {
+                            captures.push((
+                                pattern.start()..pattern.end(),
+                                FeatureType::AllRightFeature,
+                            ));
                         }
-                        _ => unreachable!(),
+                        _ => {
+                            let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
+                            match m.get(2).unwrap().as_str() {
+                                "L" => {
+                                    captures.push((
+                                        pattern.start()..pattern.end(),
+                                        FeatureType::Index(idx),
+                                    ));
+                                }
+                                "L?" => {
+                                    required_indices.push(idx);
+                                    captures.push((
+                                        pattern.start()..pattern.end(),
+                                        FeatureType::Index(idx),
+                                    ));
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
                     }
                 }
 
@@ -141,18 +203,39 @@ impl FeatureExtractor {
 
                 for m in right_feature_pattern.captures_iter(&raw_template) {
                     let pattern = m.get(0).unwrap();
-                    let idx: usize = m.get(2).unwrap().as_str().parse().unwrap();
-                    match m.get(1).unwrap().as_str() {
-                        "R" => {
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                    let matched = m.get(1).unwrap().as_str();
+                    match matched {
+                        "l" => {
+                            captures.push((
+                                pattern.start()..pattern.end(),
+                                FeatureType::AllLeftFeature,
+                            ));
                         }
-                        "R?" => {
-                            required_indices.push(idx);
-                            captures
-                                .push((pattern.start()..pattern.end(), FeatureType::Index(idx)));
+                        "r" => {
+                            captures.push((
+                                pattern.start()..pattern.end(),
+                                FeatureType::AllRightFeature,
+                            ));
                         }
-                        _ => unreachable!(),
+                        _ => {
+                            let idx: usize = m.get(3).unwrap().as_str().parse().unwrap();
+                            match m.get(2).unwrap().as_str() {
+                                "R" => {
+                                    captures.push((
+                                        pattern.start()..pattern.end(),
+                                        FeatureType::Index(idx),
+                                    ));
+                                }
+                                "R?" => {
+                                    required_indices.push(idx);
+                                    captures.push((
+                                        pattern.start()..pattern.end(),
+                                        FeatureType::Index(idx),
+                                    ));
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
                     }
                 }
 
@@ -183,6 +266,7 @@ impl FeatureExtractor {
         template: &ParsedTemplate,
         features: &[String],
         cate_id: u32,
+        ctx: &TemplateContext,
     ) -> Option<String> {
         // Check required indices (for conditional features like %F?)
         for &required_idx in &template.required_indices {
@@ -207,9 +291,11 @@ impl FeatureExtractor {
                         features[*idx].clone()
                     }
                 }
-                FeatureType::CharacterType => {
-                    cate_id.to_string() // Use character category ID
-                }
+                FeatureType::CharacterType => cate_id.to_string(),
+                FeatureType::SurfaceForm => ctx.surface.unwrap_or("").to_string(),
+                FeatureType::AllUnigramFeature => ctx.ufeature.unwrap_or("").to_string(),
+                FeatureType::AllLeftFeature => ctx.lfeature.unwrap_or("").to_string(),
+                FeatureType::AllRightFeature => ctx.rfeature.unwrap_or("").to_string(),
             };
 
             result.replace_range(range.clone(), &replacement);
@@ -265,12 +351,23 @@ impl FeatureExtractor {
         features: &[String],
         cate_id: u32,
     ) -> Vec<NonZeroU32> {
+        self.extract_unigram_feature_ids_with_ctx(features, cate_id, &TemplateContext::default())
+    }
+
+    /// Extracts unigram feature IDs from features with template context.
+    pub fn extract_unigram_feature_ids_with_ctx(
+        &mut self,
+        features: &[String],
+        cate_id: u32,
+        ctx: &TemplateContext,
+    ) -> Vec<NonZeroU32> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
         let templates = self.unigram_templates.clone();
         for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, cate_id) {
+            if let Some(feature_str) = self.apply_parsed_template(&template, features, cate_id, ctx)
+            {
                 let id = self.get_or_create_unigram_feature_id(&feature_str);
                 feature_ids.push(id);
             }
@@ -281,12 +378,21 @@ impl FeatureExtractor {
 
     /// Extracts left context feature IDs from features (with Optional).
     pub fn extract_left_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
+        self.extract_left_feature_ids_with_ctx(features, &TemplateContext::default())
+    }
+
+    /// Extracts left context feature IDs from features with template context.
+    pub fn extract_left_feature_ids_with_ctx(
+        &mut self,
+        features: &[String],
+        ctx: &TemplateContext,
+    ) -> Vec<Option<NonZeroU32>> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
         let templates = self.left_templates.clone();
         for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0) {
+            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0, ctx) {
                 let id = self.get_or_create_left_feature_id(&feature_str);
                 feature_ids.push(id);
             } else {
@@ -299,12 +405,21 @@ impl FeatureExtractor {
 
     /// Extracts right context feature IDs from features (with Optional).
     pub fn extract_right_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
+        self.extract_right_feature_ids_with_ctx(features, &TemplateContext::default())
+    }
+
+    /// Extracts right context feature IDs from features with template context.
+    pub fn extract_right_feature_ids_with_ctx(
+        &mut self,
+        features: &[String],
+        ctx: &TemplateContext,
+    ) -> Vec<Option<NonZeroU32>> {
         let mut feature_ids = Vec::new();
 
         // Clone templates to avoid borrow conflicts
         let templates = self.right_templates.clone();
         for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0) {
+            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0, ctx) {
                 let id = self.get_or_create_right_feature_id(&feature_str);
                 feature_ids.push(id);
             } else {

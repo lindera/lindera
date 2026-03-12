@@ -8,6 +8,15 @@ use serde::{Deserialize, Serialize};
 use crate::trainer::corpus::Word;
 use crate::viterbi::{LexType, WordEntry, WordId};
 
+/// Convert CRF weight to MeCab-compatible cost using fixed cost-factor.
+///
+/// MeCab's `tocost(d, n)` formula: `clamp(-n * d, -32767, 32767)`
+/// where `d` is the cost-factor (typically 700) and `n` is the CRF weight.
+fn tocost(weight: f64, cost_factor: i32) -> i16 {
+    let raw = -(cost_factor as f64) * weight;
+    raw.round().clamp(i16::MIN as f64, i16::MAX as f64) as i16
+}
+
 /// Feature set information extracted from CRF training
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize, Clone, Debug)]
 
@@ -30,8 +39,6 @@ pub struct SerializableModel {
     pub labels: Vec<String>,
     /// Part-of-speech information for each label
     pub pos_info: Vec<String>,
-    /// Feature templates
-    pub feature_templates: Vec<String>,
     /// Model metadata
     pub metadata: ModelMetadata,
     /// Connection cost matrix: (right_id, left_id) -> cost
@@ -46,6 +53,18 @@ pub struct SerializableModel {
     pub unk_category_names: Vec<String>,
     /// Unknown word category features (from unk.def)
     pub unk_categories: std::collections::HashMap<String, String>,
+    /// Raw content of the character definition file (char.def)
+    pub char_def_content: String,
+    /// Raw content of the feature definition file (feature.def)
+    pub feature_def_content: String,
+    /// Raw content of the rewrite rule definition file (rewrite.def)
+    pub rewrite_def_content: String,
+    /// Cost factor for weight-to-cost conversion (MeCab default: 700)
+    pub cost_factor: i32,
+    /// Left context ID to feature string mapping (for left-id.def)
+    pub left_id_map: Vec<(u32, String)>,
+    /// Right context ID to feature string mapping (for right-id.def)
+    pub right_id_map: Vec<(u32, String)>,
 }
 
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
@@ -80,15 +99,6 @@ impl Model {
         regularization_cost: f64,
         max_iterations: u64,
     ) -> Self {
-        println!(
-            "DEBUG: Model::new_with_metadata received {} feature weights",
-            feature_weights.len()
-        );
-        println!(
-            "DEBUG: First 5 received weights: {:?}",
-            &feature_weights[..std::cmp::min(5, feature_weights.len())]
-        );
-
         Self {
             raw_model,
             config,
@@ -147,40 +157,25 @@ impl Model {
                 let first_char = surface.chars().next().unwrap_or('\0');
                 let cate_id = self.get_category_id(first_char);
 
-                // Parse features for rewriting
-                let feature_vec: Vec<String> = features.split(',').map(|s| s.to_string()).collect();
+                // Apply dictionary rewriter to get ufeature, lfeature, rfeature
+                let (ufeature, lfeature, rfeature) =
+                    self.config.dictionary_rewriter.rewrite(&features);
+                let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
+                let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
+                let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
 
-                // Apply feature rewriters (similar to training)
-                let unigram_features =
-                    if let Some(rewritten) = self.config.unigram_rewriter.rewrite(&feature_vec) {
-                        self.config
-                            .feature_extractor
-                            .extract_unigram_feature_ids(&rewritten, cate_id)
-                    } else {
-                        self.config
-                            .feature_extractor
-                            .extract_unigram_feature_ids(&feature_vec, cate_id)
-                    };
-                let left_features =
-                    if let Some(rewritten) = self.config.left_rewriter.rewrite(&feature_vec) {
-                        self.config
-                            .feature_extractor
-                            .extract_left_feature_ids(&rewritten)
-                    } else {
-                        self.config
-                            .feature_extractor
-                            .extract_left_feature_ids(&feature_vec)
-                    };
-                let right_features =
-                    if let Some(rewritten) = self.config.right_rewriter.rewrite(&feature_vec) {
-                        self.config
-                            .feature_extractor
-                            .extract_right_feature_ids(&rewritten)
-                    } else {
-                        self.config
-                            .feature_extractor
-                            .extract_right_feature_ids(&feature_vec)
-                    };
+                let unigram_features = self
+                    .config
+                    .feature_extractor
+                    .extract_unigram_feature_ids(&u_vec, cate_id);
+                let left_features = self
+                    .config
+                    .feature_extractor
+                    .extract_left_feature_ids(&l_vec);
+                let right_features = self
+                    .config
+                    .feature_extractor
+                    .extract_right_feature_ids(&r_vec);
 
                 let _feature_set =
                     rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
@@ -217,48 +212,10 @@ impl Model {
 
     /// Writes the model to a writer.
     pub fn write_model<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Use already extracted feature weights
         let feature_weights = self.feature_weights.clone();
 
-        // DEBUG: Check what we have before serialization
-        println!(
-            "DEBUG write_model: self.feature_weights.len() = {}",
-            self.feature_weights.len()
-        );
-        println!(
-            "DEBUG write_model: First 5 weights: {:?}",
-            &self.feature_weights[..std::cmp::min(5, self.feature_weights.len())]
-        );
-        println!(
-            "DEBUG write_model: feature_weights.len() = {}",
-            feature_weights.len()
-        );
-        println!(
-            "DEBUG write_model: First 5 weights: {:?}",
-            &feature_weights[..std::cmp::min(5, feature_weights.len())]
-        );
-
-        // Extract connection cost matrix from the trained model using standard CRF methodology
+        // Extract connection cost matrix from the trained model
         let merged_model = self.raw_model.merge()?;
-
-        println!(
-            "DEBUG: merged_model.feature_sets.len() = {}",
-            merged_model.feature_sets.len()
-        );
-        println!(
-            "DEBUG: merged_model.matrix.len() = {}",
-            merged_model.matrix.len()
-        );
-        println!("DEBUG: First 10 feature_sets from merged_model:");
-        for (i, fs) in merged_model.feature_sets.iter().take(10).enumerate() {
-            println!(
-                "  [{}] left_id={}, right_id={}, weight={}",
-                i,
-                fs.left_id.get(),
-                fs.right_id.get(),
-                fs.weight
-            );
-        }
 
         let mut connection_matrix = std::collections::HashMap::new();
         let mut max_left_id = 0;
@@ -289,18 +246,6 @@ impl Model {
             })
             .collect();
 
-        println!(
-            "DEBUG write_model: Extracted {} feature_sets",
-            feature_sets.len()
-        );
-        println!("DEBUG write_model: First 5 feature_sets:");
-        for (i, fs) in feature_sets.iter().take(5).enumerate() {
-            println!(
-                "  [{}] left_id={}, right_id={}, weight={}",
-                i, fs.left_id, fs.right_id, fs.weight
-            );
-        }
-
         // Extract unknown word category information
         let char_def = &self.config.dict.character_definition;
         let unk_category_names: Vec<String> = char_def
@@ -313,7 +258,6 @@ impl Model {
             feature_weights,
             labels: self.labels.clone(),
             pos_info: self.extract_pos_info(),
-            feature_templates: self.extract_feature_templates(),
             metadata: ModelMetadata {
                 version: "1.0.0".to_string(),
                 regularization: self.regularization_cost,
@@ -327,6 +271,32 @@ impl Model {
             feature_sets,
             unk_category_names,
             unk_categories: self.config.unk_categories.clone(),
+            char_def_content: self.config.char_def_content.clone(),
+            feature_def_content: self.config.feature_def_content.clone(),
+            rewrite_def_content: self.config.rewrite_def_content.clone(),
+            cost_factor: self.config.cost_factor,
+            left_id_map: {
+                let mut entries: Vec<(u32, String)> = self
+                    .config
+                    .feature_extractor
+                    .left_feature_ids
+                    .iter()
+                    .map(|(feat, &id)| (id.get(), feat.clone()))
+                    .collect();
+                entries.sort_by_key(|&(id, _)| id);
+                entries
+            },
+            right_id_map: {
+                let mut entries: Vec<(u32, String)> = self
+                    .config
+                    .feature_extractor
+                    .right_feature_ids
+                    .iter()
+                    .map(|(feat, &id)| (id.get(), feat.clone()))
+                    .collect();
+                entries.sort_by_key(|&(id, _)| id);
+                entries
+            },
         };
 
         // Use rkyv for efficient binary serialization
@@ -355,25 +325,8 @@ impl Model {
 
         // Try rkyv first (new format with feature_sets)
         if let Ok(mut model) = rkyv::from_bytes::<SerializableModel, rkyv::rancor::Error>(&buffer) {
-            // DEBUG: Check what we read from rkyv
-            println!(
-                "DEBUG read_model (rkyv): feature_weights.len() = {}",
-                model.feature_weights.len()
-            );
-            println!(
-                "DEBUG read_model (rkyv): First 5 weights: {:?}",
-                &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
-            );
-            println!(
-                "DEBUG read_model (rkyv): feature_sets.len() = {}",
-                model.feature_sets.len()
-            );
-
             // Backward compatibility: if feature_sets is empty, generate from feature_weights
             if model.feature_sets.is_empty() {
-                println!(
-                    "WARN: Old model format detected, generating feature_sets from feature_weights"
-                );
                 model.feature_sets = model
                     .feature_weights
                     .iter()
@@ -391,89 +344,7 @@ impl Model {
         // Fallback to JSON format (legacy)
         let json_str = String::from_utf8(buffer)?;
         let model: SerializableModel = serde_json::from_str(&json_str)?;
-        println!(
-            "DEBUG read_model (JSON): feature_weights.len() = {}",
-            model.feature_weights.len()
-        );
-        println!(
-            "DEBUG read_model (JSON): First 5 weights: {:?}",
-            &model.feature_weights[..std::cmp::min(5, model.feature_weights.len())]
-        );
         Ok(model)
-    }
-
-    /// Extracts feature weights from the raw CRF model with optimized normalization
-    #[allow(dead_code)]
-    fn extract_feature_weights(&self) -> Vec<f64> {
-        // Use the pre-computed feature weights that were stored during training
-        self.feature_weights.clone()
-    }
-
-    /// Normalize feature weight using advanced scaling method
-    #[allow(dead_code)]
-    fn normalize_feature_weight(&self, weight: f64, feature_index: usize) -> f64 {
-        // Apply feature-specific normalization based on index
-        let base_normalization = if feature_index < self.config.surfaces.len() {
-            // Known vocabulary features: apply standard normalization
-            weight * 1.0
-        } else {
-            // Unknown word features: apply reduced weight to prevent overfitting
-            weight * 0.8
-        };
-
-        // Clamp to reasonable range to prevent extreme values
-        base_normalization.clamp(-10.0, 10.0)
-    }
-
-    /// Normalize connection weight for bigram feature optimization
-    #[allow(dead_code)]
-    fn normalize_connection_weight(&self, weight: f64, left_id: usize, right_id: usize) -> f64 {
-        // Apply context-aware normalization
-        let context_factor = if left_id == right_id {
-            1.2 // Boost same-context connections
-        } else {
-            1.0 // Standard normalization for cross-context
-        };
-
-        let normalized = weight * context_factor;
-        normalized.clamp(-8.0, 8.0)
-    }
-
-    /// Apply global weight normalization to maintain model stability
-    #[allow(dead_code)]
-    fn apply_global_weight_normalization(&self, mut weights: Vec<f64>) -> Vec<f64> {
-        if weights.is_empty() {
-            return weights;
-        }
-
-        // Calculate statistics for normalization
-        let weight_sum: f64 = weights.iter().map(|w| w.abs()).sum();
-        let weight_count = weights.len() as f64;
-        let mean_abs_weight = weight_sum / weight_count;
-
-        // Apply scaling if weights are too large or too small
-        let scale_factor = if mean_abs_weight > 5.0 {
-            5.0 / mean_abs_weight // Scale down large weights
-        } else if mean_abs_weight < 0.1 && mean_abs_weight > 0.0 {
-            0.1 / mean_abs_weight // Scale up tiny weights
-        } else {
-            1.0 // No scaling needed
-        };
-
-        if scale_factor != 1.0 {
-            for weight in &mut weights {
-                *weight *= scale_factor;
-            }
-        }
-
-        weights
-    }
-
-    /// Normalize raw weight as fallback
-    #[allow(dead_code)]
-    fn normalize_raw_weight(&self, weight: f64) -> f64 {
-        // Simple normalization for fallback case
-        weight.clamp(-5.0, 5.0)
     }
 
     /// Gets the merged model, creating it if necessary
@@ -532,41 +403,6 @@ impl Model {
         pos_info
     }
 
-    /// Extracts feature templates used in training
-    fn extract_feature_templates(&self) -> Vec<String> {
-        // Return sophisticated templates
-        vec![
-            // Unigram features with character types
-            "%F[0]".to_string(),
-            "%F[1]".to_string(),
-            "%F[2]".to_string(),
-            "%F[-1]".to_string(),
-            "%F[-2]".to_string(),
-            "%t".to_string(),
-            "%F?[0]%t".to_string(),
-            "%F?[1]%t".to_string(),
-            "%F?[-1]%t".to_string(),
-            // Bigram features (left context)
-            "%L[0]".to_string(),
-            "%L[1]".to_string(),
-            "%L[-1]".to_string(),
-            "%L?[0]%L?[1]".to_string(),
-            "%L?[-1]%L?[0]".to_string(),
-            // Bigram features (right context)
-            "%R[0]".to_string(),
-            "%R[1]".to_string(),
-            "%R[-1]".to_string(),
-            "%R?[0]%R?[1]".to_string(),
-            "%R?[-1]%R?[0]".to_string(),
-            // Complex combinations
-            "%F?[0]%F?[1]".to_string(),
-            "%F?[-1]%F?[0]".to_string(),
-            "%F?[0]%F?[1]%t".to_string(),
-            "%L?[0]%F?[0]".to_string(),
-            "%F?[0]%R?[0]".to_string(),
-        ]
-    }
-
     /// Writes the dictionary files in Lindera format.
     pub fn write_dictionary<W1, W2, W3, W4>(
         &self,
@@ -597,18 +433,14 @@ impl Model {
     }
 
     pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Get merged model for weight scaling
         let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let cost_factor = self.config.cost_factor;
 
-        // Extract vocabulary from training data and assign trained costs with proper scaling
         for (i, surface) in self.config.surfaces.iter().enumerate() {
             if i < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[i];
-                let cost = (-feature_set.weight * weight_scale_factor) as i16;
-                // Use features from config (parallel to surfaces) to preserve all entries
+                let cost = tocost(feature_set.weight, cost_factor);
                 let features = &self.config.features[i];
-                // Use learned left_id, right_id from CRF training
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
@@ -619,56 +451,35 @@ impl Model {
                     features
                 )?;
             } else {
-                // Fallback for missing feature sets
-                let cost = self.get_word_cost(i);
                 let features = &self.config.features[i];
-                writeln!(writer, "{surface},0,0,{cost},{features}")?;
+                writeln!(writer, "{surface},0,0,0,{features}")?;
             }
         }
 
         Ok(())
     }
 
-    /// Calculate weight scale factor
-    fn calculate_weight_scale_factor(&self, merged_model: &rucrf::MergedModel) -> f64 {
-        let mut weight_abs_max = 0f64;
-
-        // Find maximum absolute weight from feature sets
-        for feature_set in &merged_model.feature_sets {
-            weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
-        }
-
-        // Find maximum absolute weight from connection matrix
-        for hm in &merged_model.matrix {
-            for &w in hm.values() {
-                weight_abs_max = weight_abs_max.max(w.abs());
-            }
-        }
-
-        // Scale to i16 range
-        f64::from(i16::MAX) / weight_abs_max
-    }
-
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Get merged model for trained connection costs
         let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let cost_factor = self.config.cost_factor;
 
-        // Write matrix dimensions (right_conn_to_left_feats.len() + 1, left_conn_to_right_feats.len() + 1)
-        writeln!(
-            writer,
-            "{} {}",
-            merged_model.right_conn_to_left_feats.len() + 1,
-            merged_model.left_conn_to_right_feats.len() + 1
-        )?;
+        // Dense matrix dimensions: (right_size, left_size)
+        // +1 for BOS/EOS (id=0)
+        let right_size = merged_model.right_conn_to_left_feats.len() + 1;
+        let left_size = merged_model.left_conn_to_right_feats.len() + 1;
+        writeln!(writer, "{right_size} {left_size}")?;
 
-        // Write trained connection costs with proper scaling
-        for (right_conn_id, hm) in merged_model.matrix.iter().enumerate() {
-            let mut pairs: Vec<_> = hm.iter().map(|(&j, &w)| (j, w)).collect();
-            pairs.sort_unstable_by_key(|&(k, _)| k);
-            for (left_conn_id, weight) in pairs {
-                let cost = (-weight * weight_scale_factor) as i16;
-                writeln!(writer, "{right_conn_id} {left_conn_id} {cost}")?;
+        // Dense matrix: output all (right_id, left_id) pairs
+        for right_id in 0..right_size {
+            for left_id in 0..left_size {
+                let weight = merged_model
+                    .matrix
+                    .get(right_id)
+                    .and_then(|hm| hm.get(&(left_id as u32)))
+                    .copied()
+                    .unwrap_or(0.0);
+                let cost = tocost(weight, cost_factor);
+                writeln!(writer, "{right_id} {left_id} {cost}")?;
             }
         }
 
@@ -676,40 +487,31 @@ impl Model {
     }
 
     pub fn write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Write unknown word definitions with trained costs
         let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let cost_factor = self.config.cost_factor;
 
-        // Iterate over unknown dictionary entries
-        let unk_dict_len = self.config.surfaces.len();
-        for i in 0..self.config.dict.unknown_dictionary.costs.len() {
-            let feature_set_idx = unk_dict_len + i;
+        let char_def = &self.config.dict.character_definition;
+        let category_names = char_def.categories();
+        let unk_start_idx = self.config.surfaces.len();
+
+        for (i, category_name) in category_names.iter().enumerate() {
+            let feature_set_idx = unk_start_idx + i;
             if feature_set_idx < merged_model.feature_sets.len() {
                 let feature_set = merged_model.feature_sets[feature_set_idx];
-                let cost = (-feature_set.weight * weight_scale_factor) as i16;
+                let cost = tocost(feature_set.weight, cost_factor);
 
-                // Get category name and features from config
-                let char_def = &self.config.dict.character_definition;
-                let category_names = char_def.categories();
-                let cate_string = if i < category_names.len() {
-                    category_names[i].as_str()
-                } else {
-                    "UNKNOWN"
-                };
+                let default_features = self.generate_default_features();
                 let features = self
                     .config
                     .unk_categories
-                    .get(cate_string)
+                    .get(category_name.as_str())
                     .map(|s| s.as_str())
-                    .unwrap_or_else(|| {
-                        // Use generated default features with appropriate field count
-                        Box::leak(self.generate_default_features().into_boxed_str())
-                    });
+                    .unwrap_or(default_features.as_str());
 
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
-                    cate_string,
+                    category_name,
                     feature_set.left_id.get(),
                     feature_set.right_id.get(),
                     cost,
@@ -722,24 +524,17 @@ impl Model {
     }
 
     fn write_user_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
-        // Write user lexicon entries with trained costs
         if self.config.user_lexicon().is_empty() {
-            return Ok(()); // No user lexicon to write
+            return Ok(());
         }
 
-        let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let cost_factor = self.config.cost_factor;
 
         for (surface, features) in self.config.user_lexicon() {
-            // For user lexicon, use scaled costs with optimized weight calculation
             let (left_id, right_id) = self.infer_context_ids(surface, features);
-            let raw_cost = self.get_user_word_cost(surface);
-            // Apply weight scaling to ensure consistency with trained model weights
-            let scaled_cost = (raw_cost as f64 * weight_scale_factor / 1000.0) as i32;
-            writeln!(
-                writer,
-                "{surface},{left_id},{right_id},{scaled_cost},{features}"
-            )?;
+            let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
+            let cost = tocost(raw_cost, cost_factor);
+            writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
         }
 
         Ok(())
@@ -749,15 +544,6 @@ impl Model {
         // Return trained cost for user lexicon words
         // Could be based on trained model weights
         800 // Slightly lower cost than default for user words
-    }
-
-    fn get_word_cost(&self, word_index: usize) -> i32 {
-        // Extract cost from trained weights, or return default
-        if word_index < self.feature_weights.len() {
-            (self.feature_weights[word_index] * 1000.0) as i32
-        } else {
-            1000 // Default cost
-        }
     }
 
     /// Calculate unknown word cost based on trained feature weights using dynamic calculation
@@ -929,7 +715,7 @@ impl Model {
 
         // Get merged model for detailed analysis
         let merged_model = self.get_merged_model()?;
-        let weight_scale_factor = self.calculate_weight_scale_factor(&merged_model);
+        let cost_factor = self.config.cost_factor;
 
         // Build feature mappings from the config's feature extractor
         let mut right_features = HashMap::new();
@@ -999,7 +785,7 @@ impl Model {
                 let right_feat_str = right_features
                     .get(&right_feat_id)
                     .map_or("*", |x| x.as_str());
-                let cost = (-w * weight_scale_factor) as i32;
+                let cost = tocost(w, cost_factor);
                 writeln!(&mut cost_wtr, "{left_feat_str}/{right_feat_str}\t{cost}")?;
             }
         }
@@ -1075,40 +861,17 @@ impl SerializableModel {
         "*".to_string()
     }
 
-    /// Calculate weight scale factor from feature weights
-    pub fn calculate_weight_scale_factor(&self) -> f64 {
-        let mut weight_abs_max = 0f64;
-        for &weight in &self.feature_weights {
-            weight_abs_max = weight_abs_max.max(weight.abs());
-        }
-
-        if weight_abs_max > 0.0 {
-            f64::from(i16::MAX) / weight_abs_max
-        } else {
-            1.0
-        }
-    }
-
     /// Write lexicon file with proper cost calculation
     pub fn write_lexicon<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        let weight_scale_factor = self.calculate_weight_scale_factor();
-
-        // DEBUG: Print feature information
-        eprintln!(
-            "DEBUG: Total feature_sets: {}, labels: {}, weight_scale_factor: {:.2}",
-            self.feature_sets.len(),
-            self.labels.len(),
-            weight_scale_factor
-        );
-
-        // Get unknown word category labels to skip them
-        let unk_category_names_set: Vec<&str> =
-            self.unk_category_names.iter().map(|s| s.as_str()).collect();
+        // Unknown word categories are at the end of labels, skip them (they go to unk.def)
+        let unk_start_idx = self
+            .labels
+            .len()
+            .saturating_sub(self.unk_category_names.len());
 
         // Write lexicon entries using learned connection IDs and costs
         for (i, label) in self.labels.iter().enumerate() {
-            // Skip unknown word categories (they go to unk.def)
-            if unk_category_names_set.contains(&label.as_str()) {
+            if i >= unk_start_idx {
                 continue;
             }
 
@@ -1122,8 +885,7 @@ impl SerializableModel {
                     &pos_info_str
                 };
 
-                // Use learned left_id, right_id, and weight directly
-                let cost = (-fs.weight * weight_scale_factor) as i16;
+                let cost = tocost(fs.weight, self.cost_factor);
 
                 writeln!(
                     writer,
@@ -1136,69 +898,29 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Write connection cost matrix using trained model with optimized scaling
+    /// Write dense connection cost matrix (MeCab-compatible)
     pub fn write_connection_costs<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        // Check if we have trained connection matrix
         if !self.connection_matrix.is_empty() {
-            // Use trained model to generate connection costs
-            // Include unknown word categories (100-105) in size calculation
-            let unk_max_id = 105; // Maximum unknown word category ID
-            let matrix_size = std::cmp::max(
-                std::cmp::max(self.max_right_id + 1, self.max_left_id + 1),
-                std::cmp::max(unk_max_id + 1, 6), // Include unknown word IDs
-            );
+            let right_size = self.max_right_id + 1;
+            let left_size = self.max_left_id + 1;
 
-            // Write matrix dimensions
-            writeln!(writer, "{matrix_size} {matrix_size}")?;
+            writeln!(writer, "{right_size} {left_size}")?;
 
-            // Scale weights to i16 range for efficient storage and computation
-            let mut weight_abs_max = 0.0f64;
-            for inner_map in self.connection_matrix.values() {
-                for &weight in inner_map.values() {
-                    weight_abs_max = weight_abs_max.max(weight.abs());
-                }
-            }
-
-            let weight_scale_factor = if weight_abs_max > 0.0 {
-                f64::from(i16::MAX) / weight_abs_max
-            } else {
-                1.0
-            };
-
-            // Write connection costs from trained model
-            for right_id in 0..matrix_size {
-                for left_id in 0..matrix_size {
-                    let cost = if let Some(inner_map) = self.connection_matrix.get(&right_id) {
-                        if let Some(&weight) = inner_map.get(&left_id) {
-                            // Convert weight to cost using negative scaled weight (standard CRF approach)
-                            (-weight * weight_scale_factor) as i32
-                        } else {
-                            // High cost for unseen pairs
-                            i16::MAX as i32
-                        }
-                    } else {
-                        // High cost for unseen pairs
-                        i16::MAX as i32
-                    };
-
-                    // Write in MeCab/IPADIC format: right_id left_id cost
+            // Dense matrix: all (right_id, left_id) pairs, cost=0 for unseen
+            for right_id in 0..right_size {
+                for left_id in 0..left_size {
+                    let weight = self
+                        .connection_matrix
+                        .get(&right_id)
+                        .and_then(|inner| inner.get(&left_id))
+                        .copied()
+                        .unwrap_or(0.0);
+                    let cost = tocost(weight, self.cost_factor);
                     writeln!(writer, "{right_id} {left_id} {cost}")?;
                 }
             }
         } else {
-            // Fallback to simple implementation when no trained model
-            // Include unknown word categories (100-105) in size calculation
-            let unk_max_id = 105; // Maximum unknown word category ID
-            let num_categories = std::cmp::max(unk_max_id + 1, 6);
-            writeln!(writer, "{num_categories} {num_categories}")?;
-
-            for i in 0..num_categories {
-                for j in 0..num_categories {
-                    // Use high default cost for unseen connections
-                    let cost = if i == j { 0 } else { i16::MAX };
-                    writeln!(writer, "{i} {j} {cost}")?;
-                }
-            }
+            writeln!(writer, "0 0")?;
         }
 
         Ok(())
@@ -1264,19 +986,10 @@ impl SerializableModel {
         &self,
         writer: &mut W,
     ) -> anyhow::Result<()> {
-        let weight_scale_factor = self.calculate_weight_scale_factor();
-
-        // Unknown word categories are at the end of labels
         let unk_start_idx = self
             .labels
             .len()
             .saturating_sub(self.unk_category_names.len());
-
-        eprintln!(
-            "DEBUG: Writing unknown dictionary, unk_start_idx={}, num_categories={}",
-            unk_start_idx,
-            self.unk_category_names.len()
-        );
 
         for (i, category_name) in self.unk_category_names.iter().enumerate() {
             let feature_idx = unk_start_idx + i;
@@ -1284,27 +997,102 @@ impl SerializableModel {
             if feature_idx < self.feature_sets.len() {
                 let fs = &self.feature_sets[feature_idx];
 
-                // Get features from unk_categories
                 let features = self
                     .unk_categories
                     .get(category_name)
                     .cloned()
                     .unwrap_or_else(|| self.generate_default_features());
 
-                // Use learned connection IDs and cost
-                let cost = (-fs.weight * weight_scale_factor) as i16;
+                let cost = tocost(fs.weight, self.cost_factor);
 
                 writeln!(
                     writer,
                     "{},{},{},{},{}",
                     category_name, fs.left_id, fs.right_id, cost, features
                 )?;
-
-                eprintln!(
-                    "DEBUG: unk category={}, left_id={}, right_id={}, weight={:.3}, cost={}",
-                    category_name, fs.left_id, fs.right_id, fs.weight, cost
-                );
             }
+        }
+
+        Ok(())
+    }
+
+    /// Writes the character definition file (char.def) content preserved from training.
+    pub fn write_char_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        writer.write_all(self.char_def_content.as_bytes())?;
+        Ok(())
+    }
+
+    /// Writes the feature definition file (feature.def) content preserved from training.
+    pub fn write_feature_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        writer.write_all(self.feature_def_content.as_bytes())?;
+        Ok(())
+    }
+
+    /// Writes the rewrite rule definition file (rewrite.def) content preserved from training.
+    pub fn write_rewrite_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        writer.write_all(self.rewrite_def_content.as_bytes())?;
+        Ok(())
+    }
+
+    /// Writes left-id.def: maps left context IDs to their feature strings.
+    pub fn write_left_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        writeln!(writer, "0 BOS/EOS")?;
+        for (id, feat_str) in &self.left_id_map {
+            writeln!(writer, "{id} {feat_str}")?;
+        }
+        Ok(())
+    }
+
+    /// Writes right-id.def: maps right context IDs to their feature strings.
+    pub fn write_right_id_def<W: std::io::Write>(&self, writer: &mut W) -> anyhow::Result<()> {
+        writeln!(writer, "0 BOS/EOS")?;
+        for (id, feat_str) in &self.right_id_map {
+            writeln!(writer, "{id} {feat_str}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Model {
+    /// Writes left-id.def: maps left context IDs to their feature strings.
+    ///
+    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
+    pub fn write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // id=0 is reserved for BOS/EOS
+        writeln!(writer, "0 BOS/EOS")?;
+
+        // Build reverse mapping: NonZeroU32 -> feature string
+        let left_ids = &self.config.feature_extractor.left_feature_ids;
+        let mut entries: Vec<(u32, &str)> = left_ids
+            .iter()
+            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
+            .collect();
+        entries.sort_by_key(|&(id, _)| id);
+
+        for (id, feat_str) in entries {
+            writeln!(writer, "{id} {feat_str}")?;
+        }
+
+        Ok(())
+    }
+
+    /// Writes right-id.def: maps right context IDs to their feature strings.
+    ///
+    /// Format: `id feature_string` (one per line), with BOS/EOS at id=0.
+    pub fn write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()> {
+        // id=0 is reserved for BOS/EOS
+        writeln!(writer, "0 BOS/EOS")?;
+
+        // Build reverse mapping: NonZeroU32 -> feature string
+        let right_ids = &self.config.feature_extractor.right_feature_ids;
+        let mut entries: Vec<(u32, &str)> = right_ids
+            .iter()
+            .map(|(feat_str, &id)| (id.get(), feat_str.as_str()))
+            .collect();
+        entries.sort_by_key(|&(id, _)| id);
+
+        for (id, feat_str) in entries {
+            writeln!(writer, "{id} {feat_str}")?;
         }
 
         Ok(())
@@ -1347,5 +1135,24 @@ mod tests {
         assert_eq!(trainer.get_regularization_cost(), 0.01);
         assert_eq!(trainer.get_max_iter(), 10);
         assert_eq!(trainer.get_num_threads(), 1);
+    }
+
+    #[test]
+    fn test_tocost() {
+        use super::tocost;
+
+        // MeCab: tocost(d, n) = clamp(-n * d, -32767, 32767)
+        // Positive weight → negative cost
+        assert_eq!(tocost(1.0, 700), -700);
+        // Negative weight → positive cost
+        assert_eq!(tocost(-1.0, 700), 700);
+        // Zero weight → zero cost
+        assert_eq!(tocost(0.0, 700), 0);
+        // Clamp to i16::MAX
+        assert_eq!(tocost(-100.0, 700), i16::MAX);
+        // Clamp to i16::MIN
+        assert_eq!(tocost(100.0, 700), i16::MIN);
+        // Fractional weight
+        assert_eq!(tocost(0.5, 700), -350);
     }
 }

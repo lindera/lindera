@@ -5,7 +5,7 @@ use std::path::Path;
 use anyhow::Result;
 
 use super::feature_extractor::FeatureExtractor;
-use super::feature_rewriter::FeatureRewriter;
+use super::feature_rewriter::DictionaryRewriter;
 use crate::dictionary::Dictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
@@ -24,9 +24,9 @@ pub struct TrainerConfig {
     /// User lexicon entries for additional vocabulary
     pub(crate) user_lexicon: HashMap<String, String>,
     pub(crate) feature_extractor: FeatureExtractor,
-    pub(crate) unigram_rewriter: FeatureRewriter,
-    pub(crate) left_rewriter: FeatureRewriter,
-    pub(crate) right_rewriter: FeatureRewriter,
+    pub(crate) dictionary_rewriter: DictionaryRewriter,
+    /// Cost factor for converting CRF weights to i16 costs (MeCab's cost-factor)
+    pub(crate) cost_factor: i32,
     /// Metadata from which encoding and schema information is derived
     pub(crate) metadata: Metadata,
     /// Maps unknown word category names to their feature strings from unk.def
@@ -35,6 +35,15 @@ pub struct TrainerConfig {
     /// Maps unknown word category names to their costs from unk.def
     /// Format: category -> cost
     pub(crate) unk_costs: HashMap<String, i32>,
+    /// Raw content of the character definition file (char.def)
+    /// Preserved from training input for export
+    pub(crate) char_def_content: String,
+    /// Raw content of the feature definition file (feature.def)
+    /// Preserved from training input for export
+    pub(crate) feature_def_content: String,
+    /// Raw content of the rewrite rule definition file (rewrite.def)
+    /// Preserved from training input for export
+    pub(crate) rewrite_def_content: String,
 }
 
 impl TrainerConfig {
@@ -126,24 +135,31 @@ impl TrainerConfig {
             if line.trim().is_empty() || line.starts_with('#') {
                 continue;
             }
-            // Parse template format
-            if let Some(stripped) = line.strip_prefix("UNIGRAM:") {
-                unigram_templates.push(stripped.to_string());
-            } else if let Some(template_part) = line.strip_prefix("BIGRAM") {
-                // Parse bigram template like "BIGRAM B00:%L[0]/%R[0]"
-                // Remove label prefix (e.g., "B00:") and split by /
-                let template = template_part.trim().trim_start_matches(':').trim();
-                // Find the part after the label (after the first colon if present)
-                let template_body = if let Some(idx) = template.find(':') {
-                    &template[idx + 1..]
+            // Parse template format: MeCab-compatible feature.def
+            // UNIGRAM U00:%F[0]  or  UNIGRAM:%F[0]
+            // BIGRAM B00:%L[0]/%R[0]  or  BIGRAM:%L[0]/%R[0]
+            if let Some(rest) = line.strip_prefix("UNIGRAM") {
+                // Extract the template part after optional label (e.g., "U00:")
+                let rest = rest.trim_start().trim_start_matches(':').trim_start();
+                let template = if let Some(idx) = rest.find('%') {
+                    &rest[idx..]
                 } else {
-                    template
+                    rest
                 };
-                if let Some((left, right)) = template_body.split_once('/') {
+                unigram_templates.push(template.to_string());
+            } else if let Some(rest) = line.strip_prefix("BIGRAM") {
+                // Extract the template part after optional label (e.g., "B00:")
+                let rest = rest.trim_start().trim_start_matches(':').trim_start();
+                let template = if let Some(idx) = rest.find('%') {
+                    &rest[idx..]
+                } else {
+                    rest
+                };
+                if let Some((left, right)) = template.split_once('/') {
                     bigram_templates.push((left.to_string(), right.to_string()));
                 }
             } else {
-                // Default unigram template
+                // Default unigram template (bare template without prefix)
                 unigram_templates.push(line.to_string());
             }
         }
@@ -152,10 +168,16 @@ impl TrainerConfig {
         let feature_extractor =
             FeatureExtractor::from_templates(&unigram_templates, &bigram_templates);
 
-        // Create feature rewriters
-        let unigram_rewriter = FeatureRewriter::new();
-        let left_rewriter = FeatureRewriter::new();
-        let right_rewriter = FeatureRewriter::from_reader(rewrite_rules_rdr)?;
+        // Read rewrite rules content
+        let mut rewrite_def_content = String::new();
+        {
+            let mut rewrite_reader = BufReader::new(rewrite_rules_rdr);
+            std::io::Read::read_to_string(&mut rewrite_reader, &mut rewrite_def_content)?;
+        }
+
+        // Create dictionary rewriter with 3-section support
+        let dictionary_rewriter =
+            DictionaryRewriter::from_reader(std::io::Cursor::new(rewrite_def_content.as_bytes()))?;
 
         // Parse unk.def to extract category-to-features mapping
         let mut unk_content = String::new();
@@ -184,11 +206,18 @@ impl TrainerConfig {
             }
         }
 
-        // Build dictionary from readers (need to re-create reader from unk_content)
+        // Read character properties content
+        let mut char_def_content = String::new();
+        {
+            let mut char_prop_reader = BufReader::new(char_prop_rdr);
+            std::io::Read::read_to_string(&mut char_prop_reader, &mut char_def_content)?;
+        }
+
+        // Build dictionary from readers (need to re-create readers from content strings)
         use std::io::Cursor;
         let dict = Self::build_dictionary_from_readers(
             &lexicon_content,
-            char_prop_rdr,
+            Cursor::new(char_def_content.as_bytes()),
             Cursor::new(unk_content.as_bytes()),
         )?;
 
@@ -199,12 +228,14 @@ impl TrainerConfig {
             surface_features,
             user_lexicon: HashMap::new(), // Initialize empty user lexicon
             feature_extractor,
-            unigram_rewriter,
-            left_rewriter,
-            right_rewriter,
+            dictionary_rewriter,
+            cost_factor: 700,              // MeCab default cost-factor
             metadata: Metadata::default(), // Use default metadata for backward compatibility
             unk_categories,
             unk_costs,
+            char_def_content,
+            feature_def_content: feature_content,
+            rewrite_def_content,
         })
     }
 
