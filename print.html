@@ -1032,47 +1032,61 @@ NUMERIC 1 1 0
 </ul>
 <h4 id="5-feature-template-featuredef"><a class="header" href="#5-feature-template-featuredef">5. <strong>Feature Template (feature.def)</strong></a></h4>
 <p><strong>Role</strong>: Feature template definition
-<strong>Format</strong>: Feature extraction patterns</p>
+<strong>Format</strong>: MeCab-compatible feature extraction patterns</p>
 <pre><code class="language-text"># Unigram features (word-level features)
-UNIGRAM:%F[0]         # POS (feature element 0)
-UNIGRAM:%F[1]         # POS detail 1
-UNIGRAM:%F[6]         # Base form
-UNIGRAM:%F[7]         # Reading (Katakana)
+UNIGRAM U00:%F[0]           # POS (feature element 0)
+UNIGRAM U01:%F[0],%F?[1]    # POS + POS detail (%F?[n] = optional, skipped if *)
+UNIGRAM U02:%F[6]           # Base form
+UNIGRAM U03:%w              # Surface form (meta character)
 
-# Left context features
-LEFT:%L[0]            # POS of left word
-LEFT:%L[1]            # POS detail of left word
-
-# Right context features
-RIGHT:%R[0]           # POS of right word
-RIGHT:%R[1]           # POS detail of right word
-
-# Bigram features (combination features)
-UNIGRAM:%F[0]/%F[1]   # POS + POS detail
-UNIGRAM:%F[0]/%F[6]   # POS + base form
+# Bigram features (context combination features)
+BIGRAM B00:%L[0]/%R[0]      # Left POS / Right POS
+BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </code></pre>
 <ul>
 <li><strong>Purpose</strong>: Define which information to extract features from</li>
-<li><strong>Templates</strong>: <code>%F[n]</code> (feature), <code>%L[n]</code> (left context), <code>%R[n]</code> (right context)</li>
+<li><strong>Format</strong>: Each line starts with <code>UNIGRAM</code> or <code>BIGRAM</code>, followed by a label (e.g. <code>U00:</code>, <code>B00:</code>) and a template pattern</li>
+<li><strong>Template variables</strong>:
+<ul>
+<li><code>%F[n]</code> / <code>%F?[n]</code>: Feature field at index n (<code>?</code> = optional, skipped if value is <code>*</code>)</li>
+<li><code>%L[n]</code>: Left context feature field at index n (from rewrite.def left section)</li>
+<li><code>%R[n]</code>: Right context feature field at index n (from rewrite.def right section)</li>
+<li><code>%w</code>: Surface form of the word</li>
+<li><code>%u</code>: Unigram rewritten feature string (from rewrite.def unigram section)</li>
+<li><code>%l</code>: Left rewritten feature string (from rewrite.def left section)</li>
+<li><code>%r</code>: Right rewritten feature string (from rewrite.def right section)</li>
 </ul>
-<h4 id="6-feature-normalization-rules-rewritedef"><a class="header" href="#6-feature-normalization-rules-rewritedef">6. <strong>Feature Normalization Rules (rewrite.def)</strong></a></h4>
-<p><strong>Role</strong>: Feature normalization rules
-<strong>Format</strong>: Replacement rules (tab-separated)</p>
-<pre><code class="language-text"># Normalize numeric expressions
-数	NUM
-*	UNK
+</li>
+</ul>
+<h4 id="6-feature-rewrite-rules-rewritedef"><a class="header" href="#6-feature-rewrite-rules-rewritedef">6. <strong>Feature Rewrite Rules (rewrite.def)</strong></a></h4>
+<p><strong>Role</strong>: Feature rewrite rules for normalizing features before CRF training
+<strong>Format</strong>: MeCab-compatible 3-section format separated by blank lines</p>
+<p>The file consists of three sections, each separated by a blank line:</p>
+<ol>
+<li><strong>Unigram section</strong>: Rewrites features for unigram templates (<code>%F[n]</code>, <code>%u</code>)</li>
+<li><strong>Left section</strong>: Rewrites features for left context (<code>%L[n]</code>, <code>%l</code>)</li>
+<li><strong>Right section</strong>: Rewrites features for right context (<code>%R[n]</code>, <code>%r</code>)</li>
+</ol>
+<pre><code class="language-text"># Section 1: Unigram rewrite rules
+名詞,固有名詞,*  名詞,固有名詞
+助動詞,*,*,*,特殊・デス  助動詞
+*  *
 
-# Normalize proper nouns
-名詞,固有名詞	名詞,一般
+# Section 2: Left context rewrite rules (blank line above separates sections)
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 
-# Simplify auxiliary verbs
-助動詞,*,*,*,特殊・デス	助動詞
-助動詞,*,*,*,特殊・ダ	助動詞
+# Section 3: Right context rewrite rules (blank line above separates sections)
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 </code></pre>
 <ul>
-<li><strong>Purpose</strong>: Normalize features to improve training efficiency</li>
-<li><strong>Format</strong>: <code>original_pattern\treplacement_pattern</code></li>
-<li><strong>Effect</strong>: Generalize rare features to reduce sparsity problems</li>
+<li><strong>Purpose</strong>: Normalize features to reduce sparsity and improve training efficiency</li>
+<li><strong>Format</strong>: Each line is <code>pattern\treplacement</code> (tab-separated). Pattern uses <code>*</code> as wildcard</li>
+<li><strong>Matching</strong>: Patterns are matched by prefix. The first matching rule in each section is applied</li>
+<li><strong>Effect</strong>: Different rewrite rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization</li>
 </ul>
 <h4 id="7-output-model-format"><a class="header" href="#7-output-model-format">7. <strong>Output Model Format</strong></a></h4>
 <p><strong>Role</strong>: Output model file
@@ -2110,14 +2124,19 @@ lindera export \
 <li><code>--model</code> / <code>-m</code>: Path to the trained model file (.dat format)</li>
 <li><code>--output</code> / <code>-o</code>: Directory to output the dictionary files</li>
 <li><code>--metadata</code>: Optional metadata.json file to update with trained model information</li>
+<li><code>--cost-factor</code>: Override cost factor for weight-to-cost conversion (default: value from trained model, typically 700)</li>
 </ul>
 <h3 id="output-files"><a class="header" href="#output-files">Output files</a></h3>
 <p>The export command creates the following dictionary files in the output directory:</p>
 <ul>
-<li><code>lex.csv</code>: Lexicon file with learned weights</li>
-<li><code>matrix.def</code>: Connection cost matrix</li>
+<li><code>lex.csv</code>: Lexicon file with learned weights (MeCab-compatible cost via <code>tocost()</code>)</li>
+<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs</li>
 <li><code>unk.def</code>: Unknown word definitions</li>
 <li><code>char.def</code>: Character type definitions</li>
+<li><code>feature.def</code>: Feature template definitions (copied from trained model)</li>
+<li><code>rewrite.def</code>: Feature rewrite rules (copied from trained model)</li>
+<li><code>left-id.def</code>: Left context ID to feature string mapping</li>
+<li><code>right-id.def</code>: Right context ID to feature string mapping</li>
 <li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
 </ul>
 <h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>

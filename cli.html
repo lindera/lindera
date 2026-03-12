@@ -975,14 +975,19 @@ lindera export \
 <li><code>--model</code> / <code>-m</code>: Path to the trained model file (.dat format)</li>
 <li><code>--output</code> / <code>-o</code>: Directory to output the dictionary files</li>
 <li><code>--metadata</code>: Optional metadata.json file to update with trained model information</li>
+<li><code>--cost-factor</code>: Override cost factor for weight-to-cost conversion (default: value from trained model, typically 700)</li>
 </ul>
 <h3 id="output-files"><a class="header" href="#output-files">Output files</a></h3>
 <p>The export command creates the following dictionary files in the output directory:</p>
 <ul>
-<li><code>lex.csv</code>: Lexicon file with learned weights</li>
-<li><code>matrix.def</code>: Connection cost matrix</li>
+<li><code>lex.csv</code>: Lexicon file with learned weights (MeCab-compatible cost via <code>tocost()</code>)</li>
+<li><code>matrix.def</code>: Dense connection cost matrix covering all (right_id, left_id) pairs</li>
 <li><code>unk.def</code>: Unknown word definitions</li>
 <li><code>char.def</code>: Character type definitions</li>
+<li><code>feature.def</code>: Feature template definitions (copied from trained model)</li>
+<li><code>rewrite.def</code>: Feature rewrite rules (copied from trained model)</li>
+<li><code>left-id.def</code>: Left context ID to feature string mapping</li>
+<li><code>right-id.def</code>: Right context ID to feature string mapping</li>
 <li><code>metadata.json</code>: Updated metadata file (if <code>--metadata</code> option is provided)</li>
 </ul>
 <h3 id="complete-workflow-example"><a class="header" href="#complete-workflow-example">Complete workflow example</a></h3>

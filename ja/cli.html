@@ -975,14 +975,19 @@ lindera export \
 <li><code>--model</code> / <code>-m</code>: 学習済みモデルファイル（.dat形式）のパス</li>
 <li><code>--output</code> / <code>-o</code>: 辞書ファイルの出力先ディレクトリ</li>
 <li><code>--metadata</code>: オプションの metadata.json ファイル（学習済みモデル情報で更新されます）</li>
+<li><code>--cost-factor</code>: 重みからコストへの変換係数を上書き（デフォルト: 学習済みモデルの値、通常は700）</li>
 </ul>
 <h3 id="出力ファイル"><a class="header" href="#出力ファイル">出力ファイル</a></h3>
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
-<li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル</li>
-<li><code>matrix.def</code>: 接続コスト行列</li>
+<li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
+<li><code>matrix.def</code>: 全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
 <li><code>unk.def</code>: 未知語定義</li>
 <li><code>char.def</code>: 文字種定義</li>
+<li><code>feature.def</code>: 素性テンプレート定義（学習済みモデルからコピー）</li>
+<li><code>rewrite.def</code>: 素性リライトルール（学習済みモデルからコピー）</li>
+<li><code>left-id.def</code>: 左文脈IDから素性文字列へのマッピング</li>
+<li><code>right-id.def</code>: 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
 <h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>

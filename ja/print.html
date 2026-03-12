@@ -1034,49 +1034,63 @@ NUMERIC 1 1 0
 <li><strong>目的</strong>: どの文字がどのカテゴリに属するかを定義</li>
 <li><strong>パラメータ</strong>: 互換性、連続性、デフォルト長などの設定</li>
 </ul>
-<h4 id="5-機能テンプレート-featuredef"><a class="header" href="#5-機能テンプレート-featuredef">5. <strong>機能テンプレート (feature.def)</strong></a></h4>
+<h4 id="5-素性テンプレート-featuredef"><a class="header" href="#5-素性テンプレート-featuredef">5. <strong>素性テンプレート (feature.def)</strong></a></h4>
 <p><strong>役割</strong>: 素性テンプレート定義
-<strong>フォーマット</strong>: 素性抽出パターン</p>
-<pre><code class="language-text"># Unigram features (word-level features)
-UNIGRAM:%F[0]         # POS (feature element 0)
-UNIGRAM:%F[1]         # POS detail 1
-UNIGRAM:%F[6]         # Base form
-UNIGRAM:%F[7]         # Reading (Katakana)
+<strong>フォーマット</strong>: MeCab互換の素性抽出パターン</p>
+<pre><code class="language-text"># ユニグラム素性（単語レベルの素性）
+UNIGRAM U00:%F[0]           # 品詞（素性要素0）
+UNIGRAM U01:%F[0],%F?[1]    # 品詞+品詞細分類（%F?[n] = オプション、* の場合スキップ）
+UNIGRAM U02:%F[6]           # 原形
+UNIGRAM U03:%w              # 表層形（メタ文字）
 
-# Left context features
-LEFT:%L[0]            # POS of left word
-LEFT:%L[1]            # POS detail of left word
-
-# Right context features
-RIGHT:%R[0]           # POS of right word
-RIGHT:%R[1]           # POS detail of right word
-
-# Bigram features (combination features)
-UNIGRAM:%F[0]/%F[1]   # POS + POS detail
-UNIGRAM:%F[0]/%F[6]   # POS + base form
+# バイグラム素性（文脈組み合わせ素性）
+BIGRAM B00:%L[0]/%R[0]      # 左品詞 / 右品詞
+BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # 左品詞細分類 / 右品詞細分類
 </code></pre>
 <ul>
 <li><strong>目的</strong>: どの情報から素性を抽出するかを定義</li>
-<li><strong>テンプレート</strong>: <code>%F[n]</code> (素性), <code>%L[n]</code> (左文脈), <code>%R[n]</code> (右文脈)</li>
+<li><strong>フォーマット</strong>: 各行は <code>UNIGRAM</code> または <code>BIGRAM</code> で始まり、ラベル（例: <code>U00:</code>, <code>B00:</code>）とテンプレートパターンが続く</li>
+<li><strong>テンプレート変数</strong>:
+<ul>
+<li><code>%F[n]</code> / <code>%F?[n]</code>: 素性フィールドのインデックス n（<code>?</code> = オプション、値が <code>*</code> の場合スキップ）</li>
+<li><code>%L[n]</code>: 左文脈の素性フィールドのインデックス n（rewrite.def の left セクションで変換後）</li>
+<li><code>%R[n]</code>: 右文脈の素性フィールドのインデックス n（rewrite.def の right セクションで変換後）</li>
+<li><code>%w</code>: 単語の表層形</li>
+<li><code>%u</code>: ユニグラムリライト済み素性文字列（rewrite.def の unigram セクションで変換後）</li>
+<li><code>%l</code>: 左文脈リライト済み素性文字列（rewrite.def の left セクションで変換後）</li>
+<li><code>%r</code>: 右文脈リライト済み素性文字列（rewrite.def の right セクションで変換後）</li>
 </ul>
-<h4 id="6-素性正規化ルール-rewritedef"><a class="header" href="#6-素性正規化ルール-rewritedef">6. <strong>素性正規化ルール (rewrite.def)</strong></a></h4>
-<p><strong>役割</strong>: 素性正規化ルール
-<strong>フォーマット</strong>: 置換ルール（タブ区切り）</p>
-<pre><code class="language-text"># Normalize numeric expressions
-数	NUM
-*	UNK
+</li>
+</ul>
+<h4 id="6-素性リライトルール-rewritedef"><a class="header" href="#6-素性リライトルール-rewritedef">6. <strong>素性リライトルール (rewrite.def)</strong></a></h4>
+<p><strong>役割</strong>: CRF学習前の素性正規化のためのリライトルール
+<strong>フォーマット</strong>: MeCab互換の3セクション形式（空行で区切り）</p>
+<p>ファイルは空行で区切られた3つのセクションで構成されます：</p>
+<ol>
+<li><strong>ユニグラムセクション</strong>: ユニグラムテンプレート（<code>%F[n]</code>, <code>%u</code>）の素性をリライト</li>
+<li><strong>左文脈セクション</strong>: 左文脈（<code>%L[n]</code>, <code>%l</code>）の素性をリライト</li>
+<li><strong>右文脈セクション</strong>: 右文脈（<code>%R[n]</code>, <code>%r</code>）の素性をリライト</li>
+</ol>
+<pre><code class="language-text"># セクション1: ユニグラムリライトルール
+名詞,固有名詞,*  名詞,固有名詞
+助動詞,*,*,*,特殊・デス  助動詞
+*  *
 
-# Normalize proper nouns
-名詞,固有名詞	名詞,一般
+# セクション2: 左文脈リライトルール（上の空行でセクション区切り）
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 
-# Simplify auxiliary verbs
-助動詞,*,*,*,特殊・デス	助動詞
-助動詞,*,*,*,特殊・ダ	助動詞
+# セクション3: 右文脈リライトルール（上の空行でセクション区切り）
+名詞,固有名詞,*  名詞,固有名詞
+助詞,*  助詞
+*  *
 </code></pre>
 <ul>
-<li><strong>目的</strong>: 素性を正規化して学習効率を向上させる</li>
-<li><strong>フォーマット</strong>: <code>original_pattern\treplacement_pattern</code></li>
-<li><strong>効果</strong>: 希少な素性を一般化し、スパース性の問題を軽減する</li>
+<li><strong>目的</strong>: 素性を正規化してスパース性を軽減し、学習効率を向上させる</li>
+<li><strong>フォーマット</strong>: 各行は <code>パターン\t置換</code> のタブ区切り。パターンでは <code>*</code> をワイルドカードとして使用可能</li>
+<li><strong>マッチング</strong>: パターンは前方一致で照合され、各セクションで最初にマッチしたルールが適用される</li>
+<li><strong>効果</strong>: ユニグラム・左文脈・右文脈に対して異なるリライトルールを適用でき、きめ細かな素性正規化が可能</li>
 </ul>
 <h4 id="7-出力モデルフォーマット"><a class="header" href="#7-出力モデルフォーマット">7. <strong>出力モデルフォーマット</strong></a></h4>
 <p><strong>役割</strong>: 出力モデルファイル
@@ -2114,14 +2128,19 @@ lindera export \
 <li><code>--model</code> / <code>-m</code>: 学習済みモデルファイル（.dat形式）のパス</li>
 <li><code>--output</code> / <code>-o</code>: 辞書ファイルの出力先ディレクトリ</li>
 <li><code>--metadata</code>: オプションの metadata.json ファイル（学習済みモデル情報で更新されます）</li>
+<li><code>--cost-factor</code>: 重みからコストへの変換係数を上書き（デフォルト: 学習済みモデルの値、通常は700）</li>
 </ul>
 <h3 id="出力ファイル"><a class="header" href="#出力ファイル">出力ファイル</a></h3>
 <p>エクスポートコマンドは出力ディレクトリに以下の辞書ファイルを作成します：</p>
 <ul>
-<li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル</li>
-<li><code>matrix.def</code>: 接続コスト行列</li>
+<li><code>lex.csv</code>: 学習された重みを持つ語彙ファイル（MeCab互換の <code>tocost()</code> によるコスト変換）</li>
+<li><code>matrix.def</code>: 全 (right_id, left_id) ペアを網羅する密な接続コスト行列</li>
 <li><code>unk.def</code>: 未知語定義</li>
 <li><code>char.def</code>: 文字種定義</li>
+<li><code>feature.def</code>: 素性テンプレート定義（学習済みモデルからコピー）</li>
+<li><code>rewrite.def</code>: 素性リライトルール（学習済みモデルからコピー）</li>
+<li><code>left-id.def</code>: 左文脈IDから素性文字列へのマッピング</li>
+<li><code>right-id.def</code>: 右文脈IDから素性文字列へのマッピング</li>
 <li><code>metadata.json</code>: 更新されたメタデータファイル（<code>--metadata</code> オプションが指定された場合）</li>
 </ul>
 <h3 id="完全なワークフロー例"><a class="header" href="#完全なワークフロー例">完全なワークフロー例</a></h3>
