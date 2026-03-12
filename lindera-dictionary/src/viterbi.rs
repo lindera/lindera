@@ -1097,10 +1097,10 @@ impl Lattice {
                         // Record best cost from first result
                         let bc = *best_cost.get_or_insert(cost);
                         // Skip if cost exceeds threshold
-                        if let Some(threshold) = cost_threshold {
-                            if cost > bc + threshold {
-                                break;
-                            }
+                        if let Some(threshold) = cost_threshold
+                            && cost > bc + threshold
+                        {
+                            break;
                         }
                         let key: Vec<usize> = path.iter().map(|(start, _)| *start).collect();
                         if seen.insert(key) {
@@ -1115,10 +1115,10 @@ impl Lattice {
                 match generator.next() {
                     Some((path, cost)) => {
                         let bc = *best_cost.get_or_insert(cost);
-                        if let Some(threshold) = cost_threshold {
-                            if cost > bc + threshold {
-                                break;
-                            }
+                        if let Some(threshold) = cost_threshold
+                            && cost > bc + threshold
+                        {
+                            break;
                         }
                         results.push((path, cost));
                     }

@@ -91,6 +91,7 @@ impl<'a> NBestGenerator<'a> {
     /// The path is a vector of (byte_start, WordId) pairs.
     /// The cost is the total path cost (fx at BOS), lower is better.
     /// Returns None when no more paths are available.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<(Vec<(usize, WordId)>, i64)> {
         while let Some(current) = self.queue.pop() {
             let byte_pos = current.byte_pos as usize;
