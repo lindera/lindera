@@ -463,4 +463,72 @@ mod tests {
         // right: rewritten
         assert_eq!(r, "名詞,一般");
     }
+
+    #[test]
+    fn test_feature_rewriter_partial_match_no_hang() {
+        // Test that partial match followed by mismatch correctly falls through
+        // without infinite loop (regression test for backtracking bug)
+        let rewrite_def = "名詞,一般\tNOUN,GENERAL\n";
+        let rewriter = FeatureRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        // Exact match: should rewrite
+        let result = rewriter.rewrite(&["名詞", "一般"]);
+        assert_eq!(
+            result,
+            Some(vec!["NOUN".to_string(), "GENERAL".to_string()])
+        );
+
+        // Partial match at first field, mismatch at second: should return None
+        let result = rewriter.rewrite(&["名詞", "代名詞", "一般"]);
+        assert_eq!(result, None);
+
+        // No match at all: should return None
+        let result = rewriter.rewrite(&["助詞", "係助詞"]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_feature_rewriter_multiple_rules_backtracking() {
+        // Multiple rules: first partially matches, second fully matches
+        let rewrite_def = "名詞,一般\tNOUN,GENERAL\n名詞,*\tNOUN,$2\n";
+        let rewriter = FeatureRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        // First rule matches exactly
+        let result = rewriter.rewrite(&["名詞", "一般"]);
+        assert_eq!(
+            result,
+            Some(vec!["NOUN".to_string(), "GENERAL".to_string()])
+        );
+
+        // First rule partially matches (名詞 ok, 代名詞 != 一般), falls through to second rule
+        let result = rewriter.rewrite(&["名詞", "代名詞"]);
+        assert_eq!(result, Some(vec!["NOUN".to_string(), "代名詞".to_string()]));
+
+        // No match at all
+        let result = rewriter.rewrite(&["助詞", "係助詞"]);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_dictionary_rewriter_partial_match_integration() {
+        // Integration test: DictionaryRewriter with partial match inputs
+        // This is the exact scenario that caused the hang in Python tests
+        let rewrite_def = "名詞,一般\tNOUN,GENERAL\n";
+        let rewriter =
+            DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        // Input whose first field matches "名詞" but second is "代名詞" != "一般"
+        // Should passthrough (no matching rule)
+        let (u, l, r) = rewriter.rewrite("名詞,代名詞,一般,*,*,*,これ,コレ,コレ");
+        assert_eq!(u, "名詞,代名詞,一般,*,*,*,これ,コレ,コレ");
+        assert_eq!(l, "名詞,代名詞,一般,*,*,*,これ,コレ,コレ");
+        assert_eq!(r, "名詞,代名詞,一般,*,*,*,これ,コレ,コレ");
+
+        // Input that fully matches the rule
+        // Legacy format: only right rewriter has rules, unigram/left passthrough
+        let (u, l, r) = rewriter.rewrite("名詞,一般");
+        assert_eq!(u, "名詞,一般");
+        assert_eq!(l, "名詞,一般");
+        assert_eq!(r, "NOUN,GENERAL");
+    }
 }
