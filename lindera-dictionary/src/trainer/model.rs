@@ -254,6 +254,73 @@ impl Model {
             .map(|s| s.to_string())
             .collect();
 
+        // Build left/right ID maps from merged model's connection IDs
+        // before feature_sets is moved into SerializableModel
+        // Build left/right ID maps from merged model's connection IDs.
+        // Use feature strings (POS info) from config.features, not surface forms.
+        let features = &self.config.features;
+        let unk_categories = &self.config.unk_categories;
+        let unk_start_idx = self
+            .labels
+            .len()
+            .saturating_sub(self.config.dict.character_definition.categories().len());
+
+        let get_feature_string = |i: usize| -> String {
+            if i < unk_start_idx {
+                // Dictionary entry: use feature string from config.features
+                if i < features.len() {
+                    features[i].clone()
+                } else {
+                    "*".to_string()
+                }
+            } else {
+                // Unknown word category: use unk feature string
+                let category_idx = i - unk_start_idx;
+                let char_def = &self.config.dict.character_definition;
+                let categories = char_def.categories();
+                if category_idx < categories.len() {
+                    let cat_name = &categories[category_idx];
+                    unk_categories
+                        .get(cat_name)
+                        .cloned()
+                        .unwrap_or_else(|| format!("UNK_{cat_name}"))
+                } else {
+                    format!("UNK_{}", category_idx)
+                }
+            }
+        };
+
+        let left_id_map = {
+            let mut id_to_feat: std::collections::HashMap<u32, String> =
+                std::collections::HashMap::new();
+            for (i, fs) in feature_sets.iter().enumerate() {
+                let lid = fs.left_id;
+                id_to_feat.entry(lid).or_insert_with(|| {
+                    let feat = get_feature_string(i);
+                    let (_, lfeature, _) = self.config.dictionary_rewriter.rewrite(&feat);
+                    lfeature
+                });
+            }
+            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
+            entries.sort_by_key(|&(id, _)| id);
+            entries
+        };
+        let right_id_map = {
+            let mut id_to_feat: std::collections::HashMap<u32, String> =
+                std::collections::HashMap::new();
+            for (i, fs) in feature_sets.iter().enumerate() {
+                let rid = fs.right_id;
+                id_to_feat.entry(rid).or_insert_with(|| {
+                    let feat = get_feature_string(i);
+                    let (_, _, rfeature) = self.config.dictionary_rewriter.rewrite(&feat);
+                    rfeature
+                });
+            }
+            let mut entries: Vec<(u32, String)> = id_to_feat.into_iter().collect();
+            entries.sort_by_key(|&(id, _)| id);
+            entries
+        };
+
         let serializable_model = SerializableModel {
             feature_weights,
             labels: self.labels.clone(),
@@ -275,28 +342,8 @@ impl Model {
             feature_def_content: self.config.feature_def_content.clone(),
             rewrite_def_content: self.config.rewrite_def_content.clone(),
             cost_factor: self.config.cost_factor,
-            left_id_map: {
-                let mut entries: Vec<(u32, String)> = self
-                    .config
-                    .feature_extractor
-                    .left_feature_ids
-                    .iter()
-                    .map(|(feat, &id)| (id.get(), feat.clone()))
-                    .collect();
-                entries.sort_by_key(|&(id, _)| id);
-                entries
-            },
-            right_id_map: {
-                let mut entries: Vec<(u32, String)> = self
-                    .config
-                    .feature_extractor
-                    .right_feature_ids
-                    .iter()
-                    .map(|(feat, &id)| (id.get(), feat.clone()))
-                    .collect();
-                entries.sort_by_key(|&(id, _)| id);
-                entries
-            },
+            left_id_map,
+            right_id_map,
         };
 
         // Use rkyv for efficient binary serialization

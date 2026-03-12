@@ -695,8 +695,216 @@ mod tests {
 
         let corpus = Corpus::from_reader(Cursor::new(corpus_text)).unwrap();
 
-        let model = trainer.train(corpus);
+        let model = trainer.train(corpus).unwrap();
 
-        assert!(model.is_ok());
+        // Verify model can be serialized and deserialized
+        let mut buf = Vec::new();
+        model.write_model(&mut buf).unwrap();
+        assert!(!buf.is_empty(), "Serialized model should not be empty");
+
+        let serializable: model::SerializableModel =
+            model::Model::read_model(Cursor::new(&buf)).unwrap();
+
+        // Verify labels match seed data (surfaces are encoded as labels)
+        assert!(
+            !serializable.labels.is_empty(),
+            "Labels should not be empty"
+        );
+
+        // Verify connection costs are generated (dense matrix)
+        assert!(
+            !serializable.connection_matrix.is_empty(),
+            "Connection matrix should not be empty"
+        );
+
+        // Verify left/right context ID mappings exist
+        assert!(
+            !serializable.left_id_map.is_empty(),
+            "Left ID map should not be empty"
+        );
+        assert!(
+            !serializable.right_id_map.is_empty(),
+            "Right ID map should not be empty"
+        );
+
+        // Verify unknown word categories are preserved
+        assert!(
+            !serializable.unk_categories.is_empty(),
+            "Unknown word categories should not be empty"
+        );
+
+        // Verify cost factor is set
+        assert!(
+            serializable.cost_factor > 0,
+            "Cost factor should be positive"
+        );
+
+        // === Verify all exported dictionary files ===
+
+        // 1. lex.csv: should contain all seed entries with costs
+        let mut lex_buf = Vec::new();
+        serializable.write_lexicon(&mut lex_buf).unwrap();
+        let lex_content = String::from_utf8(lex_buf).unwrap();
+        assert!(!lex_content.is_empty(), "lex.csv should not be empty");
+        for surface in &["これ", "は", "テスト"] {
+            assert!(
+                lex_content.contains(surface),
+                "lex.csv should contain {surface}"
+            );
+        }
+        // Each line should have CSV format: surface,left_id,right_id,cost,features...
+        for line in lex_content.lines() {
+            let fields: Vec<&str> = line.split(',').collect();
+            assert!(
+                fields.len() >= 4,
+                "lex.csv line should have at least 4 fields: {line}"
+            );
+            // left_id and right_id should be valid integers
+            fields[1]
+                .parse::<i32>()
+                .unwrap_or_else(|_| panic!("Invalid left_id in lex.csv: {line}"));
+            fields[2]
+                .parse::<i32>()
+                .unwrap_or_else(|_| panic!("Invalid right_id in lex.csv: {line}"));
+            // cost should be a valid integer
+            fields[3]
+                .parse::<i32>()
+                .unwrap_or_else(|_| panic!("Invalid cost in lex.csv: {line}"));
+        }
+
+        // 2. matrix.def: dense connection cost matrix
+        let mut matrix_buf = Vec::new();
+        serializable
+            .write_connection_costs(&mut matrix_buf)
+            .unwrap();
+        let matrix_content = String::from_utf8(matrix_buf).unwrap();
+        let mut lines = matrix_content.lines();
+        let header = lines.next().unwrap();
+        let dims: Vec<usize> = header
+            .split_whitespace()
+            .map(|s| s.parse().unwrap())
+            .collect();
+        assert_eq!(dims.len(), 2, "matrix.def header should have 2 dimensions");
+        let (rows, cols) = (dims[0], dims[1]);
+        assert!(rows > 0 && cols > 0, "Matrix dimensions should be positive");
+        // Each entry: right_id left_id cost
+        let mut entry_count = 0;
+        for line in lines {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            assert_eq!(
+                parts.len(),
+                3,
+                "matrix.def entry should have 3 fields: {line}"
+            );
+            parts[0]
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("Invalid right_id: {line}"));
+            parts[1]
+                .parse::<usize>()
+                .unwrap_or_else(|_| panic!("Invalid left_id: {line}"));
+            parts[2]
+                .parse::<i32>()
+                .unwrap_or_else(|_| panic!("Invalid cost: {line}"));
+            entry_count += 1;
+        }
+        assert_eq!(
+            entry_count,
+            rows * cols,
+            "Dense matrix should have rows*cols entries"
+        );
+
+        // 3. unk.def: unknown word definitions
+        let mut unk_buf = Vec::new();
+        serializable.write_unknown_dictionary(&mut unk_buf).unwrap();
+        let unk_content = String::from_utf8(unk_buf).unwrap();
+        assert!(!unk_content.is_empty(), "unk.def should not be empty");
+        assert!(
+            unk_content.contains("DEFAULT"),
+            "unk.def should contain DEFAULT category"
+        );
+
+        // 4. char.def: character definition
+        let mut char_buf = Vec::new();
+        serializable.write_char_def(&mut char_buf).unwrap();
+        let char_content = String::from_utf8(char_buf).unwrap();
+        assert!(!char_content.is_empty(), "char.def should not be empty");
+
+        // 5. feature.def: feature template definition
+        let mut feat_buf = Vec::new();
+        serializable.write_feature_def(&mut feat_buf).unwrap();
+        let feat_content = String::from_utf8(feat_buf).unwrap();
+        assert!(!feat_content.is_empty(), "feature.def should not be empty");
+        assert!(
+            feat_content.contains("UNIGRAM"),
+            "feature.def should contain UNIGRAM"
+        );
+        assert!(
+            feat_content.contains("BIGRAM"),
+            "feature.def should contain BIGRAM"
+        );
+
+        // 6. rewrite.def: rewrite rule definition
+        let mut rewrite_buf = Vec::new();
+        serializable.write_rewrite_def(&mut rewrite_buf).unwrap();
+        let rewrite_content = String::from_utf8(rewrite_buf).unwrap();
+        assert!(
+            !rewrite_content.is_empty(),
+            "rewrite.def should not be empty"
+        );
+
+        // 7. left-id.def: left context ID mapping
+        let mut left_id_buf = Vec::new();
+        serializable.write_left_id_def(&mut left_id_buf).unwrap();
+        let left_id_content = String::from_utf8(left_id_buf).unwrap();
+        assert!(
+            !left_id_content.is_empty(),
+            "left-id.def should not be empty"
+        );
+        // Each line: id feature_string
+        for line in left_id_content.lines() {
+            let parts: Vec<&str> = line.splitn(2, ' ').collect();
+            assert_eq!(
+                parts.len(),
+                2,
+                "left-id.def line should have id and feature: {line}"
+            );
+            parts[0]
+                .parse::<u32>()
+                .unwrap_or_else(|_| panic!("Invalid id in left-id.def: {line}"));
+        }
+
+        // 8. right-id.def: right context ID mapping
+        let mut right_id_buf = Vec::new();
+        serializable.write_right_id_def(&mut right_id_buf).unwrap();
+        let right_id_content = String::from_utf8(right_id_buf).unwrap();
+        assert!(
+            !right_id_content.is_empty(),
+            "right-id.def should not be empty"
+        );
+        for line in right_id_content.lines() {
+            let parts: Vec<&str> = line.splitn(2, ' ').collect();
+            assert_eq!(
+                parts.len(),
+                2,
+                "right-id.def line should have id and feature: {line}"
+            );
+            parts[0]
+                .parse::<u32>()
+                .unwrap_or_else(|_| panic!("Invalid id in right-id.def: {line}"));
+        }
+
+        // Cross-check: left-id.def count should match matrix columns
+        let left_id_count = left_id_content.lines().count();
+        assert_eq!(
+            left_id_count, cols,
+            "left-id.def entries ({left_id_count}) should match matrix columns ({cols})"
+        );
+
+        // Cross-check: right-id.def count should match matrix rows
+        let right_id_count = right_id_content.lines().count();
+        assert_eq!(
+            right_id_count, rows,
+            "right-id.def entries ({right_id_count}) should match matrix rows ({rows})"
+        );
     }
 }
