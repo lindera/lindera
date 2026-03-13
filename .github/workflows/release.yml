@@ -553,6 +553,9 @@ jobs:
           - value: "embed-cc-cedict"
             package_name: "lindera-python-cc-cedict"
             package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
+          - value: "embed-jieba"
+            package_name: "lindera-python-jieba"
+            package_description: "Python binding for Lindera with Jieba Chinese dictionary"
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -640,6 +643,9 @@ jobs:
           - value: "embed-cc-cedict"
             package_name: "lindera-python-cc-cedict"
             package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
+          - value: "embed-jieba"
+            package_name: "lindera-python-jieba"
+            package_description: "Python binding for Lindera with Jieba Chinese dictionary"
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
@@ -742,6 +748,10 @@ jobs:
             name: "cjk"
             package_name: "lindera-wasm-cjk"
             package_description: "Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
+          - value: "embed-jieba"
+            name: "jieba"
+            package_name: "lindera-wasm-jieba"
+            package_description: "Lindera WASM with Chinese dictionary (Jieba)"
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -822,6 +832,9 @@ jobs:
           - value: "embed-cjk"
             name: "cjk"
             package_name: "lindera-wasm-cjk"
+          - value: "embed-jieba"
+            name: "jieba"
+            package_name: "lindera-wasm-jieba"
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v8
