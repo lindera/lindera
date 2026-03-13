@@ -6,15 +6,14 @@ on:
     tags:
       - "v*.*.*"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   format:
     name: Format
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-        toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -22,8 +21,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+          toolchain: stable
+          components: rustfmt
 
       - name: Run format
         run: cargo fmt --all -- --check
@@ -58,7 +57,11 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform.target }}
 
       - name: Run test
         shell: bash
@@ -81,7 +84,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-ipadic --all-features
@@ -98,7 +103,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-ipadic-neologd --all-features
@@ -115,7 +122,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-unidic --all-features
@@ -132,7 +141,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-ko-dic --all-features
@@ -149,7 +160,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-cc-cedict --all-features
@@ -166,7 +179,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-jieba --all-features
@@ -208,7 +223,11 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform.target }}
 
       - name: Run test
         shell: bash
@@ -231,7 +250,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Run test
         run: cargo test -p lindera-cli --all-features
@@ -248,7 +269,9 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -418,29 +441,17 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Cache ~/.cargo/registry
-        uses: actions/cache@v5
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache ~/.cargo/git
-        uses: actions/cache@v5
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache target
-        uses: actions/cache@v5
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.platform.target }}-${{ matrix.features.value }}
+          workspaces: ". -> target/${{ matrix.features.value }}"
 
       - name: Add msbuild to PATH
         if: startsWith(matrix.platform.runner, 'windows')
@@ -458,17 +469,13 @@ jobs:
         env:
           LINDERA_DICTIONARIES_PATH: dictionaries
 
-      - name: Create artifact for Linux
-        if: startsWith(matrix.platform.runner, 'ubuntu')
+      - name: Create artifact for Unix
+        if: "!startsWith(matrix.platform.runner, 'windows')"
         run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
         if: startsWith(matrix.platform.runner, 'windows')
         run: powershell Compress-Archive -DestinationPath ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
-
-      - name: Create artifact for macOS
-        if: startsWith(matrix.platform.runner, 'macos')
-        run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v2
@@ -480,7 +487,7 @@ jobs:
 
   publish-crates:
     name: Publish crates
-    needs: [build]
+    needs: [create-release]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
