@@ -8,13 +8,40 @@ use serde::{Deserialize, Serialize};
 use crate::trainer::corpus::Word;
 use crate::viterbi::{LexType, WordEntry, WordId};
 
-/// Convert CRF weight to MeCab-compatible cost using fixed cost-factor.
+/// Convert CRF weight to MeCab-compatible cost using cost-factor.
 ///
 /// MeCab's `tocost(d, n)` formula: `clamp(-n * d, -32767, 32767)`
-/// where `d` is the cost-factor (typically 700) and `n` is the CRF weight.
+/// where `d` is the cost-factor and `n` is the CRF weight.
 fn tocost(weight: f64, cost_factor: i32) -> i16 {
     let raw = -(cost_factor as f64) * weight;
     raw.round().clamp(i16::MIN as f64, i16::MAX as f64) as i16
+}
+
+/// Calculate the optimal cost factor from actual model weights.
+///
+/// This ensures the full i16 range is utilized, preserving relative differences
+/// between weights. The cost factor is computed as `i16::MAX / max_abs_weight`
+/// so that the largest weight maps to the boundary of the i16 range.
+fn calculate_cost_factor(merged_model: &rucrf::MergedModel) -> i32 {
+    let mut weight_abs_max = 0f64;
+
+    // Find maximum absolute weight from unigram feature sets
+    for feature_set in &merged_model.feature_sets {
+        weight_abs_max = weight_abs_max.max(feature_set.weight.abs());
+    }
+
+    // Find maximum absolute weight from connection cost matrix
+    for hm in &merged_model.matrix {
+        for &w in hm.values() {
+            weight_abs_max = weight_abs_max.max(w.abs());
+        }
+    }
+
+    if weight_abs_max > f64::EPSILON {
+        (f64::from(i16::MAX) / weight_abs_max) as i32
+    } else {
+        700 // MeCab default fallback
+    }
 }
 
 /// Feature set information extracted from CRF training
@@ -217,6 +244,9 @@ impl Model {
         // Extract connection cost matrix from the trained model
         let merged_model = self.raw_model.merge()?;
 
+        // Compute optimal cost factor from actual weight range
+        let cost_factor = calculate_cost_factor(&merged_model);
+
         let mut connection_matrix = std::collections::HashMap::new();
         let mut max_left_id = 0;
         let mut max_right_id = 0;
@@ -341,7 +371,7 @@ impl Model {
             char_def_content: self.config.char_def_content.clone(),
             feature_def_content: self.config.feature_def_content.clone(),
             rewrite_def_content: self.config.rewrite_def_content.clone(),
-            cost_factor: self.config.cost_factor,
+            cost_factor,
             left_id_map,
             right_id_map,
         };
@@ -481,7 +511,7 @@ impl Model {
 
     pub fn write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
-        let cost_factor = self.config.cost_factor;
+        let cost_factor = calculate_cost_factor(&merged_model);
 
         for (i, surface) in self.config.surfaces.iter().enumerate() {
             if i < merged_model.feature_sets.len() {
@@ -508,7 +538,7 @@ impl Model {
 
     pub fn write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
-        let cost_factor = self.config.cost_factor;
+        let cost_factor = calculate_cost_factor(&merged_model);
 
         // Dense matrix dimensions: (right_size, left_size)
         // +1 for BOS/EOS (id=0)
@@ -517,15 +547,20 @@ impl Model {
         writeln!(writer, "{right_size} {left_size}")?;
 
         // Dense matrix: output all (right_id, left_id) pairs
+        // Unseen pairs get maximum penalty cost to block unlearned transitions,
+        // forcing Viterbi to prefer paths through learned POS bigram connections.
         for right_id in 0..right_size {
             for left_id in 0..left_size {
-                let weight = merged_model
+                let cost = if let Some(weight) = merged_model
                     .matrix
                     .get(right_id)
                     .and_then(|hm| hm.get(&(left_id as u32)))
                     .copied()
-                    .unwrap_or(0.0);
-                let cost = tocost(weight, cost_factor);
+                {
+                    tocost(weight, cost_factor)
+                } else {
+                    i16::MAX
+                };
                 writeln!(writer, "{right_id} {left_id} {cost}")?;
             }
         }
@@ -535,7 +570,7 @@ impl Model {
 
     pub fn write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()> {
         let merged_model = self.get_merged_model()?;
-        let cost_factor = self.config.cost_factor;
+        let cost_factor = calculate_cost_factor(&merged_model);
 
         let char_def = &self.config.dict.character_definition;
         let category_names = char_def.categories();
@@ -575,7 +610,8 @@ impl Model {
             return Ok(());
         }
 
-        let cost_factor = self.config.cost_factor;
+        let merged_model = self.get_merged_model()?;
+        let cost_factor = calculate_cost_factor(&merged_model);
 
         for (surface, features) in self.config.user_lexicon() {
             let (left_id, right_id) = self.infer_context_ids(surface, features);
@@ -953,16 +989,20 @@ impl SerializableModel {
 
             writeln!(writer, "{right_size} {left_size}")?;
 
-            // Dense matrix: all (right_id, left_id) pairs, cost=0 for unseen
+            // Dense matrix: all (right_id, left_id) pairs
+            // Unseen pairs get maximum penalty cost to block unlearned transitions,
+            // forcing Viterbi to prefer paths through learned POS bigram connections.
             for right_id in 0..right_size {
                 for left_id in 0..left_size {
-                    let weight = self
+                    let cost = if let Some(&weight) = self
                         .connection_matrix
                         .get(&right_id)
                         .and_then(|inner| inner.get(&left_id))
-                        .copied()
-                        .unwrap_or(0.0);
-                    let cost = tocost(weight, self.cost_factor);
+                    {
+                        tocost(weight, self.cost_factor)
+                    } else {
+                        i16::MAX
+                    };
                     writeln!(writer, "{right_id} {left_id} {cost}")?;
                 }
             }
