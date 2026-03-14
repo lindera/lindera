@@ -123,6 +123,7 @@ pub struct Trainer {
     label_id_map_unk: Vec<NonZeroU32>,
 
     regularization_cost: f64,
+    use_l2: bool,
     max_iter: u64,
     num_threads: usize,
 }
@@ -251,14 +252,21 @@ impl Trainer {
             label_id_map,
             label_id_map_unk,
             regularization_cost: 0.01,
+            use_l2: false,
             max_iter: 100,
             num_threads: 8,
         })
     }
 
-    /// Sets the regularization cost (L1 regularization coefficient).
+    /// Sets the regularization cost coefficient.
     pub fn regularization_cost(mut self, cost: f64) -> Self {
         self.regularization_cost = cost;
+        self
+    }
+
+    /// Sets whether to use L2 regularization (default: L1).
+    pub fn use_l2(mut self, l2: bool) -> Self {
+        self.use_l2 = l2;
         self
     }
 
@@ -327,15 +335,21 @@ impl Trainer {
     fn train_crf_model(&mut self, lattices: Vec<rucrf::Lattice>) -> Result<rucrf::RawModel> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
         log_info!(
-            "Training parameters: regularization={}, max_iter={}, threads={}",
+            "Training parameters: regularization={} ({}), max_iter={}, threads={}",
             self.regularization_cost,
+            if self.use_l2 { "L2" } else { "L1" },
             self.max_iter,
             self.num_threads
         );
 
         // Configure the CRF trainer
+        let reg_type = if self.use_l2 {
+            rucrf::Regularization::L2
+        } else {
+            rucrf::Regularization::L1
+        };
         let trainer = rucrf::Trainer::new()
-            .regularization(rucrf::Regularization::L1, self.regularization_cost)?
+            .regularization(reg_type, self.regularization_cost)?
             .max_iter(self.max_iter)?
             .n_threads(self.num_threads)?;
 
