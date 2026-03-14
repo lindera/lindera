@@ -711,7 +711,7 @@ jobs:
 
   build-wasm:
     name: Build WASM (${{ matrix.target.name }}, ${{ matrix.features.name }})
-    needs: [publish-crates, build-dictionary]
+    needs: [create-release, build-dictionary]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
