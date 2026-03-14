@@ -499,7 +499,7 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
         "l2" => true,
         _ => {
             return Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("regularization must be 'l1' or 'l2'")))
+                .with_error(anyhow::anyhow!("regularization must be 'l1' or 'l2'")));
         }
     };
 
