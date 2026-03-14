@@ -40,7 +40,7 @@ default = ["compress", "mmap", "train"]
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { version = "4.5.60", features = ["derive", "cargo"] }
+clap = { version = "4.6.0", features = ["derive", "cargo"] }
 lindera = { workspace = true }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
