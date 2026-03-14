@@ -159,8 +159,10 @@ impl Trainer {
 
             // Compute character category ID from the first character of the surface
             let cate_id = if let Some(first_char) = surface.chars().next() {
-                let categories =
-                    config.dict.character_definition.lookup_categories(first_char);
+                let categories = config
+                    .dict
+                    .character_definition
+                    .lookup_categories(first_char);
                 if !categories.is_empty() {
                     categories[0].0 as u32
                 } else {
