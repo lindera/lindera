@@ -123,6 +123,7 @@ pub struct Trainer {
     label_id_map_unk: Vec<NonZeroU32>,
 
     regularization_cost: f64,
+    use_l2: bool,
     max_iter: u64,
     num_threads: usize,
 }
@@ -157,6 +158,21 @@ impl Trainer {
             let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
             let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
 
+            // Compute character category ID from the first character of the surface
+            let cate_id = if let Some(first_char) = surface.chars().next() {
+                let categories = config
+                    .dict
+                    .character_definition
+                    .lookup_categories(first_char);
+                if !categories.is_empty() {
+                    categories[0].0 as u32
+                } else {
+                    0 // DEFAULT category
+                }
+            } else {
+                0
+            };
+
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;
             let ctx = TemplateContext {
@@ -167,7 +183,7 @@ impl Trainer {
             };
 
             let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, i as u32, &ctx);
+                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, cate_id, &ctx);
             let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
             let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
@@ -236,14 +252,21 @@ impl Trainer {
             label_id_map,
             label_id_map_unk,
             regularization_cost: 0.01,
+            use_l2: false,
             max_iter: 100,
             num_threads: 8,
         })
     }
 
-    /// Sets the regularization cost (L1 regularization coefficient).
+    /// Sets the regularization cost coefficient.
     pub fn regularization_cost(mut self, cost: f64) -> Self {
         self.regularization_cost = cost;
+        self
+    }
+
+    /// Sets whether to use L2 regularization (default: L1).
+    pub fn use_l2(mut self, l2: bool) -> Self {
+        self.use_l2 = l2;
         self
     }
 
@@ -312,15 +335,21 @@ impl Trainer {
     fn train_crf_model(&mut self, lattices: Vec<rucrf::Lattice>) -> Result<rucrf::RawModel> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
         log_info!(
-            "Training parameters: regularization={}, max_iter={}, threads={}",
+            "Training parameters: regularization={} ({}), max_iter={}, threads={}",
             self.regularization_cost,
+            if self.use_l2 { "L2" } else { "L1" },
             self.max_iter,
             self.num_threads
         );
 
         // Configure the CRF trainer
+        let reg_type = if self.use_l2 {
+            rucrf::Regularization::L2
+        } else {
+            rucrf::Regularization::L1
+        };
         let trainer = rucrf::Trainer::new()
-            .regularization(rucrf::Regularization::L1, self.regularization_cost)?
+            .regularization(reg_type, self.regularization_cost)?
             .max_iter(self.max_iter)?
             .n_threads(self.num_threads)?;
 

@@ -214,9 +214,16 @@ struct TrainArgs {
         short = 'l',
         long = "lambda",
         default_value = "0.01",
-        help = "L1 regularization (0.0-1.0)"
+        help = "Regularization coefficient (0.0-1.0)"
     )]
     lambda: f64,
+    #[clap(
+        short = 'R',
+        long = "regularization",
+        default_value = "l1",
+        help = "Regularization type: l1 or l2"
+    )]
+    regularization: String,
     #[clap(
         short = 'i',
         long = "max-iterations",
@@ -486,10 +493,21 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     )
     .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
+    // Parse regularization type
+    let use_l2 = match args.regularization.to_lowercase().as_str() {
+        "l1" => false,
+        "l2" => true,
+        _ => {
+            return Err(LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("regularization must be 'l1' or 'l2'")));
+        }
+    };
+
     // Initialize trainer
     let trainer = Trainer::new(config)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
+        .use_l2(use_l2)
         .max_iter(args.iter)
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
 
