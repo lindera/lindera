@@ -157,6 +157,19 @@ impl Trainer {
             let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
             let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
 
+            // Compute character category ID from the first character of the surface
+            let cate_id = if let Some(first_char) = surface.chars().next() {
+                let categories =
+                    config.dict.character_definition.lookup_categories(first_char);
+                if !categories.is_empty() {
+                    categories[0].0 as u32
+                } else {
+                    0 // DEFAULT category
+                }
+            } else {
+                0
+            };
+
             // Create feature set for this vocabulary entry
             let feature_extractor = &mut config.feature_extractor;
             let ctx = TemplateContext {
@@ -167,7 +180,7 @@ impl Trainer {
             };
 
             let unigram_ids =
-                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, i as u32, &ctx);
+                feature_extractor.extract_unigram_feature_ids_with_ctx(&u_vec, cate_id, &ctx);
             let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
             let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
