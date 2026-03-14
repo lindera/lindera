@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Detect file changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -61,33 +61,21 @@ jobs:
             lindera-ipadic:
               - 'lindera-ipadic/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-ipadic-neologd:
               - 'lindera-ipadic-neologd/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-unidic:
               - 'lindera-unidic/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-ko-dic:
               - 'lindera-ko-dic/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-cc-cedict:
               - 'lindera-cc-cedict/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-jieba:
               - 'lindera-jieba/**'
               - 'lindera-dictionary/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera:
               - 'lindera/**'
               - 'lindera-dictionary/**'
@@ -97,8 +85,6 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-cli:
               - 'lindera-cli/**'
               - 'lindera/**'
@@ -109,8 +95,6 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-python:
               - 'lindera-python/**'
               - 'lindera/**'
@@ -121,8 +105,6 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-wasm:
               - 'lindera-wasm/**'
               - 'lindera/**'
@@ -133,8 +115,6 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
