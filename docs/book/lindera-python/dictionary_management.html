@@ -1,0 +1,347 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Dictionary Management - Lindera Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="dictionary-management"><a class="header" href="#dictionary-management">Dictionary Management</a></h1>
+<p>Lindera Python provides functions for loading, building, and managing dictionaries used in morphological analysis.</p>
+<h2 id="loading-dictionaries"><a class="header" href="#loading-dictionaries">Loading Dictionaries</a></h2>
+<h3 id="system-dictionaries"><a class="header" href="#system-dictionaries">System Dictionaries</a></h3>
+<p>Use <code>load_dictionary(uri)</code> to load a system dictionary.</p>
+<p><strong>Embedded dictionaries</strong> (requires the corresponding <code>embed-*</code> feature):</p>
+<pre><code class="language-python">from lindera import load_dictionary
+
+dictionary = load_dictionary("embedded://ipadic")
+</code></pre>
+<p><strong>External dictionaries</strong> (loaded from a directory on disk):</p>
+<pre><code class="language-python">dictionary = load_dictionary("/path/to/dictionary")
+</code></pre>
+<h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
+<p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
+<pre><code class="language-python">from lindera import load_user_dictionary, Metadata
+
+metadata = Metadata()
+user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+</code></pre>
+<p>Pass the user dictionary when building a tokenizer:</p>
+<pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
+
+dictionary = load_dictionary("embedded://ipadic")
+metadata = Metadata()
+user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
+
+tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
+</code></pre>
+<p>Or via the builder:</p>
+<pre><code class="language-python">from lindera import TokenizerBuilder
+
+tokenizer = (
+    TokenizerBuilder()
+    .set_dictionary("embedded://ipadic")
+    .set_user_dictionary("/path/to/user_dictionary")
+    .build()
+)
+</code></pre>
+<h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>
+<h3 id="system-dictionary"><a class="header" href="#system-dictionary">System Dictionary</a></h3>
+<p>Build a system dictionary from source files:</p>
+<pre><code class="language-python">from lindera import build_dictionary, Metadata
+
+metadata = Metadata(name="custom", encoding="UTF-8")
+build_dictionary("/path/to/input_dir", "/path/to/output_dir", metadata)
+</code></pre>
+<p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
+<p>Build a user dictionary from a CSV file:</p>
+<pre><code class="language-python">from lindera import build_user_dictionary, Metadata
+
+metadata = Metadata()
+build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
+</code></pre>
+<p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
+<pre><code class="language-python">build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir")
+</code></pre>
+<h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
+<p>The <code>Metadata</code> class configures dictionary parameters.</p>
+<h3 id="creating-metadata"><a class="header" href="#creating-metadata">Creating Metadata</a></h3>
+<pre><code class="language-python">from lindera import Metadata, CompressionAlgorithm
+
+# Default metadata
+metadata = Metadata()
+
+# Custom metadata
+metadata = Metadata(
+    name="my_dictionary",
+    encoding="UTF-8",
+    compress_algorithm=CompressionAlgorithm.Deflate,
+    default_word_cost=-10000,
+)
+</code></pre>
+<h3 id="loading-from-json"><a class="header" href="#loading-from-json">Loading from JSON</a></h3>
+<pre><code class="language-python">metadata = Metadata.from_json_file("metadata.json")
+</code></pre>
+<h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>str</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
+<tr><td><code>encoding</code></td><td><code>str</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
+<tr><td><code>compress_algorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>Compression algorithm</td></tr>
+<tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>Default cost for unknown words</td></tr>
+<tr><td><code>default_left_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>Default left context ID</td></tr>
+<tr><td><code>default_right_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>Default right context ID</td></tr>
+<tr><td><code>default_field_value</code></td><td><code>str</code></td><td><code>"*"</code></td><td>Default value for missing fields</td></tr>
+<tr><td><code>flexible_csv</code></td><td><code>bool</code></td><td><code>False</code></td><td>Allow flexible CSV parsing</td></tr>
+<tr><td><code>skip_invalid_cost_or_id</code></td><td><code>bool</code></td><td><code>False</code></td><td>Skip entries with invalid cost or ID</td></tr>
+<tr><td><code>normalize_details</code></td><td><code>bool</code></td><td><code>False</code></td><td>Normalize morphological details</td></tr>
+<tr><td><code>dictionary_schema</code></td><td><code>Schema</code></td><td>IPADIC schema</td><td>Schema for the main dictionary</td></tr>
+<tr><td><code>user_dictionary_schema</code></td><td><code>Schema</code></td><td>Minimal schema</td><td>Schema for user dictionaries</td></tr>
+</tbody></table>
+</div>
+<p>All properties support both getting and setting:</p>
+<pre><code class="language-python">metadata = Metadata()
+metadata.name = "custom_dict"
+metadata.encoding = "EUC-JP"
+print(metadata.name)  # "custom_dict"
+</code></pre>
+<h3 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h3>
+<p>Returns a dictionary representation of the metadata:</p>
+<pre><code class="language-python">metadata = Metadata(name="test")
+print(metadata.to_dict())
+</code></pre>
+<h3 id="compressionalgorithm"><a class="header" href="#compressionalgorithm">CompressionAlgorithm</a></h3>
+<p>Available compression algorithms:</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE compression (default)</td></tr>
+<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib compression</td></tr>
+<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip compression</td></tr>
+<tr><td><code>CompressionAlgorithm.Raw</code></td><td>No compression</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../lindera-python/tokenizer_api.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../lindera-python/text_processing_pipeline.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../lindera-python/tokenizer_api.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../lindera-python/text_processing_pipeline.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

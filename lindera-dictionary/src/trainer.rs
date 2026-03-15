@@ -107,7 +107,7 @@ pub struct Trainer {
     /// Set to None to include all tokens regardless of length.
     max_grouping_len: Option<usize>,
 
-    provider: rucrf::FeatureProvider,
+    provider: lindera_crf::FeatureProvider,
 
     // Maps feature strings to label IDs
     label_id_map: std::collections::HashMap<String, std::collections::HashMap<char, NonZeroU32>>,
@@ -124,6 +124,7 @@ pub struct Trainer {
 
     regularization_cost: f64,
     use_l2: bool,
+    elastic_net_l1_ratio: Option<f64>,
     max_iter: u64,
     num_threads: usize,
 }
@@ -131,7 +132,7 @@ pub struct Trainer {
 impl Trainer {
     /// Creates a new [`Trainer`] using the specified configuration.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
-        let mut provider = rucrf::FeatureProvider::default();
+        let mut provider = lindera_crf::FeatureProvider::default();
         let mut label_id_map = HashMap::new();
 
         // Build label mapping from surfaces and add feature sets to provider
@@ -187,7 +188,7 @@ impl Trainer {
             let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
             let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
-            let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
+            let feature_set = lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
             // Add feature set to provider and get label ID
             let label_id = provider.add_feature_set(feature_set)?;
@@ -238,7 +239,7 @@ impl Trainer {
             let left_ids = feature_extractor.extract_left_feature_ids_with_ctx(&l_vec, &ctx);
             let right_ids = feature_extractor.extract_right_feature_ids_with_ctx(&r_vec, &ctx);
 
-            let feature_set = rucrf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
+            let feature_set = lindera_crf::FeatureSet::new(&unigram_ids, &right_ids, &left_ids);
 
             // Add to provider
             let unk_label_id = provider.add_feature_set(feature_set)?;
@@ -253,6 +254,7 @@ impl Trainer {
             label_id_map_unk,
             regularization_cost: 0.01,
             use_l2: false,
+            elastic_net_l1_ratio: None,
             max_iter: 100,
             num_threads: 8,
         })
@@ -267,6 +269,14 @@ impl Trainer {
     /// Sets whether to use L2 regularization (default: L1).
     pub fn use_l2(mut self, l2: bool) -> Self {
         self.use_l2 = l2;
+        self
+    }
+
+    /// Sets the Elastic Net L1 ratio (0.0 to 1.0).
+    /// When set, uses Elastic Net regularization instead of pure L1 or L2.
+    /// l1_ratio=1.0 is pure L1, l1_ratio=0.0 is pure L2.
+    pub fn elastic_net_l1_ratio(mut self, ratio: f64) -> Self {
+        self.elastic_net_l1_ratio = Some(ratio);
         self
     }
 
@@ -313,7 +323,7 @@ impl Trainer {
     }
 
     /// Build feature lattices from the training corpus
-    fn build_lattices_from_corpus(&mut self, corpus: &Corpus) -> Result<Vec<rucrf::Lattice>> {
+    fn build_lattices_from_corpus(&mut self, corpus: &Corpus) -> Result<Vec<lindera_crf::Lattice>> {
         log_info!("Building feature lattices...");
 
         let mut lattices = Vec::new();
@@ -332,23 +342,42 @@ impl Trainer {
     }
 
     /// Configure and execute CRF training
-    fn train_crf_model(&mut self, lattices: Vec<rucrf::Lattice>) -> Result<rucrf::RawModel> {
+    fn train_crf_model(
+        &mut self,
+        lattices: Vec<lindera_crf::Lattice>,
+    ) -> Result<lindera_crf::RawModel> {
         log_info!("Starting CRF training with {} lattices...", lattices.len());
-        log_info!(
-            "Training parameters: regularization={} ({}), max_iter={}, threads={}",
-            self.regularization_cost,
-            if self.use_l2 { "L2" } else { "L1" },
-            self.max_iter,
-            self.num_threads
-        );
+
+        // Determine regularization type
+        let reg_type = if let Some(l1_ratio) = self.elastic_net_l1_ratio {
+            log_info!(
+                "Training parameters: regularization={} (ElasticNet, l1_ratio={}), max_iter={}, threads={}",
+                self.regularization_cost,
+                l1_ratio,
+                self.max_iter,
+                self.num_threads
+            );
+            lindera_crf::Regularization::ElasticNet { l1_ratio }
+        } else if self.use_l2 {
+            log_info!(
+                "Training parameters: regularization={} (L2), max_iter={}, threads={}",
+                self.regularization_cost,
+                self.max_iter,
+                self.num_threads
+            );
+            lindera_crf::Regularization::L2
+        } else {
+            log_info!(
+                "Training parameters: regularization={} (L1), max_iter={}, threads={}",
+                self.regularization_cost,
+                self.max_iter,
+                self.num_threads
+            );
+            lindera_crf::Regularization::L1
+        };
 
         // Configure the CRF trainer
-        let reg_type = if self.use_l2 {
-            rucrf::Regularization::L2
-        } else {
-            rucrf::Regularization::L1
-        };
-        let trainer = rucrf::Trainer::new()
+        let trainer = lindera_crf::Trainer::new()
             .regularization(reg_type, self.regularization_cost)?
             .max_iter(self.max_iter)?
             .n_threads(self.num_threads)?;
@@ -359,9 +388,9 @@ impl Trainer {
     /// Execute the actual CRF training with detailed logging
     fn execute_training(
         &mut self,
-        trainer: rucrf::Trainer,
-        lattices: Vec<rucrf::Lattice>,
-    ) -> Result<rucrf::RawModel> {
+        trainer: lindera_crf::Trainer,
+        lattices: Vec<lindera_crf::Lattice>,
+    ) -> Result<lindera_crf::RawModel> {
         println!("L-BFGS optimization starting...");
         println!(
             "Note: This may take several minutes for large datasets. Progress will be shown by L-BFGS iterations above."
@@ -385,7 +414,7 @@ impl Trainer {
     }
 
     /// Log detailed training results for debugging
-    fn log_training_results(&self, model: &rucrf::RawModel) {
+    fn log_training_results(&self, model: &lindera_crf::RawModel) {
         log_debug!("Training completed, checking raw model...");
         log_debug!("Raw model weights count: {}", model.weights().len());
         log_debug!(
@@ -422,7 +451,7 @@ impl Trainer {
     /// Create the final trained model from CRF results
     fn create_final_model(
         mut self,
-        crf_model: rucrf::RawModel,
+        crf_model: lindera_crf::RawModel,
         labels: Vec<String>,
         _corpus: Corpus,
     ) -> Result<Model> {
@@ -444,7 +473,7 @@ impl Trainer {
     }
 
     /// Extract feature weights from the trained CRF model
-    fn extract_feature_weights(&self, crf_model: &rucrf::RawModel) -> Vec<f64> {
+    fn extract_feature_weights(&self, crf_model: &lindera_crf::RawModel) -> Vec<f64> {
         log_info!("Extracting feature weights from trained model...");
 
         let mut feature_weights = Vec::new();
@@ -476,7 +505,7 @@ impl Trainer {
     }
 
     /// Use raw CRF model weights as fallback
-    fn use_raw_weights(&self, crf_model: &rucrf::RawModel, feature_weights: &mut Vec<f64>) {
+    fn use_raw_weights(&self, crf_model: &lindera_crf::RawModel, feature_weights: &mut Vec<f64>) {
         let raw_weights = crf_model.weights();
 
         for i in 0..self.config.surfaces.len() {
@@ -501,8 +530,8 @@ impl Trainer {
         labels
     }
 
-    fn build_lattice(&mut self, example: &Example) -> Result<rucrf::Lattice> {
-        use rucrf::{Edge, Lattice};
+    fn build_lattice(&mut self, example: &Example) -> Result<lindera_crf::Lattice> {
+        use lindera_crf::{Edge, Lattice};
 
         let input_chars: Vec<char> = example.sentence.chars().collect();
         let input_len = input_chars.len();
@@ -534,8 +563,11 @@ impl Trainer {
                         )
                         .map_or_else(
                             || {
-                                self.provider
-                                    .add_feature_set(rucrf::FeatureSet::new(&[], &[], &[]))
+                                self.provider.add_feature_set(lindera_crf::FeatureSet::new(
+                                    &[],
+                                    &[],
+                                    &[],
+                                ))
                             },
                             |unk_index| Ok(self.label_id_map_unk[unk_index.word_id as usize]),
                         )
@@ -588,7 +620,7 @@ impl Trainer {
                     let label_id = NonZeroU32::new(id_offset + w.word_idx().word_id + 1).unwrap(); // Offset for unknown words
                     let pos = start_word;
                     let target = w.end_char();
-                    let edge = rucrf::Edge::new(target, label_id);
+                    let edge = lindera_crf::Edge::new(target, label_id);
 
                     // Skip adding if the edge is already added as a positive edge
                     if let Some(first_edge) = lattice.nodes()[pos].edges().first()
@@ -605,7 +637,7 @@ impl Trainer {
     }
 
     /// Remove unused features from the feature extractor to optimize the model size and performance
-    fn remove_unused_features(&mut self, model: &rucrf::RawModel) {
+    fn remove_unused_features(&mut self, model: &lindera_crf::RawModel) {
         println!("Removing unused features...");
 
         use std::collections::HashSet;

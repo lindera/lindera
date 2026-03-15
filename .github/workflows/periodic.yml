@@ -27,9 +27,29 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
+  test-lindera-crf:
+    name: Test lindera-crf (${{ matrix.toolchain }})
+    needs: [format]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run test
+        run: cargo test -p lindera-crf --all-features
+
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }}, ${{ matrix.toolchain }})
-    needs: [format]
+    needs: [format, test-lindera-crf]
     strategy:
       matrix:
         platform:
