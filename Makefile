@@ -1,6 +1,7 @@
 # Versions
 GET_VERSION = $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="$(1)") | .version')
 
+LINDERA_CRF_VERSION := $(call GET_VERSION,lindera-crf)
 LINDERA_DICTIONARY_VERSION := $(call GET_VERSION,lindera-dictionary)
 LINDERA_CC_CEDICT_VERSION := $(call GET_VERSION,lindera-cc-cedict)
 LINDERA_IPADIC_VERSION := $(call GET_VERSION,lindera-ipadic)
@@ -168,6 +169,7 @@ define PUBLISH_CRATE
 endef
 
 publish: ## Publish packages to crates.io
+	$(call PUBLISH_CRATE,lindera-crf,$(LINDERA_CRF_VERSION))
 	$(call PUBLISH_CRATE,lindera-dictionary,$(LINDERA_DICTIONARY_VERSION))
 	$(call PUBLISH_CRATE,lindera-cc-cedict,$(LINDERA_CC_CEDICT_VERSION))
 	$(call PUBLISH_CRATE,lindera-ipadic,$(LINDERA_IPADIC_VERSION))

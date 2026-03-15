@@ -22,7 +22,7 @@ fn tocost(weight: f64, cost_factor: i32) -> i16 {
 /// This ensures the full i16 range is utilized, preserving relative differences
 /// between weights. The cost factor is computed as `i16::MAX / max_abs_weight`
 /// so that the largest weight maps to the boundary of the i16 range.
-fn calculate_cost_factor(merged_model: &rucrf::MergedModel) -> i32 {
+fn calculate_cost_factor(merged_model: &lindera_crf::MergedModel) -> i32 {
     let mut weight_abs_max = 0f64;
 
     // Find maximum absolute weight from unigram feature sets
@@ -106,12 +106,12 @@ pub struct ModelMetadata {
 
 /// Trained model.
 pub struct Model {
-    pub(crate) raw_model: rucrf::RawModel,
+    pub(crate) raw_model: lindera_crf::RawModel,
     pub(crate) config: super::config::TrainerConfig,
     pub(crate) feature_weights: Vec<f64>,
     pub(crate) labels: Vec<String>,
     pub(crate) user_entries: Vec<(Word, WordEntry, NonZeroU32)>,
-    pub(crate) merged_model: Option<rucrf::MergedModel>,
+    pub(crate) merged_model: Option<lindera_crf::MergedModel>,
     pub(crate) regularization_cost: f64,
     pub(crate) max_iterations: u64,
 }
@@ -119,7 +119,7 @@ pub struct Model {
 impl Model {
     /// Creates a new model with metadata.
     pub(crate) fn new_with_metadata(
-        raw_model: rucrf::RawModel,
+        raw_model: lindera_crf::RawModel,
         config: super::config::TrainerConfig,
         feature_weights: Vec<f64>,
         labels: Vec<String>,
@@ -204,8 +204,11 @@ impl Model {
                     .feature_extractor
                     .extract_right_feature_ids(&r_vec);
 
-                let _feature_set =
-                    rucrf::FeatureSet::new(&unigram_features, &right_features, &left_features);
+                let _feature_set = lindera_crf::FeatureSet::new(
+                    &unigram_features,
+                    &right_features,
+                    &left_features,
+                );
                 // TODO: Integrate feature_set into provider for proper user lexicon feature handling
                 // Currently, we cannot access the provider from this context, which limits
                 // the integration of user lexicon features into the trained model.
@@ -425,7 +428,7 @@ impl Model {
     }
 
     /// Gets the merged model, creating it if necessary
-    fn get_merged_model(&self) -> Result<rucrf::MergedModel> {
+    fn get_merged_model(&self) -> Result<lindera_crf::MergedModel> {
         Ok(self.raw_model.merge()?)
     }
 
@@ -770,7 +773,7 @@ impl Model {
     }
 
     /// Gets the raw CRF model for advanced operations.
-    pub fn raw_model(&self) -> &rucrf::RawModel {
+    pub fn raw_model(&self) -> &lindera_crf::RawModel {
         &self.raw_model
     }
 
@@ -878,7 +881,7 @@ impl Model {
 
     /// Evaluates the model on test data.
     /// Returns a simple evaluation score based on feature weights.
-    pub fn evaluate(&self, _test_lattices: &[rucrf::Lattice]) -> f64 {
+    pub fn evaluate(&self, _test_lattices: &[lindera_crf::Lattice]) -> f64 {
         // For now, return a simple evaluation based on the model's feature weights
         // A more sophisticated implementation would compute actual likelihood scores
         let weights = self.raw_model.weights();

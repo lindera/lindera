@@ -221,9 +221,15 @@ struct TrainArgs {
         short = 'R',
         long = "regularization",
         default_value = "l1",
-        help = "Regularization type: l1 or l2"
+        help = "Regularization type: l1, l2, or elasticnet"
     )]
     regularization: String,
+    #[clap(
+        long = "elastic-net-l1-ratio",
+        default_value = "0.5",
+        help = "L1 ratio for Elastic Net regularization (0.0-1.0, only used with --regularization elasticnet)"
+    )]
+    elastic_net_l1_ratio: f64,
     #[clap(
         short = 'i',
         long = "max-iterations",
@@ -493,23 +499,27 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     )
     .map_err(|err| LinderaErrorKind::Args.with_error(err))?;
 
-    // Parse regularization type
-    let use_l2 = match args.regularization.to_lowercase().as_str() {
-        "l1" => false,
-        "l2" => true,
-        _ => {
-            return Err(LinderaErrorKind::Args
-                .with_error(anyhow::anyhow!("regularization must be 'l1' or 'l2'")));
-        }
-    };
-
-    // Initialize trainer
-    let trainer = Trainer::new(config)
+    // Parse regularization type and initialize trainer
+    let mut trainer = Trainer::new(config)
         .map_err(|err| LinderaErrorKind::Args.with_error(err))?
         .regularization_cost(args.lambda)
-        .use_l2(use_l2)
         .max_iter(args.iter)
         .num_threads(args.max_threads.unwrap_or_else(num_cpus::get));
+
+    match args.regularization.to_lowercase().as_str() {
+        "l1" => {}
+        "l2" => {
+            trainer = trainer.use_l2(true);
+        }
+        "elasticnet" | "elastic_net" | "elastic-net" => {
+            trainer = trainer.elastic_net_l1_ratio(args.elastic_net_l1_ratio);
+        }
+        _ => {
+            return Err(LinderaErrorKind::Args.with_error(anyhow::anyhow!(
+                "regularization must be 'l1', 'l2', or 'elasticnet'"
+            )));
+        }
+    };
 
     // Load corpus
     let corpus_file = File::open(&args.corpus)

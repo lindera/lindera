@@ -27,9 +27,28 @@ jobs:
       - name: Run format
         run: cargo fmt --all -- --check
 
+  test-lindera-crf:
+    name: Test lindera-crf
+    needs: [format]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run test
+        run: cargo test -p lindera-crf --all-features
+
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
-    needs: [format]
+    needs: [format, test-lindera-crf]
     strategy:
       matrix:
         platform:
@@ -500,7 +519,7 @@ jobs:
 
       - name: Publish crates
         run: |
-          for crate in lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
+          for crate in lindera-crf lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then

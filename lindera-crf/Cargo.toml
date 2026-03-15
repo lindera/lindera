@@ -1,0 +1,32 @@
+[package]
+name = "lindera-crf"
+version = { workspace = true }
+edition = { workspace = true }
+description = "Conditional Random Fields implemented in pure Rust."
+documentation = "https://docs.rs/lindera-crf"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["crf", "conditional-random-fields"]
+categories = ["science", "algorithms", "no-std"]
+license = { workspace = true }
+
+[dependencies]
+rkyv = { workspace = true }
+hashbrown = "0.16.1"
+argmin = { version = "0.11.0", optional = true }
+argmin-math = { version = "0.5.1", optional = true }
+argmin-observer-slog = { version = "0.2.0", optional = true }
+crossbeam-channel = { version = "0.5.15", optional = true }
+
+[features]
+default = ["train"]
+alloc = []
+std = ["alloc"]
+train = [
+    "std",
+    "argmin",
+    "argmin-math",
+    "argmin-observer-slog",
+    "crossbeam-channel",
+]

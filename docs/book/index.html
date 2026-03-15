@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Introduction - Lindera User Guide</title>
+        <title>Introduction - Lindera Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -138,11 +138,14 @@
                         </button>
                     </div>
 
-                    <h1 class="menu-title">Lindera User Guide</h1>
+                    <h1 class="menu-title">Lindera Documentation</h1>
 
                     <div class="right-buttons">
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
 
                     </div>
@@ -176,16 +179,85 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="lindera"><a class="header" href="#lindera">Lindera</a></h1>
-<p><a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a> <a href="https://crates.io/crates/lindera"><img src="https://img.shields.io/crates/v/lindera.svg" alt="Crates.io" /></a></p>
-<p>A morphological analysis library in Rust. This project is forked from <a href="https://github.com/fulmicoton/kuromoji-rs">kuromoji-rs</a>.</p>
-<p>Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.</p>
+<p><a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+<a href="https://crates.io/crates/lindera"><img src="https://img.shields.io/crates/v/lindera.svg" alt="Crates.io" /></a></p>
+<p>A morphological analysis library in Rust. Lindera is forked from <a href="https://github.com/fulmicoton/kuromoji-rs">kuromoji-rs</a> and aims to provide easy installation and concise APIs for tokenizing text in multiple languages.</p>
+<h2 id="key-features"><a class="header" href="#key-features">Key Features</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th></tr></thead><tbody>
+<tr><td>Morphological Analysis</td><td>Viterbi-based segmentation and part-of-speech tagging</td></tr>
+<tr><td>Multi-language Support</td><td>Japanese (IPADIC, IPADIC NEologd, UniDic), Korean (ko-dic), Chinese (CC-CEDICT, Jieba)</td></tr>
+<tr><td>Dictionary System</td><td>Pre-built dictionaries, user dictionaries, and custom dictionary training</td></tr>
+<tr><td>Text Processing Pipeline</td><td>Composable character filters and token filters for flexible text normalization</td></tr>
+<tr><td>CRF Training</td><td>Train custom CRF models for dictionary cost estimation</td></tr>
+<tr><td>Python Bindings</td><td>Use Lindera from Python via PyO3</td></tr>
+<tr><td>WebAssembly</td><td>Run Lindera in the browser via wasm-bindgen</td></tr>
+<tr><td>Pure Rust</td><td>No C/C++ dependencies; works on any platform Rust supports</td></tr>
+</tbody></table>
+</div>
+<h2 id="tokenization-flow"><a class="header" href="#tokenization-flow">Tokenization Flow</a></h2>
+<pre><code class="language-mermaid">graph LR
+    subgraph Your Application
+        T["Text"]
+    end
+    subgraph Lindera
+        CF["Character Filters"]
+        SEG["Segmenter\n(Dictionary + Viterbi)"]
+        TF["Token Filters"]
+    end
+    T --&gt; CF --&gt; SEG --&gt; TF --&gt; R["Tokens"]
+</code></pre>
+<h2 id="document-map"><a class="header" href="#document-map">Document Map</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Section</th><th>Description</th></tr></thead><tbody>
+<tr><td><a href="./getting_started.html">Getting Started</a></td><td>Installation, quick start, and examples</td></tr>
+<tr><td><a href="./dictionaries.html">Dictionaries</a></td><td>Available dictionaries and how to use them</td></tr>
+<tr><td><a href="./configuration.html">Configuration</a></td><td>YAML-based tokenizer configuration</td></tr>
+<tr><td><a href="./advanced_usage.html">Advanced Usage</a></td><td>User dictionaries, filters, and CRF training</td></tr>
+<tr><td><a href="./cli.html">CLI</a></td><td>Command-line interface reference</td></tr>
+<tr><td><a href="./architecture.html">Architecture</a></td><td>Crate structure and design overview</td></tr>
+<tr><td><a href="./api_reference.html">API Reference</a></td><td>Rust API documentation</td></tr>
+<tr><td><a href="./contributing.html">Contributing</a></td><td>How to contribute to Lindera</td></tr>
+</tbody></table>
+</div>
+<h2 id="quick-example"><a class="header" href="#quick-example">Quick Example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "関西国際空港限定トートバッグ";
+    let mut tokens = tokenizer.tokenize(text)?;
+    println!("text:\t{}", text);
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}</code></pre></pre>
+<p>Run the example:</p>
+<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">text:   関西国際空港限定トートバッグ
+token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+token:  限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
+</code></pre>
+<h2 id="license"><a class="header" href="#license">License</a></h2>
+<p>Lindera is released under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
 
-                            <a rel="next prefetch" href="installation.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="architecture.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -196,7 +268,7 @@
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
 
-                    <a rel="next prefetch" href="installation.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="architecture.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -220,6 +292,8 @@
         <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
 
 
 

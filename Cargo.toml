@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "lindera-crf",
     "lindera-dictionary",
     "lindera-cc-cedict",
     "lindera-jieba",
@@ -32,6 +33,7 @@ byteorder = "1.5.0"
 csv = "1.4.0"
 daachorse = "1.0.0"
 lindera = { version = "2.3.2", path = "lindera" }
+lindera-crf = { version = "2.3.2", path = "lindera-crf" }
 lindera-cc-cedict = { version = "2.3.2", path = "lindera-cc-cedict" }
 lindera-cli = { version = "2.3.2", path = "lindera-cli" }
 lindera-dictionary = { version = "2.3.2", path = "lindera-dictionary" }

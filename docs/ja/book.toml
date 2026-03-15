@@ -1,12 +1,14 @@
 [book]
 authors = ["Lindera Project"]
 language = "ja"
-multilingual = true
+multilingual = false
 src = "src"
-title = "Lindera ユーザーガイド"
+title = "Lindera ドキュメント"
 
 [build]
 create-missing = false
 
 [output.html]
-site-url = "/ja/"
+git-repository-url = "https://github.com/lindera/lindera"
+site-url = "/lindera/ja/"
+additional-js = ["../mermaid.min.js", "../mermaid-init.js"]

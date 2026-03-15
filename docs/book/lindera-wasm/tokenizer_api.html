@@ -1,0 +1,449 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Tokenizer API - Lindera Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="tokenizer-api"><a class="header" href="#tokenizer-api">Tokenizer API</a></h1>
+<p>This page documents the JavaScript/TypeScript API exposed by lindera-wasm.</p>
+<h2 id="tokenizerbuilder"><a class="header" href="#tokenizerbuilder">TokenizerBuilder</a></h2>
+<p>Builder class for creating a configured <code>Tokenizer</code> instance.</p>
+<h3 id="constructor"><a class="header" href="#constructor">Constructor</a></h3>
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+</code></pre>
+<p>Creates a new builder with default settings.</p>
+<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
+<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<p>Sets the tokenization mode.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>mode</code> (string) -- <code>"normal"</code> or <code>"decompose"</code></li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.setMode("normal");
+</code></pre>
+<h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
+<p>Sets the dictionary to use for tokenization.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
+</code></pre>
+<h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
+<p>Sets a user-defined dictionary.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>uri</code> (string) -- Path or URI to the user dictionary</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
+</code></pre>
+<h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
+<p>Sets whether whitespace tokens are preserved in the output.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>keep</code> (boolean) -- <code>true</code> to keep whitespace tokens</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.setKeepWhitespace(true);
+</code></pre>
+<h4 id="appendcharacterfiltername-args"><a class="header" href="#appendcharacterfiltername-args"><code>appendCharacterFilter(name, args)</code></a></h4>
+<p>Appends a character filter to the preprocessing pipeline.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>name</code> (string) -- Filter name (e.g., <code>"unicode_normalize"</code>, <code>"japanese_iteration_mark"</code>)</li>
+<li><code>args</code> (object, optional) -- Filter configuration</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+</code></pre>
+<h4 id="appendtokenfiltername-args"><a class="header" href="#appendtokenfiltername-args"><code>appendTokenFilter(name, args)</code></a></h4>
+<p>Appends a token filter to the postprocessing pipeline.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>name</code> (string) -- Filter name (e.g., <code>"japanese_stop_tags"</code>, <code>"lowercase"</code>)</li>
+<li><code>args</code> (object, optional) -- Filter configuration</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">builder.appendTokenFilter("japanese_stop_tags", {
+    tags: ["助詞", "助動詞", "記号"]
+});
+</code></pre>
+<h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
+<p>Builds and returns a configured <code>Tokenizer</code> instance. Consumes the builder.</p>
+<ul>
+<li><strong>Returns</strong>: <code>Tokenizer</code></li>
+</ul>
+<pre><code class="language-javascript">const tokenizer = builder.build();
+</code></pre>
+<h2 id="tokenizer"><a class="header" href="#tokenizer">Tokenizer</a></h2>
+<p>The main tokenizer class. Can be created via <code>TokenizerBuilder.build()</code> or directly via the constructor.</p>
+<h3 id="tokenizer-constructor"><a class="header" href="#tokenizer-constructor">Tokenizer Constructor</a></h3>
+<pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
+</code></pre>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><code>mode</code> (string, optional) -- Tokenization mode (<code>"normal"</code> or <code>"decompose"</code>, defaults to <code>"normal"</code>)</li>
+<li><code>userDictionary</code> (UserDictionary, optional) -- A loaded user dictionary</li>
+</ul>
+</li>
+</ul>
+<h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>
+<h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
+<p>Tokenizes the input text.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>text</code> (string) -- Text to tokenize</li>
+<li><strong>Returns</strong>: <code>Token[]</code> -- Array of token objects</li>
+</ul>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
+</code></pre>
+<h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
+<p>Returns N-best tokenization results ordered by total path cost.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>text</code> (string) -- Text to tokenize</li>
+<li><code>n</code> (number) -- Number of results to return</li>
+<li><code>unique</code> (boolean, optional) -- Deduplicate results with identical segmentation (default: <code>false</code>)</li>
+<li><code>costThreshold</code> (number, optional) -- Only return paths within <code>bestCost + threshold</code></li>
+</ul>
+</li>
+<li><strong>Returns</strong>: Array of <code>{ tokens: object[], cost: number }</code></li>
+</ul>
+<pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
+</code></pre>
+<h2 id="token"><a class="header" href="#token">Token</a></h2>
+<p>Represents a single token produced by the tokenizer.</p>
+<h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>End byte offset in the original text</td></tr>
+<tr><td><code>position</code></td><td><code>number</code></td><td>Position index of the token</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
+<tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
+</tbody></table>
+</div>
+<h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
+<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
+<p>Returns the detail string at the specified index.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>index</code> (number) -- Zero-based index into the details array</li>
+<li><strong>Returns</strong>: <code>string | undefined</code></li>
+</ul>
+<pre><code class="language-javascript">const pos = token.getDetail(0);   // e.g., "名詞"
+const reading = token.getDetail(7); // e.g., "トウキョウ"
+</code></pre>
+<h4 id="tojson"><a class="header" href="#tojson"><code>toJSON()</code></a></h4>
+<p>Returns a plain JavaScript object representation of the token.</p>
+<ul>
+<li><strong>Returns</strong>: <code>object</code> with keys: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code></li>
+</ul>
+<pre><code class="language-javascript">console.log(JSON.stringify(token.toJSON(), null, 2));
+</code></pre>
+<h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
+<h3 id="loaddictionaryuri"><a class="header" href="#loaddictionaryuri"><code>loadDictionary(uri)</code></a></h3>
+<p>Loads a dictionary from the specified URI.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
+<li><strong>Returns</strong>: <code>Dictionary</code></li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+
+const dict = loadDictionary("embedded://ipadic");
+</code></pre>
+<h3 id="loaduserdictionaryuri-metadata"><a class="header" href="#loaduserdictionaryuri-metadata"><code>loadUserDictionary(uri, metadata)</code></a></h3>
+<p>Loads a user dictionary from the specified URI.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>uri</code> (string) -- Path or URI to the user dictionary file</li>
+<li><code>metadata</code> (Metadata) -- Dictionary metadata object</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: <code>UserDictionary</code></li>
+</ul>
+<h3 id="builddictionaryinputdir-outputdir-metadata"><a class="header" href="#builddictionaryinputdir-outputdir-metadata"><code>buildDictionary(inputDir, outputDir, metadata)</code></a></h3>
+<p>Builds a compiled dictionary from source files.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>inputDir</code> (string) -- Path to the directory containing source dictionary files</li>
+<li><code>outputDir</code> (string) -- Path to the output directory</li>
+<li><code>metadata</code> (Metadata) -- Dictionary metadata object</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<h3 id="builduserdictionaryinputfile-outputdir-metadata"><a class="header" href="#builduserdictionaryinputfile-outputdir-metadata"><code>buildUserDictionary(inputFile, outputDir, metadata?)</code></a></h3>
+<p>Builds a compiled user dictionary from a CSV file.</p>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>inputFile</code> (string) -- Path to the user dictionary CSV file</li>
+<li><code>outputDir</code> (string) -- Path to the output directory</li>
+<li><code>metadata</code> (Metadata, optional) -- Dictionary metadata object</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<h3 id="version--getversion"><a class="header" href="#version--getversion"><code>version()</code> / <code>getVersion()</code></a></h3>
+<p>Returns the version string of the lindera-wasm package.</p>
+<ul>
+<li><strong>Returns</strong>: <code>string</code></li>
+</ul>
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic-web';
+
+console.log(version()); // e.g., "2.1.1"
+</code></pre>
+<h2 id="snake-case-aliases"><a class="header" href="#snake-case-aliases">Snake-Case Aliases</a></h2>
+<p>For consistency with the Python API, all methods are also available in snake_case form:</p>
+<div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
+<tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
+<tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
+<tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
+<tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
+<tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
+<tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
+<tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
+<tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
+<tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
+<tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
+<tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../lindera-wasm/quickstart.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../lindera-wasm/dictionary_management.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../lindera-wasm/quickstart.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../lindera-wasm/dictionary_management.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

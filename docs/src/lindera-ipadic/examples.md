@@ -1,0 +1,110 @@
+# Examples
+
+This page shows tokenization examples using the IPADIC dictionary.
+
+## Tokenize with external IPADIC
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920
+```
+
+```text
+日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+## Tokenize with embedded IPADIC
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize \
+  --dict embedded://ipadic
+```
+
+```text
+日本語  名詞,一般,*,*,*,*,日本語,ニホンゴ,ニホンゴ
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+形態素  名詞,一般,*,*,*,*,形態素,ケイタイソ,ケイタイソ
+解析    名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ
+を      助詞,格助詞,一般,*,*,*,を,ヲ,ヲ
+行う    動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ
+こと    名詞,非自立,一般,*,*,*,こと,コト,コト
+が      助詞,格助詞,一般,*,*,*,が,ガ,ガ
+でき    動詞,自立,*,*,一段,連用形,できる,デキ,デキ
+ます    助動詞,*,*,*,特殊・マス,基本形,ます,マス,マス
+。      記号,句点,*,*,*,*,。,。,。
+EOS
+```
+
+NOTE: To include IPADIC dictionary in the binary, you must build with the `--features=embed-ipadic` option.
+
+## Tokenize with user dictionary (CSV format)
+
+```shell
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict embedded://ipadic \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
+## Tokenize with user dictionary (binary format)
+
+```shell
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-2.7.0-20250920 \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.bin
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
+## Rust API example
+
+```rust
+use lindera::tokenizer::Tokenizer;
+use lindera::DictionaryConfig;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Use embedded IPADIC dictionary
+    let tokenizer = Tokenizer::new(
+        DictionaryConfig {
+            kind: Some("ipadic".to_string()),
+            path: None,
+        },
+        None,
+        None,
+    )?;
+
+    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
+    for token in tokens {
+        println!("{}\t{}", token.surface, token.details.join(","));
+    }
+    Ok(())
+}
+```
