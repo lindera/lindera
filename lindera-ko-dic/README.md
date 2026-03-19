@@ -35,7 +35,7 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 
 ### Simple version
 
-| Index | Name (Japanese) | Name (English) | Notes |
+| Index | Name (Korean) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 표면 | Surface | |
 | 1 | 품사 태그 | part-of-speech tag | See `태그 v2.0` tab on spreadsheet |

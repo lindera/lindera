@@ -43,7 +43,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
 // Decompose mode
-let segmenter = Segmenter::new(Mode::Decompose, dictionary, None);
+let segmenter = Segmenter::new(Mode::Decompose(Default::default()), dictionary, None);
 ```
 
 With the CLI, use the `--mode` flag:

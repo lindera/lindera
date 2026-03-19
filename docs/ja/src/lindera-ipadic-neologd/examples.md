@@ -47,3 +47,27 @@ EOS
 ```
 
 注意: IPADIC NEologd 辞書をバイナリに含めるには、`--features=embed-ipadic-neologd` オプションを付けてビルドする必要があります。
+
+## Rust API の使用例
+
+```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://ipadic-neologd")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}
+```

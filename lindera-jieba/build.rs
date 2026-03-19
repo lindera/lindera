@@ -19,12 +19,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let fetch_params = FetchParams {
-        file_name: "mecab-jieba-0.1.0-20260310.tar.gz",
-        input_dir: "mecab-jieba-0.1.0-20260310",
+        file_name: "mecab-jieba-0.1.1.tar.gz",
+        input_dir: "mecab-jieba-0.1.1",
+        src_subdir: Some("dict-src"),
         output_dir: "lindera-jieba",
-        dummy_input: "测试,0,0,-1131,*,ce4 shi4,測試,测试,to test\n",
-        download_urls: &["https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"],
-        md5_hash: "deba66bae351937d75ab895ccd5e2377",
+        dummy_input: "1号店,1,1,1789,n,NUMERIC,*,*,*,*,3,1,店,low\n",
+        download_urls: &["https://lindera.dev/mecab-jieba-0.1.1.tar.gz"],
+        md5_hash: "749dc1ab25a035e141d014cd3c1cf8e9",
     };
 
     // Read and deserialize metadata directly from JSON file

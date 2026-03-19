@@ -24,6 +24,14 @@ The "ipadic" feature flag allows Lindera to include IPADIC.
 % cargo build --release --features=embed-ipadic
 ```
 
+### Build with IPADIC NEologd (Japanese dictionary)
+
+The "ipadic-neologd" feature flag allows Lindera to include IPADIC NEologd.
+
+```shell
+% cargo build --release --features=embed-ipadic-neologd
+```
+
 ### Build with UniDic (Japanese dictionary)
 
 The "unidic" feature flag allows Lindera to include UniDic.

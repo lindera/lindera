@@ -16,7 +16,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "2.3.2"
+version = "2.3.3"
 edition = "2024"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
@@ -32,18 +32,18 @@ anyhow = "1.0.102"
 byteorder = "1.5.0"
 csv = "1.4.0"
 daachorse = "1.0.0"
-lindera = { version = "2.3.2", path = "lindera" }
-lindera-crf = { version = "2.3.2", path = "lindera-crf" }
-lindera-cc-cedict = { version = "2.3.2", path = "lindera-cc-cedict" }
-lindera-cli = { version = "2.3.2", path = "lindera-cli" }
-lindera-dictionary = { version = "2.3.2", path = "lindera-dictionary" }
-lindera-ipadic = { version = "2.3.2", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "2.3.2", path = "lindera-ipadic-neologd" }
-lindera-jieba = { version = "2.3.2", path = "lindera-jieba" }
-lindera-ko-dic = { version = "2.3.2", path = "lindera-ko-dic" }
-lindera-python = { version = "2.3.2", path = "lindera-python" }
-lindera-unidic = { version = "2.3.2", path = "lindera-unidic" }
-lindera-wasm = { version = "2.3.2", path = "lindera-wasm" }
+lindera = { version = "2.3.3", path = "lindera" }
+lindera-crf = { version = "2.3.3", path = "lindera-crf" }
+lindera-cc-cedict = { version = "2.3.3", path = "lindera-cc-cedict" }
+lindera-cli = { version = "2.3.3", path = "lindera-cli" }
+lindera-dictionary = { version = "2.3.3", path = "lindera-dictionary" }
+lindera-ipadic = { version = "2.3.3", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "2.3.3", path = "lindera-ipadic-neologd" }
+lindera-jieba = { version = "2.3.3", path = "lindera-jieba" }
+lindera-ko-dic = { version = "2.3.3", path = "lindera-ko-dic" }
+lindera-python = { version = "2.3.3", path = "lindera-python" }
+lindera-unidic = { version = "2.3.3", path = "lindera-unidic" }
+lindera-wasm = { version = "2.3.3", path = "lindera-wasm" }
 log = "0.4.29"
 num_cpus = "1.17.0"
 once_cell = "1.21.4"

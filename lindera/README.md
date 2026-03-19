@@ -14,7 +14,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera.
@@ -42,7 +42,7 @@ fn main() -> LinderaResult<()> {
     println!("text:\t{}", text);
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
-        println!("token:\t{}\t{}", token.text.as_ref(), details);
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
     }
 
     Ok(())
@@ -76,7 +76,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
 For example:
@@ -133,14 +133,14 @@ fn main() -> LinderaResult<()> {
     println!("text:\t{}", text);
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
-        println!("token:\t{}\t{}", token.text.as_ref(), details);
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
     }
 
     Ok(())
 }
 ```
 
-The above example can be by `cargo run --example`:
+The above example can be run by `cargo run --example`:
 
 ```shell
 % cargo run --features=embed-ipadic --example=tokenize_with_user_dict
@@ -159,7 +159,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "1.1.0", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -201,7 +201,6 @@ fn main() -> LinderaResult<()> {
         JapaneseIterationMarkCharacterFilter::new(true, true);
 
     let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
-        DictionaryKind::IPADIC,
         vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
             .into_iter()
             .collect(),
@@ -264,7 +263,7 @@ fn main() -> LinderaResult<()> {
     for token in tokens {
         println!(
             "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
-            token.text, token.byte_start, token.byte_end, token.details
+            token.surface, token.byte_start, token.byte_end, token.details
         );
     }
 
@@ -300,11 +299,8 @@ Specify the path to the following file in the environment variable LINDERA_CONFI
 ```yaml
 segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  user_dictionary:
-    path: "./resources/ipadic_simple.csv"
-    kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"
@@ -396,7 +392,7 @@ fn main() -> LinderaResult<()> {
     for token in tokens {
         println!(
             "token: {:?}, start: {:?}, end: {:?}, details: {:?}",
-            token.text, token.byte_start, token.byte_end, token.details
+            token.surface, token.byte_start, token.byte_end, token.details
         );
     }
 

@@ -57,23 +57,22 @@ NOTE: To include UniDic dictionary in the binary, you must build with the `--fea
 ## Rust API example
 
 ```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
 use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+use lindera::LinderaResult;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Use embedded UniDic dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("unidic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://unidic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }

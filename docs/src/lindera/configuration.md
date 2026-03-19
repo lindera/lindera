@@ -6,11 +6,8 @@ Specify the path to the following file in the environment variable `LINDERA_CONF
 ```yaml
 segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  user_dictionary:
-    path: "./resources/user_dict/ipadic_simple.csv"
-    kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"

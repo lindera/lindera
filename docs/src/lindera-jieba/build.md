@@ -5,11 +5,11 @@
 Download and extract the mecab-jieba source files, then build the dictionary:
 
 ```shell
-% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 ```
 

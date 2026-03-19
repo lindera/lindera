@@ -41,10 +41,8 @@ When using Lindera with a YAML configuration file, character filters can be spec
 
 ```yaml
 segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize

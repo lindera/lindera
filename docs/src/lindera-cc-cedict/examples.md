@@ -35,3 +35,27 @@ EOS
 ```
 
 NOTE: To include CC-CEDICT dictionary in the binary, you must build with the `--features=embed-cc-cedict` option.
+
+## Rust API example
+
+```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://cc-cedict")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "可以进行中文形态学分析。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}
+```

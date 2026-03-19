@@ -13,7 +13,7 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ```toml
 [dependencies]
-lindera = { version = "2.0.0", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
 ## Python Bindings
