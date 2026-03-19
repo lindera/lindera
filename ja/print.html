@@ -324,9 +324,9 @@ Output Tokens
 <tr><td><code>mmap</code></td><td>辞書読み込みのためのメモリマップドファイルサポート</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLIのみ</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + CC-CEDICT辞書を埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>IPADIC + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + CC-CEDICT辞書を埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <h2 id="詳細"><a class="header" href="#詳細">詳細</a></h2>
@@ -347,7 +347,7 @@ Output Tokens
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
@@ -371,10 +371,6 @@ cargo build --features=ipadic
 <pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <p>設定フォーマットの詳細は <a href="getting_started/./configuration.html">設定</a> セクションを参照してください。</p>
-<blockquote>
-<p>[!NOTE]
-<code>LINDERA_CONFIG_PATH</code> は非推奨ですが、後方互換性のために引き続きサポートされています。<code>LINDERA_CONFIG_PATH</code> が設定されていない場合に使用されます。</p>
-</blockquote>
 <h3 id="docs_rs"><a class="header" href="#docs_rs">DOCS_RS</a></h3>
 <p><code>DOCS_RS</code> 環境変数は、docs.rsでドキュメントをビルドする際に自動的に設定されます。この変数が検出されると、Linderaは実際の辞書データをダウンロードする代わりにダミーの辞書ファイルを作成します。これにより、ネットワークアクセスや大容量ファイルのダウンロードなしでドキュメントをビルドできます。</p>
 <p>これは主にdocs.rs内部で使用されるものであり、通常ユーザーが設定する必要はありません。</p>
@@ -526,7 +522,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
 // Decompose mode
-let segmenter = Segmenter::new(Mode::Decompose, dictionary, None);
+let segmenter = Segmenter::new(Mode::Decompose(Default::default()), dictionary, None);
 <span class="boring">}</span></code></pre></pre>
 <p>CLIでは、<code>--mode</code>フラグを使用します：</p>
 <pre><code class="language-shell">echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic --mode normal
@@ -707,10 +703,8 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 <h2 id="yaml設定の例"><a class="header" href="#yaml設定の例">YAML設定の例</a></h2>
 <p>YAML設定ファイルでLinderaを使用する場合、キャラクターフィルターは<code>character_filters</code>セクションで指定できます：</p>
 <pre><code class="language-yaml">segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize
@@ -947,11 +941,8 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 環境変数 <code>LINDERA_CONFIG_PATH</code> にファイルのパスを指定してください。Rustコードでトークナイザーの動作をコーディングすることなく、簡単に利用できます。</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  user_dictionary:
-    path: "./resources/user_dict/ipadic_simple.csv"
-    kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"
@@ -1348,6 +1339,10 @@ let content = std::fs::read_to_string("config.yml")
 <p>"ipadic" 機能フラグを使用すると、LinderaにIPADICを含めることができます。</p>
 <pre><code class="language-shell">% cargo build --release --features=embed-ipadic
 </code></pre>
+<h3 id="ipadic-neologd日本語辞書を含むビルド"><a class="header" href="#ipadic-neologd日本語辞書を含むビルド">IPADIC NEologd（日本語辞書）を含むビルド</a></h3>
+<p>"ipadic-neologd"フィーチャーフラグで IPADIC NEologd を含めることができます。</p>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
+</code></pre>
 <h3 id="unidic日本語辞書を含めてビルド"><a class="header" href="#unidic日本語辞書を含めてビルド">UniDic（日本語辞書）を含めてビルド</a></h3>
 <p>"unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。</p>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic
@@ -1515,7 +1510,7 @@ EOS
 </code></pre>
 <h4 id="外部jieba中国語辞書を使用したトークナイズ"><a class="header" href="#外部jieba中国語辞書を使用したトークナイズ">外部Jieba（中国語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
 </code></pre>
 <h3 id="埋め込み辞書を使用した例"><a class="header" href="#埋め込み辞書を使用した例">埋め込み辞書を使用した例</a></h3>
 <p>Linderaは、特定の機能フラグを指定してビルドすることで、バイナリに辞書を直接含めることができます。これにより、外部辞書ファイルなしでトークナイズが可能になります。</p>
@@ -1850,12 +1845,12 @@ EOS
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
 <h4 id="jieba中国語辞書のビルド"><a class="header" href="#jieba中国語辞書のビルド">Jieba（中国語辞書）のビルド</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h4 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h4>
@@ -3582,23 +3577,22 @@ EOS
 EOS
 </code></pre>
 <h2 id="rust-api-の使用例"><a class="header" href="#rust-api-の使用例">Rust API の使用例</a></h2>
-<pre><pre class="playground"><code class="language-rust">use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
-fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Use embedded IPADIC dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("ipadic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }</code></pre></pre>
@@ -3719,6 +3713,26 @@ EOS
 EOS
 </code></pre>
 <p>注意: IPADIC NEologd 辞書をバイナリに含めるには、<code>--features=embed-ipadic-neologd</code> オプションを付けてビルドする必要があります。</p>
+<h2 id="rust-api-の使用例-1"><a class="header" href="#rust-api-の使用例-1">Rust API の使用例</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic-neologd")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-unidic"><a class="header" href="#lindera-unidic">Lindera UniDic</a></h1>
 <p>Lindera UniDic は、統一的な単語単位の定義を使用する <a href="https://github.com/lindera-morphology/unidic-mecab">UniDic</a> に基づく日本語辞書クレートです。UniDic は IPADIC よりも詳細な形態素情報を提供し、1エントリあたり 21 フィールドを持ちます。</p>
 <h2 id="目次-4"><a class="header" href="#目次-4">目次</a></h2>
@@ -3867,24 +3881,23 @@ EOS
 EOS
 </code></pre>
 <p>注意: UniDic 辞書をバイナリに含めるには、<code>--features=embed-unidic</code> オプションを付けてビルドする必要があります。</p>
-<h2 id="rust-api-の使用例-1"><a class="header" href="#rust-api-の使用例-1">Rust API の使用例</a></h2>
-<pre><pre class="playground"><code class="language-rust">use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+<h2 id="rust-api-の使用例-2"><a class="header" href="#rust-api-の使用例-2">Rust API の使用例</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
-fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Use embedded UniDic dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("unidic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://unidic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }</code></pre></pre>
@@ -4010,6 +4023,26 @@ EOS
 EOS
 </code></pre>
 <p>注意: ko-dic 辞書をバイナリに含めるには、<code>--features=embed-ko-dic</code> オプションを付けてビルドする必要があります。</p>
+<h2 id="rust-api-の使用例-3"><a class="header" href="#rust-api-の使用例-3">Rust API の使用例</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ko-dic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "한국어의형태해석을실시할수있습니다.";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-cc-cedict"><a class="header" href="#lindera-cc-cedict">Lindera CC-CEDICT</a></h1>
 <p>Lindera CC-CEDICT は、<a href="https://github.com/lindera/CC-CEDICT-MeCab">CC-CEDICT-MeCab</a> に基づく中国語辞書クレートです。</p>
 <h2 id="目次-6"><a class="header" href="#目次-6">目次</a></h2>
@@ -4119,6 +4152,26 @@ EOS
 EOS
 </code></pre>
 <p>注意: CC-CEDICT 辞書をバイナリに含めるには、<code>--features=embed-cc-cedict</code> オプションを付けてビルドする必要があります。</p>
+<h2 id="rust-api-の使用例-4"><a class="header" href="#rust-api-の使用例-4">Rust API の使用例</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://cc-cedict")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "可以进行中文形态学分析。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-jieba"><a class="header" href="#lindera-jieba">Lindera Jieba</a></h1>
 <p>Lindera Jieba は、<a href="https://github.com/lindera/mecab-jieba">mecab-jieba</a> に基づく中国語辞書クレートです。</p>
 <h2 id="目次-7"><a class="header" href="#目次-7">目次</a></h2>
@@ -4177,11 +4230,11 @@ EOS
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-6"><a class="header" href="#ビルド-6">ビルド</a></h1>
 <h2 id="システム辞書のビルド-7"><a class="header" href="#システム辞書のビルド-7">システム辞書のビルド</a></h2>
 <p>mecab-jieba のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
@@ -4198,13 +4251,51 @@ EOS
 <div style="break-before: page; page-break-before: always;"></div><h1 id="使用例-5"><a class="header" href="#使用例-5">使用例</a></h1>
 <h2 id="外部-jieba-でトークナイズ"><a class="header" href="#外部-jieba-でトークナイズ">外部 Jieba でトークナイズ</a></h2>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
+</code></pre>
+<pre><code class="language-text">可以    c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
+进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
+中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
+形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
+学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+。      w,*,*,*,*,*,*,*,*,*
+EOS
 </code></pre>
 <h2 id="埋め込み-jieba-でトークナイズ"><a class="header" href="#埋め込み-jieba-でトークナイズ">埋め込み Jieba でトークナイズ</a></h2>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
   --dict embedded://jieba
 </code></pre>
+<pre><code class="language-text">可以    c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
+进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
+中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
+形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
+学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+。      w,*,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
 <p>注意: Jieba 辞書をバイナリに含めるには、<code>--features=embed-jieba</code> オプションを付けてビルドする必要があります。</p>
+<h2 id="rust-api-の使用例-5"><a class="header" href="#rust-api-の使用例-5">Rust API の使用例</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://jieba")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "可以进行中文形态学分析。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>
 <ul>
@@ -4298,20 +4389,20 @@ EOS
 </div>
 <p>いずれもデフォルトでは無効です。必要に応じて有効にしてください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h2>
 <p>多言語アプリケーション向けに、複数の辞書を一度に有効にするメタ Feature です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>含まれる辞書</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>代替の CJK 辞書の組み合わせ</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>代替の CJK 辞書の組み合わせ</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
 <h2 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h2>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>またはコマンドラインから：</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

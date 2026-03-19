@@ -202,20 +202,20 @@
 </div>
 <p>いずれもデフォルトでは無効です。必要に応じて有効にしてください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h2>
 <p>多言語アプリケーション向けに、複数の辞書を一度に有効にするメタ Feature です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>含まれる辞書</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>代替の CJK 辞書の組み合わせ</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>代替の CJK 辞書の組み合わせ</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
 <h2 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h2>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>またはコマンドラインから：</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

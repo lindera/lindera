@@ -240,23 +240,22 @@ EOS
 EOS
 </code></pre>
 <h2 id="rust-api-example"><a class="header" href="#rust-api-example">Rust API example</a></h2>
-<pre><pre class="playground"><code class="language-rust">use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
-fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Use embedded IPADIC dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("ipadic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }</code></pre></pre>

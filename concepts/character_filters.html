@@ -204,10 +204,8 @@
 <h2 id="yaml-configuration-example"><a class="header" href="#yaml-configuration-example">YAML configuration example</a></h2>
 <p>When using Lindera with a YAML configuration file, character filters can be specified in the <code>character_filters</code> section:</p>
 <pre><code class="language-yaml">segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize
