@@ -7,7 +7,7 @@ documentation = "https://docs.rs/lindera-crf"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = ["crf", "conditional-random-fields"]
+keywords = ["crf", "conditional", "random", "fields"]
 categories = ["science", "algorithms", "no-std"]
 license = { workspace = true }
 
