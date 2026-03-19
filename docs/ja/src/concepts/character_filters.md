@@ -41,10 +41,8 @@ YAML設定ファイルでLinderaを使用する場合、キャラクターフィ
 
 ```yaml
 segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize

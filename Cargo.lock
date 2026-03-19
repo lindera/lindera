@@ -1271,7 +1271,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1303,7 +1303,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1317,7 +1317,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -1328,7 +1328,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-crf"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -1340,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1374,7 +1374,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1388,7 +1388,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1402,7 +1402,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-jieba"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1416,7 +1416,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ko-dic"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1430,7 +1430,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "lindera",
  "num_cpus",
@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1455,7 +1455,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-wasm"
-version = "2.3.2"
+version = "2.3.3"
 dependencies = [
  "js-sys",
  "lindera",

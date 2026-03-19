@@ -85,9 +85,9 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | `mmap` | Memory-mapped file support for dictionary loading | Enabled |
 | `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI only |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
-| `embed-cjk` | Embed IPADIC + ko-dic + CC-CEDICT dictionaries | Disabled |
-| `embed-cjk2` | Embed IPADIC + ko-dic + Jieba dictionaries | Disabled |
-| `embed-cjk3` | Embed IPADIC NEologd + ko-dic + CC-CEDICT dictionaries | Disabled |
+| `embed-cjk` | Embed IPADIC + ko-dic + Jieba dictionaries | Disabled |
+| `embed-cjk2` | Embed UniDic + ko-dic + Jieba dictionaries | Disabled |
+| `embed-cjk3` | Embed IPADIC NEologd + ko-dic + Jieba dictionaries | Disabled |
 
 ## Learn More
 

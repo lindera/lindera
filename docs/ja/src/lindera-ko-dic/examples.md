@@ -45,3 +45,27 @@ EOS
 ```
 
 注意: ko-dic 辞書をバイナリに含めるには、`--features=embed-ko-dic` オプションを付けてビルドする必要があります。
+
+## Rust API の使用例
+
+```rust
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://ko-dic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "한국어의형태해석을실시할수있습니다.";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}
+```

@@ -23,8 +23,14 @@ pub struct FetchParams {
     /// Dictionary file name
     pub file_name: &'static str,
 
-    /// MeCab directory
+    /// MeCab directory (archive root directory name)
     pub input_dir: &'static str,
+
+    /// Subdirectory within input_dir to use as the dictionary source.
+    /// When `Some("dict-src")`, the dictionary builder reads from `input_dir/dict-src/`
+    /// instead of `input_dir/` directly. This is useful when the archive contains
+    /// both raw and trained dictionary files in separate directories.
+    pub src_subdir: Option<&'static str>,
 
     /// Lindera directory
     pub output_dir: &'static str,
@@ -522,8 +528,13 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
     let tmp_output_path = build_dir.join(format!("tmp-output-{}", params.output_dir));
     let _ = fs::remove_dir_all(&tmp_output_path);
 
+    let build_input_dir = match params.src_subdir {
+        Some(subdir) => input_dir.join(subdir),
+        None => input_dir.clone(),
+    };
+
     builder
-        .build_dictionary(&input_dir, &tmp_output_path)
+        .build_dictionary(&build_input_dir, &tmp_output_path)
         .map_err(|err| {
             LinderaErrorKind::Build
                 .with_error(anyhow::anyhow!("{err}"))

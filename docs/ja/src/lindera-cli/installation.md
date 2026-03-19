@@ -24,6 +24,14 @@ cargo経由でバイナリをインストールできます：
 % cargo build --release --features=embed-ipadic
 ```
 
+### IPADIC NEologd（日本語辞書）を含むビルド
+
+"ipadic-neologd"フィーチャーフラグで IPADIC NEologd を含めることができます。
+
+```shell
+% cargo build --release --features=embed-ipadic-neologd
+```
+
 ### UniDic（日本語辞書）を含めてビルド
 
 "unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。

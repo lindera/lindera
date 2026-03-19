@@ -4,7 +4,7 @@ Python binding for [Lindera](https://github.com/lindera/lindera), a Japanese mor
 
 ## Overview
 
-lindera-python provides a comprehensive Python interface to the Lindera 1.1.1 morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis. This implementation includes all major features:
+lindera-python provides a comprehensive Python interface to the Lindera 2.3.2 morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis. This implementation includes all major features:
 
 - **Multi-language Support**: Japanese (IPADIC, UniDic), Korean (ko-dic), Chinese (CC-CEDICT)
 - **Character Filters**: Text preprocessing with mapping, regex, Unicode normalization, and Japanese iteration mark handling

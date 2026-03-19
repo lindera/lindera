@@ -30,7 +30,7 @@ None of these are enabled by default. Enable them as needed:
 
 ```toml
 [dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
 ## Combination Features
@@ -40,8 +40,8 @@ These meta-features enable multiple dictionaries at once for multilingual applic
 | Feature | Included Dictionaries |
 | --- | --- |
 | `embed-cjk` | IPADIC + ko-dic + Jieba |
-| `embed-cjk2` | Alternative CJK dictionary combination |
-| `embed-cjk3` | Alternative CJK dictionary combination |
+| `embed-cjk2` | UniDic + ko-dic + Jieba |
+| `embed-cjk3` | IPADIC NEologd + ko-dic + Jieba |
 
 ## Combining Feature Flags
 
@@ -49,7 +49,7 @@ Multiple feature flags can be combined. For example, to embed both Japanese and 
 
 ```toml
 [dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 Or from the command line:
