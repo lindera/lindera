@@ -474,7 +474,7 @@ jobs:
 
       - name: Add msbuild to PATH
         if: startsWith(matrix.platform.runner, 'windows')
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Download dictionary artifacts
         uses: actions/download-artifact@v8
