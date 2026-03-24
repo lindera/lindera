@@ -356,6 +356,8 @@ jobs:
             feature: "embed-cc-cedict"
           - name: "lindera-ipadic-neologd"
             feature: "embed-ipadic-neologd"
+          - name: "lindera-jieba"
+            feature: "embed-jieba"
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
