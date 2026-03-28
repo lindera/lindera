@@ -82,7 +82,7 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.25"
-unicode-segmentation = "1.12.0"
+unicode-segmentation = "1.13.2"
 url = "2.5.8"
 
 [dev-dependencies]
