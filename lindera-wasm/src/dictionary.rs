@@ -228,7 +228,7 @@ mod tests {
             load_dictionary_from_bytes(b"not valid json", &[], &[], &[], &[], &[], &[], &[]);
 
         assert!(result.is_err());
-        let err = result.unwrap_err().as_string().unwrap();
+        let err = result.err().unwrap().as_string().unwrap();
         assert!(
             err.contains("metadata"),
             "error should mention metadata: {err}"
@@ -254,7 +254,7 @@ mod tests {
         );
 
         assert!(result.is_err());
-        let err = result.unwrap_err().as_string().unwrap();
+        let err = result.err().unwrap().as_string().unwrap();
         assert!(
             err.contains("char_def"),
             "error should mention char_def: {err}"
