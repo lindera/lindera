@@ -44,6 +44,53 @@ const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
 ```
 
+## バイトデータからの読み込み（OPFS）
+
+辞書が OPFS やその他のブラウザストレージに保存されている場合、`loadDictionaryFromBytes()` を使用して生のバイト配列から直接読み込めます。ファイルシステムへのアクセスが不要で、ブラウザ環境で動作します。
+
+### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
+
+各辞書コンポーネントファイルのバイナリデータから `Dictionary` を構築します。圧縮データ（`compress` feature でビルドされたもの）は自動的に展開されます。
+
+- **パラメータ**:
+  - `metadata` (`Uint8Array`) -- `metadata.json` の内容
+  - `dictDa` (`Uint8Array`) -- `dict.da` の内容（Double-Array Trie）
+  - `dictVals` (`Uint8Array`) -- `dict.vals` の内容（単語値データ）
+  - `dictWordsIdx` (`Uint8Array`) -- `dict.wordsidx` の内容（単語詳細インデックス）
+  - `dictWords` (`Uint8Array`) -- `dict.words` の内容（単語詳細）
+  - `matrixMtx` (`Uint8Array`) -- `matrix.mtx` の内容（連接コスト行列）
+  - `charDef` (`Uint8Array`) -- `char_def.bin` の内容（文字定義）
+  - `unk` (`Uint8Array`) -- `unk.bin` の内容（未知語辞書）
+- **戻り値**: `Dictionary`
+
+```javascript
+import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+// OPFS から辞書ファイルを読み込む
+const files = await loadDictionaryFiles("ipadic");
+
+// バイトデータから Dictionary を作成
+const dictionary = loadDictionaryFromBytes(
+    files.metadata,
+    files.dictDa,
+    files.dictVals,
+    files.dictWordsIdx,
+    files.dictWords,
+    files.matrixMtx,
+    files.charDef,
+    files.unk,
+);
+
+// TokenizerBuilder で使用
+const builder = new TokenizerBuilder();
+builder.setDictionaryInstance(dictionary);
+builder.setMode("normal");
+const tokenizer = builder.build();
+```
+
+詳細は [OPFS 辞書ストレージ](./opfs.md) を参照してください。
+
 ## Dictionary クラス
 
 `Dictionary` クラスは、読み込み済みの形態素解析辞書を表します。
@@ -126,11 +173,99 @@ buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 
 ## Metadata
 
-`Metadata` オブジェクトには以下のような辞書設定が含まれます：
+`Metadata` クラスは辞書のパラメータを設定します。
 
-- 辞書名
-- 文字エンコーディング
-- 圧縮アルゴリズム
-- 辞書フィールドのスキーマ定義
+### コンストラクタ
+
+```javascript
+const metadata = new Metadata(name?, encoding?, compressAlgorithm?);
+```
+
+- **パラメータ**:
+  - `name` (string, 省略可) -- 辞書名（デフォルト: `"default"`）
+  - `encoding` (string, 省略可) -- 文字エンコーディング（デフォルト: `"UTF-8"`）
+  - `compressAlgorithm` (CompressionAlgorithm, 省略可) -- 圧縮方式（デフォルト: `Deflate`）
+
+### 静的メソッド
+
+#### `Metadata.createDefault()`
+
+デフォルト値で `Metadata` インスタンスを作成します。
+
+```javascript
+const metadata = Metadata.createDefault();
+```
+
+### Metadata プロパティ
+
+| プロパティ | 型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `name` | `string` | `"default"` | 辞書名 |
+| `encoding` | `string` | `"UTF-8"` | 文字エンコーディング |
+| `compress_algorithm` | `CompressionAlgorithm` | `Deflate` | 圧縮アルゴリズム |
+| `dictionary_schema` | `Schema` | IPADIC スキーマ | メイン辞書のスキーマ |
+| `user_dictionary_schema` | `Schema` | 最小スキーマ | ユーザー辞書のスキーマ |
+
+すべてのプロパティは取得と設定の両方に対応しています：
+
+```javascript
+const metadata = Metadata.createDefault();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+```
 
 読み込み済み辞書のメタデータには `dictionary.metadata` からアクセスできます。
+
+### CompressionAlgorithm
+
+| 値 | 説明 |
+| --- | --- |
+| `CompressionAlgorithm.Deflate` | DEFLATE 圧縮（デフォルト） |
+| `CompressionAlgorithm.Zlib` | Zlib 圧縮 |
+| `CompressionAlgorithm.Gzip` | Gzip 圧縮 |
+| `CompressionAlgorithm.Raw` | 圧縮なし |
+
+### Schema
+
+`Schema` クラスは辞書エントリのフィールド構造を定義します。
+
+#### Schema コンストラクタ
+
+```javascript
+const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+```
+
+#### Schema 静的メソッド
+
+- `Schema.create_default()` -- デフォルトの IPADIC 互換スキーマを作成
+
+#### Schema メソッド
+
+| メソッド | 戻り値 | 説明 |
+| --- | --- | --- |
+| `get_field_index(name)` | `number \| undefined` | フィールド名からインデックスを取得 |
+| `field_count()` | `number` | フィールドの総数 |
+| `get_field_name(index)` | `string \| undefined` | インデックスからフィールド名を取得 |
+| `get_custom_fields()` | `string[]` | インデックス 3 以降のフィールド（形態素素性） |
+| `get_all_fields()` | `string[]` | すべてのフィールド名 |
+| `get_field_by_name(name)` | `FieldDefinition \| undefined` | フィールド定義の完全な情報を取得 |
+
+#### FieldDefinition
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `index` | `number` | フィールドの位置インデックス |
+| `name` | `string` | フィールド名 |
+| `field_type` | `FieldType` | フィールド型の列挙値 |
+| `description` | `string \| undefined` | 説明（省略可） |
+
+#### FieldType
+
+| 値 | 説明 |
+| --- | --- |
+| `FieldType.Surface` | 単語の表層形テキスト |
+| `FieldType.LeftContextId` | 左文脈 ID |
+| `FieldType.RightContextId` | 右文脈 ID |
+| `FieldType.Cost` | 単語コスト |
+| `FieldType.Custom` | 形態素素性フィールド |

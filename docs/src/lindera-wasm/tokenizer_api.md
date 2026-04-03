@@ -38,9 +38,30 @@ Sets the dictionary to use for tokenization.
 builder.setDictionary("embedded://ipadic");
 ```
 
+#### `setDictionaryInstance(dictionary)`
+
+Sets a pre-loaded dictionary instance for tokenization.
+Use this when the dictionary has been loaded from bytes (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
+
+- **Parameters**: `dictionary` (Dictionary) -- A loaded dictionary object
+- **Returns**: void
+
+```javascript
+import { loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
+
+builder.setDictionaryInstance(dictionary);
+```
+
 #### `setUserDictionary(uri)`
 
-Sets a user-defined dictionary.
+Sets a user-defined dictionary by URI.
 
 - **Parameters**: `uri` (string) -- Path or URI to the user dictionary
 - **Returns**: void
@@ -48,6 +69,13 @@ Sets a user-defined dictionary.
 ```javascript
 builder.setUserDictionary("file:///path/to/user_dict.csv");
 ```
+
+#### `setUserDictionaryInstance(userDictionary)`
+
+Sets a pre-loaded user dictionary instance. Use this when the user dictionary has been loaded from bytes instead of from a URI.
+
+- **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
+- **Returns**: void
 
 #### `setKeepWhitespace(keep)`
 
@@ -237,6 +265,52 @@ import { version } from 'lindera-wasm-web-ipadic';
 console.log(version()); // e.g., "2.1.1"
 ```
 
+## Enums and Utility Classes
+
+### Mode
+
+Tokenization mode enum.
+
+| Value | Description |
+| --- | --- |
+| `Mode.Normal` | Standard tokenization based on dictionary cost |
+| `Mode.Decompose` | Decompose compound words using penalty-based segmentation |
+
+### Penalty
+
+Configuration for decompose mode. Controls how aggressively compound words are decomposed.
+
+```javascript
+const penalty = new Penalty(
+    kanjiThreshold?,     // Kanji length threshold (default: 2)
+    kanjiPenalty?,       // Kanji length penalty (default: 3000)
+    otherThreshold?,     // Other character length threshold (default: 7)
+    otherPenalty?,       // Other character length penalty (default: 1700)
+);
+```
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `kanji_penalty_length_threshold` | `number` | `2` | Length threshold for kanji compound splitting |
+| `kanji_penalty_length_penalty` | `number` | `3000` | Penalty cost for kanji compounds exceeding threshold |
+| `other_penalty_length_threshold` | `number` | `7` | Length threshold for non-kanji compound splitting |
+| `other_penalty_length_penalty` | `number` | `1700` | Penalty cost for non-kanji compounds exceeding threshold |
+
+### LinderaError
+
+Error type for Lindera operations.
+
+```javascript
+const error = new LinderaError("message");
+console.log(error.message);    // "message"
+console.log(error.toString()); // "message"
+```
+
+| Property / Method | Type | Description |
+| --- | --- | --- |
+| `message` | `string` | Error message |
+| `toString()` | `string` | Returns the error message |
+
 ## Snake-Case Aliases
 
 For consistency with the Python API, all methods are also available in snake\_case form:
@@ -245,12 +319,15 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | --- | --- |
 | `setMode()` | `set_mode()` |
 | `setDictionary()` | `set_dictionary()` |
+| `setDictionaryInstance()` | `set_dictionary_instance()` |
 | `setUserDictionary()` | `set_user_dictionary()` |
+| `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
 | `tokenizeNbest()` | `tokenize_nbest()` |
 | `loadDictionary()` | `load_dictionary()` |
+| `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
 | `loadUserDictionary()` | `load_user_dictionary()` |
 | `buildDictionary()` | `build_dictionary()` |
 | `buildUserDictionary()` | `build_user_dictionary()` |

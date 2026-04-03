@@ -32,3 +32,4 @@ Lindera WASM は [wasm-pack](https://rustwasm.github.io/wasm-pack/) を通じて
 - [Tokenizer API](./lindera-wasm/tokenizer_api.md) -- JavaScript/TypeScript の完全な API リファレンス
 - [辞書管理](./lindera-wasm/dictionary_management.md) -- 辞書の読み込みとビルド
 - [ブラウザでの使用](./lindera-wasm/browser_usage.md) -- Web アプリケーションとの統合
+- [OPFS 辞書ストレージ](./lindera-wasm/opfs.md) -- OPFS による辞書の永続キャッシュ
