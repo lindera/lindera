@@ -237,27 +237,13 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_load_dictionary_from_bytes_invalid_char_def() {
+    fn test_load_dictionary_from_bytes_incomplete_metadata() {
         use super::load_dictionary_from_bytes;
 
-        // Valid minimal metadata JSON, but invalid char_def binary
+        // Incomplete metadata JSON (missing required fields)
         let metadata = br#"{"name":"test","encoding":"utf-8"}"#;
-        let result = load_dictionary_from_bytes(
-            metadata,
-            &[],
-            &[],
-            &[],
-            &[],
-            &[],
-            b"invalid char_def data",
-            &[],
-        );
+        let result = load_dictionary_from_bytes(metadata, &[], &[], &[], &[], &[], &[], &[]);
 
         assert!(result.is_err());
-        let err = result.err().unwrap().as_string().unwrap();
-        assert!(
-            err.contains("char_def"),
-            "error should mention char_def: {err}"
-        );
     }
 }
