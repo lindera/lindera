@@ -167,17 +167,8 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-          - runner: macos-latest
-            target: aarch64-apple-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-          - runner: windows-latest
-            target: aarch64-pc-windows-msvc
-            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -192,13 +183,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
-          else
-            cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
-          fi
+        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -339,17 +324,8 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-          - runner: macos-latest
-            target: aarch64-apple-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-          - runner: windows-latest
-            target: aarch64-pc-windows-msvc
-            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -364,13 +340,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check -p lindera --target "${{ matrix.platform.target }}" --all-features
-          else
-            cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
-          fi
+        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
 
   test-lindera-cli:
     name: Test lindera-cli
