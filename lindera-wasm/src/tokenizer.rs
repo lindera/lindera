@@ -248,4 +248,181 @@ mod tests {
         assert_eq!(tokens[2].surface, "トートバッグ");
         assert_eq!(tokens[0].get_detail(0), Some("名詞".to_string()));
     }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_with_ipadic() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("すもももももももものうち").unwrap();
+
+        assert_eq!(tokens.len(), 7);
+        assert_eq!(tokens[0].surface, "すもも");
+        assert_eq!(tokens[1].surface, "も");
+        assert_eq!(tokens[2].surface, "もも");
+        assert_eq!(tokens[3].surface, "も");
+        assert_eq!(tokens[4].surface, "もも");
+        assert_eq!(tokens[5].surface, "の");
+        assert_eq!(tokens[6].surface, "うち");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_token_properties() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("関西国際空港").unwrap();
+
+        assert_eq!(tokens.len(), 1);
+
+        let token = &tokens[0];
+        assert_eq!(token.surface, "関西国際空港");
+        assert_eq!(token.byte_start, 0);
+        assert_eq!(token.byte_end, "関西国際空港".len());
+        assert_eq!(token.position, 0);
+        assert!(!token.is_unknown);
+        assert!(!token.details.is_empty());
+        assert!(token.word_id > 0);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_token_get_detail() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("東京").unwrap();
+
+        assert!(!tokens.is_empty());
+
+        let token = &tokens[0];
+
+        // Valid index returns Some
+        let first_detail = token.get_detail(0);
+        assert!(first_detail.is_some());
+        assert_eq!(first_detail.unwrap(), token.details[0]);
+
+        // Out of bounds returns None
+        assert!(token.get_detail(9999).is_none());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_token_to_json() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("東京").unwrap();
+
+        let json = tokens[0].to_json();
+
+        // to_json should return a non-null JsValue
+        assert!(!json.is_null());
+        assert!(!json.is_undefined());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_decompose_mode() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("decompose").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("関西国際空港").unwrap();
+
+        // In decompose mode, compound words may be split further
+        assert!(!tokens.is_empty());
+
+        // Verify all surfaces concatenated form the original text
+        let reconstructed: String = tokens.iter().map(|t| t.surface.as_str()).collect();
+        assert_eq!(reconstructed, "関西国際空港");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_empty_string() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let tokens = tokenizer.tokenize("").unwrap();
+
+        assert!(tokens.is_empty());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_nbest() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let results = tokenizer
+            .tokenize_nbest("すもももももももものうち", 3, None, None)
+            .unwrap();
+
+        // Should return a JsValue (array of results)
+        assert!(!results.is_null());
+        assert!(!results.is_undefined());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_builder_set_mode_invalid() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        let result = builder.set_mode("invalid_mode");
+
+        assert!(result.is_err());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenizer_with_dictionary_constructor() {
+        use crate::Tokenizer;
+        use crate::dictionary::load_dictionary;
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+        let tokenizer = Tokenizer::new(dict, Some("normal".to_string()), None).unwrap();
+
+        let tokens = tokenizer.tokenize("東京タワー").unwrap();
+
+        assert!(!tokens.is_empty());
+        assert_eq!(tokens[0].surface, "東京");
+    }
 }

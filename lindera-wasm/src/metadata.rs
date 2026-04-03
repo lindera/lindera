@@ -137,3 +137,57 @@ impl From<JsMetadata> for Metadata {
         metadata.inner
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use super::*;
+
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_metadata_new() {
+        let metadata = JsMetadata::new(
+            Some("test".to_string()),
+            Some("utf-8".to_string()),
+            Some(JsCompressionAlgorithm::Deflate),
+        );
+
+        assert_eq!(metadata.name(), "test");
+        assert_eq!(metadata.encoding(), "utf-8");
+        assert!(matches!(
+            metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Deflate
+        ));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_metadata_create_default() {
+        let metadata = JsMetadata::create_default();
+
+        // Default values should not be empty
+        assert!(!metadata.name().is_empty());
+        assert!(!metadata.encoding().is_empty());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_metadata_setters() {
+        let mut metadata = JsMetadata::create_default();
+
+        metadata.set_name("custom_name".to_string());
+        assert_eq!(metadata.name(), "custom_name");
+
+        metadata.set_encoding("euc-jp".to_string());
+        assert_eq!(metadata.encoding(), "euc-jp");
+
+        metadata.set_compress_algorithm(JsCompressionAlgorithm::Gzip);
+        assert!(matches!(
+            metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Gzip
+        ));
+    }
+}

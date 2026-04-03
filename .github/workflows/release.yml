@@ -315,7 +315,7 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Run WASM test
-        run: make wasm-test
+        run: make test-lindera-wasm
 
   create-release:
     name: Create Release
@@ -797,36 +797,34 @@ jobs:
             name: "web"
           - value: "bundler"
             name: "bundler"
-          - value: "nodejs"
-            name: "nodejs"
         features:
           - value: ""
             name: "default"
-            package_name: "lindera-wasm"
+            package_suffix: ""
             package_description: "Lindera WASM (no embedded dictionaries)"
           - value: "embed-ipadic"
             name: "ipadic"
-            package_name: "lindera-wasm-ipadic"
+            package_suffix: "-ipadic"
             package_description: "Lindera WASM with Japanese dictionary (IPADIC)"
           - value: "embed-unidic"
             name: "unidic"
-            package_name: "lindera-wasm-unidic"
+            package_suffix: "-unidic"
             package_description: "Lindera WASM with Japanese dictionary (UniDic)"
           - value: "embed-ko-dic"
             name: "ko-dic"
-            package_name: "lindera-wasm-ko-dic"
+            package_suffix: "-ko-dic"
             package_description: "Lindera WASM with Korean dictionary (ko-dic)"
           - value: "embed-cc-cedict"
             name: "cc-cedict"
-            package_name: "lindera-wasm-cc-cedict"
+            package_suffix: "-cc-cedict"
             package_description: "Lindera WASM with Chinese dictionary (CC-CEDICT)"
           - value: "embed-cjk"
             name: "cjk"
-            package_name: "lindera-wasm-cjk"
+            package_suffix: "-cjk"
             package_description: "Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
           - value: "embed-jieba"
             name: "jieba"
-            package_name: "lindera-wasm-jieba"
+            package_suffix: "-jieba"
             package_description: "Lindera WASM with Chinese dictionary (Jieba)"
     steps:
       - name: Run checkout
@@ -866,13 +864,13 @@ jobs:
         shell: bash
         run: |
           cd lindera-wasm/pkg
-          jq '.name = "${{ matrix.features.package_name }}-${{ matrix.target.name }}" | .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)"' package.json > package.json.tmp
+          jq '.name = "lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}" | .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)"' package.json > package.json.tmp
           mv package.json.tmp package.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
+          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}
           path: lindera-wasm/pkg
 
   publish-wasm-npm:
@@ -887,35 +885,33 @@ jobs:
             name: "web"
           - value: "bundler"
             name: "bundler"
-          - value: "nodejs"
-            name: "nodejs"
         features:
           - value: ""
             name: "default"
-            package_name: "lindera-wasm"
+            package_suffix: ""
           - value: "embed-ipadic"
             name: "ipadic"
-            package_name: "lindera-wasm-ipadic"
+            package_suffix: "-ipadic"
           - value: "embed-unidic"
             name: "unidic"
-            package_name: "lindera-wasm-unidic"
+            package_suffix: "-unidic"
           - value: "embed-ko-dic"
             name: "ko-dic"
-            package_name: "lindera-wasm-ko-dic"
+            package_suffix: "-ko-dic"
           - value: "embed-cc-cedict"
             name: "cc-cedict"
-            package_name: "lindera-wasm-cc-cedict"
+            package_suffix: "-cc-cedict"
           - value: "embed-cjk"
             name: "cjk"
-            package_name: "lindera-wasm-cjk"
+            package_suffix: "-cjk"
           - value: "embed-jieba"
             name: "jieba"
-            package_name: "lindera-wasm-jieba"
+            package_suffix: "-jieba"
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
-          name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
+          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}
           path: lindera-wasm/pkg
 
       - name: Setup Node.js

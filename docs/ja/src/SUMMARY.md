@@ -63,7 +63,6 @@
     - [トークナイザー API](./lindera-wasm/tokenizer_api.md)
     - [辞書管理](./lindera-wasm/dictionary_management.md)
     - [ブラウザでの使用](./lindera-wasm/browser_usage.md)
-    - [Node.js での使用](./lindera-wasm/nodejs_usage.md)
 
 ---
 

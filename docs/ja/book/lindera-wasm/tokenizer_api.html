@@ -329,7 +329,7 @@ const reading = token.getDetail(7); // 例: "トウキョウ"
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -373,7 +373,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>戻り値</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
 
 console.log(version()); // 例: "2.1.1"
 </code></pre>

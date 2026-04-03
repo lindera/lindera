@@ -207,7 +207,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
 // Decompose mode
-let segmenter = Segmenter::new(Mode::Decompose, dictionary, None);
+let segmenter = Segmenter::new(Mode::Decompose(Default::default()), dictionary, None);
 <span class="boring">}</span></code></pre></pre>
 <p>With the CLI, use the <code>--mode</code> flag:</p>
 <pre><code class="language-shell">echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic --mode normal

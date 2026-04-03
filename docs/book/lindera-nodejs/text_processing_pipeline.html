@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Node.js Usage - Lindera Documentation</title>
+        <title>Text Processing Pipeline - Lindera Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -178,118 +178,126 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="nodejs-usage"><a class="header" href="#nodejs-usage">Node.js Usage</a></h1>
-<h2 id="commonjs-require"><a class="header" href="#commonjs-require">CommonJS (require)</a></h2>
-<p>When built with <code>--target nodejs</code>, the package can be loaded with <code>require()</code>:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token =&gt; {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
+                        <h1 id="text-processing-pipeline"><a class="header" href="#text-processing-pipeline">Text Processing Pipeline</a></h1>
+<p>Lindera Node.js supports a composable text processing pipeline that applies character filters before tokenization and token filters after tokenization. Filters are added to the <code>TokenizerBuilder</code> and executed in the order they are appended.</p>
+<pre><code class="language-text">Input Text
+  --&gt; Character Filters (preprocessing)
+  --&gt; Tokenization
+  --&gt; Token Filters (postprocessing)
+  --&gt; Output Tokens
 </code></pre>
-<p>No explicit WASM initialization is needed with the Node.js target -- the module handles it automatically.</p>
-<h2 id="es-modules-import"><a class="header" href="#es-modules-import">ES Modules (import)</a></h2>
-<p>If your Node.js project uses ES Modules (with <code>"type": "module"</code> in <code>package.json</code> or <code>.mjs</code> files):</p>
-<pre><code class="language-javascript">import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
+<h2 id="character-filters"><a class="header" href="#character-filters">Character Filters</a></h2>
+<p>Character filters transform the input text before tokenization.</p>
+<h3 id="unicode_normalize"><a class="header" href="#unicode_normalize">unicode_normalize</a></h3>
+<p>Applies Unicode normalization to the input text.</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
+  .build();
+</code></pre>
+<p>Supported normalization forms: <code>"nfc"</code>, <code>"nfkc"</code>, <code>"nfd"</code>, <code>"nfkd"</code>.</p>
+<h3 id="mapping"><a class="header" href="#mapping">mapping</a></h3>
+<p>Replaces characters or strings according to a mapping table.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("mapping", {
+    mapping: {
+      "\u30fc": "-",
+      "\uff5e": "~",
+    },
+  })
+  .build();
+</code></pre>
+<h3 id="japanese_iteration_mark"><a class="header" href="#japanese_iteration_mark">japanese_iteration_mark</a></h3>
+<p>Resolves Japanese iteration marks (odoriji) into their full forms.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("japanese_iteration_mark", {
+    normalize_kanji: true,
+    normalize_kana: true,
+  })
+  .build();
+</code></pre>
+<h2 id="token-filters"><a class="header" href="#token-filters">Token Filters</a></h2>
+<p>Token filters transform or remove tokens after tokenization.</p>
+<h3 id="lowercase"><a class="header" href="#lowercase">lowercase</a></h3>
+<p>Converts token surface forms to lowercase.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("lowercase", {})
+  .build();
+</code></pre>
+<h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
+<p>Replaces inflected forms with their base (dictionary) form using the morphological details from the dictionary.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_base_form", {})
+  .build();
+</code></pre>
+<h3 id="japanese_stop_tags"><a class="header" href="#japanese_stop_tags">japanese_stop_tags</a></h3>
+<p>Removes tokens whose part-of-speech matches any of the specified tags.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_stop_tags", {
+    tags: ["助詞", "助動詞"],
+  })
+  .build();
+</code></pre>
+<h3 id="japanese_keep_tags"><a class="header" href="#japanese_keep_tags">japanese_keep_tags</a></h3>
+<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_keep_tags", {
+    tags: ["名詞"],
+  })
+  .build();
+</code></pre>
+<h2 id="complete-pipeline-example"><a class="header" href="#complete-pipeline-example">Complete Pipeline Example</a></h2>
+<p>The following example combines multiple character filters and token filters into a single pipeline:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokens = tokenizer.tokenize("形態素解析");
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("embedded://ipadic")
+  // Preprocessing
+  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
+  .appendCharacterFilter("japanese_iteration_mark", {
+    normalize_kanji: true,
+    normalize_kana: true,
+  })
+  // Postprocessing
+  .appendTokenFilter("japanese_base_form", {})
+  .appendTokenFilter("japanese_stop_tags", {
+    tags: ["助詞", "助動詞", "記号"],
+  })
+  .appendTokenFilter("lowercase", {})
+  .build();
+
+const tokens = tokenizer.tokenize("Ｌｉｎｄｅｒａは形態素解析を行うライブラリです。");
 for (const token of tokens) {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
+  console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 </code></pre>
-<h2 id="server-side-tokenization-example"><a class="header" href="#server-side-tokenization-example">Server-Side Tokenization Example</a></h2>
-<p>A simple Express.js endpoint that tokenizes input text:</p>
-<pre><code class="language-javascript">const express = require('express');
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const app = express();
-app.use(express.json());
-
-// Create the tokenizer once at startup
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-app.post('/tokenize', (req, res) =&gt; {
-    const { text } = req.body;
-    if (!text) {
-        return res.status(400).json({ error: 'Missing "text" field' });
-    }
-
-    const tokens = tokenizer.tokenize(text);
-    const result = tokens.map(token =&gt; ({
-        surface: token.surface,
-        details: token.details,
-        byteStart: token.byteStart,
-        byteEnd: token.byteEnd,
-    }));
-
-    res.json({ tokens: result });
-});
-
-app.listen(3000, () =&gt; {
-    console.log('Tokenization server running on port 3000');
-});
-</code></pre>
-<h3 id="example-request"><a class="header" href="#example-request">Example Request</a></h3>
-<pre><code class="language-bash">curl -X POST http://localhost:3000/tokenize \
-  -H "Content-Type: application/json" \
-  -d '{"text": "関西国際空港限定トートバッグ"}'
-</code></pre>
-<h2 id="using-multiple-dictionaries"><a class="header" href="#using-multiple-dictionaries">Using Multiple Dictionaries</a></h2>
-<p>If your application needs to tokenize multiple languages, you can create separate tokenizers:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-cjk-nodejs');
-
-// Japanese tokenizer
-const jaBuilder = new TokenizerBuilder();
-jaBuilder.setDictionary("embedded://ipadic");
-jaBuilder.setMode("normal");
-const jaTokenizer = jaBuilder.build();
-
-// Korean tokenizer
-const koBuilder = new TokenizerBuilder();
-koBuilder.setDictionary("embedded://ko-dic");
-koBuilder.setMode("normal");
-const koTokenizer = koBuilder.build();
-
-console.log(jaTokenizer.tokenize("東京タワー"));
-console.log(koTokenizer.tokenize("서울타워"));
-</code></pre>
-<p>This requires building with the <code>embed-cjk</code> feature flag, which includes IPADIC, ko-dic, and Jieba dictionaries.</p>
-<h2 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-Best Tokenization</a></h2>
-<p>Retrieve multiple candidate tokenizations on the server:</p>
-<pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
-for (const result of results) {
-    console.log(`Cost: ${result.cost}`);
-    for (const token of result.tokens) {
-        console.log(`  ${token.surface}\t${token.details.join(',')}`);
-    }
-}
-</code></pre>
+<p>In this pipeline:</p>
+<ol>
+<li><code>unicode_normalize</code> converts full-width characters to half-width (NFKC normalization)</li>
+<li><code>japanese_iteration_mark</code> resolves iteration marks</li>
+<li><code>japanese_base_form</code> converts inflected tokens to base form</li>
+<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
+<li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
+</ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../lindera-wasm/browser_usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../lindera-nodejs/dictionary_management.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../lindera-ipadic.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../lindera-nodejs/training.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -299,11 +307,11 @@ for (const result of results) {
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../lindera-wasm/browser_usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../lindera-nodejs/dictionary_management.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../lindera-ipadic.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../lindera-nodejs/training.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

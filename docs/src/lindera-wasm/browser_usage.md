@@ -5,7 +5,7 @@
 In browser environments, you must initialize the WASM module before using any Lindera functions. The default export `__wbg_init` handles this initialization.
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -94,7 +94,7 @@ module.exports = {
 Then import using the bundler target build:
 
 ```javascript
-import { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");

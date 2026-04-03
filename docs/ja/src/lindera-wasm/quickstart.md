@@ -3,7 +3,7 @@
 ## Web（ブラウザ）
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -30,28 +30,12 @@ main();
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
-## Node.js
-
-```javascript
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token => {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
-```
-
 ## フィルタの使用
 
 トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();

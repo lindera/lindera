@@ -101,3 +101,34 @@ impl From<LinderaPenalty> for JsPenalty {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use super::*;
+
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_new_defaults() {
+        let penalty = JsPenalty::new(None, None, None, None);
+
+        assert_eq!(penalty.kanji_penalty_length_threshold, 2);
+        assert_eq!(penalty.kanji_penalty_length_penalty, 3000);
+        assert_eq!(penalty.other_penalty_length_threshold, 7);
+        assert_eq!(penalty.other_penalty_length_penalty, 1700);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_penalty_new_custom() {
+        let penalty = JsPenalty::new(Some(3), Some(5000), Some(10), Some(2000));
+
+        assert_eq!(penalty.kanji_penalty_length_threshold, 3);
+        assert_eq!(penalty.kanji_penalty_length_penalty, 5000);
+        assert_eq!(penalty.other_penalty_length_threshold, 10);
+        assert_eq!(penalty.other_penalty_length_penalty, 2000);
+    }
+}

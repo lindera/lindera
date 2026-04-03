@@ -63,7 +63,6 @@
     - [Tokenizer API](./lindera-wasm/tokenizer_api.md)
     - [Dictionary Management](./lindera-wasm/dictionary_management.md)
     - [Browser Usage](./lindera-wasm/browser_usage.md)
-    - [Node.js Usage](./lindera-wasm/nodejs_usage.md)
 
 ---
 

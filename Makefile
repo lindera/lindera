@@ -229,7 +229,7 @@ bench-all: ## Run all benchmarks with all features enabled
 
 # ── WASM example ────────────────────────────────────────────────────────────
 
-build-wasm-example: ## Build the WASM example application
+build-lindera-wasm-example: ## Build the WASM example application
 	cd lindera-wasm && wasm-pack build --release --features=embed-ipadic --target=web
 	cd lindera-wasm/example && \
 	LINDERA_WASM_VERSION=$$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version') && \
@@ -238,7 +238,7 @@ build-wasm-example: ## Build the WASM example application
 	npm run build && \
 	cp index.html dist/index.html
 
-run-wasm-example: ## Run the WASM example application
+run-lindera-wasm-example: ## Run the WASM example application
 	cd lindera-wasm/example && npm run start
 
 # ── Tag & Publish ───────────────────────────────────────────────────────────

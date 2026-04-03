@@ -3,7 +3,7 @@
 //! WebAssembly bindings for [Lindera](https://github.com/lindera/lindera), a morphological analysis library.
 //!
 //! This crate provides WASM bindings that enable Japanese, Korean, and Chinese text tokenization
-//! in web browsers and Node.js environments.
+//! in web browsers and bundler environments.
 //!
 //! ## Features
 //!
@@ -30,19 +30,6 @@
 //!     console.log(tokens);
 //! });
 //! ```
-//!
-//! ### Node.js
-//!
-//! ```javascript
-//! const { TokenizerBuilder } = require('lindera-wasm-nodejs-ipadic');
-//!
-//! const builder = new TokenizerBuilder();
-//! builder.set_dictionary("embedded://ipadic");
-//! builder.set_mode("normal");
-//!
-//! const tokenizer = builder.build();
-//! const tokens = tokenizer.tokenize("関西国際空港");
-//! console.log(tokens);
 //! ```
 
 pub mod character_filter;
@@ -111,4 +98,25 @@ pub fn version() -> String {
 #[wasm_bindgen(js_name = "getVersion")]
 pub fn get_version() -> String {
     version()
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_version() {
+        let v = super::version();
+        assert!(!v.is_empty());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_get_version() {
+        let v1 = super::version();
+        let v2 = super::get_version();
+        assert_eq!(v1, v2);
+    }
 }

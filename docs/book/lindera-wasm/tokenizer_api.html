@@ -329,7 +329,7 @@ const reading = token.getDetail(7); // e.g., "トウキョウ"
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -373,7 +373,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>Returns</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
 
 console.log(version()); // e.g., "2.1.1"
 </code></pre>

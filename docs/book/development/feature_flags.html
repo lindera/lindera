@@ -204,20 +204,20 @@
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="combination-features"><a class="header" href="#combination-features">Combination Features</a></h2>
 <p>These meta-features enable multiple dictionaries at once for multilingual applications.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Included Dictionaries</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>Alternative CJK dictionary combination</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>Alternative CJK dictionary combination</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
 <h2 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h2>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

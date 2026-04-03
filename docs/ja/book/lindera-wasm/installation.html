@@ -189,9 +189,6 @@
 <h3 id="webブラウザ向け-es-modules"><a class="header" href="#webブラウザ向け-es-modules">Web（ブラウザ向け ES Modules）</a></h3>
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
 </code></pre>
-<h3 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h3>
-<pre><code class="language-bash">wasm-pack build --target nodejs --features embed-ipadic
-</code></pre>
 <h3 id="バンドラーwebpackviterollup"><a class="header" href="#バンドラーwebpackviterollup">バンドラー（Webpack、Vite、Rollup）</a></h3>
 <pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
 </code></pre>
@@ -211,22 +208,23 @@
 </code></pre>
 <h2 id="npm-パッケージの命名規則"><a class="header" href="#npm-パッケージの命名規則">npm パッケージの命名規則</a></h2>
 <p>npm に公開する際の推奨命名規則は以下の通りです：</p>
-<pre><code class="language-text">lindera-wasm-{dict}-{target}
+<pre><code class="language-text">lindera-wasm-{target}
+lindera-wasm-{target}-{dict}
 </code></pre>
 <p>例：</p>
 <ul>
-<li><code>lindera-wasm-ipadic-web</code></li>
-<li><code>lindera-wasm-ipadic-nodejs</code></li>
-<li><code>lindera-wasm-unidic-bundler</code></li>
-<li><code>lindera-wasm-cjk-web</code></li>
+<li><code>lindera-wasm-web</code></li>
+<li><code>lindera-wasm-web-ipadic</code></li>
+<li><code>lindera-wasm-bundler-unidic</code></li>
+<li><code>lindera-wasm-web-cjk</code></li>
 </ul>
 <p>公開前にパッケージ名を設定するには、生成された <code>pkg/package.json</code> の <code>name</code> フィールドを編集します。</p>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm に公開されている場合：</p>
-<pre><code class="language-bash">npm install lindera-wasm-ipadic-web
+<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
 </code></pre>
 <p>または yarn で：</p>
-<pre><code class="language-bash">yarn add lindera-wasm-ipadic-web
+<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
 </code></pre>
 
                     </main>

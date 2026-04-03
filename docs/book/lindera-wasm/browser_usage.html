@@ -181,7 +181,7 @@
                         <h1 id="browser-usage"><a class="header" href="#browser-usage">Browser Usage</a></h1>
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -259,7 +259,7 @@ module.exports = {
 };
 </code></pre>
 <p>Then import using the bundler target build:</p>
-<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
@@ -306,7 +306,7 @@ export default {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../lindera-wasm/nodejs_usage.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../lindera-ipadic.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -320,7 +320,7 @@ export default {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../lindera-wasm/nodejs_usage.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../lindera-ipadic.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

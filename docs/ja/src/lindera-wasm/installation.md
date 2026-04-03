@@ -15,12 +15,6 @@
 wasm-pack build --target web --features embed-ipadic
 ```
 
-### Node.js
-
-```bash
-wasm-pack build --target nodejs --features embed-ipadic
-```
-
 ### バンドラー（Webpack、Vite、Rollup）
 
 ```bash
@@ -51,15 +45,16 @@ wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 npm に公開する際の推奨命名規則は以下の通りです：
 
 ```text
-lindera-wasm-{dict}-{target}
+lindera-wasm-{target}
+lindera-wasm-{target}-{dict}
 ```
 
 例：
 
-- `lindera-wasm-ipadic-web`
-- `lindera-wasm-ipadic-nodejs`
-- `lindera-wasm-unidic-bundler`
-- `lindera-wasm-cjk-web`
+- `lindera-wasm-web`
+- `lindera-wasm-web-ipadic`
+- `lindera-wasm-bundler-unidic`
+- `lindera-wasm-web-cjk`
 
 公開前にパッケージ名を設定するには、生成された `pkg/package.json` の `name` フィールドを編集します。
 
@@ -68,11 +63,11 @@ lindera-wasm-{dict}-{target}
 ビルド済みパッケージが npm に公開されている場合：
 
 ```bash
-npm install lindera-wasm-ipadic-web
+npm install lindera-wasm-web-ipadic
 ```
 
 または yarn で：
 
 ```bash
-yarn add lindera-wasm-ipadic-web
+yarn add lindera-wasm-web-ipadic
 ```

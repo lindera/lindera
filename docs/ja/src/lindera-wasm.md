@@ -9,7 +9,6 @@ Lindera WASM は [wasm-pack](https://rustwasm.github.io/wasm-pack/) を通じて
 | ターゲット | 用途 | モジュールシステム |
 | --- | --- | --- |
 | `web` | ブラウザ ESM | ES Modules |
-| `nodejs` | Node.js | CommonJS |
 | `bundler` | Webpack、Vite、Rollup | ES Modules（バンドラー解決） |
 
 ## 辞書パッケージ
@@ -33,4 +32,3 @@ Lindera WASM は [wasm-pack](https://rustwasm.github.io/wasm-pack/) を通じて
 - [Tokenizer API](./lindera-wasm/tokenizer_api.md) -- JavaScript/TypeScript の完全な API リファレンス
 - [辞書管理](./lindera-wasm/dictionary_management.md) -- 辞書の読み込みとビルド
 - [ブラウザでの使用](./lindera-wasm/browser_usage.md) -- Web アプリケーションとの統合
-- [Node.js での使用](./lindera-wasm/nodejs_usage.md) -- Node.js でのサーバーサイド利用

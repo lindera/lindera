@@ -15,60 +15,46 @@ WebAssembly of Lindera
 - <https://www.npmjs.com/package/lindera-wasm-web>
 Lindera WASM without a dictionary for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-cjk-web>  
+- <https://www.npmjs.com/package/lindera-wasm-web-cjk>  
 Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-ipadic-web>  
+- <https://www.npmjs.com/package/lindera-wasm-web-ipadic>  
 Lindera WASM with Japanese dictionary (IPADIC) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-unidic-web>  
+- <https://www.npmjs.com/package/lindera-wasm-web-unidic>  
 Lindera WASM with Japanese dictionary (UniDic) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-ko-dic-web>  
+- <https://www.npmjs.com/package/lindera-wasm-web-ko-dic>  
 Lindera WASM with Korean dictionary (ko-dic) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-web>  
+- <https://www.npmjs.com/package/lindera-wasm-web-cc-cedict>  
 Lindera WASM with Chinese dictionary (CC-CEDICT) for Web
 
-### For Node.js
+- <https://www.npmjs.com/package/lindera-wasm-web-jieba>  
+Lindera WASM with Chinese dictionary (Jieba) for Web
 
-- <https://www.npmjs.com/package/lindera-wasm-nodejs>
-Lindera WASM without a dictionary for Node.js
-
-- <https://www.npmjs.com/package/lindera-wasm-cjk-nodejs>  
-Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Node.js
-
-- <https://www.npmjs.com/package/lindera-wasm-ipadic-nodejs>  
-Lindera WASM with Japanese dictionary (IPADIC) for Node.js
-
-- <https://www.npmjs.com/package/lindera-wasm-unidic-nodejs>  
-Lindera WASM with Japanese dictionary (UniDic) for Node.js
-
-- <https://www.npmjs.com/package/lindera-wasm-ko-dic-nodejs>  
-Lindera WASM with Korean dictionary (ko-dic) for Node.js
-
-- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-nodejs>  
-Lindera WASM with Chinese dictionary (CC-CEDICT) for Node.js
-
-### For bundler
+### For Bundler
 
 - <https://www.npmjs.com/package/lindera-wasm-bundler>
 Lindera WASM without a dictionary for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-cjk-bundler>  
+- <https://www.npmjs.com/package/lindera-wasm-bundler-cjk>  
 Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-ipadic-bundler>  
+- <https://www.npmjs.com/package/lindera-wasm-bundler-ipadic>  
 Lindera WASM with Japanese dictionary (IPADIC) for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-unidic-bundler>  
+- <https://www.npmjs.com/package/lindera-wasm-bundler-unidic>  
 Lindera WASM with Japanese dictionary (UniDic) for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-ko-dic-bundler>  
+- <https://www.npmjs.com/package/lindera-wasm-bundler-ko-dic>  
 Lindera WASM with Korean dictionary (ko-dic) for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-cc-cedict-bundler>  
+- <https://www.npmjs.com/package/lindera-wasm-bundler-cc-cedict>  
 Lindera WASM with Chinese dictionary (CC-CEDICT) for Bundler
+
+- <https://www.npmjs.com/package/lindera-wasm-bundler-jieba>  
+Lindera WASM with Chinese dictionary (Jieba) for Bundler
 
 ## Usage
 
@@ -78,7 +64,7 @@ Use the `-web` packages for browser environments with `<script type="module">`:
 
 ```html
 <script type="module">
-import __wbg_init, { TokenizerBuilder } from 'https://cdn.jsdelivr.net/npm/lindera-wasm-ipadic-web/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder } from 'https://cdn.jsdelivr.net/npm/lindera-wasm-web-ipadic/lindera_wasm.js';
 
 __wbg_init().then(() => {
     const builder = new TokenizerBuilder();
@@ -97,7 +83,7 @@ __wbg_init().then(() => {
 Or with a bundler:
 
 ```js
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -116,46 +102,12 @@ async function main() {
 main();
 ```
 
-### Node.js Usage
-
-Use the `-nodejs` packages for Node.js environments:
-
-```js
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("すもももももももものうち");
-tokens.forEach(token => {
-    console.log(`${token.surface}: ${token.details.join(", ")}`);
-});
-```
-
-Or with ESM:
-
-```js
-import { TokenizerBuilder } from 'lindera-wasm-ipadic-nodejs';
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("すもももももももものうち");
-tokens.forEach(token => {
-    console.log(`${token.surface}: ${token.details.join(", ")}`);
-});
-```
-
 ### Bundler Usage (Webpack, Rollup, etc.)
 
 Use the `-bundler` packages for bundler environments:
 
 ```js
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -203,7 +155,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "lindera-wasm-ipadic-web"
+      "lindera-wasm-web-ipadic"
     ]
   },
 })

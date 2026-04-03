@@ -321,7 +321,7 @@ EOS
 </code></pre>
 <h4 id="tokenize-with-external-jieba-chinese-dictionary"><a class="header" href="#tokenize-with-external-jieba-chinese-dictionary">Tokenize with external Jieba (Chinese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
 </code></pre>
 <h3 id="examples-with-embedded-dictionaries"><a class="header" href="#examples-with-embedded-dictionaries">Examples with embedded dictionaries</a></h3>
 <p>Lindera can include dictionaries directly in the binary when built with specific feature flags. This allows tokenization without external dictionary files.</p>
@@ -656,12 +656,12 @@ EOS
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
 <h4 id="build-jieba-chinese-dictionary"><a class="header" href="#build-jieba-chinese-dictionary">Build Jieba (Chinese dictionary)</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h4 id="build-ko-dic-korean-dictionary"><a class="header" href="#build-ko-dic-korean-dictionary">Build ko-dic (Korean dictionary)</a></h4>

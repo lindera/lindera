@@ -180,7 +180,7 @@
                     <main>
                         <h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
 <h2 id="web-browser"><a class="header" href="#web-browser">Web (Browser)</a></h2>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -203,22 +203,9 @@ main();
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
-<h2 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h2>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token =&gt; {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
-</code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();

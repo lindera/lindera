@@ -7,7 +7,7 @@ The simplest way to use dictionaries in WASM is to embed them at build time usin
 ### Loading an Embedded Dictionary
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-ipadic-web';
+import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 ```
@@ -38,7 +38,7 @@ const tokenizer = builder.build();
 You can also pass a loaded dictionary to the `Tokenizer` constructor:
 
 ```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -69,7 +69,7 @@ User dictionaries allow you to add custom words that are not in the system dicti
 ### Loading a User Dictionary
 
 ```javascript
-import { loadUserDictionary } from 'lindera-wasm-ipadic-web';
+import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
@@ -78,7 +78,7 @@ const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 ### Using a User Dictionary with Tokenizer
 
 ```javascript
-import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
@@ -103,7 +103,7 @@ You can build compiled dictionaries from source files using the JavaScript API.
 ### Building a System Dictionary
 
 ```javascript
-import { buildDictionary } from 'lindera-wasm-ipadic-web';
+import { buildDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = {
     name: "custom-dict",
@@ -117,7 +117,7 @@ buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 ### Building a User Dictionary
 
 ```javascript
-import { buildUserDictionary } from 'lindera-wasm-ipadic-web';
+import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 ```

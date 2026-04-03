@@ -5,7 +5,7 @@
 ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの `__wbg_init` がこの初期化を処理します。
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -94,7 +94,7 @@ module.exports = {
 次に、bundler ターゲットビルドを使用してインポートします：
 
 ```javascript
-import { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
