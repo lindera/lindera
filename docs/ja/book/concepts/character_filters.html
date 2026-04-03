@@ -206,10 +206,8 @@
 <h2 id="yaml設定の例"><a class="header" href="#yaml設定の例">YAML設定の例</a></h2>
 <p>YAML設定ファイルでLinderaを使用する場合、キャラクターフィルターは<code>character_filters</code>セクションで指定できます：</p>
 <pre><code class="language-yaml">segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize

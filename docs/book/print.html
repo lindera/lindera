@@ -326,9 +326,9 @@ Output Tokens
 <tr><td><code>mmap</code></td><td>Memory-mapped file support for dictionary loading</td><td>Enabled</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
-<tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + CC-CEDICT dictionaries</td><td>Disabled</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>Embed IPADIC NEologd + ko-dic + CC-CEDICT dictionaries</td><td>Disabled</td></tr>
+<tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>Embed UniDic + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>Embed IPADIC NEologd + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
 </tbody></table>
 </div>
 <h2 id="learn-more"><a class="header" href="#learn-more">Learn More</a></h2>
@@ -349,7 +349,7 @@ Output Tokens
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
@@ -524,7 +524,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
 // Decompose mode
-let segmenter = Segmenter::new(Mode::Decompose, dictionary, None);
+let segmenter = Segmenter::new(Mode::Decompose(Default::default()), dictionary, None);
 <span class="boring">}</span></code></pre></pre>
 <p>With the CLI, use the <code>--mode</code> flag:</p>
 <pre><code class="language-shell">echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic --mode normal
@@ -705,10 +705,8 @@ token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 <h2 id="yaml-configuration-example"><a class="header" href="#yaml-configuration-example">YAML configuration example</a></h2>
 <p>When using Lindera with a YAML configuration file, character filters can be specified in the <code>character_filters</code> section:</p>
 <pre><code class="language-yaml">segmenter:
-  dictionary:
-    kind: embedded
-    dict: ipadic
   mode: normal
+  dictionary: "embedded://ipadic"
 
 character_filters:
   - kind: unicode_normalize
@@ -945,11 +943,8 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_PATH</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  user_dictionary:
-    path: "./resources/user_dict/ipadic_simple.csv"
-    kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"
@@ -1346,6 +1341,10 @@ let content = std::fs::read_to_string("config.yml")
 <p>The "ipadic" feature flag allows Lindera to include IPADIC.</p>
 <pre><code class="language-shell">% cargo build --release --features=embed-ipadic
 </code></pre>
+<h3 id="build-with-ipadic-neologd-japanese-dictionary"><a class="header" href="#build-with-ipadic-neologd-japanese-dictionary">Build with IPADIC NEologd (Japanese dictionary)</a></h3>
+<p>The "ipadic-neologd" feature flag allows Lindera to include IPADIC NEologd.</p>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
+</code></pre>
 <h3 id="build-with-unidic-japanese-dictionary"><a class="header" href="#build-with-unidic-japanese-dictionary">Build with UniDic (Japanese dictionary)</a></h3>
 <p>The "unidic" feature flag allows Lindera to include UniDic.</p>
 <pre><code class="language-shell">% cargo build --release --features=embed-unidic
@@ -1513,7 +1512,7 @@ EOS
 </code></pre>
 <h4 id="tokenize-with-external-jieba-chinese-dictionary"><a class="header" href="#tokenize-with-external-jieba-chinese-dictionary">Tokenize with external Jieba (Chinese dictionary)</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
 </code></pre>
 <h3 id="examples-with-embedded-dictionaries"><a class="header" href="#examples-with-embedded-dictionaries">Examples with embedded dictionaries</a></h3>
 <p>Lindera can include dictionaries directly in the binary when built with specific feature flags. This allows tokenization without external dictionary files.</p>
@@ -1848,12 +1847,12 @@ EOS
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
 <h4 id="build-jieba-chinese-dictionary"><a class="header" href="#build-jieba-chinese-dictionary">Build Jieba (Chinese dictionary)</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h4 id="build-ko-dic-korean-dictionary"><a class="header" href="#build-ko-dic-korean-dictionary">Build ko-dic (Korean dictionary)</a></h4>
@@ -2739,13 +2738,618 @@ tokens = tokenizer.tokenize("形態素解析のテスト")
 for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-nodejs"><a class="header" href="#lindera-nodejs">Lindera Node.js</a></h1>
+<p>Lindera Node.js provides Node.js bindings for the Lindera morphological analysis engine, built with <a href="https://napi.rs/">NAPI-RS</a>. It brings Lindera's high-performance tokenization capabilities to the Node.js ecosystem with support for Node.js 18 and later.</p>
+<h2 id="features-1"><a class="header" href="#features-1">Features</a></h2>
+<ul>
+<li><strong>Multi-language support</strong>: Tokenize Japanese (IPADIC, IPADIC NEologd, UniDic), Korean (ko-dic), and Chinese (CC-CEDICT, Jieba) text</li>
+<li><strong>Text processing pipeline</strong>: Compose character filters and token filters for flexible preprocessing and postprocessing</li>
+<li><strong>CRF-based dictionary training</strong>: Train custom morphological analysis models from annotated corpora (requires <code>train</code> feature)</li>
+<li><strong>Multiple tokenization modes</strong>: Normal and decompose modes for different analysis granularity</li>
+<li><strong>N-best tokenization</strong>: Retrieve multiple tokenization candidates ranked by cost</li>
+<li><strong>User dictionaries</strong>: Extend system dictionaries with custom vocabulary</li>
+<li><strong>TypeScript support</strong>: Full type definitions included out of the box</li>
+</ul>
+<h2 id="documentation-1"><a class="header" href="#documentation-1">Documentation</a></h2>
+<ul>
+<li><a href="./lindera-nodejs/installation.html">Installation</a> -- Prerequisites, build instructions, and feature flags</li>
+<li><a href="./lindera-nodejs/quickstart.html">Quick Start</a> -- A minimal example to get started</li>
+<li><a href="./lindera-nodejs/tokenizer_api.html">Tokenizer API</a> -- <code>TokenizerBuilder</code>, <code>Tokenizer</code>, and <code>Token</code> class reference</li>
+<li><a href="./lindera-nodejs/dictionary_management.html">Dictionary Management</a> -- Loading, building, and managing dictionaries</li>
+<li><a href="./lindera-nodejs/text_processing_pipeline.html">Text Processing Pipeline</a> -- Character filters and token filters</li>
+<li><a href="./lindera-nodejs/training.html">Training</a> -- Training custom CRF models and exporting dictionaries</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation-3"><a class="header" href="#installation-3">Installation</a></h1>
+<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<ul>
+<li><strong>Node.js 18 or later</strong> (LTS versions recommended)</li>
+<li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
+<li><strong>NAPI-RS CLI</strong> -- CLI tool for building native Node.js addons in Rust</li>
+</ul>
+<p>Install the NAPI-RS CLI globally:</p>
+<pre><code class="language-bash">npm install -g @napi-rs/cli
+</code></pre>
+<h2 id="development-build-1"><a class="header" href="#development-build-1">Development Build</a></h2>
+<p>Build lindera-nodejs in development mode:</p>
+<pre><code class="language-bash">cd lindera-nodejs
+npm install
+npm run build
+</code></pre>
+<p>Or use the project Makefile:</p>
+<pre><code class="language-bash">make nodejs-develop
+</code></pre>
+<h3 id="build-with-training-support-1"><a class="header" href="#build-with-training-support-1">Build with Training Support</a></h3>
+<p>The <code>train</code> feature enables CRF-based dictionary training functionality. It is enabled by default:</p>
+<pre><code class="language-bash">npm run build -- --features train
+</code></pre>
+<h3 id="build-with-embedded-dictionaries-1"><a class="header" href="#build-with-embedded-dictionaries-1">Build with Embedded Dictionaries</a></h3>
+<p>Embed dictionaries directly into the binary so no external dictionary files are needed at runtime:</p>
+<pre><code class="language-bash">npm run build -- --features embed-ipadic
+</code></pre>
+<h2 id="feature-flags-4"><a class="header" href="#feature-flags-4">Feature Flags</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>train</code></td><td>CRF training functionality</td><td>Enabled</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>Embed Japanese dictionary (IPADIC)</td><td>Disabled</td></tr>
+<tr><td><code>embed-unidic</code></td><td>Embed Japanese dictionary (UniDic)</td><td>Disabled</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>Embed Japanese dictionary (IPADIC NEologd)</td><td>Disabled</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>Embed Korean dictionary (ko-dic)</td><td>Disabled</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>Embed Chinese dictionary (CC-CEDICT)</td><td>Disabled</td></tr>
+<tr><td><code>embed-jieba</code></td><td>Embed Chinese dictionary (Jieba)</td><td>Disabled</td></tr>
+<tr><td><code>embed-cjk</code></td><td>Embed all CJK dictionaries (IPADIC, ko-dic, Jieba)</td><td>Disabled</td></tr>
+</tbody></table>
+</div>
+<p>Multiple features can be combined:</p>
+<pre><code class="language-bash">npm run build -- --features "train,embed-ipadic,embed-ko-dic"
+</code></pre>
+<h2 id="verifying-the-installation-1"><a class="header" href="#verifying-the-installation-1">Verifying the Installation</a></h2>
+<p>After installation, verify that lindera is available in Node.js:</p>
+<pre><code class="language-javascript">const lindera = require("lindera");
+
+console.log(lindera.version());
+</code></pre>
+<p>Or with ES modules:</p>
+<pre><code class="language-javascript">import { version } from "lindera";
+
+console.log(version());
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-2"><a class="header" href="#quick-start-2">Quick Start</a></h1>
+<p>This guide shows how to tokenize text using lindera-nodejs.</p>
+<h2 id="basic-tokenization-1"><a class="header" href="#basic-tokenization-1">Basic Tokenization</a></h2>
+<p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("embedded://ipadic");
+const tokenizer = builder.build();
+
+const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details.join(",")}`);
+}
+</code></pre>
+<p>Expected output:</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK
+</code></pre>
+<h2 id="method-chaining-1"><a class="header" href="#method-chaining-1">Method Chaining</a></h2>
+<p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("embedded://ipadic")
+  .build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.getDetail(0)}`);
+}
+</code></pre>
+<h2 id="accessing-token-properties-1"><a class="header" href="#accessing-token-properties-1">Accessing Token Properties</a></h2>
+<p>Each token exposes the following properties:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .build();
+
+const tokens = tokenizer.tokenize("東京タワー");
+for (const token of tokens) {
+  console.log(`Surface: ${token.surface}`);
+  console.log(`Byte range: ${token.byteStart}..${token.byteEnd}`);
+  console.log(`Position: ${token.position}`);
+  console.log(`Word ID: ${token.wordId}`);
+  console.log(`Unknown: ${token.isUnknown}`);
+  console.log(`Details: ${token.details}`);
+  console.log();
+}
+</code></pre>
+<h2 id="n-best-tokenization-3"><a class="header" href="#n-best-tokenization-3">N-best Tokenization</a></h2>
+<p>Retrieve multiple tokenization candidates ranked by cost:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .build();
+
+const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
+for (const { tokens, cost } of results) {
+  const surfaces = tokens.map((t) =&gt; t.surface);
+  console.log(`Cost ${cost}: ${surfaces.join(" / ")}`);
+}
+</code></pre>
+<h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
+<p>Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:</p>
+<pre><code class="language-typescript">import { TokenizerBuilder, Token } from "lindera";
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("embedded://ipadic")
+  .build();
+
+const tokens: Token[] = tokenizer.tokenize("形態素解析");
+for (const token of tokens) {
+  console.log(`${token.surface}: ${token.details?.join(",")}`);
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-1"><a class="header" href="#tokenizer-api-1">Tokenizer API</a></h1>
+<h2 id="tokenizerbuilder-2"><a class="header" href="#tokenizerbuilder-2">TokenizerBuilder</a></h2>
+<p><code>TokenizerBuilder</code> configures and constructs a <code>Tokenizer</code> instance using the builder pattern.</p>
+<h3 id="constructors-1"><a class="header" href="#constructors-1">Constructors</a></h3>
+<h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
+<p>Creates a new builder with default configuration.</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const builder = new TokenizerBuilder();
+</code></pre>
+<h4 id="new-tokenizerbuilderfromfilefilepath"><a class="header" href="#new-tokenizerbuilderfromfilefilepath"><code>new TokenizerBuilder().fromFile(filePath)</code></a></h4>
+<p>Loads configuration from a JSON file and returns a new builder.</p>
+<pre><code class="language-javascript">const builder = new TokenizerBuilder().fromFile("config.json");
+</code></pre>
+<h3 id="configuration-methods-1"><a class="header" href="#configuration-methods-1">Configuration Methods</a></h3>
+<p>All setter methods return <code>this</code> for method chaining.</p>
+<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<p>Sets the tokenization mode.</p>
+<ul>
+<li><code>"normal"</code> -- Standard tokenization (default)</li>
+<li><code>"decompose"</code> -- Decomposes compound words into smaller units</li>
+</ul>
+<pre><code class="language-javascript">builder.setMode("normal");
+</code></pre>
+<h4 id="setdictionarypath"><a class="header" href="#setdictionarypath"><code>setDictionary(path)</code></a></h4>
+<p>Sets the system dictionary path or URI.</p>
+<pre><code class="language-javascript">// Use an embedded dictionary
+builder.setDictionary("embedded://ipadic");
+
+// Use an external dictionary
+builder.setDictionary("/path/to/dictionary");
+</code></pre>
+<h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
+<p>Sets the user dictionary URI.</p>
+<pre><code class="language-javascript">builder.setUserDictionary("/path/to/user_dictionary");
+</code></pre>
+<h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
+<p>Controls whether whitespace tokens appear in the output.</p>
+<pre><code class="language-javascript">builder.setKeepWhitespace(true);
+</code></pre>
+<h4 id="appendcharacterfilterkind-args"><a class="header" href="#appendcharacterfilterkind-args"><code>appendCharacterFilter(kind, args?)</code></a></h4>
+<p>Appends a character filter to the preprocessing pipeline.</p>
+<pre><code class="language-javascript">builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+</code></pre>
+<h4 id="appendtokenfilterkind-args"><a class="header" href="#appendtokenfilterkind-args"><code>appendTokenFilter(kind, args?)</code></a></h4>
+<p>Appends a token filter to the postprocessing pipeline.</p>
+<pre><code class="language-javascript">builder.appendTokenFilter("lowercase", {});
+</code></pre>
+<h3 id="build-3"><a class="header" href="#build-3">Build</a></h3>
+<h4 id="build-4"><a class="header" href="#build-4"><code>build()</code></a></h4>
+<p>Builds and returns a <code>Tokenizer</code> with the configured settings.</p>
+<pre><code class="language-javascript">const tokenizer = builder.build();
+</code></pre>
+<h2 id="tokenizer-1"><a class="header" href="#tokenizer-1">Tokenizer</a></h2>
+<p><code>Tokenizer</code> performs morphological analysis on text.</p>
+<h3 id="creating-a-tokenizer-1"><a class="header" href="#creating-a-tokenizer-1">Creating a Tokenizer</a></h3>
+<h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
+<p>Creates a tokenizer directly from a loaded dictionary.</p>
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
+
+const dictionary = loadDictionary("embedded://ipadic");
+const tokenizer = new Tokenizer(dictionary, "normal");
+</code></pre>
+<h3 id="tokenizer-methods-1"><a class="header" href="#tokenizer-methods-1">Tokenizer Methods</a></h3>
+<h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
+<p>Tokenizes the input text and returns an array of <code>Token</code> objects.</p>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenize("形態素解析");
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Token[]</code></p>
+<h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
+<p>Returns the N-best tokenization results, each containing tokens and total path cost.</p>
+<pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
+for (const { tokens, cost } of results) {
+  console.log(cost, tokens.map((t) =&gt; t.surface));
+}
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+<tr><td><code>n</code></td><td><code>number</code></td><td>Number of results to return</td></tr>
+<tr><td><code>unique</code></td><td><code>boolean</code></td><td>Deduplicate results (default: <code>false</code>)</td></tr>
+<tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>Maximum cost difference from the best path (default: <code>undefined</code>)</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;{ tokens: Token[], cost: number }&gt;</code></p>
+<h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
+<p><code>Token</code> represents a single morphological token.</p>
+<h3 id="properties-2"><a class="header" href="#properties-2">Properties</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>Start byte position in the original text</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>End byte position in the original text</td></tr>
+<tr><td><code>position</code></td><td><code>number</code></td><td>Token position index</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>Dictionary word ID</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td><code>true</code> if the word is not in the dictionary</td></tr>
+<tr><td><code>details</code></td><td><code>string[] | null</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
+</tbody></table>
+</div>
+<h3 id="token-methods-1"><a class="header" href="#token-methods-1">Token Methods</a></h3>
+<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
+<p>Returns the detail string at the specified index, or <code>null</code> if the index is out of range.</p>
+<pre><code class="language-javascript">const token = tokenizer.tokenize("東京")[0];
+const pos = token.getDetail(0);      // e.g., "名詞"
+const subpos = token.getDetail(1);   // e.g., "固有名詞"
+const reading = token.getDetail(7);  // e.g., "トウキョウ"
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>Zero-based index into the details array</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>string | null</code></p>
+<p>The structure of <code>details</code> depends on the dictionary:</p>
+<ul>
+<li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
+<li><strong>UniDic</strong>: Detailed morphological features following the UniDic specification</li>
+<li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-1"><a class="header" href="#dictionary-management-1">Dictionary Management</a></h1>
+<p>Lindera Node.js provides functions for loading, building, and managing dictionaries used in morphological analysis.</p>
+<h2 id="loading-dictionaries-1"><a class="header" href="#loading-dictionaries-1">Loading Dictionaries</a></h2>
+<h3 id="system-dictionaries-1"><a class="header" href="#system-dictionaries-1">System Dictionaries</a></h3>
+<p>Use <code>loadDictionary(uri)</code> to load a system dictionary.</p>
+<p><strong>Embedded dictionaries</strong> (requires the corresponding <code>embed-*</code> feature):</p>
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
+
+const dictionary = loadDictionary("embedded://ipadic");
+</code></pre>
+<p><strong>External dictionaries</strong> (loaded from a directory on disk):</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("/path/to/dictionary");
+</code></pre>
+<h3 id="user-dictionaries-1"><a class="header" href="#user-dictionaries-1">User Dictionaries</a></h3>
+<p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata();
+const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+</code></pre>
+<p>Pass the user dictionary when building a tokenizer:</p>
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+
+const dictionary = loadDictionary("embedded://ipadic");
+const metadata = new Metadata();
+const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+
+const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+</code></pre>
+<p>Or via the builder:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .setUserDictionary("/path/to/user_dictionary")
+  .build();
+</code></pre>
+<h2 id="building-dictionaries-1"><a class="header" href="#building-dictionaries-1">Building Dictionaries</a></h2>
+<h3 id="system-dictionary-2"><a class="header" href="#system-dictionary-2">System Dictionary</a></h3>
+<p>Build a system dictionary from source files:</p>
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
+buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
+</code></pre>
+<p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
+<h3 id="user-dictionary-3"><a class="header" href="#user-dictionary-3">User Dictionary</a></h3>
+<p>Build a user dictionary from a CSV file:</p>
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata();
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+</code></pre>
+<p>The <code>metadata</code> parameter is optional. When omitted, default metadata values are used:</p>
+<pre><code class="language-javascript">buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+</code></pre>
+<h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
+<p>The <code>Metadata</code> class configures dictionary parameters.</p>
+<h3 id="creating-metadata-1"><a class="header" href="#creating-metadata-1">Creating Metadata</a></h3>
+<pre><code class="language-javascript">const { Metadata, CompressionAlgorithm } = require("lindera");
+
+// Default metadata
+const metadata = new Metadata();
+
+// Custom metadata
+const metadata = new Metadata({
+  name: "my_dictionary",
+  encoding: "UTF-8",
+  compressAlgorithm: CompressionAlgorithm.Deflate,
+  defaultWordCost: -10000,
+});
+</code></pre>
+<h3 id="loading-from-json-1"><a class="header" href="#loading-from-json-1">Loading from JSON</a></h3>
+<pre><code class="language-javascript">const metadata = Metadata.fromJsonFile("metadata.json");
+</code></pre>
+<h3 id="properties-3"><a class="header" href="#properties-3">Properties</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
+<tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
+<tr><td><code>compressAlgorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>Compression algorithm</td></tr>
+<tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>Default cost for unknown words</td></tr>
+<tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default left context ID</td></tr>
+<tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default right context ID</td></tr>
+<tr><td><code>defaultFieldValue</code></td><td><code>string</code></td><td><code>"*"</code></td><td>Default value for missing fields</td></tr>
+<tr><td><code>flexibleCsv</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Allow flexible CSV parsing</td></tr>
+<tr><td><code>skipInvalidCostOrId</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Skip entries with invalid cost or ID</td></tr>
+<tr><td><code>normalizeDetails</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Normalize morphological details</td></tr>
+<tr><td><code>dictionarySchema</code></td><td><code>Schema</code></td><td>IPADIC schema</td><td>Schema for the main dictionary</td></tr>
+<tr><td><code>userDictionarySchema</code></td><td><code>Schema</code></td><td>Minimal schema</td><td>Schema for user dictionaries</td></tr>
+</tbody></table>
+</div>
+<p>All properties support both getting and setting:</p>
+<pre><code class="language-javascript">const metadata = new Metadata();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+</code></pre>
+<h3 id="toobject"><a class="header" href="#toobject"><code>toObject()</code></a></h3>
+<p>Returns a plain object representation of the metadata:</p>
+<pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
+console.log(metadata.toObject());
+</code></pre>
+<h3 id="compressionalgorithm-1"><a class="header" href="#compressionalgorithm-1">CompressionAlgorithm</a></h3>
+<p>Available compression algorithms:</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE compression (default)</td></tr>
+<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib compression</td></tr>
+<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip compression</td></tr>
+<tr><td><code>CompressionAlgorithm.Raw</code></td><td>No compression</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="text-processing-pipeline-1"><a class="header" href="#text-processing-pipeline-1">Text Processing Pipeline</a></h1>
+<p>Lindera Node.js supports a composable text processing pipeline that applies character filters before tokenization and token filters after tokenization. Filters are added to the <code>TokenizerBuilder</code> and executed in the order they are appended.</p>
+<pre><code class="language-text">Input Text
+  --&gt; Character Filters (preprocessing)
+  --&gt; Tokenization
+  --&gt; Token Filters (postprocessing)
+  --&gt; Output Tokens
+</code></pre>
+<h2 id="character-filters-2"><a class="header" href="#character-filters-2">Character Filters</a></h2>
+<p>Character filters transform the input text before tokenization.</p>
+<h3 id="unicode_normalize-2"><a class="header" href="#unicode_normalize-2">unicode_normalize</a></h3>
+<p>Applies Unicode normalization to the input text.</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
+  .build();
+</code></pre>
+<p>Supported normalization forms: <code>"nfc"</code>, <code>"nfkc"</code>, <code>"nfd"</code>, <code>"nfkd"</code>.</p>
+<h3 id="mapping-2"><a class="header" href="#mapping-2">mapping</a></h3>
+<p>Replaces characters or strings according to a mapping table.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("mapping", {
+    mapping: {
+      "\u30fc": "-",
+      "\uff5e": "~",
+    },
+  })
+  .build();
+</code></pre>
+<h3 id="japanese_iteration_mark-2"><a class="header" href="#japanese_iteration_mark-2">japanese_iteration_mark</a></h3>
+<p>Resolves Japanese iteration marks (odoriji) into their full forms.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendCharacterFilter("japanese_iteration_mark", {
+    normalize_kanji: true,
+    normalize_kana: true,
+  })
+  .build();
+</code></pre>
+<h2 id="token-filters-2"><a class="header" href="#token-filters-2">Token Filters</a></h2>
+<p>Token filters transform or remove tokens after tokenization.</p>
+<h3 id="lowercase-1"><a class="header" href="#lowercase-1">lowercase</a></h3>
+<p>Converts token surface forms to lowercase.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("lowercase", {})
+  .build();
+</code></pre>
+<h3 id="japanese_base_form-1"><a class="header" href="#japanese_base_form-1">japanese_base_form</a></h3>
+<p>Replaces inflected forms with their base (dictionary) form using the morphological details from the dictionary.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_base_form", {})
+  .build();
+</code></pre>
+<h3 id="japanese_stop_tags-1"><a class="header" href="#japanese_stop_tags-1">japanese_stop_tags</a></h3>
+<p>Removes tokens whose part-of-speech matches any of the specified tags.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_stop_tags", {
+    tags: ["助詞", "助動詞"],
+  })
+  .build();
+</code></pre>
+<h3 id="japanese_keep_tags-1"><a class="header" href="#japanese_keep_tags-1">japanese_keep_tags</a></h3>
+<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed.</p>
+<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .appendTokenFilter("japanese_keep_tags", {
+    tags: ["名詞"],
+  })
+  .build();
+</code></pre>
+<h2 id="complete-pipeline-example-1"><a class="header" href="#complete-pipeline-example-1">Complete Pipeline Example</a></h2>
+<p>The following example combines multiple character filters and token filters into a single pipeline:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("embedded://ipadic")
+  // Preprocessing
+  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
+  .appendCharacterFilter("japanese_iteration_mark", {
+    normalize_kanji: true,
+    normalize_kana: true,
+  })
+  // Postprocessing
+  .appendTokenFilter("japanese_base_form", {})
+  .appendTokenFilter("japanese_stop_tags", {
+    tags: ["助詞", "助動詞", "記号"],
+  })
+  .appendTokenFilter("lowercase", {})
+  .build();
+
+const tokens = tokenizer.tokenize("Ｌｉｎｄｅｒａは形態素解析を行うライブラリです。");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details.join(",")}`);
+}
+</code></pre>
+<p>In this pipeline:</p>
+<ol>
+<li><code>unicode_normalize</code> converts full-width characters to half-width (NFKC normalization)</li>
+<li><code>japanese_iteration_mark</code> resolves iteration marks</li>
+<li><code>japanese_base_form</code> converts inflected tokens to base form</li>
+<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
+<li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="training-1"><a class="header" href="#training-1">Training</a></h1>
+<p>Lindera Node.js supports training custom CRF-based morphological analysis models from annotated corpora. This functionality requires the <code>train</code> feature.</p>
+<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
+<p>Build lindera-nodejs with the <code>train</code> feature enabled (enabled by default):</p>
+<pre><code class="language-bash">npm run build -- --features train
+</code></pre>
+<h2 id="training-a-model-1"><a class="header" href="#training-a-model-1">Training a Model</a></h2>
+<p>Use <code>train()</code> to train a CRF model from a seed lexicon and annotated corpus:</p>
+<pre><code class="language-javascript">const { train } = require("lindera");
+
+train({
+  seed: "resources/training/seed.csv",
+  corpus: "resources/training/corpus.txt",
+  charDef: "resources/training/char.def",
+  unkDef: "resources/training/unk.def",
+  featureDef: "resources/training/feature.def",
+  rewriteDef: "resources/training/rewrite.def",
+  output: "/tmp/model.dat",
+  lambda: 0.01,
+  maxIter: 100,
+  maxThreads: 4,
+});
+</code></pre>
+<h3 id="training-parameters-1"><a class="header" href="#training-parameters-1">Training Parameters</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>seed</code></td><td><code>string</code></td><td>required</td><td>Path to the seed lexicon file (CSV format)</td></tr>
+<tr><td><code>corpus</code></td><td><code>string</code></td><td>required</td><td>Path to the annotated training corpus</td></tr>
+<tr><td><code>charDef</code></td><td><code>string</code></td><td>required</td><td>Path to the character definition file (char.def)</td></tr>
+<tr><td><code>unkDef</code></td><td><code>string</code></td><td>required</td><td>Path to the unknown word definition file (unk.def)</td></tr>
+<tr><td><code>featureDef</code></td><td><code>string</code></td><td>required</td><td>Path to the feature definition file (feature.def)</td></tr>
+<tr><td><code>rewriteDef</code></td><td><code>string</code></td><td>required</td><td>Path to the rewrite rule definition file (rewrite.def)</td></tr>
+<tr><td><code>output</code></td><td><code>string</code></td><td>required</td><td>Output path for the trained model file</td></tr>
+<tr><td><code>lambda</code></td><td><code>number</code></td><td><code>0.01</code></td><td>L1 regularization cost (0.0--1.0)</td></tr>
+<tr><td><code>maxIter</code></td><td><code>number</code></td><td><code>100</code></td><td>Maximum number of training iterations</td></tr>
+<tr><td><code>maxThreads</code></td><td><code>number | undefined</code></td><td><code>undefined</code></td><td>Number of threads (undefined = auto-detect CPU cores)</td></tr>
+</tbody></table>
+</div>
+<h2 id="exporting-a-trained-model-1"><a class="header" href="#exporting-a-trained-model-1">Exporting a Trained Model</a></h2>
+<p>After training, export the model to dictionary source files using <code>exportModel()</code>:</p>
+<pre><code class="language-javascript">const { exportModel } = require("lindera");
+
+exportModel({
+  model: "/tmp/model.dat",
+  output: "/tmp/dictionary_source",
+  metadata: "resources/training/metadata.json",
+});
+</code></pre>
+<h3 id="export-parameters-2"><a class="header" href="#export-parameters-2">Export Parameters</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>model</code></td><td><code>string</code></td><td>required</td><td>Path to the trained model file (.dat)</td></tr>
+<tr><td><code>output</code></td><td><code>string</code></td><td>required</td><td>Output directory for dictionary source files</td></tr>
+<tr><td><code>metadata</code></td><td><code>string | undefined</code></td><td><code>undefined</code></td><td>Path to a base metadata.json file</td></tr>
+</tbody></table>
+</div>
+<p>The export creates the following files in the output directory:</p>
+<ul>
+<li><code>lex.csv</code> -- Lexicon entries with trained costs</li>
+<li><code>matrix.def</code> -- Connection cost matrix</li>
+<li><code>unk.def</code> -- Unknown word definitions</li>
+<li><code>char.def</code> -- Character category definitions</li>
+<li><code>metadata.json</code> -- Updated metadata (when <code>metadata</code> parameter is provided)</li>
+</ul>
+<h2 id="complete-workflow-1"><a class="header" href="#complete-workflow-1">Complete Workflow</a></h2>
+<p>The full workflow for training and using a custom dictionary:</p>
+<pre><code class="language-javascript">const {
+  train,
+  exportModel,
+  buildDictionary,
+  Metadata,
+  TokenizerBuilder,
+} = require("lindera");
+
+// Step 1: Train the CRF model
+train({
+  seed: "resources/training/seed.csv",
+  corpus: "resources/training/corpus.txt",
+  charDef: "resources/training/char.def",
+  unkDef: "resources/training/unk.def",
+  featureDef: "resources/training/feature.def",
+  rewriteDef: "resources/training/rewrite.def",
+  output: "/tmp/model.dat",
+  lambda: 0.01,
+  maxIter: 100,
+});
+
+// Step 2: Export to dictionary source files
+exportModel({
+  model: "/tmp/model.dat",
+  output: "/tmp/dictionary_source",
+  metadata: "resources/training/metadata.json",
+});
+
+// Step 3: Build the dictionary from exported source files
+const metadata = Metadata.fromJsonFile("/tmp/dictionary_source/metadata.json");
+buildDictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata);
+
+// Step 4: Use the trained dictionary
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("/tmp/dictionary")
+  .setMode("normal")
+  .build();
+
+const tokens = tokenizer.tokenize("形態素解析のテスト");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details.join(",")}`);
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-wasm"><a class="header" href="#lindera-wasm">Lindera WASM</a></h1>
 <p>Lindera WASM provides WebAssembly bindings for Lindera's morphological analysis engine, built with <a href="https://rustwasm.github.io/wasm-bindgen/">wasm-bindgen</a>. It enables Japanese, Korean, and Chinese text tokenization directly in web browsers, Node.js, and bundler environments.</p>
 <h2 id="distribution-formats"><a class="header" href="#distribution-formats">Distribution Formats</a></h2>
 <p>Lindera WASM supports multiple distribution formats via <a href="https://rustwasm.github.io/wasm-pack/">wasm-pack</a>:</p>
 <div class="table-wrapper"><table><thead><tr><th>Target</th><th>Use Case</th><th>Module System</th></tr></thead><tbody>
 <tr><td><code>web</code></td><td>Browser ESM</td><td>ES Modules</td></tr>
-<tr><td><code>nodejs</code></td><td>Node.js</td><td>CommonJS</td></tr>
 <tr><td><code>bundler</code></td><td>Webpack, Vite, Rollup</td><td>ES Modules (bundler-resolved)</td></tr>
 </tbody></table>
 </div>
@@ -2768,10 +3372,9 @@ for token in tokens:
 <li><a href="./lindera-wasm/tokenizer_api.html">Tokenizer API</a> -- Full API reference for JavaScript/TypeScript</li>
 <li><a href="./lindera-wasm/dictionary_management.html">Dictionary Management</a> -- Loading and building dictionaries</li>
 <li><a href="./lindera-wasm/browser_usage.html">Browser Usage</a> -- Integration with web applications</li>
-<li><a href="./lindera-wasm/nodejs_usage.html">Node.js Usage</a> -- Server-side usage with Node.js</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="installation-3"><a class="header" href="#installation-3">Installation</a></h1>
-<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation-4"><a class="header" href="#installation-4">Installation</a></h1>
+<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
 <ul>
 <li><a href="https://www.rust-lang.org/tools/install">Rust</a> (stable toolchain)</li>
 <li><a href="https://rustwasm.github.io/wasm-pack/installer/">wasm-pack</a> (v0.10+)</li>
@@ -2780,9 +3383,6 @@ for token in tokens:
 <p>Build the WASM package for your target environment. You must enable at least one dictionary feature flag to embed a dictionary.</p>
 <h3 id="web-es-modules-for-browsers"><a class="header" href="#web-es-modules-for-browsers">Web (ES Modules for browsers)</a></h3>
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
-</code></pre>
-<h3 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h3>
-<pre><code class="language-bash">wasm-pack build --target nodejs --features embed-ipadic
 </code></pre>
 <h3 id="bundler-webpack-vite-rollup"><a class="header" href="#bundler-webpack-vite-rollup">Bundler (Webpack, Vite, Rollup)</a></h3>
 <pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
@@ -2803,26 +3403,27 @@ for token in tokens:
 </code></pre>
 <h2 id="npm-package-naming-convention"><a class="header" href="#npm-package-naming-convention">NPM Package Naming Convention</a></h2>
 <p>When publishing to npm, the recommended naming convention is:</p>
-<pre><code class="language-text">lindera-wasm-{dict}-{target}
+<pre><code class="language-text">lindera-wasm-{target}
+lindera-wasm-{target}-{dict}
 </code></pre>
 <p>Examples:</p>
 <ul>
-<li><code>lindera-wasm-ipadic-web</code></li>
-<li><code>lindera-wasm-ipadic-nodejs</code></li>
-<li><code>lindera-wasm-unidic-bundler</code></li>
-<li><code>lindera-wasm-cjk-web</code></li>
+<li><code>lindera-wasm-web</code></li>
+<li><code>lindera-wasm-web-ipadic</code></li>
+<li><code>lindera-wasm-bundler-unidic</code></li>
+<li><code>lindera-wasm-web-cjk</code></li>
 </ul>
 <p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
 <p>If pre-built packages are published to npm:</p>
-<pre><code class="language-bash">npm install lindera-wasm-ipadic-web
+<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
 </code></pre>
 <p>Or with yarn:</p>
-<pre><code class="language-bash">yarn add lindera-wasm-ipadic-web
+<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-2"><a class="header" href="#quick-start-2">Quick Start</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-3"><a class="header" href="#quick-start-3">Quick Start</a></h1>
 <h2 id="web-browser"><a class="header" href="#web-browser">Web (Browser)</a></h2>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -2845,22 +3446,9 @@ main();
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
-<h2 id="nodejs-1"><a class="header" href="#nodejs-1">Node.js</a></h2>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token =&gt; {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
-</code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -2886,7 +3474,7 @@ async function main() {
 
 main();
 </code></pre>
-<h2 id="n-best-tokenization-3"><a class="header" href="#n-best-tokenization-3">N-Best Tokenization</a></h2>
+<h2 id="n-best-tokenization-4"><a class="header" href="#n-best-tokenization-4">N-Best Tokenization</a></h2>
 <p>Retrieve multiple tokenization candidates ranked by cost:</p>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 results.forEach((result, rank) =&gt; {
@@ -2896,16 +3484,16 @@ results.forEach((result, rank) =&gt; {
     });
 });
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-1"><a class="header" href="#tokenizer-api-1">Tokenizer API</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-2"><a class="header" href="#tokenizer-api-2">Tokenizer API</a></h1>
 <p>This page documents the JavaScript/TypeScript API exposed by lindera-wasm.</p>
-<h2 id="tokenizerbuilder-2"><a class="header" href="#tokenizerbuilder-2">TokenizerBuilder</a></h2>
+<h2 id="tokenizerbuilder-3"><a class="header" href="#tokenizerbuilder-3">TokenizerBuilder</a></h2>
 <p>Builder class for creating a configured <code>Tokenizer</code> instance.</p>
 <h3 id="constructor"><a class="header" href="#constructor">Constructor</a></h3>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 </code></pre>
 <p>Creates a new builder with default settings.</p>
 <h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
+<h4 id="setmodemode-1"><a class="header" href="#setmodemode-1"><code>setMode(mode)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>mode</code> (string) -- <code>"normal"</code> or <code>"decompose"</code></li>
@@ -2921,7 +3509,7 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
-<h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
+<h4 id="setuserdictionaryuri-1"><a class="header" href="#setuserdictionaryuri-1"><code>setUserDictionary(uri)</code></a></h4>
 <p>Sets a user-defined dictionary.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Path or URI to the user dictionary</li>
@@ -2929,7 +3517,7 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
 </code></pre>
-<h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
+<h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>Sets whether whitespace tokens are preserved in the output.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>keep</code> (boolean) -- <code>true</code> to keep whitespace tokens</li>
@@ -2965,14 +3553,14 @@ results.forEach((result, rank) =&gt; {
     tags: ["助詞", "助動詞", "記号"]
 });
 </code></pre>
-<h4 id="build-3"><a class="header" href="#build-3"><code>build()</code></a></h4>
+<h4 id="build-5"><a class="header" href="#build-5"><code>build()</code></a></h4>
 <p>Builds and returns a configured <code>Tokenizer</code> instance. Consumes the builder.</p>
 <ul>
 <li><strong>Returns</strong>: <code>Tokenizer</code></li>
 </ul>
 <pre><code class="language-javascript">const tokenizer = builder.build();
 </code></pre>
-<h2 id="tokenizer-1"><a class="header" href="#tokenizer-1">Tokenizer</a></h2>
+<h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
 <p>The main tokenizer class. Can be created via <code>TokenizerBuilder.build()</code> or directly via the constructor.</p>
 <h3 id="tokenizer-constructor"><a class="header" href="#tokenizer-constructor">Tokenizer Constructor</a></h3>
 <pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
@@ -2986,8 +3574,8 @@ results.forEach((result, rank) =&gt; {
 </ul>
 </li>
 </ul>
-<h3 id="tokenizer-methods-1"><a class="header" href="#tokenizer-methods-1">Tokenizer Methods</a></h3>
-<h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
+<h3 id="tokenizer-methods-2"><a class="header" href="#tokenizer-methods-2">Tokenizer Methods</a></h3>
+<h4 id="tokenizetext-2"><a class="header" href="#tokenizetext-2"><code>tokenize(text)</code></a></h4>
 <p>Tokenizes the input text.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>text</code> (string) -- Text to tokenize</li>
@@ -2995,7 +3583,7 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
 </code></pre>
-<h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
+<h4 id="tokenizenbesttext-n-unique-costthreshold-1"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold-1"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>Returns N-best tokenization results ordered by total path cost.</p>
 <ul>
 <li><strong>Parameters</strong>:
@@ -3010,9 +3598,9 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 </code></pre>
-<h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
+<h2 id="token-2"><a class="header" href="#token-2">Token</a></h2>
 <p>Represents a single token produced by the tokenizer.</p>
-<h3 id="properties-2"><a class="header" href="#properties-2">Properties</a></h3>
+<h3 id="properties-4"><a class="header" href="#properties-4">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
 <tr><td><code>byteStart</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
@@ -3023,8 +3611,8 @@ results.forEach((result, rank) =&gt; {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-methods-1"><a class="header" href="#token-methods-1">Token Methods</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
+<h3 id="token-methods-2"><a class="header" href="#token-methods-2">Token Methods</a></h3>
+<h4 id="getdetailindex-1"><a class="header" href="#getdetailindex-1"><code>getDetail(index)</code></a></h4>
 <p>Returns the detail string at the specified index.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>index</code> (number) -- Zero-based index into the details array</li>
@@ -3047,7 +3635,7 @@ const reading = token.getDetail(7); // e.g., "トウキョウ"
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -3091,7 +3679,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>Returns</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
 
 console.log(version()); // e.g., "2.1.1"
 </code></pre>
@@ -3110,11 +3698,11 @@ console.log(version()); // e.g., "2.1.1"
 <tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
 <tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-1"><a class="header" href="#dictionary-management-1">Dictionary Management</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="dictionary-management-2"><a class="header" href="#dictionary-management-2">Dictionary Management</a></h1>
 <h2 id="embedded-dictionaries-1"><a class="header" href="#embedded-dictionaries-1">Embedded Dictionaries</a></h2>
 <p>The simplest way to use dictionaries in WASM is to embed them at build time using feature flags. Embedded dictionaries are loaded via the <code>embedded://</code> URI scheme.</p>
 <h3 id="loading-an-embedded-dictionary"><a class="header" href="#loading-an-embedded-dictionary">Loading an Embedded Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -3136,14 +3724,14 @@ const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
 <p>You can also pass a loaded dictionary to the <code>Tokenizer</code> constructor:</p>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h2 id="dictionary-class"><a class="header" href="#dictionary-class">Dictionary Class</a></h2>
 <p>The <code>Dictionary</code> class represents a loaded morphological analysis dictionary.</p>
-<h3 id="properties-3"><a class="header" href="#properties-3">Properties</a></h3>
+<h3 id="properties-5"><a class="header" href="#properties-5">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td>Dictionary name (e.g., <code>"ipadic"</code>)</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td>Character encoding of the dictionary</td></tr>
@@ -3154,16 +3742,16 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 console.log(dict.name);     // "ipadic"
 console.log(dict.encoding); // "utf-8"
 </code></pre>
-<h2 id="user-dictionaries-1"><a class="header" href="#user-dictionaries-1">User Dictionaries</a></h2>
+<h2 id="user-dictionaries-2"><a class="header" href="#user-dictionaries-2">User Dictionaries</a></h2>
 <p>User dictionaries allow you to add custom words that are not in the system dictionary.</p>
 <h3 id="loading-a-user-dictionary"><a class="header" href="#loading-a-user-dictionary">Loading a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
@@ -3175,10 +3763,10 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 </code></pre>
 <p>Each line contains: <code>surface,part_of_speech,reading</code></p>
-<h2 id="building-dictionaries-1"><a class="header" href="#building-dictionaries-1">Building Dictionaries</a></h2>
+<h2 id="building-dictionaries-2"><a class="header" href="#building-dictionaries-2">Building Dictionaries</a></h2>
 <p>You can build compiled dictionaries from source files using the JavaScript API.</p>
 <h3 id="building-a-system-dictionary"><a class="header" href="#building-a-system-dictionary">Building a System Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = {
     name: "custom-dict",
@@ -3189,12 +3777,12 @@ const metadata = {
 buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 </code></pre>
 <h3 id="building-a-user-dictionary"><a class="header" href="#building-a-user-dictionary">Building a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 </code></pre>
 <p>The <code>metadata</code> parameter is optional for <code>buildUserDictionary</code>. If omitted, default metadata is used.</p>
-<h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
+<h2 id="metadata-2"><a class="header" href="#metadata-2">Metadata</a></h2>
 <p>The <code>Metadata</code> object contains dictionary configuration such as:</p>
 <ul>
 <li>Dictionary name</li>
@@ -3206,7 +3794,7 @@ buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 <div style="break-before: page; page-break-before: always;"></div><h1 id="browser-usage"><a class="header" href="#browser-usage">Browser Usage</a></h1>
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -3284,7 +3872,7 @@ module.exports = {
 };
 </code></pre>
 <p>Then import using the bundler target build:</p>
-<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
@@ -3322,108 +3910,6 @@ export default {
 <li><strong>Reuse the tokenizer</strong>: Create the <code>Tokenizer</code> instance once and reuse it for multiple calls to <code>tokenize()</code>.</li>
 <li><strong>Web Workers</strong>: For heavy tokenization workloads, consider running Lindera in a Web Worker to avoid blocking the main thread.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="nodejs-usage"><a class="header" href="#nodejs-usage">Node.js Usage</a></h1>
-<h2 id="commonjs-require"><a class="header" href="#commonjs-require">CommonJS (require)</a></h2>
-<p>When built with <code>--target nodejs</code>, the package can be loaded with <code>require()</code>:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token =&gt; {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
-</code></pre>
-<p>No explicit WASM initialization is needed with the Node.js target -- the module handles it automatically.</p>
-<h2 id="es-modules-import"><a class="header" href="#es-modules-import">ES Modules (import)</a></h2>
-<p>If your Node.js project uses ES Modules (with <code>"type": "module"</code> in <code>package.json</code> or <code>.mjs</code> files):</p>
-<pre><code class="language-javascript">import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("形態素解析");
-for (const token of tokens) {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-}
-</code></pre>
-<h2 id="server-side-tokenization-example"><a class="header" href="#server-side-tokenization-example">Server-Side Tokenization Example</a></h2>
-<p>A simple Express.js endpoint that tokenizes input text:</p>
-<pre><code class="language-javascript">const express = require('express');
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const app = express();
-app.use(express.json());
-
-// Create the tokenizer once at startup
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-app.post('/tokenize', (req, res) =&gt; {
-    const { text } = req.body;
-    if (!text) {
-        return res.status(400).json({ error: 'Missing "text" field' });
-    }
-
-    const tokens = tokenizer.tokenize(text);
-    const result = tokens.map(token =&gt; ({
-        surface: token.surface,
-        details: token.details,
-        byteStart: token.byteStart,
-        byteEnd: token.byteEnd,
-    }));
-
-    res.json({ tokens: result });
-});
-
-app.listen(3000, () =&gt; {
-    console.log('Tokenization server running on port 3000');
-});
-</code></pre>
-<h3 id="example-request"><a class="header" href="#example-request">Example Request</a></h3>
-<pre><code class="language-bash">curl -X POST http://localhost:3000/tokenize \
-  -H "Content-Type: application/json" \
-  -d '{"text": "関西国際空港限定トートバッグ"}'
-</code></pre>
-<h2 id="using-multiple-dictionaries"><a class="header" href="#using-multiple-dictionaries">Using Multiple Dictionaries</a></h2>
-<p>If your application needs to tokenize multiple languages, you can create separate tokenizers:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require('lindera-wasm-cjk-nodejs');
-
-// Japanese tokenizer
-const jaBuilder = new TokenizerBuilder();
-jaBuilder.setDictionary("embedded://ipadic");
-jaBuilder.setMode("normal");
-const jaTokenizer = jaBuilder.build();
-
-// Korean tokenizer
-const koBuilder = new TokenizerBuilder();
-koBuilder.setDictionary("embedded://ko-dic");
-koBuilder.setMode("normal");
-const koTokenizer = koBuilder.build();
-
-console.log(jaTokenizer.tokenize("東京タワー"));
-console.log(koTokenizer.tokenize("서울타워"));
-</code></pre>
-<p>This requires building with the <code>embed-cjk</code> feature flag, which includes IPADIC, ko-dic, and Jieba dictionaries.</p>
-<h2 id="n-best-tokenization-4"><a class="header" href="#n-best-tokenization-4">N-Best Tokenization</a></h2>
-<p>Retrieve multiple candidate tokenizations on the server:</p>
-<pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
-for (const result of results) {
-    console.log(`Cost: ${result.cost}`);
-    for (const token of result.tokens) {
-        console.log(`  ${token.surface}\t${token.details.join(',')}`);
-    }
-}
-</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ipadic"><a class="header" href="#lindera-ipadic">Lindera IPADIC</a></h1>
 <p>Lindera IPADIC is a Japanese dictionary crate based on <a href="https://github.com/lindera-morphology/mecab-ipadic">IPADIC</a>. IPADIC is the most common dictionary for Japanese morphological analysis.</p>
 <h2 id="contents-2"><a class="header" href="#contents-2">Contents</a></h2>
@@ -3488,7 +3974,7 @@ for (const result of results) {
 <ul>
 <li><a href="https://docs.rs/lindera-ipadic">lindera-ipadic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-4"><a class="header" href="#build-4">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-6"><a class="header" href="#build-6">Build</a></h1>
 <p>This page describes how to build the IPADIC dictionary from source files.</p>
 <h2 id="build-system-dictionary"><a class="header" href="#build-system-dictionary">Build system dictionary</a></h2>
 <p>Download the IPADIC source files and build the dictionary:</p>
@@ -3580,23 +4066,22 @@ EOS
 EOS
 </code></pre>
 <h2 id="rust-api-example-3"><a class="header" href="#rust-api-example-3">Rust API example</a></h2>
-<pre><pre class="playground"><code class="language-rust">use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
-fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Use embedded IPADIC dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("ipadic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }</code></pre></pre>
@@ -3664,7 +4149,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-ipadic-neologd">lindera-ipadic-neologd</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-5"><a class="header" href="#build-5">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-7"><a class="header" href="#build-7">Build</a></h1>
 <p>This page describes how to build the IPADIC NEologd dictionary from source files.</p>
 <h2 id="build-system-dictionary-1"><a class="header" href="#build-system-dictionary-1">Build system dictionary</a></h2>
 <p>Download the IPADIC NEologd source files and build the dictionary:</p>
@@ -3717,6 +4202,26 @@ EOS
 EOS
 </code></pre>
 <p>NOTE: To include IPADIC NEologd dictionary in the binary, you must build with the <code>--features=embed-ipadic-neologd</code> option.</p>
+<h2 id="rust-api-example-4"><a class="header" href="#rust-api-example-4">Rust API example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ipadic-neologd")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-unidic"><a class="header" href="#lindera-unidic">Lindera UniDic</a></h1>
 <p>Lindera UniDic is a Japanese dictionary crate based on <a href="https://github.com/lindera-morphology/unidic-mecab">UniDic</a>, which uses uniform word unit definitions. UniDic provides more detailed morphological information than IPADIC, with 21 fields per entry.</p>
 <h2 id="contents-4"><a class="header" href="#contents-4">Contents</a></h2>
@@ -3797,7 +4302,7 @@ EOS
 <ul>
 <li><a href="https://docs.rs/lindera-unidic">lindera-unidic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-6"><a class="header" href="#build-6">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-8"><a class="header" href="#build-8">Build</a></h1>
 <p>This page describes how to build the UniDic dictionary from source files.</p>
 <h2 id="build-system-dictionary-2"><a class="header" href="#build-system-dictionary-2">Build system dictionary</a></h2>
 <p>Download the UniDic source files and build the dictionary:</p>
@@ -3865,24 +4370,23 @@ EOS
 EOS
 </code></pre>
 <p>NOTE: To include UniDic dictionary in the binary, you must build with the <code>--features=embed-unidic</code> option.</p>
-<h2 id="rust-api-example-4"><a class="header" href="#rust-api-example-4">Rust API example</a></h2>
-<pre><pre class="playground"><code class="language-rust">use lindera::tokenizer::Tokenizer;
-use lindera::DictionaryConfig;
+<h2 id="rust-api-example-5"><a class="header" href="#rust-api-example-5">Rust API example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
-fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    // Use embedded UniDic dictionary
-    let tokenizer = Tokenizer::new(
-        DictionaryConfig {
-            kind: Some("unidic".to_string()),
-            path: None,
-        },
-        None,
-        None,
-    )?;
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://unidic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
 
-    let tokens = tokenizer.tokenize("日本語の形態素解析を行うことができます。")?;
-    for token in tokens {
-        println!("{}\t{}", token.surface, token.details.join(","));
+    let text = "日本語の形態素解析を行うことができます。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
     }
     Ok(())
 }</code></pre></pre>
@@ -3951,7 +4455,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-ko-dic">lindera-ko-dic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-7"><a class="header" href="#build-7">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-9"><a class="header" href="#build-9">Build</a></h1>
 <h2 id="build-system-dictionary-3"><a class="header" href="#build-system-dictionary-3">Build system dictionary</a></h2>
 <p>Download and extract the mecab-ko-dic source files, then build the dictionary:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
@@ -4008,6 +4512,26 @@ EOS
 EOS
 </code></pre>
 <p>NOTE: To include ko-dic dictionary in the binary, you must build with the <code>--features=embed-ko-dic</code> option.</p>
+<h2 id="rust-api-example-6"><a class="header" href="#rust-api-example-6">Rust API example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://ko-dic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "한국어의형태해석을실시할수있습니다.";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-cc-cedict"><a class="header" href="#lindera-cc-cedict">Lindera CC-CEDICT</a></h1>
 <p>Lindera CC-CEDICT is a Chinese dictionary crate based on <a href="https://github.com/lindera/CC-CEDICT-MeCab">CC-CEDICT-MeCab</a>.</p>
 <h2 id="contents-6"><a class="header" href="#contents-6">Contents</a></h2>
@@ -4070,7 +4594,7 @@ EOS
 <ul>
 <li><a href="https://docs.rs/lindera-cc-cedict">lindera-cc-cedict</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-8"><a class="header" href="#build-8">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-10"><a class="header" href="#build-10">Build</a></h1>
 <h2 id="build-system-dictionary-4"><a class="header" href="#build-system-dictionary-4">Build system dictionary</a></h2>
 <p>Download and extract the CC-CEDICT-MeCab source files, then build the dictionary:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
@@ -4117,6 +4641,26 @@ EOS
 EOS
 </code></pre>
 <p>NOTE: To include CC-CEDICT dictionary in the binary, you must build with the <code>--features=embed-cc-cedict</code> option.</p>
+<h2 id="rust-api-example-7"><a class="header" href="#rust-api-example-7">Rust API example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://cc-cedict")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "可以进行中文形态学分析。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-jieba"><a class="header" href="#lindera-jieba">Lindera Jieba</a></h1>
 <p>Lindera Jieba is a Chinese dictionary crate based on <a href="https://github.com/lindera/mecab-jieba">mecab-jieba</a>.</p>
 <h2 id="contents-7"><a class="header" href="#contents-7">Contents</a></h2>
@@ -4172,14 +4716,14 @@ EOS
 <ul>
 <li><a href="https://docs.rs/lindera-jieba">lindera-jieba</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="build-9"><a class="header" href="#build-9">Build</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="build-11"><a class="header" href="#build-11">Build</a></h1>
 <h2 id="build-system-dictionary-5"><a class="header" href="#build-system-dictionary-5">Build system dictionary</a></h2>
 <p>Download and extract the mecab-jieba source files, then build the dictionary:</p>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h2 id="build-user-dictionary-4"><a class="header" href="#build-user-dictionary-4">Build user dictionary</a></h2>
@@ -4196,13 +4740,51 @@ EOS
 <div style="break-before: page; page-break-before: always;"></div><h1 id="examples-7"><a class="header" href="#examples-7">Examples</a></h1>
 <h2 id="tokenize-with-external-jieba"><a class="header" href="#tokenize-with-external-jieba">Tokenize with external Jieba</a></h2>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
+</code></pre>
+<pre><code class="language-text">可以    c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
+进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
+中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
+形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
+学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+。      w,*,*,*,*,*,*,*,*,*
+EOS
 </code></pre>
 <h2 id="tokenize-with-embedded-jieba"><a class="header" href="#tokenize-with-embedded-jieba">Tokenize with embedded Jieba</a></h2>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
   --dict embedded://jieba
 </code></pre>
+<pre><code class="language-text">可以    c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
+进行    v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
+中文    nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
+形态    n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
+学      n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析    vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+。      w,*,*,*,*,*,*,*,*,*
+EOS
+</code></pre>
 <p>NOTE: To include Jieba dictionary in the binary, you must build with the <code>--features=embed-jieba</code> option.</p>
+<h2 id="rust-api-example-8"><a class="header" href="#rust-api-example-8">Rust API example</a></h2>
+<pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::tokenizer::Tokenizer;
+use lindera::LinderaResult;
+
+fn main() -&gt; LinderaResult&lt;()&gt; {
+    let dictionary = load_dictionary("embedded://jieba")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+    let tokenizer = Tokenizer::new(segmenter);
+
+    let text = "可以进行中文形态学分析。";
+    let mut tokens = tokenizer.tokenize(text)?;
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("{}\t{}", token.surface.as_ref(), details);
+    }
+    Ok(())
+}</code></pre></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>
 <ul>
@@ -4213,12 +4795,12 @@ EOS
 <li><a href="./development/contributing.html">Contributing</a> -- Guidelines for contributors</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="build--test"><a class="header" href="#build--test">Build &amp; Test</a></h1>
-<h2 id="build-10"><a class="header" href="#build-10">Build</a></h2>
+<h2 id="build-12"><a class="header" href="#build-12">Build</a></h2>
 <h3 id="default-build"><a class="header" href="#default-build">Default Build</a></h3>
 <p>Build the workspace with default features (<code>compress</code> + <code>mmap</code>):</p>
 <pre><code class="language-bash">cargo build
 </code></pre>
-<h3 id="build-with-training-support-1"><a class="header" href="#build-with-training-support-1">Build with Training Support</a></h3>
+<h3 id="build-with-training-support-2"><a class="header" href="#build-with-training-support-2">Build with Training Support</a></h3>
 <p>Include CRF-based dictionary training functionality:</p>
 <pre><code class="language-bash">cargo build --features train
 </code></pre>
@@ -4253,7 +4835,7 @@ EOS
 <p>Run Clippy with warnings treated as errors:</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
-<h2 id="documentation-1"><a class="header" href="#documentation-1">Documentation</a></h2>
+<h2 id="documentation-2"><a class="header" href="#documentation-2">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
 <p>Generate and open Rust API documentation:</p>
 <pre><code class="language-bash">cargo doc --no-deps --open
@@ -4270,7 +4852,7 @@ EOS
 <pre><code class="language-bash">markdownlint-cli2 "docs/src/**/*.md"
 </code></pre>
 <p>Rules are configured in <code>.markdownlint.json</code> at the repository root.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="feature-flags-4"><a class="header" href="#feature-flags-4">Feature Flags</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="feature-flags-5"><a class="header" href="#feature-flags-5">Feature Flags</a></h1>
 <p>Lindera uses Cargo feature flags to control optional functionality and dictionary embedding.</p>
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -4296,20 +4878,20 @@ EOS
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
 <h2 id="combination-features"><a class="header" href="#combination-features">Combination Features</a></h2>
 <p>These meta-features enable multiple dictionaries at once for multilingual applications.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Included Dictionaries</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
-<tr><td><code>embed-cjk2</code></td><td>Alternative CJK dictionary combination</td></tr>
-<tr><td><code>embed-cjk3</code></td><td>Alternative CJK dictionary combination</td></tr>
+<tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba</td></tr>
+<tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
 <h2 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h2>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.1.1", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic
@@ -4487,7 +5069,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>Each line is <code>pattern&lt;TAB&gt;replacement</code>. Patterns use <code>*</code> as a wildcard and are matched by prefix. The first matching rule in each section is applied. Different rules can be applied to unigram, left context, and right context independently, enabling fine-grained feature normalization to reduce sparsity.</p>
-<h2 id="training-parameters-1"><a class="header" href="#training-parameters-1">Training Parameters</a></h2>
+<h2 id="training-parameters-2"><a class="header" href="#training-parameters-2">Training Parameters</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Parameter</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>L1 regularization coefficient (controls overfitting)</td><td>0.01</td></tr>
 <tr><td><code>max-iterations</code></td><td>Maximum number of training iterations</td><td>100</td></tr>
@@ -4525,7 +5107,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>metadata.json</code></td><td>Dictionary metadata</td></tr>
 </tbody></table>
 </div>
-<h3 id="build-11"><a class="header" href="#build-11">Build</a></h3>
+<h3 id="build-13"><a class="header" href="#build-13">Build</a></h3>
 <p>Compile the exported source files into a binary dictionary:</p>
 <pre><code class="language-bash">lindera build --input-dir ./dict-source --output-dir ./dict-compiled
 </code></pre>
@@ -4666,7 +5248,7 @@ cargo test
 <li><code>docs: update installation instructions</code></li>
 <li><code>refactor: split large training method into smaller functions</code></li>
 </ul>
-<h2 id="documentation-2"><a class="header" href="#documentation-2">Documentation</a></h2>
+<h2 id="documentation-3"><a class="header" href="#documentation-3">Documentation</a></h2>
 <ul>
 <li>
 <p>If your change affects user-facing documentation, update the relevant files in <code>docs/src/</code>.</p>
@@ -4682,7 +5264,7 @@ cargo test
 </ul>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
 <p>When adding new dependencies, verify license compatibility. Lindera uses the MIT / Apache-2.0 dual license.</p>
-<h2 id="feature-flags-5"><a class="header" href="#feature-flags-5">Feature Flags</a></h2>
+<h2 id="feature-flags-6"><a class="header" href="#feature-flags-6">Feature Flags</a></h2>
 <p>Use <code>#[cfg(feature = "train")]</code> for conditional compilation of training-related code. See <a href="development/./feature_flags.html">Feature Flags</a> for a full list.</p>
 <h2 id="reporting-issues"><a class="header" href="#reporting-issues">Reporting Issues</a></h2>
 <p>When reporting a bug, please include:</p>

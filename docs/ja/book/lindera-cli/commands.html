@@ -321,7 +321,7 @@ EOS
 </code></pre>
 <h4 id="外部jieba中国語辞書を使用したトークナイズ"><a class="header" href="#外部jieba中国語辞書を使用したトークナイズ">外部Jieba（中国語辞書）を使用したトークナイズ</a></h4>
 <pre><code class="language-shell">% echo "可以进行中文形态学分析。" | lindera tokenize \
-  --dict /tmp/lindera-jieba-0.1.0-20260310
+  --dict /tmp/lindera-jieba-0.1.1
 </code></pre>
 <h3 id="埋め込み辞書を使用した例"><a class="header" href="#埋め込み辞書を使用した例">埋め込み辞書を使用した例</a></h3>
 <p>Linderaは、特定の機能フラグを指定してビルドすることで、バイナリに辞書を直接含めることができます。これにより、外部辞書ファイルなしでトークナイズが可能になります。</p>
@@ -656,12 +656,12 @@ EOS
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
 <h4 id="jieba中国語辞書のビルド"><a class="header" href="#jieba中国語辞書のビルド">Jieba（中国語辞書）のビルド</a></h4>
-<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.0-20260310.tar.gz "https://lindera.dev/mecab-jieba-0.1.0-20260310.tar.gz"
-% tar zxvf /tmp/mecab-jieba-0.1.0-20260310.tar.gz -C /tmp
+<pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
+% tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
 
 % lindera build \
-  --src /tmp/mecab-jieba-0.1.0-20260310 \
-  --dest /tmp/lindera-jieba-0.1.0-20260310 \
+  --src /tmp/mecab-jieba-0.1.1/dict-src \
+  --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
 <h4 id="ko-dic韓国語辞書のビルド"><a class="header" href="#ko-dic韓国語辞書のビルド">ko-dic（韓国語辞書）のビルド</a></h4>

@@ -3,7 +3,7 @@
 ## Web (Browser)
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -30,28 +30,12 @@ Expected output:
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
-## Node.js
-
-```javascript
-const { TokenizerBuilder } = require('lindera-wasm-ipadic-nodejs');
-
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-
-const tokens = tokenizer.tokenize("東京スカイツリー");
-tokens.forEach(token => {
-    console.log(`${token.surface}\t${token.details.join(',')}`);
-});
-```
-
 ## Using Filters
 
 You can add character filters and token filters to the tokenization pipeline:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     await __wbg_init();

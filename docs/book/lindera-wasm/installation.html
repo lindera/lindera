@@ -189,9 +189,6 @@
 <h3 id="web-es-modules-for-browsers"><a class="header" href="#web-es-modules-for-browsers">Web (ES Modules for browsers)</a></h3>
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
 </code></pre>
-<h3 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h3>
-<pre><code class="language-bash">wasm-pack build --target nodejs --features embed-ipadic
-</code></pre>
 <h3 id="bundler-webpack-vite-rollup"><a class="header" href="#bundler-webpack-vite-rollup">Bundler (Webpack, Vite, Rollup)</a></h3>
 <pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
 </code></pre>
@@ -211,22 +208,23 @@
 </code></pre>
 <h2 id="npm-package-naming-convention"><a class="header" href="#npm-package-naming-convention">NPM Package Naming Convention</a></h2>
 <p>When publishing to npm, the recommended naming convention is:</p>
-<pre><code class="language-text">lindera-wasm-{dict}-{target}
+<pre><code class="language-text">lindera-wasm-{target}
+lindera-wasm-{target}-{dict}
 </code></pre>
 <p>Examples:</p>
 <ul>
-<li><code>lindera-wasm-ipadic-web</code></li>
-<li><code>lindera-wasm-ipadic-nodejs</code></li>
-<li><code>lindera-wasm-unidic-bundler</code></li>
-<li><code>lindera-wasm-cjk-web</code></li>
+<li><code>lindera-wasm-web</code></li>
+<li><code>lindera-wasm-web-ipadic</code></li>
+<li><code>lindera-wasm-bundler-unidic</code></li>
+<li><code>lindera-wasm-web-cjk</code></li>
 </ul>
 <p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
 <p>If pre-built packages are published to npm:</p>
-<pre><code class="language-bash">npm install lindera-wasm-ipadic-web
+<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
 </code></pre>
 <p>Or with yarn:</p>
-<pre><code class="language-bash">yarn add lindera-wasm-ipadic-web
+<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
 </code></pre>
 
                     </main>

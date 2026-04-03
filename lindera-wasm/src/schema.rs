@@ -176,3 +176,88 @@ impl From<JsSchema> for Schema {
         schema.inner
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use super::*;
+
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_schema_new() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_id".to_string(),
+            "right_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+        ];
+        let schema = JsSchema::new(fields);
+
+        assert_eq!(schema.field_count(), 5);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_schema_field_operations() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_id".to_string(),
+            "right_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+            "reading".to_string(),
+        ];
+        let schema = JsSchema::new(fields.clone());
+
+        // field_count
+        assert_eq!(schema.field_count(), 6);
+
+        // get_field_index
+        assert_eq!(schema.get_field_index("surface"), Some(0));
+        assert_eq!(schema.get_field_index("pos"), Some(4));
+        assert_eq!(schema.get_field_index("nonexistent"), None);
+
+        // get_field_name
+        assert_eq!(schema.get_field_name(0), Some("surface".to_string()));
+        assert_eq!(schema.get_field_name(999), None);
+
+        // get_all_fields
+        let all = schema.get_all_fields();
+        assert_eq!(all, fields);
+
+        // get_custom_fields (fields beyond index 3)
+        let custom = schema.get_custom_fields();
+        assert_eq!(custom, vec!["pos".to_string(), "reading".to_string()]);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_schema_get_field_by_name() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_id".to_string(),
+            "right_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+        ];
+        let schema = JsSchema::new(fields);
+
+        // Built-in field
+        let surface_field = schema.get_field_by_name("surface").unwrap();
+        assert_eq!(surface_field.index, 0);
+        assert_eq!(surface_field.name, "surface");
+        assert!(matches!(surface_field.field_type, JsFieldType::Surface));
+
+        // Custom field
+        let pos_field = schema.get_field_by_name("pos").unwrap();
+        assert_eq!(pos_field.index, 4);
+        assert!(matches!(pos_field.field_type, JsFieldType::Custom));
+
+        // Non-existent field
+        assert!(schema.get_field_by_name("nonexistent").is_none());
+    }
+}

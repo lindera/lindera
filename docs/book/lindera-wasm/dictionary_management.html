@@ -182,7 +182,7 @@
 <h2 id="embedded-dictionaries"><a class="header" href="#embedded-dictionaries">Embedded Dictionaries</a></h2>
 <p>The simplest way to use dictionaries in WASM is to embed them at build time using feature flags. Embedded dictionaries are loaded via the <code>embedded://</code> URI scheme.</p>
 <h3 id="loading-an-embedded-dictionary"><a class="header" href="#loading-an-embedded-dictionary">Loading an Embedded Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -204,7 +204,7 @@ const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
 <p>You can also pass a loaded dictionary to the <code>Tokenizer</code> constructor:</p>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -225,13 +225,13 @@ console.log(dict.encoding); // "utf-8"
 <h2 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h2>
 <p>User dictionaries allow you to add custom words that are not in the system dictionary.</p>
 <h3 id="loading-a-user-dictionary"><a class="header" href="#loading-a-user-dictionary">Loading a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
@@ -246,7 +246,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 <h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>
 <p>You can build compiled dictionaries from source files using the JavaScript API.</p>
 <h3 id="building-a-system-dictionary"><a class="header" href="#building-a-system-dictionary">Building a System Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web-ipadic';
 
 const metadata = {
     name: "custom-dict",
@@ -257,7 +257,7 @@ const metadata = {
 buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 </code></pre>
 <h3 id="building-a-user-dictionary"><a class="header" href="#building-a-user-dictionary">Building a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 </code></pre>

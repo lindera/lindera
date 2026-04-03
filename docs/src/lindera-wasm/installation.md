@@ -15,12 +15,6 @@ Build the WASM package for your target environment. You must enable at least one
 wasm-pack build --target web --features embed-ipadic
 ```
 
-### Node.js
-
-```bash
-wasm-pack build --target nodejs --features embed-ipadic
-```
-
 ### Bundler (Webpack, Vite, Rollup)
 
 ```bash
@@ -51,15 +45,16 @@ wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 When publishing to npm, the recommended naming convention is:
 
 ```text
-lindera-wasm-{dict}-{target}
+lindera-wasm-{target}
+lindera-wasm-{target}-{dict}
 ```
 
 Examples:
 
-- `lindera-wasm-ipadic-web`
-- `lindera-wasm-ipadic-nodejs`
-- `lindera-wasm-unidic-bundler`
-- `lindera-wasm-cjk-web`
+- `lindera-wasm-web`
+- `lindera-wasm-web-ipadic`
+- `lindera-wasm-bundler-unidic`
+- `lindera-wasm-web-cjk`
 
 To set the package name before publishing, edit the `name` field in the generated `pkg/package.json`.
 
@@ -68,11 +63,11 @@ To set the package name before publishing, edit the `name` field in the generate
 If pre-built packages are published to npm:
 
 ```bash
-npm install lindera-wasm-ipadic-web
+npm install lindera-wasm-web-ipadic
 ```
 
 Or with yarn:
 
 ```bash
-yarn add lindera-wasm-ipadic-web
+yarn add lindera-wasm-web-ipadic
 ```

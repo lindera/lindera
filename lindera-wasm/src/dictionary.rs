@@ -92,3 +92,34 @@ pub fn build_user_dictionary(
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_load_dictionary() {
+        use super::load_dictionary;
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+
+        assert!(!dict.name().is_empty());
+        assert!(!dict.encoding().is_empty());
+
+        let metadata = dict.metadata();
+        assert!(!metadata.name().is_empty());
+        assert!(!metadata.encoding().is_empty());
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_load_dictionary_invalid_uri() {
+        use super::load_dictionary;
+
+        let result = load_dictionary("embedded://nonexistent");
+
+        assert!(result.is_err());
+    }
+}

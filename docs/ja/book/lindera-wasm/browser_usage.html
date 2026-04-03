@@ -181,7 +181,7 @@
                         <h1 id="ブラウザでの使用"><a class="header" href="#ブラウザでの使用">ブラウザでの使用</a></h1>
 <h2 id="es-module-インポート"><a class="header" href="#es-module-インポート">ES Module インポート</a></h2>
 <p>ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの <code>__wbg_init</code> がこの初期化を処理します。</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic-web';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -259,7 +259,7 @@ module.exports = {
 };
 </code></pre>
 <p>次に、bundler ターゲットビルドを使用してインポートします：</p>
-<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-ipadic-bundler';
+<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
@@ -306,7 +306,7 @@ export default {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../lindera-wasm/nodejs_usage.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../lindera-ipadic.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -320,7 +320,7 @@ export default {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../lindera-wasm/nodejs_usage.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../lindera-ipadic.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

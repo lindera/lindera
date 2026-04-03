@@ -28,3 +28,21 @@ impl JsLinderaError {
         self.to_string()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "wasm32")]
+    use super::*;
+
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_lindera_error() {
+        let error = JsLinderaError::new("test error".to_string());
+
+        assert_eq!(error.message, "test error");
+        assert_eq!(error.js_to_string(), "test error");
+    }
+}

@@ -191,7 +191,7 @@ Loads a dictionary from the specified URI.
 - **Returns**: `Dictionary`
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-ipadic-web';
+import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 ```
@@ -232,7 +232,7 @@ Returns the version string of the lindera-wasm package.
 - **Returns**: `string`
 
 ```javascript
-import { version } from 'lindera-wasm-ipadic-web';
+import { version } from 'lindera-wasm-web-ipadic';
 
 console.log(version()); // e.g., "2.1.1"
 ```

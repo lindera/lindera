@@ -183,11 +183,8 @@
 Specify the path to the following file in the environment variable <code>LINDERA_CONFIG_PATH</code>. You can use it easily without having to code the behavior of the tokenizer in Rust code.</p>
 <pre><code class="language-yaml">segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  user_dictionary:
-    path: "./resources/user_dict/ipadic_simple.csv"
-    kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"

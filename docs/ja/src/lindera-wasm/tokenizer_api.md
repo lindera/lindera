@@ -191,7 +191,7 @@ console.log(JSON.stringify(token.toJSON(), null, 2));
 - **戻り値**: `Dictionary`
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-ipadic-web';
+import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 ```
@@ -232,7 +232,7 @@ lindera-wasm パッケージのバージョン文字列を返します。
 - **戻り値**: `string`
 
 ```javascript
-import { version } from 'lindera-wasm-ipadic-web';
+import { version } from 'lindera-wasm-web-ipadic';
 
 console.log(version()); // 例: "2.1.1"
 ```
