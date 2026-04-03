@@ -58,13 +58,9 @@ jobs:
           filters: |
             lindera-crf:
               - 'lindera-crf/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-dictionary:
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-ipadic:
               - 'lindera-ipadic/**'
               - 'lindera-dictionary/**'
