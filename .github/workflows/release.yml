@@ -303,6 +303,30 @@ jobs:
           make init
           make python-test
 
+  test-lindera-nodejs:
+    name: Test lindera-nodejs
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Run Node.js build
+        run: cargo build -p lindera-nodejs --all-features
+
   test-lindera-wasm:
     name: Test lindera-wasm
     needs: [test-lindera]
@@ -325,7 +349,13 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: [test-lindera-cli, test-lindera-python, test-lindera-wasm]
+    needs:
+      [
+        test-lindera-cli,
+        test-lindera-python,
+        test-lindera-nodejs,
+        test-lindera-wasm,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release
@@ -521,7 +551,7 @@ jobs:
 
       - name: Publish crates
         run: |
-          for crate in lindera-crf lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-cli lindera-wasm; do
+          for crate in lindera-crf lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-nodejs lindera-cli lindera-wasm; do
             VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
             PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
             if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
@@ -730,6 +760,61 @@ jobs:
           command: upload
           args: --non-interactive --skip-existing dist/*
 
+  build-lindera-nodejs:
+    name: Build Node.js Native (${{ matrix.platform.target }})
+    needs: [create-release]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "stable-${{ matrix.platform.target }}"
+
+      - name: Install dependencies and build
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          npm install
+          npx napi build --platform --release -p lindera-nodejs --target ${{ matrix.platform.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nodejs-binding-${{ matrix.platform.target }}
+          path: lindera-nodejs/*.node
+          if-no-files-found: error
+
   build-wasm:
     name: Build WASM (${{ matrix.target.name }}, ${{ matrix.features.name }})
     needs: [create-release, build-dictionary]
@@ -820,7 +905,7 @@ jobs:
           name: wasm-pkg-${{ matrix.features.package_name }}-${{ matrix.target.name }}
           path: lindera-wasm/pkg
 
-  publish-npm:
+  publish-wasm-npm:
     name: Publish to npm (${{ matrix.target.name }}, ${{ matrix.features.name }})
     needs: [build-wasm]
     runs-on: ubuntu-latest
@@ -875,3 +960,87 @@ jobs:
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+  publish-nodejs-npm:
+    name: Publish Node.js to npm
+    needs: [build-lindera-nodejs]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Download all Node.js binding artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: lindera-nodejs/artifacts
+          pattern: "nodejs-binding-*"
+          merge-multiple: true
+
+      - name: Sync version from Cargo.toml
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 \
+            | jq -r '.packages[] | select(.name=="lindera-nodejs") | .version')
+          echo "Syncing npm version to ${VERSION}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            if (pkg.optionalDependencies) {
+              for (const key of Object.keys(pkg.optionalDependencies)) {
+                pkg.optionalDependencies[key] = '${VERSION}';
+              }
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Install dependencies
+        working-directory: lindera-nodejs
+        run: npm install
+
+      - name: Prepare npm packages
+        working-directory: lindera-nodejs
+        run: |
+          npx napi create-npm-dirs
+          npx napi artifacts --output-dir artifacts
+
+      - name: Publish to npm
+        working-directory: lindera-nodejs
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null; then
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} has already been published, skipping"
+            exit 0
+          fi
+
+          # Publish platform-specific packages first
+          for dir in npm/*/; do
+            if [ -f "${dir}package.json" ]; then
+              PKG=$(node -p "require('./${dir}package.json').name")
+              PKG_VER=$(node -p "require('./${dir}package.json').version")
+              if npm view "${PKG}@${PKG_VER}" version 2>/dev/null; then
+                echo "${PKG}@${PKG_VER} already published, skipping"
+              else
+                echo "Publishing ${PKG}@${PKG_VER}..."
+                pushd "${dir}"
+                npm publish --access public
+                popd
+              fi
+            fi
+          done
+
+          # Publish the main package
+          npm publish --access public

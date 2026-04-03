@@ -45,6 +45,7 @@ jobs:
       lindera: ${{ steps.filter.outputs.lindera }}
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
+      lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
@@ -105,6 +106,17 @@ jobs:
               - 'lindera-jieba/**'
             lindera-python:
               - 'lindera-python/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+            lindera-nodejs:
+              - 'lindera-nodejs/**'
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -407,6 +419,31 @@ jobs:
         run: |
           make init
           make python-test
+
+  test-lindera-nodejs:
+    name: Test lindera-nodejs
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-nodejs == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Run Node.js build
+        run: cargo build -p lindera-nodejs --all-features
 
   test-lindera-wasm:
     name: Test lindera-wasm

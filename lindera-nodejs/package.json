@@ -1,0 +1,54 @@
+{
+  "name": "lindera-nodejs",
+  "version": "2.3.4",
+  "description": "Node.js bindings for Lindera morphological analysis engine",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "binaryName": "lindera-nodejs",
+    "targets": [
+      "x86_64-apple-darwin",
+      "aarch64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc",
+      "aarch64-pc-windows-msvc"
+    ]
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "napi build --platform --release -p lindera-nodejs",
+    "build:debug": "napi build --platform -p lindera-nodejs",
+    "artifacts": "napi artifacts",
+    "test": "node --test 'tests/test_*.js'"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "optionalDependencies": {
+    "@lindera/nodejs-darwin-x64": "0.0.0",
+    "@lindera/nodejs-darwin-arm64": "0.0.0",
+    "@lindera/nodejs-linux-x64-gnu": "0.0.0",
+    "@lindera/nodejs-linux-arm64-gnu": "0.0.0",
+    "@lindera/nodejs-win32-x64-msvc": "0.0.0",
+    "@lindera/nodejs-win32-arm64-msvc": "0.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lindera/lindera"
+  },
+  "keywords": [
+    "morphological",
+    "analysis",
+    "tokenizer",
+    "japanese",
+    "korean",
+    "chinese",
+    "lindera",
+    "napi"
+  ],
+  "devDependencies": {
+    "@napi-rs/cli": "^2"
+  }
+}

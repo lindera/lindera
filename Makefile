@@ -1,182 +1,272 @@
-# Versions
-GET_VERSION = $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="$(1)") | .version')
+LINDERA_VERSION ?= $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera") | .version')
 
-LINDERA_CRF_VERSION := $(call GET_VERSION,lindera-crf)
-LINDERA_DICTIONARY_VERSION := $(call GET_VERSION,lindera-dictionary)
-LINDERA_CC_CEDICT_VERSION := $(call GET_VERSION,lindera-cc-cedict)
-LINDERA_IPADIC_VERSION := $(call GET_VERSION,lindera-ipadic)
-LINDERA_IPADIC_NEOLOGD_VERSION := $(call GET_VERSION,lindera-ipadic-neologd)
-LINDERA_KO_DIC_VERSION := $(call GET_VERSION,lindera-ko-dic)
-LINDERA_UNIDIC_VERSION := $(call GET_VERSION,lindera-unidic)
-LINDERA_VERSION := $(call GET_VERSION,lindera)
-LINDERA_CLI_VERSION := $(call GET_VERSION,lindera-cli)
-LINDERA_PYTHON_VERSION := $(call GET_VERSION,lindera-python)
-LINDERA_WASM_VERSION := $(call GET_VERSION,lindera-wasm)
-
-# Environment
 USER_AGENT ?= $(shell curl --version | head -n1 | awk '{print $1"/"$2}')
 USER ?= $(shell whoami)
 HOSTNAME ?= $(shell hostname)
 
-# Python Configuration
-PYTHON_DIR = lindera-python
-PYTHON_FEATURES = embed-ipadic,train
-POETRY = cd $(PYTHON_DIR) && ../.venv/bin/poetry
-POETRY_RUN = $(POETRY) run
+# ── Python venv ─────────────────────────────────────────────────────────────
+PYTHON_VENV_DIR := lindera-python/.venv
+PYTHON          := $(PYTHON_VENV_DIR)/bin/python
+PIP             := $(PYTHON_VENV_DIR)/bin/pip
+MATURIN         := $(PYTHON_VENV_DIR)/bin/maturin
+PYTEST          := $(PYTHON_VENV_DIR)/bin/pytest
 
-# WASM Configuration
-WASM_DIR = lindera-wasm
+# ── WASM ────────────────────────────────────────────────────────────────────
 WASM_FEATURES = embed-ipadic
 
 .DEFAULT_GOAL := help
 
-.PHONY: help init clean format lint test build bench bench-all \
-	format-all lint-all test-all build-all \
-	python-update python-format python-lint python-clean python-build python-test python-develop python-run-examples \
-	wasm-build wasm-test wasm-publish wasm-clean wasm-build-example wasm-run-example \
-	tag publish
-
-# Common targets
 help: ## Show help
 	@echo "Available targets:"
-	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-30s %s\n", $$1, $$2}'
 
-init: ## Initialize the project
-	python -m venv .venv
-	.venv/bin/pip install poetry
-	$(POETRY) self add poetry-plugin-export
-	$(POETRY) config virtualenvs.in-project true
-	$(POETRY) install --no-root
-	@echo "Initialization complete. To activate the virtual environment, run:"
-	@echo "  source .venv/bin/activate"
+# ── Python venv setup ───────────────────────────────────────────────────────
 
-clean: python-clean wasm-clean ## Clean the project
+$(PYTHON_VENV_DIR):
+	python3 -m venv $(PYTHON_VENV_DIR)
+	$(PIP) install --quiet --upgrade pip
+
+venv: $(PYTHON_VENV_DIR) ## Create lindera-python venv and install dev dependencies
+	$(PIP) install --quiet maturin pytest isort black flake8 mypy
+
+venv-clean: ## Remove the lindera-python venv
+	rm -rf $(PYTHON_VENV_DIR)
+
+# ── Clean ───────────────────────────────────────────────────────────────────
+
+clean: venv-clean clean-lindera-nodejs clean-lindera-wasm ## Clean all build artifacts
 	cargo clean
 
-# Rust targets
-format: ## Format the project
+clean-lindera-nodejs: ## Clean lindera-nodejs build artifacts
+	rm -rf lindera-nodejs/node_modules
+	rm -rf lindera-nodejs/npm
+	rm -f lindera-nodejs/*.node
+	rm -f lindera-nodejs/index.js
+	rm -f lindera-nodejs/index.d.ts
+	rm -f lindera-nodejs/package-lock.json
+
+clean-lindera-wasm: ## Clean lindera-wasm build artifacts
+	rm -rf lindera-wasm/pkg
+	rm -rf lindera-wasm/example/dist
+	rm -rf lindera-wasm/example/node_modules
+	rm -f lindera-wasm/example/package-lock.json
+	rm -f lindera-wasm/example/temp.json
+
+# ── Format ──────────────────────────────────────────────────────────────────
+
+format: ## Format all crates
 	cargo fmt
 
-lint: ## Lint the project
-	cargo clippy --all-targets --all-features -- -D warnings
+format-lindera-crf: ## Format lindera-crf
+	cargo fmt -p lindera-crf
 
-test: ## Test the project
-	cargo test --all-targets --all-features
+format-lindera-dictionary: ## Format lindera-dictionary
+	cargo fmt -p lindera-dictionary
 
-build: ## Build the project
+format-lindera-ipadic: ## Format lindera-ipadic
+	cargo fmt -p lindera-ipadic
+
+format-lindera-ipadic-neologd: ## Format lindera-ipadic-neologd
+	cargo fmt -p lindera-ipadic-neologd
+
+format-lindera-unidic: ## Format lindera-unidic
+	cargo fmt -p lindera-unidic
+
+format-lindera-ko-dic: ## Format lindera-ko-dic
+	cargo fmt -p lindera-ko-dic
+
+format-lindera-cc-cedict: ## Format lindera-cc-cedict
+	cargo fmt -p lindera-cc-cedict
+
+format-lindera-jieba: ## Format lindera-jieba
+	cargo fmt -p lindera-jieba
+
+format-lindera: ## Format lindera
+	cargo fmt -p lindera
+
+format-lindera-cli: ## Format lindera-cli
+	cargo fmt -p lindera-cli
+
+format-lindera-python: ## Format lindera-python
+	cargo fmt -p lindera-python
+
+format-lindera-nodejs: ## Format lindera-nodejs
+	cargo fmt -p lindera-nodejs
+
+format-lindera-wasm: ## Format lindera-wasm
+	cargo fmt -p lindera-wasm
+
+# ── Lint ────────────────────────────────────────────────────────────────────
+
+lint: ## Lint all crates
+	cargo clippy --workspace --all-targets -- -D warnings
+
+lint-lindera-crf: ## Lint lindera-crf
+	cargo clippy -p lindera-crf --all-targets -- -D warnings
+
+lint-lindera-dictionary: ## Lint lindera-dictionary
+	cargo clippy -p lindera-dictionary --all-targets -- -D warnings
+
+lint-lindera-ipadic: ## Lint lindera-ipadic
+	cargo clippy -p lindera-ipadic --all-targets -- -D warnings
+
+lint-lindera-ipadic-neologd: ## Lint lindera-ipadic-neologd
+	cargo clippy -p lindera-ipadic-neologd --all-targets -- -D warnings
+
+lint-lindera-unidic: ## Lint lindera-unidic
+	cargo clippy -p lindera-unidic --all-targets -- -D warnings
+
+lint-lindera-ko-dic: ## Lint lindera-ko-dic
+	cargo clippy -p lindera-ko-dic --all-targets -- -D warnings
+
+lint-lindera-cc-cedict: ## Lint lindera-cc-cedict
+	cargo clippy -p lindera-cc-cedict --all-targets -- -D warnings
+
+lint-lindera-jieba: ## Lint lindera-jieba
+	cargo clippy -p lindera-jieba --all-targets -- -D warnings
+
+lint-lindera: ## Lint lindera
+	cargo clippy -p lindera --all-targets -- -D warnings
+
+lint-lindera-cli: ## Lint lindera-cli
+	cargo clippy -p lindera-cli --all-targets -- -D warnings
+
+lint-lindera-python: ## Lint lindera-python
+	cargo clippy -p lindera-python -- -D warnings
+
+lint-lindera-nodejs: ## Lint lindera-nodejs
+	cargo clippy -p lindera-nodejs -- -D warnings
+
+lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
+	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
+
+# ── Test ────────────────────────────────────────────────────────────────────
+
+test: ## Test all crates
+	cargo test --workspace
+
+test-lindera-crf: ## Test lindera-crf
+	cargo test -p lindera-crf
+
+test-lindera-dictionary: ## Test lindera-dictionary
+	cargo test -p lindera-dictionary
+
+test-lindera-ipadic: ## Test lindera-ipadic
+	cargo test -p lindera-ipadic
+
+test-lindera-ipadic-neologd: ## Test lindera-ipadic-neologd
+	cargo test -p lindera-ipadic-neologd
+
+test-lindera-unidic: ## Test lindera-unidic
+	cargo test -p lindera-unidic
+
+test-lindera-ko-dic: ## Test lindera-ko-dic
+	cargo test -p lindera-ko-dic
+
+test-lindera-cc-cedict: ## Test lindera-cc-cedict
+	cargo test -p lindera-cc-cedict
+
+test-lindera-jieba: ## Test lindera-jieba
+	cargo test -p lindera-jieba
+
+test-lindera: ## Test lindera
+	cargo test -p lindera
+
+test-lindera-cli: ## Test lindera-cli
+	cargo test -p lindera-cli
+
+test-lindera-python: venv ## Test lindera-python (Rust unit tests + Python pytest)
+	cargo test -p lindera-python
+	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) develop --quiet --features=embed-ipadic,train && $(abspath $(PYTEST)) tests/ -v
+
+test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test)
+	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test
+
+test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
+	cd lindera-wasm && wasm-pack test --node --features=$(WASM_FEATURES)
+
+# ── Build ───────────────────────────────────────────────────────────────────
+
+build: ## Build all crates (release)
 	cargo build --release --all-features
 
+build-lindera-crf: ## Build lindera-crf (release)
+	cargo build -p lindera-crf --release
+
+build-lindera-dictionary: ## Build lindera-dictionary (release)
+	cargo build -p lindera-dictionary --release
+
+build-lindera: ## Build lindera (release)
+	cargo build -p lindera --release
+
+build-lindera-cli: ## Build lindera-cli (release)
+	cargo build -p lindera-cli --release
+
+build-lindera-python: venv ## Build lindera-python wheel (release)
+	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) build --release --features=embed-ipadic,train
+
+build-lindera-nodejs: ## Build lindera-nodejs (release)
+	cd lindera-nodejs && npm install --quiet && npx napi build --platform --release -p lindera-nodejs
+
+build-lindera-wasm: ## Build lindera-wasm (wasm-pack, --target web)
+	cd lindera-wasm && wasm-pack build --release --features=$(WASM_FEATURES) --target=web
+
+# ── Benchmark ───────────────────────────────────────────────────────────────
+
 bench: ## Run all benchmarks
-	@echo "🚀 Running all Lindera benchmarks..."
+	@echo "Running all Lindera benchmarks..."
 	@$(foreach dict,ipadic ipadic_neologd unidic ko_dic cc_cedict, \
-		echo "📊 Running $(dict) benchmark..."; \
+		echo "Running $(dict) benchmark..."; \
 		(cd lindera && cargo bench --bench=bench_$(dict) --features=embed-$(subst _,-,$(dict))) || true; \
 		echo "";)
-	@echo "✅ All benchmarks completed!"
-	@echo "📈 Results are available in lindera/target/criterion/"
+	@echo "All benchmarks completed!"
+	@echo "Results are available in lindera/target/criterion/"
 
 bench-all: ## Run all benchmarks with all features enabled
-	@echo "🚀 Running all Lindera benchmarks with all features..."
+	@echo "Running all Lindera benchmarks with all features..."
 	(cd lindera && cargo bench --all-features)
-	@echo "✅ All benchmarks completed!"
+	@echo "All benchmarks completed!"
 
-# All-in-one targets
-format-all: format python-format ## Format all projects
+# ── WASM example ────────────────────────────────────────────────────────────
 
-lint-all: lint python-lint ## Lint all projects
-
-test-all: test python-test wasm-test ## Test all projects
-
-build-all: build python-build wasm-build ## Build all projects
-
-# Python targets
-python-update: ## Update the python project dependencies
-	$(POETRY) update
-
-python-format: ## Format the python project
-	$(POETRY_RUN) isort ./examples ./tests
-	$(POETRY_RUN) black ./examples ./tests
-
-python-lint: ## Lint the python project
-	(cd $(PYTHON_DIR) && cargo clippy --features=$(PYTHON_FEATURES))
-	$(POETRY_RUN) isort --check-only --diff ./examples ./tests
-	$(POETRY_RUN) black --check ./examples ./tests
-	$(POETRY_RUN) flake8 ./examples ./tests
-	$(POETRY_RUN) mypy ./examples ./tests
-
-python-clean: ## Clean the python project
-	rm -rf $(PYTHON_DIR)/dist
-	rm -rf $(PYTHON_DIR)/lindera_python.egg-info
-	find . | grep -E "(__pycache__|.pytest_cache|.mypy_cache|\.pyc|\.pyo$$)" | xargs rm -rf
-
-python-build: ## Build the python project
-	$(POETRY_RUN) maturin build -i python --release --features=$(PYTHON_FEATURES)
-
-python-test: python-develop ## Test the python project
-	(cd $(PYTHON_DIR) && cargo test --features=$(PYTHON_FEATURES))
-	$(POETRY_RUN) python -m pytest -v ./tests
-
-python-develop: ## Build Python module in development mode
-	$(POETRY_RUN) maturin develop --features=$(PYTHON_FEATURES)
-
-python-run-examples: python-develop ## Run python examples
-	$(foreach example,build_ipadic tokenize tokenize_with_userdict tokenize_with_decompose tokenize_with_filters train_and_export, \
-		$(POETRY_RUN) python ./examples/$(example).py;)
-
-# WASM targets
-wasm-build: ## Build the WASM project
-	(cd $(WASM_DIR) && wasm-pack build --release --features=$(WASM_FEATURES) --target=web)
-
-wasm-test: ## Test the WASM project
-	(cd $(WASM_DIR) && wasm-pack test --node --features=$(WASM_FEATURES))
-
-wasm-publish: ## Publish the WASM project to npm
-	(cd $(WASM_DIR) && wasm-pack publish --access=public --target=web)
-
-wasm-clean: ## Clean the WASM project
-	(cd $(WASM_DIR) && cargo clean)
-	rm -rf $(WASM_DIR)/pkg
-	rm -rf $(WASM_DIR)/example/dist
-	rm -rf $(WASM_DIR)/example/node_modules
-	rm -f $(WASM_DIR)/example/package-lock.json
-	rm -f $(WASM_DIR)/example/temp.json
-
-wasm-build-example: ## Build the WASM example application
-	(cd $(WASM_DIR) && wasm-pack build --release --features=embed-ipadic --target=web)
-	cd $(WASM_DIR)/example && \
-	jq '.version = "$(LINDERA_WASM_VERSION)"' ./package.json > ./temp.json && mv ./temp.json ./package.json && \
+build-wasm-example: ## Build the WASM example application
+	cd lindera-wasm && wasm-pack build --release --features=embed-ipadic --target=web
+	cd lindera-wasm/example && \
+	LINDERA_WASM_VERSION=$$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version') && \
+	jq ".version = \"$$LINDERA_WASM_VERSION\"" ./package.json > ./temp.json && mv ./temp.json ./package.json && \
 	npm install && \
 	npm run build && \
 	cp index.html dist/index.html
 
-wasm-run-example: ## Run the WASM example application
-	(cd $(WASM_DIR)/example && npm run start)
+run-wasm-example: ## Run the WASM example application
+	cd lindera-wasm/example && npm run start
 
-# Release targets
-tag: ## Make a tag
+# ── Tag & Publish ───────────────────────────────────────────────────────────
+
+tag: ## Make a tag for the current version
 	git tag v$(LINDERA_VERSION)
 	git push origin v$(LINDERA_VERSION)
 
-# Publish Macro
 define PUBLISH_CRATE
 	@if [ -z "$$(curl -s -XGET -H "User-Agent: $(USER_AGENT) ($(USER)@$(HOSTNAME))" https://crates.io/api/v1/crates/$(1) | jq -r '.versions[].num | select(. == "$(2)")')" ]; then \
-		echo "🚀 Publishing $(1) v$(2)..."; \
+		echo "Publishing $(1) v$(2)..."; \
 		(cd $(1) && cargo package && cargo publish); \
 		sleep 10; \
 	else \
-		echo "✅ $(1) v$(2) is already published."; \
+		echo "$(1) v$(2) is already published."; \
 	fi
 endef
 
 publish: ## Publish packages to crates.io
-	$(call PUBLISH_CRATE,lindera-crf,$(LINDERA_CRF_VERSION))
-	$(call PUBLISH_CRATE,lindera-dictionary,$(LINDERA_DICTIONARY_VERSION))
-	$(call PUBLISH_CRATE,lindera-cc-cedict,$(LINDERA_CC_CEDICT_VERSION))
-	$(call PUBLISH_CRATE,lindera-ipadic,$(LINDERA_IPADIC_VERSION))
-	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(LINDERA_IPADIC_NEOLOGD_VERSION))
-	$(call PUBLISH_CRATE,lindera-ko-dic,$(LINDERA_KO_DIC_VERSION))
-	$(call PUBLISH_CRATE,lindera-unidic,$(LINDERA_UNIDIC_VERSION))
+	$(call PUBLISH_CRATE,lindera-crf,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-crf") | .version'))
+	$(call PUBLISH_CRATE,lindera-dictionary,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version'))
+	$(call PUBLISH_CRATE,lindera-cc-cedict,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version'))
+	$(call PUBLISH_CRATE,lindera-ipadic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version'))
+	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version'))
+	$(call PUBLISH_CRATE,lindera-ko-dic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version'))
+	$(call PUBLISH_CRATE,lindera-unidic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version'))
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
-	$(call PUBLISH_CRATE,lindera-python,$(LINDERA_PYTHON_VERSION))
-	$(call PUBLISH_CRATE,lindera-cli,$(LINDERA_CLI_VERSION))
-	$(call PUBLISH_CRATE,lindera-wasm,$(LINDERA_WASM_VERSION))
+	$(call PUBLISH_CRATE,lindera-python,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-python") | .version'))
+	$(call PUBLISH_CRATE,lindera-nodejs,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-nodejs") | .version'))
+	$(call PUBLISH_CRATE,lindera-cli,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version'))
+	$(call PUBLISH_CRATE,lindera-wasm,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version'))

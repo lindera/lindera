@@ -11,6 +11,7 @@ members = [
     "lindera",
     "lindera-cli",
     "lindera-python",
+    "lindera-nodejs",
     "lindera-wasm",
 ]
 resolver = "2"
@@ -41,6 +42,7 @@ lindera-ipadic = { version = "2.3.4", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "2.3.4", path = "lindera-ipadic-neologd" }
 lindera-jieba = { version = "2.3.4", path = "lindera-jieba" }
 lindera-ko-dic = { version = "2.3.4", path = "lindera-ko-dic" }
+lindera-nodejs = { version = "2.3.4", path = "lindera-nodejs" }
 lindera-python = { version = "2.3.4", path = "lindera-python" }
 lindera-unidic = { version = "2.3.4", path = "lindera-unidic" }
 lindera-wasm = { version = "2.3.4", path = "lindera-wasm" }
