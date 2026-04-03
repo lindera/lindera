@@ -45,6 +45,7 @@ jobs:
       lindera: ${{ steps.filter.outputs.lindera }}
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
+      lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
@@ -57,13 +58,9 @@ jobs:
           filters: |
             lindera-crf:
               - 'lindera-crf/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-dictionary:
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
-              - 'Cargo.toml'
-              - 'Cargo.lock'
             lindera-ipadic:
               - 'lindera-ipadic/**'
               - 'lindera-dictionary/**'
@@ -114,6 +111,17 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+            lindera-nodejs:
+              - 'lindera-nodejs/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
             lindera-wasm:
               - 'lindera-wasm/**'
               - 'lindera/**'
@@ -155,17 +163,8 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-          - runner: macos-latest
-            target: aarch64-apple-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-          - runner: windows-latest
-            target: aarch64-pc-windows-msvc
-            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -180,13 +179,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
-          else
-            cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
-          fi
+        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -327,17 +320,8 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-          - runner: macos-latest
-            target: aarch64-apple-darwin
-          - runner: macos-15-intel
-            target: x86_64-apple-darwin
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-          - runner: windows-latest
-            target: aarch64-pc-windows-msvc
-            skip_test_run: true
         toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -352,13 +336,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        shell: bash
-        run: |
-          if [ "${{ matrix.platform.skip_test_run }}" == "true" ]; then
-            cargo check -p lindera --target "${{ matrix.platform.target }}" --all-features
-          else
-            cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
-          fi
+        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -407,6 +385,31 @@ jobs:
         run: |
           make init
           make python-test
+
+  test-lindera-nodejs:
+    name: Test lindera-nodejs
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-nodejs == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Run Node.js build
+        run: cargo build -p lindera-nodejs --all-features
 
   test-lindera-wasm:
     name: Test lindera-wasm

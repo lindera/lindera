@@ -1,0 +1,162 @@
+# Dictionary Management
+
+Lindera Node.js provides functions for loading, building, and managing dictionaries used in morphological analysis.
+
+## Loading Dictionaries
+
+### System Dictionaries
+
+Use `loadDictionary(uri)` to load a system dictionary.
+
+**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+
+```javascript
+const { loadDictionary } = require("lindera");
+
+const dictionary = loadDictionary("embedded://ipadic");
+```
+
+**External dictionaries** (loaded from a directory on disk):
+
+```javascript
+const dictionary = loadDictionary("/path/to/dictionary");
+```
+
+### User Dictionaries
+
+User dictionaries add custom vocabulary on top of a system dictionary.
+
+```javascript
+const { loadUserDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata();
+const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+```
+
+Pass the user dictionary when building a tokenizer:
+
+```javascript
+const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+
+const dictionary = loadDictionary("embedded://ipadic");
+const metadata = new Metadata();
+const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
+
+const tokenizer = new Tokenizer(dictionary, "normal", userDict);
+```
+
+Or via the builder:
+
+```javascript
+const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setDictionary("embedded://ipadic")
+  .setUserDictionary("/path/to/user_dictionary")
+  .build();
+```
+
+## Building Dictionaries
+
+### System Dictionary
+
+Build a system dictionary from source files:
+
+```javascript
+const { buildDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
+buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
+```
+
+The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).
+
+### User Dictionary
+
+Build a user dictionary from a CSV file:
+
+```javascript
+const { buildUserDictionary, Metadata } = require("lindera");
+
+const metadata = new Metadata();
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
+```
+
+The `metadata` parameter is optional. When omitted, default metadata values are used:
+
+```javascript
+buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
+```
+
+## Metadata
+
+The `Metadata` class configures dictionary parameters.
+
+### Creating Metadata
+
+```javascript
+const { Metadata, CompressionAlgorithm } = require("lindera");
+
+// Default metadata
+const metadata = new Metadata();
+
+// Custom metadata
+const metadata = new Metadata({
+  name: "my_dictionary",
+  encoding: "UTF-8",
+  compressAlgorithm: CompressionAlgorithm.Deflate,
+  defaultWordCost: -10000,
+});
+```
+
+### Loading from JSON
+
+```javascript
+const metadata = Metadata.fromJsonFile("metadata.json");
+```
+
+### Properties
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | `"default"` | Dictionary name |
+| `encoding` | `string` | `"UTF-8"` | Character encoding |
+| `compressAlgorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
+| `defaultWordCost` | `number` | `-10000` | Default cost for unknown words |
+| `defaultLeftContextId` | `number` | `1288` | Default left context ID |
+| `defaultRightContextId` | `number` | `1288` | Default right context ID |
+| `defaultFieldValue` | `string` | `"*"` | Default value for missing fields |
+| `flexibleCsv` | `boolean` | `false` | Allow flexible CSV parsing |
+| `skipInvalidCostOrId` | `boolean` | `false` | Skip entries with invalid cost or ID |
+| `normalizeDetails` | `boolean` | `false` | Normalize morphological details |
+| `dictionarySchema` | `Schema` | IPADIC schema | Schema for the main dictionary |
+| `userDictionarySchema` | `Schema` | Minimal schema | Schema for user dictionaries |
+
+All properties support both getting and setting:
+
+```javascript
+const metadata = new Metadata();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+```
+
+### `toObject()`
+
+Returns a plain object representation of the metadata:
+
+```javascript
+const metadata = new Metadata({ name: "test" });
+console.log(metadata.toObject());
+```
+
+### CompressionAlgorithm
+
+Available compression algorithms:
+
+| Value | Description |
+| --- | --- |
+| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
+| `CompressionAlgorithm.Zlib` | Zlib compression |
+| `CompressionAlgorithm.Gzip` | Gzip compression |
+| `CompressionAlgorithm.Raw` | No compression |

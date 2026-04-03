@@ -54,6 +54,13 @@ coverage.xml
 .pytest_cache/
 .mypy_cache/
 
+# Node.js (NAPI-RS build artifacts)
+lindera-nodejs/*.node
+lindera-nodejs/index.js
+lindera-nodejs/index.d.ts
+lindera-nodejs/package-lock.json
+lindera-nodejs/npm/
+
 # WASM
 pkg/
 **/node_modules/

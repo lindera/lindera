@@ -49,6 +49,14 @@
     - [テキスト処理パイプライン](./lindera-python/text_processing_pipeline.md)
     - [学習](./lindera-python/training.md)
 
+- [Lindera Node.js](./lindera-nodejs.md)
+    - [インストール](./lindera-nodejs/installation.md)
+    - [クイックスタート](./lindera-nodejs/quickstart.md)
+    - [トークナイザー API](./lindera-nodejs/tokenizer_api.md)
+    - [辞書管理](./lindera-nodejs/dictionary_management.md)
+    - [テキスト処理パイプライン](./lindera-nodejs/text_processing_pipeline.md)
+    - [学習](./lindera-nodejs/training.md)
+
 - [Lindera WASM](./lindera-wasm.md)
     - [インストール](./lindera-wasm/installation.md)
     - [クイックスタート](./lindera-wasm/quickstart.md)

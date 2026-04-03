@@ -49,6 +49,14 @@
     - [Text Processing Pipeline](./lindera-python/text_processing_pipeline.md)
     - [Training](./lindera-python/training.md)
 
+- [Lindera Node.js](./lindera-nodejs.md)
+    - [Installation](./lindera-nodejs/installation.md)
+    - [Quick Start](./lindera-nodejs/quickstart.md)
+    - [Tokenizer API](./lindera-nodejs/tokenizer_api.md)
+    - [Dictionary Management](./lindera-nodejs/dictionary_management.md)
+    - [Text Processing Pipeline](./lindera-nodejs/text_processing_pipeline.md)
+    - [Training](./lindera-nodejs/training.md)
+
 - [Lindera WASM](./lindera-wasm.md)
     - [Installation](./lindera-wasm/installation.md)
     - [Quick Start](./lindera-wasm/quickstart.md)
