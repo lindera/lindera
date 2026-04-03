@@ -1,62 +1,203 @@
-import __wbg_init, { TokenizerBuilder, Tokenizer, Mode, load_dictionary, getVersion } from '../../pkg/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes, getVersion } from '../../pkg/lindera_wasm.js';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary, listDictionaries, removeDictionary } from '../../pkg/opfs.js';
 
-// Initialize the tokenizer
+const DEFAULT_DICT_NAME = 'ipadic';
+
+/**
+ * Builds the default dictionary URL using the current package version.
+ */
+function defaultDictUrl(version) {
+    return `https://github.com/lindera/lindera/releases/download/v${version}/lindera-ipadic-${version}.zip`;
+}
+
+/**
+ * Rewrites a GitHub URL to use the dev server proxy to avoid CORS issues.
+ */
+function proxyUrl(url) {
+    const GITHUB_PREFIX = 'https://github.com/';
+    if (url.startsWith(GITHUB_PREFIX)) {
+        return '/github-releases/' + url.slice(GITHUB_PREFIX.length);
+    }
+    return url;
+}
+
 let tokenizer = null;
 
-// Initialize WASM module first
-__wbg_init().then(() => {
-    // Show the version in the title
+// UI elements
+const titleEl = document.getElementById('title');
+const inputTextEl = document.getElementById('inputText');
+const runButtonEl = document.getElementById('runButton');
+const resultListEl = document.getElementById('resultList');
+const dictStatusEl = document.getElementById('dictStatus');
+const dictUrlEl = document.getElementById('dictUrl');
+const dictNameEl = document.getElementById('dictName');
+const downloadButtonEl = document.getElementById('downloadButton');
+const deleteButtonEl = document.getElementById('deleteButton');
+const dictListEl = document.getElementById('dictList');
+const progressEl = document.getElementById('progress');
+
+/**
+ * Updates the dictionary list display.
+ */
+async function refreshDictList() {
+    const names = await listDictionaries();
+    if (names.length === 0) {
+        dictListEl.textContent = 'No dictionaries stored';
+    } else {
+        dictListEl.textContent = names.join(', ');
+    }
+}
+
+/**
+ * Sets the status message.
+ */
+function setStatus(message, isError = false) {
+    dictStatusEl.textContent = message;
+    dictStatusEl.style.color = isError ? '#e53e3e' : '#38a169';
+}
+
+/**
+ * Loads a dictionary from OPFS and initializes the tokenizer.
+ */
+async function loadTokenizer(dictName) {
+    try {
+        setStatus(`Loading "${dictName}" from OPFS...`);
+
+        const files = await loadDictionaryFiles(dictName);
+        const dict = loadDictionaryFromBytes(
+            files.metadata,
+            files.dictDa,
+            files.dictVals,
+            files.dictWordsIdx,
+            files.dictWords,
+            files.matrixMtx,
+            files.charDef,
+            files.unk,
+        );
+
+        const builder = new TokenizerBuilder();
+        builder.setDictionaryInstance(dict);
+        builder.setMode("normal");
+        tokenizer = builder.build();
+
+        setStatus(`Tokenizer ready (dictionary: ${dictName})`);
+        runButtonEl.disabled = false;
+        console.log(`Tokenizer initialized with "${dictName}" dictionary from OPFS.`);
+    } catch (e) {
+        setStatus(`Failed to load dictionary: ${e.message}`, true);
+        console.error("Failed to load tokenizer:", e);
+    }
+}
+
+// Initialize WASM module
+__wbg_init().then(async () => {
+    // Show version and set default dictionary URL
     try {
         const version = getVersion();
-        document.title = `Lindera WASM v${version}`;
-        document.getElementById('title').textContent = `Lindera WASM v${version}`;
+        document.title = `Lindera WASM v${version} (OPFS)`;
+        titleEl.textContent = `Lindera WASM v${version}`;
+        dictUrlEl.value = defaultDictUrl(version);
     } catch (e) {
         console.error("Failed to get version:", e);
     }
 
-    try {
-        // Option 1: Using TokenizerBuilder (WASM style, snake_case is also supported)
-        let builder = new TokenizerBuilder();
-        builder.setDictionary("embedded://ipadic");
-        builder.setMode("normal");
-        tokenizer = builder.build();
+    await refreshDictList();
 
-        // Option 2: Using loadDictionary and Tokenizer constructor (Python style)
-        /*
-        const dict = loadDictionary("embedded://ipadic");
-        tokenizer = new Tokenizer(dict, "normal");
-        */
-
-        console.log("Tokenizer is ready.");
-    } catch (e) {
-        // Handle the error
-        console.error("Failed to create Tokenizer:", e);
+    // Check if default dictionary is already in OPFS
+    const exists = await hasDictionary(DEFAULT_DICT_NAME);
+    if (exists) {
+        await loadTokenizer(DEFAULT_DICT_NAME);
+    } else {
+        setStatus('No dictionary loaded. Download one to get started.');
     }
 }).catch(e => {
     console.error("Failed to initialize WASM module:", e);
+    setStatus(`WASM initialization failed: ${e.message}`, true);
 });
 
-// Add an event listener to the "runButton" element
-document.getElementById('runButton').addEventListener('click', () => {
-    // If the tokenizer is not initialized yet, display an error message
-    if (!tokenizer) {
-        console.error("Tokenizer is not initialized yet.");
+// Download button handler
+downloadButtonEl.addEventListener('click', async () => {
+    const url = dictUrlEl.value.trim();
+    const name = dictNameEl.value.trim();
+
+    if (!url || !name) {
+        setStatus('Please enter both URL and dictionary name.', true);
         return;
     }
 
-    // Get the input text from the "inputText" element
-    const inputText = document.getElementById('inputText').value;
+    downloadButtonEl.disabled = true;
+    runButtonEl.disabled = true;
+    progressEl.style.display = 'block';
 
-    // Tokenize the input text
+    try {
+        await downloadDictionary(proxyUrl(url), name, {
+            onProgress: ({ phase, loaded, total }) => {
+                switch (phase) {
+                    case 'downloading':
+                        if (total) {
+                            const pct = ((loaded / total) * 100).toFixed(1);
+                            progressEl.textContent = `Downloading... ${pct}% (${(loaded / 1024 / 1024).toFixed(1)} MB / ${(total / 1024 / 1024).toFixed(1)} MB)`;
+                        } else if (loaded) {
+                            progressEl.textContent = `Downloading... ${(loaded / 1024 / 1024).toFixed(1)} MB`;
+                        } else {
+                            progressEl.textContent = 'Downloading...';
+                        }
+                        break;
+                    case 'extracting':
+                        progressEl.textContent = 'Extracting zip archive...';
+                        break;
+                    case 'storing':
+                        progressEl.textContent = 'Storing to OPFS...';
+                        break;
+                    case 'complete':
+                        progressEl.textContent = 'Done!';
+                        break;
+                }
+            },
+        });
+
+        await refreshDictList();
+        await loadTokenizer(name);
+    } catch (e) {
+        setStatus(`Download failed: ${e.message}`, true);
+        console.error("Download failed:", e);
+    } finally {
+        downloadButtonEl.disabled = false;
+        setTimeout(() => { progressEl.style.display = 'none'; }, 2000);
+    }
+});
+
+// Delete button handler
+deleteButtonEl.addEventListener('click', async () => {
+    const name = dictNameEl.value.trim();
+    if (!name) {
+        setStatus('Please enter a dictionary name to delete.', true);
+        return;
+    }
+
+    try {
+        await removeDictionary(name);
+        setStatus(`Dictionary "${name}" removed.`);
+        tokenizer = null;
+        runButtonEl.disabled = true;
+        await refreshDictList();
+    } catch (e) {
+        setStatus(`Failed to remove: ${e.message}`, true);
+    }
+});
+
+// Tokenize button handler
+runButtonEl.addEventListener('click', () => {
+    if (!tokenizer) {
+        setStatus('Tokenizer is not initialized. Download a dictionary first.', true);
+        return;
+    }
+
+    const inputText = inputTextEl.value;
     const tokens = tokenizer.tokenize(inputText);
 
-    // Get the "resultList" element
-    const resultList = document.getElementById('resultList');
+    resultListEl.innerHTML = '';
 
-    // Clear the previous results
-    resultList.innerHTML = '';
-
-    // Create table for results
     const table = document.createElement('table');
     table.className = 'token-table';
     table.innerHTML = `
@@ -71,23 +212,15 @@ document.getElementById('runButton').addEventListener('click', () => {
     `;
     const tbody = table.querySelector('tbody');
 
-    tokens.forEach((token, index) => {
+    tokens.forEach((token) => {
         const tr = document.createElement('tr');
-
-        // Accessing properties directly from Token object
-        const surface = token.surface;
-        const position = token.position;
-        // Using getDetail(index) method
-        const detail = token.getDetail(0) || '*';
-        const allDetails = token.details.join(', ');
-
         tr.innerHTML = `
-            <td><strong>${surface}</strong></td>
-            <td>${position}</td>
-            <td><small>${allDetails}</small></td>
+            <td><strong>${token.surface}</strong></td>
+            <td>${token.position}</td>
+            <td><small>${token.details.join(', ')}</small></td>
         `;
         tbody.appendChild(tr);
     });
 
-    resultList.appendChild(table);
+    resultListEl.appendChild(table);
 });

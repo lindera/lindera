@@ -20,6 +20,12 @@ use crate::token::JsToken;
 #[wasm_bindgen]
 pub struct TokenizerBuilder {
     inner: LinderaTokenizerBuilder,
+    /// Pre-loaded dictionary instance, used instead of URI-based loading.
+    dictionary_instance: Option<JsDictionary>,
+    /// Pre-loaded user dictionary instance, used instead of URI-based loading.
+    user_dictionary_instance: Option<JsUserDictionary>,
+    /// Mode string stored for use when building with a dictionary instance.
+    mode_for_instance: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -30,17 +36,43 @@ impl TokenizerBuilder {
         let inner =
             LinderaTokenizerBuilder::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+            dictionary_instance: None,
+            user_dictionary_instance: None,
+            mode_for_instance: None,
+        })
     }
 
     /// Builds and returns a configured [`Tokenizer`] instance.
+    ///
+    /// If a dictionary instance was set via `setDictionaryInstance()`,
+    /// it will be used directly instead of loading from a URI.
     pub fn build(self) -> Result<Tokenizer, JsValue> {
-        let inner = self
-            .inner
-            .build()
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        if let Some(dict) = self.dictionary_instance {
+            // Build tokenizer using the pre-loaded dictionary instance
+            let m = self
+                .mode_for_instance
+                .as_deref()
+                .map(Mode::from_str)
+                .transpose()
+                .map_err(|e| JsValue::from_str(&e.to_string()))?
+                .unwrap_or(Mode::Normal);
 
-        Ok(Tokenizer { inner })
+            let user_dict = self.user_dictionary_instance.map(|d| d.inner);
+
+            let segmenter = Segmenter::new(m, dict.inner, user_dict);
+            let inner = LinderaTokenizer::new(segmenter);
+
+            Ok(Tokenizer { inner })
+        } else {
+            let inner = self
+                .inner
+                .build()
+                .map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+            Ok(Tokenizer { inner })
+        }
     }
 
     /// Sets the tokenization mode.
@@ -48,24 +80,45 @@ impl TokenizerBuilder {
     pub fn set_mode(&mut self, mode: &str) -> Result<(), JsValue> {
         let m = Mode::from_str(mode).map_err(|e| JsValue::from_str(&e.to_string()))?;
         self.inner.set_segmenter_mode(&m);
+        self.mode_for_instance = Some(mode.to_string());
 
         Ok(())
     }
 
-    /// Sets the dictionary to use for tokenization.
+    /// Sets the dictionary to use for tokenization by URI.
     #[wasm_bindgen(js_name = "setDictionary")]
     pub fn set_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
         self.inner.set_segmenter_dictionary(uri);
+        self.dictionary_instance = None;
 
         Ok(())
     }
 
-    /// Sets a user-defined dictionary.
+    /// Sets a pre-loaded dictionary instance for tokenization.
+    ///
+    /// Use this method when the dictionary has been loaded from bytes
+    /// (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
+    #[wasm_bindgen(js_name = "setDictionaryInstance")]
+    pub fn set_dictionary_instance(&mut self, dictionary: JsDictionary) {
+        self.dictionary_instance = Some(dictionary);
+    }
+
+    /// Sets a user-defined dictionary by URI.
     #[wasm_bindgen(js_name = "setUserDictionary")]
     pub fn set_user_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
         self.inner.set_segmenter_user_dictionary(uri);
+        self.user_dictionary_instance = None;
 
         Ok(())
+    }
+
+    /// Sets a pre-loaded user dictionary instance.
+    ///
+    /// Use this method when the user dictionary has been loaded from bytes
+    /// instead of from a URI.
+    #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
+    pub fn set_user_dictionary_instance(&mut self, user_dictionary: JsUserDictionary) {
+        self.user_dictionary_instance = Some(user_dictionary);
     }
 
     /// Sets whether to keep whitespace tokens in the output.
@@ -117,9 +170,19 @@ impl TokenizerBuilder {
         self.set_dictionary(uri)
     }
 
+    #[wasm_bindgen(js_name = "set_dictionary_instance")]
+    pub fn py_set_dictionary_instance(&mut self, dictionary: JsDictionary) {
+        self.set_dictionary_instance(dictionary)
+    }
+
     #[wasm_bindgen(js_name = "set_user_dictionary")]
     pub fn py_set_user_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
         self.set_user_dictionary(uri)
+    }
+
+    #[wasm_bindgen(js_name = "set_user_dictionary_instance")]
+    pub fn py_set_user_dictionary_instance(&mut self, user_dictionary: JsUserDictionary) {
+        self.set_user_dictionary_instance(user_dictionary)
     }
 
     #[wasm_bindgen(js_name = "set_keep_whitespace")]
@@ -424,5 +487,62 @@ mod tests {
 
         assert!(!tokens.is_empty());
         assert_eq!(tokens[0].surface, "東京");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_builder_with_dictionary_instance() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary_instance(dict);
+
+        let tokenizer = builder.build().unwrap();
+        let tokens = tokenizer.tokenize("東京タワー").unwrap();
+
+        assert!(!tokens.is_empty());
+        assert_eq!(tokens[0].surface, "東京");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_builder_with_dictionary_instance_decompose_mode() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("decompose").unwrap();
+        builder.set_dictionary_instance(dict);
+
+        let tokenizer = builder.build().unwrap();
+        let tokens = tokenizer.tokenize("関西国際空港").unwrap();
+
+        assert!(!tokens.is_empty());
+        let reconstructed: String = tokens.iter().map(|t| t.surface.as_str()).collect();
+        assert_eq!(reconstructed, "関西国際空港");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_builder_with_dictionary_instance_default_mode() {
+        use crate::TokenizerBuilder;
+        use crate::dictionary::load_dictionary;
+
+        // Set dictionary instance without calling set_mode (should default to Normal)
+        let dict = load_dictionary("embedded://ipadic").unwrap();
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_dictionary_instance(dict);
+
+        let tokenizer = builder.build().unwrap();
+        let tokens = tokenizer.tokenize("すもも").unwrap();
+
+        assert!(!tokens.is_empty());
     }
 }

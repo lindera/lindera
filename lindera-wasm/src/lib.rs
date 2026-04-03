@@ -62,6 +62,30 @@ pub fn py_load_dictionary(uri: &str) -> Result<Dictionary, JsValue> {
     crate::dictionary::load_dictionary(uri)
 }
 
+#[wasm_bindgen(js_name = "load_dictionary_from_bytes")]
+#[allow(clippy::too_many_arguments)]
+pub fn py_load_dictionary_from_bytes(
+    metadata: &[u8],
+    dict_da: &[u8],
+    dict_vals: &[u8],
+    dict_words_idx: &[u8],
+    dict_words: &[u8],
+    matrix_mtx: &[u8],
+    char_def: &[u8],
+    unk: &[u8],
+) -> Result<Dictionary, JsValue> {
+    crate::dictionary::load_dictionary_from_bytes(
+        metadata,
+        dict_da,
+        dict_vals,
+        dict_words_idx,
+        dict_words,
+        matrix_mtx,
+        char_def,
+        unk,
+    )
+}
+
 #[wasm_bindgen(js_name = "load_user_dictionary")]
 pub fn py_load_user_dictionary(uri: &str, metadata: Metadata) -> Result<UserDictionary, JsValue> {
     crate::dictionary::load_user_dictionary(uri, metadata)
