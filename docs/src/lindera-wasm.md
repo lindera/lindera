@@ -32,3 +32,4 @@ Each package embeds a specific dictionary for offline use:
 - [Tokenizer API](./lindera-wasm/tokenizer_api.md) -- Full API reference for JavaScript/TypeScript
 - [Dictionary Management](./lindera-wasm/dictionary_management.md) -- Loading and building dictionaries
 - [Browser Usage](./lindera-wasm/browser_usage.md) -- Integration with web applications
+- [OPFS Dictionary Storage](./lindera-wasm/opfs.md) -- Persistent dictionary caching with OPFS

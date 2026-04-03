@@ -63,6 +63,7 @@
     - [Tokenizer API](./lindera-wasm/tokenizer_api.md)
     - [Dictionary Management](./lindera-wasm/dictionary_management.md)
     - [Browser Usage](./lindera-wasm/browser_usage.md)
+    - [OPFS Dictionary Storage](./lindera-wasm/opfs.md)
 
 ---
 

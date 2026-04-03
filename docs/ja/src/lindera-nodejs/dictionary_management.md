@@ -160,3 +160,59 @@ console.log(metadata.toObject());
 | `CompressionAlgorithm.Zlib` | Zlib 圧縮 |
 | `CompressionAlgorithm.Gzip` | Gzip 圧縮 |
 | `CompressionAlgorithm.Raw` | 圧縮なし |
+
+## Schema
+
+`Schema` クラスは辞書エントリーのフィールド構造を定義します。
+
+### Schema の作成
+
+```javascript
+const { Schema } = require("lindera");
+
+// デフォルトの IPADIC 互換スキーマ
+const schema = Schema.createDefault();
+
+// カスタムスキーマ
+const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+```
+
+### Schema メソッド
+
+| メソッド | 戻り値 | 説明 |
+| --- | --- | --- |
+| `getFieldIndex(name)` | `number \| null` | フィールド名からインデックスを取得 |
+| `fieldCount()` | `number` | フィールドの総数 |
+| `getFieldName(index)` | `string \| null` | インデックスからフィールド名を取得 |
+| `getCustomFields()` | `string[]` | インデックス 4 以降のフィールド（形態素素性） |
+| `getAllFields()` | `string[]` | すべてのフィールド名 |
+| `getFieldByName(name)` | `FieldDefinition \| null` | フィールド定義の完全な情報を取得 |
+| `validateRecord(record)` | `void` | CSV レコードをスキーマに対して検証 |
+
+```javascript
+const schema = Schema.createDefault();
+
+console.log(schema.fieldCount());           // 13（IPADIC フォーマット）
+console.log(schema.getFieldIndex("pos1"));  // 例: 4
+console.log(schema.getAllFields());          // ["surface", "left_id", ...]
+console.log(schema.getCustomFields());      // インデックス 4 以降のフィールド
+```
+
+### FieldDefinition
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `index` | `number` | フィールドの位置インデックス |
+| `name` | `string` | フィールド名 |
+| `fieldType` | `FieldType` | フィールド型の列挙値 |
+| `description` | `string \| undefined` | 任意の説明 |
+
+### FieldType
+
+| 値 | 説明 |
+| --- | --- |
+| `FieldType.Surface` | 単語の表層形 |
+| `FieldType.LeftContextId` | 左文脈 ID |
+| `FieldType.RightContextId` | 右文脈 ID |
+| `FieldType.Cost` | 単語コスト |
+| `FieldType.Custom` | 形態素素性フィールド |

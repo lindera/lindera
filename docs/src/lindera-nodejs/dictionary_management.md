@@ -160,3 +160,59 @@ Available compression algorithms:
 | `CompressionAlgorithm.Zlib` | Zlib compression |
 | `CompressionAlgorithm.Gzip` | Gzip compression |
 | `CompressionAlgorithm.Raw` | No compression |
+
+## Schema
+
+The `Schema` class defines the field structure of dictionary entries.
+
+### Creating a Schema
+
+```javascript
+const { Schema } = require("lindera");
+
+// Default IPADIC-compatible schema
+const schema = Schema.createDefault();
+
+// Custom schema
+const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+```
+
+### Schema Methods
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `getFieldIndex(name)` | `number \| null` | Get field index by name |
+| `fieldCount()` | `number` | Total number of fields |
+| `getFieldName(index)` | `string \| null` | Get field name by index |
+| `getCustomFields()` | `string[]` | Fields beyond index 4 (morphological features) |
+| `getAllFields()` | `string[]` | All field names |
+| `getFieldByName(name)` | `FieldDefinition \| null` | Get full field definition |
+| `validateRecord(record)` | `void` | Validate a CSV record against the schema |
+
+```javascript
+const schema = Schema.createDefault();
+
+console.log(schema.fieldCount());           // 13 (IPADIC format)
+console.log(schema.getFieldIndex("pos1"));  // e.g., 4
+console.log(schema.getAllFields());          // ["surface", "left_id", ...]
+console.log(schema.getCustomFields());      // Fields after index 4
+```
+
+### FieldDefinition
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `index` | `number` | Field position index |
+| `name` | `string` | Field name |
+| `fieldType` | `FieldType` | Field type enum |
+| `description` | `string \| undefined` | Optional description |
+
+### FieldType
+
+| Value | Description |
+| --- | --- |
+| `FieldType.Surface` | Word surface text |
+| `FieldType.LeftContextId` | Left context ID |
+| `FieldType.RightContextId` | Right context ID |
+| `FieldType.Cost` | Word cost |
+| `FieldType.Custom` | Morphological feature field |

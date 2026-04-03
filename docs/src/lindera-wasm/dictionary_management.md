@@ -44,6 +44,53 @@ const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
 ```
 
+## Loading from Bytes (OPFS)
+
+When dictionaries are stored in OPFS or other browser storage, you can load them directly from raw byte arrays using `loadDictionaryFromBytes()`. This avoids filesystem access and works in browser environments.
+
+### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
+
+Constructs a `Dictionary` from the binary data of each dictionary component file. Compressed data (built with the `compress` feature) is automatically decompressed.
+
+- **Parameters**:
+  - `metadata` (`Uint8Array`) -- Contents of `metadata.json`
+  - `dictDa` (`Uint8Array`) -- Contents of `dict.da` (Double-Array Trie)
+  - `dictVals` (`Uint8Array`) -- Contents of `dict.vals` (word value data)
+  - `dictWordsIdx` (`Uint8Array`) -- Contents of `dict.wordsidx` (word details index)
+  - `dictWords` (`Uint8Array`) -- Contents of `dict.words` (word details)
+  - `matrixMtx` (`Uint8Array`) -- Contents of `matrix.mtx` (connection cost matrix)
+  - `charDef` (`Uint8Array`) -- Contents of `char_def.bin` (character definitions)
+  - `unk` (`Uint8Array`) -- Contents of `unk.bin` (unknown word dictionary)
+- **Returns**: `Dictionary`
+
+```javascript
+import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+// Load dictionary files from OPFS
+const files = await loadDictionaryFiles("ipadic");
+
+// Create a Dictionary from bytes
+const dictionary = loadDictionaryFromBytes(
+    files.metadata,
+    files.dictDa,
+    files.dictVals,
+    files.dictWordsIdx,
+    files.dictWords,
+    files.matrixMtx,
+    files.charDef,
+    files.unk,
+);
+
+// Use with TokenizerBuilder
+const builder = new TokenizerBuilder();
+builder.setDictionaryInstance(dictionary);
+builder.setMode("normal");
+const tokenizer = builder.build();
+```
+
+See [OPFS Dictionary Storage](./opfs.md) for the full OPFS workflow.
+
 ## Dictionary Class
 
 The `Dictionary` class represents a loaded morphological analysis dictionary.
@@ -126,11 +173,99 @@ The `metadata` parameter is optional for `buildUserDictionary`. If omitted, defa
 
 ## Metadata
 
-The `Metadata` object contains dictionary configuration such as:
+The `Metadata` class configures dictionary parameters.
 
-- Dictionary name
-- Character encoding
-- Compression algorithm
-- Schema definitions for dictionary fields
+### Constructor
 
-You can access the metadata from a loaded dictionary via `dictionary.metadata`.
+```javascript
+const metadata = new Metadata(name?, encoding?, compressAlgorithm?);
+```
+
+- **Parameters**:
+  - `name` (string, optional) -- Dictionary name (default: `"default"`)
+  - `encoding` (string, optional) -- Character encoding (default: `"UTF-8"`)
+  - `compressAlgorithm` (CompressionAlgorithm, optional) -- Compression method (default: `Deflate`)
+
+### Static Methods
+
+#### `Metadata.createDefault()`
+
+Creates a `Metadata` instance with default values.
+
+```javascript
+const metadata = Metadata.createDefault();
+```
+
+### Metadata Properties
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | `"default"` | Dictionary name |
+| `encoding` | `string` | `"UTF-8"` | Character encoding |
+| `compress_algorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
+| `dictionary_schema` | `Schema` | IPADIC schema | Schema for the main dictionary |
+| `user_dictionary_schema` | `Schema` | Minimal schema | Schema for user dictionaries |
+
+All properties support both getting and setting:
+
+```javascript
+const metadata = Metadata.createDefault();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+```
+
+You can also access the metadata from a loaded dictionary via `dictionary.metadata`.
+
+### CompressionAlgorithm
+
+| Value | Description |
+| --- | --- |
+| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
+| `CompressionAlgorithm.Zlib` | Zlib compression |
+| `CompressionAlgorithm.Gzip` | Gzip compression |
+| `CompressionAlgorithm.Raw` | No compression |
+
+### Schema
+
+The `Schema` class defines the field structure of dictionary entries.
+
+#### Schema Constructor
+
+```javascript
+const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+```
+
+#### Schema Static Methods
+
+- `Schema.create_default()` -- Creates a default IPADIC-like schema
+
+#### Schema Methods
+
+| Method | Returns | Description |
+| --- | --- | --- |
+| `get_field_index(name)` | `number \| undefined` | Get field index by name |
+| `field_count()` | `number` | Total number of fields |
+| `get_field_name(index)` | `string \| undefined` | Get field name by index |
+| `get_custom_fields()` | `string[]` | Fields beyond index 3 (morphological features) |
+| `get_all_fields()` | `string[]` | All field names |
+| `get_field_by_name(name)` | `FieldDefinition \| undefined` | Get full field definition |
+
+#### FieldDefinition
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `index` | `number` | Field position index |
+| `name` | `string` | Field name |
+| `field_type` | `FieldType` | Field type enum |
+| `description` | `string \| undefined` | Optional description |
+
+#### FieldType
+
+| Value | Description |
+| --- | --- |
+| `FieldType.Surface` | Word surface text |
+| `FieldType.LeftContextId` | Left context ID |
+| `FieldType.RightContextId` | Right context ID |
+| `FieldType.Cost` | Word cost |
+| `FieldType.Custom` | Morphological feature field |
