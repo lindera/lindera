@@ -43,10 +43,109 @@
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             font-size: 1.1em;
         }
 
+        /* Dictionary management section */
+        .dict-section {
+            background: #f0f4f8;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dict-section h2 {
+            font-size: 1.1em;
+            color: #4a5568;
+            margin-bottom: 15px;
+        }
+
+        .dict-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .dict-form .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .dict-form input[type="text"] {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .dict-form input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+        }
+
+        .dict-form input.dict-name {
+            max-width: 160px;
+        }
+
+        .btn-sm {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .btn-sm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-sm:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-delete {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .dict-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        #dictStatus {
+            font-weight: 600;
+            color: #38a169;
+        }
+
+        #progress {
+            display: none;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        /* Input section */
         .input-section {
             margin-bottom: 30px;
         }
@@ -99,6 +198,11 @@
             transform: translateY(0);
         }
 
+        #runButton:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
         .results-section {
             background: #f8fafc;
             border-radius: 10px;
@@ -117,21 +221,6 @@
             list-style: none;
             max-height: 400px;
             overflow-y: auto;
-        }
-
-        #resultList li {
-            background: white;
-            margin-bottom: 10px;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            font-family: 'Courier New', monospace;
-            transition: transform 0.2s ease;
-        }
-
-        #resultList li:hover {
-            transform: translateX(5px);
         }
 
         #resultList:empty::after {
@@ -153,14 +242,21 @@
                 font-size: 2em;
             }
 
+            .dict-form .row {
+                flex-direction: column;
+            }
+
+            .dict-form input.dict-name {
+                max-width: none;
+            }
+
             #inputText,
             #runButton {
                 font-size: 16px;
-                /* Prevent zoom on iOS */
             }
         }
 
-        /* トークンテーブルのスタイル */
+        /* Token table styles */
         .token-table {
             width: 100%;
             border-collapse: collapse;
@@ -193,44 +289,37 @@
         .token-table small {
             color: #64748b;
         }
-
-        /* ローディングアニメーション */
-        .loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-
-        .loading #runButton::after {
-            content: "";
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            margin-left: 10px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1 id="title">Lindera WASM</h1>
-        <p class="subtitle">WebAssembly Morphological Analysis Library</p>
+        <p class="subtitle">WebAssembly Morphological Analysis Library (OPFS)</p>
+
+        <div class="dict-section">
+            <h2>Dictionary Management</h2>
+            <div class="dict-form">
+                <input type="text" id="dictUrl" placeholder="Dictionary zip URL (set automatically after WASM init)">
+                <div class="row">
+                    <input type="text" id="dictName" class="dict-name" placeholder="Name" value="ipadic">
+                    <button type="button" id="downloadButton" class="btn-sm btn-download">Download &amp; Store</button>
+                    <button type="button" id="deleteButton" class="btn-sm btn-delete">Delete</button>
+                </div>
+            </div>
+            <div id="progress"></div>
+            <div class="dict-info">
+                <span>Stored: <span id="dictList">loading...</span></span>
+                <span id="dictStatus">Initializing...</span>
+            </div>
+        </div>
 
         <div class="input-section">
             <label for="inputText">Enter text to analyze:</label>
-            <textarea id="inputText" placeholder="Enter text here (e.g., すもももももももものうち)" rows="4"></textarea>
+            <textarea id="inputText" placeholder="Enter text here (e.g., すもももももももものうち)" rows="4">すもももももももものうち</textarea>
         </div>
 
-        <button id="runButton">Run Morphological Analysis</button>
+        <button id="runButton" disabled>Run Morphological Analysis</button>
 
         <div class="results-section">
             <div class="results-title">Analysis Results:</div>

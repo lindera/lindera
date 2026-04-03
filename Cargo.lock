@@ -1523,7 +1523,9 @@ version = "2.3.4"
 dependencies = [
  "js-sys",
  "lindera",
+ "lindera-dictionary",
  "once_cell",
+ "rkyv",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

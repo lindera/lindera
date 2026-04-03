@@ -210,6 +210,8 @@ build-lindera-nodejs: ## Build lindera-nodejs (release)
 
 build-lindera-wasm: ## Build lindera-wasm (wasm-pack, --target web)
 	cd lindera-wasm && wasm-pack build --release --features=$(WASM_FEATURES) --target=web
+	cp lindera-wasm/js/opfs.js lindera-wasm/pkg/
+	cp lindera-wasm/js/opfs.d.ts lindera-wasm/pkg/
 
 # ── Benchmark ───────────────────────────────────────────────────────────────
 
@@ -229,8 +231,10 @@ bench-all: ## Run all benchmarks with all features enabled
 
 # ── WASM example ────────────────────────────────────────────────────────────
 
-build-lindera-wasm-example: ## Build the WASM example application
-	cd lindera-wasm && wasm-pack build --release --features=embed-ipadic --target=web
+build-lindera-wasm-example: ## Build the WASM example application (OPFS, no embedded dictionary)
+	cd lindera-wasm && wasm-pack build --release --target=web
+	cp lindera-wasm/js/opfs.js lindera-wasm/pkg/
+	cp lindera-wasm/js/opfs.d.ts lindera-wasm/pkg/
 	cd lindera-wasm/example && \
 	LINDERA_WASM_VERSION=$$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version') && \
 	jq ".version = \"$$LINDERA_WASM_VERSION\"" ./package.json > ./temp.json && mv ./temp.json ./package.json && \

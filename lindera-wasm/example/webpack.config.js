@@ -18,6 +18,21 @@ module.exports = {
         },
         open: true,
         port: 8080,
+        headers: {
+            // Required for OPFS access in some browsers
+            'Cross-Origin-Opener-Policy': 'same-origin',
+            'Cross-Origin-Embedder-Policy': 'require-corp',
+        },
+        proxy: [
+            {
+                // Proxy GitHub Releases to avoid CORS issues in development
+                context: ['/github-releases'],
+                target: 'https://github.com',
+                pathRewrite: { '^/github-releases': '' },
+                changeOrigin: true,
+                followRedirects: true,
+            },
+        ],
     },
     plugins: [
         new CopyWebpackPlugin({

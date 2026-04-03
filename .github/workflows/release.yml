@@ -860,11 +860,31 @@ jobs:
           cd lindera-wasm
           wasm-pack build --release --target ${{ matrix.target.value }} ${{ matrix.features.value != '' && format('--features {0}', matrix.features.value) || '' }}
 
+      - name: Copy JS helpers to pkg
+        shell: bash
+        run: |
+          cp lindera-wasm/js/opfs.js lindera-wasm/pkg/
+          cp lindera-wasm/js/opfs.d.ts lindera-wasm/pkg/
+
       - name: Update package.json
         shell: bash
         run: |
           cd lindera-wasm/pkg
-          jq '.name = "lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}" | .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)"' package.json > package.json.tmp
+          jq '
+            .name = "lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}" |
+            .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)" |
+            .files += ["opfs.js", "opfs.d.ts"] |
+            .exports = {
+              ".": {
+                "types": "./lindera_wasm.d.ts",
+                "default": "./lindera_wasm.js"
+              },
+              "./opfs": {
+                "types": "./opfs.d.ts",
+                "default": "./opfs.js"
+              }
+            }
+          ' package.json > package.json.tmp
           mv package.json.tmp package.json
 
       - name: Upload artifact
