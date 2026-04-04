@@ -191,7 +191,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -348,7 +348,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli
