@@ -56,7 +56,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -65,7 +64,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -74,7 +73,7 @@ jobs:
           key: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -207,7 +206,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -216,7 +214,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -225,7 +223,7 @@ jobs:
           key: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -270,8 +268,7 @@ jobs:
       - name: Run Python test
         shell: bash
         run: |
-          make init
-          make python-test
+          make test-lindera-python
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -295,7 +292,8 @@ jobs:
           node-version: "20"
 
       - name: Run Node.js build
-        run: cargo build -p lindera-nodejs --all-features
+        run: |
+          make test-lindera-nodejs
 
   test-lindera-ruby:
     name: Test lindera-ruby
@@ -323,7 +321,7 @@ jobs:
       - name: Run Ruby test
         shell: bash
         run: |
-          make ruby-test
+          make test-lindera-ruby
 
   test-lindera-wasm:
     name: Test lindera-wasm
@@ -343,7 +341,8 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Run WASM test
-        run: make test-lindera-wasm
+        run: |
+          make test-lindera-wasm
 
   create-release:
     name: Create Release

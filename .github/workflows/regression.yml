@@ -11,12 +11,7 @@ on:
 jobs:
   format:
     name: Format
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-        toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -24,8 +19,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+          toolchain: stable
+          components: rustfmt
 
       - name: Run format
         run: cargo fmt --all -- --check
@@ -159,7 +154,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-crf --all-features
@@ -177,7 +171,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -186,9 +179,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
@@ -208,7 +200,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic --all-features
@@ -228,7 +219,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic-neologd --all-features
@@ -248,7 +238,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-unidic --all-features
@@ -268,7 +257,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ko-dic --all-features
@@ -288,7 +276,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cc-cedict --all-features
@@ -308,7 +295,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-jieba --all-features
@@ -345,7 +331,6 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
@@ -365,7 +350,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cli --all-features
@@ -385,7 +369,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -412,7 +395,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -438,7 +420,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
