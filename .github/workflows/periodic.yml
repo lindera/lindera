@@ -8,12 +8,7 @@ on:
 jobs:
   format:
     name: Format
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-        toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -21,8 +16,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+          toolchain: stable
+          components: rustfmt
 
       - name: Run format
         run: cargo fmt --all -- --check
@@ -42,7 +37,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-crf --all-features
@@ -68,10 +62,9 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic (${{ matrix.toolchain }})
@@ -88,7 +81,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic --all-features
@@ -108,7 +100,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic-neologd --all-features
@@ -128,7 +119,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-unidic --all-features
@@ -148,7 +138,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ko-dic --all-features
@@ -168,7 +157,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cc-cedict --all-features
@@ -188,7 +176,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-jieba --all-features
@@ -221,10 +208,9 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli (${{ matrix.toolchain }})
@@ -241,7 +227,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cli --all-features
@@ -258,7 +243,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -268,8 +252,7 @@ jobs:
       - name: Run Python test
         shell: bash
         run: |
-          make init
-          make python-test
+          make test-lindera-python
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -283,7 +266,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -291,7 +273,33 @@ jobs:
           node-version: "20"
 
       - name: Run Node.js build
-        run: cargo build -p lindera-nodejs --all-features
+        run: |
+          make test-lindera-nodejs
+
+  test-lindera-ruby:
+    name: Test lindera-ruby
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Run Ruby test
+        shell: bash
+        run: |
+          make test-lindera-ruby
 
   test-lindera-wasm:
     name: Test lindera-wasm
@@ -311,4 +319,5 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Run WASM test
-        run: make test-lindera-wasm
+        run: |
+          make test-lindera-wasm

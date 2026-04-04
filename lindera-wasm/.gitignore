@@ -1,0 +1,9 @@
+# wasm-pack build output
+pkg/
+
+# Node.js dependencies (for examples/tests)
+node_modules/
+
+
+# Build outputs
+example/dist/

@@ -36,7 +36,7 @@ function createTrainingData(tmpdir) {
       "解析,0,0,0,名詞,サ変接続,*,*,*,*,解析,カイセキ,カイセキ",
       "を,0,0,0,助詞,格助詞,一般,*,*,*,を,ヲ,ヲ",
       "行う,0,0,0,動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create character definition (defines character types)
@@ -59,7 +59,7 @@ function createTrainingData(tmpdir) {
       "0x0030..0x0039 NUMERIC",
       "0x0041..0x005A ALPHA",
       "0x0061..0x007A ALPHA",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create unknown word definition (for out-of-vocabulary words)
@@ -74,7 +74,7 @@ function createTrainingData(tmpdir) {
       "KANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*",
       "ALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*",
       "NUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create feature definition (defines features for CRF training)
@@ -94,7 +94,7 @@ function createTrainingData(tmpdir) {
       "BIGRAM B01:%L[0],%L?[1]/%R[0]    # Left POS hierarchy to right POS",
       "BIGRAM B02:%L[0]/%R[0],%R?[1]    # Left POS to right POS hierarchy",
       "BIGRAM B03:%L[0],%L[1],%L?[2]/%R[0]    # Detailed left to simple right",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create rewrite definition (for feature rewriting)
@@ -110,7 +110,7 @@ function createTrainingData(tmpdir) {
       "",
       "# Normalize numeric expressions",
       "数\tNUM",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create training corpus (annotated text)
@@ -137,7 +137,7 @@ function createTrainingData(tmpdir) {
       "を\t助詞,格助詞,一般,*,*,*,を,ヲ,ヲ",
       "行う\t動詞,自立,*,*,五段・ワ行促音便,基本形,行う,オコナウ,オコナウ",
       "EOS",
-    ].join("\n") + "\n"
+    ].join("\n") + "\n",
   );
 
   // Create metadata for dictionary export
@@ -151,8 +151,8 @@ function createTrainingData(tmpdir) {
         encoding: "utf-8",
       },
       null,
-      2
-    ) + "\n"
+      2,
+    ) + "\n",
   );
 
   return {

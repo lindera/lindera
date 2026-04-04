@@ -405,3 +405,141 @@ impl From<Metadata> for JsMetadata {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_js_compression_algorithm_to_lindera_all_variants() {
+        assert!(matches!(
+            CompressionAlgorithm::from(JsCompressionAlgorithm::Deflate),
+            CompressionAlgorithm::Deflate
+        ));
+        assert!(matches!(
+            CompressionAlgorithm::from(JsCompressionAlgorithm::Zlib),
+            CompressionAlgorithm::Zlib
+        ));
+        assert!(matches!(
+            CompressionAlgorithm::from(JsCompressionAlgorithm::Gzip),
+            CompressionAlgorithm::Gzip
+        ));
+        assert!(matches!(
+            CompressionAlgorithm::from(JsCompressionAlgorithm::Raw),
+            CompressionAlgorithm::Raw
+        ));
+    }
+
+    #[test]
+    fn test_lindera_compression_algorithm_to_js_all_variants() {
+        assert!(matches!(
+            JsCompressionAlgorithm::from(CompressionAlgorithm::Deflate),
+            JsCompressionAlgorithm::Deflate
+        ));
+        assert!(matches!(
+            JsCompressionAlgorithm::from(CompressionAlgorithm::Zlib),
+            JsCompressionAlgorithm::Zlib
+        ));
+        assert!(matches!(
+            JsCompressionAlgorithm::from(CompressionAlgorithm::Gzip),
+            JsCompressionAlgorithm::Gzip
+        ));
+        assert!(matches!(
+            JsCompressionAlgorithm::from(CompressionAlgorithm::Raw),
+            JsCompressionAlgorithm::Raw
+        ));
+    }
+
+    #[test]
+    fn test_js_metadata_to_lindera_metadata() {
+        let js_metadata = JsMetadata::new(None);
+        let lindera_metadata: Metadata = js_metadata.into();
+        assert_eq!(lindera_metadata.name, "default");
+        assert_eq!(lindera_metadata.encoding, "UTF-8");
+        assert!(matches!(
+            lindera_metadata.compress_algorithm,
+            CompressionAlgorithm::Deflate
+        ));
+        assert_eq!(lindera_metadata.default_word_cost, -10000);
+        assert_eq!(lindera_metadata.default_left_context_id, 1288);
+        assert_eq!(lindera_metadata.default_right_context_id, 1288);
+        assert_eq!(lindera_metadata.default_field_value, "*");
+        assert!(!lindera_metadata.flexible_csv);
+        assert!(!lindera_metadata.skip_invalid_cost_or_id);
+        assert!(!lindera_metadata.normalize_details);
+    }
+
+    #[test]
+    fn test_lindera_metadata_to_js_metadata() {
+        let lindera_metadata = Metadata::new(
+            "test".to_string(),
+            "EUC-JP".to_string(),
+            CompressionAlgorithm::Gzip,
+            -5000,
+            100,
+            200,
+            "-".to_string(),
+            true,
+            true,
+            true,
+            lindera::dictionary::Schema::default(),
+            lindera::dictionary::Schema::default(),
+        );
+        let js_metadata: JsMetadata = lindera_metadata.into();
+        assert_eq!(js_metadata.name(), "test");
+        assert_eq!(js_metadata.encoding(), "EUC-JP");
+        assert!(matches!(
+            js_metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Gzip
+        ));
+        assert_eq!(js_metadata.default_word_cost(), -5000);
+        assert_eq!(js_metadata.default_left_context_id(), 100);
+        assert_eq!(js_metadata.default_right_context_id(), 200);
+        assert_eq!(js_metadata.default_field_value(), "-");
+        assert!(js_metadata.flexible_csv());
+        assert!(js_metadata.skip_invalid_cost_or_id());
+        assert!(js_metadata.normalize_details());
+    }
+
+    #[test]
+    fn test_js_metadata_with_custom_options() {
+        let opts = MetadataOptions {
+            name: Some("custom".to_string()),
+            encoding: Some("Shift_JIS".to_string()),
+            compress_algorithm: Some(JsCompressionAlgorithm::Raw),
+            default_word_cost: Some(-5000),
+            default_left_context_id: Some(100),
+            default_right_context_id: Some(200),
+            default_field_value: Some("-".to_string()),
+            flexible_csv: Some(true),
+            skip_invalid_cost_or_id: Some(true),
+            normalize_details: Some(true),
+        };
+        let js_metadata = JsMetadata::new(Some(opts));
+        assert_eq!(js_metadata.name(), "custom");
+        assert_eq!(js_metadata.encoding(), "Shift_JIS");
+        assert!(matches!(
+            js_metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Raw
+        ));
+        assert_eq!(js_metadata.default_word_cost(), -5000);
+        assert_eq!(js_metadata.default_left_context_id(), 100);
+        assert_eq!(js_metadata.default_right_context_id(), 200);
+        assert_eq!(js_metadata.default_field_value(), "-");
+        assert!(js_metadata.flexible_csv());
+        assert!(js_metadata.skip_invalid_cost_or_id());
+        assert!(js_metadata.normalize_details());
+    }
+
+    #[test]
+    fn test_js_metadata_roundtrip() {
+        let original = JsMetadata::new(None);
+        let lindera: Metadata = original.into();
+        let roundtripped: JsMetadata = lindera.into();
+        assert_eq!(roundtripped.name(), "default");
+        assert_eq!(roundtripped.encoding(), "UTF-8");
+        assert_eq!(roundtripped.default_word_cost(), -10000);
+        assert_eq!(roundtripped.default_left_context_id(), 1288);
+        assert_eq!(roundtripped.default_right_context_id(), 1288);
+    }
+}

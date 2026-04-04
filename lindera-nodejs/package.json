@@ -20,7 +20,7 @@
     "build": "napi build --platform --release -p lindera-nodejs",
     "build:debug": "napi build --platform -p lindera-nodejs",
     "artifacts": "napi artifacts",
-    "test": "node --test 'tests/test_*.js'"
+    "test": "node --test tests/test_*.js"
   },
   "files": [
     "index.js",

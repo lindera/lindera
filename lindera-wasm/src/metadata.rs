@@ -140,7 +140,6 @@ impl From<JsMetadata> for Metadata {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_arch = "wasm32")]
     use super::*;
 
     #[cfg(target_arch = "wasm32")]
@@ -148,7 +147,7 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_metadata_new() {
+    fn test_metadata_new_wasm() {
         let metadata = JsMetadata::new(
             Some("test".to_string()),
             Some("utf-8".to_string()),
@@ -165,7 +164,7 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_metadata_create_default() {
+    fn test_metadata_create_default_wasm() {
         let metadata = JsMetadata::create_default();
 
         // Default values should not be empty
@@ -175,6 +174,58 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
+    fn test_metadata_setters_wasm() {
+        let mut metadata = JsMetadata::create_default();
+
+        metadata.set_name("custom_name".to_string());
+        assert_eq!(metadata.name(), "custom_name");
+
+        metadata.set_encoding("euc-jp".to_string());
+        assert_eq!(metadata.encoding(), "euc-jp");
+
+        metadata.set_compress_algorithm(JsCompressionAlgorithm::Gzip);
+        assert!(matches!(
+            metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Gzip
+        ));
+    }
+
+    #[test]
+    fn test_metadata_new() {
+        let metadata = JsMetadata::new(
+            Some("test".to_string()),
+            Some("utf-8".to_string()),
+            Some(JsCompressionAlgorithm::Deflate),
+        );
+
+        assert_eq!(metadata.name(), "test");
+        assert_eq!(metadata.encoding(), "utf-8");
+        assert!(matches!(
+            metadata.compress_algorithm(),
+            JsCompressionAlgorithm::Deflate
+        ));
+    }
+
+    #[test]
+    fn test_metadata_new_with_defaults() {
+        let metadata = JsMetadata::new(None, None, None);
+
+        assert_eq!(metadata.name(), "default");
+        assert_eq!(metadata.encoding(), "UTF-8");
+    }
+
+    #[test]
+    fn test_metadata_create_default() {
+        let metadata = JsMetadata::create_default();
+
+        assert_eq!(metadata.name(), "default");
+        assert_eq!(metadata.encoding(), "UTF-8");
+
+        let dict_schema = metadata.dictionary_schema();
+        assert_eq!(dict_schema.field_count(), 13);
+    }
+
+    #[test]
     fn test_metadata_setters() {
         let mut metadata = JsMetadata::create_default();
 
@@ -189,5 +240,66 @@ mod tests {
             metadata.compress_algorithm(),
             JsCompressionAlgorithm::Gzip
         ));
+    }
+
+    #[test]
+    fn test_metadata_schema_setters() {
+        let mut metadata = JsMetadata::create_default();
+
+        let custom_schema = JsSchema::new(vec!["surface".to_string(), "reading".to_string()]);
+        metadata.set_dictionary_schema(custom_schema);
+        assert_eq!(metadata.dictionary_schema().field_count(), 2);
+
+        let user_schema = JsSchema::new(vec![
+            "surface".to_string(),
+            "reading".to_string(),
+            "pronunciation".to_string(),
+        ]);
+        metadata.set_user_dictionary_schema(user_schema);
+        assert_eq!(metadata.user_dictionary_schema().field_count(), 3);
+    }
+
+    #[test]
+    fn test_compression_algorithm_from_into_conversions() {
+        let pairs = [
+            (
+                JsCompressionAlgorithm::Deflate,
+                CompressionAlgorithm::Deflate,
+            ),
+            (JsCompressionAlgorithm::Zlib, CompressionAlgorithm::Zlib),
+            (JsCompressionAlgorithm::Gzip, CompressionAlgorithm::Gzip),
+            (JsCompressionAlgorithm::Raw, CompressionAlgorithm::Raw),
+        ];
+
+        for (js_alg, lindera_alg) in pairs {
+            let converted: CompressionAlgorithm = js_alg.into();
+            assert_eq!(
+                std::mem::discriminant(&converted),
+                std::mem::discriminant(&lindera_alg)
+            );
+
+            let back: JsCompressionAlgorithm = lindera_alg.into();
+            assert_eq!(
+                std::mem::discriminant(&back),
+                std::mem::discriminant(&js_alg)
+            );
+        }
+    }
+
+    #[test]
+    fn test_metadata_from_into_conversions() {
+        let js_metadata = JsMetadata::new(
+            Some("test_dict".to_string()),
+            Some("utf-8".to_string()),
+            Some(JsCompressionAlgorithm::Zlib),
+        );
+
+        let lindera_metadata: Metadata = js_metadata.into();
+        assert_eq!(lindera_metadata.name, "test_dict");
+        assert_eq!(lindera_metadata.encoding, "utf-8");
+
+        let back: JsMetadata = lindera_metadata.into();
+        assert_eq!(back.name(), "test_dict");
+        assert_eq!(back.encoding(), "utf-8");
     }
 }

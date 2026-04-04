@@ -13,7 +13,7 @@ function main() {
   const userDictionaryPath = path.join(
     projectRoot,
     "resources",
-    "ipadic_simple_userdic.csv"
+    "ipadic_simple_userdic.csv",
   );
   const userDictionary = loadUserDictionary(userDictionaryPath, metadata);
 

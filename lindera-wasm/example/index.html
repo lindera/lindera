@@ -1,333 +1,361 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lindera WASM</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
 
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 2.5em;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 1.1em;
+      }
+
+      /* Dictionary management section */
+      .dict-section {
+        background: #f0f4f8;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .dict-section h2 {
+        font-size: 1.1em;
+        color: #4a5568;
+        margin-bottom: 15px;
+      }
+
+      .dict-form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .dict-form .row {
+        display: flex;
+        gap: 10px;
+      }
+
+      .dict-form input[type="text"] {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+
+      .dict-form input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+      }
+
+      .dict-form input.dict-name {
+        max-width: 160px;
+      }
+
+      .btn-sm {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .btn-sm:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .btn-download {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+      }
+
+      .btn-delete {
+        background: #e53e3e;
+        color: white;
+      }
+
+      .dict-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #718096;
+      }
+
+      #dictStatus {
+        font-weight: 600;
+        color: #38a169;
+      }
+
+      #progress {
+        display: none;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #667eea;
+        font-weight: 500;
+      }
+
+      /* Input section */
+      .input-section {
+        margin-bottom: 30px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      #inputText {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e1e5e9;
+        border-radius: 10px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 120px;
+        transition: border-color 0.3s ease;
+      }
+
+      #inputText:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      #runButton {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+        margin-bottom: 30px;
+      }
+
+      #runButton:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      #runButton:active {
+        transform: translateY(0);
+      }
+
+      #runButton:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .results-section {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 20px;
+        border: 2px solid #e1e5e9;
+      }
+
+      .results-title {
+        margin-bottom: 15px;
+        font-weight: 600;
+        color: #333;
+        font-size: 1.2em;
+      }
+
+      #resultList {
+        list-style: none;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      #resultList:empty::after {
+        content: "Analysis results will be displayed here";
+        color: #999;
+        font-style: italic;
+        text-align: center;
+        display: block;
+        padding: 40px;
+      }
+
+      @media (max-width: 600px) {
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 40px;
+          padding: 20px;
+          margin: 10px;
         }
 
         h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2.5em;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
-
-        /* Dictionary management section */
-        .dict-section {
-            background: #f0f4f8;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .dict-section h2 {
-            font-size: 1.1em;
-            color: #4a5568;
-            margin-bottom: 15px;
-        }
-
-        .dict-form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+          font-size: 2em;
         }
 
         .dict-form .row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .dict-form input[type="text"] {
-            flex: 1;
-            padding: 10px 14px;
-            border: 1px solid #cbd5e0;
-            border-radius: 8px;
-            font-size: 14px;
-            font-family: inherit;
-        }
-
-        .dict-form input[type="text"]:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+          flex-direction: column;
         }
 
         .dict-form input.dict-name {
-            max-width: 160px;
+          max-width: none;
         }
 
-        .btn-sm {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            white-space: nowrap;
-        }
-
-        .btn-sm:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        }
-
-        .btn-sm:disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        .btn-download {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-
-        .btn-delete {
-            background: #e53e3e;
-            color: white;
-        }
-
-        .dict-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #718096;
-        }
-
-        #dictStatus {
-            font-weight: 600;
-            color: #38a169;
-        }
-
-        #progress {
-            display: none;
-            margin-top: 8px;
-            font-size: 13px;
-            color: #667eea;
-            font-weight: 500;
-        }
-
-        /* Input section */
-        .input-section {
-            margin-bottom: 30px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        #inputText {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 120px;
-            transition: border-color 0.3s ease;
-        }
-
-        #inputText:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
+        #inputText,
         #runButton {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 30px;
+          font-size: 16px;
         }
+      }
 
-        #runButton:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
+      /* Token table styles */
+      .token-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        font-size: 14px;
+      }
 
-        #runButton:active {
-            transform: translateY(0);
-        }
+      .token-table th,
+      .token-table td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e1e5e9;
+      }
 
-        #runButton:disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
+      .token-table th {
+        color: #666;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
 
-        .results-section {
-            background: #f8fafc;
-            border-radius: 10px;
-            padding: 20px;
-            border: 2px solid #e1e5e9;
-        }
+      .token-table tr:hover {
+        background-color: #f1f5f9;
+      }
 
-        .results-title {
-            margin-bottom: 15px;
-            font-weight: 600;
-            color: #333;
-            font-size: 1.2em;
-        }
+      .token-table td strong {
+        color: #764ba2;
+      }
 
-        #resultList {
-            list-style: none;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        #resultList:empty::after {
-            content: "Analysis results will be displayed here";
-            color: #999;
-            font-style: italic;
-            text-align: center;
-            display: block;
-            padding: 40px;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 20px;
-                margin: 10px;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .dict-form .row {
-                flex-direction: column;
-            }
-
-            .dict-form input.dict-name {
-                max-width: none;
-            }
-
-            #inputText,
-            #runButton {
-                font-size: 16px;
-            }
-        }
-
-        /* Token table styles */
-        .token-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-
-        .token-table th,
-        .token-table td {
-            text-align: left;
-            padding: 12px;
-            border-bottom: 1px solid #e1e5e9;
-        }
-
-        .token-table th {
-            color: #666;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .token-table tr:hover {
-            background-color: #f1f5f9;
-        }
-
-        .token-table td strong {
-            color: #764ba2;
-        }
-
-        .token-table small {
-            color: #64748b;
-        }
+      .token-table small {
+        color: #64748b;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container">
-        <h1 id="title">Lindera WASM</h1>
-        <p class="subtitle">WebAssembly Morphological Analysis Library (OPFS)</p>
+      <h1 id="title">Lindera WASM</h1>
+      <p class="subtitle">WebAssembly Morphological Analysis Library (OPFS)</p>
 
-        <div class="dict-section">
-            <h2>Dictionary Management</h2>
-            <div class="dict-form">
-                <input type="text" id="dictUrl" placeholder="Dictionary zip URL (set automatically after WASM init)">
-                <div class="row">
-                    <input type="text" id="dictName" class="dict-name" placeholder="Name" value="ipadic">
-                    <button type="button" id="downloadButton" class="btn-sm btn-download">Download &amp; Store</button>
-                    <button type="button" id="deleteButton" class="btn-sm btn-delete">Delete</button>
-                </div>
-            </div>
-            <div id="progress"></div>
-            <div class="dict-info">
-                <span>Stored: <span id="dictList">loading...</span></span>
-                <span id="dictStatus">Initializing...</span>
-            </div>
+      <div class="dict-section">
+        <h2>Dictionary Management</h2>
+        <div class="dict-form">
+          <input
+            type="text"
+            id="dictUrl"
+            placeholder="Dictionary zip URL (set automatically after WASM init)"
+          />
+          <div class="row">
+            <input
+              type="text"
+              id="dictName"
+              class="dict-name"
+              placeholder="Name"
+              value="ipadic"
+            />
+            <button
+              type="button"
+              id="downloadButton"
+              class="btn-sm btn-download"
+            >
+              Download &amp; Store
+            </button>
+            <button type="button" id="deleteButton" class="btn-sm btn-delete">
+              Delete
+            </button>
+          </div>
         </div>
-
-        <div class="input-section">
-            <label for="inputText">Enter text to analyze:</label>
-            <textarea id="inputText" placeholder="Enter text here (e.g., すもももももももものうち)" rows="4">すもももももももものうち</textarea>
+        <div id="progress"></div>
+        <div class="dict-info">
+          <span>Stored: <span id="dictList">loading...</span></span>
+          <span id="dictStatus">Initializing...</span>
         </div>
+      </div>
 
-        <button id="runButton" disabled>Run Morphological Analysis</button>
+      <div class="input-section">
+        <label for="inputText">Enter text to analyze:</label>
+        <textarea
+          id="inputText"
+          placeholder="Enter text here (e.g., すもももももももものうち)"
+          rows="4"
+        >
+すもももももももものうち</textarea
+        >
+      </div>
 
-        <div class="results-section">
-            <div class="results-title">Analysis Results:</div>
-            <ul id="resultList"></ul>
-        </div>
+      <button id="runButton" disabled>Run Morphological Analysis</button>
+
+      <div class="results-section">
+        <div class="results-title">Analysis Results:</div>
+        <ul id="resultList"></ul>
+      </div>
     </div>
 
     <script src="bundle.js"></script>
-</body>
-
+  </body>
 </html>

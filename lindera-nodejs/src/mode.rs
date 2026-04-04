@@ -75,3 +75,91 @@ impl From<LinderaPenalty> for JsPenalty {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_js_mode_normal_to_lindera_mode() {
+        let lindera_mode: LinderaMode = JsMode::Normal.into();
+        assert!(matches!(lindera_mode, LinderaMode::Normal));
+    }
+
+    #[test]
+    fn test_js_mode_decompose_to_lindera_mode() {
+        let lindera_mode: LinderaMode = JsMode::Decompose.into();
+        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
+    }
+
+    #[test]
+    fn test_lindera_mode_normal_to_js_mode() {
+        let js_mode: JsMode = LinderaMode::Normal.into();
+        assert!(matches!(js_mode, JsMode::Normal));
+    }
+
+    #[test]
+    fn test_lindera_mode_decompose_to_js_mode() {
+        let penalty = LinderaPenalty::default();
+        let js_mode: JsMode = LinderaMode::Decompose(penalty).into();
+        assert!(matches!(js_mode, JsMode::Decompose));
+    }
+
+    #[test]
+    fn test_js_penalty_to_lindera_penalty() {
+        let js_penalty = JsPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 5000,
+            other_penalty_length_threshold: 10,
+            other_penalty_length_penalty: 2000,
+        };
+        let lindera_penalty: LinderaPenalty = js_penalty.into();
+        assert_eq!(lindera_penalty.kanji_penalty_length_threshold, 3);
+        assert_eq!(lindera_penalty.kanji_penalty_length_penalty, 5000);
+        assert_eq!(lindera_penalty.other_penalty_length_threshold, 10);
+        assert_eq!(lindera_penalty.other_penalty_length_penalty, 2000);
+    }
+
+    #[test]
+    fn test_lindera_penalty_to_js_penalty() {
+        let lindera_penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 4,
+            kanji_penalty_length_penalty: 6000,
+            other_penalty_length_threshold: 8,
+            other_penalty_length_penalty: 1500,
+        };
+        let js_penalty: JsPenalty = lindera_penalty.into();
+        assert_eq!(js_penalty.kanji_penalty_length_threshold, 4);
+        assert_eq!(js_penalty.kanji_penalty_length_penalty, 6000);
+        assert_eq!(js_penalty.other_penalty_length_threshold, 8);
+        assert_eq!(js_penalty.other_penalty_length_penalty, 1500);
+    }
+
+    #[test]
+    fn test_penalty_roundtrip() {
+        let original = JsPenalty {
+            kanji_penalty_length_threshold: 2,
+            kanji_penalty_length_penalty: 3000,
+            other_penalty_length_threshold: 7,
+            other_penalty_length_penalty: 1700,
+        };
+        let lindera: LinderaPenalty = original.clone().into();
+        let roundtripped: JsPenalty = lindera.into();
+        assert_eq!(
+            roundtripped.kanji_penalty_length_threshold,
+            original.kanji_penalty_length_threshold
+        );
+        assert_eq!(
+            roundtripped.kanji_penalty_length_penalty,
+            original.kanji_penalty_length_penalty
+        );
+        assert_eq!(
+            roundtripped.other_penalty_length_threshold,
+            original.other_penalty_length_threshold
+        );
+        assert_eq!(
+            roundtripped.other_penalty_length_penalty,
+            original.other_penalty_length_penalty
+        );
+    }
+}

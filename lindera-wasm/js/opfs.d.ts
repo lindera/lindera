@@ -50,7 +50,7 @@ export interface DownloadDictionaryOptions {
 export function downloadDictionary(
   url: string,
   name: string,
-  options?: DownloadDictionaryOptions
+  options?: DownloadDictionaryOptions,
 ): Promise<void>;
 
 /**

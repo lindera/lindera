@@ -240,13 +240,13 @@ pub fn update_gradient(
                     },
                 );
             }
-            if let Some(prev_label) = alpha.label {
-                if let Some(feature_set) = provider.get_feature_set(prev_label) {
-                    for &fid in feature_set.unigram() {
-                        let fid = usize::try_from(fid.get() - 1).unwrap();
-                        let widx = unigram_weight_indices[fid].unwrap().get() - 1;
-                        gradients[usize::from_u32(widx)] += prob_total;
-                    }
+            if let Some(prev_label) = alpha.label
+                && let Some(feature_set) = provider.get_feature_set(prev_label)
+            {
+                for &fid in feature_set.unigram() {
+                    let fid = usize::try_from(fid.get() - 1).unwrap();
+                    let widx = unigram_weight_indices[fid].unwrap().get() - 1;
+                    gradients[usize::from_u32(widx)] += prob_total;
                 }
             }
         }

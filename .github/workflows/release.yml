@@ -56,7 +56,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -65,7 +64,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -74,7 +73,7 @@ jobs:
           key: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -207,7 +206,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -216,7 +214,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -225,7 +223,7 @@ jobs:
           key: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -270,8 +268,7 @@ jobs:
       - name: Run Python test
         shell: bash
         run: |
-          make init
-          make python-test
+          make test-lindera-python
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -295,7 +292,36 @@ jobs:
           node-version: "20"
 
       - name: Run Node.js build
-        run: cargo build -p lindera-nodejs --all-features
+        run: |
+          make test-lindera-nodejs
+
+  test-lindera-ruby:
+    name: Test lindera-ruby
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Run Ruby test
+        shell: bash
+        run: |
+          make test-lindera-ruby
 
   test-lindera-wasm:
     name: Test lindera-wasm
@@ -315,7 +341,8 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Run WASM test
-        run: make test-lindera-wasm
+        run: |
+          make test-lindera-wasm
 
   create-release:
     name: Create Release
@@ -324,6 +351,7 @@ jobs:
         test-lindera-cli,
         test-lindera-python,
         test-lindera-nodejs,
+        test-lindera-ruby,
         test-lindera-wasm,
       ]
     runs-on: ubuntu-latest
@@ -506,37 +534,6 @@ jobs:
           files: ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
           tag_name: ${{ github.ref_name }}
 
-  publish-crates:
-    name: Publish crates
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Publish crates
-        run: |
-          for crate in lindera-crf lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-nodejs lindera-cli lindera-wasm; do
-            VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
-            PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
-            if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
-              echo "$crate $VERSION has already published"
-            else
-              echo "Publishing $crate $VERSION..."
-              pushd $crate
-              cargo publish
-              popd
-              sleep 20
-            fi
-          done
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
-
   build-python-wheels:
     name: Build wheels for ${{ matrix.platform.target }}
     needs: [create-release, build-dictionary]
@@ -707,32 +704,9 @@ jobs:
           name: sdist-${{ matrix.features.package_name }}-${{ github.ref_name }}
           path: dist
 
-  publish-pypi:
-    name: Publish to PyPI
-    needs: [build-python-wheels, build-python-sdist]
-    runs-on: ubuntu-latest
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    permissions:
-      id-token: write
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: wheels-*
-          merge-multiple: true
-          path: dist
-
-      - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        with:
-          command: upload
-          args: --non-interactive --skip-existing dist/*
-
-  build-lindera-nodejs:
-    name: Build Node.js Native (${{ matrix.platform.target }})
-    needs: [create-release]
+  build-ruby-gems:
+    name: Build Ruby Gem (${{ matrix.platform.ruby_platform }}, ${{ matrix.features.name }})
+    needs: [create-release, build-dictionary]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
@@ -740,25 +714,42 @@ jobs:
         platform:
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            ruby_platform: x86_64-linux
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+            ruby_platform: aarch64-linux
           - runner: macos-latest
             target: aarch64-apple-darwin
+            ruby_platform: arm64-darwin
           - runner: macos-15-intel
             target: x86_64-apple-darwin
-          - runner: windows-latest
-            target: x86_64-pc-windows-msvc
-          - runner: windows-latest
-            target: aarch64-pc-windows-msvc
+            ruby_platform: x86_64-darwin
+        features:
+          - value: "default"
+            gem_name: "lindera"
+          - value: "embed-ipadic"
+            gem_name: "lindera-ipadic"
+          - value: "embed-unidic"
+            gem_name: "lindera-unidic"
+          - value: "embed-ko-dic"
+            gem_name: "lindera-ko-dic"
+          - value: "embed-cc-cedict"
+            gem_name: "lindera-cc-cedict"
+          - value: "embed-jieba"
+            gem_name: "lindera-jieba"
+          - value: "embed-cjk"
+            gem_name: "lindera-cjk"
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          node-version: "20"
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -771,19 +762,48 @@ jobs:
         with:
           shared-key: "stable-${{ matrix.platform.target }}"
 
-      - name: Install dependencies and build
-        working-directory: lindera-nodejs
+      - name: Download dictionary artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dictionaries
+          pattern: lindera-*
+          merge-multiple: true
+
+      - name: Update gem name and version
+        working-directory: lindera-ruby
         shell: bash
         run: |
-          npm install
-          npx napi build --platform --release -p lindera-nodejs --target ${{ matrix.platform.target }}
+          VERSION="${GITHUB_REF_NAME#v}"
+          GEM_NAME="${{ matrix.features.gem_name }}"
+          sed -i.bak "s/spec.name = \"lindera\"/spec.name = \"${GEM_NAME}\"/" lindera.gemspec
+          sed -i.bak "s/spec.version = \".*\"/spec.version = \"${VERSION}\"/" lindera.gemspec
+          rm -f lindera.gemspec.bak
 
-      - name: Upload artifact
+      - name: Build gem
+        working-directory: lindera-ruby
+        shell: bash
+        env:
+          LINDERA_FEATURES: ${{ matrix.features.value }}
+          LINDERA_DICTIONARIES_PATH: ${{ github.workspace }}/dictionaries
+        run: |
+          bundle install --quiet
+          LINDERA_FEATURES="${LINDERA_FEATURES}" bundle exec rake compile
+          gem build lindera.gemspec
+
+      - name: Upload gem artifact
         uses: actions/upload-artifact@v7
         with:
-          name: nodejs-binding-${{ matrix.platform.target }}
-          path: lindera-nodejs/*.node
+          name: gem-${{ matrix.features.gem_name }}-${{ matrix.platform.ruby_platform }}-${{ github.ref_name }}
+          path: lindera-ruby/*.gem
           if-no-files-found: error
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: lindera-ruby/*.gem
+          tag_name: ${{ github.ref_name }}
 
   build-wasm:
     name: Build WASM (${{ matrix.target.name }}, ${{ matrix.features.name }})
@@ -892,6 +912,115 @@ jobs:
         with:
           name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}
           path: lindera-wasm/pkg
+
+  build-lindera-nodejs:
+    name: Build Node.js Native (${{ matrix.platform.target }})
+    needs: [create-release]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "stable-${{ matrix.platform.target }}"
+
+      - name: Install dependencies and build
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          npm install
+          npx napi build --platform --release -p lindera-nodejs --target ${{ matrix.platform.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nodejs-binding-${{ matrix.platform.target }}
+          path: lindera-nodejs/*.node
+          if-no-files-found: error
+
+  publish-crates:
+    name: Publish crates
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Publish crates
+        run: |
+          for crate in lindera-crf lindera-dictionary lindera-cc-cedict lindera-jieba lindera-ipadic lindera-ipadic-neologd lindera-ko-dic lindera-unidic lindera lindera-python lindera-nodejs lindera-ruby lindera-cli lindera-wasm lindera-cli; do
+            VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r ".packages[] | select(.name==\"$crate\") | .version")
+            PUBLISHED_VERSIONS=$(curl -s -A "lindera-release-workflow (https://github.com/lindera/lindera)" "https://crates.io/api/v1/crates/$crate" | jq -r 'select(.versions != null) | .versions[].num')
+            if echo "${PUBLISHED_VERSIONS}" | grep -Fx "${VERSION}" >/dev/null; then
+              echo "$crate $VERSION has already published"
+            else
+              echo "Publishing $crate $VERSION..."
+              pushd $crate
+              cargo publish
+              popd
+              sleep 20
+            fi
+          done
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_TOKEN }}
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build-python-wheels, build-python-sdist]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - name: Publish to PyPI
+        uses: PyO3/maturin-action@v1
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        with:
+          command: upload
+          args: --non-interactive --skip-existing dist/*
 
   publish-wasm-npm:
     name: Publish to npm (${{ matrix.target.name }}, ${{ matrix.features.name }})
@@ -1030,3 +1159,36 @@ jobs:
 
           # Publish the main package
           npm publish --access public
+
+  publish-rubygems:
+    name: Publish to RubyGems
+    needs: [build-ruby-gems]
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Download gem artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: gem-*
+          merge-multiple: true
+          path: gems
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+
+      - name: Publish to RubyGems
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.GEM_HOST_API_KEY }}
+        run: |
+          for gem in gems/*.gem; do
+            echo "Publishing ${gem}..."
+            gem_name=$(basename "${gem}" .gem | sed 's/-[0-9].*//')
+            gem_version=$(basename "${gem}" .gem | grep -oP '\d+\.\d+\.\d+')
+            if gem search "^${gem_name}$" --versions --exact | grep -q "${gem_version}"; then
+              echo "${gem_name} ${gem_version} already published, skipping"
+            else
+              gem push "${gem}"
+            fi
+          done

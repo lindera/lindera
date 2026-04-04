@@ -224,3 +224,111 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     parent_module.add_submodule(&m)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lindera::mode::{Mode as LinderaMode, Penalty as LinderaPenalty};
+
+    #[test]
+    fn test_pymode_normal_to_lindera_mode() {
+        let py_mode = PyMode::Normal;
+        let lindera_mode: LinderaMode = py_mode.into();
+        assert!(matches!(lindera_mode, LinderaMode::Normal));
+    }
+
+    #[test]
+    fn test_pymode_decompose_to_lindera_mode() {
+        let py_mode = PyMode::Decompose;
+        let lindera_mode: LinderaMode = py_mode.into();
+        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
+    }
+
+    #[test]
+    fn test_lindera_mode_normal_to_pymode() {
+        let lindera_mode = LinderaMode::Normal;
+        let py_mode: PyMode = lindera_mode.into();
+        assert!(matches!(py_mode, PyMode::Normal));
+    }
+
+    #[test]
+    fn test_lindera_mode_decompose_to_pymode() {
+        let lindera_mode = LinderaMode::Decompose(LinderaPenalty::default());
+        let py_mode: PyMode = lindera_mode.into();
+        assert!(matches!(py_mode, PyMode::Decompose));
+    }
+
+    #[test]
+    fn test_pypenalty_to_lindera_penalty() {
+        let py_penalty = PyPenalty {
+            kanji_penalty_length_threshold: 5,
+            kanji_penalty_length_penalty: 4000,
+            other_penalty_length_threshold: 10,
+            other_penalty_length_penalty: 2000,
+        };
+        let lindera_penalty: LinderaPenalty = py_penalty.into();
+        assert_eq!(lindera_penalty.kanji_penalty_length_threshold, 5);
+        assert_eq!(lindera_penalty.kanji_penalty_length_penalty, 4000);
+        assert_eq!(lindera_penalty.other_penalty_length_threshold, 10);
+        assert_eq!(lindera_penalty.other_penalty_length_penalty, 2000);
+    }
+
+    #[test]
+    fn test_lindera_penalty_to_pypenalty() {
+        let lindera_penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 5000,
+            other_penalty_length_threshold: 8,
+            other_penalty_length_penalty: 1500,
+        };
+        let py_penalty: PyPenalty = lindera_penalty.into();
+        assert_eq!(py_penalty.kanji_penalty_length_threshold, 3);
+        assert_eq!(py_penalty.kanji_penalty_length_penalty, 5000);
+        assert_eq!(py_penalty.other_penalty_length_threshold, 8);
+        assert_eq!(py_penalty.other_penalty_length_penalty, 1500);
+    }
+
+    #[test]
+    fn test_pypenalty_to_lindera_penalty_default_values() {
+        let py_penalty = PyPenalty {
+            kanji_penalty_length_threshold: 2,
+            kanji_penalty_length_penalty: 3000,
+            other_penalty_length_threshold: 7,
+            other_penalty_length_penalty: 1700,
+        };
+        let lindera_penalty: LinderaPenalty = py_penalty.into();
+        let default_penalty = LinderaPenalty::default();
+        assert_eq!(
+            lindera_penalty.kanji_penalty_length_threshold,
+            default_penalty.kanji_penalty_length_threshold
+        );
+        assert_eq!(
+            lindera_penalty.kanji_penalty_length_penalty,
+            default_penalty.kanji_penalty_length_penalty
+        );
+        assert_eq!(
+            lindera_penalty.other_penalty_length_threshold,
+            default_penalty.other_penalty_length_threshold
+        );
+        assert_eq!(
+            lindera_penalty.other_penalty_length_penalty,
+            default_penalty.other_penalty_length_penalty
+        );
+    }
+
+    #[test]
+    fn test_pypenalty_roundtrip() {
+        let original = PyPenalty {
+            kanji_penalty_length_threshold: 4,
+            kanji_penalty_length_penalty: 2500,
+            other_penalty_length_threshold: 6,
+            other_penalty_length_penalty: 1800,
+        };
+        let lindera: LinderaPenalty = original.into();
+        let roundtripped: PyPenalty = lindera.into();
+        assert_eq!(roundtripped.kanji_penalty_length_threshold, 4);
+        assert_eq!(roundtripped.kanji_penalty_length_penalty, 2500);
+        assert_eq!(roundtripped.other_penalty_length_threshold, 6);
+        assert_eq!(roundtripped.other_penalty_length_penalty, 1800);
+    }
+}

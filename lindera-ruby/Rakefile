@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+require "rake/extensiontask"
+require "rb_sys/extensiontask"
+
+GEMSPEC = Gem::Specification.load("lindera.gemspec")
+
+RbSys::ExtensionTask.new("lindera-ruby", GEMSPEC) do |ext|
+  ext.lib_dir = "lib/lindera"
+end
+
+require "rake/testtask"
+
+Rake::TestTask.new(:test) do |t|
+  t.libs << "test" << "lib"
+  t.pattern = "test/test_*.rb"
+end
+
+task default: %i[compile test]

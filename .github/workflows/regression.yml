@@ -11,12 +11,7 @@ on:
 jobs:
   format:
     name: Format
-    strategy:
-      matrix:
-        platform:
-          - runner: ubuntu-latest
-        toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
@@ -24,8 +19,8 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
-          components: rustfmt, clippy
+          toolchain: stable
+          components: rustfmt
 
       - name: Run format
         run: cargo fmt --all -- --check
@@ -46,6 +41,7 @@ jobs:
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
+      lindera-ruby: ${{ steps.filter.outputs.lindera-ruby }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
@@ -122,6 +118,17 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+            lindera-ruby:
+              - 'lindera-ruby/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
             lindera-wasm:
               - 'lindera-wasm/**'
               - 'lindera/**'
@@ -147,7 +154,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-crf --all-features
@@ -165,7 +171,6 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-        toolchain: [stable]
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -174,12 +179,11 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -196,7 +200,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic --all-features
@@ -216,7 +219,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ipadic-neologd --all-features
@@ -236,7 +238,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-unidic --all-features
@@ -256,7 +257,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-ko-dic --all-features
@@ -276,7 +276,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cc-cedict --all-features
@@ -296,7 +295,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-jieba --all-features
@@ -333,10 +331,9 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
-          components: rustfmt, clippy
 
       - name: Run test
-        run: cargo test -p lindera --target "${{ matrix.platform.target }}" --all-features
+        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -353,7 +350,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Run test
         run: cargo test -p lindera-cli --all-features
@@ -373,7 +369,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -383,8 +378,7 @@ jobs:
       - name: Run Python test
         shell: bash
         run: |
-          make init
-          make python-test
+          make test-lindera-python
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -401,7 +395,6 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -409,7 +402,36 @@ jobs:
           node-version: "20"
 
       - name: Run Node.js build
-        run: cargo build -p lindera-nodejs --all-features
+        run: |
+          make test-lindera-nodejs
+
+  test-lindera-ruby:
+    name: Test lindera-ruby
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Run Ruby test
+        shell: bash
+        run: |
+          make test-lindera-ruby
 
   test-lindera-wasm:
     name: Test lindera-wasm

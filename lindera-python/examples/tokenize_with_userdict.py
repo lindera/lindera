@@ -13,7 +13,9 @@ def main():
     metadata = dictionary.metadata()
 
     # load the user dictionary
-    user_dictionary_path = str(project_root / Path("./resources/ipadic_simple_userdic.csv"))
+    user_dictionary_path = str(
+        project_root / Path("./resources/ipadic_simple_userdic.csv")
+    )
     user_dictionary = load_user_dictionary(user_dictionary_path, metadata)
 
     # create a tokenizer

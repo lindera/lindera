@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 
 # Skip all tests in this file if train feature is not available
-pytestmark = pytest.mark.skipif(not hasattr(__import__("lindera"), "train"), reason="train feature not available")
+pytestmark = pytest.mark.skipif(
+    not hasattr(__import__("lindera"), "train"), reason="train feature not available"
+)
 
 
 def test_train_basic():
@@ -54,7 +56,9 @@ def test_train_basic():
 
         # Create feature definition
         feature_def_file = tmpdir / "feature.def"
-        feature_def_file.write_text("UNIGRAM U00:%F[0]\n" "UNIGRAM U01:%F[0],%F?[1]\n" "BIGRAM B00:%L[0]/%R[0]\n")
+        feature_def_file.write_text(
+            "UNIGRAM U00:%F[0]\nUNIGRAM U01:%F[0],%F?[1]\nBIGRAM B00:%L[0]/%R[0]\n"
+        )
 
         # Create rewrite definition
         rewrite_def_file = tmpdir / "rewrite.def"
@@ -101,24 +105,32 @@ def test_export_basic():
         # First, create and train a model (reuse code from test_train_basic)
         seed_file = tmpdir / "seed.csv"
         seed_file.write_text(
-            "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n" "は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n"
+            "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n"
+            "は,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\n"
         )
 
         char_def_file = tmpdir / "char.def"
-        char_def_file.write_text("DEFAULT 0 1 0\n" "HIRAGANA 1 1 0\n" "\n" "0x3041..0x3096 HIRAGANA\n")
+        char_def_file.write_text(
+            "DEFAULT 0 1 0\nHIRAGANA 1 1 0\n\n0x3041..0x3096 HIRAGANA\n"
+        )
 
         unk_def_file = tmpdir / "unk.def"
-        unk_def_file.write_text("DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n" "HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n")
+        unk_def_file.write_text(
+            "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+            "HIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\n"
+        )
 
         feature_def_file = tmpdir / "feature.def"
-        feature_def_file.write_text("UNIGRAM U00:%F[0]\n" "BIGRAM B00:%L[0]/%R[0]\n")
+        feature_def_file.write_text("UNIGRAM U00:%F[0]\nBIGRAM B00:%L[0]/%R[0]\n")
 
         rewrite_def_file = tmpdir / "rewrite.def"
         rewrite_def_file.write_text("名詞,一般\tNOUN\n")
 
         corpus_file = tmpdir / "corpus.txt"
         corpus_file.write_text(
-            "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n" "は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n" "EOS\n"
+            "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\n"
+            "は\t助詞,係助詞,*,*,*,*,は,ハ,ワ\n"
+            "EOS\n"
         )
 
         model_file = tmpdir / "model.dat"
@@ -166,7 +178,9 @@ def test_export_with_metadata():
         seed_file.write_text("テスト,0,0,0,名詞,一般,*,*,*,*,テスト,テスト,テスト\n")
 
         char_def_file = tmpdir / "char.def"
-        char_def_file.write_text("DEFAULT 0 1 0\n" "KATAKANA 1 1 0\n" "\n" "0x30A1..0x30F6 KATAKANA\n")
+        char_def_file.write_text(
+            "DEFAULT 0 1 0\nKATAKANA 1 1 0\n\n0x30A1..0x30F6 KATAKANA\n"
+        )
 
         unk_def_file = tmpdir / "unk.def"
         unk_def_file.write_text("DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\n")
@@ -178,7 +192,7 @@ def test_export_with_metadata():
         rewrite_def_file.write_text("名詞\tNOUN\n")
 
         corpus_file = tmpdir / "corpus.txt"
-        corpus_file.write_text("テスト\t名詞,一般,*,*,*,*,テスト,テスト,テスト\n" "EOS\n")
+        corpus_file.write_text("テスト\t名詞,一般,*,*,*,*,テスト,テスト,テスト\nEOS\n")
 
         model_file = tmpdir / "model.dat"
 
@@ -196,11 +210,15 @@ def test_export_with_metadata():
 
         # Create base metadata
         metadata_file = tmpdir / "metadata.json"
-        metadata_file.write_text('{"name": "test-dict", "version": "1.0.0", "encoding": "utf-8"}')
+        metadata_file.write_text(
+            '{"name": "test-dict", "version": "1.0.0", "encoding": "utf-8"}'
+        )
 
         # Export with metadata
         export_dir = tmpdir / "exported"
-        lindera.export(model=str(model_file), output=str(export_dir), metadata=str(metadata_file))
+        lindera.export(
+            model=str(model_file), output=str(export_dir), metadata=str(metadata_file)
+        )
 
         # Verify metadata was created
         assert (export_dir / "metadata.json").exists()

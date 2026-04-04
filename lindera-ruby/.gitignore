@@ -1,0 +1,21 @@
+# Build artifacts
+tmp/
+lib/lindera/lindera_ruby.so
+lib/lindera/lindera_ruby.bundle
+lib/lindera/lindera_ruby.dll
+*.so
+*.bundle
+*.dll
+Makefile
+mkmf.log
+
+# Bundler
+vendor/
+.bundle/
+
+# Gem build output
+*.gem
+pkg/
+
+# Ruby
+Gemfile.lock

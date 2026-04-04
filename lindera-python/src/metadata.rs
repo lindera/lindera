@@ -410,3 +410,180 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     parent_module.add_submodule(&m)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lindera::dictionary::{CompressionAlgorithm, Metadata};
+
+    #[test]
+    fn test_pycompression_deflate_to_lindera() {
+        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Deflate.into();
+        assert!(matches!(alg, CompressionAlgorithm::Deflate));
+    }
+
+    #[test]
+    fn test_pycompression_zlib_to_lindera() {
+        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Zlib.into();
+        assert!(matches!(alg, CompressionAlgorithm::Zlib));
+    }
+
+    #[test]
+    fn test_pycompression_gzip_to_lindera() {
+        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Gzip.into();
+        assert!(matches!(alg, CompressionAlgorithm::Gzip));
+    }
+
+    #[test]
+    fn test_pycompression_raw_to_lindera() {
+        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Raw.into();
+        assert!(matches!(alg, CompressionAlgorithm::Raw));
+    }
+
+    #[test]
+    fn test_lindera_compression_to_pycompression_all_variants() {
+        assert!(matches!(
+            PyCompressionAlgorithm::from(CompressionAlgorithm::Deflate),
+            PyCompressionAlgorithm::Deflate
+        ));
+        assert!(matches!(
+            PyCompressionAlgorithm::from(CompressionAlgorithm::Zlib),
+            PyCompressionAlgorithm::Zlib
+        ));
+        assert!(matches!(
+            PyCompressionAlgorithm::from(CompressionAlgorithm::Gzip),
+            PyCompressionAlgorithm::Gzip
+        ));
+        assert!(matches!(
+            PyCompressionAlgorithm::from(CompressionAlgorithm::Raw),
+            PyCompressionAlgorithm::Raw
+        ));
+    }
+
+    #[test]
+    fn test_pymetadata_to_metadata() {
+        let py_meta = PyMetadata::new(
+            Some("test_dict".to_string()),
+            Some("EUC-JP".to_string()),
+            Some(PyCompressionAlgorithm::Gzip),
+            Some(-5000),
+            Some(100),
+            Some(200),
+            Some("N/A".to_string()),
+            Some(true),
+            Some(true),
+            Some(true),
+            None,
+            None,
+        );
+        let meta: Metadata = py_meta.into();
+        assert_eq!(meta.name, "test_dict");
+        assert_eq!(meta.encoding, "EUC-JP");
+        assert!(matches!(
+            meta.compress_algorithm,
+            CompressionAlgorithm::Gzip
+        ));
+        assert_eq!(meta.default_word_cost, -5000);
+        assert_eq!(meta.default_left_context_id, 100);
+        assert_eq!(meta.default_right_context_id, 200);
+        assert_eq!(meta.default_field_value, "N/A");
+        assert!(meta.flexible_csv);
+        assert!(meta.skip_invalid_cost_or_id);
+        assert!(meta.normalize_details);
+    }
+
+    #[test]
+    fn test_metadata_to_pymetadata() {
+        let schema = lindera::dictionary::Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+        ]);
+        let userdic_schema =
+            lindera::dictionary::Schema::new(vec!["surface".to_string(), "reading".to_string()]);
+        let meta = Metadata::new(
+            "my_dict".to_string(),
+            "UTF-8".to_string(),
+            CompressionAlgorithm::Zlib,
+            -10000,
+            1288,
+            1288,
+            "*".to_string(),
+            false,
+            false,
+            false,
+            schema,
+            userdic_schema,
+        );
+        let py_meta: PyMetadata = meta.into();
+        assert_eq!(py_meta.name, "my_dict");
+        assert_eq!(py_meta.encoding, "UTF-8");
+        assert!(matches!(
+            py_meta.compress_algorithm,
+            PyCompressionAlgorithm::Zlib
+        ));
+        assert_eq!(py_meta.default_word_cost, -10000);
+        assert_eq!(py_meta.default_left_context_id, 1288);
+        assert_eq!(py_meta.default_right_context_id, 1288);
+        assert_eq!(py_meta.default_field_value, "*");
+        assert!(!py_meta.flexible_csv);
+        assert!(!py_meta.skip_invalid_cost_or_id);
+        assert!(!py_meta.normalize_details);
+        assert_eq!(py_meta.dictionary_schema.fields.len(), 4);
+        assert_eq!(py_meta.user_dictionary_schema.fields.len(), 2);
+    }
+
+    #[test]
+    fn test_pymetadata_default_values() {
+        let py_meta = PyMetadata::create_default();
+        assert_eq!(py_meta.name, "default");
+        assert_eq!(py_meta.encoding, "UTF-8");
+        assert!(matches!(
+            py_meta.compress_algorithm,
+            PyCompressionAlgorithm::Deflate
+        ));
+        assert_eq!(py_meta.default_word_cost, -10000);
+        assert_eq!(py_meta.default_left_context_id, 1288);
+        assert_eq!(py_meta.default_right_context_id, 1288);
+        assert_eq!(py_meta.default_field_value, "*");
+        assert!(!py_meta.flexible_csv);
+        assert!(!py_meta.skip_invalid_cost_or_id);
+        assert!(!py_meta.normalize_details);
+        assert_eq!(py_meta.dictionary_schema.field_count(), 13);
+        assert_eq!(py_meta.user_dictionary_schema.fields.len(), 3);
+    }
+
+    #[test]
+    fn test_pymetadata_roundtrip() {
+        let py_meta = PyMetadata::new(
+            Some("roundtrip".to_string()),
+            Some("UTF-8".to_string()),
+            Some(PyCompressionAlgorithm::Raw),
+            Some(-8000),
+            Some(500),
+            Some(600),
+            Some("?".to_string()),
+            Some(true),
+            Some(false),
+            Some(true),
+            None,
+            None,
+        );
+        let meta: Metadata = py_meta.into();
+        let roundtripped: PyMetadata = meta.into();
+        assert_eq!(roundtripped.name, "roundtrip");
+        assert_eq!(roundtripped.encoding, "UTF-8");
+        assert!(matches!(
+            roundtripped.compress_algorithm,
+            PyCompressionAlgorithm::Raw
+        ));
+        assert_eq!(roundtripped.default_word_cost, -8000);
+        assert_eq!(roundtripped.default_left_context_id, 500);
+        assert_eq!(roundtripped.default_right_context_id, 600);
+        assert_eq!(roundtripped.default_field_value, "?");
+        assert!(roundtripped.flexible_csv);
+        assert!(!roundtripped.skip_invalid_cost_or_id);
+        assert!(roundtripped.normalize_details);
+    }
+}
