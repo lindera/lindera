@@ -422,3 +422,220 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rb_field_type_surface_to_lindera() {
+        let rb = RbFieldType {
+            inner: RbFieldTypeKind::Surface,
+        };
+        let lindera: FieldType = rb.into();
+        assert!(matches!(lindera, FieldType::Surface));
+    }
+
+    #[test]
+    fn test_rb_field_type_left_context_id_to_lindera() {
+        let rb = RbFieldType {
+            inner: RbFieldTypeKind::LeftContextId,
+        };
+        let lindera: FieldType = rb.into();
+        assert!(matches!(lindera, FieldType::LeftContextId));
+    }
+
+    #[test]
+    fn test_rb_field_type_right_context_id_to_lindera() {
+        let rb = RbFieldType {
+            inner: RbFieldTypeKind::RightContextId,
+        };
+        let lindera: FieldType = rb.into();
+        assert!(matches!(lindera, FieldType::RightContextId));
+    }
+
+    #[test]
+    fn test_rb_field_type_cost_to_lindera() {
+        let rb = RbFieldType {
+            inner: RbFieldTypeKind::Cost,
+        };
+        let lindera: FieldType = rb.into();
+        assert!(matches!(lindera, FieldType::Cost));
+    }
+
+    #[test]
+    fn test_rb_field_type_custom_to_lindera() {
+        let rb = RbFieldType {
+            inner: RbFieldTypeKind::Custom,
+        };
+        let lindera: FieldType = rb.into();
+        assert!(matches!(lindera, FieldType::Custom));
+    }
+
+    #[test]
+    fn test_lindera_field_type_surface_to_rb() {
+        let rb: RbFieldType = FieldType::Surface.into();
+        assert!(matches!(rb.inner, RbFieldTypeKind::Surface));
+    }
+
+    #[test]
+    fn test_lindera_field_type_left_context_id_to_rb() {
+        let rb: RbFieldType = FieldType::LeftContextId.into();
+        assert!(matches!(rb.inner, RbFieldTypeKind::LeftContextId));
+    }
+
+    #[test]
+    fn test_lindera_field_type_right_context_id_to_rb() {
+        let rb: RbFieldType = FieldType::RightContextId.into();
+        assert!(matches!(rb.inner, RbFieldTypeKind::RightContextId));
+    }
+
+    #[test]
+    fn test_lindera_field_type_cost_to_rb() {
+        let rb: RbFieldType = FieldType::Cost.into();
+        assert!(matches!(rb.inner, RbFieldTypeKind::Cost));
+    }
+
+    #[test]
+    fn test_lindera_field_type_custom_to_rb() {
+        let rb: RbFieldType = FieldType::Custom.into();
+        assert!(matches!(rb.inner, RbFieldTypeKind::Custom));
+    }
+
+    #[test]
+    fn test_rb_schema_new_builds_index_map() {
+        let fields = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let schema = RbSchema::new_internal(fields);
+        assert_eq!(schema.get_field_index("a".to_string()), Some(0));
+        assert_eq!(schema.get_field_index("b".to_string()), Some(1));
+        assert_eq!(schema.get_field_index("c".to_string()), Some(2));
+        assert_eq!(schema.get_field_index("d".to_string()), None);
+    }
+
+    #[test]
+    fn test_rb_schema_field_count() {
+        let fields = vec!["x".to_string(), "y".to_string()];
+        let schema = RbSchema::new_internal(fields);
+        assert_eq!(schema.field_count(), 2);
+    }
+
+    #[test]
+    fn test_rb_schema_get_custom_fields_with_more_than_4() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "major_pos".to_string(),
+            "reading".to_string(),
+        ];
+        let schema = RbSchema::new_internal(fields);
+        let custom = schema.get_custom_fields();
+        assert_eq!(custom, vec!["major_pos", "reading"]);
+    }
+
+    #[test]
+    fn test_rb_schema_get_custom_fields_with_4_or_fewer() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+        ];
+        let schema = RbSchema::new_internal(fields);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_rb_schema_get_custom_fields_empty() {
+        let schema = RbSchema::new_internal(vec![]);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_rb_schema_create_default_has_13_fields() {
+        let schema = RbSchema::create_default_internal();
+        assert_eq!(schema.field_count(), 13);
+    }
+
+    #[test]
+    fn test_rb_schema_create_default_first_fields() {
+        let schema = RbSchema::create_default_internal();
+        assert_eq!(schema.fields[0], "surface");
+        assert_eq!(schema.fields[1], "left_context_id");
+        assert_eq!(schema.fields[2], "right_context_id");
+        assert_eq!(schema.fields[3], "cost");
+    }
+
+    #[test]
+    fn test_rb_schema_to_lindera_schema() {
+        let fields = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let rb_schema = RbSchema::new_internal(fields.clone());
+        let lindera_schema: Schema = rb_schema.into();
+        assert_eq!(lindera_schema.get_all_fields(), &fields);
+    }
+
+    #[test]
+    fn test_lindera_schema_to_rb_schema() {
+        let fields = vec!["x".to_string(), "y".to_string(), "z".to_string()];
+        let lindera_schema = Schema::new(fields.clone());
+        let rb_schema: RbSchema = lindera_schema.into();
+        assert_eq!(rb_schema.fields, fields);
+        assert_eq!(rb_schema.get_field_index("x".to_string()), Some(0));
+        assert_eq!(rb_schema.get_field_index("y".to_string()), Some(1));
+        assert_eq!(rb_schema.get_field_index("z".to_string()), Some(2));
+    }
+
+    #[test]
+    fn test_rb_schema_roundtrip() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "reading".to_string(),
+        ];
+        let rb_schema = RbSchema::new_internal(fields.clone());
+        let lindera_schema: Schema = rb_schema.into();
+        let back: RbSchema = lindera_schema.into();
+        assert_eq!(back.fields, fields);
+        assert_eq!(back.field_count(), 5);
+    }
+
+    #[test]
+    fn test_rb_field_definition_to_lindera() {
+        let rb_def = RbFieldDefinition {
+            index: 2,
+            name: "right_context_id".to_string(),
+            field_type: RbFieldType {
+                inner: RbFieldTypeKind::RightContextId,
+            },
+            description: Some("Right context ID".to_string()),
+        };
+        let lindera_def: FieldDefinition = rb_def.into();
+        assert_eq!(lindera_def.index, 2);
+        assert_eq!(lindera_def.name, "right_context_id");
+        assert!(matches!(lindera_def.field_type, FieldType::RightContextId));
+        assert_eq!(
+            lindera_def.description,
+            Some("Right context ID".to_string())
+        );
+    }
+
+    #[test]
+    fn test_lindera_field_definition_to_rb() {
+        let lindera_def = FieldDefinition {
+            index: 4,
+            name: "major_pos".to_string(),
+            field_type: FieldType::Custom,
+            description: None,
+        };
+        let rb_def: RbFieldDefinition = lindera_def.into();
+        assert_eq!(rb_def.index, 4);
+        assert_eq!(rb_def.name, "major_pos");
+        assert!(matches!(rb_def.field_type.inner, RbFieldTypeKind::Custom));
+        assert!(rb_def.description.is_none());
+    }
+}

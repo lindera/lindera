@@ -407,3 +407,196 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rb_compression_deflate_to_lindera() {
+        let rb = RbCompressionAlgorithm {
+            inner: RbCompressionAlgorithmKind::Deflate,
+        };
+        let lindera: CompressionAlgorithm = rb.into();
+        assert!(matches!(lindera, CompressionAlgorithm::Deflate));
+    }
+
+    #[test]
+    fn test_rb_compression_zlib_to_lindera() {
+        let rb = RbCompressionAlgorithm {
+            inner: RbCompressionAlgorithmKind::Zlib,
+        };
+        let lindera: CompressionAlgorithm = rb.into();
+        assert!(matches!(lindera, CompressionAlgorithm::Zlib));
+    }
+
+    #[test]
+    fn test_rb_compression_gzip_to_lindera() {
+        let rb = RbCompressionAlgorithm {
+            inner: RbCompressionAlgorithmKind::Gzip,
+        };
+        let lindera: CompressionAlgorithm = rb.into();
+        assert!(matches!(lindera, CompressionAlgorithm::Gzip));
+    }
+
+    #[test]
+    fn test_rb_compression_raw_to_lindera() {
+        let rb = RbCompressionAlgorithm {
+            inner: RbCompressionAlgorithmKind::Raw,
+        };
+        let lindera: CompressionAlgorithm = rb.into();
+        assert!(matches!(lindera, CompressionAlgorithm::Raw));
+    }
+
+    #[test]
+    fn test_lindera_compression_deflate_to_rb() {
+        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Deflate.into();
+        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Deflate));
+    }
+
+    #[test]
+    fn test_lindera_compression_zlib_to_rb() {
+        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Zlib.into();
+        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Zlib));
+    }
+
+    #[test]
+    fn test_lindera_compression_gzip_to_rb() {
+        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Gzip.into();
+        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Gzip));
+    }
+
+    #[test]
+    fn test_lindera_compression_raw_to_rb() {
+        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Raw.into();
+        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Raw));
+    }
+
+    #[test]
+    fn test_rb_metadata_to_lindera_metadata() {
+        let rb_metadata = RbMetadata {
+            name: "test_dict".to_string(),
+            encoding: "EUC-JP".to_string(),
+            compress_algorithm: RbCompressionAlgorithm {
+                inner: RbCompressionAlgorithmKind::Gzip,
+            },
+            default_word_cost: -5000,
+            default_left_context_id: 100,
+            default_right_context_id: 200,
+            default_field_value: "N/A".to_string(),
+            flexible_csv: true,
+            skip_invalid_cost_or_id: true,
+            normalize_details: true,
+            dictionary_schema: RbSchema::new_internal(vec![
+                "surface".to_string(),
+                "cost".to_string(),
+            ]),
+            user_dictionary_schema: RbSchema::new_internal(vec!["surface".to_string()]),
+        };
+
+        let lindera_metadata: Metadata = rb_metadata.into();
+        assert_eq!(lindera_metadata.name, "test_dict");
+        assert_eq!(lindera_metadata.encoding, "EUC-JP");
+        assert!(matches!(
+            lindera_metadata.compress_algorithm,
+            CompressionAlgorithm::Gzip
+        ));
+        assert_eq!(lindera_metadata.default_word_cost, -5000);
+        assert_eq!(lindera_metadata.default_left_context_id, 100);
+        assert_eq!(lindera_metadata.default_right_context_id, 200);
+        assert_eq!(lindera_metadata.default_field_value, "N/A");
+        assert!(lindera_metadata.flexible_csv);
+        assert!(lindera_metadata.skip_invalid_cost_or_id);
+        assert!(lindera_metadata.normalize_details);
+        assert_eq!(lindera_metadata.dictionary_schema.get_all_fields().len(), 2);
+        assert_eq!(
+            lindera_metadata
+                .user_dictionary_schema
+                .get_all_fields()
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn test_lindera_metadata_to_rb_metadata() {
+        let dict_schema =
+            lindera::dictionary::Schema::new(vec!["surface".to_string(), "cost".to_string()]);
+        let user_schema =
+            lindera::dictionary::Schema::new(vec!["surface".to_string(), "reading".to_string()]);
+
+        let lindera_metadata = Metadata::new(
+            "my_dict".to_string(),
+            "UTF-8".to_string(),
+            CompressionAlgorithm::Zlib,
+            -8000,
+            500,
+            600,
+            "?".to_string(),
+            false,
+            true,
+            false,
+            dict_schema,
+            user_schema,
+        );
+
+        let rb_metadata: RbMetadata = lindera_metadata.into();
+        assert_eq!(rb_metadata.name, "my_dict");
+        assert_eq!(rb_metadata.encoding, "UTF-8");
+        assert!(matches!(
+            rb_metadata.compress_algorithm.inner,
+            RbCompressionAlgorithmKind::Zlib
+        ));
+        assert_eq!(rb_metadata.default_word_cost, -8000);
+        assert_eq!(rb_metadata.default_left_context_id, 500);
+        assert_eq!(rb_metadata.default_right_context_id, 600);
+        assert_eq!(rb_metadata.default_field_value, "?");
+        assert!(!rb_metadata.flexible_csv);
+        assert!(rb_metadata.skip_invalid_cost_or_id);
+        assert!(!rb_metadata.normalize_details);
+        assert_eq!(rb_metadata.dictionary_schema.fields.len(), 2);
+        assert_eq!(rb_metadata.user_dictionary_schema.fields.len(), 2);
+    }
+
+    #[test]
+    fn test_rb_metadata_roundtrip() {
+        let rb_metadata = RbMetadata {
+            name: "roundtrip".to_string(),
+            encoding: "UTF-8".to_string(),
+            compress_algorithm: RbCompressionAlgorithm {
+                inner: RbCompressionAlgorithmKind::Deflate,
+            },
+            default_word_cost: -10000,
+            default_left_context_id: 1288,
+            default_right_context_id: 1288,
+            default_field_value: "*".to_string(),
+            flexible_csv: false,
+            skip_invalid_cost_or_id: false,
+            normalize_details: false,
+            dictionary_schema: RbSchema::create_default_internal(),
+            user_dictionary_schema: RbSchema::new_internal(vec![
+                "surface".to_string(),
+                "reading".to_string(),
+                "pronunciation".to_string(),
+            ]),
+        };
+
+        let lindera: Metadata = rb_metadata.into();
+        let back: RbMetadata = lindera.into();
+        assert_eq!(back.name, "roundtrip");
+        assert_eq!(back.encoding, "UTF-8");
+        assert!(matches!(
+            back.compress_algorithm.inner,
+            RbCompressionAlgorithmKind::Deflate
+        ));
+        assert_eq!(back.default_word_cost, -10000);
+        assert_eq!(back.default_left_context_id, 1288);
+        assert_eq!(back.default_right_context_id, 1288);
+        assert_eq!(back.default_field_value, "*");
+        assert!(!back.flexible_csv);
+        assert!(!back.skip_invalid_cost_or_id);
+        assert!(!back.normalize_details);
+        assert_eq!(back.dictionary_schema.fields.len(), 13);
+        assert_eq!(back.user_dictionary_schema.fields.len(), 3);
+    }
+}

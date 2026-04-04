@@ -395,8 +395,7 @@ jobs:
       - name: Run Python test
         shell: bash
         run: |
-          make init
-          make python-test
+          make test-lindera-python
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -421,7 +420,8 @@ jobs:
           node-version: "20"
 
       - name: Run Node.js build
-        run: cargo build -p lindera-nodejs --all-features
+        run: |
+          make test-lindera-nodejs
 
   test-lindera-ruby:
     name: Test lindera-ruby
@@ -450,7 +450,7 @@ jobs:
       - name: Run Ruby test
         shell: bash
         run: |
-          make ruby-test
+          make test-lindera-ruby
 
   test-lindera-wasm:
     name: Test lindera-wasm

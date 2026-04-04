@@ -136,7 +136,7 @@ def create_training_data(tmpdir: Path):
     # Create metadata for dictionary export
     metadata_file = tmpdir / "metadata.json"
     metadata_file.write_text(
-        "{\n" '  "name": "custom-dict",\n' '  "version": "1.0.0",\n' '  "encoding": "utf-8"\n' "}\n"
+        '{\n  "name": "custom-dict",\n  "version": "1.0.0",\n  "encoding": "utf-8"\n}\n'
     )
 
     return {

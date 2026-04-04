@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
+require_relative 'test_helper'
 
 class TestModules < Minitest::Test
   def test_version
@@ -36,48 +36,48 @@ class TestModules < Minitest::Test
     schema = Lindera::Schema.create_default
     assert_equal 13, schema.field_count
     fields = schema.fields
-    assert_equal "surface", fields[0]
-    assert_equal "pronunciation", fields[12]
+    assert_equal 'surface', fields[0]
+    assert_equal 'pronunciation', fields[12]
   end
 
   def test_schema_custom
     schema = Lindera::Schema.new(%w[surface reading pronunciation])
     assert_equal 3, schema.field_count
-    assert_equal 0, schema.get_field_index("surface")
-    assert_equal 1, schema.get_field_index("reading")
-    assert_nil schema.get_field_index("nonexistent")
+    assert_equal 0, schema.get_field_index('surface')
+    assert_equal 1, schema.get_field_index('reading')
+    assert_nil schema.get_field_index('nonexistent')
   end
 
   def test_schema_field_by_name
     schema = Lindera::Schema.create_default
-    field = schema.get_field_by_name("surface")
+    field = schema.get_field_by_name('surface')
     assert_kind_of Lindera::FieldDefinition, field
     assert_equal 0, field.index
-    assert_equal "surface", field.name
+    assert_equal 'surface', field.name
   end
 
   def test_metadata_default
     metadata = Lindera::Metadata.create_default
-    assert_equal "default", metadata.name
-    assert_equal "UTF-8", metadata.encoding
-    assert_equal(-10000, metadata.default_word_cost)
+    assert_equal 'default', metadata.name
+    assert_equal 'UTF-8', metadata.encoding
+    assert_equal(-10_000, metadata.default_word_cost)
   end
 
   def test_metadata_to_hash
     metadata = Lindera::Metadata.create_default
     hash = metadata.to_h
     assert_kind_of Hash, hash
-    assert_equal "default", hash["name"]
-    assert_equal "UTF-8", hash["encoding"]
+    assert_equal 'default', hash['name']
+    assert_equal 'UTF-8', hash['encoding']
   end
 
   def test_mode
-    mode = Lindera::Mode.new("normal")
+    mode = Lindera::Mode.new('normal')
     assert mode.normal?
     refute mode.decompose?
-    assert_equal "normal", mode.name
+    assert_equal 'normal', mode.name
 
-    mode2 = Lindera::Mode.new("decompose")
+    mode2 = Lindera::Mode.new('decompose')
     refute mode2.normal?
     assert mode2.decompose?
   end

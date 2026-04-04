@@ -213,12 +213,12 @@ impl Trainer {
         if lambda < 0.0 {
             return Err(RucrfError::invalid_argument("lambda must be >= 0"));
         }
-        if let Regularization::ElasticNet { l1_ratio } = regularization {
-            if !(0.0..=1.0).contains(&l1_ratio) {
-                return Err(RucrfError::invalid_argument(
-                    "l1_ratio must be between 0.0 and 1.0",
-                ));
-            }
+        if let Regularization::ElasticNet { l1_ratio } = regularization
+            && !(0.0..=1.0).contains(&l1_ratio)
+        {
+            return Err(RucrfError::invalid_argument(
+                "l1_ratio must be between 0.0 and 1.0",
+            ));
         }
         self.regularization = regularization;
         self.lambda = lambda;

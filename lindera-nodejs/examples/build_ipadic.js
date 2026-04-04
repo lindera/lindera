@@ -25,7 +25,7 @@ function download(url, dest) {
           file.on("finish", () => {
             file.close(resolve);
           });
-        }
+        },
       )
       .on("error", (err) => {
         fs.unlinkSync(dest);
@@ -48,7 +48,10 @@ async function main() {
 
   const sourcePath = "/tmp/mecab-ipadic-2.7.0-20070801";
   const destinationPath = "/tmp/lindera-ipadic-2.7.0-20070801";
-  const metadataPath = path.resolve(__dirname, "../resources/ipadic_metadata.json");
+  const metadataPath = path.resolve(
+    __dirname,
+    "../resources/ipadic_metadata.json",
+  );
 
   const metadata = Metadata.fromJsonFile(metadataPath);
 

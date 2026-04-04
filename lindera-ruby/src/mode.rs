@@ -57,6 +57,7 @@ impl RbMode {
     /// # Returns
     ///
     /// A string slice representing the mode.
+    #[allow(clippy::wrong_self_convention)]
     fn to_s(&self) -> &str {
         match self.inner {
             RbModeKind::Normal => "normal",
@@ -185,6 +186,7 @@ impl RbPenalty {
     }
 
     /// Returns a string representation of the penalty configuration.
+    #[allow(clippy::wrong_self_convention)]
     fn to_s(&self) -> String {
         format!(
             "Penalty(kanji_threshold={}, kanji_penalty={}, other_threshold={}, other_penalty={})",
@@ -264,4 +266,136 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     penalty_class.define_method("inspect", method!(RbPenalty::inspect, 0))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rb_mode_normal_to_lindera_mode() {
+        let rb_mode = RbMode {
+            inner: RbModeKind::Normal,
+        };
+        let lindera_mode: LinderaMode = rb_mode.into();
+        assert!(matches!(lindera_mode, LinderaMode::Normal));
+    }
+
+    #[test]
+    fn test_rb_mode_decompose_to_lindera_mode() {
+        let rb_mode = RbMode {
+            inner: RbModeKind::Decompose,
+        };
+        let lindera_mode: LinderaMode = rb_mode.into();
+        assert!(matches!(lindera_mode, LinderaMode::Decompose(_)));
+        if let LinderaMode::Decompose(penalty) = lindera_mode {
+            let default_penalty = LinderaPenalty::default();
+            assert_eq!(
+                penalty.kanji_penalty_length_threshold,
+                default_penalty.kanji_penalty_length_threshold
+            );
+            assert_eq!(
+                penalty.kanji_penalty_length_penalty,
+                default_penalty.kanji_penalty_length_penalty
+            );
+            assert_eq!(
+                penalty.other_penalty_length_threshold,
+                default_penalty.other_penalty_length_threshold
+            );
+            assert_eq!(
+                penalty.other_penalty_length_penalty,
+                default_penalty.other_penalty_length_penalty
+            );
+        }
+    }
+
+    #[test]
+    fn test_lindera_mode_normal_to_rb_mode() {
+        let lindera_mode = LinderaMode::Normal;
+        let rb_mode: RbMode = lindera_mode.into();
+        assert!(matches!(rb_mode.inner, RbModeKind::Normal));
+    }
+
+    #[test]
+    fn test_lindera_mode_decompose_to_rb_mode() {
+        let lindera_mode = LinderaMode::Decompose(LinderaPenalty::default());
+        let rb_mode: RbMode = lindera_mode.into();
+        assert!(matches!(rb_mode.inner, RbModeKind::Decompose));
+    }
+
+    #[test]
+    fn test_rb_penalty_to_lindera_penalty() {
+        let rb_penalty = RbPenalty {
+            kanji_penalty_length_threshold: 3,
+            kanji_penalty_length_penalty: 5000,
+            other_penalty_length_threshold: 10,
+            other_penalty_length_penalty: 2500,
+        };
+        let lindera_penalty: LinderaPenalty = rb_penalty.into();
+        assert_eq!(lindera_penalty.kanji_penalty_length_threshold, 3);
+        assert_eq!(lindera_penalty.kanji_penalty_length_penalty, 5000);
+        assert_eq!(lindera_penalty.other_penalty_length_threshold, 10);
+        assert_eq!(lindera_penalty.other_penalty_length_penalty, 2500);
+    }
+
+    #[test]
+    fn test_lindera_penalty_to_rb_penalty() {
+        let lindera_penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 4,
+            kanji_penalty_length_penalty: 6000,
+            other_penalty_length_threshold: 8,
+            other_penalty_length_penalty: 1500,
+        };
+        let rb_penalty: RbPenalty = lindera_penalty.into();
+        assert_eq!(rb_penalty.kanji_penalty_length_threshold, 4);
+        assert_eq!(rb_penalty.kanji_penalty_length_penalty, 6000);
+        assert_eq!(rb_penalty.other_penalty_length_threshold, 8);
+        assert_eq!(rb_penalty.other_penalty_length_penalty, 1500);
+    }
+
+    #[test]
+    fn test_rb_penalty_default_values_roundtrip() {
+        let default_lindera = LinderaPenalty::default();
+        let rb_penalty: RbPenalty = default_lindera.clone().into();
+        let roundtripped: LinderaPenalty = rb_penalty.into();
+        assert_eq!(
+            roundtripped.kanji_penalty_length_threshold,
+            default_lindera.kanji_penalty_length_threshold
+        );
+        assert_eq!(
+            roundtripped.kanji_penalty_length_penalty,
+            default_lindera.kanji_penalty_length_penalty
+        );
+        assert_eq!(
+            roundtripped.other_penalty_length_threshold,
+            default_lindera.other_penalty_length_threshold
+        );
+        assert_eq!(
+            roundtripped.other_penalty_length_penalty,
+            default_lindera.other_penalty_length_penalty
+        );
+    }
+
+    #[test]
+    fn test_mode_roundtrip_normal() {
+        let original = LinderaMode::Normal;
+        let rb: RbMode = original.into();
+        let back: LinderaMode = rb.into();
+        assert!(matches!(back, LinderaMode::Normal));
+    }
+
+    #[test]
+    fn test_mode_roundtrip_decompose() {
+        let penalty = LinderaPenalty {
+            kanji_penalty_length_threshold: 5,
+            kanji_penalty_length_penalty: 4000,
+            other_penalty_length_threshold: 9,
+            other_penalty_length_penalty: 2000,
+        };
+        let original = LinderaMode::Decompose(penalty);
+        let rb: RbMode = original.into();
+        let back: LinderaMode = rb.into();
+        // Note: RbMode loses the penalty details, so Decompose uses default penalty.
+        assert!(matches!(back, LinderaMode::Decompose(_)));
+    }
 }

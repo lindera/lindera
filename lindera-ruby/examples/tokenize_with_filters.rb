@@ -1,26 +1,26 @@
 # frozen_string_literal: true
 
-require "lindera"
+require 'lindera'
 
 # Create a tokenizer builder
 builder = Lindera::TokenizerBuilder.new
 
 # Set mode and dictionary
-builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_mode('normal')
+builder.set_dictionary('embedded://ipadic')
 
 # Append character filters
-builder.append_character_filter("unicode_normalize", { "kind" => "nfkc" })
-builder.append_character_filter("japanese_iteration_mark",
-                                { "normalize_kanji" => "true", "normalize_kana" => "true" })
-builder.append_character_filter("mapping", { "mapping" => { "リンデラ" => "lindera" } })
+builder.append_character_filter('unicode_normalize', { 'kind' => 'nfkc' })
+builder.append_character_filter('japanese_iteration_mark',
+                                { 'normalize_kanji' => 'true', 'normalize_kana' => 'true' })
+builder.append_character_filter('mapping', { 'mapping' => { 'リンデラ' => 'lindera' } })
 
 # Append token filters
-builder.append_token_filter("japanese_katakana_stem", { "min" => 3 })
+builder.append_token_filter('japanese_katakana_stem', { 'min' => 3 })
 builder.append_token_filter(
-  "japanese_stop_tags",
+  'japanese_stop_tags',
   {
-    "tags" => %w[
+    'tags' => %w[
       接続詞
       助詞
       助詞,格助詞
@@ -49,13 +49,13 @@ builder.append_token_filter(
     ]
   }
 )
-builder.append_token_filter("lowercase", nil)
-builder.append_token_filter("japanese_base_form", nil)
+builder.append_token_filter('lowercase', nil)
+builder.append_token_filter('japanese_base_form', nil)
 
 # Build the tokenizer
 tokenizer = builder.build
 
-text = "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能で、様々なフィルターも内包しています。Linderaはリンデラと読みます。"
+text = 'Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能で、様々なフィルターも内包しています。Linderaはリンデラと読みます。'
 puts "text: #{text}\n\n"
 
 # Tokenize the text

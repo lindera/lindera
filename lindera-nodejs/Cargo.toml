@@ -12,7 +12,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [features]
 embed-ipadic = ["lindera/embed-ipadic"] # Include Japanese dictionary (IPADIC)

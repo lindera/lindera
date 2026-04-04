@@ -323,3 +323,257 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     parent_module.add_submodule(&m)?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lindera::dictionary::{FieldDefinition, FieldType, Schema};
+
+    #[test]
+    fn test_pyfieldtype_surface_to_fieldtype() {
+        let py_ft = PyFieldType::Surface;
+        let ft: FieldType = py_ft.into();
+        assert!(matches!(ft, FieldType::Surface));
+    }
+
+    #[test]
+    fn test_pyfieldtype_left_context_id_to_fieldtype() {
+        let py_ft = PyFieldType::LeftContextId;
+        let ft: FieldType = py_ft.into();
+        assert!(matches!(ft, FieldType::LeftContextId));
+    }
+
+    #[test]
+    fn test_pyfieldtype_right_context_id_to_fieldtype() {
+        let py_ft = PyFieldType::RightContextId;
+        let ft: FieldType = py_ft.into();
+        assert!(matches!(ft, FieldType::RightContextId));
+    }
+
+    #[test]
+    fn test_pyfieldtype_cost_to_fieldtype() {
+        let py_ft = PyFieldType::Cost;
+        let ft: FieldType = py_ft.into();
+        assert!(matches!(ft, FieldType::Cost));
+    }
+
+    #[test]
+    fn test_pyfieldtype_custom_to_fieldtype() {
+        let py_ft = PyFieldType::Custom;
+        let ft: FieldType = py_ft.into();
+        assert!(matches!(ft, FieldType::Custom));
+    }
+
+    #[test]
+    fn test_fieldtype_to_pyfieldtype_all_variants() {
+        assert!(matches!(
+            PyFieldType::from(FieldType::Surface),
+            PyFieldType::Surface
+        ));
+        assert!(matches!(
+            PyFieldType::from(FieldType::LeftContextId),
+            PyFieldType::LeftContextId
+        ));
+        assert!(matches!(
+            PyFieldType::from(FieldType::RightContextId),
+            PyFieldType::RightContextId
+        ));
+        assert!(matches!(
+            PyFieldType::from(FieldType::Cost),
+            PyFieldType::Cost
+        ));
+        assert!(matches!(
+            PyFieldType::from(FieldType::Custom),
+            PyFieldType::Custom
+        ));
+    }
+
+    #[test]
+    fn test_pyfielddefinition_to_fielddefinition() {
+        let py_fd = PyFieldDefinition {
+            index: 0,
+            name: "surface".to_string(),
+            field_type: PyFieldType::Surface,
+            description: Some("Surface form".to_string()),
+        };
+        let fd: FieldDefinition = py_fd.into();
+        assert_eq!(fd.index, 0);
+        assert_eq!(fd.name, "surface");
+        assert!(matches!(fd.field_type, FieldType::Surface));
+        assert_eq!(fd.description, Some("Surface form".to_string()));
+    }
+
+    #[test]
+    fn test_fielddefinition_to_pyfielddefinition() {
+        let fd = FieldDefinition {
+            index: 4,
+            name: "pos".to_string(),
+            field_type: FieldType::Custom,
+            description: None,
+        };
+        let py_fd: PyFieldDefinition = fd.into();
+        assert_eq!(py_fd.index, 4);
+        assert_eq!(py_fd.name, "pos");
+        assert!(matches!(py_fd.field_type, PyFieldType::Custom));
+        assert!(py_fd.description.is_none());
+    }
+
+    #[test]
+    fn test_pyschema_to_schema() {
+        let py_schema = PySchema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+        ]);
+        let schema: Schema = py_schema.into();
+        let fields = schema.get_all_fields();
+        assert_eq!(fields.len(), 5);
+        assert_eq!(fields[0], "surface");
+        assert_eq!(fields[4], "pos");
+    }
+
+    #[test]
+    fn test_schema_to_pyschema() {
+        let schema = Schema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+        ]);
+        let py_schema: PySchema = schema.into();
+        assert_eq!(py_schema.fields.len(), 4);
+        assert_eq!(py_schema.fields[0], "surface");
+    }
+
+    #[test]
+    fn test_pyschema_new_builds_index_map() {
+        let schema = PySchema::new(vec![
+            "surface".to_string(),
+            "pos".to_string(),
+            "reading".to_string(),
+        ]);
+        assert_eq!(schema.get_field_index("surface"), Some(0));
+        assert_eq!(schema.get_field_index("pos"), Some(1));
+        assert_eq!(schema.get_field_index("reading"), Some(2));
+    }
+
+    #[test]
+    fn test_pyschema_get_field_index_existing() {
+        let schema = PySchema::new(vec!["surface".to_string(), "cost".to_string()]);
+        assert_eq!(schema.get_field_index("surface"), Some(0));
+        assert_eq!(schema.get_field_index("cost"), Some(1));
+    }
+
+    #[test]
+    fn test_pyschema_get_field_index_nonexistent() {
+        let schema = PySchema::new(vec!["surface".to_string()]);
+        assert_eq!(schema.get_field_index("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_pyschema_field_count() {
+        let schema = PySchema::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        assert_eq!(schema.field_count(), 3);
+    }
+
+    #[test]
+    fn test_pyschema_get_custom_fields() {
+        let schema = PySchema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "major_pos".to_string(),
+            "reading".to_string(),
+        ]);
+        let custom = schema.get_custom_fields();
+        assert_eq!(custom.len(), 2);
+        assert_eq!(custom[0], "major_pos");
+        assert_eq!(custom[1], "reading");
+    }
+
+    #[test]
+    fn test_pyschema_get_custom_fields_no_custom() {
+        let schema = PySchema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+        ]);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_pyschema_get_custom_fields_fewer_than_four() {
+        let schema = PySchema::new(vec!["surface".to_string(), "cost".to_string()]);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_pyschema_create_default_has_13_fields() {
+        let schema = PySchema::create_default();
+        assert_eq!(schema.field_count(), 13);
+        assert_eq!(schema.fields[0], "surface");
+        assert_eq!(schema.fields[12], "pronunciation");
+    }
+
+    #[test]
+    fn test_pyschema_create_default_index_map() {
+        let schema = PySchema::create_default();
+        assert_eq!(schema.get_field_index("surface"), Some(0));
+        assert_eq!(schema.get_field_index("cost"), Some(3));
+        assert_eq!(schema.get_field_index("pronunciation"), Some(12));
+        assert_eq!(schema.get_field_index("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_pyschema_get_field_name() {
+        let schema = PySchema::new(vec!["surface".to_string(), "pos".to_string()]);
+        assert_eq!(schema.get_field_name(0), Some("surface"));
+        assert_eq!(schema.get_field_name(1), Some("pos"));
+        assert_eq!(schema.get_field_name(2), None);
+    }
+
+    #[test]
+    fn test_pyschema_get_field_by_name_system_field() {
+        let schema = PySchema::create_default();
+        let field = schema.get_field_by_name("surface").unwrap();
+        assert_eq!(field.index, 0);
+        assert_eq!(field.name, "surface");
+        assert!(matches!(field.field_type, PyFieldType::Surface));
+    }
+
+    #[test]
+    fn test_pyschema_get_field_by_name_custom_field() {
+        let schema = PySchema::create_default();
+        let field = schema.get_field_by_name("major_pos").unwrap();
+        assert_eq!(field.index, 4);
+        assert_eq!(field.name, "major_pos");
+        assert!(matches!(field.field_type, PyFieldType::Custom));
+    }
+
+    #[test]
+    fn test_pyschema_get_field_by_name_nonexistent() {
+        let schema = PySchema::create_default();
+        assert!(schema.get_field_by_name("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_pyschema_roundtrip() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+        ];
+        let py_schema = PySchema::new(fields.clone());
+        let schema: Schema = py_schema.into();
+        let roundtripped: PySchema = schema.into();
+        assert_eq!(roundtripped.fields, fields);
+    }
+}

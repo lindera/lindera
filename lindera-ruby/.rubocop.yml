@@ -1,0 +1,16 @@
+AllCops:
+  NewCops: enable
+  TargetRubyVersion: 3.1
+  SuggestExtensions: false
+
+Style/Documentation:
+  Exclude:
+    - "test/**/*"
+
+Metrics/AbcSize:
+  Exclude:
+    - "test/**/*"
+
+Metrics/MethodLength:
+  Exclude:
+    - "test/**/*"

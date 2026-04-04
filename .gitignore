@@ -13,10 +13,5 @@ target
 perf.data*
 flamegraph.svg
 
-# Lindera specific dictionaries (if manually downloaded)
-lindera-ipadic-2.7.0-20070801
-mecab-ipadic-neologd-0.0.7
-CC-CEDICT-MeCab-master
-
 # Temporary files
 .tmp/

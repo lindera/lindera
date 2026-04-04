@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
+require_relative 'test_helper'
 
 class TestToken < Minitest::Test
   def setup
-    dictionary = Lindera.load_dictionary("embedded://ipadic")
-    tokenizer = Lindera::Tokenizer.new(dictionary, "normal", nil)
-    @tokens = tokenizer.tokenize("関西国際空港")
+    dictionary = Lindera.load_dictionary('embedded://ipadic')
+    tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+    @tokens = tokenizer.tokenize('関西国際空港')
   end
 
   def test_token_attributes
@@ -44,7 +44,7 @@ class TestToken < Minitest::Test
   def test_token_inspect
     token = @tokens[0]
     inspect_str = token.inspect
-    assert inspect_str.include?("Lindera::Token")
+    assert inspect_str.include?('Lindera::Token')
     assert inspect_str.include?(token.surface)
   end
 end

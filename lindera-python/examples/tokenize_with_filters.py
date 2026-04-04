@@ -11,7 +11,9 @@ def main():
 
     # append character filters
     builder.append_character_filter("unicode_normalize", {"kind": "nfkc"})
-    builder.append_character_filter("japanese_iteration_mark", {"normalize_kanji": "true", "normalize_kana": "true"})
+    builder.append_character_filter(
+        "japanese_iteration_mark", {"normalize_kanji": "true", "normalize_kana": "true"}
+    )
     builder.append_character_filter("mapping", {"mapping": {"リンデラ": "lindera"}})
 
     # append token filters

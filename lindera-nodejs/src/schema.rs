@@ -276,3 +276,156 @@ impl From<Schema> for JsSchema {
         JsSchema::new(schema.get_all_fields().to_vec())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_js_field_type_to_field_type_all_variants() {
+        assert!(matches!(
+            FieldType::from(JsFieldType::Surface),
+            FieldType::Surface
+        ));
+        assert!(matches!(
+            FieldType::from(JsFieldType::LeftContextId),
+            FieldType::LeftContextId
+        ));
+        assert!(matches!(
+            FieldType::from(JsFieldType::RightContextId),
+            FieldType::RightContextId
+        ));
+        assert!(matches!(
+            FieldType::from(JsFieldType::Cost),
+            FieldType::Cost
+        ));
+        assert!(matches!(
+            FieldType::from(JsFieldType::Custom),
+            FieldType::Custom
+        ));
+    }
+
+    #[test]
+    fn test_field_type_to_js_field_type_all_variants() {
+        assert!(matches!(
+            JsFieldType::from(FieldType::Surface),
+            JsFieldType::Surface
+        ));
+        assert!(matches!(
+            JsFieldType::from(FieldType::LeftContextId),
+            JsFieldType::LeftContextId
+        ));
+        assert!(matches!(
+            JsFieldType::from(FieldType::RightContextId),
+            JsFieldType::RightContextId
+        ));
+        assert!(matches!(
+            JsFieldType::from(FieldType::Cost),
+            JsFieldType::Cost
+        ));
+        assert!(matches!(
+            JsFieldType::from(FieldType::Custom),
+            JsFieldType::Custom
+        ));
+    }
+
+    #[test]
+    fn test_js_schema_new_builds_index_map() {
+        let schema = JsSchema::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        assert_eq!(schema.get_field_index("a".to_string()), Some(0));
+        assert_eq!(schema.get_field_index("b".to_string()), Some(1));
+        assert_eq!(schema.get_field_index("c".to_string()), Some(2));
+    }
+
+    #[test]
+    fn test_js_schema_get_field_index_not_found() {
+        let schema = JsSchema::new(vec!["x".to_string()]);
+        assert_eq!(schema.get_field_index("y".to_string()), None);
+    }
+
+    #[test]
+    fn test_js_schema_field_count() {
+        let schema = JsSchema::new(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        assert_eq!(schema.field_count(), 3);
+    }
+
+    #[test]
+    fn test_js_schema_field_count_empty() {
+        let schema = JsSchema::new(vec![]);
+        assert_eq!(schema.field_count(), 0);
+    }
+
+    #[test]
+    fn test_js_schema_get_custom_fields() {
+        let schema = JsSchema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "pos1".to_string(),
+            "pos2".to_string(),
+        ]);
+        let custom = schema.get_custom_fields();
+        assert_eq!(custom, vec!["pos1".to_string(), "pos2".to_string()]);
+    }
+
+    #[test]
+    fn test_js_schema_get_custom_fields_no_custom() {
+        let schema = JsSchema::new(vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+        ]);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_js_schema_get_custom_fields_fewer_than_4() {
+        let schema = JsSchema::new(vec!["surface".to_string()]);
+        let custom = schema.get_custom_fields();
+        assert!(custom.is_empty());
+    }
+
+    #[test]
+    fn test_js_schema_create_default_has_13_fields() {
+        let schema = JsSchema::create_default();
+        assert_eq!(schema.field_count(), 13);
+    }
+
+    #[test]
+    fn test_js_schema_create_default_field_names() {
+        let schema = JsSchema::create_default();
+        assert_eq!(schema.get_field_index("surface".to_string()), Some(0));
+        assert_eq!(
+            schema.get_field_index("pronunciation".to_string()),
+            Some(12)
+        );
+    }
+
+    #[test]
+    fn test_js_schema_to_lindera_schema_roundtrip() {
+        let fields = vec![
+            "surface".to_string(),
+            "left_context_id".to_string(),
+            "right_context_id".to_string(),
+            "cost".to_string(),
+            "pos".to_string(),
+        ];
+        let js_schema = JsSchema::new(fields.clone());
+        let lindera_schema: Schema = js_schema.into();
+        let roundtripped: JsSchema = lindera_schema.into();
+        assert_eq!(roundtripped.field_count(), 5);
+        assert_eq!(roundtripped.get_field_index("pos".to_string()), Some(4));
+    }
+
+    #[test]
+    fn test_lindera_schema_to_js_schema() {
+        let lindera_schema = Schema::new(vec!["a".to_string(), "b".to_string()]);
+        let js_schema: JsSchema = lindera_schema.into();
+        assert_eq!(js_schema.field_count(), 2);
+        assert_eq!(js_schema.get_field_index("a".to_string()), Some(0));
+        assert_eq!(js_schema.get_field_index("b".to_string()), Some(1));
+    }
+}

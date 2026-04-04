@@ -20,7 +20,7 @@ mod tests {
     fn test_logsumexp_small_1() {
         let a = 0.5f64;
         let b = 2f64;
-        let expected = 2.201413277982752409499483;
+        let expected = 2.2014132779827524;
         let result = logsumexp(a, b);
         assert!((expected - result).abs() < f64::EPSILON);
     }
@@ -29,7 +29,7 @@ mod tests {
     fn test_logsumexp_small_2() {
         let a = 12f64;
         let b = 5f64;
-        let expected = 12.00091146645377424469170;
+        let expected = 12.000911466453774;
         let result = logsumexp(a, b);
         assert!((expected - result).abs() < f64::EPSILON);
     }
@@ -42,7 +42,7 @@ mod tests {
         // = log(exp(1232 + 2) + exp(1232 + 0))
         // = log(exp(1232) * (exp(2) + exp(0)))
         // = 1232 + log(exp(2) + 1)
-        let expected = 1234.126928011042972496444;
+        let expected = 1234.126928011043;
         let result = logsumexp(a, b);
         assert!((expected - result).abs() < f64::EPSILON);
 
@@ -59,7 +59,7 @@ mod tests {
         // = log(exp(1230 + 0) + exp(1230 + 5))
         // = log(exp(1230) * (exp(0) + exp(5)))
         // = 1230 + log(1 + exp(5))
-        let expected = 1235.006715348489118068616;
+        let expected = 1235.006715348489;
         let result = logsumexp(a, b);
         assert!((expected - result).abs() < f64::EPSILON);
 

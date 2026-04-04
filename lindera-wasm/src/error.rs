@@ -31,7 +31,6 @@ impl JsLinderaError {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(target_arch = "wasm32")]
     use super::*;
 
     #[cfg(target_arch = "wasm32")]
@@ -39,10 +38,33 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_lindera_error() {
+    fn test_lindera_error_wasm() {
         let error = JsLinderaError::new("test error".to_string());
 
         assert_eq!(error.message, "test error");
         assert_eq!(error.js_to_string(), "test error");
+    }
+
+    #[test]
+    fn test_lindera_error_new() {
+        let error = JsLinderaError::new("test error".to_string());
+
+        assert_eq!(error.message, "test error");
+    }
+
+    #[test]
+    fn test_lindera_error_display() {
+        let error = JsLinderaError::new("something went wrong".to_string());
+
+        assert_eq!(format!("{}", error), "something went wrong");
+        assert_eq!(error.js_to_string(), "something went wrong");
+    }
+
+    #[test]
+    fn test_lindera_error_empty_message() {
+        let error = JsLinderaError::new(String::new());
+
+        assert_eq!(error.message, "");
+        assert_eq!(error.js_to_string(), "");
     }
 }

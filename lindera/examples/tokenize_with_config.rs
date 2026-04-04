@@ -31,14 +31,8 @@ fn main() -> LinderaResult<()> {
 
     #[cfg(not(feature = "embed-ipadic"))]
     {
-        eprintln!(
-            "This example requires the '{}' feature to be enabled.",
-            "embed-ipadic"
-        );
-        eprintln!(
-            "Run with: cargo run --features {} --example tokenize",
-            "embed-ipadic"
-        );
+        eprintln!("This example requires the 'embed-ipadic' feature to be enabled.");
+        eprintln!("Run with: cargo run --features embed-ipadic --example tokenize_with_config");
     }
 
     Ok(())

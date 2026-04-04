@@ -80,7 +80,9 @@ async function extractZip(zipBuffer) {
   let offset = cdOffset;
   for (let i = 0; i < cdEntries; i++) {
     if (view.getUint32(offset, true) !== 0x02014b50) {
-      throw new Error("Invalid zip file: bad Central Directory entry signature");
+      throw new Error(
+        "Invalid zip file: bad Central Directory entry signature",
+      );
     }
 
     const compressionMethod = view.getUint16(offset + 10, true);
@@ -92,7 +94,7 @@ async function extractZip(zipBuffer) {
     const localHeaderOffset = view.getUint32(offset + 42, true);
 
     const fileName = new TextDecoder().decode(
-      bytes.subarray(offset + 46, offset + 46 + fileNameLength)
+      bytes.subarray(offset + 46, offset + 46 + fileNameLength),
     );
 
     // Skip directories
@@ -100,9 +102,13 @@ async function extractZip(zipBuffer) {
       // Read from local file header to get actual data offset
       const localFileNameLength = view.getUint16(localHeaderOffset + 26, true);
       const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
-      const dataOffset = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+      const dataOffset =
+        localHeaderOffset + 30 + localFileNameLength + localExtraLength;
 
-      const compressedData = bytes.subarray(dataOffset, dataOffset + compressedSize);
+      const compressedData = bytes.subarray(
+        dataOffset,
+        dataOffset + compressedSize,
+      );
 
       let fileData;
       if (compressionMethod === 0) {
@@ -138,11 +144,13 @@ async function extractZip(zipBuffer) {
         // Verify decompressed size
         if (fileData.length !== uncompressedSize) {
           throw new Error(
-            `Size mismatch for ${fileName}: expected ${uncompressedSize}, got ${fileData.length}`
+            `Size mismatch for ${fileName}: expected ${uncompressedSize}, got ${fileData.length}`,
           );
         }
       } else {
-        throw new Error(`Unsupported compression method ${compressionMethod} for ${fileName}`);
+        throw new Error(
+          `Unsupported compression method ${compressionMethod} for ${fileName}`,
+        );
       }
 
       entries.set(fileName, fileData);
@@ -225,7 +233,9 @@ export async function downloadDictionary(url, name, options = {}) {
   // Verify all required files are present
   const missing = DICTIONARY_FILES.filter((f) => !fileMap.has(f));
   if (missing.length > 0) {
-    throw new Error(`Missing dictionary files in archive: ${missing.join(", ")}`);
+    throw new Error(
+      `Missing dictionary files in archive: ${missing.join(", ")}`,
+    );
   }
 
   // Store in OPFS
@@ -262,7 +272,7 @@ export async function loadDictionaryFiles(name) {
     dir = current;
   } catch {
     throw new Error(
-      `Dictionary "${name}" not found in OPFS. Call downloadDictionary() first.`
+      `Dictionary "${name}" not found in OPFS. Call downloadDictionary() first.`,
     );
   }
 
