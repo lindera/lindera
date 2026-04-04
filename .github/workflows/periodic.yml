@@ -293,6 +293,32 @@ jobs:
       - name: Run Node.js build
         run: cargo build -p lindera-nodejs --all-features
 
+  test-lindera-ruby:
+    name: Test lindera-ruby
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Run Ruby test
+        shell: bash
+        run: |
+          make ruby-test
+
   test-lindera-wasm:
     name: Test lindera-wasm
     needs: [test-lindera]

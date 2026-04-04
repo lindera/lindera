@@ -34,8 +34,15 @@ venv-clean: ## Remove the lindera-python venv
 
 # ── Clean ───────────────────────────────────────────────────────────────────
 
-clean: venv-clean clean-lindera-nodejs clean-lindera-wasm ## Clean all build artifacts
+clean: venv-clean clean-lindera-python clean-lindera-nodejs clean-lindera-ruby clean-lindera-wasm ## Clean all build artifacts
 	cargo clean
+
+clean-lindera-python: ## Clean lindera-python build artifacts
+	rm -rf lindera-python/target
+	rm -rf lindera-python/dist
+	rm -rf lindera-python/__pycache__
+	rm -rf lindera-python/tests/__pycache__
+	rm -rf lindera-python/.pytest_cache
 
 clean-lindera-nodejs: ## Clean lindera-nodejs build artifacts
 	rm -rf lindera-nodejs/node_modules
@@ -44,6 +51,11 @@ clean-lindera-nodejs: ## Clean lindera-nodejs build artifacts
 	rm -f lindera-nodejs/index.js
 	rm -f lindera-nodejs/index.d.ts
 	rm -f lindera-nodejs/package-lock.json
+
+clean-lindera-ruby: ## Clean lindera-ruby build artifacts
+	rm -rf lindera-ruby/tmp
+	rm -f lindera-ruby/lib/lindera/lindera_ruby.so
+	rm -f lindera-ruby/Gemfile.lock
 
 clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -rf lindera-wasm/pkg
@@ -93,6 +105,9 @@ format-lindera-python: ## Format lindera-python
 format-lindera-nodejs: ## Format lindera-nodejs
 	cargo fmt -p lindera-nodejs
 
+format-lindera-ruby: ## Format lindera-ruby
+	cargo fmt -p lindera-ruby
+
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm
 
@@ -136,6 +151,9 @@ lint-lindera-python: ## Lint lindera-python
 
 lint-lindera-nodejs: ## Lint lindera-nodejs
 	cargo clippy -p lindera-nodejs -- -D warnings
+
+lint-lindera-ruby: ## Lint lindera-ruby
+	cargo clippy -p lindera-ruby -- -D warnings
 
 lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
@@ -181,6 +199,11 @@ test-lindera-python: venv ## Test lindera-python (Rust unit tests + Python pytes
 
 test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test)
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test
+
+test-lindera-ruby: ## Test lindera-ruby (compile + minitest)
+	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test
+
+ruby-test: test-lindera-ruby ## Alias for test-lindera-ruby
 
 test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
 	cd lindera-wasm && wasm-pack test --node --features=$(WASM_FEATURES)

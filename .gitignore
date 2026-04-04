@@ -13,59 +13,6 @@ target
 perf.data*
 flamegraph.svg
 
-# Python
-.python-version
-.venv
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-*.spec
-
-# Python Testing & Coverage
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-.mypy_cache/
-
-# Node.js (NAPI-RS build artifacts)
-lindera-nodejs/*.node
-lindera-nodejs/index.js
-lindera-nodejs/index.d.ts
-lindera-nodejs/package-lock.json
-lindera-nodejs/npm/
-
-# WASM
-pkg/
-**/node_modules/
-**/dist/
-
 # Lindera specific dictionaries (if manually downloaded)
 lindera-ipadic-2.7.0-20070801
 mecab-ipadic-neologd-0.0.7

@@ -46,6 +46,7 @@ jobs:
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
+      lindera-ruby: ${{ steps.filter.outputs.lindera-ruby }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
@@ -113,6 +114,17 @@ jobs:
               - 'lindera-jieba/**'
             lindera-nodejs:
               - 'lindera-nodejs/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+            lindera-ruby:
+              - 'lindera-ruby/**'
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -410,6 +422,35 @@ jobs:
 
       - name: Run Node.js build
         run: cargo build -p lindera-nodejs --all-features
+
+  test-lindera-ruby:
+    name: Test lindera-ruby
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0"
+          bundler-cache: true
+          working-directory: lindera-ruby
+
+      - name: Run Ruby test
+        shell: bash
+        run: |
+          make ruby-test
 
   test-lindera-wasm:
     name: Test lindera-wasm
