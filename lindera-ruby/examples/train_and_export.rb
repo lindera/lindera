@@ -123,10 +123,10 @@ def create_training_data(tmpdir)
   # Create metadata for dictionary export
   metadata_file = File.join(tmpdir, 'metadata.json')
   File.write(metadata_file, JSON.pretty_generate(
-    name: 'custom-dict',
-    version: '1.0.0',
-    encoding: 'utf-8'
-  ))
+                              name: 'custom-dict',
+                              version: '1.0.0',
+                              encoding: 'utf-8'
+                            ))
 
   {
     seed: seed_file,
