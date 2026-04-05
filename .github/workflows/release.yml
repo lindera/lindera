@@ -953,7 +953,14 @@ jobs:
       - name: Publish to npm
         run: |
           cd lindera-wasm/pkg
-          npm publish --access public
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null; then
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} has already been published, skipping"
+          else
+            echo "Publishing ${PACKAGE_NAME}@${PACKAGE_VERSION}..."
+            npm publish --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
