@@ -6,7 +6,7 @@ Ruby binding for [Lindera](https://github.com/lindera/lindera), a morphological 
 
 lindera-ruby provides a Ruby interface to the Lindera morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis.
 
-- **Multi-language Support**: Japanese (IPADIC, UniDic), Korean (ko-dic), Chinese (CC-CEDICT, Jieba)
+- **Multi-language Support**: Japanese (IPADIC, IPADIC-NEologd, UniDic), Korean (ko-dic), Chinese (CC-CEDICT, Jieba)
 - **Character Filters**: Text preprocessing with mapping, regex, Unicode normalization, and Japanese iteration mark handling
 - **Token Filters**: Post-processing filters including lowercase, length filtering, stop words, and Japanese-specific filters
 - **Flexible Configuration**: Configurable tokenization modes and penalty settings
@@ -18,12 +18,17 @@ lindera-ruby provides a Ruby interface to the Lindera morphological analysis eng
 - Ruby >= 3.1
 - Rust >= 1.85
 
+## Dictionary
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and extract it to a local path.
+
 ## Install
 
 ```bash
 cd lindera-ruby
 bundle install
-LINDERA_FEATURES="embed-ipadic" bundle exec rake compile
+bundle exec rake compile
 ```
 
 ## Usage
@@ -31,8 +36,8 @@ LINDERA_FEATURES="embed-ipadic" bundle exec rake compile
 ```ruby
 require "lindera"
 
-# Load dictionary
-dictionary = Lindera.load_dictionary("embedded://ipadic")
+# Load dictionary from a local path (download from GitHub Releases)
+dictionary = Lindera.load_dictionary("/path/to/ipadic")
 
 # Create a tokenizer
 tokenizer = Lindera::Tokenizer.new(dictionary, "normal", nil)
@@ -51,7 +56,7 @@ require "lindera"
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 
 # Add filters
 builder.append_character_filter("unicode_normalize", { "kind" => "nfkc" })
@@ -64,7 +69,7 @@ tokens = tokenizer.tokenize("テスト")
 ## Test
 
 ```bash
-LINDERA_FEATURES="embed-ipadic" bundle exec rake compile
+bundle exec rake compile
 bundle exec rake test
 ```
 

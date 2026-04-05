@@ -81,7 +81,6 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `compress` | Dictionary compression support | Enabled |
 | `mmap` | Memory-mapped file support for dictionary loading | Enabled |
 | `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI only |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |

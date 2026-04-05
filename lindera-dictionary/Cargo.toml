@@ -13,10 +13,9 @@ license = { workspace = true }
 
 [features]
 build_rs = ["dep:reqwest"]
-compress = []
 mmap = ["dep:memmap2"]
 train = ["dep:lindera-crf"]
-default = ["compress", "mmap"]
+default = ["mmap"]
 
 [dependencies]
 anyhow = { workspace = true }

@@ -1,5 +1,9 @@
 const path = require("path");
-const { loadDictionary, loadUserDictionary, Tokenizer } = require("lindera");
+const {
+  loadDictionary,
+  loadUserDictionary,
+  Tokenizer,
+} = require("lindera");
 
 const projectRoot = path.resolve(__dirname, "..");
 

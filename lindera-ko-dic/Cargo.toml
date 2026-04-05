@@ -13,16 +13,12 @@ license = { workspace = true }
 
 [features]
 embed-ko-dic = []                          # Embed ko-dic dictionary in the binary
-compress = ["lindera-dictionary/compress"]
-default = ["compress"]
 
 [dependencies]
 anyhow = { workspace = true }
 byteorder = { workspace = true }
 csv = { workspace = true }
 lindera-dictionary = { workspace = true }
-once_cell = { workspace = true }
-rkyv = { workspace = true }
 serde_json = { workspace = true }
 
 [build-dependencies]

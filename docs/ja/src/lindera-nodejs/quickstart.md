@@ -11,7 +11,7 @@ const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -19,6 +19,8 @@ for (const token of tokens) {
   console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 ```
+
+> **注意:** ビルド済み辞書を [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードし、展開したディレクトリのパスを指定してください。
 
 期待される出力：
 
@@ -37,7 +39,7 @@ const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
@@ -54,7 +56,7 @@ for (const token of tokens) {
 const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("東京タワー");
@@ -77,7 +79,7 @@ for (const token of tokens) {
 const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -96,7 +98,7 @@ import { TokenizerBuilder, Token } from "lindera";
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");

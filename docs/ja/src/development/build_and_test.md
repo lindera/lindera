@@ -4,7 +4,7 @@
 
 ### デフォルトビルド
 
-デフォルトの feature（`compress` + `mmap`）でワークスペースをビルドします：
+デフォルトの feature（`mmap`）でワークスペースをビルドします：
 
 ```bash
 cargo build

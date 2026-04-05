@@ -52,7 +52,6 @@ impl From<JsFieldType> for FieldType {
 ///
 /// Describes a single field in the dictionary entry format.
 #[napi(object)]
-#[derive(Clone)]
 pub struct JsFieldDefinition {
     /// Field index in the record.
     pub index: u32,

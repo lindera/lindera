@@ -11,13 +11,15 @@ from lindera import TokenizerBuilder
 
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
 tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")
 for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 ```
+
+> **注意:** ビルド済み辞書を [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードし、展開したディレクトリのパスを指定してください。
 
 期待される出力：
 
@@ -37,7 +39,7 @@ from lindera import TokenizerBuilder
 tokenizer = (
     TokenizerBuilder()
     .set_mode("normal")
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .build()
 )
 
@@ -53,7 +55,7 @@ for token in tokens:
 ```python
 from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 tokens = tokenizer.tokenize("東京タワー")
 
 for token in tokens:
@@ -73,7 +75,7 @@ for token in tokens:
 ```python
 from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 results = tokenizer.tokenize_nbest("すもももももももものうち", n=3)
 
 for tokens, cost in results:

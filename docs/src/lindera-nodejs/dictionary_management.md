@@ -6,20 +6,18 @@ Lindera Node.js provides functions for loading, building, and managing dictionar
 
 ### System Dictionaries
 
-Use `loadDictionary(uri)` to load a system dictionary.
-
-**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+Use `loadDictionary(uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
 ```javascript
 const { loadDictionary } = require("lindera");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 ```
 
-**External dictionaries** (loaded from a directory on disk):
+**Embedded dictionaries (advanced)** -- if you built with an `embed-*` feature flag, you can load an embedded dictionary:
 
 ```javascript
-const dictionary = loadDictionary("/path/to/dictionary");
+const dictionary = loadDictionary("embedded://ipadic");
 ```
 
 ### User Dictionaries
@@ -38,7 +36,7 @@ Pass the user dictionary when building a tokenizer:
 ```javascript
 const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 
@@ -51,7 +49,7 @@ Or via the builder:
 const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .setUserDictionary("/path/to/user_dictionary")
   .build();
 ```
@@ -95,7 +93,7 @@ The `Metadata` class configures dictionary parameters.
 ### Creating Metadata
 
 ```javascript
-const { Metadata, CompressionAlgorithm } = require("lindera");
+const { Metadata } = require("lindera");
 
 // Default metadata
 const metadata = new Metadata();
@@ -104,7 +102,6 @@ const metadata = new Metadata();
 const metadata = new Metadata({
   name: "my_dictionary",
   encoding: "UTF-8",
-  compressAlgorithm: CompressionAlgorithm.Deflate,
   defaultWordCost: -10000,
 });
 ```
@@ -121,7 +118,6 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | Dictionary name |
 | `encoding` | `string` | `"UTF-8"` | Character encoding |
-| `compressAlgorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
 | `defaultWordCost` | `number` | `-10000` | Default cost for unknown words |
 | `defaultLeftContextId` | `number` | `1288` | Default left context ID |
 | `defaultRightContextId` | `number` | `1288` | Default right context ID |
@@ -149,17 +145,6 @@ Returns a plain object representation of the metadata:
 const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
 ```
-
-### CompressionAlgorithm
-
-Available compression algorithms:
-
-| Value | Description |
-| --- | --- |
-| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
-| `CompressionAlgorithm.Zlib` | Zlib compression |
-| `CompressionAlgorithm.Gzip` | Gzip compression |
-| `CompressionAlgorithm.Raw` | No compression |
 
 ## Schema
 

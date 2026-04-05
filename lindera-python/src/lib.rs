@@ -99,10 +99,6 @@ fn lindera(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("Mode", m.getattr("mode")?.getattr("Mode")?)?;
     m.add("Penalty", m.getattr("mode")?.getattr("Penalty")?)?;
     m.add("Metadata", m.getattr("metadata")?.getattr("Metadata")?)?;
-    m.add(
-        "CompressionAlgorithm",
-        m.getattr("metadata")?.getattr("CompressionAlgorithm")?,
-    )?;
     m.add("Schema", m.getattr("schema")?.getattr("Schema")?)?;
     m.add(
         "FieldDefinition",

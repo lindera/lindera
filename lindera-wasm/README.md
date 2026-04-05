@@ -10,86 +10,42 @@ WebAssembly of Lindera
 
 ## npm
 
-### For Web
+- <https://www.npmjs.com/package/lindera-wasm-web> — Lindera WASM for Web
+- <https://www.npmjs.com/package/lindera-wasm-bundler> — Lindera WASM for Bundler
 
-- <https://www.npmjs.com/package/lindera-wasm-web>
-Lindera WASM without a dictionary for Web
+## Dictionary
 
-- <https://www.npmjs.com/package/lindera-wasm-web-cjk>  
-Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Web
-
-- <https://www.npmjs.com/package/lindera-wasm-web-ipadic>  
-Lindera WASM with Japanese dictionary (IPADIC) for Web
-
-- <https://www.npmjs.com/package/lindera-wasm-web-unidic>  
-Lindera WASM with Japanese dictionary (UniDic) for Web
-
-- <https://www.npmjs.com/package/lindera-wasm-web-ko-dic>  
-Lindera WASM with Korean dictionary (ko-dic) for Web
-
-- <https://www.npmjs.com/package/lindera-wasm-web-cc-cedict>  
-Lindera WASM with Chinese dictionary (CC-CEDICT) for Web
-
-- <https://www.npmjs.com/package/lindera-wasm-web-jieba>  
-Lindera WASM with Chinese dictionary (Jieba) for Web
-
-### For Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler>
-Lindera WASM without a dictionary for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-cjk>  
-Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT) for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-ipadic>  
-Lindera WASM with Japanese dictionary (IPADIC) for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-unidic>  
-Lindera WASM with Japanese dictionary (UniDic) for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-ko-dic>  
-Lindera WASM with Korean dictionary (ko-dic) for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-cc-cedict>  
-Lindera WASM with Chinese dictionary (CC-CEDICT) for Bundler
-
-- <https://www.npmjs.com/package/lindera-wasm-bundler-jieba>  
-Lindera WASM with Chinese dictionary (Jieba) for Bundler
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and load it at runtime using the OPFS API.
+See the [example application](example/) for a working demo of downloading and loading dictionaries.
 
 ## Usage
 
 ### Web Usage
 
-Use the `-web` packages for browser environments with `<script type="module">`:
-
-```html
-<script type="module">
-import __wbg_init, { TokenizerBuilder } from 'https://cdn.jsdelivr.net/npm/lindera-wasm-web-ipadic/lindera_wasm.js';
-
-__wbg_init().then(() => {
-    const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
-    const tokenizer = builder.build();
-
-    const tokens = tokenizer.tokenize("すもももももももものうち");
-    tokens.forEach(token => {
-        console.log(`${token.surface}: ${token.details.join(", ")}`);
-    });
-});
-</script>
-```
-
-Or with a bundler:
+Use the `lindera-wasm-web` package for browser environments.
+Dictionaries are loaded at runtime from a local path or downloaded from [GitHub Releases](https://github.com/lindera/lindera/releases) using the OPFS API.
 
 ```js
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 async function main() {
     await __wbg_init();
 
+    // Download dictionary from GitHub Releases (first time only)
+    await downloadDictionary("https://github.com/lindera/lindera/releases/download/v3.0.0/lindera-ipadic-3.0.0.zip", "ipadic");
+
+    // Load dictionary from OPFS
+    const files = await loadDictionaryFiles("ipadic");
+    const dict = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx,
+        files.charDef, files.unk
+    );
+
     const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
+    builder.setDictionaryInstance(dict);
     builder.setMode("normal");
     const tokenizer = builder.build();
 
@@ -104,27 +60,8 @@ main();
 
 ### Bundler Usage (Webpack, Rollup, etc.)
 
-Use the `-bundler` packages for bundler environments:
-
-```js
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
-
-async function main() {
-    await __wbg_init();
-
-    const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
-    builder.setMode("normal");
-    const tokenizer = builder.build();
-
-    const tokens = tokenizer.tokenize("すもももももももものうち");
-    tokens.forEach(token => {
-        console.log(`${token.surface}: ${token.details.join(", ")}`);
-    });
-}
-
-main();
-```
+Use the `lindera-wasm-bundler` package for bundler environments.
+The dictionary loading approach is the same as the web usage above.
 
 ### Token Properties
 
@@ -155,7 +92,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "lindera-wasm-web-ipadic"
+      "lindera-wasm-web"
     ]
   },
 })

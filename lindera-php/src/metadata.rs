@@ -1,113 +1,16 @@
 //! Dictionary metadata configuration for PHP.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! compression algorithms, character encodings, and schema definitions.
+//! character encodings and schema definitions.
 
 use std::collections::HashMap;
 
 use ext_php_rs::prelude::*;
 
-use lindera::dictionary::{CompressionAlgorithm, Metadata};
+use lindera::dictionary::Metadata;
 
 use crate::error::lindera_value_err;
 use crate::schema::PhpSchema;
-
-/// Compression algorithm for dictionary data.
-///
-/// Determines how dictionary data is compressed when saved to disk.
-/// Accepts: "deflate", "zlib", "gzip", "raw".
-#[php_class]
-#[php(name = "Lindera\\CompressionAlgorithm")]
-pub struct PhpCompressionAlgorithm {
-    /// The algorithm name.
-    value: String,
-}
-
-#[php_impl]
-impl PhpCompressionAlgorithm {
-    /// Creates a new CompressionAlgorithm instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - Algorithm name ("deflate", "zlib", "gzip", "raw").
-    ///
-    /// # Returns
-    ///
-    /// A new CompressionAlgorithm instance.
-    pub fn __construct(value: Option<String>) -> PhpResult<Self> {
-        let v = value.unwrap_or_else(|| "deflate".to_string());
-        match v.as_str() {
-            "deflate" | "zlib" | "gzip" | "raw" => Ok(Self { value: v }),
-            _ => Err(lindera_value_err(format!(
-                "Invalid compression algorithm: {v}. Must be one of: deflate, zlib, gzip, raw"
-            ))),
-        }
-    }
-
-    /// Returns the algorithm name.
-    ///
-    /// # Returns
-    ///
-    /// The algorithm name string.
-    #[php(getter)]
-    pub fn value(&self) -> String {
-        self.value.clone()
-    }
-
-    /// Returns a string representation.
-    ///
-    /// # Returns
-    ///
-    /// The algorithm name.
-    pub fn __to_string(&self) -> String {
-        self.value.clone()
-    }
-}
-
-impl PhpCompressionAlgorithm {
-    /// Creates a PhpCompressionAlgorithm from a CompressionAlgorithm.
-    ///
-    /// # Arguments
-    ///
-    /// * `alg` - The CompressionAlgorithm to convert.
-    ///
-    /// # Returns
-    ///
-    /// A new PhpCompressionAlgorithm.
-    pub fn from_lindera(alg: &CompressionAlgorithm) -> Self {
-        let value = match alg {
-            CompressionAlgorithm::Deflate => "deflate",
-            CompressionAlgorithm::Zlib => "zlib",
-            CompressionAlgorithm::Gzip => "gzip",
-            CompressionAlgorithm::Raw => "raw",
-        };
-        Self {
-            value: value.to_string(),
-        }
-    }
-
-    /// Converts this instance to a CompressionAlgorithm.
-    ///
-    /// # Returns
-    ///
-    /// The corresponding CompressionAlgorithm.
-    pub fn to_lindera(&self) -> CompressionAlgorithm {
-        match self.value.as_str() {
-            "zlib" => CompressionAlgorithm::Zlib,
-            "gzip" => CompressionAlgorithm::Gzip,
-            "raw" => CompressionAlgorithm::Raw,
-            _ => CompressionAlgorithm::Deflate,
-        }
-    }
-}
-
-impl Clone for PhpCompressionAlgorithm {
-    fn clone(&self) -> Self {
-        Self {
-            value: self.value.clone(),
-        }
-    }
-}
 
 /// Dictionary metadata configuration.
 ///
@@ -119,8 +22,6 @@ pub struct PhpMetadata {
     name: String,
     /// Character encoding.
     encoding: String,
-    /// Compression algorithm name.
-    compress_algorithm: String,
     /// Default cost for unknown words.
     default_word_cost: i16,
     /// Default left context ID.
@@ -151,7 +52,6 @@ impl PhpMetadata {
     ///
     /// * `name` - Dictionary name (default: "default").
     /// * `encoding` - Character encoding (default: "UTF-8").
-    /// * `compress_algorithm` - Compression algorithm (default: "deflate").
     /// * `default_word_cost` - Default word cost (default: -10000).
     /// * `default_left_context_id` - Default left context ID (default: 1288).
     /// * `default_right_context_id` - Default right context ID (default: 1288).
@@ -167,7 +67,6 @@ impl PhpMetadata {
     pub fn __construct(
         name: Option<String>,
         encoding: Option<String>,
-        compress_algorithm: Option<String>,
         default_word_cost: Option<i64>,
         default_left_context_id: Option<i64>,
         default_right_context_id: Option<i64>,
@@ -186,7 +85,6 @@ impl PhpMetadata {
         Self {
             name: name.unwrap_or_else(|| "default".to_string()),
             encoding: encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            compress_algorithm: compress_algorithm.unwrap_or_else(|| "deflate".to_string()),
             default_word_cost: default_word_cost.unwrap_or(-10000) as i16,
             default_left_context_id: default_left_context_id.unwrap_or(1288) as u16,
             default_right_context_id: default_right_context_id.unwrap_or(1288) as u16,
@@ -205,7 +103,7 @@ impl PhpMetadata {
     ///
     /// A new default Metadata instance.
     pub fn create_default() -> Self {
-        Self::__construct(None, None, None, None, None, None, None, None, None, None)
+        Self::__construct(None, None, None, None, None, None, None, None, None)
     }
 
     /// Loads Metadata from a JSON file.
@@ -245,16 +143,6 @@ impl PhpMetadata {
     #[php(getter)]
     pub fn encoding(&self) -> String {
         self.encoding.clone()
-    }
-
-    /// Returns the compression algorithm name.
-    ///
-    /// # Returns
-    ///
-    /// The algorithm name string.
-    #[php(getter)]
-    pub fn compress_algorithm(&self) -> String {
-        self.compress_algorithm.clone()
     }
 
     /// Returns the default word cost.
@@ -357,10 +245,6 @@ impl PhpMetadata {
         dict.insert("name".to_string(), self.name.clone());
         dict.insert("encoding".to_string(), self.encoding.clone());
         dict.insert(
-            "compress_algorithm".to_string(),
-            self.compress_algorithm.clone(),
-        );
-        dict.insert(
             "default_word_cost".to_string(),
             self.default_word_cost.to_string(),
         );
@@ -395,24 +279,20 @@ impl PhpMetadata {
     /// A string describing the metadata.
     pub fn __to_string(&self) -> String {
         format!(
-            "Metadata(name='{}', encoding='{}', compress_algorithm='{}')",
-            self.name, self.encoding, self.compress_algorithm
+            "Metadata(name='{}', encoding='{}')",
+            self.name, self.encoding
         )
     }
 }
 
 impl From<PhpMetadata> for Metadata {
     fn from(metadata: PhpMetadata) -> Self {
-        let compress_alg = PhpCompressionAlgorithm {
-            value: metadata.compress_algorithm,
-        };
         let dict_schema = PhpSchema::__construct(metadata.dictionary_schema_fields);
         let user_schema = PhpSchema::__construct(metadata.user_dictionary_schema_fields);
 
         Metadata::new(
             metadata.name,
             metadata.encoding,
-            compress_alg.to_lindera(),
             metadata.default_word_cost,
             metadata.default_left_context_id,
             metadata.default_right_context_id,
@@ -428,14 +308,12 @@ impl From<PhpMetadata> for Metadata {
 
 impl From<Metadata> for PhpMetadata {
     fn from(metadata: Metadata) -> Self {
-        let compress_alg = PhpCompressionAlgorithm::from_lindera(&metadata.compress_algorithm);
         let dict_schema: PhpSchema = metadata.dictionary_schema.into();
         let user_schema: PhpSchema = metadata.user_dictionary_schema.into();
 
         PhpMetadata {
             name: metadata.name,
             encoding: metadata.encoding,
-            compress_algorithm: compress_alg.value,
             default_word_cost: metadata.default_word_cost,
             default_left_context_id: metadata.default_left_context_id,
             default_right_context_id: metadata.default_right_context_id,
@@ -454,7 +332,6 @@ impl Clone for PhpMetadata {
         Self {
             name: self.name.clone(),
             encoding: self.encoding.clone(),
-            compress_algorithm: self.compress_algorithm.clone(),
             default_word_cost: self.default_word_cost,
             default_left_context_id: self.default_left_context_id,
             default_right_context_id: self.default_right_context_id,
@@ -471,14 +348,13 @@ impl Clone for PhpMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lindera::dictionary::{CompressionAlgorithm, Metadata};
+    use lindera::dictionary::Metadata;
 
     #[test]
     fn test_phpmetadata_default_values() {
         let meta = PhpMetadata::create_default();
         assert_eq!(meta.name, "default");
         assert_eq!(meta.encoding, "UTF-8");
-        assert_eq!(meta.compress_algorithm, "deflate");
         assert_eq!(meta.default_word_cost, -10000);
         assert_eq!(meta.default_left_context_id, 1288);
         assert_eq!(meta.default_right_context_id, 1288);
@@ -495,7 +371,6 @@ mod tests {
         let meta = PhpMetadata::__construct(
             Some("test".to_string()),
             Some("UTF-8".to_string()),
-            Some("gzip".to_string()),
             Some(-5000),
             Some(100),
             Some(200),
@@ -508,17 +383,7 @@ mod tests {
         let roundtripped: PhpMetadata = lindera_meta.into();
         assert_eq!(roundtripped.name, "test");
         assert_eq!(roundtripped.encoding, "UTF-8");
-        assert_eq!(roundtripped.compress_algorithm, "gzip");
         assert_eq!(roundtripped.default_word_cost, -5000);
         assert!(roundtripped.flexible_csv);
-    }
-
-    #[test]
-    fn test_compression_algorithm_conversion() {
-        let alg = PhpCompressionAlgorithm::from_lindera(&CompressionAlgorithm::Gzip);
-        assert_eq!(alg.value, "gzip");
-
-        let back = alg.to_lindera();
-        assert!(matches!(back, CompressionAlgorithm::Gzip));
     }
 }

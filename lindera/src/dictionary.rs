@@ -52,8 +52,6 @@ pub type UserDictionaryConfig = Value;
 pub type Schema = lindera_dictionary::dictionary::schema::Schema;
 pub type FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition;
 pub type FieldType = lindera_dictionary::dictionary::schema::FieldType;
-pub type CompressionAlgorithm = lindera_dictionary::decompress::Algorithm;
-
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryScheme {
     #[cfg(any(
@@ -179,22 +177,34 @@ impl DictionaryKind {
 impl FromStr for DictionaryKind {
     type Err = LinderaError;
     fn from_str(input: &str) -> Result<DictionaryKind, Self::Err> {
-        match input {
-            #[cfg(feature = "embed-ipadic")]
-            IPADIC_DICTIONARY_NAME => Ok(DictionaryKind::IPADIC),
-            #[cfg(feature = "embed-ipadic-neologd")]
-            IPADIC_NEOLOGD_DICTIONARY_NAME => Ok(DictionaryKind::IPADICNEologd),
-            #[cfg(feature = "embed-unidic")]
-            UNIDIC_DICTIONARY_NAME => Ok(DictionaryKind::UniDic),
-            #[cfg(feature = "embed-ko-dic")]
-            KO_DIC_DICTIONARY_NAME => Ok(DictionaryKind::KoDic),
-            #[cfg(feature = "embed-cc-cedict")]
-            CC_CEDICT_DICTIONARY_NAME => Ok(DictionaryKind::CcCedict),
-            #[cfg(feature = "embed-jieba")]
-            JIEBA_DICTIONARY_NAME => Ok(DictionaryKind::Jieba),
-            _ => Err(LinderaErrorKind::Dictionary
-                .with_error(anyhow::anyhow!("Invalid dictionary kind: {input}"))),
+        // Use if-else chain instead of match because const &str values
+        // are interpreted as variable bindings in match patterns.
+        #[cfg(feature = "embed-ipadic")]
+        if input == IPADIC_DICTIONARY_NAME {
+            return Ok(DictionaryKind::IPADIC);
         }
+        #[cfg(feature = "embed-ipadic-neologd")]
+        if input == IPADIC_NEOLOGD_DICTIONARY_NAME {
+            return Ok(DictionaryKind::IPADICNEologd);
+        }
+        #[cfg(feature = "embed-unidic")]
+        if input == UNIDIC_DICTIONARY_NAME {
+            return Ok(DictionaryKind::UniDic);
+        }
+        #[cfg(feature = "embed-ko-dic")]
+        if input == KO_DIC_DICTIONARY_NAME {
+            return Ok(DictionaryKind::KoDic);
+        }
+        #[cfg(feature = "embed-cc-cedict")]
+        if input == CC_CEDICT_DICTIONARY_NAME {
+            return Ok(DictionaryKind::CcCedict);
+        }
+        #[cfg(feature = "embed-jieba")]
+        if input == JIEBA_DICTIONARY_NAME {
+            return Ok(DictionaryKind::Jieba);
+        }
+        Err(LinderaErrorKind::Dictionary
+            .with_error(anyhow::anyhow!("Invalid dictionary kind: {input}")))
     }
 }
 

@@ -98,32 +98,15 @@ class LinderaTest extends TestCase
         $metadata = Lindera\Metadata::createDefault();
         $this->assertEquals('default', $metadata->name);
         $this->assertEquals('UTF-8', $metadata->encoding);
-        $this->assertEquals('deflate', $metadata->compress_algorithm);
         $this->assertEquals(-10000, $metadata->default_word_cost);
     }
 
     public function testMetadataCustom(): void
     {
-        $metadata = new Lindera\Metadata('test', 'EUC-JP', 'gzip', -5000);
+        $metadata = new Lindera\Metadata('test', 'EUC-JP', -5000);
         $this->assertEquals('test', $metadata->name);
         $this->assertEquals('EUC-JP', $metadata->encoding);
-        $this->assertEquals('gzip', $metadata->compress_algorithm);
         $this->assertEquals(-5000, $metadata->default_word_cost);
-    }
-
-    public function testCompressionAlgorithm(): void
-    {
-        $alg = new Lindera\CompressionAlgorithm('deflate');
-        $this->assertEquals('deflate', $alg->value);
-
-        $alg2 = new Lindera\CompressionAlgorithm('gzip');
-        $this->assertEquals('gzip', $alg2->value);
-    }
-
-    public function testCompressionAlgorithmInvalid(): void
-    {
-        $this->expectException(\ValueError::class);
-        new Lindera\CompressionAlgorithm('invalid');
     }
 
     public function testFieldType(): void

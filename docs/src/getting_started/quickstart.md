@@ -8,6 +8,8 @@ It will:
 - Tokenize the input text
 - Output the tokens
 
+First, download a pre-built IPADIC dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and extract it to a local directory (e.g., `/path/to/ipadic`).
+
 ```rust
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
@@ -16,7 +18,7 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary("embedded://ipadic")?;
+    let dictionary = load_dictionary("/path/to/ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -35,8 +37,11 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic --example=tokenize
+% cargo run --example=tokenize
 ```
+
+> [!TIP]
+> If you embed the dictionary into the binary using the `embed-ipadic` feature (advanced usage), you can use `load_dictionary("embedded://ipadic")` instead of specifying a file path. See [Feature Flags](../development/feature_flags.md) for details.
 
 You can see the result as follows:
 

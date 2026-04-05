@@ -12,8 +12,6 @@ lindera-dictionary/src/
 ├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
-├── compress.rs          # Dictionary compression
-├── decompress.rs        # Dictionary decompression
 ├── assets.rs            # Download and file management
 ├── dictionary/
 │   ├── character_definition.rs    # Character type definitions
@@ -73,7 +71,6 @@ CRF-based dictionary training pipeline using `lindera-crf`. The training workflo
 
 | Feature | Description | Default |
 | --------- | ------------- | --------- |
-| `compress` | Dictionary compression support | Yes |
 | `mmap` | Memory-mapped file support | Yes |
 | `build_rs` | HTTP download for dictionary sources | No |
 | `train` | CRF-based training (depends on lindera-crf) | No |

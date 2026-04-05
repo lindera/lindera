@@ -1,45 +1,39 @@
 use std::path::Path;
 
 use crate::LinderaResult;
-#[cfg(feature = "compress")]
-use crate::decompress::{CompressedData, decompress};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-#[cfg(feature = "compress")]
-use crate::error::LinderaErrorKind;
 #[cfg(feature = "mmap")]
 use crate::util::mmap_file;
 use crate::util::read_file;
 
+/// Loader for connection cost matrix data from disk files.
 pub struct ConnectionCostMatrixLoader {}
 
 impl ConnectionCostMatrixLoader {
-    #[allow(unused_mut)]
+    /// Load connection cost matrix from a file in the specified directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Path to the directory containing matrix.mtx.
+    ///
+    /// # Returns
+    ///
+    /// A `ConnectionCostMatrix` loaded from the file.
     pub fn load(input_dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
-        let mut data = read_file(input_dir.join("matrix.mtx").as_path())?;
-
-        #[cfg(feature = "compress")]
-        {
-            let mut aligned_data = rkyv::util::AlignedVec::<16>::new();
-            aligned_data.extend_from_slice(&data);
-
-            let compressed_data: CompressedData =
-                rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned_data).map_err(
-                    |err| {
-                        LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!(err.to_string()))
-                            .add_context("Failed to deserialize matrix.mtx data")
-                    },
-                )?;
-            data = decompress(compressed_data).map_err(|err| {
-                LinderaErrorKind::Compression
-                    .with_error(err)
-                    .add_context("Failed to decompress connection cost matrix data")
-            })?;
-        }
+        let data = read_file(input_dir.join("matrix.mtx").as_path())?;
 
         Ok(ConnectionCostMatrix::load(data))
     }
 
+    /// Load connection cost matrix using memory-mapped file.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Path to the directory containing matrix.mtx.
+    ///
+    /// # Returns
+    ///
+    /// A `ConnectionCostMatrix` loaded via memory mapping.
     #[cfg(feature = "mmap")]
     pub fn load_mmap(input_dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
         let data = mmap_file(input_dir.join("matrix.mtx").as_path())?;

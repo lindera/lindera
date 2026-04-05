@@ -56,7 +56,6 @@ impl DictionaryBuilder {
     ) -> LinderaResult<CharacterDefinition> {
         CharacterDefinitionBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
-            .compress_algorithm(self.metadata.compress_algorithm)
             .builder()
             .unwrap()
             .build(input_dir, output_dir)
@@ -70,7 +69,6 @@ impl DictionaryBuilder {
     ) -> LinderaResult<()> {
         UnknownDictionaryBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
-            .compress_algorithm(self.metadata.compress_algorithm)
             .builder()
             .unwrap()
             .build(input_dir, chardef, output_dir)
@@ -84,7 +82,6 @@ impl DictionaryBuilder {
         PrefixDictionaryBuilderOptions::default()
             .flexible_csv(self.metadata.flexible_csv)
             .encoding(self.metadata.encoding.clone())
-            .compress_algorithm(self.metadata.compress_algorithm)
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
             .normalize_details(self.metadata.normalize_details)
             .schema(self.metadata.dictionary_schema.clone())
@@ -100,7 +97,6 @@ impl DictionaryBuilder {
     ) -> LinderaResult<()> {
         ConnectionCostMatrixBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
-            .compress_algorithm(self.metadata.compress_algorithm)
             .builder()
             .unwrap()
             .build(input_dir, output_dir)

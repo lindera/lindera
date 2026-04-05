@@ -4,8 +4,26 @@ Cargo.tomlに以下を追加してください：
 
 ```toml
 [dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 ```
+
+## 辞書のセットアップ
+
+Linderaの実行にはビルド済み辞書が必要です。[GitHub Releases](https://github.com/lindera/lindera/releases) から辞書をダウンロードし、読み込み時にそのパスを指定してください：
+
+```rust
+let dictionary = load_dictionary("/path/to/ipadic")?;
+```
+
+> [!TIP]
+> 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する `embed-*` feature フラグを有効にしてビルドし、`embedded://` スキームでロードしてください：
+>
+> ```rust
+> // Cargo.toml: lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+> let dictionary = load_dictionary("embedded://ipadic")?;
+> ```
+>
+> 詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
 
 ## 環境変数
 

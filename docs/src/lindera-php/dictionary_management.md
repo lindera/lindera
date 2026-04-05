@@ -6,22 +6,20 @@ Lindera PHP provides static methods on the `Lindera\Dictionary` class for loadin
 
 ### System Dictionaries
 
-Use `Lindera\Dictionary::load($uri)` to load a system dictionary.
+Use `Lindera\Dictionary::load($uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
-**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+```php
+<?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+```
+
+**Embedded dictionaries (advanced)** -- if you built with an `embed-*` feature flag, you can load an embedded dictionary:
 
 ```php
 <?php
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
-```
-
-**External dictionaries** (loaded from a directory on disk):
-
-```php
-<?php
-
-$dictionary = Lindera\Dictionary::load('/path/to/dictionary');
 ```
 
 ### User Dictionaries
@@ -31,7 +29,7 @@ User dictionaries add custom vocabulary on top of a system dictionary.
 ```php
 <?php
 
-$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $metadata = $dictionary->metadata();
 $userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
 ```
@@ -41,7 +39,7 @@ Pass the user dictionary when creating a tokenizer directly:
 ```php
 <?php
 
-$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $metadata = $dictionary->metadata();
 $userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
 
@@ -55,7 +53,7 @@ Or via the builder:
 
 $builder = new Lindera\TokenizerBuilder();
 $tokenizer = $builder
-    ->setDictionary('embedded://ipadic')
+    ->setDictionary('/path/to/ipadic')
     ->setUserDictionary('/path/to/user_dictionary')
     ->build();
 ```
@@ -102,7 +100,6 @@ $metadata = new Lindera\Metadata();
 $metadata = new Lindera\Metadata(
     name: 'my_dictionary',
     encoding: 'UTF-8',
-    compress_algorithm: 'deflate',
     default_word_cost: -10000,
 );
 
@@ -124,7 +121,6 @@ $metadata = Lindera\Metadata::fromJsonFile('metadata.json');
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | Dictionary name |
 | `encoding` | `string` | `"UTF-8"` | Character encoding |
-| `compress_algorithm` | `string` | `"deflate"` | Compression algorithm |
 | `default_word_cost` | `int` | `-10000` | Default cost for unknown words |
 | `default_left_context_id` | `int` | `1288` | Default left context ID |
 | `default_right_context_id` | `int` | `1288` | Default right context ID |
@@ -156,17 +152,6 @@ $metadata = new Lindera\Metadata(name: 'test');
 print_r($metadata->toArray());
 ```
 
-### Compression Algorithms
-
-Available compression algorithm values (passed as strings):
-
-| Value | Description |
-| --- | --- |
-| `"deflate"` | DEFLATE compression (default) |
-| `"zlib"` | Zlib compression |
-| `"gzip"` | Gzip compression |
-| `"raw"` | No compression |
-
 ### Dictionary Info
 
 The `Lindera\Dictionary` object provides metadata accessors:
@@ -174,7 +159,7 @@ The `Lindera\Dictionary` object provides metadata accessors:
 ```php
 <?php
 
-$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 echo $dictionary->metadataName();      // Dictionary name
 echo $dictionary->metadataEncoding();  // Dictionary encoding
 $metadata = $dictionary->metadata();   // Full Metadata object

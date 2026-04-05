@@ -1,50 +1,13 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! compression algorithms, character encodings, and schema definitions.
+//! character encodings and schema definitions.
 
 use std::collections::HashMap;
 
-use lindera::dictionary::{CompressionAlgorithm, Metadata};
+use lindera::dictionary::Metadata;
 
 use crate::schema::JsSchema;
-
-/// Compression algorithm for dictionary data.
-///
-/// Determines how dictionary data is compressed when saved to disk.
-#[napi(string_enum)]
-pub enum JsCompressionAlgorithm {
-    /// DEFLATE compression algorithm
-    Deflate,
-    /// Zlib compression algorithm
-    Zlib,
-    /// Gzip compression algorithm
-    Gzip,
-    /// No compression (raw data)
-    Raw,
-}
-
-impl From<JsCompressionAlgorithm> for CompressionAlgorithm {
-    fn from(alg: JsCompressionAlgorithm) -> Self {
-        match alg {
-            JsCompressionAlgorithm::Deflate => CompressionAlgorithm::Deflate,
-            JsCompressionAlgorithm::Zlib => CompressionAlgorithm::Zlib,
-            JsCompressionAlgorithm::Gzip => CompressionAlgorithm::Gzip,
-            JsCompressionAlgorithm::Raw => CompressionAlgorithm::Raw,
-        }
-    }
-}
-
-impl From<CompressionAlgorithm> for JsCompressionAlgorithm {
-    fn from(alg: CompressionAlgorithm) -> Self {
-        match alg {
-            CompressionAlgorithm::Deflate => JsCompressionAlgorithm::Deflate,
-            CompressionAlgorithm::Zlib => JsCompressionAlgorithm::Zlib,
-            CompressionAlgorithm::Gzip => JsCompressionAlgorithm::Gzip,
-            CompressionAlgorithm::Raw => JsCompressionAlgorithm::Raw,
-        }
-    }
-}
 
 /// Options for creating a Metadata instance.
 ///
@@ -55,8 +18,6 @@ pub struct MetadataOptions {
     pub name: Option<String>,
     /// Character encoding (default: "UTF-8").
     pub encoding: Option<String>,
-    /// Compression algorithm (default: Deflate).
-    pub compress_algorithm: Option<JsCompressionAlgorithm>,
     /// Default cost for unknown words (default: -10000).
     pub default_word_cost: Option<i32>,
     /// Default left context ID (default: 1288).
@@ -80,7 +41,6 @@ pub struct MetadataOptions {
 pub struct JsMetadata {
     name: String,
     encoding: String,
-    compress_algorithm: JsCompressionAlgorithm,
     default_word_cost: i16,
     default_left_context_id: u16,
     default_right_context_id: u16,
@@ -104,7 +64,6 @@ impl JsMetadata {
         let opts = options.unwrap_or(MetadataOptions {
             name: None,
             encoding: None,
-            compress_algorithm: None,
             default_word_cost: None,
             default_left_context_id: None,
             default_right_context_id: None,
@@ -117,9 +76,6 @@ impl JsMetadata {
         JsMetadata {
             name: opts.name.unwrap_or_else(|| "default".to_string()),
             encoding: opts.encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            compress_algorithm: opts
-                .compress_algorithm
-                .unwrap_or(JsCompressionAlgorithm::Deflate),
             default_word_cost: opts.default_word_cost.unwrap_or(-10000) as i16,
             default_left_context_id: opts.default_left_context_id.unwrap_or(1288) as u16,
             default_right_context_id: opts.default_right_context_id.unwrap_or(1288) as u16,
@@ -196,18 +152,6 @@ impl JsMetadata {
     #[napi(setter)]
     pub fn set_encoding(&mut self, encoding: String) {
         self.encoding = encoding;
-    }
-
-    /// Compression algorithm.
-    #[napi(getter)]
-    pub fn compress_algorithm(&self) -> JsCompressionAlgorithm {
-        self.compress_algorithm
-    }
-
-    /// Sets the compression algorithm.
-    #[napi(setter)]
-    pub fn set_compress_algorithm(&mut self, algorithm: JsCompressionAlgorithm) {
-        self.compress_algorithm = algorithm;
     }
 
     /// Default word cost.
@@ -304,13 +248,6 @@ impl JsMetadata {
         let mut dict = HashMap::new();
         dict.insert("name".to_string(), self.name.clone());
         dict.insert("encoding".to_string(), self.encoding.clone());
-        let alg_str = match &self.compress_algorithm {
-            JsCompressionAlgorithm::Deflate => "Deflate",
-            JsCompressionAlgorithm::Zlib => "Zlib",
-            JsCompressionAlgorithm::Gzip => "Gzip",
-            JsCompressionAlgorithm::Raw => "Raw",
-        };
-        dict.insert("compressAlgorithm".to_string(), alg_str.to_string());
         dict.insert(
             "defaultWordCost".to_string(),
             self.default_word_cost.to_string(),
@@ -354,7 +291,6 @@ impl JsMetadata {
         Metadata::new(
             metadata.name.clone(),
             metadata.encoding.clone(),
-            metadata.compress_algorithm.into(),
             metadata.default_word_cost,
             metadata.default_left_context_id,
             metadata.default_right_context_id,
@@ -373,7 +309,6 @@ impl From<JsMetadata> for Metadata {
         Metadata::new(
             metadata.name,
             metadata.encoding,
-            metadata.compress_algorithm.into(),
             metadata.default_word_cost,
             metadata.default_left_context_id,
             metadata.default_right_context_id,
@@ -392,7 +327,6 @@ impl From<Metadata> for JsMetadata {
         JsMetadata {
             name: metadata.name,
             encoding: metadata.encoding,
-            compress_algorithm: metadata.compress_algorithm.into(),
             default_word_cost: metadata.default_word_cost,
             default_left_context_id: metadata.default_left_context_id,
             default_right_context_id: metadata.default_right_context_id,
@@ -411,55 +345,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_js_compression_algorithm_to_lindera_all_variants() {
-        assert!(matches!(
-            CompressionAlgorithm::from(JsCompressionAlgorithm::Deflate),
-            CompressionAlgorithm::Deflate
-        ));
-        assert!(matches!(
-            CompressionAlgorithm::from(JsCompressionAlgorithm::Zlib),
-            CompressionAlgorithm::Zlib
-        ));
-        assert!(matches!(
-            CompressionAlgorithm::from(JsCompressionAlgorithm::Gzip),
-            CompressionAlgorithm::Gzip
-        ));
-        assert!(matches!(
-            CompressionAlgorithm::from(JsCompressionAlgorithm::Raw),
-            CompressionAlgorithm::Raw
-        ));
-    }
-
-    #[test]
-    fn test_lindera_compression_algorithm_to_js_all_variants() {
-        assert!(matches!(
-            JsCompressionAlgorithm::from(CompressionAlgorithm::Deflate),
-            JsCompressionAlgorithm::Deflate
-        ));
-        assert!(matches!(
-            JsCompressionAlgorithm::from(CompressionAlgorithm::Zlib),
-            JsCompressionAlgorithm::Zlib
-        ));
-        assert!(matches!(
-            JsCompressionAlgorithm::from(CompressionAlgorithm::Gzip),
-            JsCompressionAlgorithm::Gzip
-        ));
-        assert!(matches!(
-            JsCompressionAlgorithm::from(CompressionAlgorithm::Raw),
-            JsCompressionAlgorithm::Raw
-        ));
-    }
-
-    #[test]
     fn test_js_metadata_to_lindera_metadata() {
         let js_metadata = JsMetadata::new(None);
         let lindera_metadata: Metadata = js_metadata.into();
         assert_eq!(lindera_metadata.name, "default");
         assert_eq!(lindera_metadata.encoding, "UTF-8");
-        assert!(matches!(
-            lindera_metadata.compress_algorithm,
-            CompressionAlgorithm::Deflate
-        ));
         assert_eq!(lindera_metadata.default_word_cost, -10000);
         assert_eq!(lindera_metadata.default_left_context_id, 1288);
         assert_eq!(lindera_metadata.default_right_context_id, 1288);
@@ -474,7 +364,6 @@ mod tests {
         let lindera_metadata = Metadata::new(
             "test".to_string(),
             "EUC-JP".to_string(),
-            CompressionAlgorithm::Gzip,
             -5000,
             100,
             200,
@@ -488,10 +377,6 @@ mod tests {
         let js_metadata: JsMetadata = lindera_metadata.into();
         assert_eq!(js_metadata.name(), "test");
         assert_eq!(js_metadata.encoding(), "EUC-JP");
-        assert!(matches!(
-            js_metadata.compress_algorithm(),
-            JsCompressionAlgorithm::Gzip
-        ));
         assert_eq!(js_metadata.default_word_cost(), -5000);
         assert_eq!(js_metadata.default_left_context_id(), 100);
         assert_eq!(js_metadata.default_right_context_id(), 200);
@@ -506,7 +391,6 @@ mod tests {
         let opts = MetadataOptions {
             name: Some("custom".to_string()),
             encoding: Some("Shift_JIS".to_string()),
-            compress_algorithm: Some(JsCompressionAlgorithm::Raw),
             default_word_cost: Some(-5000),
             default_left_context_id: Some(100),
             default_right_context_id: Some(200),
@@ -518,10 +402,6 @@ mod tests {
         let js_metadata = JsMetadata::new(Some(opts));
         assert_eq!(js_metadata.name(), "custom");
         assert_eq!(js_metadata.encoding(), "Shift_JIS");
-        assert!(matches!(
-            js_metadata.compress_algorithm(),
-            JsCompressionAlgorithm::Raw
-        ));
         assert_eq!(js_metadata.default_word_cost(), -5000);
         assert_eq!(js_metadata.default_left_context_id(), 100);
         assert_eq!(js_metadata.default_right_context_id(), 200);

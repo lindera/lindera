@@ -11,55 +11,17 @@ use encoding_rs::Encoding;
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
-#[cfg(feature = "compress")]
-use crate::compress::compress;
-use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
 
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 
-#[cfg(feature = "compress")]
-pub fn compress_write<W: Write>(
-    buffer: &[u8],
-    algorithm: Algorithm,
-    writer: &mut W,
-) -> LinderaResult<()> {
-    let compressed = compress(buffer, algorithm).map_err(|err| {
-        LinderaErrorKind::Compression
-            .with_error(err)
-            .add_context(format!(
-                "Failed to compress data with {algorithm:?} algorithm"
-            ))
-    })?;
-
-    // Use rkyv to serialize the CompressedData
-    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&compressed).map_err(|err| {
-        LinderaErrorKind::Serialize
-            .with_error(anyhow::anyhow!(err))
-            .add_context("Failed to serialize compressed data")
-    })?;
-
-    writer.write_all(&bytes).map_err(|err| {
-        LinderaErrorKind::Io
-            .with_error(err)
-            .add_context("Failed to write compressed data to output")
-    })?;
-
-    Ok(())
-}
-
-#[cfg(not(feature = "compress"))]
-pub fn compress_write<W: Write>(
-    buffer: &[u8],
-    _algorithm: Algorithm,
-    writer: &mut W,
-) -> LinderaResult<()> {
+/// Write data directly to the writer.
+pub fn write_data<W: Write>(buffer: &[u8], writer: &mut W) -> LinderaResult<()> {
     writer.write_all(buffer).map_err(|err| {
         LinderaErrorKind::Io
             .with_error(err)
             .add_context("Failed to write data to output")
     })?;
-
     Ok(())
 }
 

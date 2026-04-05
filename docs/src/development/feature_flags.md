@@ -6,16 +6,25 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `compress` | Dictionary compression support | Yes |
 | `mmap` | Memory-mapped file support | Yes |
 | `train` | CRF-based dictionary training (depends on `lindera-crf`) | CLI only |
 
-- `compress` and `mmap` are enabled by default in the main `lindera` crate.
+- `mmap` is enabled by default in the main `lindera` crate.
 - `train` is enabled by default only in `lindera-cli`. For library usage, enable it explicitly with `--features train`.
 
-## Dictionary Embedding Features
+## Using External Dictionaries (Recommended)
 
-These features embed pre-built dictionaries directly into the binary, eliminating the need for external dictionary files at runtime.
+The recommended approach is to use pre-built dictionaries as external files. Download a dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify its path at runtime:
+
+```rust
+let dictionary = load_dictionary("/path/to/ipadic")?;
+```
+
+No additional feature flags are required for this usage.
+
+## Dictionary Embedding Features (Advanced)
+
+These features embed pre-built dictionaries directly into the binary, eliminating the need for external dictionary files at runtime. This is intended for advanced users who need self-contained binaries.
 
 | Feature | Dictionary | Language |
 | --- | --- | --- |
@@ -33,7 +42,13 @@ None of these are enabled by default. Enable them as needed:
 lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 ```
 
-## Combination Features
+When embedding is enabled, you can load the dictionary with:
+
+```rust
+let dictionary = load_dictionary("embedded://ipadic")?;
+```
+
+### Combination Features
 
 These meta-features enable multiple dictionaries at once for multilingual applications.
 
@@ -43,7 +58,7 @@ These meta-features enable multiple dictionaries at once for multilingual applic
 | `embed-cjk2` | UniDic + ko-dic + Jieba |
 | `embed-cjk3` | IPADIC NEologd + ko-dic + Jieba |
 
-## Combining Feature Flags
+### Combining Feature Flags
 
 Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:
 

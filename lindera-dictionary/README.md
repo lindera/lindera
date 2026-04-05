@@ -291,6 +291,49 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 | 11 | 定义 | definition | |
 | 12 | - | - | After 12, it can be freely expanded. |
 
+### Jieba
+
+This repository uses [mecab-jieba](https://github.com/lindera/mecab-jieba).
+
+#### Jieba dictionary format
+
+| Index | Name (Chinese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 左语境ID | Left context ID | |
+| 2 | 右语境ID | Right context ID | |
+| 3 | 成本 | Cost | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 併音 | Pinyin | |
+| 6 | 繁体字 | Traditional | |
+| 7 | 簡体字 | Simplified | |
+| 8 | 定义 | Definition | |
+
+#### Jieba user dictionary format (CSV)
+
+##### Jieba user dictionary simple version
+
+| Index | Name (Chinese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 词类 | Part-of-speech | |
+| 2 | 併音 | Pinyin | |
+
+##### Jieba user dictionary detailed version
+
+| Index | Name (Chinese) | Name (English) | Notes |
+| --- | --- | --- | --- |
+| 0 | 表面形式 | Surface | |
+| 1 | 左语境ID | Left context ID | |
+| 2 | 右语境ID | Right context ID | |
+| 3 | 成本 | Cost | |
+| 4 | 词类 | Part-of-speech | |
+| 5 | 併音 | Pinyin | |
+| 6 | 繁体字 | Traditional | |
+| 7 | 簡体字 | Simplified | |
+| 8 | 定义 | Definition | |
+| 9 | - | - | After 9, it can be freely expanded. |
+
 ## API reference
 
 The API reference is available. Please see following URL:
