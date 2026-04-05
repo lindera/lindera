@@ -3,8 +3,6 @@ use std::fs::{self, File, rename};
 use std::io::{self, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 
-use encoding::all::UTF_8;
-use encoding::{EncoderTrap, Encoding};
 use flate2::read::GzDecoder;
 use log::{debug, error, info, warn};
 use md5::Context;
@@ -321,11 +319,7 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
                 ))
         })?;
         dummy_dict_csv
-            .write_all(
-                &UTF_8
-                    .encode(params.dummy_input, EncoderTrap::Ignore)
-                    .unwrap(),
-            )
+            .write_all(params.dummy_input.as_bytes())
             .map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
