@@ -34,7 +34,7 @@ license = "MIT"
 anyhow = "1.0.102"
 byteorder = "1.5.0"
 csv = "1.4.0"
-daachorse = "1.0.0"
+daachorse = "1.0.1"
 lindera = { version = "2.3.4", path = "lindera" }
 lindera-crf = { version = "2.3.4", path = "lindera-crf" }
 lindera-cc-cedict = { version = "2.3.4", path = "lindera-cc-cedict" }
