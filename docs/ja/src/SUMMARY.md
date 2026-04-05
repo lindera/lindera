@@ -57,6 +57,22 @@
     - [テキスト処理パイプライン](./lindera-nodejs/text_processing_pipeline.md)
     - [学習](./lindera-nodejs/training.md)
 
+- [Lindera Ruby](./lindera-ruby.md)
+    - [インストール](./lindera-ruby/installation.md)
+    - [クイックスタート](./lindera-ruby/quickstart.md)
+    - [トークナイザー API](./lindera-ruby/tokenizer_api.md)
+    - [辞書管理](./lindera-ruby/dictionary_management.md)
+    - [テキスト処理パイプライン](./lindera-ruby/text_processing_pipeline.md)
+    - [学習](./lindera-ruby/training.md)
+
+- [Lindera PHP](./lindera-php.md)
+    - [インストール](./lindera-php/installation.md)
+    - [クイックスタート](./lindera-php/quickstart.md)
+    - [トークナイザー API](./lindera-php/tokenizer_api.md)
+    - [辞書管理](./lindera-php/dictionary_management.md)
+    - [テキスト処理パイプライン](./lindera-php/text_processing_pipeline.md)
+    - [学習](./lindera-php/training.md)
+
 - [Lindera WASM](./lindera-wasm.md)
     - [インストール](./lindera-wasm/installation.md)
     - [クイックスタート](./lindera-wasm/quickstart.md)

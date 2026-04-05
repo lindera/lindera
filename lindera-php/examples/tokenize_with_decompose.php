@@ -9,12 +9,12 @@
  */
 
 // Load the dictionary
-$dictionary = Lindera\Dictionary::load("embedded://ipadic");
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
 
 // Create a tokenizer with decompose mode
-$tokenizer = new Lindera\Tokenizer($dictionary, "decompose");
+$tokenizer = new Lindera\Tokenizer($dictionary, 'decompose');
 
-$text = "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う";
+$text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う';
 echo "text: {$text}\n\n";
 
 // Tokenize the text

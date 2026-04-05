@@ -301,6 +301,29 @@ jobs:
         run: |
           make test-lindera-ruby
 
+  test-lindera-php:
+    name: Test lindera-php
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+
+      - name: Run PHP test
+        shell: bash
+        run: |
+          make test-lindera-php
+
   test-lindera-wasm:
     name: Test lindera-wasm
     needs: [test-lindera]

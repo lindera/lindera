@@ -85,8 +85,8 @@ clean-lindera-ruby: ## Clean lindera-ruby build artifacts
 	rm -f lindera-ruby/Gemfile.lock
 
 clean-lindera-php: ## Clean lindera-php build artifacts
-	rm -f lindera-php/target/debug/liblindera_php.so
-	rm -f lindera-php/target/debug/liblindera_php.dylib
+	rm -rf lindera-php/vendor
+	rm -f lindera-php/composer.lock
 
 clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -rf lindera-wasm/pkg
@@ -159,6 +159,7 @@ format-lindera-ruby: ## Format lindera-ruby
 
 format-lindera-php: ## Format lindera-php
 	cargo fmt -p lindera-php
+	cd lindera-php && vendor/bin/php-cs-fixer fix
 
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm

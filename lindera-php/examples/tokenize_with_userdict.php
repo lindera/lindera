@@ -11,18 +11,18 @@
 $projectRoot = dirname(__DIR__);
 
 // Load the dictionary
-$dictionary = Lindera\Dictionary::load("embedded://ipadic");
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
 
 $metadata = $dictionary->metadata();
 
 // Load the user dictionary
-$userDictionaryPath = $projectRoot . "/resources/ipadic_simple_userdic.csv";
+$userDictionaryPath = $projectRoot . '/resources/ipadic_simple_userdic.csv';
 $userDictionary = Lindera\Dictionary::loadUser($userDictionaryPath, $metadata);
 
 // Create a tokenizer
-$tokenizer = new Lindera\Tokenizer($dictionary, "normal", $userDictionary);
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 
-$text = "関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う";
+$text = '関西国際空港限定トートバッグを東京スカイツリーの最寄り駅であるとうきょうスカイツリー駅で買う';
 echo "text: {$text}\n\n";
 
 // Tokenize the text
