@@ -40,7 +40,6 @@ let error = error.add_context("failed to load dictionary from /path/to/dict");
 | `Content` | Invalid content or data errors |
 | `Args` | Invalid argument errors |
 | `Decode` | Decoding errors |
-| `Compression` | Compression/decompression errors |
 | `NotFound` | Resource not found (e.g., dictionary file missing) |
 | `Build` | Dictionary build errors |
 | `Dictionary` | Dictionary-related errors |

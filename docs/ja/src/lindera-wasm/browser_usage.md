@@ -4,11 +4,53 @@
 
 ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの `__wbg_init` がこの初期化を処理します。
 
+推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：
+
+```javascript
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    // Initialize the WASM module (must be called once before using any API)
+    await __wbg_init();
+
+    // キャッシュされていない場合は辞書をダウンロード
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/<version>/lindera-ipadic-<version>.zip",
+            "ipadic",
+        );
+    }
+
+    // OPFS から辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("形態素解析を行います");
+    tokens.forEach(token => {
+        console.log(`${token.surface}: ${token.details.join(',')}`);
+    });
+}
+
+main();
+```
+
+## 埋め込み辞書の使用（上級者向け）
+
+`embed-*` feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：
+
 ```javascript
 import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
-    // Initialize the WASM module (must be called once before using any API)
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
@@ -27,7 +69,7 @@ main();
 
 ## HTML の例
 
-lindera-wasm を使用した最小限の HTML ページ：
+OPFS 辞書ロードを使用した lindera-wasm の最小限の HTML ページ：
 
 ```html
 <!DOCTYPE html>
@@ -39,20 +81,41 @@ lindera-wasm を使用した最小限の HTML ページ：
 <body>
     <textarea id="input" rows="4" cols="50">関西国際空港限定トートバッグ</textarea>
     <br>
-    <button id="tokenize">Tokenize</button>
-    <pre id="output"></pre>
+    <button id="tokenize" disabled>Tokenize</button>
+    <pre id="output">Loading dictionary...</pre>
 
     <script type="module">
-        import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
 
         async function init() {
             await __wbg_init();
+
+            // キャッシュされていない場合は辞書をダウンロード
+            if (!await hasDictionary("ipadic")) {
+                document.getElementById('output').textContent = 'Downloading dictionary...';
+                await downloadDictionary(
+                    "https://github.com/lindera/lindera/releases/download/<version>/lindera-ipadic-<version>.zip",
+                    "ipadic",
+                );
+            }
+
+            // OPFS から辞書を読み込み
+            const files = await loadDictionaryFiles("ipadic");
+            const dictionary = loadDictionaryFromBytes(
+                files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+                files.dictWords, files.matrixMtx, files.charDef, files.unk,
+            );
+
             const builder = new TokenizerBuilder();
-            builder.setDictionary("embedded://ipadic");
+            builder.setDictionaryInstance(dictionary);
             builder.setMode("normal");
             tokenizer = builder.build();
+
+            document.getElementById('tokenize').disabled = false;
+            document.getElementById('output').textContent = 'Ready!';
         }
 
         document.getElementById('tokenize').addEventListener('click', () => {
@@ -94,10 +157,18 @@ module.exports = {
 次に、bundler ターゲットビルドを使用してインポートします：
 
 ```javascript
-import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
+import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
+import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+
+// OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 
 const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
+builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 ```
@@ -109,10 +180,11 @@ bundler ターゲットでは、`__wbg_init()` はバンドラーによって自
 Vite は web ターゲットでの WASM をそのままサポートしています。ビルド済みの `pkg/` ディレクトリをプロジェクトに配置し、直接インポートします：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
-// ... use TokenizerBuilder as normal
+// OPFS から辞書を読み込み、上記のように TokenizerBuilder を使用
 ```
 
 bundler ターゲットで Vite を使用する場合は、[vite-plugin-wasm](https://github.com/nicolo-ribaudo/vite-plugin-wasm) プラグインが必要になることがあります：

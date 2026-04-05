@@ -451,7 +451,7 @@ jobs:
 
   build:
     name: Build
-    needs: [create-release, build-dictionary]
+    needs: [create-release]
     strategy:
       matrix:
         platform:
@@ -480,34 +480,6 @@ jobs:
             archive: .zip
             extension: .exe
         toolchain: [stable]
-        features:
-          - value: "default"
-            package_name: "lindera"
-            package_description: "Lindera (no dictionary)"
-          - value: "embed-ipadic"
-            package_name: "lindera-ipadic"
-            package_description: "Lindera with Japanese dictionary (IPADIC)"
-          - value: "embed-ipadic-neologd"
-            package_name: "lindera-ipadic-neologd"
-            package_description: "Lindera with Japanese dictionary (IPADIC-NEologd)"
-          - value: "embed-unidic"
-            package_name: "lindera-unidic"
-            package_description: "Lindera with Japanese dictionary (UniDic)"
-          - value: "embed-ko-dic"
-            package_name: "lindera-ko-dic"
-            package_description: "Lindera with Korean dictionary (ko-dic)"
-          - value: "embed-cc-cedict"
-            package_name: "lindera-cc-cedict"
-            package_description: "Lindera with Chinese dictionary (CC-CEDICT)"
-          - value: "embed-cjk"
-            package_name: "lindera-cjk"
-            package_description: "Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
-          - value: "embed-cjk2"
-            package_name: "lindera-cjk2"
-            package_description: "Lindera with CJK dictionaries (UniDic, ko-dic, CC-CEDICT)"
-          - value: "embed-cjk3"
-            package_name: "lindera-cjk3"
-            package_description: "Lindera with CJK dictionaries (IPADIC NEologd, ko-dic, CC-CEDICT)"
 
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -523,44 +495,34 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.platform.target }}-${{ matrix.features.value }}
-          workspaces: ". -> target/${{ matrix.features.value }}"
+          key: ${{ matrix.platform.target }}
 
       - name: Add msbuild to PATH
         if: startsWith(matrix.platform.runner, 'windows')
         uses: microsoft/setup-msbuild@v3
 
-      - name: Download dictionary artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dictionaries
-          pattern: lindera-*
-          merge-multiple: true
-
       - name: Compile
-        run: cargo build -p lindera-cli --release --features="${{ matrix.features.value }},compress" --target=${{ matrix.platform.target }} --target-dir=target/${{ matrix.features.value }}
-        env:
-          LINDERA_DICTIONARIES_PATH: dictionaries
+        run: cargo build -p lindera-cli --release --target=${{ matrix.platform.target }}
 
       - name: Create artifact for Unix
         if: "!startsWith(matrix.platform.runner, 'windows')"
-        run: zip --junk-paths ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
         if: startsWith(matrix.platform.runner, 'windows')
-        run: powershell Compress-Archive -DestinationPath ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.features.value }}/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ${{ matrix.features.package_name }}-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
+          files: lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
           tag_name: ${{ github.ref_name }}
 
   build-python-wheels:
     name: Build wheels for ${{ matrix.platform.target }}
-    needs: [create-release, build-dictionary]
+    needs: [create-release]
     strategy:
       matrix:
         platform:
@@ -576,28 +538,6 @@ jobs:
             target: aarch64-apple-darwin
           - runner: macos-15-intel
             target: x86_64-apple-darwin
-        features:
-          - value: "default"
-            package_name: "lindera-python"
-            package_description: "Python binding for Lindera (no embedded dictionaries)"
-          - value: "embed-cjk"
-            package_name: "lindera-python-cjk"
-            package_description: "Python binding for Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
-          - value: "embed-ipadic"
-            package_name: "lindera-python-ipadic"
-            package_description: "Python binding for Lindera with IPADIC dictionary"
-          - value: "embed-unidic"
-            package_name: "lindera-python-unidic"
-            package_description: "Python binding for Lindera with UniDic dictionary"
-          - value: "embed-ko-dic"
-            package_name: "lindera-python-ko-dic"
-            package_description: "Python binding for Lindera with ko-dic Korean dictionary"
-          - value: "embed-cc-cedict"
-            package_name: "lindera-python-cc-cedict"
-            package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
-          - value: "embed-jieba"
-            package_name: "lindera-python-jieba"
-            package_description: "Python binding for Lindera with Jieba Chinese dictionary"
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -608,36 +548,13 @@ jobs:
         with:
           python-version: 3.x
 
-      - name: Download dictionary artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dictionaries
-          pattern: lindera-*
-          merge-multiple: true
-
-      - name: Create package-specific pyproject.toml
-        shell: bash
-        run: |
-          python -c "
-          import sys
-          import re
-          path = 'lindera-python/pyproject.toml'
-          with open(path, 'r') as f:
-              content = f.read()
-          content = re.sub(r'^name = \"lindera-python\"', 'name = \"${{ matrix.features.package_name }}\"', content, flags=re.MULTILINE)
-          content = re.sub(r'^description = \".*\"', 'description = \"${{ matrix.features.package_description }}\"', content, flags=re.MULTILINE)
-          with open(path, 'w') as f:
-              f.write(content)
-          "
-
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          LINDERA_DICTIONARIES_PATH: dictionaries
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter --features=${{ matrix.features.value }} --manifest-path lindera-python/Cargo.toml
+          args: --release --out dist --find-interpreter --manifest-path lindera-python/Cargo.toml
           sccache: "true"
           manylinux: auto
           before-script-linux: |
@@ -658,55 +575,16 @@ jobs:
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-${{ matrix.features.package_name }}-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
+          name: wheels-lindera-python-${{ runner.os }}-${{ matrix.platform.target }}-${{ github.ref_name }}
           path: dist
 
   build-python-sdist:
-    name: Build sdist for ${{ matrix.features.package_name }}
+    name: Build sdist
     needs: [create-release]
-    strategy:
-      matrix:
-        features:
-          - value: "default"
-            package_name: "lindera-python"
-            package_description: "Python binding for Lindera (no embedded dictionaries)"
-          - value: "embed-cjk"
-            package_name: "lindera-python-cjk"
-            package_description: "Python binding for Lindera with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
-          - value: "embed-ipadic"
-            package_name: "lindera-python-ipadic"
-            package_description: "Python binding for Lindera with IPADIC dictionary"
-          - value: "embed-unidic"
-            package_name: "lindera-python-unidic"
-            package_description: "Python binding for Lindera with UniDic dictionary"
-          - value: "embed-ko-dic"
-            package_name: "lindera-python-ko-dic"
-            package_description: "Python binding for Lindera with ko-dic Korean dictionary"
-          - value: "embed-cc-cedict"
-            package_name: "lindera-python-cc-cedict"
-            package_description: "Python binding for Lindera with CC-CEDICT Chinese dictionary"
-          - value: "embed-jieba"
-            package_name: "lindera-python-jieba"
-            package_description: "Python binding for Lindera with Jieba Chinese dictionary"
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
-
-      - name: Create package-specific pyproject.toml
-        shell: bash
-        run: |
-          python -c "
-          import sys
-          import re
-          path = 'lindera-python/pyproject.toml'
-          with open(path, 'r') as f:
-              content = f.read()
-          content = re.sub(r'^name = \"lindera-python\"', 'name = \"${{ matrix.features.package_name }}\"', content, flags=re.MULTILINE)
-          content = re.sub(r'^description = \".*\"', 'description = \"${{ matrix.features.package_description }}\"', content, flags=re.MULTILINE)
-          with open(path, 'w') as f:
-              f.write(content)
-          "
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -725,12 +603,12 @@ jobs:
       - name: Upload to workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: sdist-${{ matrix.features.package_name }}-${{ github.ref_name }}
+          name: sdist-lindera-python-${{ github.ref_name }}
           path: dist
 
   build-ruby-gems:
-    name: Build Ruby Gem (${{ matrix.platform.ruby_platform }}, ${{ matrix.features.name }})
-    needs: [create-release, build-dictionary]
+    name: Build Ruby Gem (${{ matrix.platform.ruby_platform }})
+    needs: [create-release]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
@@ -748,21 +626,6 @@ jobs:
           - runner: macos-15-intel
             target: x86_64-apple-darwin
             ruby_platform: x86_64-darwin
-        features:
-          - value: "default"
-            gem_name: "lindera"
-          - value: "embed-ipadic"
-            gem_name: "lindera-ipadic"
-          - value: "embed-unidic"
-            gem_name: "lindera-unidic"
-          - value: "embed-ko-dic"
-            gem_name: "lindera-ko-dic"
-          - value: "embed-cc-cedict"
-            gem_name: "lindera-cc-cedict"
-          - value: "embed-jieba"
-            gem_name: "lindera-jieba"
-          - value: "embed-cjk"
-            gem_name: "lindera-cjk"
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -786,38 +649,26 @@ jobs:
         with:
           shared-key: "stable-${{ matrix.platform.target }}"
 
-      - name: Download dictionary artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dictionaries
-          pattern: lindera-*
-          merge-multiple: true
-
-      - name: Update gem name and version
+      - name: Update gem version
         working-directory: lindera-ruby
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          GEM_NAME="${{ matrix.features.gem_name }}"
-          sed -i.bak "s/spec.name = \"lindera\"/spec.name = \"${GEM_NAME}\"/" lindera.gemspec
           sed -i.bak "s/spec.version = \".*\"/spec.version = \"${VERSION}\"/" lindera.gemspec
           rm -f lindera.gemspec.bak
 
       - name: Build gem
         working-directory: lindera-ruby
         shell: bash
-        env:
-          LINDERA_FEATURES: ${{ matrix.features.value }}
-          LINDERA_DICTIONARIES_PATH: ${{ github.workspace }}/dictionaries
         run: |
           bundle install --quiet
-          LINDERA_FEATURES="${LINDERA_FEATURES}" bundle exec rake compile
+          bundle exec rake compile
           gem build lindera.gemspec
 
       - name: Upload gem artifact
         uses: actions/upload-artifact@v7
         with:
-          name: gem-${{ matrix.features.gem_name }}-${{ matrix.platform.ruby_platform }}-${{ github.ref_name }}
+          name: gem-lindera-${{ matrix.platform.ruby_platform }}-${{ github.ref_name }}
           path: lindera-ruby/*.gem
           if-no-files-found: error
 
@@ -830,8 +681,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
   build-php:
-    name: Build PHP (${{ matrix.platform.target }}, ${{ matrix.features.name }})
-    needs: [create-release, build-dictionary]
+    name: Build PHP (${{ matrix.platform.target }})
+    needs: [create-release]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
@@ -845,21 +696,6 @@ jobs:
             target: aarch64-apple-darwin
           - runner: macos-15-intel
             target: x86_64-apple-darwin
-        features:
-          - value: "default"
-            name: "default"
-          - value: "embed-ipadic"
-            name: "ipadic"
-          - value: "embed-unidic"
-            name: "unidic"
-          - value: "embed-ko-dic"
-            name: "ko-dic"
-          - value: "embed-cc-cedict"
-            name: "cc-cedict"
-          - value: "embed-jieba"
-            name: "jieba"
-          - value: "embed-cjk"
-            name: "cjk"
     runs-on: ${{ matrix.platform.runner }}
     steps:
       - name: Run checkout
@@ -876,33 +712,17 @@ jobs:
         with:
           shared-key: "stable-${{ matrix.platform.target }}"
 
-      - name: Download dictionary artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dictionaries
-          pattern: lindera-*
-          merge-multiple: true
-
       - name: Build PHP extension
         shell: bash
-        env:
-          LINDERA_DICTIONARIES_PATH: ${{ github.workspace }}/dictionaries
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          FEATURES="${{ matrix.features.value }}"
-          if [ "${FEATURES}" = "default" ]; then
-            cargo build -p lindera-php --release
-          else
-            cargo build -p lindera-php --release --features "${FEATURES}"
-          fi
+          cargo build -p lindera-php --release
 
       - name: Package extension
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           TARGET="${{ matrix.platform.target }}"
-          NAME="lindera-php-${{ matrix.features.name }}"
-          ARCHIVE_NAME="${NAME}-${VERSION}-${TARGET}"
+          ARCHIVE_NAME="lindera-php-${VERSION}-${TARGET}"
           mkdir -p "${ARCHIVE_NAME}"
           if [ -f target/release/liblindera_php.so ]; then
             cp target/release/liblindera_php.so "${ARCHIVE_NAME}/"
@@ -914,7 +734,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: php-${{ matrix.features.name }}-${{ matrix.platform.target }}-${{ github.ref_name }}
+          name: php-${{ matrix.platform.target }}-${{ github.ref_name }}
           path: lindera-php-*.tar.gz
           if-no-files-found: error
 
@@ -927,8 +747,8 @@ jobs:
           tag_name: ${{ github.ref_name }}
 
   build-wasm:
-    name: Build WASM (${{ matrix.target.name }}, ${{ matrix.features.name }})
-    needs: [create-release, build-dictionary]
+    name: Build WASM (${{ matrix.target.name }})
+    needs: [create-release]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     strategy:
@@ -938,45 +758,9 @@ jobs:
             name: "web"
           - value: "bundler"
             name: "bundler"
-        features:
-          - value: ""
-            name: "default"
-            package_suffix: ""
-            package_description: "Lindera WASM (no embedded dictionaries)"
-          - value: "embed-ipadic"
-            name: "ipadic"
-            package_suffix: "-ipadic"
-            package_description: "Lindera WASM with Japanese dictionary (IPADIC)"
-          - value: "embed-unidic"
-            name: "unidic"
-            package_suffix: "-unidic"
-            package_description: "Lindera WASM with Japanese dictionary (UniDic)"
-          - value: "embed-ko-dic"
-            name: "ko-dic"
-            package_suffix: "-ko-dic"
-            package_description: "Lindera WASM with Korean dictionary (ko-dic)"
-          - value: "embed-cc-cedict"
-            name: "cc-cedict"
-            package_suffix: "-cc-cedict"
-            package_description: "Lindera WASM with Chinese dictionary (CC-CEDICT)"
-          - value: "embed-cjk"
-            name: "cjk"
-            package_suffix: "-cjk"
-            package_description: "Lindera WASM with CJK dictionaries (IPADIC, ko-dic, CC-CEDICT)"
-          - value: "embed-jieba"
-            name: "jieba"
-            package_suffix: "-jieba"
-            package_description: "Lindera WASM with Chinese dictionary (Jieba)"
     steps:
       - name: Run checkout
         uses: actions/checkout@v6
-
-      - name: Download dictionary artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: dictionaries
-          pattern: lindera-*
-          merge-multiple: true
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -995,11 +779,9 @@ jobs:
 
       - name: Build WASM
         shell: bash
-        env:
-          LINDERA_DICTIONARIES_PATH: dictionaries
         run: |
           cd lindera-wasm
-          wasm-pack build --release --target ${{ matrix.target.value }} ${{ matrix.features.value != '' && format('--features {0}', matrix.features.value) || '' }}
+          wasm-pack build --release --target ${{ matrix.target.value }}
 
       - name: Copy JS helpers to pkg
         shell: bash
@@ -1012,8 +794,8 @@ jobs:
         run: |
           cd lindera-wasm/pkg
           jq '
-            .name = "lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}" |
-            .description = "${{ matrix.features.package_description }} (${{ matrix.target.name }} target)" |
+            .name = "lindera-wasm-${{ matrix.target.name }}" |
+            .description = "Lindera WASM (${{ matrix.target.name }} target)" |
             .files += ["opfs.js", "opfs.d.ts"] |
             .exports = {
               ".": {
@@ -1031,7 +813,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}
+          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}
           path: lindera-wasm/pkg
 
   build-lindera-nodejs:
@@ -1144,7 +926,7 @@ jobs:
           args: --non-interactive --skip-existing dist/*
 
   publish-wasm-npm:
-    name: Publish to npm (${{ matrix.target.name }}, ${{ matrix.features.name }})
+    name: Publish WASM to npm (${{ matrix.target.name }})
     needs: [build-wasm]
     runs-on: ubuntu-latest
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
@@ -1155,33 +937,11 @@ jobs:
             name: "web"
           - value: "bundler"
             name: "bundler"
-        features:
-          - value: ""
-            name: "default"
-            package_suffix: ""
-          - value: "embed-ipadic"
-            name: "ipadic"
-            package_suffix: "-ipadic"
-          - value: "embed-unidic"
-            name: "unidic"
-            package_suffix: "-unidic"
-          - value: "embed-ko-dic"
-            name: "ko-dic"
-            package_suffix: "-ko-dic"
-          - value: "embed-cc-cedict"
-            name: "cc-cedict"
-            package_suffix: "-cc-cedict"
-          - value: "embed-cjk"
-            name: "cjk"
-            package_suffix: "-cjk"
-          - value: "embed-jieba"
-            name: "jieba"
-            package_suffix: "-jieba"
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
-          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}${{ matrix.features.package_suffix }}
+          name: wasm-pkg-lindera-wasm-${{ matrix.target.name }}
           path: lindera-wasm/pkg
 
       - name: Setup Node.js

@@ -13,8 +13,11 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ```toml
 [dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 ```
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the path when loading.
 
 ## Python Bindings
 

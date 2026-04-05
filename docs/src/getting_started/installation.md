@@ -4,8 +4,26 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 ```
+
+## Dictionary Setup
+
+Lindera requires a pre-built dictionary at runtime. Download a dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify its path when loading:
+
+```rust
+let dictionary = load_dictionary("/path/to/ipadic")?;
+```
+
+> [!TIP]
+> If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding `embed-*` feature flag and load it using the `embedded://` scheme:
+>
+> ```rust
+> // Cargo.toml: lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+> let dictionary = load_dictionary("embedded://ipadic")?;
+> ```
+>
+> See [Feature Flags](../development/feature_flags.md) for details.
 
 ## Environment Variables
 

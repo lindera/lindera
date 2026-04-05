@@ -8,6 +8,8 @@
 - 入力テキストをトークナイズ（形態素解析）
 - トークンを出力
 
+まず、[GitHub Releases](https://github.com/lindera/lindera/releases) からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリ（例: `/path/to/ipadic`）に展開してください。
+
 ```rust
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
@@ -16,7 +18,7 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary("embedded://ipadic")?;
+    let dictionary = load_dictionary("/path/to/ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -35,8 +37,11 @@ fn main() -> LinderaResult<()> {
 上記の例は以下のように実行できます：
 
 ```shell
-% cargo run --features=embed-ipadic --example=tokenize
+% cargo run --example=tokenize
 ```
+
+> [!TIP]
+> `embed-ipadic` feature を使って辞書をバイナリに埋め込む場合（上級者向け）は、ファイルパスの代わりに `load_dictionary("embedded://ipadic")` を使用できます。詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
 
 実行結果は以下のようになります：
 

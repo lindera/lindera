@@ -19,7 +19,12 @@ You can install binary via cargo as follows:
 
 Alternatively, you can download a binary from the following release page:
 
-- [https://github.com/lindera-morphology/lindera/releases](https://github.com/lindera-morphology/lindera/releases)
+- [https://github.com/lindera/lindera/releases](https://github.com/lindera/lindera/releases)
+
+## Dictionary
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`), extract it, and specify the path with the `--dict` option.
 
 ## License
 

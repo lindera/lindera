@@ -68,7 +68,7 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     // Schema / FieldDefinition / FieldType
     schema::define(ruby, &module)?;
 
-    // Metadata / CompressionAlgorithm
+    // Metadata
     metadata::define(ruby, &module)?;
 
     // Mode / Penalty

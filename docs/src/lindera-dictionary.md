@@ -9,7 +9,6 @@ Lindera Dictionary is the base library for morphological analysis dictionaries. 
 - Viterbi algorithm for optimal segmentation
 - N-best path generation (Forward-DP Backward-A*)
 - Memory-mapped file support
-- Dictionary compression (deflate)
 - CRF-based dictionary training (with `train` feature)
 
 ## Contents

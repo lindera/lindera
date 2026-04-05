@@ -7,11 +7,11 @@ This guide shows how to tokenize text using lindera-nodejs.
 The recommended way to create a tokenizer is through `TokenizerBuilder`:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -19,6 +19,8 @@ for (const token of tokens) {
   console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 ```
+
+> **Note:** Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory.
 
 Expected output:
 
@@ -33,11 +35,11 @@ Expected output:
 `TokenizerBuilder` supports method chaining for concise configuration:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
@@ -51,10 +53,10 @@ for (const token of tokens) {
 Each token exposes the following properties:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("東京タワー");
@@ -74,10 +76,10 @@ for (const token of tokens) {
 Retrieve multiple tokenization candidates ranked by cost:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -92,11 +94,11 @@ for (const { tokens, cost } of results) {
 Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:
 
 ```typescript
-import { TokenizerBuilder, Token } from "lindera";
+import { TokenizerBuilder, Token } from "lindera-nodejs";
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");

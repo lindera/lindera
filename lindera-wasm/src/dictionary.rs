@@ -14,34 +14,6 @@ use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 use crate::metadata::JsMetadata;
 
-/// Decompresses dictionary data if it is in lindera's compressed format.
-///
-/// Dictionary files built with the `compress` feature are wrapped in a
-/// `CompressedData` envelope serialized with rkyv. This function attempts
-/// to deserialize and decompress the data; if the data is not compressed,
-/// the original bytes are returned as-is.
-///
-/// # Arguments
-///
-/// * `data` - Raw bytes that may or may not be compressed.
-///
-/// # Returns
-///
-/// The decompressed bytes as a `Vec<u8>`.
-fn try_decompress(data: &[u8]) -> Vec<u8> {
-    use lindera_dictionary::decompress::{CompressedData, decompress};
-
-    let mut aligned = rkyv::util::AlignedVec::<16>::new();
-    aligned.extend_from_slice(data);
-    match rkyv::from_bytes::<CompressedData, rkyv::rancor::Error>(&aligned) {
-        Ok(compressed_data) => match decompress(compressed_data) {
-            Ok(decompressed) => decompressed,
-            Err(_) => data.to_vec(),
-        },
-        Err(_) => data.to_vec(),
-    }
-}
-
 /// A morphological analysis dictionary.
 #[wasm_bindgen(js_name = "Dictionary")]
 #[derive(Clone)]
@@ -146,27 +118,18 @@ pub fn load_dictionary_from_bytes(
     let meta =
         Metadata::load(metadata).map_err(|e| JsValue::from_str(&format!("metadata: {e}")))?;
 
-    // Decompress dictionary data if compressed (lindera compress feature)
-    let da_data = try_decompress(dict_da);
-    let vals_data = try_decompress(dict_vals);
-    let words_idx_data = try_decompress(dict_words_idx);
-    let words_data = try_decompress(dict_words);
-    let conn_data = try_decompress(matrix_mtx);
-    let char_def_data = try_decompress(char_def);
-    let unk_data = try_decompress(unk);
-
     let dict = Dictionary {
         prefix_dictionary: PrefixDictionary::load(
-            da_data,
-            vals_data,
-            words_idx_data,
-            words_data,
+            dict_da.to_vec(),
+            dict_vals.to_vec(),
+            dict_words_idx.to_vec(),
+            dict_words.to_vec(),
             true,
         ),
-        connection_cost_matrix: ConnectionCostMatrix::load(conn_data),
-        character_definition: CharacterDefinition::load(&char_def_data)
+        connection_cost_matrix: ConnectionCostMatrix::load(matrix_mtx.to_vec()),
+        character_definition: CharacterDefinition::load(char_def)
             .map_err(|e| JsValue::from_str(&format!("char_def: {e}")))?,
-        unknown_dictionary: UnknownDictionary::load(&unk_data)
+        unknown_dictionary: UnknownDictionary::load(unk)
             .map_err(|e| JsValue::from_str(&format!("unk: {e}")))?,
         metadata: meta,
     };

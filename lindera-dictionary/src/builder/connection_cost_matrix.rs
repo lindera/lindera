@@ -9,9 +9,8 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::decompress::Algorithm;
 use crate::error::LinderaErrorKind;
-use crate::util::{compress_write, read_file_with_encoding};
+use crate::util::{read_file_with_encoding, write_data};
 
 #[derive(Builder, Debug)]
 #[builder(name = ConnectionCostMatrixBuilderOptions)]
@@ -19,8 +18,6 @@ use crate::util::{compress_write, read_file_with_encoding};
 pub struct ConnectionCostMatrixBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "Algorithm::Deflate")]
-    compress_algorithm: Algorithm,
 }
 
 impl ConnectionCostMatrixBuilder {
@@ -68,11 +65,7 @@ impl ConnectionCostMatrixBuilder {
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
         }
 
-        compress_write(
-            &matrix_mtx_buffer,
-            self.compress_algorithm,
-            &mut wtr_matrix_mtx,
-        )?;
+        write_data(&matrix_mtx_buffer, &mut wtr_matrix_mtx)?;
 
         wtr_matrix_mtx
             .flush()

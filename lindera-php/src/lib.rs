@@ -46,7 +46,6 @@ pub fn get_module(module: ModuleBuilder) -> ModuleBuilder {
         .class::<schema::PhpFieldDefinition>()
         .class::<schema::PhpSchema>()
         // Metadata types
-        .class::<metadata::PhpCompressionAlgorithm>()
         .class::<metadata::PhpMetadata>()
         // Dictionary types
         .class::<dictionary::PhpDictionary>()

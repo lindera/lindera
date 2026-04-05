@@ -52,8 +52,6 @@ pub type UserDictionaryConfig = Value;
 pub type Schema = lindera_dictionary::dictionary::schema::Schema;
 pub type FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition;
 pub type FieldType = lindera_dictionary::dictionary::schema::FieldType;
-pub type CompressionAlgorithm = lindera_dictionary::decompress::Algorithm;
-
 #[derive(Debug, Clone, EnumIter, Deserialize, Serialize, PartialEq, Eq)]
 pub enum DictionaryScheme {
     #[cfg(any(

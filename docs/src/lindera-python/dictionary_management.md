@@ -6,20 +6,18 @@ Lindera Python provides functions for loading, building, and managing dictionari
 
 ### System Dictionaries
 
-Use `load_dictionary(uri)` to load a system dictionary.
-
-**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+Use `load_dictionary(uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
 ```python
 from lindera import load_dictionary
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 ```
 
-**External dictionaries** (loaded from a directory on disk):
+**Embedded dictionaries (advanced)** -- if you built with an `embed-*` feature flag, you can load an embedded dictionary:
 
 ```python
-dictionary = load_dictionary("/path/to/dictionary")
+dictionary = load_dictionary("embedded://ipadic")
 ```
 
 ### User Dictionaries
@@ -38,7 +36,7 @@ Pass the user dictionary when building a tokenizer:
 ```python
 from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 metadata = Metadata()
 user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
 
@@ -52,7 +50,7 @@ from lindera import TokenizerBuilder
 
 tokenizer = (
     TokenizerBuilder()
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .set_user_dictionary("/path/to/user_dictionary")
     .build()
 )
@@ -97,7 +95,7 @@ The `Metadata` class configures dictionary parameters.
 ### Creating Metadata
 
 ```python
-from lindera import Metadata, CompressionAlgorithm
+from lindera import Metadata
 
 # Default metadata
 metadata = Metadata()
@@ -106,7 +104,6 @@ metadata = Metadata()
 metadata = Metadata(
     name="my_dictionary",
     encoding="UTF-8",
-    compress_algorithm=CompressionAlgorithm.Deflate,
     default_word_cost=-10000,
 )
 ```
@@ -123,7 +120,6 @@ metadata = Metadata.from_json_file("metadata.json")
 | --- | --- | --- | --- |
 | `name` | `str` | `"default"` | Dictionary name |
 | `encoding` | `str` | `"UTF-8"` | Character encoding |
-| `compress_algorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
 | `default_word_cost` | `int` | `-10000` | Default cost for unknown words |
 | `default_left_context_id` | `int` | `1288` | Default left context ID |
 | `default_right_context_id` | `int` | `1288` | Default right context ID |
@@ -152,13 +148,3 @@ metadata = Metadata(name="test")
 print(metadata.to_dict())
 ```
 
-### CompressionAlgorithm
-
-Available compression algorithms:
-
-| Value | Description |
-| --- | --- |
-| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
-| `CompressionAlgorithm.Zlib` | Zlib compression |
-| `CompressionAlgorithm.Gzip` | Gzip compression |
-| `CompressionAlgorithm.Raw` | No compression |

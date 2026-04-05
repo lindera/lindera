@@ -10,12 +10,11 @@ use encoding_rs::UTF_16LE;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::{
     CategoryData, CategoryId, CharacterDefinition, LookupTable,
 };
 use crate::error::LinderaErrorKind;
-use crate::util::{compress_write, read_file_with_encoding};
+use crate::util::{read_file_with_encoding, write_data};
 
 const DEFAULT_CATEGORY_NAME: &str = "DEFAULT";
 
@@ -55,8 +54,6 @@ fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
 pub struct CharacterDefinitionBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "Algorithm::Deflate")]
-    compress_algorithm: Algorithm,
     #[builder(default = "Vec::new()")]
     category_definition: Vec<CategoryData>,
     #[builder(default = "HashMap::new()")]
@@ -255,7 +252,7 @@ impl CharacterDefinitionBuilder {
                     ))
             })?);
 
-        compress_write(&chardef_buffer, self.compress_algorithm, &mut wtr_chardef)?;
+        write_data(&chardef_buffer, &mut wtr_chardef)?;
 
         wtr_chardef.flush().map_err(|err| {
             LinderaErrorKind::Io

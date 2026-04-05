@@ -74,7 +74,7 @@ ext-php-rs-clang-sys = { path = "patches/ext-php-rs-clang-sys" }
 lto = true
 
 # Make sure that the build scripts and proc-macros are compiled with
-# all the optimizations. It speeds up the flate2 crate that we use in our build scripts.
+# all the optimizations.
 [profile.dev.build-override]
 opt-level = 3
 [profile.release.build-override]

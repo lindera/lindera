@@ -47,7 +47,7 @@ use wasm_bindgen::prelude::*;
 
 pub use crate::dictionary::{JsDictionary as Dictionary, JsUserDictionary as UserDictionary};
 pub use crate::error::JsLinderaError as LinderaError;
-pub use crate::metadata::{JsCompressionAlgorithm as CompressionAlgorithm, JsMetadata as Metadata};
+pub use crate::metadata::JsMetadata as Metadata;
 pub use crate::mode::{JsMode as Mode, JsPenalty as Penalty};
 pub use crate::schema::{
     JsFieldDefinition as FieldDefinition, JsFieldType as FieldType, JsSchema as Schema,

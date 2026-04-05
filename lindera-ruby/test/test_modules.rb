@@ -18,7 +18,6 @@ class TestModules < Minitest::Test
     assert defined?(Lindera::Mode)
     assert defined?(Lindera::Penalty)
     assert defined?(Lindera::Metadata)
-    assert defined?(Lindera::CompressionAlgorithm)
     assert defined?(Lindera::Schema)
     assert defined?(Lindera::FieldDefinition)
     assert defined?(Lindera::FieldType)

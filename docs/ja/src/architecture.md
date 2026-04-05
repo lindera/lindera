@@ -81,7 +81,6 @@ Output Tokens
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
-| `compress` | 辞書の圧縮サポート | 有効 |
 | `mmap` | 辞書読み込みのためのメモリマップドファイルサポート | 有効 |
 | `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLIのみ |
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |

@@ -4,9 +4,9 @@ Python binding for [Lindera](https://github.com/lindera/lindera), a Japanese mor
 
 ## Overview
 
-lindera-python provides a comprehensive Python interface to the Lindera 2.3.2 morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis. This implementation includes all major features:
+lindera-python provides a comprehensive Python interface to the Lindera 3.0.0 morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis. This implementation includes all major features:
 
-- **Multi-language Support**: Japanese (IPADIC, UniDic), Korean (ko-dic), Chinese (CC-CEDICT)
+- **Multi-language Support**: Japanese (IPADIC, IPADIC-NEologd, UniDic), Korean (ko-dic), Chinese (CC-CEDICT, Jieba)
 - **Character Filters**: Text preprocessing with mapping, regex, Unicode normalization, and Japanese iteration mark handling
 - **Token Filters**: Post-processing filters including lowercase, length filtering, stop words, and Japanese-specific filters
 - **Flexible Configuration**: Configurable tokenization modes and penalty settings
@@ -25,10 +25,13 @@ lindera-python provides a comprehensive Python interface to the Lindera 2.3.2 mo
 
 ### Supported Dictionaries
 
-- **Japanese**: IPADIC (embedded), UniDic (embedded)
-- **Korean**: ko-dic (embedded)
-- **Chinese**: CC-CEDICT (embedded)
+- **Japanese**: IPADIC, IPADIC-NEologd, UniDic
+- **Korean**: ko-dic
+- **Chinese**: CC-CEDICT, Jieba
 - **Custom**: User dictionary support
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extracted path when loading.
 
 ### Filter Types
 
@@ -90,8 +93,8 @@ This command builds the library with development settings (debug build).
 from lindera.dictionary import load_dictionary
 from lindera.tokenizer import Tokenizer
 
-# Load dictionary
-dictionary = load_dictionary("embedded://ipadic")
+# Load dictionary from a local path (download from GitHub Releases)
+dictionary = load_dictionary("/path/to/ipadic")
 
 # Create a tokenizer
 tokenizer = Tokenizer(dictionary, mode="normal")
@@ -112,7 +115,7 @@ from lindera import TokenizerBuilder
 # Create tokenizer builder
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
 builder.append_character_filter("mapping", {"mapping": {"ー": "-"}})
@@ -132,7 +135,7 @@ from lindera import TokenizerBuilder
 # Create tokenizer builder
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 
 # Add token filters
 builder.append_token_filter("lowercase")
@@ -152,7 +155,7 @@ from lindera import TokenizerBuilder
 # Build tokenizer with integrated filters
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 
 # Add character filters
 builder.append_character_filter("mapping", {"mapping": {"ー": "-"}})
@@ -173,7 +176,7 @@ tokens = tokenizer.tokenize("コーヒーショップ")
 from lindera import Metadata
 
 # Get metadata for a specific dictionary
-metadata = Metadata.load("embedded://ipadic")
+metadata = Metadata.load("/path/to/ipadic")
 print(f"Dictionary: {metadata.dictionary_name}")
 print(f"Version: {metadata.dictionary_version}")
 
@@ -193,7 +196,7 @@ Character filters and token filters accept configuration as dictionary arguments
 from lindera import TokenizerBuilder
 
 builder = TokenizerBuilder()
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 
 # Character filters with dict configuration
 builder.append_character_filter("unicode_normalize", {"kind": "nfkc"})

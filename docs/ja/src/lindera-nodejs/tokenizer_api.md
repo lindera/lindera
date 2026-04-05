@@ -11,7 +11,7 @@
 デフォルト設定で新しいビルダーを作成します。
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 ```
@@ -104,7 +104,7 @@ const tokenizer = builder.build();
 読み込み済みの辞書から直接トークナイザーを作成します。
 
 ```javascript
-const { Tokenizer, loadDictionary } = require("lindera");
+const { Tokenizer, loadDictionary } = require("lindera-nodejs");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");

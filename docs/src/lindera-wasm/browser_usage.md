@@ -4,11 +4,53 @@
 
 In browser environments, you must initialize the WASM module before using any Lindera functions. The default export `__wbg_init` handles this initialization.
 
+The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:
+
+```javascript
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    // Initialize the WASM module (must be called once before using any API)
+    await __wbg_init();
+
+    // Download dictionary if not cached
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/<version>/lindera-ipadic-<version>.zip",
+            "ipadic",
+        );
+    }
+
+    // Load dictionary from OPFS
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("形態素解析を行います");
+    tokens.forEach(token => {
+        console.log(`${token.surface}: ${token.details.join(',')}`);
+    });
+}
+
+main();
+```
+
+## Using Embedded Dictionaries (Advanced)
+
+If you built with an `embed-*` feature flag, you can use embedded dictionaries instead of OPFS:
+
 ```javascript
 import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
-    // Initialize the WASM module (must be called once before using any API)
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
@@ -27,7 +69,7 @@ main();
 
 ## HTML Example
 
-A minimal HTML page using lindera-wasm:
+A minimal HTML page using lindera-wasm with OPFS dictionary loading:
 
 ```html
 <!DOCTYPE html>
@@ -39,20 +81,41 @@ A minimal HTML page using lindera-wasm:
 <body>
     <textarea id="input" rows="4" cols="50">関西国際空港限定トートバッグ</textarea>
     <br>
-    <button id="tokenize">Tokenize</button>
-    <pre id="output"></pre>
+    <button id="tokenize" disabled>Tokenize</button>
+    <pre id="output">Loading dictionary...</pre>
 
     <script type="module">
-        import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
 
         async function init() {
             await __wbg_init();
+
+            // Download dictionary if not cached
+            if (!await hasDictionary("ipadic")) {
+                document.getElementById('output').textContent = 'Downloading dictionary...';
+                await downloadDictionary(
+                    "https://github.com/lindera/lindera/releases/download/<version>/lindera-ipadic-<version>.zip",
+                    "ipadic",
+                );
+            }
+
+            // Load dictionary from OPFS
+            const files = await loadDictionaryFiles("ipadic");
+            const dictionary = loadDictionaryFromBytes(
+                files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+                files.dictWords, files.matrixMtx, files.charDef, files.unk,
+            );
+
             const builder = new TokenizerBuilder();
-            builder.setDictionary("embedded://ipadic");
+            builder.setDictionaryInstance(dictionary);
             builder.setMode("normal");
             tokenizer = builder.build();
+
+            document.getElementById('tokenize').disabled = false;
+            document.getElementById('output').textContent = 'Ready!';
         }
 
         document.getElementById('tokenize').addEventListener('click', () => {
@@ -94,10 +157,18 @@ module.exports = {
 Then import using the bundler target build:
 
 ```javascript
-import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
+import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
+import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+
+// Load dictionary from OPFS (see OPFS Dictionary Storage for setup)
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 
 const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
+builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 ```
@@ -109,10 +180,11 @@ With the bundler target, `__wbg_init()` is called automatically by the bundler.
 Vite supports WASM out of the box with the web target. Place the built `pkg/` directory in your project and import directly:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
-// ... use TokenizerBuilder as normal
+// Load dictionary from OPFS and use TokenizerBuilder as shown above
 ```
 
 For the bundler target with Vite, you may need the [vite-plugin-wasm](https://github.com/nicolo-ribaudo/vite-plugin-wasm) plugin:

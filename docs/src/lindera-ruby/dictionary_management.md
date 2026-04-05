@@ -6,20 +6,18 @@ Lindera Ruby provides functions for loading, building, and managing dictionaries
 
 ### System Dictionaries
 
-Use `Lindera.load_dictionary(uri)` to load a system dictionary.
-
-**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+Use `Lindera.load_dictionary(uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
 ```ruby
 require 'lindera'
 
-dictionary = Lindera.load_dictionary('embedded://ipadic')
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
 ```
 
-**External dictionaries** (loaded from a directory on disk):
+**Embedded dictionaries (advanced)** -- if you built with an `embed-*` feature flag, you can load an embedded dictionary:
 
 ```ruby
-dictionary = Lindera.load_dictionary('/path/to/dictionary')
+dictionary = Lindera.load_dictionary('embedded://ipadic')
 ```
 
 ### User Dictionaries
@@ -29,7 +27,7 @@ User dictionaries add custom vocabulary on top of a system dictionary.
 ```ruby
 require 'lindera'
 
-dictionary = Lindera.load_dictionary('embedded://ipadic')
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
 metadata = dictionary.metadata
 user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
 ```
@@ -39,7 +37,7 @@ Pass the user dictionary when building a tokenizer:
 ```ruby
 require 'lindera'
 
-dictionary = Lindera.load_dictionary('embedded://ipadic')
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
 metadata = dictionary.metadata
 user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
 
@@ -52,7 +50,7 @@ Or via the builder:
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 builder.set_user_dictionary('/path/to/user_dictionary')
 tokenizer = builder.build
 ```
@@ -117,7 +115,6 @@ metadata = Lindera::Metadata.from_json_file('metadata.json')
 | --- | --- | --- | --- |
 | `name` | `String` | `"default"` | Dictionary name |
 | `encoding` | `String` | `"UTF-8"` | Character encoding |
-| `compress_algorithm` | `String` | `"deflate"` | Compression algorithm |
 | `default_word_cost` | `Integer` | `-10000` | Default cost for unknown words |
 | `default_left_context_id` | `Integer` | `1288` | Default left context ID |
 | `default_right_context_id` | `Integer` | `1288` | Default right context ID |

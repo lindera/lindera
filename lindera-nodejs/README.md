@@ -6,7 +6,7 @@ Node.js binding for [Lindera](https://github.com/lindera/lindera), a Japanese mo
 
 lindera-nodejs provides a comprehensive Node.js interface to the Lindera morphological analysis engine, supporting Japanese, Korean, and Chinese text analysis. This implementation includes all major features:
 
-- **Multi-language Support**: Japanese (IPADIC, UniDic), Korean (ko-dic), Chinese (CC-CEDICT)
+- **Multi-language Support**: Japanese (IPADIC, IPADIC-NEologd, UniDic), Korean (ko-dic), Chinese (CC-CEDICT, Jieba)
 - **Character Filters**: Text preprocessing with mapping, regex, Unicode normalization, and Japanese iteration mark handling
 - **Token Filters**: Post-processing filters including lowercase, length filtering, stop words, and Japanese-specific filters
 - **Flexible Configuration**: Configurable tokenization modes and penalty settings
@@ -26,10 +26,13 @@ lindera-nodejs provides a comprehensive Node.js interface to the Lindera morphol
 
 ### Supported Dictionaries
 
-- **Japanese**: IPADIC (embedded), UniDic (embedded)
-- **Korean**: ko-dic (embedded)
-- **Chinese**: CC-CEDICT (embedded)
+- **Japanese**: IPADIC, IPADIC-NEologd, UniDic
+- **Korean**: ko-dic
+- **Chinese**: CC-CEDICT, Jieba
 - **Custom**: User dictionary support
+
+Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extracted path when loading.
 
 ### Filter Types
 
@@ -77,10 +80,11 @@ npm run build
 ### Basic Tokenization
 
 ```javascript
-const { loadDictionary, Tokenizer } = require("lindera");
+const { loadDictionary, Tokenizer } = require("lindera-nodejs");
 
 // Load dictionary
-const dictionary = loadDictionary("embedded://ipadic");
+// Load dictionary from a local path (download from GitHub Releases)
+const dictionary = loadDictionary("/path/to/ipadic");
 
 // Create a tokenizer
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -97,12 +101,12 @@ for (const token of tokens) {
 ### Using Character Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
 builder.appendCharacterFilter("mapping", { mapping: { "ー": "-" } });
@@ -117,12 +121,12 @@ const tokens = tokenizer.tokenize(text); // Will apply filters automatically
 ### Using Token Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 
 // Add token filters
 builder.appendTokenFilter("lowercase");
@@ -137,12 +141,12 @@ const tokens = tokenizer.tokenize("テキストの解析");
 ### Integrated Pipeline
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Build tokenizer with integrated filters
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 
 // Add character filters
 builder.appendCharacterFilter("mapping", { mapping: { "ー": "-" } });
@@ -160,7 +164,7 @@ const tokens = tokenizer.tokenize("コーヒーショップ");
 ### Working with Metadata
 
 ```javascript
-const { Metadata } = require("lindera");
+const { Metadata } = require("lindera-nodejs");
 
 // Create metadata with default values
 const metadata = new Metadata();
@@ -179,10 +183,10 @@ console.log(loaded.toObject());
 Character filters and token filters accept configuration as object arguments:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 
 // Character filters with object configuration
 builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
@@ -249,7 +253,7 @@ npm run build -- --features train
 ### Training a Model
 
 ```javascript
-const { train } = require("lindera");
+const { train } = require("lindera-nodejs");
 
 // Train a model from corpus
 train({
@@ -268,7 +272,7 @@ train({
 ### Exporting Dictionary Files
 
 ```javascript
-const { exportModel } = require("lindera");
+const { exportModel } = require("lindera-nodejs");
 
 // Export trained model to dictionary files
 exportModel({

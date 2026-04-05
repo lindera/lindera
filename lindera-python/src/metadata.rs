@@ -1,7 +1,7 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! compression algorithms, character encodings, and schema definitions.
+//! character encodings and schema definitions.
 //!
 //! # Examples
 //!
@@ -13,7 +13,6 @@
 //! metadata = lindera.Metadata(
 //!     name="custom_dict",
 //!     encoding="UTF-8",
-//!     compress_algorithm=lindera.CompressionAlgorithm.Deflate
 //! )
 //!
 //! # Load metadata from JSON
@@ -24,63 +23,9 @@ use std::collections::HashMap;
 
 use pyo3::prelude::*;
 
-use lindera::dictionary::{CompressionAlgorithm, Metadata};
+use lindera::dictionary::Metadata;
 
 use crate::schema::PySchema;
-
-/// Compression algorithm for dictionary data.
-///
-/// Determines how dictionary data is compressed when saved to disk.
-#[pyclass(name = "CompressionAlgorithm", from_py_object)]
-#[derive(Debug, Clone)]
-pub enum PyCompressionAlgorithm {
-    /// DEFLATE compression algorithm
-    Deflate,
-    /// Zlib compression algorithm
-    Zlib,
-    /// Gzip compression algorithm
-    Gzip,
-    /// No compression (raw data)
-    Raw,
-}
-
-#[pymethods]
-impl PyCompressionAlgorithm {
-    fn __str__(&self) -> &str {
-        match self {
-            PyCompressionAlgorithm::Deflate => "deflate",
-            PyCompressionAlgorithm::Zlib => "zlib",
-            PyCompressionAlgorithm::Gzip => "gzip",
-            PyCompressionAlgorithm::Raw => "raw",
-        }
-    }
-
-    fn __repr__(&self) -> String {
-        format!("CompressionAlgorithm.{self:?}")
-    }
-}
-
-impl From<PyCompressionAlgorithm> for CompressionAlgorithm {
-    fn from(alg: PyCompressionAlgorithm) -> Self {
-        match alg {
-            PyCompressionAlgorithm::Deflate => CompressionAlgorithm::Deflate,
-            PyCompressionAlgorithm::Zlib => CompressionAlgorithm::Zlib,
-            PyCompressionAlgorithm::Gzip => CompressionAlgorithm::Gzip,
-            PyCompressionAlgorithm::Raw => CompressionAlgorithm::Raw,
-        }
-    }
-}
-
-impl From<CompressionAlgorithm> for PyCompressionAlgorithm {
-    fn from(alg: CompressionAlgorithm) -> Self {
-        match alg {
-            CompressionAlgorithm::Deflate => PyCompressionAlgorithm::Deflate,
-            CompressionAlgorithm::Zlib => PyCompressionAlgorithm::Zlib,
-            CompressionAlgorithm::Gzip => PyCompressionAlgorithm::Gzip,
-            CompressionAlgorithm::Raw => PyCompressionAlgorithm::Raw,
-        }
-    }
-}
 
 /// Dictionary metadata configuration.
 ///
@@ -90,7 +35,6 @@ impl From<CompressionAlgorithm> for PyCompressionAlgorithm {
 ///
 /// * `name` - Dictionary name
 /// * `encoding` - Character encoding (default: "UTF-8")
-/// * `compress_algorithm` - Compression algorithm (default: Deflate)
 /// * `default_word_cost` - Default cost for unknown words (default: -10000)
 /// * `default_left_context_id` - Default left context ID (default: 1288)
 /// * `default_right_context_id` - Default right context ID (default: 1288)
@@ -105,7 +49,6 @@ impl From<CompressionAlgorithm> for PyCompressionAlgorithm {
 pub struct PyMetadata {
     name: String,
     encoding: String,
-    compress_algorithm: PyCompressionAlgorithm,
     default_word_cost: i16,
     default_left_context_id: u16,
     default_right_context_id: u16,
@@ -120,12 +63,11 @@ pub struct PyMetadata {
 #[pymethods]
 impl PyMetadata {
     #[new]
-    #[pyo3(signature = (name=None, encoding=None, compress_algorithm=None, default_word_cost=None, default_left_context_id=None, default_right_context_id=None, default_field_value=None, flexible_csv=None, skip_invalid_cost_or_id=None, normalize_details=None, dictionary_schema=None, user_dictionary_schema=None))]
+    #[pyo3(signature = (name=None, encoding=None, default_word_cost=None, default_left_context_id=None, default_right_context_id=None, default_field_value=None, flexible_csv=None, skip_invalid_cost_or_id=None, normalize_details=None, dictionary_schema=None, user_dictionary_schema=None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Option<String>,
         encoding: Option<String>,
-        compress_algorithm: Option<PyCompressionAlgorithm>,
         default_word_cost: Option<i16>,
         default_left_context_id: Option<u16>,
         default_right_context_id: Option<u16>,
@@ -139,7 +81,6 @@ impl PyMetadata {
         PyMetadata {
             name: name.unwrap_or_else(|| "default".to_string()),
             encoding: encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            compress_algorithm: compress_algorithm.unwrap_or(PyCompressionAlgorithm::Deflate),
             default_word_cost: default_word_cost.unwrap_or(-10000),
             default_left_context_id: default_left_context_id.unwrap_or(1288),
             default_right_context_id: default_right_context_id.unwrap_or(1288),
@@ -161,7 +102,7 @@ impl PyMetadata {
     #[staticmethod]
     pub fn create_default() -> Self {
         PyMetadata::new(
-            None, None, None, None, None, None, None, None, None, None, None, None,
+            None, None, None, None, None, None, None, None, None, None, None,
         )
     }
 
@@ -198,16 +139,6 @@ impl PyMetadata {
     #[setter]
     pub fn set_encoding(&mut self, encoding: String) {
         self.encoding = encoding;
-    }
-
-    #[getter]
-    pub fn compress_algorithm(&self) -> PyCompressionAlgorithm {
-        self.compress_algorithm.clone()
-    }
-
-    #[setter]
-    pub fn set_compress_algorithm(&mut self, algorithm: PyCompressionAlgorithm) {
-        self.compress_algorithm = algorithm;
     }
 
     #[getter]
@@ -305,10 +236,6 @@ impl PyMetadata {
         dict.insert("name".to_string(), self.name.clone());
         dict.insert("encoding".to_string(), self.encoding.clone());
         dict.insert(
-            "compress_algorithm".to_string(),
-            self.compress_algorithm.__str__().to_string(),
-        );
-        dict.insert(
             "default_word_cost".to_string(),
             self.default_word_cost.to_string(),
         );
@@ -346,19 +273,16 @@ impl PyMetadata {
 
     fn __str__(&self) -> String {
         format!(
-            "Metadata(name='{}', encoding='{}', compress_algorithm='{}')",
-            self.name,
-            self.encoding,
-            self.compress_algorithm.__str__()
+            "Metadata(name='{}', encoding='{}')",
+            self.name, self.encoding,
         )
     }
 
     fn __repr__(&self) -> String {
         format!(
-            "Metadata(name='{}', encoding='{}', compress_algorithm={:?}, schema_fields={})",
+            "Metadata(name='{}', encoding='{}', schema_fields={})",
             self.name,
             self.encoding,
-            self.compress_algorithm,
             self.dictionary_schema.field_count()
         )
     }
@@ -369,7 +293,6 @@ impl From<PyMetadata> for Metadata {
         Metadata::new(
             metadata.name,
             metadata.encoding,
-            metadata.compress_algorithm.into(),
             metadata.default_word_cost,
             metadata.default_left_context_id,
             metadata.default_right_context_id,
@@ -388,7 +311,6 @@ impl From<Metadata> for PyMetadata {
         PyMetadata {
             name: metadata.name,
             encoding: metadata.encoding,
-            compress_algorithm: metadata.compress_algorithm.into(),
             default_word_cost: metadata.default_word_cost,
             default_left_context_id: metadata.default_left_context_id,
             default_right_context_id: metadata.default_right_context_id,
@@ -406,7 +328,6 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = parent_module.py();
     let m = PyModule::new(py, "metadata")?;
     m.add_class::<PyMetadata>()?;
-    m.add_class::<PyCompressionAlgorithm>()?;
     parent_module.add_submodule(&m)?;
     Ok(())
 }
@@ -414,58 +335,13 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lindera::dictionary::{CompressionAlgorithm, Metadata};
-
-    #[test]
-    fn test_pycompression_deflate_to_lindera() {
-        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Deflate.into();
-        assert!(matches!(alg, CompressionAlgorithm::Deflate));
-    }
-
-    #[test]
-    fn test_pycompression_zlib_to_lindera() {
-        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Zlib.into();
-        assert!(matches!(alg, CompressionAlgorithm::Zlib));
-    }
-
-    #[test]
-    fn test_pycompression_gzip_to_lindera() {
-        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Gzip.into();
-        assert!(matches!(alg, CompressionAlgorithm::Gzip));
-    }
-
-    #[test]
-    fn test_pycompression_raw_to_lindera() {
-        let alg: CompressionAlgorithm = PyCompressionAlgorithm::Raw.into();
-        assert!(matches!(alg, CompressionAlgorithm::Raw));
-    }
-
-    #[test]
-    fn test_lindera_compression_to_pycompression_all_variants() {
-        assert!(matches!(
-            PyCompressionAlgorithm::from(CompressionAlgorithm::Deflate),
-            PyCompressionAlgorithm::Deflate
-        ));
-        assert!(matches!(
-            PyCompressionAlgorithm::from(CompressionAlgorithm::Zlib),
-            PyCompressionAlgorithm::Zlib
-        ));
-        assert!(matches!(
-            PyCompressionAlgorithm::from(CompressionAlgorithm::Gzip),
-            PyCompressionAlgorithm::Gzip
-        ));
-        assert!(matches!(
-            PyCompressionAlgorithm::from(CompressionAlgorithm::Raw),
-            PyCompressionAlgorithm::Raw
-        ));
-    }
+    use lindera::dictionary::Metadata;
 
     #[test]
     fn test_pymetadata_to_metadata() {
         let py_meta = PyMetadata::new(
             Some("test_dict".to_string()),
             Some("EUC-JP".to_string()),
-            Some(PyCompressionAlgorithm::Gzip),
             Some(-5000),
             Some(100),
             Some(200),
@@ -479,10 +355,6 @@ mod tests {
         let meta: Metadata = py_meta.into();
         assert_eq!(meta.name, "test_dict");
         assert_eq!(meta.encoding, "EUC-JP");
-        assert!(matches!(
-            meta.compress_algorithm,
-            CompressionAlgorithm::Gzip
-        ));
         assert_eq!(meta.default_word_cost, -5000);
         assert_eq!(meta.default_left_context_id, 100);
         assert_eq!(meta.default_right_context_id, 200);
@@ -505,7 +377,6 @@ mod tests {
         let meta = Metadata::new(
             "my_dict".to_string(),
             "UTF-8".to_string(),
-            CompressionAlgorithm::Zlib,
             -10000,
             1288,
             1288,
@@ -519,10 +390,6 @@ mod tests {
         let py_meta: PyMetadata = meta.into();
         assert_eq!(py_meta.name, "my_dict");
         assert_eq!(py_meta.encoding, "UTF-8");
-        assert!(matches!(
-            py_meta.compress_algorithm,
-            PyCompressionAlgorithm::Zlib
-        ));
         assert_eq!(py_meta.default_word_cost, -10000);
         assert_eq!(py_meta.default_left_context_id, 1288);
         assert_eq!(py_meta.default_right_context_id, 1288);
@@ -539,10 +406,6 @@ mod tests {
         let py_meta = PyMetadata::create_default();
         assert_eq!(py_meta.name, "default");
         assert_eq!(py_meta.encoding, "UTF-8");
-        assert!(matches!(
-            py_meta.compress_algorithm,
-            PyCompressionAlgorithm::Deflate
-        ));
         assert_eq!(py_meta.default_word_cost, -10000);
         assert_eq!(py_meta.default_left_context_id, 1288);
         assert_eq!(py_meta.default_right_context_id, 1288);
@@ -559,7 +422,6 @@ mod tests {
         let py_meta = PyMetadata::new(
             Some("roundtrip".to_string()),
             Some("UTF-8".to_string()),
-            Some(PyCompressionAlgorithm::Raw),
             Some(-8000),
             Some(500),
             Some(600),
@@ -574,10 +436,6 @@ mod tests {
         let roundtripped: PyMetadata = meta.into();
         assert_eq!(roundtripped.name, "roundtrip");
         assert_eq!(roundtripped.encoding, "UTF-8");
-        assert!(matches!(
-            roundtripped.compress_algorithm,
-            PyCompressionAlgorithm::Raw
-        ));
         assert_eq!(roundtripped.default_word_cost, -8000);
         assert_eq!(roundtripped.default_left_context_id, 500);
         assert_eq!(roundtripped.default_right_context_id, 600);

@@ -138,7 +138,7 @@ async function main() {
     await __wbg_init();
 
     const DICT_NAME = "ipadic";
-    const DICT_URL = "https://example.com/lindera-ipadic.zip";
+    const DICT_URL = "https://github.com/lindera/lindera/releases/download/<version>/lindera-ipadic-<version>.zip";
 
     // Download dictionary if not already cached
     if (!await hasDictionary(DICT_NAME)) {

@@ -11,4 +11,22 @@ Lindera supports various dictionaries for Japanese, Korean, and Chinese morpholo
 | [CC-CEDICT](../lindera-cc-cedict.md) | Chinese | `lindera-cc-cedict` | Chinese-English dictionary |
 | [Jieba](../lindera-jieba.md) | Chinese | `lindera-jieba` | Jieba-based Chinese dictionary |
 
+## Obtaining Dictionaries
+
+Pre-built dictionaries are available for download from [GitHub Releases](https://github.com/lindera/lindera/releases). Download the dictionary archive for your target language and extract it to a local directory.
+
+```rust
+// Load an external dictionary from a local path
+let dictionary = load_dictionary("/path/to/ipadic")?;
+```
+
+> [!TIP]
+> If you need a self-contained binary without external dictionary files, you can embed dictionaries using the `embed-*` feature flags and load them using the `embedded://` scheme:
+>
+> ```rust
+> let dictionary = load_dictionary("embedded://ipadic")?;
+> ```
+>
+> See [Feature Flags](../development/feature_flags.md) for details.
+
 See each dictionary crate's documentation for format details, build instructions, and usage examples.

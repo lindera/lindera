@@ -11,7 +11,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_mode('normal')
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('関西国際空港限定トートバッグ')
@@ -19,6 +19,8 @@ tokens.each do |token|
   puts "#{token.surface}\t#{token.details.join(',')}"
 end
 ```
+
+> **注意:** ビルド済み辞書を [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードし、展開したディレクトリのパスを指定してください。
 
 期待される出力：
 
@@ -37,7 +39,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_mode('normal')
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('すもももももももものうち')
@@ -54,7 +56,7 @@ end
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('東京タワー')
@@ -78,7 +80,7 @@ end
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)

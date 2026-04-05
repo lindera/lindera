@@ -11,7 +11,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_mode('normal')
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('関西国際空港限定トートバッグ')
@@ -19,6 +19,8 @@ tokens.each do |token|
   puts "#{token.surface}\t#{token.details.join(',')}"
 end
 ```
+
+> **Note:** Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory.
 
 Expected output:
 
@@ -37,7 +39,7 @@ require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
 builder.set_mode('normal')
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('すもももももももものうち')
@@ -54,7 +56,7 @@ Each token exposes the following properties:
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 tokens = tokenizer.tokenize('東京タワー')
@@ -78,7 +80,7 @@ Retrieve multiple tokenization candidates ranked by cost:
 require 'lindera'
 
 builder = Lindera::TokenizerBuilder.new
-builder.set_dictionary('embedded://ipadic')
+builder.set_dictionary('/path/to/ipadic')
 tokenizer = builder.build
 
 results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)

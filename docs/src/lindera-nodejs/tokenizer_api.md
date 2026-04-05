@@ -11,7 +11,7 @@
 Creates a new builder with default configuration.
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 ```
@@ -104,7 +104,7 @@ const tokenizer = builder.build();
 Creates a tokenizer directly from a loaded dictionary.
 
 ```javascript
-const { Tokenizer, loadDictionary } = require("lindera");
+const { Tokenizer, loadDictionary } = require("lindera-nodejs");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");

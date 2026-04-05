@@ -6,20 +6,18 @@ Lindera Node.js provides functions for loading, building, and managing dictionar
 
 ### System Dictionaries
 
-Use `loadDictionary(uri)` to load a system dictionary.
-
-**Embedded dictionaries** (requires the corresponding `embed-*` feature):
+Use `loadDictionary(uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
 ```javascript
-const { loadDictionary } = require("lindera");
+const { loadDictionary } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 ```
 
-**External dictionaries** (loaded from a directory on disk):
+**Embedded dictionaries (advanced)** -- if you built with an `embed-*` feature flag, you can load an embedded dictionary:
 
 ```javascript
-const dictionary = loadDictionary("/path/to/dictionary");
+const dictionary = loadDictionary("embedded://ipadic");
 ```
 
 ### User Dictionaries
@@ -27,7 +25,7 @@ const dictionary = loadDictionary("/path/to/dictionary");
 User dictionaries add custom vocabulary on top of a system dictionary.
 
 ```javascript
-const { loadUserDictionary, Metadata } = require("lindera");
+const { loadUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
@@ -36,9 +34,9 @@ const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 Pass the user dictionary when building a tokenizer:
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 
@@ -48,10 +46,10 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 Or via the builder:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .setUserDictionary("/path/to/user_dictionary")
   .build();
 ```
@@ -63,7 +61,7 @@ const tokenizer = new TokenizerBuilder()
 Build a system dictionary from source files:
 
 ```javascript
-const { buildDictionary, Metadata } = require("lindera");
+const { buildDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -76,7 +74,7 @@ The input directory should contain the dictionary source files (CSV lexicon, mat
 Build a user dictionary from a CSV file:
 
 ```javascript
-const { buildUserDictionary, Metadata } = require("lindera");
+const { buildUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -95,7 +93,7 @@ The `Metadata` class configures dictionary parameters.
 ### Creating Metadata
 
 ```javascript
-const { Metadata, CompressionAlgorithm } = require("lindera");
+const { Metadata } = require("lindera-nodejs");
 
 // Default metadata
 const metadata = new Metadata();
@@ -104,7 +102,6 @@ const metadata = new Metadata();
 const metadata = new Metadata({
   name: "my_dictionary",
   encoding: "UTF-8",
-  compressAlgorithm: CompressionAlgorithm.Deflate,
   defaultWordCost: -10000,
 });
 ```
@@ -121,7 +118,6 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | Dictionary name |
 | `encoding` | `string` | `"UTF-8"` | Character encoding |
-| `compressAlgorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
 | `defaultWordCost` | `number` | `-10000` | Default cost for unknown words |
 | `defaultLeftContextId` | `number` | `1288` | Default left context ID |
 | `defaultRightContextId` | `number` | `1288` | Default right context ID |
@@ -150,17 +146,6 @@ const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
 ```
 
-### CompressionAlgorithm
-
-Available compression algorithms:
-
-| Value | Description |
-| --- | --- |
-| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
-| `CompressionAlgorithm.Zlib` | Zlib compression |
-| `CompressionAlgorithm.Gzip` | Gzip compression |
-| `CompressionAlgorithm.Raw` | No compression |
-
 ## Schema
 
 The `Schema` class defines the field structure of dictionary entries.
@@ -168,7 +153,7 @@ The `Schema` class defines the field structure of dictionary entries.
 ### Creating a Schema
 
 ```javascript
-const { Schema } = require("lindera");
+const { Schema } = require("lindera-nodejs");
 
 // Default IPADIC-compatible schema
 const schema = Schema.createDefault();

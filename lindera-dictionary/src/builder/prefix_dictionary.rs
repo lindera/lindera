@@ -17,10 +17,9 @@ use glob::glob;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::decompress::Algorithm;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
-use crate::util::compress_write;
+use crate::util::write_data;
 use crate::viterbi::WordEntry;
 
 #[derive(Builder)]
@@ -32,8 +31,6 @@ pub struct PrefixDictionaryBuilder {
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "Algorithm::Deflate")]
-    compress_algorithm: Algorithm,
     #[builder(default = "false")]
     normalize_details: bool,
     #[builder(default = "false")]
@@ -48,7 +45,6 @@ impl PrefixDictionaryBuilder {
         Self {
             flexible_csv: true,
             encoding: "UTF-8".into(),
-            compress_algorithm: Algorithm::Deflate,
             normalize_details: false,
             skip_invalid_cost_or_id: false,
             schema,
@@ -385,11 +381,7 @@ impl PrefixDictionaryBuilder {
                     ))
             })?);
 
-        compress_write(
-            &dict_words_buffer,
-            self.compress_algorithm,
-            &mut dict_words_writer,
-        )?;
+        write_data(&dict_words_buffer, &mut dict_words_writer)?;
 
         dict_words_writer.flush().map_err(|err| {
             LinderaErrorKind::Io
@@ -410,11 +402,7 @@ impl PrefixDictionaryBuilder {
                     ))
             })?);
 
-        compress_write(
-            &dict_wordsidx_buffer,
-            self.compress_algorithm,
-            &mut dict_wordsidx_writer,
-        )?;
+        write_data(&dict_wordsidx_buffer, &mut dict_wordsidx_writer)?;
 
         dict_wordsidx_writer.flush().map_err(|err| {
             LinderaErrorKind::Io
@@ -466,11 +454,7 @@ impl PrefixDictionaryBuilder {
                     .add_context(format!("Failed to create dict.da file: {dict_da_path:?}"))
             })?);
 
-        compress_write(
-            &dict_da_buffer,
-            self.compress_algorithm,
-            &mut dict_da_writer,
-        )?;
+        write_data(&dict_da_buffer, &mut dict_da_writer)?;
 
         Ok(())
     }
@@ -505,11 +489,7 @@ impl PrefixDictionaryBuilder {
                     ))
             })?);
 
-        compress_write(
-            &dict_vals_buffer,
-            self.compress_algorithm,
-            &mut dict_vals_writer,
-        )?;
+        write_data(&dict_vals_buffer, &mut dict_vals_writer)?;
 
         dict_vals_writer.flush().map_err(|err| {
             LinderaErrorKind::Io

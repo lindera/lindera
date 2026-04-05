@@ -1,79 +1,16 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! compression algorithms, character encodings, and schema definitions.
+//! character encodings and schema definitions.
 
 use std::collections::HashMap;
 
 use magnus::prelude::*;
 use magnus::{Error, Ruby, function, method};
 
-use lindera::dictionary::{CompressionAlgorithm, Metadata};
+use lindera::dictionary::Metadata;
 
 use crate::schema::RbSchema;
-
-/// Compression algorithm for dictionary data.
-///
-/// Determines how dictionary data is compressed when saved to disk.
-#[magnus::wrap(class = "Lindera::CompressionAlgorithm", free_immediately, size)]
-#[derive(Debug, Clone)]
-pub struct RbCompressionAlgorithm {
-    /// Internal algorithm variant.
-    inner: RbCompressionAlgorithmKind,
-}
-
-/// Internal enum for compression algorithm kind.
-#[derive(Debug, Clone)]
-enum RbCompressionAlgorithmKind {
-    /// DEFLATE compression algorithm.
-    Deflate,
-    /// Zlib compression algorithm.
-    Zlib,
-    /// Gzip compression algorithm.
-    Gzip,
-    /// No compression (raw data).
-    Raw,
-}
-
-impl RbCompressionAlgorithm {
-    /// Returns the string representation of the compression algorithm.
-    fn to_s(&self) -> &str {
-        match self.inner {
-            RbCompressionAlgorithmKind::Deflate => "deflate",
-            RbCompressionAlgorithmKind::Zlib => "zlib",
-            RbCompressionAlgorithmKind::Gzip => "gzip",
-            RbCompressionAlgorithmKind::Raw => "raw",
-        }
-    }
-
-    /// Returns the inspect representation of the compression algorithm.
-    fn inspect(&self) -> String {
-        format!("#<Lindera::CompressionAlgorithm: {:?}>", self.inner)
-    }
-}
-
-impl From<RbCompressionAlgorithm> for CompressionAlgorithm {
-    fn from(alg: RbCompressionAlgorithm) -> Self {
-        match alg.inner {
-            RbCompressionAlgorithmKind::Deflate => CompressionAlgorithm::Deflate,
-            RbCompressionAlgorithmKind::Zlib => CompressionAlgorithm::Zlib,
-            RbCompressionAlgorithmKind::Gzip => CompressionAlgorithm::Gzip,
-            RbCompressionAlgorithmKind::Raw => CompressionAlgorithm::Raw,
-        }
-    }
-}
-
-impl From<CompressionAlgorithm> for RbCompressionAlgorithm {
-    fn from(alg: CompressionAlgorithm) -> Self {
-        let kind = match alg {
-            CompressionAlgorithm::Deflate => RbCompressionAlgorithmKind::Deflate,
-            CompressionAlgorithm::Zlib => RbCompressionAlgorithmKind::Zlib,
-            CompressionAlgorithm::Gzip => RbCompressionAlgorithmKind::Gzip,
-            CompressionAlgorithm::Raw => RbCompressionAlgorithmKind::Raw,
-        };
-        RbCompressionAlgorithm { inner: kind }
-    }
-}
 
 /// Dictionary metadata configuration.
 ///
@@ -85,8 +22,6 @@ pub struct RbMetadata {
     name: String,
     /// Character encoding.
     encoding: String,
-    /// Compression algorithm.
-    compress_algorithm: RbCompressionAlgorithm,
     /// Default cost for unknown words.
     default_word_cost: i16,
     /// Default left context ID.
@@ -132,9 +67,6 @@ impl RbMetadata {
         RbMetadata {
             name: name.unwrap_or_else(|| "default".to_string()),
             encoding: encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            compress_algorithm: RbCompressionAlgorithm {
-                inner: RbCompressionAlgorithmKind::Deflate,
-            },
             default_word_cost: default_word_cost.unwrap_or(-10000),
             default_left_context_id: default_left_context_id.unwrap_or(1288),
             default_right_context_id: default_right_context_id.unwrap_or(1288),
@@ -199,11 +131,6 @@ impl RbMetadata {
         self.encoding.clone()
     }
 
-    /// Returns the compression algorithm.
-    fn compress_algorithm(&self) -> RbCompressionAlgorithm {
-        self.compress_algorithm.clone()
-    }
-
     /// Returns the default word cost.
     fn default_word_cost(&self) -> i16 {
         self.default_word_cost
@@ -249,10 +176,6 @@ impl RbMetadata {
         dict.insert("name".to_string(), self.name.clone());
         dict.insert("encoding".to_string(), self.encoding.clone());
         dict.insert(
-            "compress_algorithm".to_string(),
-            self.compress_algorithm.to_s().to_string(),
-        );
-        dict.insert(
             "default_word_cost".to_string(),
             self.default_word_cost.to_string(),
         );
@@ -291,20 +214,17 @@ impl RbMetadata {
     /// Returns the string representation of the metadata.
     fn to_s(&self) -> String {
         format!(
-            "Metadata(name='{}', encoding='{}', compress_algorithm='{}')",
-            self.name,
-            self.encoding,
-            self.compress_algorithm.to_s()
+            "Metadata(name='{}', encoding='{}')",
+            self.name, self.encoding,
         )
     }
 
     /// Returns the inspect representation of the metadata.
     fn inspect(&self) -> String {
         format!(
-            "#<Lindera::Metadata: name='{}', encoding='{}', compress_algorithm={:?}, schema_fields={}>",
+            "#<Lindera::Metadata: name='{}', encoding='{}', schema_fields={}>",
             self.name,
             self.encoding,
-            self.compress_algorithm.inner,
             self.dictionary_schema.fields.len()
         )
     }
@@ -315,7 +235,6 @@ impl From<RbMetadata> for Metadata {
         Metadata::new(
             metadata.name,
             metadata.encoding,
-            metadata.compress_algorithm.into(),
             metadata.default_word_cost,
             metadata.default_left_context_id,
             metadata.default_right_context_id,
@@ -334,7 +253,6 @@ impl From<Metadata> for RbMetadata {
         RbMetadata {
             name: metadata.name,
             encoding: metadata.encoding,
-            compress_algorithm: metadata.compress_algorithm.into(),
             default_word_cost: metadata.default_word_cost,
             default_left_context_id: metadata.default_left_context_id,
             default_right_context_id: metadata.default_right_context_id,
@@ -348,7 +266,7 @@ impl From<Metadata> for RbMetadata {
     }
 }
 
-/// Defines Metadata and CompressionAlgorithm classes in the given Ruby module.
+/// Defines Metadata class in the given Ruby module.
 ///
 /// # Arguments
 ///
@@ -359,10 +277,6 @@ impl From<Metadata> for RbMetadata {
 ///
 /// `Ok(())` on success, or a Magnus `Error` on failure.
 pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
-    let compression_class = module.define_class("CompressionAlgorithm", ruby.class_object())?;
-    compression_class.define_method("to_s", method!(RbCompressionAlgorithm::to_s, 0))?;
-    compression_class.define_method("inspect", method!(RbCompressionAlgorithm::inspect, 0))?;
-
     let metadata_class = module.define_class("Metadata", ruby.class_object())?;
     metadata_class.define_singleton_method("new", function!(RbMetadata::new, 9))?;
     metadata_class
@@ -371,10 +285,6 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
         .define_singleton_method("from_json_file", function!(RbMetadata::from_json_file, 1))?;
     metadata_class.define_method("name", method!(RbMetadata::name, 0))?;
     metadata_class.define_method("encoding", method!(RbMetadata::encoding, 0))?;
-    metadata_class.define_method(
-        "compress_algorithm",
-        method!(RbMetadata::compress_algorithm, 0),
-    )?;
     metadata_class.define_method(
         "default_word_cost",
         method!(RbMetadata::default_word_cost, 0),
@@ -413,73 +323,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_rb_compression_deflate_to_lindera() {
-        let rb = RbCompressionAlgorithm {
-            inner: RbCompressionAlgorithmKind::Deflate,
-        };
-        let lindera: CompressionAlgorithm = rb.into();
-        assert!(matches!(lindera, CompressionAlgorithm::Deflate));
-    }
-
-    #[test]
-    fn test_rb_compression_zlib_to_lindera() {
-        let rb = RbCompressionAlgorithm {
-            inner: RbCompressionAlgorithmKind::Zlib,
-        };
-        let lindera: CompressionAlgorithm = rb.into();
-        assert!(matches!(lindera, CompressionAlgorithm::Zlib));
-    }
-
-    #[test]
-    fn test_rb_compression_gzip_to_lindera() {
-        let rb = RbCompressionAlgorithm {
-            inner: RbCompressionAlgorithmKind::Gzip,
-        };
-        let lindera: CompressionAlgorithm = rb.into();
-        assert!(matches!(lindera, CompressionAlgorithm::Gzip));
-    }
-
-    #[test]
-    fn test_rb_compression_raw_to_lindera() {
-        let rb = RbCompressionAlgorithm {
-            inner: RbCompressionAlgorithmKind::Raw,
-        };
-        let lindera: CompressionAlgorithm = rb.into();
-        assert!(matches!(lindera, CompressionAlgorithm::Raw));
-    }
-
-    #[test]
-    fn test_lindera_compression_deflate_to_rb() {
-        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Deflate.into();
-        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Deflate));
-    }
-
-    #[test]
-    fn test_lindera_compression_zlib_to_rb() {
-        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Zlib.into();
-        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Zlib));
-    }
-
-    #[test]
-    fn test_lindera_compression_gzip_to_rb() {
-        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Gzip.into();
-        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Gzip));
-    }
-
-    #[test]
-    fn test_lindera_compression_raw_to_rb() {
-        let rb: RbCompressionAlgorithm = CompressionAlgorithm::Raw.into();
-        assert!(matches!(rb.inner, RbCompressionAlgorithmKind::Raw));
-    }
-
-    #[test]
     fn test_rb_metadata_to_lindera_metadata() {
         let rb_metadata = RbMetadata {
             name: "test_dict".to_string(),
             encoding: "EUC-JP".to_string(),
-            compress_algorithm: RbCompressionAlgorithm {
-                inner: RbCompressionAlgorithmKind::Gzip,
-            },
             default_word_cost: -5000,
             default_left_context_id: 100,
             default_right_context_id: 200,
@@ -497,10 +344,6 @@ mod tests {
         let lindera_metadata: Metadata = rb_metadata.into();
         assert_eq!(lindera_metadata.name, "test_dict");
         assert_eq!(lindera_metadata.encoding, "EUC-JP");
-        assert!(matches!(
-            lindera_metadata.compress_algorithm,
-            CompressionAlgorithm::Gzip
-        ));
         assert_eq!(lindera_metadata.default_word_cost, -5000);
         assert_eq!(lindera_metadata.default_left_context_id, 100);
         assert_eq!(lindera_metadata.default_right_context_id, 200);
@@ -528,7 +371,6 @@ mod tests {
         let lindera_metadata = Metadata::new(
             "my_dict".to_string(),
             "UTF-8".to_string(),
-            CompressionAlgorithm::Zlib,
             -8000,
             500,
             600,
@@ -543,10 +385,6 @@ mod tests {
         let rb_metadata: RbMetadata = lindera_metadata.into();
         assert_eq!(rb_metadata.name, "my_dict");
         assert_eq!(rb_metadata.encoding, "UTF-8");
-        assert!(matches!(
-            rb_metadata.compress_algorithm.inner,
-            RbCompressionAlgorithmKind::Zlib
-        ));
         assert_eq!(rb_metadata.default_word_cost, -8000);
         assert_eq!(rb_metadata.default_left_context_id, 500);
         assert_eq!(rb_metadata.default_right_context_id, 600);
@@ -563,9 +401,6 @@ mod tests {
         let rb_metadata = RbMetadata {
             name: "roundtrip".to_string(),
             encoding: "UTF-8".to_string(),
-            compress_algorithm: RbCompressionAlgorithm {
-                inner: RbCompressionAlgorithmKind::Deflate,
-            },
             default_word_cost: -10000,
             default_left_context_id: 1288,
             default_right_context_id: 1288,
@@ -585,10 +420,6 @@ mod tests {
         let back: RbMetadata = lindera.into();
         assert_eq!(back.name, "roundtrip");
         assert_eq!(back.encoding, "UTF-8");
-        assert!(matches!(
-            back.compress_algorithm.inner,
-            RbCompressionAlgorithmKind::Deflate
-        ));
         assert_eq!(back.default_word_cost, -10000);
         assert_eq!(back.default_left_context_id, 1288);
         assert_eq!(back.default_right_context_id, 1288);

@@ -19,7 +19,7 @@ Character filters transform the input text before tokenization.
 Applies Unicode normalization to the input text.
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -116,7 +116,7 @@ const tokenizer = new TokenizerBuilder()
 The following example combines multiple character filters and token filters into a single pipeline:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

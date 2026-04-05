@@ -11,7 +11,7 @@ The recommended way to create a tokenizer is through `TokenizerBuilder`:
 
 $builder = new Lindera\TokenizerBuilder();
 $builder->setMode('normal');
-$builder->setDictionary('embedded://ipadic');
+$builder->setDictionary('/path/to/ipadic');
 $tokenizer = $builder->build();
 
 $tokens = $tokenizer->tokenize('関西国際空港限定トートバッグ');
@@ -19,6 +19,8 @@ foreach ($tokens as $token) {
     echo $token->surface . "\t" . implode(',', $token->details) . "\n";
 }
 ```
+
+> **Note:** Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory.
 
 Expected output:
 
@@ -38,7 +40,7 @@ Expected output:
 $builder = new Lindera\TokenizerBuilder();
 $tokenizer = $builder
     ->setMode('normal')
-    ->setDictionary('embedded://ipadic')
+    ->setDictionary('/path/to/ipadic')
     ->build();
 
 $tokens = $tokenizer->tokenize('すもももももももものうち');
@@ -55,7 +57,7 @@ Each token exposes the following properties:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder->setDictionary('embedded://ipadic')->build();
+$tokenizer = $builder->setDictionary('/path/to/ipadic')->build();
 $tokens = $tokenizer->tokenize('東京タワー');
 
 foreach ($tokens as $token) {
@@ -77,7 +79,7 @@ Retrieve multiple tokenization candidates ranked by cost:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder->setDictionary('embedded://ipadic')->build();
+$tokenizer = $builder->setDictionary('/path/to/ipadic')->build();
 $results = $tokenizer->tokenizeNbest('すもももももももものうち', 3);
 
 foreach ($results as $result) {

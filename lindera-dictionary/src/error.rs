@@ -5,14 +5,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 pub enum LinderaErrorKind {
     Args,
-    Algorithm,
     Content,
     Decode,
     Deserialize,
     Io,
     Parse,
     Serialize,
-    Compression,
     NotFound,
     Build,
     Dictionary,

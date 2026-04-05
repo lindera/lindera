@@ -4,7 +4,7 @@
 
 ### Default Build
 
-Build the workspace with default features (`compress` + `mmap`):
+Build the workspace with default features (`mmap`):
 
 ```bash
 cargo build

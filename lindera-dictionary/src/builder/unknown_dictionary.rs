@@ -7,11 +7,10 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::decompress::Algorithm;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::error::LinderaErrorKind;
-use crate::util::{compress_write, read_file_with_encoding};
+use crate::util::{read_file_with_encoding, write_data};
 
 #[derive(Builder, Debug)]
 #[builder(name = UnknownDictionaryBuilderOptions)]
@@ -19,8 +18,6 @@ use crate::util::{compress_write, read_file_with_encoding};
 pub struct UnknownDictionaryBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "Algorithm::Deflate")]
-    compress_algorithm: Algorithm,
 }
 
 impl UnknownDictionaryBuilder {
@@ -53,7 +50,7 @@ impl UnknownDictionaryBuilder {
                 .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
         );
 
-        compress_write(&unk_buffer, self.compress_algorithm, &mut wtr_unk)?;
+        write_data(&unk_buffer, &mut wtr_unk)?;
 
         wtr_unk
             .flush()

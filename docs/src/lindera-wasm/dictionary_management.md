@@ -1,56 +1,14 @@
 # Dictionary Management
 
-## Embedded Dictionaries
+## Loading Dictionaries from OPFS
 
-The simplest way to use dictionaries in WASM is to embed them at build time using feature flags. Embedded dictionaries are loaded via the `embedded://` URI scheme.
+The recommended way to use dictionaries in WASM is to download them from [GitHub Releases](https://github.com/lindera/lindera/releases) and load them via OPFS. This avoids embedding large dictionaries in the WASM binary.
 
-### Loading an Embedded Dictionary
+### Loading from Bytes
 
-```javascript
-import { loadDictionary } from 'lindera-wasm-web-ipadic';
+Use `loadDictionaryFromBytes()` to construct a `Dictionary` from raw byte arrays stored in OPFS or other browser storage.
 
-const dictionary = loadDictionary("embedded://ipadic");
-```
-
-Available embedded dictionary URIs (depending on which features were enabled at build time):
-
-| URI | Feature Flag |
-| --- | --- |
-| `embedded://ipadic` | `embed-ipadic` |
-| `embedded://unidic` | `embed-unidic` |
-| `embedded://ko-dic` | `embed-ko-dic` |
-| `embedded://cc-cedict` | `embed-cc-cedict` |
-| `embedded://jieba` | `embed-jieba` |
-
-### Using with TokenizerBuilder
-
-When using `TokenizerBuilder`, you set the dictionary URI directly:
-
-```javascript
-const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
-builder.setMode("normal");
-const tokenizer = builder.build();
-```
-
-### Using with Tokenizer Constructor
-
-You can also pass a loaded dictionary to the `Tokenizer` constructor:
-
-```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
-
-const dictionary = loadDictionary("embedded://ipadic");
-const tokenizer = new Tokenizer(dictionary, "normal");
-```
-
-## Loading from Bytes (OPFS)
-
-When dictionaries are stored in OPFS or other browser storage, you can load them directly from raw byte arrays using `loadDictionaryFromBytes()`. This avoids filesystem access and works in browser environments.
-
-### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
-
-Constructs a `Dictionary` from the binary data of each dictionary component file. Compressed data (built with the `compress` feature) is automatically decompressed.
+#### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
 
 - **Parameters**:
   - `metadata` (`Uint8Array`) -- Contents of `metadata.json`
@@ -89,7 +47,47 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 ```
 
-See [OPFS Dictionary Storage](./opfs.md) for the full OPFS workflow.
+See [OPFS Dictionary Storage](./opfs.md) for the full OPFS workflow including downloading and caching.
+
+## Embedded Dictionaries (Advanced)
+
+If you built with an `embed-*` feature flag, you can load embedded dictionaries via the `embedded://` URI scheme. This increases the WASM binary size significantly.
+
+### Loading an Embedded Dictionary
+
+```javascript
+import { loadDictionary } from 'lindera-wasm-web-ipadic';
+
+const dictionary = loadDictionary("embedded://ipadic");
+```
+
+Available embedded dictionary URIs (depending on which features were enabled at build time):
+
+| URI | Feature Flag |
+| --- | --- |
+| `embedded://ipadic` | `embed-ipadic` |
+| `embedded://unidic` | `embed-unidic` |
+| `embedded://ko-dic` | `embed-ko-dic` |
+| `embedded://cc-cedict` | `embed-cc-cedict` |
+| `embedded://jieba` | `embed-jieba` |
+
+### Using with TokenizerBuilder
+
+```javascript
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.setMode("normal");
+const tokenizer = builder.build();
+```
+
+### Using with Tokenizer Constructor
+
+```javascript
+import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+
+const dictionary = loadDictionary("embedded://ipadic");
+const tokenizer = new Tokenizer(dictionary, "normal");
+```
 
 ## Dictionary Class
 
@@ -104,9 +102,8 @@ The `Dictionary` class represents a loaded morphological analysis dictionary.
 | `metadata` | `Metadata` | Full metadata object |
 
 ```javascript
-const dict = loadDictionary("embedded://ipadic");
-console.log(dict.name);     // "ipadic"
-console.log(dict.encoding); // "utf-8"
+console.log(dictionary.name);     // "ipadic"
+console.log(dictionary.encoding); // "utf-8"
 ```
 
 ## User Dictionaries
@@ -116,7 +113,7 @@ User dictionaries allow you to add custom words that are not in the system dicti
 ### Loading a User Dictionary
 
 ```javascript
-import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
+import { loadUserDictionary } from 'lindera-wasm-web';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
@@ -125,9 +122,14 @@ const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 ### Using a User Dictionary with Tokenizer
 
 ```javascript
-import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
-const dictionary = loadDictionary("embedded://ipadic");
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
@@ -150,7 +152,7 @@ You can build compiled dictionaries from source files using the JavaScript API.
 ### Building a System Dictionary
 
 ```javascript
-import { buildDictionary } from 'lindera-wasm-web-ipadic';
+import { buildDictionary } from 'lindera-wasm-web';
 
 const metadata = {
     name: "custom-dict",
@@ -164,7 +166,7 @@ buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 ### Building a User Dictionary
 
 ```javascript
-import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
+import { buildUserDictionary } from 'lindera-wasm-web';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 ```
@@ -178,13 +180,12 @@ The `Metadata` class configures dictionary parameters.
 ### Constructor
 
 ```javascript
-const metadata = new Metadata(name?, encoding?, compressAlgorithm?);
+const metadata = new Metadata(name?, encoding?);
 ```
 
 - **Parameters**:
   - `name` (string, optional) -- Dictionary name (default: `"default"`)
   - `encoding` (string, optional) -- Character encoding (default: `"UTF-8"`)
-  - `compressAlgorithm` (CompressionAlgorithm, optional) -- Compression method (default: `Deflate`)
 
 ### Static Methods
 
@@ -202,7 +203,6 @@ const metadata = Metadata.createDefault();
 | --- | --- | --- | --- |
 | `name` | `string` | `"default"` | Dictionary name |
 | `encoding` | `string` | `"UTF-8"` | Character encoding |
-| `compress_algorithm` | `CompressionAlgorithm` | `Deflate` | Compression algorithm |
 | `dictionary_schema` | `Schema` | IPADIC schema | Schema for the main dictionary |
 | `user_dictionary_schema` | `Schema` | Minimal schema | Schema for user dictionaries |
 
@@ -216,15 +216,6 @@ console.log(metadata.name); // "custom_dict"
 ```
 
 You can also access the metadata from a loaded dictionary via `dictionary.metadata`.
-
-### CompressionAlgorithm
-
-| Value | Description |
-| --- | --- |
-| `CompressionAlgorithm.Deflate` | DEFLATE compression (default) |
-| `CompressionAlgorithm.Zlib` | Zlib compression |
-| `CompressionAlgorithm.Gzip` | Gzip compression |
-| `CompressionAlgorithm.Raw` | No compression |
 
 ### Schema
 
