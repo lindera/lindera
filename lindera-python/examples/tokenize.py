@@ -1,5 +1,5 @@
-from lindera.dictionary import load_dictionary
-from lindera.tokenizer import Tokenizer
+from lindera import load_dictionary
+from lindera import Tokenizer
 
 
 def main():

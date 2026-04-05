@@ -323,6 +323,29 @@ jobs:
         run: |
           make test-lindera-ruby
 
+  test-lindera-php:
+    name: Test lindera-php
+    needs: [test-lindera]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+
+      - name: Run PHP test
+        shell: bash
+        run: |
+          make test-lindera-php
+
   test-lindera-wasm:
     name: Test lindera-wasm
     needs: [test-lindera]
@@ -352,6 +375,7 @@ jobs:
         test-lindera-python,
         test-lindera-nodejs,
         test-lindera-ruby,
+        test-lindera-php,
         test-lindera-wasm,
       ]
     runs-on: ubuntu-latest
@@ -803,6 +827,103 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: lindera-ruby/*.gem
+          tag_name: ${{ github.ref_name }}
+
+  build-php:
+    name: Build PHP (${{ matrix.platform.target }}, ${{ matrix.features.name }})
+    needs: [create-release, build-dictionary]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+        features:
+          - value: "default"
+            name: "default"
+          - value: "embed-ipadic"
+            name: "ipadic"
+          - value: "embed-unidic"
+            name: "unidic"
+          - value: "embed-ko-dic"
+            name: "ko-dic"
+          - value: "embed-cc-cedict"
+            name: "cc-cedict"
+          - value: "embed-jieba"
+            name: "jieba"
+          - value: "embed-cjk"
+            name: "cjk"
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "stable-${{ matrix.platform.target }}"
+
+      - name: Download dictionary artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dictionaries
+          pattern: lindera-*
+          merge-multiple: true
+
+      - name: Build PHP extension
+        shell: bash
+        env:
+          LINDERA_DICTIONARIES_PATH: ${{ github.workspace }}/dictionaries
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FEATURES="${{ matrix.features.value }}"
+          if [ "${FEATURES}" = "default" ]; then
+            cargo build -p lindera-php --release
+          else
+            cargo build -p lindera-php --release --features "${FEATURES}"
+          fi
+
+      - name: Package extension
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TARGET="${{ matrix.platform.target }}"
+          NAME="lindera-php-${{ matrix.features.name }}"
+          ARCHIVE_NAME="${NAME}-${VERSION}-${TARGET}"
+          mkdir -p "${ARCHIVE_NAME}"
+          if [ -f target/release/liblindera_php.so ]; then
+            cp target/release/liblindera_php.so "${ARCHIVE_NAME}/"
+          elif [ -f target/release/liblindera_php.dylib ]; then
+            cp target/release/liblindera_php.dylib "${ARCHIVE_NAME}/"
+          fi
+          tar czf "${ARCHIVE_NAME}.tar.gz" "${ARCHIVE_NAME}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: php-${{ matrix.features.name }}-${{ matrix.platform.target }}-${{ github.ref_name }}
+          path: lindera-php-*.tar.gz
+          if-no-files-found: error
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: lindera-php-*.tar.gz
           tag_name: ${{ github.ref_name }}
 
   build-wasm:

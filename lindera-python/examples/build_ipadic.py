@@ -2,9 +2,7 @@ import os
 import tarfile
 import urllib.request
 
-from lindera import version
-from lindera.dictionary import build_dictionary
-from lindera.metadata import Metadata
+from lindera import Metadata, build_dictionary, version
 
 
 def main():

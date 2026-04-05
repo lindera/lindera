@@ -13,6 +13,7 @@ members = [
     "lindera-python",
     "lindera-nodejs",
     "lindera-ruby",
+    "lindera-php",
     "lindera-wasm",
 ]
 resolver = "2"
@@ -47,6 +48,7 @@ lindera-nodejs = { version = "2.3.4", path = "lindera-nodejs" }
 lindera-python = { version = "2.3.4", path = "lindera-python" }
 lindera-ruby = { version = "2.3.4", path = "lindera-ruby" }
 lindera-unidic = { version = "2.3.4", path = "lindera-unidic" }
+lindera-php = { version = "2.3.4", path = "lindera-php" }
 lindera-wasm = { version = "2.3.4", path = "lindera-wasm" }
 log = "0.4.29"
 num_cpus = "1.17.0"
@@ -64,6 +66,9 @@ tokio = { version = "1.50.0", features = [
     "sync",
     "io-util",
 ] }
+
+[patch.crates-io]
+ext-php-rs-clang-sys = { path = "patches/ext-php-rs-clang-sys" }
 
 [profile.release]
 lto = true

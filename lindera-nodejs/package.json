@@ -1,9 +1,15 @@
 {
-  "name": "lindera-nodejs",
+  "name": "lindera",
   "version": "2.3.4",
   "description": "Node.js bindings for Lindera morphological analysis engine",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
   "napi": {
     "binaryName": "lindera-nodejs",
     "targets": [

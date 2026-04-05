@@ -57,6 +57,22 @@
     - [Text Processing Pipeline](./lindera-nodejs/text_processing_pipeline.md)
     - [Training](./lindera-nodejs/training.md)
 
+- [Lindera Ruby](./lindera-ruby.md)
+    - [Installation](./lindera-ruby/installation.md)
+    - [Quick Start](./lindera-ruby/quickstart.md)
+    - [Tokenizer API](./lindera-ruby/tokenizer_api.md)
+    - [Dictionary Management](./lindera-ruby/dictionary_management.md)
+    - [Text Processing Pipeline](./lindera-ruby/text_processing_pipeline.md)
+    - [Training](./lindera-ruby/training.md)
+
+- [Lindera PHP](./lindera-php.md)
+    - [Installation](./lindera-php/installation.md)
+    - [Quick Start](./lindera-php/quickstart.md)
+    - [Tokenizer API](./lindera-php/tokenizer_api.md)
+    - [Dictionary Management](./lindera-php/dictionary_management.md)
+    - [Text Processing Pipeline](./lindera-php/text_processing_pipeline.md)
+    - [Training](./lindera-php/training.md)
+
 - [Lindera WASM](./lindera-wasm.md)
     - [Installation](./lindera-wasm/installation.md)
     - [Quick Start](./lindera-wasm/quickstart.md)

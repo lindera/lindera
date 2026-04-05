@@ -1,7 +1,6 @@
 from pathlib import Path
 
-from lindera.dictionary import load_dictionary, load_user_dictionary
-from lindera.tokenizer import Tokenizer
+from lindera import Tokenizer, load_dictionary, load_user_dictionary
 
 project_root = Path(__file__).resolve().parent.parent
 
