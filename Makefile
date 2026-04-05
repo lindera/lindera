@@ -84,6 +84,10 @@ clean-lindera-ruby: ## Clean lindera-ruby build artifacts
 	rm -f lindera-ruby/lib/lindera/lindera_ruby.so
 	rm -f lindera-ruby/Gemfile.lock
 
+clean-lindera-php: ## Clean lindera-php build artifacts
+	rm -f lindera-php/target/debug/liblindera_php.so
+	rm -f lindera-php/target/debug/liblindera_php.dylib
+
 clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -rf lindera-wasm/pkg
 	rm -rf lindera-wasm/example/dist
@@ -105,6 +109,7 @@ clean: ## Clean all build artifacts
 	make clean-lindera-python
 	make clean-lindera-nodejs
 	make clean-lindera-ruby
+	make clean-lindera-php
 	make clean-lindera-wasm
 
 # ── Format ──────────────────────────────────────────────────────────────────
@@ -152,6 +157,9 @@ format-lindera-ruby: ## Format lindera-ruby
 	cargo fmt -p lindera-ruby
 	rubocop -a lindera-ruby/test/ lindera-ruby/examples/ lindera-ruby/lib/
 
+format-lindera-php: ## Format lindera-php
+	cargo fmt -p lindera-php
+
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm
 	prettier --write lindera-wasm/js/ lindera-wasm/example/
@@ -170,6 +178,7 @@ format: ## Format all crates
 	make format-lindera-python
 	make format-lindera-nodejs
 	make format-lindera-ruby
+	make format-lindera-php
 	make format-lindera-wasm
 
 # ── Lint ────────────────────────────────────────────────────────────────────
@@ -217,6 +226,9 @@ lint-lindera-ruby: ## Lint lindera-ruby
 	$(CARGO_TEST_WITH_RBCONFIG) cargo clippy -p lindera-ruby -- -D warnings
 	rubocop lindera-ruby/test/ lindera-ruby/examples/ lindera-ruby/lib/
 
+lint-lindera-php: ## Lint lindera-php
+	cargo clippy -p lindera-php -- -D warnings
+
 lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 	cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings
 	prettier --check lindera-wasm/js/ lindera-wasm/example/
@@ -235,6 +247,7 @@ lint: ## Lint all crates
 	make lint-lindera-python
 	make lint-lindera-nodejs
 	make lint-lindera-ruby
+	make lint-lindera-php
 	make lint-lindera-wasm
 
 # ── Test ────────────────────────────────────────────────────────────────────
@@ -283,6 +296,13 @@ test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test
 
+test-lindera-php: ## Test lindera-php (Rust unit tests + PHPUnit)
+	cargo test -p lindera-php --lib
+	cargo build -p lindera-php --features embed-ipadic,train
+	cd lindera-php && composer install --quiet && \
+		LIB=$$(find ../target/debug -maxdepth 1 -name 'liblindera_php.*' \( -name '*.so' -o -name '*.dylib' \) | head -1) && \
+		php -d extension=$$LIB vendor/bin/phpunit tests/LinderaTest.php
+
 test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
 	cargo test -p lindera-wasm --lib
 	cd lindera-wasm && wasm-pack test --node --features=$(WASM_FEATURES)
@@ -301,6 +321,7 @@ test: ## Test all crates
 	make test-lindera-python
 	make test-lindera-nodejs
 	make test-lindera-ruby
+	make test-lindera-php
 	make test-lindera-wasm
 
 # ── Build ───────────────────────────────────────────────────────────────────
@@ -344,6 +365,9 @@ build-lindera-nodejs: ## Build lindera-nodejs (release)
 build-lindera-ruby: ## Build lindera-ruby (release)
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
 
+build-lindera-php: ## Build lindera-php (release)
+	cargo build -p lindera-php --release --all-features
+
 build-lindera-wasm: ## Build lindera-wasm (wasm-pack, --target web)
 	cd lindera-wasm && wasm-pack build --release --features=$(WASM_FEATURES) --target=web
 	cp lindera-wasm/js/opfs.js lindera-wasm/pkg/
@@ -363,6 +387,7 @@ build: ## Build all crates (release)
 	make build-lindera-python
 	make build-lindera-nodejs
 	make build-lindera-ruby
+	make build-lindera-php
 	make build-lindera-wasm
 
 # ── Benchmark ───────────────────────────────────────────────────────────────
@@ -427,4 +452,5 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-python,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-python") | .version'))
 	$(call PUBLISH_CRATE,lindera-nodejs,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-nodejs") | .version'))
 	$(call PUBLISH_CRATE,lindera-ruby,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ruby") | .version'))
+	$(call PUBLISH_CRATE,lindera-php,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-php") | .version'))
 	$(call PUBLISH_CRATE,lindera-wasm,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version'))

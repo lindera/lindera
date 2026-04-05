@@ -50,7 +50,6 @@ builder.append_token_filter(
   }
 )
 builder.append_token_filter('lowercase', nil)
-builder.append_token_filter('japanese_base_form', nil)
 
 # Build the tokenizer
 tokenizer = builder.build

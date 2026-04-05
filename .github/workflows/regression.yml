@@ -42,6 +42,7 @@ jobs:
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
       lindera-ruby: ${{ steps.filter.outputs.lindera-ruby }}
+      lindera-php: ${{ steps.filter.outputs.lindera-php }}
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
@@ -120,6 +121,17 @@ jobs:
               - 'lindera-jieba/**'
             lindera-ruby:
               - 'lindera-ruby/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ipadic-neologd/**'
+              - 'lindera-unidic/**'
+              - 'lindera-ko-dic/**'
+              - 'lindera-cc-cedict/**'
+              - 'lindera-jieba/**'
+            lindera-php:
+              - 'lindera-php/**'
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
@@ -432,6 +444,32 @@ jobs:
         shell: bash
         run: |
           make test-lindera-ruby
+
+  test-lindera-php:
+    name: Test lindera-php
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-php == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: Run PHP test
+        shell: bash
+        run: |
+          make test-lindera-php
 
   test-lindera-wasm:
     name: Test lindera-wasm

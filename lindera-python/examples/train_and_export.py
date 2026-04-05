@@ -13,7 +13,7 @@ Note: This requires the 'train' feature to be enabled when building lindera-pyth
 import tempfile
 from pathlib import Path
 
-import lindera.trainer
+from lindera import export, train
 
 
 def create_training_data(tmpdir: Path):
@@ -167,7 +167,7 @@ def main():
         print("Step 2: Training model...")
         model_file = tmpdir / "model.dat"
 
-        lindera.trainer.train(
+        train(
             seed=str(files["seed"]),
             corpus=str(files["corpus"]),
             char_def=str(files["char_def"]),
@@ -186,7 +186,7 @@ def main():
         print("Step 3: Exporting dictionary files...")
         export_dir = tmpdir / "exported_dict"
 
-        lindera.trainer.export(
+        export(
             model=str(model_file),
             output=str(export_dir),
             metadata=str(files["metadata"]),

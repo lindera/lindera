@@ -13,9 +13,10 @@ module.exports = {
     asyncWebAssembly: true,
   },
   devServer: {
-    static: {
-      directory: path.resolve(__dirname, "dist"),
-    },
+    static: [
+      { directory: path.resolve(__dirname), staticOptions: { index: "index.html" } },
+      { directory: path.resolve(__dirname, "dist") },
+    ],
     open: true,
     port: 8080,
     headers: {

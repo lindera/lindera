@@ -1,0 +1,32 @@
+# ChangeLog
+
+All notable changes are documented in this file using the [Keep a CHANGELOG](https://keepachangelog.com/) principles.
+
+## [8.0.0] - 2026-02-06
+
+### Removed
+
+* This component is no longer supported on PHP 8.3
+
+## [7.0.2] - 2025-09-24
+
+### Changed
+
+* Suppress `unexpected NAN value was coerced to string` warning triggered on PHP 8.5
+
+## [7.0.1] - 2025-09-22
+
+### Changed
+
+* Suppress `not representable as an int, cast occurred` warning triggered on PHP 8.5
+
+## [7.0.0] - 2025-02-07
+
+### Removed
+
+* This component is no longer supported on PHP 8.2
+
+[8.0.0]: https://github.com/sebastianbergmann/exporter/compare/7.0...8.0.0
+[7.0.2]: https://github.com/sebastianbergmann/exporter/compare/7.0.1...7.0.2
+[7.0.1]: https://github.com/sebastianbergmann/exporter/compare/7.0.0...7.0.1
+[7.0.0]: https://github.com/sebastianbergmann/exporter/compare/6.3...7.0.0

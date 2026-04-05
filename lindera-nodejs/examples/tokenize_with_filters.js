@@ -50,7 +50,6 @@ function main() {
     ],
   });
   builder.appendTokenFilter("lowercase");
-  builder.appendTokenFilter("japanese_base_form");
 
   // build the tokenizer
   const tokenizer = builder.build();

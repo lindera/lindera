@@ -1,4 +1,4 @@
-from lindera.tokenizer import TokenizerBuilder
+from lindera import TokenizerBuilder
 
 
 def main():
@@ -51,7 +51,6 @@ def main():
         },
     )
     builder.append_token_filter("lowercase")
-    builder.append_token_filter("japanese_base_form")
 
     # build the tokenizer
     tokenizer = builder.build()

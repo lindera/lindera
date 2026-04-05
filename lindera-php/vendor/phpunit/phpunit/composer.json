@@ -1,0 +1,127 @@
+{
+    "name": "phpunit/phpunit",
+    "description": "The PHP Unit Testing framework.",
+    "type": "library",
+    "keywords": [
+        "phpunit",
+        "xunit",
+        "testing"
+    ],
+    "homepage": "https://phpunit.de/",
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Sebastian Bergmann",
+            "email": "sebastian@phpunit.de",
+            "role": "lead"
+        }
+    ],
+    "funding": [
+        {
+            "type": "other",
+            "url": "https://phpunit.de/sponsoring.html"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/sebastianbergmann/phpunit/issues",
+        "security": "https://github.com/sebastianbergmann/phpunit/security/policy"
+    },
+    "prefer-stable": true,
+    "require": {
+        "php": ">=8.4.1",
+        "ext-dom": "*",
+        "ext-json": "*",
+        "ext-libxml": "*",
+        "ext-mbstring": "*",
+        "ext-xml": "*",
+        "ext-xmlwriter": "*",
+        "myclabs/deep-copy": "^1.13.4",
+        "phar-io/manifest": "^2.0.4",
+        "phar-io/version": "^3.2.1",
+        "phpunit/php-code-coverage": "^14.0",
+        "phpunit/php-file-iterator": "^7.0.0",
+        "phpunit/php-invoker": "^7.0.0",
+        "phpunit/php-text-template": "^6.0.0",
+        "phpunit/php-timer": "^9.0.0",
+        "sebastian/cli-parser": "^5.0.0",
+        "sebastian/comparator": "^8.0.0",
+        "sebastian/diff": "^8.0.0",
+        "sebastian/environment": "^9.1.0",
+        "sebastian/exporter": "^8.0.0",
+        "sebastian/git-state": "^1.0",
+        "sebastian/global-state": "^9.0.0",
+        "sebastian/object-enumerator": "^8.0.0",
+        "sebastian/recursion-context": "^8.0.0",
+        "sebastian/type": "^7.0.0",
+        "sebastian/version": "^7.0.0",
+        "staabm/side-effects-detector": "^1.0.5"
+    },
+    "config": {
+        "platform": {
+            "php": "8.4.1"
+        },
+        "classmap-authoritative": true,
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "bin": [
+        "phpunit"
+    ],
+    "autoload": {
+        "classmap": [
+            "src/"
+        ],
+        "files": [
+            "src/Framework/Assert/Functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "classmap": [
+            "tests/_files"
+        ],
+        "files": [
+            "tests/_files/deprecation-trigger/trigger_deprecation.php",
+            "tests/unit/Event/AbstractEventTestCase.php",
+            "tests/unit/TextUI/AbstractSourceFilterTestCase.php",
+            "tests/unit/Framework/MockObject/TestDoubleTestCase.php",
+            "tests/unit/Metadata/Parser/AttributeParserTestCase.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyArrayTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyBoolTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyCallableTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyFloatTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyInstancesOfTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyIntTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyIterableTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyNullTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyNumericTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyObjectTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyResourceTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyClosedResourceTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyScalarTest.php",
+            "tests/unit/Framework/Assert/assertContainsOnlyStringTest.php",
+            "tests/unit/Framework/Assert/assertDirectoryExistsTest.php",
+            "tests/unit/Framework/Assert/assertFileExistsTest.php",
+            "tests/unit/Framework/Assert/assertIsNumericTest.php",
+            "tests/unit/Framework/Assert/assertIsObjectTest.php",
+            "tests/unit/Framework/Assert/assertIsReadableTest.php",
+            "tests/unit/Framework/Assert/assertIsResourceTest.php",
+            "tests/unit/Framework/Assert/assertIsScalarTest.php",
+            "tests/unit/Framework/Assert/assertIsStringTest.php",
+            "tests/unit/Framework/Assert/assertIsWritableTest.php",
+            "tests/unit/Framework/Assert/assertMatchesRegularExpressionTest.php",
+            "tests/unit/Framework/Assert/assertNullTest.php",
+            "tests/unit/Framework/Assert/assertSameSizeTest.php",
+            "tests/unit/Framework/Assert/assertSameTest.php",
+            "tests/unit/TextUI/Output/Default/ResultPrinterTest.php",
+            "tests/_files/CoveredFunction.php",
+            "tests/_files/Generator.php",
+            "tests/_files/NamespaceCoveredFunction.php",
+            "tests/end-to-end/_files/listing-tests-and-groups/ExampleAbstractTestCase.php"
+        ]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "13.1-dev"
+        }
+    }
+}

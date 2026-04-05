@@ -24,23 +24,43 @@ use serde_json::json;
 pub fn rb_value_to_json(ruby: &Ruby, value: Value) -> Result<serde_json::Value, Error> {
     if value.is_nil() {
         Ok(serde_json::Value::Null)
-    } else if let Ok(b) = TryConvert::try_convert(value) {
-        let b: bool = b;
+    } else if value.is_kind_of(ruby.class_true_class())
+        || value.is_kind_of(ruby.class_false_class())
+    {
+        let b: bool = TryConvert::try_convert(value).map_err(|e| {
+            Error::new(
+                ruby.exception_type_error(),
+                format!("Failed to convert boolean: {e}"),
+            )
+        })?;
         Ok(serde_json::Value::Bool(b))
-    } else if let Ok(i) = TryConvert::try_convert(value) {
-        let i: i64 = i;
+    } else if value.is_kind_of(ruby.class_integer()) {
+        let i: i64 = TryConvert::try_convert(value).map_err(|e| {
+            Error::new(
+                ruby.exception_type_error(),
+                format!("Failed to convert integer: {e}"),
+            )
+        })?;
         Ok(serde_json::Value::from(i))
-    } else if let Ok(f) = TryConvert::try_convert(value) {
-        let f: f64 = f;
+    } else if value.is_kind_of(ruby.class_float()) {
+        let f: f64 = TryConvert::try_convert(value).map_err(|e| {
+            Error::new(
+                ruby.exception_type_error(),
+                format!("Failed to convert float: {e}"),
+            )
+        })?;
         Ok(json!(f))
-    } else if let Ok(s) = TryConvert::try_convert(value) {
-        let s: String = s;
+    } else if value.is_kind_of(ruby.class_string()) || value.is_kind_of(ruby.class_symbol()) {
+        let s: String = TryConvert::try_convert(value).map_err(|e| {
+            Error::new(
+                ruby.exception_type_error(),
+                format!("Failed to convert string: {e}"),
+            )
+        })?;
         Ok(serde_json::Value::String(s))
-    } else if let Ok(arr) = TryConvert::try_convert(value) {
-        let arr: RArray = arr;
+    } else if let Ok(arr) = RArray::try_convert(value) {
         rb_array_to_json(ruby, arr)
-    } else if let Ok(hash) = TryConvert::try_convert(value) {
-        let hash: RHash = hash;
+    } else if let Ok(hash) = RHash::try_convert(value) {
         rb_hash_to_json(ruby, hash)
     } else {
         Err(Error::new(
