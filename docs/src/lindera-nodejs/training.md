@@ -15,7 +15,7 @@ npm run build -- --features train
 Use `train()` to train a CRF model from a seed lexicon and annotated corpus:
 
 ```javascript
-const { train } = require("lindera-nodejs");
+const { train } = require("lindera");
 
 train({
   seed: "resources/training/seed.csv",
@@ -51,7 +51,7 @@ train({
 After training, export the model to dictionary source files using `exportModel()`:
 
 ```javascript
-const { exportModel } = require("lindera-nodejs");
+const { exportModel } = require("lindera");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -87,7 +87,7 @@ const {
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera-nodejs");
+} = require("lindera");
 
 // Step 1: Train the CRF model
 train({

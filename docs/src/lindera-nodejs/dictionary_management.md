@@ -9,7 +9,7 @@ Lindera Node.js provides functions for loading, building, and managing dictionar
 Use `loadDictionary(uri)` to load a system dictionary. Download a pre-built dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify the path to the extracted directory:
 
 ```javascript
-const { loadDictionary } = require("lindera-nodejs");
+const { loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 ```
@@ -25,7 +25,7 @@ const dictionary = loadDictionary("embedded://ipadic");
 User dictionaries add custom vocabulary on top of a system dictionary.
 
 ```javascript
-const { loadUserDictionary, Metadata } = require("lindera-nodejs");
+const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
@@ -34,7 +34,7 @@ const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 Pass the user dictionary when building a tokenizer:
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
+const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
@@ -46,7 +46,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 Or via the builder:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -61,7 +61,7 @@ const tokenizer = new TokenizerBuilder()
 Build a system dictionary from source files:
 
 ```javascript
-const { buildDictionary, Metadata } = require("lindera-nodejs");
+const { buildDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -74,7 +74,7 @@ The input directory should contain the dictionary source files (CSV lexicon, mat
 Build a user dictionary from a CSV file:
 
 ```javascript
-const { buildUserDictionary, Metadata } = require("lindera-nodejs");
+const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -93,7 +93,7 @@ The `Metadata` class configures dictionary parameters.
 ### Creating Metadata
 
 ```javascript
-const { Metadata } = require("lindera-nodejs");
+const { Metadata } = require("lindera");
 
 // Default metadata
 const metadata = new Metadata();
@@ -153,7 +153,7 @@ The `Schema` class defines the field structure of dictionary entries.
 ### Creating a Schema
 
 ```javascript
-const { Schema } = require("lindera-nodejs");
+const { Schema } = require("lindera");
 
 // Default IPADIC-compatible schema
 const schema = Schema.createDefault();

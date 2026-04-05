@@ -19,7 +19,7 @@ Input Text
 入力テキストに Unicode 正規化を適用します。
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -116,7 +116,7 @@ const tokenizer = new TokenizerBuilder()
 以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

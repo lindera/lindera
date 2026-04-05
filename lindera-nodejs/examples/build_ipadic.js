@@ -2,7 +2,7 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 const { execSync } = require("child_process");
-const { version, buildDictionary, Metadata } = require("lindera-nodejs");
+const { version, buildDictionary, Metadata } = require("lindera");
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {

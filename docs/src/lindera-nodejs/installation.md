@@ -5,7 +5,7 @@
 Pre-built packages will be available on npm:
 
 ```bash
-npm install lindera-nodejs
+npm install lindera
 ```
 
 > [!NOTE]
@@ -97,7 +97,7 @@ npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 After installation, verify that lindera is available in Node.js:
 
 ```javascript
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 ```
@@ -105,7 +105,7 @@ console.log(lindera.version());
 Or with ES modules:
 
 ```javascript
-import { version } from "lindera-nodejs";
+import { version } from "lindera";
 
 console.log(version());
 ```

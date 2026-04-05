@@ -13,7 +13,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { train, exportModel } = require("lindera-nodejs");
+const { train, exportModel } = require("lindera");
 
 function createTrainingData(tmpdir) {
   // Create seed lexicon (vocabulary with initial costs)

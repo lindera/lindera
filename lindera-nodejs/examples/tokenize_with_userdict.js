@@ -3,7 +3,7 @@ const {
   loadDictionary,
   loadUserDictionary,
   Tokenizer,
-} = require("lindera-nodejs");
+} = require("lindera");
 
 const projectRoot = path.resolve(__dirname, "..");
 

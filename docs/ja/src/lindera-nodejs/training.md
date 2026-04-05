@@ -15,7 +15,7 @@ npm run build -- --features train
 `train()` を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：
 
 ```javascript
-const { train } = require("lindera-nodejs");
+const { train } = require("lindera");
 
 train({
   seed: "resources/training/seed.csv",
@@ -51,7 +51,7 @@ train({
 学習後、`exportModel()` を使用してモデルを辞書ソースファイルにエクスポートします：
 
 ```javascript
-const { exportModel } = require("lindera-nodejs");
+const { exportModel } = require("lindera");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -87,7 +87,7 @@ const {
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera-nodejs");
+} = require("lindera");
 
 // Step 1: Train the CRF model
 train({
