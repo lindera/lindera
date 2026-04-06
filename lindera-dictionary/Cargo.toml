@@ -23,7 +23,6 @@ byteorder = { workspace = true }
 csv = { workspace = true }
 daachorse = { workspace = true }
 derive_builder = "0.20.2"
-encoding = "0.2.33"
 encoding_rs = "0.8.35"
 encoding_rs_io = "0.1.7"
 flate2 = "1.1.9"
