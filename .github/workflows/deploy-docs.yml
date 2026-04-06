@@ -38,7 +38,7 @@ jobs:
         run: mdbook build docs/ja
 
       - name: Build WASM example
-        run: make wasm-build-example
+        run: make build-lindera-wasm-example
 
       - name: Setup Pages Directory
         run: |
