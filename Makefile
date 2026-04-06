@@ -185,34 +185,34 @@ format: ## Format all crates
 # ── Lint ────────────────────────────────────────────────────────────────────
 
 lint-lindera-crf: ## Lint lindera-crf
-	cargo clippy -p lindera-crf --all-targets -- -D warnings
+	cargo clippy -p lindera-crf -- -D warnings
 
 lint-lindera-dictionary: ## Lint lindera-dictionary
-	cargo clippy -p lindera-dictionary --all-targets -- -D warnings
+	cargo clippy -p lindera-dictionary --features train -- -D warnings
 
 lint-lindera-ipadic: ## Lint lindera-ipadic
-	cargo clippy -p lindera-ipadic --all-targets -- -D warnings
+	cargo clippy -p lindera-ipadic --features embed-ipadic -- -D warnings
 
 lint-lindera-ipadic-neologd: ## Lint lindera-ipadic-neologd
-	cargo clippy -p lindera-ipadic-neologd --all-targets -- -D warnings
+	cargo clippy -p lindera-ipadic-neologd --features embed-ipadic-neologd -- -D warnings
 
 lint-lindera-unidic: ## Lint lindera-unidic
-	cargo clippy -p lindera-unidic --all-targets -- -D warnings
+	cargo clippy -p lindera-unidic --features embed-unidic -- -D warnings
 
 lint-lindera-ko-dic: ## Lint lindera-ko-dic
-	cargo clippy -p lindera-ko-dic --all-targets -- -D warnings
+	cargo clippy -p lindera-ko-dic --features embed-ko-dic -- -D warnings
 
 lint-lindera-cc-cedict: ## Lint lindera-cc-cedict
-	cargo clippy -p lindera-cc-cedict --all-targets -- -D warnings
+	cargo clippy -p lindera-cc-cedict --features embed-cc-cedict -- -D warnings
 
 lint-lindera-jieba: ## Lint lindera-jieba
-	cargo clippy -p lindera-jieba --all-targets -- -D warnings
+	cargo clippy -p lindera-jieba --features embed-jieba -- -D warnings
 
 lint-lindera: ## Lint lindera
-	cargo clippy -p lindera --all-targets -- -D warnings
+	cargo clippy -p lindera --features embed-ipadic,train -- -D warnings
 
 lint-lindera-cli: ## Lint lindera-cli
-	cargo clippy -p lindera-cli --all-targets -- -D warnings
+	cargo clippy -p lindera-cli --features train -- -D warnings
 
 lint-lindera-python: ## Lint lindera-python
 	cargo clippy -p lindera-python -- -D warnings
@@ -254,34 +254,34 @@ lint: ## Lint all crates
 # ── Test ────────────────────────────────────────────────────────────────────
 
 test-lindera-crf: ## Test lindera-crf
-	cargo test -p lindera-crf --all-features
+	cargo test -p lindera-crf
 
 test-lindera-dictionary: ## Test lindera-dictionary
-	cargo test -p lindera-dictionary --all-features
+	cargo test -p lindera-dictionary --features train
 
 test-lindera-ipadic: ## Test lindera-ipadic
-	cargo test -p lindera-ipadic --all-features
+	cargo test -p lindera-ipadic --features embed-ipadic
 
 test-lindera-ipadic-neologd: ## Test lindera-ipadic-neologd
-	cargo test -p lindera-ipadic-neologd --all-features
+	cargo test -p lindera-ipadic-neologd --features embed-ipadic-neologd
 
 test-lindera-unidic: ## Test lindera-unidic
-	cargo test -p lindera-unidic --all-features
+	cargo test -p lindera-unidic --features embed-unidic
 
 test-lindera-ko-dic: ## Test lindera-ko-dic
-	cargo test -p lindera-ko-dic --all-features
+	cargo test -p lindera-ko-dic --features embed-ko-dic
 
 test-lindera-cc-cedict: ## Test lindera-cc-cedict
-	cargo test -p lindera-cc-cedict --all-features
+	cargo test -p lindera-cc-cedict --features embed-cc-cedict
 
 test-lindera-jieba: ## Test lindera-jieba
-	cargo test -p lindera-jieba --all-features
+	cargo test -p lindera-jieba --features embed-jieba
 
 test-lindera: ## Test lindera
-	cargo test -p lindera --all-features
+	cargo test -p lindera --features embed-ipadic,train
 
 test-lindera-cli: ## Test lindera-cli
-	cargo test -p lindera-cli --all-features
+	cargo test -p lindera-cli --features train
 
 test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python pytest)
 	cargo test -p lindera-python --lib
@@ -328,37 +328,37 @@ test: ## Test all crates
 # ── Build ───────────────────────────────────────────────────────────────────
 
 build-lindera-crf: ## Build lindera-crf (release)
-	cargo build -p lindera-crf --release --all-features
+	cargo build -p lindera-crf --release
 
 build-lindera-dictionary: ## Build lindera-dictionary (release)
-	cargo build -p lindera-dictionary --release --all-features
+	cargo build -p lindera-dictionary --release --features train
 
 build-lindera-ipadic: ## Build lindera-ipadic (release)
-	cargo build -p lindera-ipadic --release --all-features
+	cargo build -p lindera-ipadic --release --features embed-ipadic
 
 build-lindera-ipadic-neologd: ## Build lindera-ipadic-neologd (release)
-	cargo build -p lindera-ipadic-neologd --release --all-features
+	cargo build -p lindera-ipadic-neologd --release --features embed-ipadic-neologd
 
 build-lindera-unidic: ## Build lindera-unidic (release)
-	cargo build -p lindera-unidic --release --all-features
+	cargo build -p lindera-unidic --release --features embed-unidic
 
 build-lindera-ko-dic: ## Build lindera-ko-dic (release)
-	cargo build -p lindera-ko-dic --release --all-features
+	cargo build -p lindera-ko-dic --release --features embed-ko-dic
 
 build-lindera-cc-cedict: ## Build lindera-cc-cedict (release)
-	cargo build -p lindera-cc-cedict --release --all-features
+	cargo build -p lindera-cc-cedict --release --features embed-cc-cedict
 
 build-lindera-jieba: ## Build lindera-jieba (release)
-	cargo build -p lindera-jieba --release --all-features
+	cargo build -p lindera-jieba --release --features embed-jieba
 
 build-lindera: ## Build lindera (release)
-	cargo build -p lindera --release --all-features
+	cargo build -p lindera --release --features train
 
 build-lindera-cli: ## Build lindera-cli (release)
-	cargo build -p lindera-cli --release --all-features
+	cargo build -p lindera-cli --release --features train
 
 build-lindera-python: setup-venv ## Build lindera-python wheel (release)
-	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) build --release --all-features
+	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) build --release --features train
 
 build-lindera-nodejs: ## Build lindera-nodejs (release)
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform --release -p lindera-nodejs
@@ -367,7 +367,7 @@ build-lindera-ruby: ## Build lindera-ruby (release)
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
 
 build-lindera-php: ## Build lindera-php (release)
-	cargo build -p lindera-php --release --all-features
+	cargo build -p lindera-php --release --features train
 
 build-lindera-wasm: ## Build lindera-wasm (wasm-pack, --target web)
 	cd lindera-wasm && wasm-pack build --release --features=$(WASM_FEATURES) --target=web
@@ -402,9 +402,9 @@ bench: ## Run all benchmarks
 	@echo "All benchmarks completed!"
 	@echo "Results are available in lindera/target/criterion/"
 
-bench-all: ## Run all benchmarks with all features enabled
-	@echo "Running all Lindera benchmarks with all features..."
-	(cd lindera && cargo bench --all-features)
+bench-all: ## Run all benchmarks with CJK dictionaries
+	@echo "Running all Lindera benchmarks with CJK dictionaries..."
+	(cd lindera && cargo bench --features embed-cjk)
 	@echo "All benchmarks completed!"
 
 # ── WASM example ────────────────────────────────────────────────────────────

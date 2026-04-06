@@ -3,7 +3,7 @@
         'name' => 'lindera/lindera-php',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '93d3e0b180a70333636c80d857518ec5674ab3e6',
+        'reference' => '483a091d55eca5072faf5a50087b50248dcd5ccc',
         'type' => 'php-ext',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -76,7 +76,7 @@
         'lindera/lindera-php' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '93d3e0b180a70333636c80d857518ec5674ab3e6',
+            'reference' => '483a091d55eca5072faf5a50087b50248dcd5ccc',
             'type' => 'php-ext',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
