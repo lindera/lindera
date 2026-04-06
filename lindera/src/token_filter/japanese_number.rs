@@ -276,21 +276,13 @@ fn to_arabic_numerals(from_str: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     use crate::token_filter::japanese_number::{
         JapaneseNumberTokenFilter, JapaneseNumberTokenFilterConfig,
     };
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_to_number_str() {
         use std::str::FromStr;
 
@@ -833,11 +825,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_number_token_filter_config() {
         {
             let config_str = r#"
@@ -874,11 +862,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_number_token_filter() {
         {
             // test empty tags

@@ -168,7 +168,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-crf --all-features
+        run: cargo test -p lindera-crf
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
@@ -195,7 +195,7 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --all-features --target "${{ matrix.platform.target }}"
+        run: cargo test -p lindera-dictionary --features train --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -214,7 +214,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-ipadic --all-features
+        run: cargo test -p lindera-ipadic --features embed-ipadic
 
   test-lindera-ipadic-neologd:
     name: Test lindera-ipadic-neologd
@@ -233,7 +233,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-ipadic-neologd --all-features
+        run: cargo test -p lindera-ipadic-neologd --features embed-ipadic-neologd
 
   test-lindera-unidic:
     name: Test lindera-unidic
@@ -252,7 +252,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-unidic --all-features
+        run: cargo test -p lindera-unidic --features embed-unidic
 
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
@@ -271,7 +271,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-ko-dic --all-features
+        run: cargo test -p lindera-ko-dic --features embed-ko-dic
 
   test-lindera-cc-cedict:
     name: Test lindera-cc-cedict
@@ -290,7 +290,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-cc-cedict --all-features
+        run: cargo test -p lindera-cc-cedict --features embed-cc-cedict
 
   test-lindera-jieba:
     name: Test lindera-jieba
@@ -309,7 +309,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-jieba --all-features
+        run: cargo test -p lindera-jieba --features embed-jieba
 
   test-lindera:
     name: Test lindera (${{ matrix.platform.target }})
@@ -345,7 +345,7 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera --all-features --target "${{ matrix.platform.target }}"
+        run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -364,7 +364,7 @@ jobs:
           toolchain: stable
 
       - name: Run test
-        run: cargo test -p lindera-cli --all-features
+        run: cargo test -p lindera-cli --features train
 
   test-lindera-python:
     name: Test lindera-python

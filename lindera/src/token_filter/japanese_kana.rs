@@ -133,11 +133,7 @@ impl TokenFilter for JapaneseKanaTokenFilter {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_kana_token_filter_config_hiragana() {
         use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
@@ -151,11 +147,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_kana_token_filter_config_katakana() {
         use crate::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig;
 
@@ -169,11 +161,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_kana_token_filter_hiragana() {
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,
@@ -191,11 +179,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_kana_token_filter_from_slice_katakana() {
         use crate::token_filter::japanese_kana::{
             JapaneseKanaTokenFilter, JapaneseKanaTokenFilterConfig,

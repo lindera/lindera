@@ -117,11 +117,7 @@ fn is_katakana(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_katakana_stem_token_filter_config() {
         use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
 
@@ -136,11 +132,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_katakana_stem_token_filter_config_zero() {
         use crate::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig;
 
@@ -156,11 +148,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_katakana_stem_token_filter() {
         use crate::token_filter::japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
@@ -179,11 +167,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        feature = "embed-ipadic",
-        feature = "embed-ipadic-neologd",
-        feature = "embed-unidic",
-    ))]
+    #[cfg(feature = "embed-ipadic")]
     fn test_japanese_katakana_stem_token_filter_zero() {
         use crate::token_filter::japanese_katakana_stem::{
             JapaneseKatakanaStemTokenFilter, JapaneseKatakanaStemTokenFilterConfig,
