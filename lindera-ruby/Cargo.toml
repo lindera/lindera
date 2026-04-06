@@ -2,12 +2,12 @@
 name = "lindera-ruby"
 version = { workspace = true }
 edition = { workspace = true }
-description = { workspace = true }
-documentation = { workspace = true }
+description = "A Ruby binding for Lindera."
+documentation = "https://docs.rs/lindera-ruby"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = { workspace = true }
+keywords = ["morphological", "analysis", "library", "ruby", "binding"]
 categories = { workspace = true }
 license = { workspace = true }
 

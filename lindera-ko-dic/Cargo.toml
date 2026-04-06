@@ -7,12 +7,12 @@ documentation = "https://docs.rs/lindera-ko-dic"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = ["morphological", "analysis", "dictionary", "library", "ko-dic"]
+keywords = ["morphological", "analysis", "dictionary", "korean", "ko-dic"]
 categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embed-ko-dic = []                          # Embed ko-dic dictionary in the binary
+embed-ko-dic = [] # Embed ko-dic dictionary in the binary
 
 [dependencies]
 anyhow = { workspace = true }

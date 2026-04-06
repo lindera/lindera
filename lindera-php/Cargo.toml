@@ -2,12 +2,12 @@
 name = "lindera-php"
 version = { workspace = true }
 edition = { workspace = true }
-description = { workspace = true }
-documentation = { workspace = true }
+description = "A PHP binding for Lindera."
+documentation = "https://docs.rs/lindera-php"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = { workspace = true }
+keywords = ["morphological", "analysis", "library", "php", "binding"]
 categories = { workspace = true }
 license = { workspace = true }
 

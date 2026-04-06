@@ -19,7 +19,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "2.3.4"
+version = "3.0.0"
 edition = "2024"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
@@ -35,21 +35,21 @@ anyhow = "1.0.102"
 byteorder = "1.5.0"
 csv = "1.4.0"
 daachorse = "1.0.1"
-lindera = { version = "2.3.4", path = "lindera" }
-lindera-crf = { version = "2.3.4", path = "lindera-crf" }
-lindera-cc-cedict = { version = "2.3.4", path = "lindera-cc-cedict" }
-lindera-cli = { version = "2.3.4", path = "lindera-cli" }
-lindera-dictionary = { version = "2.3.4", path = "lindera-dictionary" }
-lindera-ipadic = { version = "2.3.4", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "2.3.4", path = "lindera-ipadic-neologd" }
-lindera-jieba = { version = "2.3.4", path = "lindera-jieba" }
-lindera-ko-dic = { version = "2.3.4", path = "lindera-ko-dic" }
-lindera-nodejs = { version = "2.3.4", path = "lindera-nodejs" }
-lindera-python = { version = "2.3.4", path = "lindera-python" }
-lindera-ruby = { version = "2.3.4", path = "lindera-ruby" }
-lindera-unidic = { version = "2.3.4", path = "lindera-unidic" }
-lindera-php = { version = "2.3.4", path = "lindera-php" }
-lindera-wasm = { version = "2.3.4", path = "lindera-wasm" }
+lindera = { version = "3.0.0", path = "lindera" }
+lindera-crf = { version = "3.0.0", path = "lindera-crf" }
+lindera-cc-cedict = { version = "3.0.0", path = "lindera-cc-cedict" }
+lindera-cli = { version = "3.0.0", path = "lindera-cli" }
+lindera-dictionary = { version = "3.0.0", path = "lindera-dictionary" }
+lindera-ipadic = { version = "3.0.0", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "3.0.0", path = "lindera-ipadic-neologd" }
+lindera-jieba = { version = "3.0.0", path = "lindera-jieba" }
+lindera-ko-dic = { version = "3.0.0", path = "lindera-ko-dic" }
+lindera-nodejs = { version = "3.0.0", path = "lindera-nodejs" }
+lindera-python = { version = "3.0.0", path = "lindera-python" }
+lindera-ruby = { version = "3.0.0", path = "lindera-ruby" }
+lindera-unidic = { version = "3.0.0", path = "lindera-unidic" }
+lindera-php = { version = "3.0.0", path = "lindera-php" }
+lindera-wasm = { version = "3.0.0", path = "lindera-wasm" }
 log = "0.4.29"
 num_cpus = "1.17.0"
 once_cell = "1.21.4"

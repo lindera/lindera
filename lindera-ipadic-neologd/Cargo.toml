@@ -11,14 +11,14 @@ keywords = [
     "morphological",
     "analysis",
     "dictionary",
-    "library",
+    "japanese",
     "ipadic-neologd",
 ]
 categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embed-ipadic-neologd = []                  # Embed IPADIC-NEologd dictionary in the binary
+embed-ipadic-neologd = [] # Embed IPADIC-NEologd dictionary in the binary
 
 [dependencies]
 anyhow = { workspace = true }

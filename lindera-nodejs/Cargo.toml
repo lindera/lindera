@@ -2,12 +2,12 @@
 name = "lindera-nodejs"
 version = { workspace = true }
 edition = { workspace = true }
-description = { workspace = true }
-documentation = { workspace = true }
+description = "A Node.js binding for Lindera."
+documentation = "https://docs.rs/lindera-nodejs"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = { workspace = true }
+keywords = ["morphological", "analysis", "library", "nodejs", "binding"]
 categories = { workspace = true }
 license = { workspace = true }
 
