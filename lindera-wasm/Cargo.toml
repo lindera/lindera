@@ -3,7 +3,7 @@ name = "lindera-wasm"
 version = { workspace = true }
 edition = { workspace = true }
 description = "A morphological analysis library for WebAssembly."
-documentation = { workspace = true }
+documentation = "https://docs.rs/lindera-wasm"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"

@@ -7,12 +7,12 @@ documentation = "https://docs.rs/lindera-unidic"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = ["morphological", "analysis", "dictionary", "library", "unidic"]
+keywords = ["morphological", "analysis", "dictionary", "japanese", "unidic"]
 categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embed-unidic = []                          # Embed UniDic dictionary in the binary
+embed-unidic = [] # Embed UniDic dictionary in the binary
 
 [dependencies]
 anyhow = { workspace = true }

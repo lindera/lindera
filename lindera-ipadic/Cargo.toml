@@ -7,12 +7,12 @@ documentation = "https://docs.rs/lindera-ipadic"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = ["morphological", "analysis", "dictionary", "library", "ipadic"]
+keywords = ["morphological", "analysis", "dictionary", "japanese", "ipadic"]
 categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embed-ipadic = []                          # Embed IPADIC dictionary in the binary
+embed-ipadic = [] # Embed IPADIC dictionary in the binary
 
 [dependencies]
 anyhow = { workspace = true }

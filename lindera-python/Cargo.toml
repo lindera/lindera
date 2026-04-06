@@ -2,12 +2,12 @@
 name = "lindera-python"
 version = { workspace = true }
 edition = { workspace = true }
-description = { workspace = true }
-documentation = { workspace = true }
+description = "A Python binding for Lindera."
+documentation = "https://docs.rs/lindera-python"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-keywords = { workspace = true }
+keywords = ["morphological", "analysis", "library", "python", "binding"]
 categories = { workspace = true }
 license = { workspace = true }
 
