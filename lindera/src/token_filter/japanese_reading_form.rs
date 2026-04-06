@@ -180,5 +180,4 @@ mod tests {
         assert_eq!(&tokens[1].surface, "ゲンテイ");
         assert_eq!(&tokens[2].surface, "トートバッグ");
     }
-
 }

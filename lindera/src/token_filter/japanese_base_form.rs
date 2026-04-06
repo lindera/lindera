@@ -186,5 +186,4 @@ mod tests {
         assert_eq!(tokens[2].surface, "ある");
         assert_eq!(tokens[3].surface, "ます");
     }
-
 }
