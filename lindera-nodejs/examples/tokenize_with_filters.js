@@ -1,4 +1,4 @@
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 function main() {
   // create a tokenizer builder

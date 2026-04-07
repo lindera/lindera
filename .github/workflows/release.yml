@@ -943,6 +943,9 @@ jobs:
           - value: "bundler"
             name: "bundler"
     steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
       - name: Download artifact
         uses: actions/download-artifact@v8
         with:
@@ -954,6 +957,19 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Sync version from Cargo.toml
+        shell: bash
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 \
+            | jq -r '.packages[] | select(.name=="lindera-wasm") | .version')
+          echo "Syncing npm version to ${VERSION}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('lindera-wasm/pkg/package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync('lindera-wasm/pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       - name: Publish to npm
         run: |

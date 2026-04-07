@@ -5,7 +5,7 @@
 ビルド済みパッケージが npm で公開予定です：
 
 ```bash
-npm install lindera
+npm install lindera-nodejs
 ```
 
 > [!NOTE]
@@ -97,7 +97,7 @@ npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 インストール後、Node.js で lindera が利用可能であることを確認します：
 
 ```javascript
-const lindera = require("lindera");
+const lindera = require("lindera-nodejs");
 
 console.log(lindera.version());
 ```
@@ -105,7 +105,7 @@ console.log(lindera.version());
 または ES modules を使用する場合：
 
 ```javascript
-import { version } from "lindera";
+import { version } from "lindera-nodejs";
 
 console.log(version());
 ```

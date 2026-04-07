@@ -80,7 +80,7 @@ npm run build
 ### 基本的なトークナイズ
 
 ```javascript
-const { loadDictionary, Tokenizer } = require("lindera");
+const { loadDictionary, Tokenizer } = require("lindera-nodejs");
 
 // Load dictionary
 // Load dictionary from a local path (download from GitHub Releases)
@@ -101,7 +101,7 @@ for (const token of tokens) {
 ### 文字フィルタの使用
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
@@ -121,7 +121,7 @@ const tokens = tokenizer.tokenize(text); // Will apply filters automatically
 ### トークンフィルタの使用
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
@@ -141,7 +141,7 @@ const tokens = tokenizer.tokenize("テキストの解析");
 ### 統合パイプライン
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 // Build tokenizer with integrated filters
 const builder = new TokenizerBuilder();
@@ -164,7 +164,7 @@ const tokens = tokenizer.tokenize("コーヒーショップ");
 ### メタデータの操作
 
 ```javascript
-const { Metadata } = require("lindera");
+const { Metadata } = require("lindera-nodejs");
 
 // Create metadata with default values
 const metadata = new Metadata();
@@ -183,7 +183,7 @@ console.log(loaded.toObject());
 文字フィルタとトークンフィルタは、オブジェクト型の引数で設定を受け取ります:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
@@ -253,7 +253,7 @@ npm run build -- --features train
 ### モデルの学習
 
 ```javascript
-const { train } = require("lindera");
+const { train } = require("lindera-nodejs");
 
 // Train a model from corpus
 train({
@@ -272,7 +272,7 @@ train({
 ### 辞書ファイルのエクスポート
 
 ```javascript
-const { exportModel } = require("lindera");
+const { exportModel } = require("lindera-nodejs");
 
 // Export trained model to dictionary files
 exportModel({

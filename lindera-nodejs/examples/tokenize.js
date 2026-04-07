@@ -1,4 +1,4 @@
-const { loadDictionary, Tokenizer } = require("lindera");
+const { loadDictionary, Tokenizer } = require("lindera-nodejs");
 
 function main() {
   // load the dictionary

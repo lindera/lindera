@@ -7,7 +7,7 @@
 トークナイザーの作成には `TokenizerBuilder` の使用を推奨します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
@@ -35,7 +35,7 @@ for (const token of tokens) {
 `TokenizerBuilder` は簡潔な設定のためにメソッドチェーンをサポートしています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -53,7 +53,7 @@ for (const token of tokens) {
 各トークンは以下のプロパティを公開しています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -76,7 +76,7 @@ for (const token of tokens) {
 コスト順にランク付けされた複数のトークナイズ候補を取得します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera");
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -94,7 +94,7 @@ for (const { tokens, cost } of results) {
 Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：
 
 ```typescript
-import { TokenizerBuilder, Token } from "lindera";
+import { TokenizerBuilder, Token } from "lindera-nodejs";
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
