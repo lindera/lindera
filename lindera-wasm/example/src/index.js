@@ -11,76 +11,107 @@ import {
   removeDictionary,
 } from "../../pkg/opfs.js";
 
+/** Default dictionary to load on first visit. */
 const DEFAULT_DICT_NAME = "ipadic";
 
 /**
- * Builds the default dictionary URL using the current package version.
+ * Catalog of hosted dictionaries.
+ * Keys match the `<select>` option values and OPFS storage names.
  */
-function defaultDictUrl(version) {
-  return `https://github.com/lindera/lindera/releases/download/v${version}/lindera-ipadic-${version}.zip`;
+const DICTIONARIES = {
+  ipadic: { prefix: "lindera-ipadic" },
+  unidic: { prefix: "lindera-unidic" },
+  "ko-dic": { prefix: "lindera-ko-dic" },
+  "cc-cedict": { prefix: "lindera-cc-cedict" },
+  jieba: { prefix: "lindera-jieba" },
+};
+
+/** Cached manifest promise (loaded once). */
+let _manifestPromise = null;
+
+/**
+ * Fetches the dictionary manifest from the same origin.
+ *
+ * The manifest maps dictionary names to their zip filenames and is
+ * generated during the GitHub Pages deployment. Returns `null` if the
+ * manifest is unavailable (e.g. on localhost).
+ *
+ * @returns {Promise<Object|null>} Parsed manifest or null.
+ */
+function fetchManifest() {
+  if (!_manifestPromise) {
+    const url = new URL("dict/manifest.json", window.location.href).href;
+    _manifestPromise = fetch(url)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+  }
+  return _manifestPromise;
 }
 
 /**
- * Resolves a GitHub Releases download URL to a CORS-friendly GitHub API URL.
+ * Returns whether the app is running on localhost (webpack dev server).
  *
- * GitHub Releases URLs (github.com) do not include CORS headers on their
- * 302 redirects, so browsers block cross-origin fetches. The GitHub API
- * (api.github.com) supports CORS, so we resolve the release asset via the
- * API and return the API-based download URL.
- *
- * On localhost the webpack dev server proxy handles CORS, so the original
- * URL is returned as-is with a rewritten path.
- *
- * @param {string} url - The dictionary download URL.
- * @returns {Promise<{url: string, fetchInit?: RequestInit}>} Resolved URL
- *   and optional fetch options (e.g. Accept header for the GitHub API).
+ * @returns {boolean} True on localhost or 127.0.0.1.
  */
-async function resolveDownloadUrl(url) {
-  // On localhost, use the webpack dev server proxy
-  if (
+function isLocalhost() {
+  return (
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
-  ) {
+  );
+}
+
+/**
+ * Resolves the download URL for a named dictionary from the catalog.
+ *
+ * On GitHub Pages the dictionary zips are hosted alongside the demo under
+ * `./dict/`. On localhost the webpack dev server proxy is used to fetch
+ * from GitHub Releases.
+ *
+ * @param {string} name - Dictionary key from DICTIONARIES.
+ * @param {string} version - The lindera-wasm version (fallback for filename).
+ * @returns {Promise<{url: string, fetchInit?: RequestInit}>}
+ */
+async function getDictUrl(name, version) {
+  const dict = DICTIONARIES[name];
+  if (!dict) {
+    throw new Error(`Unknown dictionary: ${name}`);
+  }
+
+  if (isLocalhost()) {
+    const filename = `${dict.prefix}-${version}.zip`;
+    return {
+      url: `/github-releases/lindera/lindera/releases/download/v${version}/${filename}`,
+    };
+  }
+
+  // On GitHub Pages: look up filename from manifest
+  const manifest = await fetchManifest();
+  if (manifest && manifest[name]) {
+    return { url: new URL(`dict/${manifest[name]}`, window.location.href).href };
+  }
+
+  // Fallback: guess filename using WASM version
+  const filename = `${dict.prefix}-${version}.zip`;
+  return { url: new URL(`dict/${filename}`, window.location.href).href };
+}
+
+/**
+ * Resolves a custom (user-entered) URL for downloading.
+ *
+ * On localhost, GitHub URLs are rewritten to use the webpack dev server
+ * proxy. On other hosts the URL is returned as-is.
+ *
+ * @param {string} url - The user-entered URL.
+ * @returns {{url: string}} Resolved URL.
+ */
+function resolveCustomUrl(url) {
+  if (isLocalhost()) {
     const GITHUB_PREFIX = "https://github.com/";
     if (url.startsWith(GITHUB_PREFIX)) {
       return { url: "/github-releases/" + url.slice(GITHUB_PREFIX.length) };
     }
-    return { url };
   }
-
-  // Parse GitHub Releases URL
-  const match = url.match(
-    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/(.+)$/,
-  );
-  if (!match) {
-    return { url };
-  }
-
-  const [, owner, repo, tag, filename] = match;
-
-  // Fetch release metadata from GitHub API (CORS-enabled)
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
-  const releaseRes = await fetch(apiUrl, {
-    headers: { Accept: "application/vnd.github.v3+json" },
-  });
-  if (!releaseRes.ok) {
-    throw new Error(
-      `Failed to fetch release info from GitHub API: HTTP ${releaseRes.status}`,
-    );
-  }
-  const release = await releaseRes.json();
-
-  // Find the matching asset
-  const asset = release.assets.find((a) => a.name === filename);
-  if (!asset) {
-    throw new Error(`Asset "${filename}" not found in release ${tag}`);
-  }
-
-  // Return API-based asset download URL with required Accept header
-  return {
-    url: `https://api.github.com/repos/${owner}/${repo}/releases/assets/${asset.id}`,
-    fetchInit: { headers: { Accept: "application/octet-stream" } },
-  };
+  return { url };
 }
 
 let tokenizer = null;
@@ -91,6 +122,7 @@ const inputTextEl = document.getElementById("inputText");
 const runButtonEl = document.getElementById("runButton");
 const resultListEl = document.getElementById("resultList");
 const dictStatusEl = document.getElementById("dictStatus");
+const dictSelectEl = document.getElementById("dictSelect");
 const dictUrlEl = document.getElementById("dictUrl");
 const dictNameEl = document.getElementById("dictName");
 const downloadButtonEl = document.getElementById("downloadButton");
@@ -112,6 +144,9 @@ async function refreshDictList() {
 
 /**
  * Sets the status message.
+ *
+ * @param {string} message - Status text.
+ * @param {boolean} [isError] - When true the message is shown in red.
  */
 function setStatus(message, isError = false) {
   dictStatusEl.textContent = message;
@@ -120,6 +155,8 @@ function setStatus(message, isError = false) {
 
 /**
  * Loads a dictionary from OPFS and initializes the tokenizer.
+ *
+ * @param {string} dictName - OPFS dictionary name.
  */
 async function loadTokenizer(dictName) {
   try {
@@ -153,15 +190,20 @@ async function loadTokenizer(dictName) {
   }
 }
 
+// Show/hide custom URL fields based on selector
+dictSelectEl.addEventListener("change", () => {
+  const isCustom = dictSelectEl.value === "custom";
+  dictUrlEl.classList.toggle("visible", isCustom);
+  dictNameEl.classList.toggle("visible", isCustom);
+});
+
 // Initialize WASM module
 __wbg_init()
   .then(async () => {
-    // Show version and set default dictionary URL
     try {
       const version = getVersion();
-      document.title = `Lindera WASM v${version} (OPFS)`;
+      document.title = `Lindera WASM v${version}`;
       titleEl.textContent = `Lindera WASM v${version}`;
-      dictUrlEl.value = defaultDictUrl(version);
     } catch (e) {
       console.error("Failed to get version:", e);
     }
@@ -173,7 +215,7 @@ __wbg_init()
     if (exists) {
       await loadTokenizer(DEFAULT_DICT_NAME);
     } else {
-      setStatus("No dictionary loaded. Download one to get started.");
+      setStatus("No dictionary loaded. Select one and click Download.");
     }
   })
   .catch((e) => {
@@ -183,12 +225,27 @@ __wbg_init()
 
 // Download button handler
 downloadButtonEl.addEventListener("click", async () => {
-  const url = dictUrlEl.value.trim();
-  const name = dictNameEl.value.trim();
+  const isCustom = dictSelectEl.value === "custom";
+  let name;
+  let resolved;
 
-  if (!url || !name) {
-    setStatus("Please enter both URL and dictionary name.", true);
-    return;
+  if (isCustom) {
+    const url = dictUrlEl.value.trim();
+    name = dictNameEl.value.trim();
+    if (!url || !name) {
+      setStatus("Please enter both URL and dictionary name.", true);
+      return;
+    }
+    resolved = resolveCustomUrl(url);
+  } else {
+    name = dictSelectEl.value;
+    try {
+      const version = getVersion();
+      resolved = await getDictUrl(name, version);
+    } catch (e) {
+      setStatus(`Failed to resolve dictionary URL: ${e.message}`, true);
+      return;
+    }
   }
 
   downloadButtonEl.disabled = true;
@@ -196,9 +253,6 @@ downloadButtonEl.addEventListener("click", async () => {
   progressEl.style.display = "block";
 
   try {
-    setStatus("Resolving download URL...");
-    const resolved = await resolveDownloadUrl(url);
-
     await downloadDictionary(resolved.url, name, {
       fetchInit: resolved.fetchInit,
       onProgress: ({ phase, loaded, total }) => {
@@ -241,7 +295,8 @@ downloadButtonEl.addEventListener("click", async () => {
 
 // Delete button handler
 deleteButtonEl.addEventListener("click", async () => {
-  const name = dictNameEl.value.trim();
+  const isCustom = dictSelectEl.value === "custom";
+  const name = isCustom ? dictNameEl.value.trim() : dictSelectEl.value;
   if (!name) {
     setStatus("Please enter a dictionary name to delete.", true);
     return;

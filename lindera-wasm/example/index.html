@@ -93,6 +93,30 @@
         max-width: 160px;
       }
 
+      .dict-form select {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid #cbd5e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        background: white;
+      }
+
+      .dict-form select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+      }
+
+      .dict-form .custom-field {
+        display: none;
+      }
+
+      .dict-form .custom-field.visible {
+        display: block;
+      }
+
       .btn-sm {
         padding: 10px 18px;
         border: none;
@@ -305,19 +329,15 @@
       <div class="dict-section">
         <h2>Dictionary Management</h2>
         <div class="dict-form">
-          <input
-            type="text"
-            id="dictUrl"
-            placeholder="Dictionary zip URL (set automatically after WASM init)"
-          />
           <div class="row">
-            <input
-              type="text"
-              id="dictName"
-              class="dict-name"
-              placeholder="Name"
-              value="ipadic"
-            />
+            <select id="dictSelect" title="Select dictionary">
+              <option value="ipadic">ipadic (Japanese)</option>
+              <option value="unidic">unidic (Japanese)</option>
+              <option value="ko-dic">ko-dic (Korean)</option>
+              <option value="cc-cedict">cc-cedict (Chinese)</option>
+              <option value="jieba">jieba (Chinese)</option>
+              <option value="custom">Custom URL...</option>
+            </select>
             <button
               type="button"
               id="downloadButton"
@@ -329,6 +349,18 @@
               Delete
             </button>
           </div>
+          <input
+            type="text"
+            id="dictUrl"
+            class="custom-field"
+            placeholder="Custom dictionary zip URL"
+          />
+          <input
+            type="text"
+            id="dictName"
+            class="dict-name custom-field"
+            placeholder="Dictionary name"
+          />
         </div>
         <div id="progress"></div>
         <div class="dict-info">

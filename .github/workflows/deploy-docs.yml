@@ -47,6 +47,35 @@ jobs:
           mkdir -p docs/book/demo
           cp -r lindera-wasm/example/dist/* docs/book/demo/
 
+      - name: Download dictionaries from latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p docs/book/demo/dict
+          DICTS="lindera-ipadic lindera-unidic lindera-ko-dic lindera-cc-cedict lindera-jieba"
+          echo "{" > docs/book/demo/dict/manifest.json
+          FIRST=true
+          for dict in $DICTS; do
+            echo "Downloading ${dict}..."
+            gh release download --repo lindera/lindera --pattern "${dict}-*.zip" --dir docs/book/demo/dict || continue
+            FILENAME=$(ls docs/book/demo/dict/${dict}-*.zip 2>/dev/null | head -1 | xargs basename)
+            if [ -n "$FILENAME" ]; then
+              SHORT_NAME="${dict#lindera-}"
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                echo "," >> docs/book/demo/dict/manifest.json
+              fi
+              printf '  "%s": "%s"' "$SHORT_NAME" "$FILENAME" >> docs/book/demo/dict/manifest.json
+            fi
+          done
+          echo "" >> docs/book/demo/dict/manifest.json
+          echo "}" >> docs/book/demo/dict/manifest.json
+          echo "Manifest:"
+          cat docs/book/demo/dict/manifest.json
+          echo "Downloaded dictionaries:"
+          ls -lh docs/book/demo/dict/
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
