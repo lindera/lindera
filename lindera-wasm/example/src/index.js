@@ -22,11 +22,17 @@ function defaultDictUrl(version) {
 
 /**
  * Rewrites a GitHub URL to use the dev server proxy to avoid CORS issues.
+ * Only applies on localhost where the webpack dev server proxy is available.
  */
 function proxyUrl(url) {
-  const GITHUB_PREFIX = "https://github.com/";
-  if (url.startsWith(GITHUB_PREFIX)) {
-    return "/github-releases/" + url.slice(GITHUB_PREFIX.length);
+  if (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  ) {
+    const GITHUB_PREFIX = "https://github.com/";
+    if (url.startsWith(GITHUB_PREFIX)) {
+      return "/github-releases/" + url.slice(GITHUB_PREFIX.length);
+    }
   }
   return url;
 }
