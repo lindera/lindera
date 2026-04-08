@@ -57,8 +57,8 @@ jobs:
           FIRST=true
           for dict in $DICTS; do
             echo "Downloading ${dict}..."
-            gh release download --repo lindera/lindera --pattern "${dict}-*.zip" --dir docs/book/demo/dict || continue
-            FILENAME=$(ls docs/book/demo/dict/${dict}-*.zip 2>/dev/null | head -1 | xargs basename)
+            gh release download --repo lindera/lindera --pattern "${dict}-[0-9]*.zip" --dir docs/book/demo/dict || continue
+            FILENAME=$(ls docs/book/demo/dict/${dict}-[0-9]*.zip 2>/dev/null | head -1 | xargs basename)
             if [ -n "$FILENAME" ]; then
               SHORT_NAME="${dict#lindera-}"
               if [ "$FIRST" = true ]; then
