@@ -175,15 +175,16 @@ async function extractZip(zipBuffer) {
  * @param {object} [options] - Optional settings.
  * @param {function} [options.onProgress] - Progress callback receiving
  *   `{ phase: string, loaded?: number, total?: number }`.
+ * @param {RequestInit} [options.fetchInit] - Additional options passed to `fetch()`.
  * @returns {Promise<void>}
  * @throws {Error} If download fails, archive is invalid, or required files are missing.
  */
 export async function downloadDictionary(url, name, options = {}) {
-  const { onProgress } = options;
+  const { onProgress, fetchInit = {} } = options;
 
   // Download
   if (onProgress) onProgress({ phase: "downloading" });
-  const response = await fetch(url);
+  const response = await fetch(url, fetchInit);
   if (!response.ok) {
     throw new Error(`Failed to download dictionary: HTTP ${response.status}`);
   }

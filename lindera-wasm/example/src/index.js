@@ -21,20 +21,66 @@ function defaultDictUrl(version) {
 }
 
 /**
- * Rewrites a GitHub URL to use the dev server proxy to avoid CORS issues.
- * Only applies on localhost where the webpack dev server proxy is available.
+ * Resolves a GitHub Releases download URL to a CORS-friendly GitHub API URL.
+ *
+ * GitHub Releases URLs (github.com) do not include CORS headers on their
+ * 302 redirects, so browsers block cross-origin fetches. The GitHub API
+ * (api.github.com) supports CORS, so we resolve the release asset via the
+ * API and return the API-based download URL.
+ *
+ * On localhost the webpack dev server proxy handles CORS, so the original
+ * URL is returned as-is with a rewritten path.
+ *
+ * @param {string} url - The dictionary download URL.
+ * @returns {Promise<{url: string, fetchInit?: RequestInit}>} Resolved URL
+ *   and optional fetch options (e.g. Accept header for the GitHub API).
  */
-function proxyUrl(url) {
+async function resolveDownloadUrl(url) {
+  // On localhost, use the webpack dev server proxy
   if (
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
   ) {
     const GITHUB_PREFIX = "https://github.com/";
     if (url.startsWith(GITHUB_PREFIX)) {
-      return "/github-releases/" + url.slice(GITHUB_PREFIX.length);
+      return { url: "/github-releases/" + url.slice(GITHUB_PREFIX.length) };
     }
+    return { url };
   }
-  return url;
+
+  // Parse GitHub Releases URL
+  const match = url.match(
+    /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/(.+)$/,
+  );
+  if (!match) {
+    return { url };
+  }
+
+  const [, owner, repo, tag, filename] = match;
+
+  // Fetch release metadata from GitHub API (CORS-enabled)
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+  const releaseRes = await fetch(apiUrl, {
+    headers: { Accept: "application/vnd.github.v3+json" },
+  });
+  if (!releaseRes.ok) {
+    throw new Error(
+      `Failed to fetch release info from GitHub API: HTTP ${releaseRes.status}`,
+    );
+  }
+  const release = await releaseRes.json();
+
+  // Find the matching asset
+  const asset = release.assets.find((a) => a.name === filename);
+  if (!asset) {
+    throw new Error(`Asset "${filename}" not found in release ${tag}`);
+  }
+
+  // Return API-based asset download URL with required Accept header
+  return {
+    url: `https://api.github.com/repos/${owner}/${repo}/releases/assets/${asset.id}`,
+    fetchInit: { headers: { Accept: "application/octet-stream" } },
+  };
 }
 
 let tokenizer = null;
@@ -150,7 +196,11 @@ downloadButtonEl.addEventListener("click", async () => {
   progressEl.style.display = "block";
 
   try {
-    await downloadDictionary(proxyUrl(url), name, {
+    setStatus("Resolving download URL...");
+    const resolved = await resolveDownloadUrl(url);
+
+    await downloadDictionary(resolved.url, name, {
+      fetchInit: resolved.fetchInit,
       onProgress: ({ phase, loaded, total }) => {
         switch (phase) {
           case "downloading":
