@@ -60,10 +60,8 @@ impl<D: Fallible + ?Sized>
         archived: &rkyv::vec::ArchivedVec<u8>,
         _deserializer: &mut D,
     ) -> Result<DoubleArrayAhoCorasick<u32>, D::Error> {
-        unsafe {
-            let (da, _) = DoubleArrayAhoCorasick::deserialize_unchecked(archived.as_slice());
-            Ok(da)
-        }
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(archived.as_slice());
+        Ok(da)
     }
 }
 
@@ -84,10 +82,8 @@ mod double_array_serde {
         D: Deserializer<'de>,
     {
         let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-        unsafe {
-            let (da, _) = DoubleArrayAhoCorasick::deserialize_unchecked(&bytes);
-            Ok(da)
-        }
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(&bytes);
+        Ok(da)
     }
 }
 
@@ -111,7 +107,7 @@ impl PrefixDictionary {
         is_system: bool,
     ) -> PrefixDictionary {
         let da_bytes = da_data.into();
-        let (da, _) = unsafe { DoubleArrayAhoCorasick::deserialize_unchecked(&da_bytes[..]) };
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(&da_bytes[..]);
 
         PrefixDictionary {
             da,
