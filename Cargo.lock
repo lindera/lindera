@@ -1711,7 +1711,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1743,7 +1743,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1755,7 +1755,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "clap",
@@ -1766,7 +1766,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-crf"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1811,7 +1811,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1823,7 +1823,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1835,7 +1835,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-jieba"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1847,7 +1847,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ko-dic"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1859,7 +1859,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-nodejs"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "lindera",
  "napi",
@@ -1873,7 +1873,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-php"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "ext-php-rs",
  "lindera",
@@ -1884,7 +1884,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "lindera",
  "num_cpus",
@@ -1895,7 +1895,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ruby"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "lindera",
  "magnus",
@@ -1906,7 +1906,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1918,7 +1918,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-wasm"
-version = "3.0.4"
+version = "3.0.5"
 dependencies = [
  "js-sys",
  "lindera",
@@ -3410,9 +3410,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.51.0"
+version = "1.51.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bd1c4c0fc4a7ab90fc15ef6daaa3ec3b893f004f915f2392557ed23237820cd"
+checksum = "f66bf9585cda4b724d3e78ab34b73fb2bbaba9011b9bfdf69dc836382ea13b8c"
 dependencies = [
  "bytes",
  "libc",

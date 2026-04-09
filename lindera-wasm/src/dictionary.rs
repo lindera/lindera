@@ -118,19 +118,26 @@ pub fn load_dictionary_from_bytes(
     let meta =
         Metadata::load(metadata).map_err(|e| JsValue::from_str(&format!("metadata: {e}")))?;
 
+    let prefix_dictionary = PrefixDictionary::load(
+        dict_da.to_vec(),
+        dict_vals.to_vec(),
+        dict_words_idx.to_vec(),
+        dict_words.to_vec(),
+        true,
+    )
+    .map_err(|e| JsValue::from_str(&format!("prefix_dict: {e}")))?;
+    let connection_cost_matrix = ConnectionCostMatrix::load(matrix_mtx.to_vec())
+        .map_err(|e| JsValue::from_str(&format!("connection: {e}")))?;
+    let character_definition = CharacterDefinition::load(char_def)
+        .map_err(|e| JsValue::from_str(&format!("char_def: {e}")))?;
+    let unknown_dictionary =
+        UnknownDictionary::load(unk).map_err(|e| JsValue::from_str(&format!("unk: {e}")))?;
+
     let dict = Dictionary {
-        prefix_dictionary: PrefixDictionary::load(
-            dict_da.to_vec(),
-            dict_vals.to_vec(),
-            dict_words_idx.to_vec(),
-            dict_words.to_vec(),
-            true,
-        ),
-        connection_cost_matrix: ConnectionCostMatrix::load(matrix_mtx.to_vec()),
-        character_definition: CharacterDefinition::load(char_def)
-            .map_err(|e| JsValue::from_str(&format!("char_def: {e}")))?,
-        unknown_dictionary: UnknownDictionary::load(unk)
-            .map_err(|e| JsValue::from_str(&format!("unk: {e}")))?,
+        prefix_dictionary,
+        connection_cost_matrix,
+        character_definition,
+        unknown_dictionary,
         metadata: meta,
     };
 

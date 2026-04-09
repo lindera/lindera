@@ -1,10 +1,10 @@
 use daachorse::DoubleArrayAhoCorasick;
-use rkyv::rancor::Fallible;
+use rkyv::rancor::{Fallible, Source};
 use rkyv::with::{ArchiveWith, DeserializeWith, SerializeWith};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Place, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{util::Data, viterbi::WordEntry};
+use crate::{LinderaResult, error::LinderaErrorKind, util::Data, viterbi::WordEntry};
 
 /// Match structure for common prefix iterator compatibility
 #[derive(Debug, Clone)]
@@ -52,16 +52,25 @@ impl<S: Fallible + rkyv::ser::Writer + rkyv::ser::Allocator + ?Sized>
     }
 }
 
-impl<D: Fallible + ?Sized>
+impl<D: Fallible<Error: Source> + ?Sized>
     DeserializeWith<rkyv::vec::ArchivedVec<u8>, DoubleArrayAhoCorasick<u32>, D>
     for DoubleArrayArchiver
 {
+    /// Deserialize the archived byte vector into a `DoubleArrayAhoCorasick`.
+    ///
+    /// # Returns
+    ///
+    /// The deserialized `DoubleArrayAhoCorasick`, or an error if deserialization fails.
     fn deserialize_with(
         archived: &rkyv::vec::ArchivedVec<u8>,
         _deserializer: &mut D,
     ) -> Result<DoubleArrayAhoCorasick<u32>, D::Error> {
-        let (da, _) = DoubleArrayAhoCorasick::deserialize(archived.as_slice())
-            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(archived.as_slice()).map_err(|err| {
+            D::Error::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                err.to_string(),
+            ))
+        })?;
         Ok(da)
     }
 }
@@ -84,7 +93,7 @@ mod double_array_serde {
     {
         let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
         let (da, _) = DoubleArrayAhoCorasick::deserialize(&bytes)
-            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+            .map_err(|err| serde::de::Error::custom(err.to_string()))?;
         Ok(da)
     }
 }
@@ -101,24 +110,38 @@ pub struct PrefixDictionary {
 }
 
 impl PrefixDictionary {
+    /// Load a `PrefixDictionary` from raw binary data.
+    ///
+    /// # Arguments
+    ///
+    /// * `da_data` - Double-array data bytes.
+    /// * `vals_data` - Values data bytes.
+    /// * `words_idx_data` - Word index data bytes.
+    /// * `words_data` - Words data bytes.
+    /// * `is_system` - Whether this is a system dictionary.
+    ///
+    /// # Returns
+    ///
+    /// A `PrefixDictionary`, or an error if deserialization fails.
     pub fn load(
         da_data: impl Into<Data>,
         vals_data: impl Into<Data>,
         words_idx_data: impl Into<Data>,
         words_data: impl Into<Data>,
         is_system: bool,
-    ) -> PrefixDictionary {
+    ) -> LinderaResult<PrefixDictionary> {
         let da_bytes = da_data.into();
-        let (da, _) = DoubleArrayAhoCorasick::deserialize(&da_bytes[..])
-            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(&da_bytes[..]).map_err(|err| {
+            LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+        })?;
 
-        PrefixDictionary {
+        Ok(PrefixDictionary {
             da,
             vals_data: vals_data.into(),
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
             is_system,
-        }
+        })
     }
 
     pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
@@ -239,10 +262,24 @@ impl PrefixDictionary {
 }
 
 impl ArchivedPrefixDictionary {
-    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
+    /// Find all prefix matches for the given string using the archived dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - The input string to search for prefix matches.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of `(end_position, WordEntry)` pairs, or an error if deserialization fails.
+    pub fn prefix<'a>(
+        &'a self,
+        s: &'a str,
+    ) -> LinderaResult<impl Iterator<Item = (usize, WordEntry)> + 'a> {
         // Deserialize on the fly. Performance warning: this is slow.
-        let (da, _) = DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice())
-            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+        let (da, _) =
+            DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice()).map_err(|err| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+            })?;
 
         let matches: Vec<_> = da
             .find_overlapping_iter(s)
@@ -250,15 +287,14 @@ impl ArchivedPrefixDictionary {
             .map(|m| (m.end(), m.value()))
             .collect();
 
-        matches.into_iter().flat_map(move |(end, offset_len)| {
+        Ok(matches.into_iter().flat_map(move |(end, offset_len)| {
             let len = offset_len & ((1u32 << 5) - 1u32);
             let offset = offset_len >> 5u32;
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
             let vals = self.vals_data.as_slice();
-            // Check bounds?
             if offset_bytes >= vals.len() {
-                return vec![].into_iter(); // Handle gracefully
+                return vec![].into_iter();
             }
 
             let data = &vals[offset_bytes..];
@@ -272,23 +308,33 @@ impl ArchivedPrefixDictionary {
                         ),
                     )
                 })
-                .collect::<Vec<_>>() // Collect to avoid lifetime issues with 'a and move?
+                .collect::<Vec<_>>()
                 .into_iter()
-        })
+        }))
     }
 
-    pub fn find_surface(&self, surface: &str) -> Vec<WordEntry> {
-        let (da, _) = DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice())
-            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+    /// Find `WordEntry`s matching the exact surface in the archived dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The surface string to search for.
+    ///
+    /// # Returns
+    ///
+    /// A vector of matching `WordEntry`s, or an error if deserialization fails.
+    pub fn find_surface(&self, surface: &str) -> LinderaResult<Vec<WordEntry>> {
+        let (da, _) =
+            DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice()).map_err(|err| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+            })?;
 
-        // Check if there is a match with start=0 and end=surface.len()
         let matches: Vec<_> = da
             .find_overlapping_iter(surface)
             .filter(|m| m.start() == 0 && m.end() == surface.len())
             .map(|m| m.value())
             .collect();
 
-        matches
+        Ok(matches
             .into_iter()
             .flat_map(|offset_len| {
                 let len = offset_len & ((1u32 << 5) - 1u32);
@@ -309,6 +355,6 @@ impl ArchivedPrefixDictionary {
                     .collect::<Vec<_>>()
                     .into_iter()
             })
-            .collect()
+            .collect())
     }
 }

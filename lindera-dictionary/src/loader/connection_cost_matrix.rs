@@ -22,7 +22,7 @@ impl ConnectionCostMatrixLoader {
     pub fn load(input_dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
         let data = read_file(input_dir.join("matrix.mtx").as_path())?;
 
-        Ok(ConnectionCostMatrix::load(data))
+        ConnectionCostMatrix::load(data)
     }
 
     /// Load connection cost matrix using memory-mapped file.
@@ -38,6 +38,6 @@ impl ConnectionCostMatrixLoader {
     pub fn load_mmap(input_dir: &Path) -> LinderaResult<ConnectionCostMatrix> {
         let data = mmap_file(input_dir.join("matrix.mtx").as_path())?;
 
-        Ok(ConnectionCostMatrix::load(data))
+        ConnectionCostMatrix::load(data)
     }
 }

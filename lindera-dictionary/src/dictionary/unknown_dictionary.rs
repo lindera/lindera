@@ -306,13 +306,20 @@ pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<Unk
 }
 
 impl ArchivedUnknownDictionary {
-    pub fn word_entry(&self, word_id: u32) -> WordEntry {
-        // We have to deserialize the single entry or extract fields.
-        // Simple Archive usually preserves layout for primitives.
-        // Using deserialize ensures we get the native struct.
-        // Since WordEntry is small and Copy, this is efficient enough.
+    /// Retrieve a `WordEntry` for the given word ID from the archived dictionary.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The word ID to look up.
+    ///
+    /// # Returns
+    ///
+    /// The deserialized `WordEntry`, or an error if deserialization fails.
+    pub fn word_entry(&self, word_id: u32) -> LinderaResult<WordEntry> {
         let archived_entry = &self.costs[word_id as usize];
-        rkyv::deserialize::<WordEntry, rkyv::rancor::Error>(archived_entry).unwrap()
+        rkyv::deserialize::<WordEntry, rkyv::rancor::Error>(archived_entry).map_err(|err| {
+            LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+        })
     }
 
     pub fn lookup_word_ids(&self, category_id: CategoryId) -> &[rkyv::rend::u32_le] {

@@ -28,13 +28,7 @@ impl PrefixDictionaryLoader {
         let words_idx_data = read_file(input_dir.join("dict.wordsidx").as_path())?;
         let words_data = read_file(input_dir.join("dict.words").as_path())?;
 
-        Ok(PrefixDictionary::load(
-            da_data,
-            vals_data,
-            words_idx_data,
-            words_data,
-            true,
-        ))
+        PrefixDictionary::load(da_data, vals_data, words_idx_data, words_data, true)
     }
 
     /// Load prefix dictionary using memory-mapped files.
@@ -53,12 +47,6 @@ impl PrefixDictionaryLoader {
         let words_idx_data = mmap_file(input_dir.join("dict.wordsidx").as_path())?;
         let words_data = mmap_file(input_dir.join("dict.words").as_path())?;
 
-        Ok(PrefixDictionary::load(
-            da_data,
-            vals_data,
-            words_idx_data,
-            words_data,
-            true,
-        ))
+        PrefixDictionary::load(da_data, vals_data, words_idx_data, words_data, true)
     }
 }
