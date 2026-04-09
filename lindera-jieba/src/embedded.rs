@@ -51,20 +51,18 @@ jieba_metadata!(
 );
 
 pub fn load() -> LinderaResult<Dictionary> {
-    // Load metadata from embedded binary data
     let metadata = Metadata::load(METADATA_DATA)?;
+    let prefix_dictionary =
+        PrefixDictionary::load(DA_DATA, VALS_DATA, WORDS_IDX_DATA, WORDS_DATA, true)?;
+    let connection_cost_matrix = ConnectionCostMatrix::load(CONNECTION_DATA)?;
+    let character_definition = CharacterDefinition::load(CHAR_DEFINITION_DATA)?;
+    let unknown_dictionary = UnknownDictionary::load(UNKNOWN_DATA)?;
 
     Ok(Dictionary {
-        prefix_dictionary: PrefixDictionary::load(
-            DA_DATA,
-            VALS_DATA,
-            WORDS_IDX_DATA,
-            WORDS_DATA,
-            true,
-        ),
-        connection_cost_matrix: ConnectionCostMatrix::load(CONNECTION_DATA),
-        character_definition: CharacterDefinition::load(CHAR_DEFINITION_DATA)?,
-        unknown_dictionary: UnknownDictionary::load(UNKNOWN_DATA)?,
+        prefix_dictionary,
+        connection_cost_matrix,
+        character_definition,
+        unknown_dictionary,
         metadata,
     })
 }

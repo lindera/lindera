@@ -523,7 +523,7 @@ impl TrainerConfig {
         let cost_data_size = (matrix_size as usize) * (matrix_size as usize) * 2; // 2 bytes per cost
         matrix_data.extend(vec![0u8; cost_data_size]);
 
-        Ok(ConnectionCostMatrix::load(matrix_data))
+        Ok(ConnectionCostMatrix::load(matrix_data)?)
     }
 }
 

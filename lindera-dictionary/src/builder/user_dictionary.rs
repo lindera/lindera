@@ -230,7 +230,7 @@ impl UserDictionaryBuilder {
             }
         }
 
-        let dict = PrefixDictionary::load(da_bytes, vals_data, words_idx_data, words_data, false);
+        let dict = PrefixDictionary::load(da_bytes, vals_data, words_idx_data, words_data, false)?;
 
         Ok(UserDictionary { dict })
     }
