@@ -664,9 +664,9 @@ checksum = "52560adf09603e58c9a7ee1fe1dcb95a16927b17c127f0ac02d6e768a0e25bc1"
 
 [[package]]
 name = "daachorse"
-version = "1.0.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f55d7153ba3b507595872a3874803f07a8a81d1e888abed8e5db7da0597d6e2"
+checksum = "8aeeee06247cda0cae43eb40dd19dcb5360e38e839f870df54a97ca1be4cf1a7"
 
 [[package]]
 name = "darling"

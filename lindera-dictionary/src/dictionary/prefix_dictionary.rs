@@ -60,10 +60,9 @@ impl<D: Fallible + ?Sized>
         archived: &rkyv::vec::ArchivedVec<u8>,
         _deserializer: &mut D,
     ) -> Result<DoubleArrayAhoCorasick<u32>, D::Error> {
-        unsafe {
-            let (da, _) = DoubleArrayAhoCorasick::deserialize_unchecked(archived.as_slice());
-            Ok(da)
-        }
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(archived.as_slice())
+            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+        Ok(da)
     }
 }
 
@@ -84,10 +83,9 @@ mod double_array_serde {
         D: Deserializer<'de>,
     {
         let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-        unsafe {
-            let (da, _) = DoubleArrayAhoCorasick::deserialize_unchecked(&bytes);
-            Ok(da)
-        }
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(&bytes)
+            .expect("Failed to deserialize DoubleArrayAhoCorasick");
+        Ok(da)
     }
 }
 
@@ -111,7 +109,8 @@ impl PrefixDictionary {
         is_system: bool,
     ) -> PrefixDictionary {
         let da_bytes = da_data.into();
-        let (da, _) = unsafe { DoubleArrayAhoCorasick::deserialize_unchecked(&da_bytes[..]) };
+        let (da, _) = DoubleArrayAhoCorasick::deserialize(&da_bytes[..])
+            .expect("Failed to deserialize DoubleArrayAhoCorasick");
 
         PrefixDictionary {
             da,
@@ -242,8 +241,8 @@ impl PrefixDictionary {
 impl ArchivedPrefixDictionary {
     pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
         // Deserialize on the fly. Performance warning: this is slow.
-        let (da, _) =
-            unsafe { DoubleArrayAhoCorasick::<u32>::deserialize_unchecked(self.da.as_slice()) };
+        let (da, _) = DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice())
+            .expect("Failed to deserialize DoubleArrayAhoCorasick");
 
         let matches: Vec<_> = da
             .find_overlapping_iter(s)
@@ -279,8 +278,8 @@ impl ArchivedPrefixDictionary {
     }
 
     pub fn find_surface(&self, surface: &str) -> Vec<WordEntry> {
-        let (da, _) =
-            unsafe { DoubleArrayAhoCorasick::<u32>::deserialize_unchecked(self.da.as_slice()) };
+        let (da, _) = DoubleArrayAhoCorasick::<u32>::deserialize(self.da.as_slice())
+            .expect("Failed to deserialize DoubleArrayAhoCorasick");
 
         // Check if there is a match with start=0 and end=surface.len()
         let matches: Vec<_> = da
