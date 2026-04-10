@@ -1,0 +1,335 @@
+<!DOCTYPE HTML>
+<html lang="ja" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>学習 - Lindera ドキュメント</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lindera ドキュメント</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/lindera/lindera" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="学習"><a class="header" href="#学習">学習</a></h1>
+<p>Lindera PHP は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
+<h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
+<p><code>train</code> feature を有効にして lindera-php をビルドします（デフォルトで有効）：</p>
+<pre><code class="language-bash">cargo build -p lindera-php --features train
+</code></pre>
+<h2 id="モデルの学習"><a class="header" href="#モデルの学習">モデルの学習</a></h2>
+<p><code>Lindera\Trainer::train()</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
+<pre><code class="language-php">&lt;?php
+
+Lindera\Trainer::train(
+    '/path/to/seed.csv',         // seed: 種辞書ファイル
+    '/path/to/corpus.txt',       // corpus: アノテーション付きコーパス
+    '/path/to/char.def',         // char_def: 文字定義ファイル
+    '/path/to/unk.def',          // unk_def: 未知語定義ファイル
+    '/path/to/feature.def',      // feature_def: 素性定義ファイル
+    '/path/to/rewrite.def',      // rewrite_def: 書き換えルール定義ファイル
+    '/tmp/model.dat',            // output: 学習済みモデルの出力パス
+    0.01,                        // lambda: L1 正則化コスト
+    100,                         // max_iter: 最大イテレーション数
+    null                         // max_threads: スレッド数（null = 自動検出）
+);
+</code></pre>
+<h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$seed</code></td><td><code>string</code></td><td>必須</td><td>種辞書ファイルのパス（CSV 形式）</td></tr>
+<tr><td><code>$corpus</code></td><td><code>string</code></td><td>必須</td><td>アノテーション付き学習コーパスのパス</td></tr>
+<tr><td><code>$charDef</code></td><td><code>string</code></td><td>必須</td><td>文字定義ファイルのパス（char.def）</td></tr>
+<tr><td><code>$unkDef</code></td><td><code>string</code></td><td>必須</td><td>未知語定義ファイルのパス（unk.def）</td></tr>
+<tr><td><code>$featureDef</code></td><td><code>string</code></td><td>必須</td><td>素性定義ファイルのパス（feature.def）</td></tr>
+<tr><td><code>$rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
+<tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
+<tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
+<tr><td><code>$maxIter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td><code>$maxThreads</code></td><td><code>int</code> または <code>null</code></td><td><code>null</code></td><td>スレッド数（null = CPU コア数を自動検出）</td></tr>
+</tbody></table>
+</div>
+<h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>
+<p>学習後、<code>Lindera\Trainer::export()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
+<pre><code class="language-php">&lt;?php
+
+Lindera\Trainer::export(
+    '/tmp/model.dat',                    // model: 学習済みモデルファイル
+    '/tmp/dictionary_source',            // output: 出力ディレクトリ
+    '/path/to/metadata.json'             // metadata: メタデータファイル（省略可）
+);
+</code></pre>
+<h3 id="エクスポートパラメータ"><a class="header" href="#エクスポートパラメータ">エクスポートパラメータ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$model</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルのパス（.dat）</td></tr>
+<tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>辞書ソースファイルの出力ディレクトリ</td></tr>
+<tr><td><code>$metadata</code></td><td><code>string</code> または <code>null</code></td><td><code>null</code></td><td>ベースとなる metadata.json ファイルのパス</td></tr>
+</tbody></table>
+</div>
+<p>エクスポートにより、出力ディレクトリに以下のファイルが作成されます：</p>
+<ul>
+<li><code>lex.csv</code> -- 学習済みコスト付きのレキシコンエントリー</li>
+<li><code>matrix.def</code> -- 連接コスト行列</li>
+<li><code>unk.def</code> -- 未知語定義</li>
+<li><code>char.def</code> -- 文字カテゴリ定義</li>
+<li><code>metadata.json</code> -- 更新されたメタデータ（<code>$metadata</code> パラメータ指定時）</li>
+</ul>
+<h2 id="完全なワークフロー"><a class="header" href="#完全なワークフロー">完全なワークフロー</a></h2>
+<p>カスタム辞書の学習と使用の完全なワークフロー：</p>
+<pre><code class="language-php">&lt;?php
+
+// Step 1: Train the CRF model
+Lindera\Trainer::train(
+    'resources/training/seed.csv',
+    'resources/training/corpus.txt',
+    'resources/training/char.def',
+    'resources/training/unk.def',
+    'resources/training/feature.def',
+    'resources/training/rewrite.def',
+    '/tmp/model.dat',
+    0.01,   // lambda
+    100,    // max_iter
+    null    // max_threads
+);
+
+// Step 2: Export to dictionary source files
+Lindera\Trainer::export(
+    '/tmp/model.dat',
+    '/tmp/dictionary_source',
+    'resources/training/metadata.json'
+);
+
+// Step 3: Build the dictionary from exported source files
+$metadata = Lindera\Metadata::fromJsonFile('/tmp/dictionary_source/metadata.json');
+Lindera\Dictionary::build('/tmp/dictionary_source', '/tmp/dictionary', $metadata);
+
+// Step 4: Use the trained dictionary
+$dictionary = Lindera\Dictionary::load('/tmp/dictionary');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+$tokens = $tokenizer-&gt;tokenize('形態素解析のテスト');
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\t" . implode(',', $token-&gt;details) . "\n";
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../lindera-php/text_processing_pipeline.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../lindera-wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../lindera-php/text_processing_pipeline.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../lindera-wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

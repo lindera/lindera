@@ -186,6 +186,7 @@
 <li>Tokenize the input text</li>
 <li>Output the tokens</li>
 </ul>
+<p>First, download a pre-built IPADIC dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and extract it to a local directory (e.g., <code>/path/to/ipadic</code>).</p>
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
@@ -193,7 +194,7 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
-    let dictionary = load_dictionary("embedded://ipadic")?;
+    let dictionary = load_dictionary("/path/to/ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -208,8 +209,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>The above example can be run as follows:</p>
-<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize
+<pre><code class="language-shell">% cargo run --example=tokenize
 </code></pre>
+<blockquote>
+<p>[!TIP]
+If you embed the dictionary into the binary using the <code>embed-ipadic</code> feature (advanced usage), you can use <code>load_dictionary("embedded://ipadic")</code> instead of specifying a file path. See <a href="../development/feature_flags.html">Feature Flags</a> for details.</p>
+</blockquote>
 <p>You can see the result as follows:</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ
 token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー

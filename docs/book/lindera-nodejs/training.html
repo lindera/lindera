@@ -186,7 +186,7 @@
 </code></pre>
 <h2 id="training-a-model"><a class="header" href="#training-a-model">Training a Model</a></h2>
 <p>Use <code>train()</code> to train a CRF model from a seed lexicon and annotated corpus:</p>
-<pre><code class="language-javascript">const { train } = require("lindera");
+<pre><code class="language-javascript">const { train } = require("lindera-nodejs");
 
 train({
   seed: "resources/training/seed.csv",
@@ -217,7 +217,7 @@ train({
 </div>
 <h2 id="exporting-a-trained-model"><a class="header" href="#exporting-a-trained-model">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>exportModel()</code>:</p>
-<pre><code class="language-javascript">const { exportModel } = require("lindera");
+<pre><code class="language-javascript">const { exportModel } = require("lindera-nodejs");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -248,7 +248,7 @@ exportModel({
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera");
+} = require("lindera-nodejs");
 
 // Step 1: Train the CRF model
 train({
@@ -294,7 +294,7 @@ for (const token of tokens) {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../lindera-wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../lindera-ruby.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -308,7 +308,7 @@ for (const token of tokens) {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../lindera-wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../lindera-ruby.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

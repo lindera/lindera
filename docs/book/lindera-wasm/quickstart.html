@@ -179,7 +179,53 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
-<h2 id="web-browser"><a class="header" href="#web-browser">Web (Browser)</a></h2>
+<h2 id="web-browser----opfs-dictionary-loading"><a class="header" href="#web-browser----opfs-dictionary-loading">Web (Browser) -- OPFS Dictionary Loading</a></h2>
+<p>The recommended approach is to download dictionaries at runtime using the OPFS helpers:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    await __wbg_init();
+
+    // Download dictionary if not cached
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+            "ipadic",
+        );
+    }
+
+    // Load dictionary from OPFS
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    // Build tokenizer
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
+    tokens.forEach(token =&gt; {
+        console.log(`${token.surface}\t${token.details.join(',')}`);
+    });
+}
+
+main();
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a>. See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
+</blockquote>
+<p>Expected output:</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
+</code></pre>
+<h2 id="using-embedded-dictionaries-advanced"><a class="header" href="#using-embedded-dictionaries-advanced">Using Embedded Dictionaries (Advanced)</a></h2>
+<p>If you built with an <code>embed-*</code> feature flag, you can use embedded dictionaries:</p>
 <pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
@@ -198,20 +244,23 @@ async function main() {
 
 main();
 </code></pre>
-<p>Expected output:</p>
-<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
-限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    名詞,一般,*,*,*,*,*,*,*
-</code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 async function main() {
     await __wbg_init();
 
+    // Assume dictionary is already cached in OPFS
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
     const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
+    builder.setDictionaryInstance(dictionary);
     builder.setMode("normal");
 
     // Add Unicode NFKC normalization

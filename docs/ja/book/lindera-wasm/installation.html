@@ -184,16 +184,31 @@
 <li><a href="https://www.rust-lang.org/tools/install">Rust</a>（stable ツールチェーン）</li>
 <li><a href="https://rustwasm.github.io/wasm-pack/installer/">wasm-pack</a>（v0.10 以降）</li>
 </ul>
+<h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
+<p>Lindera WASM はデフォルトで辞書を同梱しません。ブラウザ環境では、OPFS（Origin Private File System）API を使用して辞書を実行時にダウンロードする方法を推奨します。</p>
+<h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。ブラウザ環境では、OPFS ヘルパーを使用して辞書をダウンロードしてキャッシュします：</p>
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+
+if (!await hasDictionary("ipadic")) {
+    await downloadDictionary(
+        "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+        "ipadic",
+    );
+}
+</code></pre>
+<p>詳細は <a href="./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
 <h2 id="wasm-pack-によるビルド"><a class="header" href="#wasm-pack-によるビルド">wasm-pack によるビルド</a></h2>
-<p>ターゲット環境に合わせて WASM パッケージをビルドします。辞書を埋め込むには、少なくとも1つの辞書 feature フラグを有効にする必要があります。</p>
+<p>ターゲット環境に合わせて WASM パッケージをビルドします：</p>
 <h3 id="webブラウザ向け-es-modules"><a class="header" href="#webブラウザ向け-es-modules">Web（ブラウザ向け ES Modules）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
 <h3 id="バンドラーwebpackviterollup"><a class="header" href="#バンドラーwebpackviterollup">バンドラー（Webpack、Vite、Rollup）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target bundler
 </code></pre>
 <p>出力は <code>lindera-wasm</code> クレート内の <code>pkg/</code> ディレクトリに書き込まれます。</p>
-<h2 id="利用可能な-feature-フラグ"><a class="header" href="#利用可能な-feature-フラグ">利用可能な Feature フラグ</a></h2>
+<h2 id="利用可能な-feature-フラグ上級者向け"><a class="header" href="#利用可能な-feature-フラグ上級者向け">利用可能な Feature フラグ（上級者向け）</a></h2>
+<p>辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>日本語</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic</td><td>日本語</td></tr>
@@ -220,12 +235,16 @@ lindera-wasm-{target}-{dict}
 </ul>
 <p>公開前にパッケージ名を設定するには、生成された <code>pkg/package.json</code> の <code>name</code> フィールドを編集します。</p>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
-<p>ビルド済みパッケージが npm に公開されている場合：</p>
-<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
+<p>ビルド済みパッケージが npm で公開されています：</p>
+<pre><code class="language-bash">npm install lindera-wasm-web
 </code></pre>
 <p>または yarn で：</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
+<pre><code class="language-bash">yarn add lindera-wasm-web
 </code></pre>
+<blockquote>
+<p>[!NOTE]
+npm パッケージには辞書が含まれていません。OPFS ヘルパーを使用して辞書を実行時にダウンロードしてください。詳細は <a href="./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
+</blockquote>
 
                     </main>
 

@@ -179,7 +179,53 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="クイックスタート"><a class="header" href="#クイックスタート">クイックスタート</a></h1>
-<h2 id="webブラウザ"><a class="header" href="#webブラウザ">Web（ブラウザ）</a></h2>
+<h2 id="webブラウザ----opfs-辞書ロード"><a class="header" href="#webブラウザ----opfs-辞書ロード">Web（ブラウザ） -- OPFS 辞書ロード</a></h2>
+<p>推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    await __wbg_init();
+
+    // キャッシュされていない場合は辞書をダウンロード
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+            "ipadic",
+        );
+    }
+
+    // OPFS から辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    // トークナイザーを構築
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
+    tokens.forEach(token =&gt; {
+        console.log(`${token.surface}\t${token.details.join(',')}`);
+    });
+}
+
+main();
+</code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードしてください。完全なワークフローは <a href="./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
+</blockquote>
+<p>期待される出力：</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
+</code></pre>
+<h2 id="埋め込み辞書の使用上級者向け"><a class="header" href="#埋め込み辞書の使用上級者向け">埋め込み辞書の使用（上級者向け）</a></h2>
+<p><code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
 <pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
@@ -198,20 +244,23 @@ async function main() {
 
 main();
 </code></pre>
-<p>期待される出力：</p>
-<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
-限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    名詞,一般,*,*,*,*,*,*,*
-</code></pre>
 <h2 id="フィルタの使用"><a class="header" href="#フィルタの使用">フィルタの使用</a></h2>
 <p>トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 async function main() {
     await __wbg_init();
 
+    // OPFS にキャッシュ済みの辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
     const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
+    builder.setDictionaryInstance(dictionary);
     builder.setMode("normal");
 
     // Add Unicode NFKC normalization

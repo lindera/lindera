@@ -184,7 +184,7 @@
 <h3 id="constructors"><a class="header" href="#constructors">Constructors</a></h3>
 <h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
 <p>Creates a new builder with default configuration.</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 </code></pre>
@@ -236,7 +236,7 @@ builder.setDictionary("/path/to/dictionary");
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
 <h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera-nodejs");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");

@@ -189,8 +189,6 @@
 ├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
-├── compress.rs          # Dictionary compression
-├── decompress.rs        # Dictionary decompression
 ├── assets.rs            # Download and file management
 ├── dictionary/
 │   ├── character_definition.rs    # Character type definitions
@@ -234,7 +232,6 @@
 </ol>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>Dictionary compression support</td><td>Yes</td></tr>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
 <tr><td><code>train</code></td><td>CRF-based training (depends on lindera-crf)</td><td>No</td></tr>

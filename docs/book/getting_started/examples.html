@@ -180,22 +180,23 @@
                     <main>
                         <h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
 <p>Lindera includes several example programs that demonstrate common use cases. The source code is available in the <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examples directory</a> on GitHub.</p>
+<p>Before running the examples, download a pre-built IPADIC dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and extract it to a local directory.</p>
 <h2 id="available-examples"><a class="header" href="#available-examples">Available Examples</a></h2>
 <h3 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h3>
-<p>Basic tokenization using the embedded IPADIC dictionary. Segments input text and prints each token with its part-of-speech details.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize
+<p>Basic tokenization using an external IPADIC dictionary. Segments input text and prints each token with its part-of-speech details.</p>
+<pre><code class="language-shell">cargo run --example=tokenize
 </code></pre>
 <h3 id="tokenize_with_user_dict"><a class="header" href="#tokenize_with_user_dict">tokenize_with_user_dict</a></h3>
-<p>Tokenization with a user dictionary. Shows how to supplement the built-in dictionary with custom entries for domain-specific terms.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_user_dict
+<p>Tokenization with a user dictionary. Shows how to supplement the dictionary with custom entries for domain-specific terms.</p>
+<pre><code class="language-shell">cargo run --example=tokenize_with_user_dict
 </code></pre>
 <h3 id="tokenize_with_filters"><a class="header" href="#tokenize_with_filters">tokenize_with_filters</a></h3>
 <p>Tokenization with character filters and token filters. Demonstrates the text processing pipeline, including Unicode normalization, part-of-speech filtering, and other transformations.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">cargo run --example=tokenize_with_filters
 </code></pre>
 <h3 id="tokenize_with_config"><a class="header" href="#tokenize_with_config">tokenize_with_config</a></h3>
 <p>Tokenization using a YAML configuration file. Shows how to configure the tokenizer declaratively instead of programmatically.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_config
+<pre><code class="language-shell">cargo run --example=tokenize_with_config
 </code></pre>
 
                     </main>

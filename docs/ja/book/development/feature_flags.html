@@ -182,17 +182,23 @@
 <p>Lindera は Cargo の feature フラグを使用して、オプション機能と辞書の埋め込みを制御します。</p>
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>辞書の圧縮サポート</td><td>有効</td></tr>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-crf</code> に依存）</td><td>CLI のみ</td></tr>
 </tbody></table>
 </div>
 <ul>
-<li><code>compress</code> と <code>mmap</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。</li>
+<li><code>mmap</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。</li>
 <li><code>train</code> はデフォルトでは <code>lindera-cli</code> でのみ有効です。ライブラリとして使用する場合は <code>--features train</code> で明示的に有効にしてください。</li>
 </ul>
-<h2 id="辞書埋め込み-feature"><a class="header" href="#辞書埋め込み-feature">辞書埋め込み Feature</a></h2>
-<p>これらの feature はビルド済み辞書をバイナリに直接埋め込み、実行時に外部辞書ファイルを不要にします。</p>
+<h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
+<p>推奨される方法は、ビルド済み辞書を外部ファイルとして使用することです。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、実行時にそのパスを指定してください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>この使用方法では、追加の feature フラグは不要です。</p>
+<h2 id="辞書埋め込み-feature上級者向け"><a class="header" href="#辞書埋め込み-feature上級者向け">辞書埋め込み Feature（上級者向け）</a></h2>
+<p>これらの feature はビルド済み辞書をバイナリに直接埋め込み、実行時に外部辞書ファイルを不要にします。自己完結型バイナリが必要な上級者向けの機能です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>日本語</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd</td><td>日本語</td></tr>
@@ -206,7 +212,12 @@
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
-<h2 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h2>
+<p>埋め込みを有効にした場合、以下のように辞書を読み込めます：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h3>
 <p>多言語アプリケーション向けに、複数の辞書を一度に有効にするメタ Feature です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>含まれる辞書</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
@@ -214,7 +225,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 <tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
-<h2 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h2>
+<h3 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h3>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }

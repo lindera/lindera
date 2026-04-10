@@ -182,11 +182,11 @@
 <p>This guide shows how to tokenize text using lindera-nodejs.</p>
 <h2 id="basic-tokenization"><a class="header" href="#basic-tokenization">Basic Tokenization</a></h2>
 <p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -194,6 +194,9 @@ for (const token of tokens) {
   console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 </code></pre>
+<blockquote>
+<p><strong>Note:</strong> Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify the path to the extracted directory.</p>
+</blockquote>
 <p>Expected output:</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
@@ -201,11 +204,11 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="method-chaining"><a class="header" href="#method-chaining">Method Chaining</a></h2>
 <p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
@@ -215,10 +218,10 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="accessing-token-properties"><a class="header" href="#accessing-token-properties">Accessing Token Properties</a></h2>
 <p>Each token exposes the following properties:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("東京タワー");
@@ -234,10 +237,10 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="n-best-tokenization"><a class="header" href="#n-best-tokenization">N-best Tokenization</a></h2>
 <p>Retrieve multiple tokenization candidates ranked by cost:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -248,11 +251,11 @@ for (const { tokens, cost } of results) {
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
 <p>Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:</p>
-<pre><code class="language-typescript">import { TokenizerBuilder, Token } from "lindera";
+<pre><code class="language-typescript">import { TokenizerBuilder, Token } from "lindera-nodejs";
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");

@@ -1,5 +1,4 @@
 {
-  "compress_algorithm": "deflate",
   "default_field_value": "*",
   "default_left_context_id": 0,
   "default_right_context_id": 0,

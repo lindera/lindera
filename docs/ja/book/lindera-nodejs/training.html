@@ -186,7 +186,7 @@
 </code></pre>
 <h2 id="モデルの学習"><a class="header" href="#モデルの学習">モデルの学習</a></h2>
 <p><code>train()</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
-<pre><code class="language-javascript">const { train } = require("lindera");
+<pre><code class="language-javascript">const { train } = require("lindera-nodejs");
 
 train({
   seed: "resources/training/seed.csv",
@@ -217,7 +217,7 @@ train({
 </div>
 <h2 id="学習済みモデルのエクスポート"><a class="header" href="#学習済みモデルのエクスポート">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>exportModel()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
-<pre><code class="language-javascript">const { exportModel } = require("lindera");
+<pre><code class="language-javascript">const { exportModel } = require("lindera-nodejs");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -248,7 +248,7 @@ exportModel({
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera");
+} = require("lindera-nodejs");
 
 // Step 1: Train the CRF model
 train({
@@ -294,7 +294,7 @@ for (const token of tokens) {
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../lindera-wasm.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../lindera-ruby.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -308,7 +308,7 @@ for (const token of tokens) {
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../lindera-wasm.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../lindera-ruby.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

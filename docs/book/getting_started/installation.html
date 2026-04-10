@@ -181,8 +181,24 @@
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 </code></pre>
+<h2 id="dictionary-setup"><a class="header" href="#dictionary-setup">Dictionary Setup</a></h2>
+<p>Lindera requires a pre-built dictionary at runtime. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path when loading:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding <code>embed-*</code> feature flag and load it using the <code>embedded://</code> scheme:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>See <a href="../development/feature_flags.html">Feature Flags</a> for details.</p>
+</blockquote>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
 <p>The <code>LINDERA_DICTIONARIES_PATH</code> environment variable specifies a directory for caching dictionary source files. This enables:</p>

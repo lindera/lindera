@@ -188,39 +188,50 @@
 <ul>
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
+<h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
+<p>Lindera does not bundle dictionaries with the binary. You need to download a pre-built dictionary separately from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
+<pre><code class="language-shell"># Example: download and extract the IPADIC dictionary
+% curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+% unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
+</code></pre>
+<p>Then specify the dictionary path when using the CLI:</p>
+<pre><code class="language-shell">% lindera tokenize --dictionary /path/to/ipadic "関西国際空港限定トートバッグ"
+</code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from Source</a></h2>
-<h3 id="build-with-ipadic-japanese-dictionary"><a class="header" href="#build-with-ipadic-japanese-dictionary">Build with IPADIC (Japanese dictionary)</a></h3>
-<p>The "ipadic" feature flag allows Lindera to include IPADIC.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ipadic
-</code></pre>
-<h3 id="build-with-ipadic-neologd-japanese-dictionary"><a class="header" href="#build-with-ipadic-neologd-japanese-dictionary">Build with IPADIC NEologd (Japanese dictionary)</a></h3>
-<p>The "ipadic-neologd" feature flag allows Lindera to include IPADIC NEologd.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
-</code></pre>
-<h3 id="build-with-unidic-japanese-dictionary"><a class="header" href="#build-with-unidic-japanese-dictionary">Build with UniDic (Japanese dictionary)</a></h3>
-<p>The "unidic" feature flag allows Lindera to include UniDic.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-unidic
-</code></pre>
-<h3 id="build-with-ko-dic-korean-dictionary"><a class="header" href="#build-with-ko-dic-korean-dictionary">Build with ko-dic (Korean dictionary)</a></h3>
-<p>The "ko-dic" feature flag allows Lindera to include ko-dic.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ko-dic
-</code></pre>
-<h3 id="build-with-cc-cedict-chinese-dictionary"><a class="header" href="#build-with-cc-cedict-chinese-dictionary">Build with CC-CEDICT (Chinese dictionary)</a></h3>
-<p>The "cc-cedict" feature flag allows Lindera to include CC-CEDICT.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-cc-cedict
-</code></pre>
-<h3 id="build-with-jieba-chinese-dictionary"><a class="header" href="#build-with-jieba-chinese-dictionary">Build with Jieba (Chinese dictionary)</a></h3>
-<p>The "jieba" feature flag allows Lindera to include Jieba.</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-jieba
-</code></pre>
-<h3 id="build-without-dictionaries"><a class="header" href="#build-without-dictionaries">Build without dictionaries</a></h3>
-<p>To reduce Lindera's binary size, omit the feature flag.
-This results in a binary containing only the tokenizer and trainer, as it no longer includes the dictionary.</p>
+<h3 id="build-without-dictionaries-default"><a class="header" href="#build-without-dictionaries-default">Build without dictionaries (default)</a></h3>
+<p>Build a binary containing only the tokenizer and trainer without embedded dictionaries:</p>
 <pre><code class="language-shell">% cargo build --release
 </code></pre>
 <h3 id="build-with-all-features"><a class="header" href="#build-with-all-features">Build with all features</a></h3>
 <pre><code class="language-shell">% cargo build --release --all-features
 </code></pre>
+<h3 id="build-with-embedded-dictionaries-advanced"><a class="header" href="#build-with-embedded-dictionaries-advanced">Build with Embedded Dictionaries (Advanced)</a></h3>
+<p>For advanced users who want to embed dictionaries directly into the binary, use the <code>embed-*</code> feature flags. This eliminates the need for external dictionary files at runtime but increases the binary size.</p>
+<h4 id="ipadic-japanese-dictionary"><a class="header" href="#ipadic-japanese-dictionary">IPADIC (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic
+</code></pre>
+<h4 id="ipadic-neologd-japanese-dictionary"><a class="header" href="#ipadic-neologd-japanese-dictionary">IPADIC NEologd (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
+</code></pre>
+<h4 id="unidic-japanese-dictionary"><a class="header" href="#unidic-japanese-dictionary">UniDic (Japanese dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-unidic
+</code></pre>
+<h4 id="ko-dic-korean-dictionary"><a class="header" href="#ko-dic-korean-dictionary">ko-dic (Korean dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ko-dic
+</code></pre>
+<h4 id="cc-cedict-chinese-dictionary"><a class="header" href="#cc-cedict-chinese-dictionary">CC-CEDICT (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-cc-cedict
+</code></pre>
+<h4 id="jieba-chinese-dictionary"><a class="header" href="#jieba-chinese-dictionary">Jieba (Chinese dictionary)</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-jieba
+</code></pre>
+<blockquote>
+<p>[!TIP]
+After building with an <code>embed-*</code> feature flag, use the <code>embedded://</code> scheme to load the embedded dictionary:</p>
+<pre><code class="language-shell">% lindera tokenize --dictionary embedded://ipadic "関西国際空港限定トートバッグ"
+</code></pre>
+<p>See <a href="../development/feature_flags.html">Feature Flags</a> for details.</p>
+</blockquote>
 
                     </main>
 

@@ -180,22 +180,23 @@
                     <main>
                         <h1 id="サンプル"><a class="header" href="#サンプル">サンプル</a></h1>
 <p>Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examplesディレクトリ</a> で確認できます。</p>
+<p>サンプルを実行する前に、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリに展開してください。</p>
 <h2 id="利用可能なサンプル"><a class="header" href="#利用可能なサンプル">利用可能なサンプル</a></h2>
 <h3 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h3>
-<p>埋め込みIPADIC辞書を使用した基本的なトークナイズです。入力テキストを分割し、各トークンの品詞情報を表示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize
+<p>外部IPADIC辞書を使用した基本的なトークナイズです。入力テキストを分割し、各トークンの品詞情報を表示します。</p>
+<pre><code class="language-shell">cargo run --example=tokenize
 </code></pre>
 <h3 id="tokenize_with_user_dict"><a class="header" href="#tokenize_with_user_dict">tokenize_with_user_dict</a></h3>
-<p>ユーザー辞書を使用したトークナイズです。ドメイン固有の用語のために、組み込み辞書をカスタムエントリで補完する方法を示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_user_dict
+<p>ユーザー辞書を使用したトークナイズです。ドメイン固有の用語のために、辞書をカスタムエントリで補完する方法を示します。</p>
+<pre><code class="language-shell">cargo run --example=tokenize_with_user_dict
 </code></pre>
 <h3 id="tokenize_with_filters"><a class="header" href="#tokenize_with_filters">tokenize_with_filters</a></h3>
 <p>キャラクターフィルターとトークンフィルターを使用したトークナイズです。Unicode正規化、品詞フィルタリングなどの変換を含むテキスト処理パイプラインを実演します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">cargo run --example=tokenize_with_filters
 </code></pre>
 <h3 id="tokenize_with_config"><a class="header" href="#tokenize_with_config">tokenize_with_config</a></h3>
 <p>YAML設定ファイルを使用したトークナイズです。プログラムではなく宣言的にトークナイザーを設定する方法を示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_config
+<pre><code class="language-shell">cargo run --example=tokenize_with_config
 </code></pre>
 
                     </main>

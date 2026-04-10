@@ -182,43 +182,42 @@
 <p>Lindera Node.js provides functions for loading, building, and managing dictionaries used in morphological analysis.</p>
 <h2 id="loading-dictionaries"><a class="header" href="#loading-dictionaries">Loading Dictionaries</a></h2>
 <h3 id="system-dictionaries"><a class="header" href="#system-dictionaries">System Dictionaries</a></h3>
-<p>Use <code>loadDictionary(uri)</code> to load a system dictionary.</p>
-<p><strong>Embedded dictionaries</strong> (requires the corresponding <code>embed-*</code> feature):</p>
-<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
+<p>Use <code>loadDictionary(uri)</code> to load a system dictionary. Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify the path to the extracted directory:</p>
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 </code></pre>
-<p><strong>External dictionaries</strong> (loaded from a directory on disk):</p>
-<pre><code class="language-javascript">const dictionary = loadDictionary("/path/to/dictionary");
+<p><strong>Embedded dictionaries (advanced)</strong> -- if you built with an <code>embed-*</code> feature flag, you can load an embedded dictionary:</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
 <h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
 <p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
-<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <p>Or via the builder:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .setUserDictionary("/path/to/user_dictionary")
   .build();
 </code></pre>
 <h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>
 <h3 id="system-dictionary"><a class="header" href="#system-dictionary">System Dictionary</a></h3>
 <p>Build a system dictionary from source files:</p>
-<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -226,7 +225,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <h3 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
-<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -237,7 +236,7 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata"><a class="header" href="#creating-metadata">Creating Metadata</a></h3>
-<pre><code class="language-javascript">const { Metadata, CompressionAlgorithm } = require("lindera");
+<pre><code class="language-javascript">const { Metadata } = require("lindera-nodejs");
 
 // Default metadata
 const metadata = new Metadata();
@@ -246,7 +245,6 @@ const metadata = new Metadata();
 const metadata = new Metadata({
   name: "my_dictionary",
   encoding: "UTF-8",
-  compressAlgorithm: CompressionAlgorithm.Deflate,
   defaultWordCost: -10000,
 });
 </code></pre>
@@ -257,7 +255,6 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
-<tr><td><code>compressAlgorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>Compression algorithm</td></tr>
 <tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>Default cost for unknown words</td></tr>
 <tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default left context ID</td></tr>
 <tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>Default right context ID</td></tr>
@@ -280,13 +277,50 @@ console.log(metadata.name); // "custom_dict"
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
 </code></pre>
-<h3 id="compressionalgorithm"><a class="header" href="#compressionalgorithm">CompressionAlgorithm</a></h3>
-<p>Available compression algorithms:</p>
+<h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
+<p>The <code>Schema</code> class defines the field structure of dictionary entries.</p>
+<h3 id="creating-a-schema"><a class="header" href="#creating-a-schema">Creating a Schema</a></h3>
+<pre><code class="language-javascript">const { Schema } = require("lindera-nodejs");
+
+// Default IPADIC-compatible schema
+const schema = Schema.createDefault();
+
+// Custom schema
+const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+</code></pre>
+<h3 id="schema-methods"><a class="header" href="#schema-methods">Schema Methods</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>getFieldIndex(name)</code></td><td><code>number | null</code></td><td>Get field index by name</td></tr>
+<tr><td><code>fieldCount()</code></td><td><code>number</code></td><td>Total number of fields</td></tr>
+<tr><td><code>getFieldName(index)</code></td><td><code>string | null</code></td><td>Get field name by index</td></tr>
+<tr><td><code>getCustomFields()</code></td><td><code>string[]</code></td><td>Fields beyond index 4 (morphological features)</td></tr>
+<tr><td><code>getAllFields()</code></td><td><code>string[]</code></td><td>All field names</td></tr>
+<tr><td><code>getFieldByName(name)</code></td><td><code>FieldDefinition | null</code></td><td>Get full field definition</td></tr>
+<tr><td><code>validateRecord(record)</code></td><td><code>void</code></td><td>Validate a CSV record against the schema</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const schema = Schema.createDefault();
+
+console.log(schema.fieldCount());           // 13 (IPADIC format)
+console.log(schema.getFieldIndex("pos1"));  // e.g., 4
+console.log(schema.getAllFields());          // ["surface", "left_id", ...]
+console.log(schema.getCustomFields());      // Fields after index 4
+</code></pre>
+<h3 id="fielddefinition"><a class="header" href="#fielddefinition">FieldDefinition</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>Field position index</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>Field name</td></tr>
+<tr><td><code>fieldType</code></td><td><code>FieldType</code></td><td>Field type enum</td></tr>
+<tr><td><code>description</code></td><td><code>string | undefined</code></td><td>Optional description</td></tr>
+</tbody></table>
+</div>
+<h3 id="fieldtype"><a class="header" href="#fieldtype">FieldType</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE compression (default)</td></tr>
-<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib compression</td></tr>
-<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip compression</td></tr>
-<tr><td><code>CompressionAlgorithm.Raw</code></td><td>No compression</td></tr>
+<tr><td><code>FieldType.Surface</code></td><td>Word surface text</td></tr>
+<tr><td><code>FieldType.LeftContextId</code></td><td>Left context ID</td></tr>
+<tr><td><code>FieldType.RightContextId</code></td><td>Right context ID</td></tr>
+<tr><td><code>FieldType.Cost</code></td><td>Word cost</td></tr>
+<tr><td><code>FieldType.Custom</code></td><td>Morphological feature field</td></tr>
 </tbody></table>
 </div>
                     </main>

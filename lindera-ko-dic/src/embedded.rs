@@ -19,7 +19,7 @@ macro_rules! kodic_data {
     };
 }
 
-// Metadata-specific macro (skips compression/decompression processing)
+// Metadata-specific macro
 macro_rules! kodic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "embed-ko-dic")]
