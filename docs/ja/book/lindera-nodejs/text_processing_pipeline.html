@@ -190,7 +190,7 @@
 <p>文字フィルタはトークナイズ前に入力テキストを変換します。</p>
 <h3 id="unicode_normalize"><a class="header" href="#unicode_normalize">unicode_normalize</a></h3>
 <p>入力テキストに Unicode 正規化を適用します。</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -256,7 +256,7 @@ const tokenizer = new TokenizerBuilder()
 </code></pre>
 <h2 id="パイプラインの完全な例"><a class="header" href="#パイプラインの完全な例">パイプラインの完全な例</a></h2>
 <p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

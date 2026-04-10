@@ -19,7 +19,7 @@ macro_rules! unidic_data {
     };
 }
 
-// Metadata-specific macro (skips compression/decompression processing)
+// Metadata-specific macro
 macro_rules! unidic_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "embed-unidic")]

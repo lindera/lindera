@@ -189,6 +189,22 @@
 <tr><td><a href="../lindera-jieba.html">Jieba</a></td><td>Chinese</td><td><code>lindera-jieba</code></td><td>Jieba-based Chinese dictionary</td></tr>
 </tbody></table>
 </div>
+<h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
+<p>Pre-built dictionaries are available for download from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a>. Download the dictionary archive for your target language and extract it to a local directory.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Load an external dictionary from a local path
+let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+If you need a self-contained binary without external dictionary files, you can embed dictionaries using the <code>embed-*</code> feature flags and load them using the <code>embedded://</code> scheme:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>See <a href="../development/feature_flags.html">Feature Flags</a> for details.</p>
+</blockquote>
 <p>See each dictionary crate's documentation for format details, build instructions, and usage examples.</p>
 
                     </main>

@@ -186,13 +186,16 @@
 
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
 tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")
 for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 </code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、展開したディレクトリのパスを指定してください。</p>
+</blockquote>
 <p>期待される出力：</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
@@ -205,7 +208,7 @@ for token in tokens:
 tokenizer = (
     TokenizerBuilder()
     .set_mode("normal")
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .build()
 )
 
@@ -217,7 +220,7 @@ for token in tokens:
 <p>各トークンは以下のプロパティを公開しています：</p>
 <pre><code class="language-python">from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 tokens = tokenizer.tokenize("東京タワー")
 
 for token in tokens:
@@ -233,7 +236,7 @@ for token in tokens:
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
 <pre><code class="language-python">from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 results = tokenizer.tokenize_nbest("すもももももももものうち", n=3)
 
 for tokens, cost in results:

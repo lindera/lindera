@@ -189,8 +189,6 @@
 ├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
-├── compress.rs          # 辞書圧縮
-├── decompress.rs        # 辞書展開
 ├── assets.rs            # ダウンロードとファイル管理
 ├── dictionary/
 │   ├── character_definition.rs    # 文字種定義
@@ -234,7 +232,6 @@
 </ol>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>辞書圧縮サポート</td><td>Yes</td></tr>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
 <tr><td><code>train</code></td><td>CRFベースの学習（lindera-crfに依存）</td><td>No</td></tr>

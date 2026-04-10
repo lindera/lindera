@@ -182,17 +182,23 @@
 <p>Lindera uses Cargo feature flags to control optional functionality and dictionary embedding.</p>
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>Dictionary compression support</td><td>Yes</td></tr>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
 </tbody></table>
 </div>
 <ul>
-<li><code>compress</code> and <code>mmap</code> are enabled by default in the main <code>lindera</code> crate.</li>
+<li><code>mmap</code> is enabled by default in the main <code>lindera</code> crate.</li>
 <li><code>train</code> is enabled by default only in <code>lindera-cli</code>. For library usage, enable it explicitly with <code>--features train</code>.</li>
 </ul>
-<h2 id="dictionary-embedding-features"><a class="header" href="#dictionary-embedding-features">Dictionary Embedding Features</a></h2>
-<p>These features embed pre-built dictionaries directly into the binary, eliminating the need for external dictionary files at runtime.</p>
+<h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>
+<p>The recommended approach is to use pre-built dictionaries as external files. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path at runtime:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>No additional feature flags are required for this usage.</p>
+<h2 id="dictionary-embedding-features-advanced"><a class="header" href="#dictionary-embedding-features-advanced">Dictionary Embedding Features (Advanced)</a></h2>
+<p>These features embed pre-built dictionaries directly into the binary, eliminating the need for external dictionary files at runtime. This is intended for advanced users who need self-contained binaries.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Dictionary</th><th>Language</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>Japanese</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd</td><td>Japanese</td></tr>
@@ -206,7 +212,12 @@
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
-<h2 id="combination-features"><a class="header" href="#combination-features">Combination Features</a></h2>
+<p>When embedding is enabled, you can load the dictionary with:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="combination-features"><a class="header" href="#combination-features">Combination Features</a></h3>
 <p>These meta-features enable multiple dictionaries at once for multilingual applications.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Included Dictionaries</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
@@ -214,7 +225,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 <tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
-<h2 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h2>
+<h3 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h3>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }

@@ -322,7 +322,6 @@ Output Tokens
 <p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>辞書の圧縮サポート</td><td>有効</td></tr>
 <tr><td><code>mmap</code></td><td>辞書読み込みのためのメモリマップドファイルサポート</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLIのみ</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
@@ -349,8 +348,24 @@ Output Tokens
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 </code></pre>
+<h2 id="辞書のセットアップ"><a class="header" href="#辞書のセットアップ">辞書のセットアップ</a></h2>
+<p>Linderaの実行にはビルド済み辞書が必要です。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、読み込み時にそのパスを指定してください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
 <p><code>LINDERA_DICTIONARIES_PATH</code> 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：</p>
@@ -387,6 +402,7 @@ cargo build --features=ipadic
 <li>入力テキストをトークナイズ（形態素解析）</li>
 <li>トークンを出力</li>
 </ul>
+<p>まず、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリ（例: <code>/path/to/ipadic</code>）に展開してください。</p>
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
@@ -394,7 +410,7 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
-    let dictionary = load_dictionary("embedded://ipadic")?;
+    let dictionary = load_dictionary("/path/to/ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -409,8 +425,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>上記の例は以下のように実行できます：</p>
-<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize
+<pre><code class="language-shell">% cargo run --example=tokenize
 </code></pre>
+<blockquote>
+<p>[!TIP]
+<code>embed-ipadic</code> feature を使って辞書をバイナリに埋め込む場合（上級者向け）は、ファイルパスの代わりに <code>load_dictionary("embedded://ipadic")</code> を使用できます。詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <p>実行結果は以下のようになります：</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ
 token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
@@ -419,22 +439,23 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="サンプル"><a class="header" href="#サンプル">サンプル</a></h1>
 <p>Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examplesディレクトリ</a> で確認できます。</p>
+<p>サンプルを実行する前に、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリに展開してください。</p>
 <h2 id="利用可能なサンプル"><a class="header" href="#利用可能なサンプル">利用可能なサンプル</a></h2>
 <h3 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h3>
-<p>埋め込みIPADIC辞書を使用した基本的なトークナイズです。入力テキストを分割し、各トークンの品詞情報を表示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize
+<p>外部IPADIC辞書を使用した基本的なトークナイズです。入力テキストを分割し、各トークンの品詞情報を表示します。</p>
+<pre><code class="language-shell">cargo run --example=tokenize
 </code></pre>
 <h3 id="tokenize_with_user_dict"><a class="header" href="#tokenize_with_user_dict">tokenize_with_user_dict</a></h3>
-<p>ユーザー辞書を使用したトークナイズです。ドメイン固有の用語のために、組み込み辞書をカスタムエントリで補完する方法を示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_user_dict
+<p>ユーザー辞書を使用したトークナイズです。ドメイン固有の用語のために、辞書をカスタムエントリで補完する方法を示します。</p>
+<pre><code class="language-shell">cargo run --example=tokenize_with_user_dict
 </code></pre>
 <h3 id="tokenize_with_filters"><a class="header" href="#tokenize_with_filters">tokenize_with_filters</a></h3>
 <p>キャラクターフィルターとトークンフィルターを使用したトークナイズです。Unicode正規化、品詞フィルタリングなどの変換を含むテキスト処理パイプラインを実演します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_filters
+<pre><code class="language-shell">cargo run --example=tokenize_with_filters
 </code></pre>
 <h3 id="tokenize_with_config"><a class="header" href="#tokenize_with_config">tokenize_with_config</a></h3>
 <p>YAML設定ファイルを使用したトークナイズです。プログラムではなく宣言的にトークナイザーを設定する方法を示します。</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=tokenize_with_config
+<pre><code class="language-shell">cargo run --example=tokenize_with_config
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="基本概念"><a class="header" href="#基本概念">基本概念</a></h1>
 <p>このセクションでは、Linderaの形態素解析システムの基本的な概念について説明します。</p>
@@ -494,6 +515,22 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <tr><td><a href="concepts/../lindera-jieba.html">Jieba</a></td><td>中国語</td><td><code>lindera-jieba</code></td><td>Jiebaベースの中国語辞書</td></tr>
 </tbody></table>
 </div>
+<h2 id="辞書の入手方法"><a class="header" href="#辞書の入手方法">辞書の入手方法</a></h2>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードできます。対象言語の辞書アーカイブをダウンロードし、ローカルディレクトリに展開してください。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ローカルパスから外部辞書を読み込む
+let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+外部辞書ファイルなしの自己完結型バイナリが必要な場合は、<code>embed-*</code> feature フラグを使って辞書を埋め込み、<code>embedded://</code> スキームでロードできます：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>詳細は <a href="concepts/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <p>各辞書クレートのドキュメントで、フォーマット詳細、ビルド手順、使用例を参照してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="トークナイズ"><a class="header" href="#トークナイズ">トークナイズ</a></h1>
 <p>Linderaは複数のトークナイズモードを提供し、代替の分割候補を列挙するためのN-Best解析をサポートしています。</p>
@@ -855,7 +892,6 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 <li>最適なセグメンテーションのためのViterbiアルゴリズム</li>
 <li>N-bestパス生成（Forward-DP Backward-A*）</li>
 <li>メモリマップドファイルサポート</li>
-<li>辞書圧縮（deflate）</li>
 <li>CRFベースの辞書学習（<code>train</code> feature使用時）</li>
 </ul>
 <h2 id="目次-1"><a class="header" href="#目次-1">目次</a></h2>
@@ -874,8 +910,6 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 ├── nbest.rs             # NBestGenerator (Forward-DP Backward-A*)
 ├── mode.rs              # Mode (Normal/Decompose), Penalty
 ├── error.rs             # LinderaError, LinderaErrorKind
-├── compress.rs          # 辞書圧縮
-├── decompress.rs        # 辞書展開
 ├── assets.rs            # ダウンロードとファイル管理
 ├── dictionary/
 │   ├── character_definition.rs    # 文字種定義
@@ -919,7 +953,6 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 </ol>
 <h2 id="featureフラグ-1"><a class="header" href="#featureフラグ-1">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>辞書圧縮サポート</td><td>Yes</td></tr>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
 <tr><td><code>train</code></td><td>CRFベースの学習（lindera-crfに依存）</td><td>No</td></tr>
@@ -1336,39 +1369,50 @@ let content = std::fs::read_to_string("config.yml")
 <ul>
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
+<h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
+<p>Lindera はバイナリに辞書を同梱していません。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を別途ダウンロードする必要があります：</p>
+<pre><code class="language-shell"># 例: IPADIC 辞書のダウンロードと展開
+% curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+% unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
+</code></pre>
+<p>CLI 使用時に辞書パスを指定します：</p>
+<pre><code class="language-shell">% lindera tokenize --dictionary /path/to/ipadic "関西国際空港限定トートバッグ"
+</code></pre>
 <h2 id="ソースからビルド"><a class="header" href="#ソースからビルド">ソースからビルド</a></h2>
-<h3 id="ipadic日本語辞書を含めてビルド"><a class="header" href="#ipadic日本語辞書を含めてビルド">IPADIC（日本語辞書）を含めてビルド</a></h3>
-<p>"ipadic" 機能フラグを使用すると、LinderaにIPADICを含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ipadic
-</code></pre>
-<h3 id="ipadic-neologd日本語辞書を含むビルド"><a class="header" href="#ipadic-neologd日本語辞書を含むビルド">IPADIC NEologd（日本語辞書）を含むビルド</a></h3>
-<p>"ipadic-neologd"フィーチャーフラグで IPADIC NEologd を含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
-</code></pre>
-<h3 id="unidic日本語辞書を含めてビルド"><a class="header" href="#unidic日本語辞書を含めてビルド">UniDic（日本語辞書）を含めてビルド</a></h3>
-<p>"unidic" 機能フラグを使用すると、LinderaにUniDicを含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-unidic
-</code></pre>
-<h3 id="ko-dic韓国語辞書を含めてビルド"><a class="header" href="#ko-dic韓国語辞書を含めてビルド">ko-dic（韓国語辞書）を含めてビルド</a></h3>
-<p>"ko-dic" 機能フラグを使用すると、Linderaにko-dicを含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-ko-dic
-</code></pre>
-<h3 id="cc-cedict中国語辞書を含めてビルド"><a class="header" href="#cc-cedict中国語辞書を含めてビルド">CC-CEDICT（中国語辞書）を含めてビルド</a></h3>
-<p>"cc-cedict" 機能フラグを使用すると、LinderaにCC-CEDICTを含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-cc-cedict
-</code></pre>
-<h3 id="jieba中国語辞書を含めてビルド"><a class="header" href="#jieba中国語辞書を含めてビルド">Jieba（中国語辞書）を含めてビルド</a></h3>
-<p>"jieba" 機能フラグを使用すると、LinderaにJiebaを含めることができます。</p>
-<pre><code class="language-shell">% cargo build --release --features=embed-jieba
-</code></pre>
-<h3 id="辞書なしでビルド"><a class="header" href="#辞書なしでビルド">辞書なしでビルド</a></h3>
-<p>Linderaのバイナリサイズを削減するには、機能フラグを省略します。
-これにより、辞書が含まれなくなるため、トークナイザーとトレーナーのみを含むバイナリになります。</p>
+<h3 id="辞書なしでビルドデフォルト"><a class="header" href="#辞書なしでビルドデフォルト">辞書なしでビルド（デフォルト）</a></h3>
+<p>辞書を埋め込まず、トークナイザーとトレーナーのみを含むバイナリをビルドします：</p>
 <pre><code class="language-shell">% cargo build --release
 </code></pre>
 <h3 id="全機能を含めてビルド"><a class="header" href="#全機能を含めてビルド">全機能を含めてビルド</a></h3>
 <pre><code class="language-shell">% cargo build --release --all-features
 </code></pre>
+<h3 id="辞書埋め込みビルド上級者向け"><a class="header" href="#辞書埋め込みビルド上級者向け">辞書埋め込みビルド（上級者向け）</a></h3>
+<p>辞書をバイナリに直接埋め込みたい上級者向けに、<code>embed-*</code> feature フラグを使用できます。実行時の外部辞書ファイルが不要になりますが、バイナリサイズが増加します。</p>
+<h4 id="ipadic日本語辞書"><a class="header" href="#ipadic日本語辞書">IPADIC（日本語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic
+</code></pre>
+<h4 id="ipadic-neologd日本語辞書"><a class="header" href="#ipadic-neologd日本語辞書">IPADIC NEologd（日本語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ipadic-neologd
+</code></pre>
+<h4 id="unidic日本語辞書"><a class="header" href="#unidic日本語辞書">UniDic（日本語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-unidic
+</code></pre>
+<h4 id="ko-dic韓国語辞書"><a class="header" href="#ko-dic韓国語辞書">ko-dic（韓国語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-ko-dic
+</code></pre>
+<h4 id="cc-cedict中国語辞書"><a class="header" href="#cc-cedict中国語辞書">CC-CEDICT（中国語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-cc-cedict
+</code></pre>
+<h4 id="jieba中国語辞書"><a class="header" href="#jieba中国語辞書">Jieba（中国語辞書）</a></h4>
+<pre><code class="language-shell">% cargo build --release --features=embed-jieba
+</code></pre>
+<blockquote>
+<p>[!TIP]
+<code>embed-*</code> feature フラグ付きでビルドした後、<code>embedded://</code> スキームで埋め込み辞書をロードできます：</p>
+<pre><code class="language-shell">% lindera tokenize --dictionary embedded://ipadic "関西国際空港限定トートバッグ"
+</code></pre>
+<p>詳細は <a href="lindera-cli/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h1>
 <p>Lindera CLI は4つのメインコマンドを提供します：</p>
 <ul>
@@ -2169,7 +2213,24 @@ EOS
 <li><a href="./lindera-python/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-2"><a class="header" href="#インストール-2">インストール</a></h1>
-<h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
+<h2 id="pypi-からのインストール"><a class="header" href="#pypi-からのインストール">PyPI からのインストール</a></h2>
+<p>ビルド済みホイールが <a href="https://pypi.org/project/lindera-python/">PyPI</a> で公開されています：</p>
+<pre><code class="language-bash">pip install lindera-python
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+PyPI パッケージには辞書が含まれていません。下記の<a href="lindera-python/installation.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。</p>
+</blockquote>
+<h2 id="辞書の入手-1"><a class="header" href="#辞書の入手-1">辞書の入手</a></h2>
+<p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
+<h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：</p>
+<pre><code class="language-bash"># 例: IPADIC 辞書のダウンロードと展開
+curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
+</code></pre>
+<h2 id="ソースからのビルド"><a class="header" href="#ソースからのビルド">ソースからのビルド</a></h2>
+<p>特定の feature フラグを有効にする必要がある場合など、ソースからビルドするには以下の前提条件が必要です：</p>
 <ul>
 <li><strong>Python 3.10 以降</strong>（3.14 まで）</li>
 <li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
@@ -2178,7 +2239,7 @@ EOS
 <p>maturin を pip でインストールします：</p>
 <pre><code class="language-bash">pip install maturin
 </code></pre>
-<h2 id="開発ビルド"><a class="header" href="#開発ビルド">開発ビルド</a></h2>
+<h3 id="開発ビルド"><a class="header" href="#開発ビルド">開発ビルド</a></h3>
 <p>lindera-python を開発モードでビルドしてインストールします：</p>
 <pre><code class="language-bash">cd lindera-python
 maturin develop
@@ -2186,29 +2247,32 @@ maturin develop
 <p>または、プロジェクトの Makefile を使用します：</p>
 <pre><code class="language-bash">make python-develop
 </code></pre>
-<h3 id="学習機能付きビルド"><a class="header" href="#学習機能付きビルド">学習機能付きビルド</a></h3>
+<h4 id="学習機能付きビルド"><a class="header" href="#学習機能付きビルド">学習機能付きビルド</a></h4>
 <p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります。デフォルトで有効になっています：</p>
 <pre><code class="language-bash">maturin develop --features train
-</code></pre>
-<h3 id="辞書埋め込みビルド"><a class="header" href="#辞書埋め込みビルド">辞書埋め込みビルド</a></h3>
-<p>辞書をバイナリに直接埋め込むことで、実行時に外部辞書ファイルが不要になります：</p>
-<pre><code class="language-bash">maturin develop --features embed-ipadic
 </code></pre>
 <h2 id="feature-フラグ-1"><a class="header" href="#feature-フラグ-1">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書の埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書をバイナリに埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <p>複数の feature を組み合わせることができます：</p>
 <pre><code class="language-bash">maturin develop --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><code class="language-python">dictionary = load_dictionary("embedded://ipadic")
+</code></pre>
+<p>詳細は <a href="lindera-python/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <h2 id="インストールの確認"><a class="header" href="#インストールの確認">インストールの確認</a></h2>
 <p>インストール後、Python で lindera が利用可能であることを確認します：</p>
 <pre><code class="language-python">import lindera
@@ -2223,13 +2287,16 @@ print(lindera.version())
 
 builder = TokenizerBuilder()
 builder.set_mode("normal")
-builder.set_dictionary("embedded://ipadic")
+builder.set_dictionary("/path/to/ipadic")
 tokenizer = builder.build()
 
 tokens = tokenizer.tokenize("関西国際空港限定トートバッグ")
 for token in tokens:
     print(f"{token.surface}\t{','.join(token.details)}")
 </code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、展開したディレクトリのパスを指定してください。</p>
+</blockquote>
 <p>期待される出力：</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
@@ -2242,7 +2309,7 @@ for token in tokens:
 tokenizer = (
     TokenizerBuilder()
     .set_mode("normal")
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .build()
 )
 
@@ -2254,7 +2321,7 @@ for token in tokens:
 <p>各トークンは以下のプロパティを公開しています：</p>
 <pre><code class="language-python">from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 tokens = tokenizer.tokenize("東京タワー")
 
 for token in tokens:
@@ -2270,7 +2337,7 @@ for token in tokens:
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
 <pre><code class="language-python">from lindera import TokenizerBuilder
 
-tokenizer = TokenizerBuilder().set_dictionary("embedded://ipadic").build()
+tokenizer = TokenizerBuilder().set_dictionary("/path/to/ipadic").build()
 results = tokenizer.tokenize_nbest("すもももももももものうち", n=3)
 
 for tokens, cost in results:
@@ -2403,14 +2470,13 @@ reading = token.get_detail(7)    # 例: "トウキョウ"
 <p>Lindera Python は、形態素解析で使用する辞書の読み込み、ビルド、管理のための関数を提供します。</p>
 <h2 id="辞書の読み込み-1"><a class="header" href="#辞書の読み込み-1">辞書の読み込み</a></h2>
 <h3 id="システム辞書"><a class="header" href="#システム辞書">システム辞書</a></h3>
-<p><code>load_dictionary(uri)</code> を使用してシステム辞書を読み込みます。</p>
-<p><strong>埋め込み辞書</strong>（対応する <code>embed-*</code> feature が必要）：</p>
+<p><code>load_dictionary(uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
 <pre><code class="language-python">from lindera import load_dictionary
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 </code></pre>
-<p><strong>外部辞書</strong>（ディスク上のディレクトリから読み込み）：</p>
-<pre><code class="language-python">dictionary = load_dictionary("/path/to/dictionary")
+<p><strong>埋め込み辞書（上級者向け）</strong> -- <code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
+<pre><code class="language-python">dictionary = load_dictionary("embedded://ipadic")
 </code></pre>
 <h3 id="ユーザー辞書-1"><a class="header" href="#ユーザー辞書-1">ユーザー辞書</a></h3>
 <p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
@@ -2422,7 +2488,7 @@ user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 metadata = Metadata()
 user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
 
@@ -2433,7 +2499,7 @@ tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 
 tokenizer = (
     TokenizerBuilder()
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .set_user_dictionary("/path/to/user_dictionary")
     .build()
 )
@@ -2460,7 +2526,7 @@ build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadat
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成"><a class="header" href="#metadata-の作成">Metadata の作成</a></h3>
-<pre><code class="language-python">from lindera import Metadata, CompressionAlgorithm
+<pre><code class="language-python">from lindera import Metadata
 
 # デフォルトのメタデータ
 metadata = Metadata()
@@ -2469,7 +2535,6 @@ metadata = Metadata()
 metadata = Metadata(
     name="my_dictionary",
     encoding="UTF-8",
-    compress_algorithm=CompressionAlgorithm.Deflate,
     default_word_cost=-10000,
 )
 </code></pre>
@@ -2480,7 +2545,6 @@ metadata = Metadata(
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>str</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
 <tr><td><code>encoding</code></td><td><code>str</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
-<tr><td><code>compress_algorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>圧縮アルゴリズム</td></tr>
 <tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
 <tr><td><code>default_left_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
 <tr><td><code>default_right_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
@@ -2503,15 +2567,7 @@ print(metadata.name)  # "custom_dict"
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
 </code></pre>
-<h3 id="compressionalgorithm"><a class="header" href="#compressionalgorithm">CompressionAlgorithm</a></h3>
-<p>利用可能な圧縮アルゴリズム：</p>
-<div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE 圧縮（デフォルト）</td></tr>
-<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Raw</code></td><td>圧縮なし</td></tr>
-</tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン"><a class="header" href="#テキスト処理パイプライン">テキスト処理パイプライン</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン"><a class="header" href="#テキスト処理パイプライン">テキスト処理パイプライン</a></h1>
 <p>Lindera Python は、トークナイズ前に文字フィルタを適用し、トークナイズ後にトークンフィルタを適用する、組み合わせ可能なテキスト処理パイプラインをサポートしています。フィルタは <code>TokenizerBuilder</code> に追加され、追加された順序で実行されます。</p>
 <pre><code class="language-text">Input Text
   --&gt; Character Filters (preprocessing)
@@ -2638,7 +2694,7 @@ for token in tokens:
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="学習"><a class="header" href="#学習">学習</a></h1>
 <p>Lindera Python は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
-<h2 id="前提条件-1"><a class="header" href="#前提条件-1">前提条件</a></h2>
+<h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-python をビルドします（デフォルトで有効）：</p>
 <pre><code class="language-bash">maturin develop --features train
 </code></pre>
@@ -2760,7 +2816,17 @@ for token in tokens:
 <li><a href="./lindera-nodejs/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-3"><a class="header" href="#インストール-3">インストール</a></h1>
-<h2 id="前提条件-2"><a class="header" href="#前提条件-2">前提条件</a></h2>
+<h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
+<p>ビルド済みパッケージが npm で公開予定です：</p>
+<pre><code class="language-bash">npm install lindera-nodejs
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+npm パッケージには辞書が含まれていません。下記の<a href="lindera-nodejs/installation.html#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。
+ブラウザ/WASM での利用には <a href="lindera-nodejs/../lindera-wasm/installation.html">lindera-wasm</a> を参照してください。</p>
+</blockquote>
+<h2 id="ソースからのビルド-1"><a class="header" href="#ソースからのビルド-1">ソースからのビルド</a></h2>
+<h3 id="前提条件-1"><a class="header" href="#前提条件-1">前提条件</a></h3>
 <ul>
 <li><strong>Node.js 18 以降</strong>（LTS バージョン推奨）</li>
 <li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
@@ -2768,6 +2834,14 @@ for token in tokens:
 </ul>
 <p>NAPI-RS CLI をグローバルにインストールします：</p>
 <pre><code class="language-bash">npm install -g @napi-rs/cli
+</code></pre>
+<h2 id="辞書の入手-2"><a class="header" href="#辞書の入手-2">辞書の入手</a></h2>
+<p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
+<h3 id="github-releases-からのダウンロード-1"><a class="header" href="#github-releases-からのダウンロード-1">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：</p>
+<pre><code class="language-bash"># 例: IPADIC 辞書のダウンロードと展開
+curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="開発ビルド-1"><a class="header" href="#開発ビルド-1">開発ビルド</a></h2>
 <p>lindera-nodejs を開発モードでビルドします：</p>
@@ -2782,33 +2856,36 @@ npm run build
 <p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります。デフォルトで有効になっています：</p>
 <pre><code class="language-bash">npm run build -- --features train
 </code></pre>
-<h3 id="辞書埋め込みビルド-1"><a class="header" href="#辞書埋め込みビルド-1">辞書埋め込みビルド</a></h3>
-<p>辞書をバイナリに直接埋め込むことで、実行時に外部辞書ファイルが不要になります：</p>
-<pre><code class="language-bash">npm run build -- --features embed-ipadic
-</code></pre>
 <h2 id="feature-フラグ-2"><a class="header" href="#feature-フラグ-2">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書の埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書をバイナリに埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <p>複数の feature を組み合わせることができます：</p>
 <pre><code class="language-bash">npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("embedded://ipadic");
+</code></pre>
+<p>詳細は <a href="lindera-nodejs/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <h2 id="インストールの確認-1"><a class="header" href="#インストールの確認-1">インストールの確認</a></h2>
 <p>インストール後、Node.js で lindera が利用可能であることを確認します：</p>
-<pre><code class="language-javascript">const lindera = require("lindera");
+<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
 
 console.log(lindera.version());
 </code></pre>
 <p>または ES modules を使用する場合：</p>
-<pre><code class="language-javascript">import { version } from "lindera";
+<pre><code class="language-javascript">import { version } from "lindera-nodejs";
 
 console.log(version());
 </code></pre>
@@ -2816,11 +2893,11 @@ console.log(version());
 <p>このガイドでは、lindera-nodejs を使用してテキストをトークナイズする方法を紹介します。</p>
 <h2 id="基本的なトークナイズ-1"><a class="header" href="#基本的なトークナイズ-1">基本的なトークナイズ</a></h2>
 <p>トークナイザーの作成には <code>TokenizerBuilder</code> の使用を推奨します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
-builder.setDictionary("embedded://ipadic");
+builder.setDictionary("/path/to/ipadic");
 const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
@@ -2828,6 +2905,9 @@ for (const token of tokens) {
   console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 </code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、展開したディレクトリのパスを指定してください。</p>
+</blockquote>
 <p>期待される出力：</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
@@ -2835,11 +2915,11 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="メソッドチェーン-1"><a class="header" href="#メソッドチェーン-1">メソッドチェーン</a></h2>
 <p><code>TokenizerBuilder</code> は簡潔な設定のためにメソッドチェーンをサポートしています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
@@ -2849,10 +2929,10 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="トークンプロパティへのアクセス-1"><a class="header" href="#トークンプロパティへのアクセス-1">トークンプロパティへのアクセス</a></h2>
 <p>各トークンは以下のプロパティを公開しています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens = tokenizer.tokenize("東京タワー");
@@ -2868,10 +2948,10 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="n-best-トークナイズ-2"><a class="header" href="#n-best-トークナイズ-2">N-best トークナイズ</a></h2>
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -2882,11 +2962,11 @@ for (const { tokens, cost } of results) {
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
 <p>Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：</p>
-<pre><code class="language-typescript">import { TokenizerBuilder, Token } from "lindera";
+<pre><code class="language-typescript">import { TokenizerBuilder, Token } from "lindera-nodejs";
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
@@ -2900,7 +2980,7 @@ for (const token of tokens) {
 <h3 id="コンストラクタ-1"><a class="header" href="#コンストラクタ-1">コンストラクタ</a></h3>
 <h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
 <p>デフォルト設定で新しいビルダーを作成します。</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const builder = new TokenizerBuilder();
 </code></pre>
@@ -2952,7 +3032,7 @@ builder.setDictionary("/path/to/dictionary");
 <h3 id="tokenizer-の作成-1"><a class="header" href="#tokenizer-の作成-1">Tokenizer の作成</a></h3>
 <h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera-nodejs");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -3021,43 +3101,42 @@ const reading = token.getDetail(7);  // 例: "トウキョウ"
 <p>Lindera Node.js は、形態素解析で使用する辞書の読み込み、ビルド、管理のための関数を提供します。</p>
 <h2 id="辞書の読み込み-2"><a class="header" href="#辞書の読み込み-2">辞書の読み込み</a></h2>
 <h3 id="システム辞書-1"><a class="header" href="#システム辞書-1">システム辞書</a></h3>
-<p><code>loadDictionary(uri)</code> を使用してシステム辞書を読み込みます。</p>
-<p><strong>埋め込み辞書</strong>（対応する <code>embed-*</code> feature が必要）：</p>
-<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
+<p><code>loadDictionary(uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 </code></pre>
-<p><strong>外部辞書</strong>（ディスク上のディレクトリから読み込み）：</p>
-<pre><code class="language-javascript">const dictionary = loadDictionary("/path/to/dictionary");
+<p><strong>埋め込み辞書（上級者向け）</strong> -- <code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
 <h3 id="ユーザー辞書-2"><a class="header" href="#ユーザー辞書-2">ユーザー辞書</a></h3>
 <p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
-<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 </code></pre>
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <p>または、ビルダー経由で設定します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .setUserDictionary("/path/to/user_dictionary")
   .build();
 </code></pre>
 <h2 id="辞書のビルド-1"><a class="header" href="#辞書のビルド-1">辞書のビルド</a></h2>
 <h3 id="システム辞書のビルド-1"><a class="header" href="#システム辞書のビルド-1">システム辞書のビルド</a></h3>
 <p>ソースファイルからシステム辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -3065,7 +3144,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <h3 id="ユーザー辞書のビルド-2"><a class="header" href="#ユーザー辞書のビルド-2">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -3076,7 +3155,7 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
 <h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成-1"><a class="header" href="#metadata-の作成-1">Metadata の作成</a></h3>
-<pre><code class="language-javascript">const { Metadata, CompressionAlgorithm } = require("lindera");
+<pre><code class="language-javascript">const { Metadata } = require("lindera-nodejs");
 
 // デフォルトのメタデータ
 const metadata = new Metadata();
@@ -3085,7 +3164,6 @@ const metadata = new Metadata();
 const metadata = new Metadata({
   name: "my_dictionary",
   encoding: "UTF-8",
-  compressAlgorithm: CompressionAlgorithm.Deflate,
   defaultWordCost: -10000,
 });
 </code></pre>
@@ -3096,7 +3174,6 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
-<tr><td><code>compressAlgorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>圧縮アルゴリズム</td></tr>
 <tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
 <tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
 <tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
@@ -3119,13 +3196,50 @@ console.log(metadata.name); // "custom_dict"
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
 </code></pre>
-<h3 id="compressionalgorithm-1"><a class="header" href="#compressionalgorithm-1">CompressionAlgorithm</a></h3>
-<p>利用可能な圧縮アルゴリズム：</p>
+<h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
+<p><code>Schema</code> クラスは辞書エントリーのフィールド構造を定義します。</p>
+<h3 id="schema-の作成"><a class="header" href="#schema-の作成">Schema の作成</a></h3>
+<pre><code class="language-javascript">const { Schema } = require("lindera-nodejs");
+
+// デフォルトの IPADIC 互換スキーマ
+const schema = Schema.createDefault();
+
+// カスタムスキーマ
+const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+</code></pre>
+<h3 id="schema-メソッド"><a class="header" href="#schema-メソッド">Schema メソッド</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>getFieldIndex(name)</code></td><td><code>number | null</code></td><td>フィールド名からインデックスを取得</td></tr>
+<tr><td><code>fieldCount()</code></td><td><code>number</code></td><td>フィールドの総数</td></tr>
+<tr><td><code>getFieldName(index)</code></td><td><code>string | null</code></td><td>インデックスからフィールド名を取得</td></tr>
+<tr><td><code>getCustomFields()</code></td><td><code>string[]</code></td><td>インデックス 4 以降のフィールド（形態素素性）</td></tr>
+<tr><td><code>getAllFields()</code></td><td><code>string[]</code></td><td>すべてのフィールド名</td></tr>
+<tr><td><code>getFieldByName(name)</code></td><td><code>FieldDefinition | null</code></td><td>フィールド定義の完全な情報を取得</td></tr>
+<tr><td><code>validateRecord(record)</code></td><td><code>void</code></td><td>CSV レコードをスキーマに対して検証</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const schema = Schema.createDefault();
+
+console.log(schema.fieldCount());           // 13（IPADIC フォーマット）
+console.log(schema.getFieldIndex("pos1"));  // 例: 4
+console.log(schema.getAllFields());          // ["surface", "left_id", ...]
+console.log(schema.getCustomFields());      // インデックス 4 以降のフィールド
+</code></pre>
+<h3 id="fielddefinition"><a class="header" href="#fielddefinition">FieldDefinition</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>フィールドの位置インデックス</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>フィールド名</td></tr>
+<tr><td><code>fieldType</code></td><td><code>FieldType</code></td><td>フィールド型の列挙値</td></tr>
+<tr><td><code>description</code></td><td><code>string | undefined</code></td><td>任意の説明</td></tr>
+</tbody></table>
+</div>
+<h3 id="fieldtype"><a class="header" href="#fieldtype">FieldType</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE 圧縮（デフォルト）</td></tr>
-<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Raw</code></td><td>圧縮なし</td></tr>
+<tr><td><code>FieldType.Surface</code></td><td>単語の表層形</td></tr>
+<tr><td><code>FieldType.LeftContextId</code></td><td>左文脈 ID</td></tr>
+<tr><td><code>FieldType.RightContextId</code></td><td>右文脈 ID</td></tr>
+<tr><td><code>FieldType.Cost</code></td><td>単語コスト</td></tr>
+<tr><td><code>FieldType.Custom</code></td><td>形態素素性フィールド</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン-1"><a class="header" href="#テキスト処理パイプライン-1">テキスト処理パイプライン</a></h1>
 <p>Lindera Node.js は、トークナイズ前に文字フィルタを適用し、トークナイズ後にトークンフィルタを適用する、組み合わせ可能なテキスト処理パイプラインをサポートしています。フィルタは <code>TokenizerBuilder</code> に追加され、追加された順序で実行されます。</p>
@@ -3139,7 +3253,7 @@ console.log(metadata.toObject());
 <p>文字フィルタはトークナイズ前に入力テキストを変換します。</p>
 <h3 id="unicode_normalize-2"><a class="header" href="#unicode_normalize-2">unicode_normalize</a></h3>
 <p>入力テキストに Unicode 正規化を適用します。</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -3205,7 +3319,7 @@ const tokenizer = new TokenizerBuilder()
 </code></pre>
 <h2 id="パイプラインの完全な例-1"><a class="header" href="#パイプラインの完全な例-1">パイプラインの完全な例</a></h2>
 <p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -3239,13 +3353,13 @@ for (const token of tokens) {
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="学習-1"><a class="header" href="#学習-1">学習</a></h1>
 <p>Lindera Node.js は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
-<h2 id="前提条件-3"><a class="header" href="#前提条件-3">前提条件</a></h2>
+<h2 id="前提条件-2"><a class="header" href="#前提条件-2">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-nodejs をビルドします（デフォルトで有効）：</p>
 <pre><code class="language-bash">npm run build -- --features train
 </code></pre>
 <h2 id="モデルの学習-1"><a class="header" href="#モデルの学習-1">モデルの学習</a></h2>
 <p><code>train()</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
-<pre><code class="language-javascript">const { train } = require("lindera");
+<pre><code class="language-javascript">const { train } = require("lindera-nodejs");
 
 train({
   seed: "resources/training/seed.csv",
@@ -3276,7 +3390,7 @@ train({
 </div>
 <h2 id="学習済みモデルのエクスポート-1"><a class="header" href="#学習済みモデルのエクスポート-1">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>exportModel()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
-<pre><code class="language-javascript">const { exportModel } = require("lindera");
+<pre><code class="language-javascript">const { exportModel } = require("lindera-nodejs");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -3307,7 +3421,7 @@ exportModel({
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera");
+} = require("lindera-nodejs");
 
 // Step 1: Train the CRF model
 train({
@@ -3344,6 +3458,1289 @@ for (const token of tokens) {
   console.log(`${token.surface}\t${token.details.join(",")}`);
 }
 </code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ruby"><a class="header" href="#lindera-ruby">Lindera Ruby</a></h1>
+<p>Lindera Ruby は、<a href="https://github.com/matsadler/magnus">Magnus</a> と <a href="https://github.com/oxidize-rb/rb-sys">rb-sys</a> を使用して構築された Lindera 形態素解析エンジンの Ruby バインディングです。Ruby 3.1 以降をサポートし、Lindera の高性能なトークナイズ機能を Ruby エコシステムに提供します。</p>
+<h2 id="特徴-2"><a class="header" href="#特徴-2">特徴</a></h2>
+<ul>
+<li><strong>多言語対応</strong>: 日本語（IPADIC、IPADIC NEologd、UniDic）、韓国語（ko-dic）、中国語（CC-CEDICT、Jieba）のテキストをトークナイズ</li>
+<li><strong>テキスト処理パイプライン</strong>: 文字フィルタとトークンフィルタを組み合わせて、柔軟な前処理・後処理が可能</li>
+<li><strong>CRF ベースの辞書学習</strong>: アノテーション付きコーパスからカスタム形態素解析モデルを学習（<code>train</code> feature が必要）</li>
+<li><strong>複数のトークナイズモード</strong>: 解析粒度に応じた Normal モードと Decompose モード</li>
+<li><strong>N-best トークナイズ</strong>: コスト順にランク付けされた複数のトークナイズ候補を取得</li>
+<li><strong>ユーザー辞書</strong>: システム辞書をカスタム語彙で拡張</li>
+</ul>
+<h2 id="ドキュメント-2"><a class="header" href="#ドキュメント-2">ドキュメント</a></h2>
+<ul>
+<li><a href="./lindera-ruby/installation.html">インストール</a> -- 前提条件、ビルド手順、feature フラグ</li>
+<li><a href="./lindera-ruby/quickstart.html">クイックスタート</a> -- 最小限の使用例</li>
+<li><a href="./lindera-ruby/tokenizer_api.html">Tokenizer API</a> -- <code>TokenizerBuilder</code>、<code>Tokenizer</code>、<code>Token</code> クラスリファレンス</li>
+<li><a href="./lindera-ruby/dictionary_management.html">辞書管理</a> -- 辞書の読み込み、ビルド、管理</li>
+<li><a href="./lindera-ruby/text_processing_pipeline.html">テキスト処理パイプライン</a> -- 文字フィルタとトークンフィルタ</li>
+<li><a href="./lindera-ruby/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-4"><a class="header" href="#インストール-4">インストール</a></h1>
+<blockquote>
+<p>[!NOTE]
+lindera-ruby はまだ RubyGems に公開されていません。ソースからビルドする必要があります。</p>
+</blockquote>
+<h2 id="前提条件-3"><a class="header" href="#前提条件-3">前提条件</a></h2>
+<ul>
+<li><strong>Ruby 3.1 以降</strong></li>
+<li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
+<li><strong>Bundler</strong> -- Ruby の依存関係管理ツール（<code>gem install bundler</code>）</li>
+</ul>
+<h2 id="辞書の入手-3"><a class="header" href="#辞書の入手-3">辞書の入手</a></h2>
+<p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
+<h3 id="github-releases-からのダウンロード-2"><a class="header" href="#github-releases-からのダウンロード-2">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：</p>
+<pre><code class="language-bash"># 例: IPADIC 辞書のダウンロードと展開
+curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
+</code></pre>
+<h2 id="開発ビルド-2"><a class="header" href="#開発ビルド-2">開発ビルド</a></h2>
+<p>lindera-ruby を開発モードでビルドしてインストールします：</p>
+<pre><code class="language-bash">cd lindera-ruby
+bundle install
+bundle exec rake compile
+</code></pre>
+<p>または、プロジェクトの Makefile を使用します：</p>
+<pre><code class="language-bash">make ruby-develop
+</code></pre>
+<h3 id="学習機能付きビルド-2"><a class="header" href="#学習機能付きビルド-2">学習機能付きビルド</a></h3>
+<p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります：</p>
+<pre><code class="language-bash">LINDERA_FEATURES="train" bundle exec rake compile
+</code></pre>
+<h2 id="feature-フラグ-3"><a class="header" href="#feature-フラグ-3">Feature フラグ</a></h2>
+<p>Feature は環境変数 <code>LINDERA_FEATURES</code> にカンマ区切りリストで指定します。</p>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
+<tr><td><code>train</code></td><td>CRF 学習機能</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書をバイナリに埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
+</tbody></table>
+</div>
+<p>複数の feature を組み合わせることができます：</p>
+<pre><code class="language-bash">LINDERA_FEATURES="train,embed-ipadic,embed-ko-dic" bundle exec rake compile
+</code></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><code class="language-ruby">dictionary = Lindera.load_dictionary("embedded://ipadic")
+</code></pre>
+<p>詳細は <a href="lindera-ruby/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
+<h2 id="インストールの確認-2"><a class="header" href="#インストールの確認-2">インストールの確認</a></h2>
+<p>インストール後、Ruby で lindera が利用可能であることを確認します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+puts Lindera.version
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート-3"><a class="header" href="#クイックスタート-3">クイックスタート</a></h1>
+<p>このガイドでは、lindera-ruby を使用してテキストをトークナイズする方法を紹介します。</p>
+<h2 id="基本的なトークナイズ-2"><a class="header" href="#基本的なトークナイズ-2">基本的なトークナイズ</a></h2>
+<p>トークナイザーの作成には <code>Lindera::TokenizerBuilder</code> の使用を推奨します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_mode('normal')
+builder.set_dictionary('/path/to/ipadic')
+tokenizer = builder.build
+
+tokens = tokenizer.tokenize('関西国際空港限定トートバッグ')
+tokens.each do |token|
+  puts "#{token.surface}\t#{token.details.join(',')}"
+end
+</code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、展開したディレクトリのパスを指定してください。</p>
+</blockquote>
+<p>期待される出力：</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK
+</code></pre>
+<h2 id="逐次的な設定"><a class="header" href="#逐次的な設定">逐次的な設定</a></h2>
+<p><code>TokenizerBuilder</code> は逐次的なメソッド呼び出しで設定します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_mode('normal')
+builder.set_dictionary('/path/to/ipadic')
+tokenizer = builder.build
+
+tokens = tokenizer.tokenize('すもももももももものうち')
+tokens.each do |token|
+  puts "#{token.surface}\t#{token.get_detail(0)}"
+end
+</code></pre>
+<h2 id="トークンプロパティへのアクセス-2"><a class="header" href="#トークンプロパティへのアクセス-2">トークンプロパティへのアクセス</a></h2>
+<p>各トークンは以下のプロパティを公開しています：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('/path/to/ipadic')
+tokenizer = builder.build
+
+tokens = tokenizer.tokenize('東京タワー')
+
+tokens.each do |token|
+  puts "Surface: #{token.surface}"
+  puts "Byte range: #{token.byte_start}..#{token.byte_end}"
+  puts "Position: #{token.position}"
+  puts "Word ID: #{token.word_id}"
+  puts "Unknown: #{token.is_unknown}"
+  puts "Details: #{token.details}"
+  puts
+end
+</code></pre>
+<h2 id="n-best-トークナイズ-3"><a class="header" href="#n-best-トークナイズ-3">N-best トークナイズ</a></h2>
+<p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('/path/to/ipadic')
+tokenizer = builder.build
+
+results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)
+
+results.each do |tokens, cost|
+  surfaces = tokens.map(&amp;:surface)
+  puts "Cost #{cost}: #{surfaces.join(' / ')}"
+end
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-2"><a class="header" href="#tokenizer-api-2">Tokenizer API</a></h1>
+<h2 id="tokenizerbuilder-3"><a class="header" href="#tokenizerbuilder-3">TokenizerBuilder</a></h2>
+<p><code>Lindera::TokenizerBuilder</code> はビルダーパターンを使用して <code>Tokenizer</code> インスタンスを設定・構築します。</p>
+<h3 id="コンストラクタ-2"><a class="header" href="#コンストラクタ-2">コンストラクタ</a></h3>
+<h4 id="linderatokenizerbuildernew"><a class="header" href="#linderatokenizerbuildernew"><code>Lindera::TokenizerBuilder.new</code></a></h4>
+<p>デフォルト設定で新しいビルダーを作成します。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+</code></pre>
+<h3 id="設定メソッド-2"><a class="header" href="#設定メソッド-2">設定メソッド</a></h3>
+<h4 id="set_modemode-1"><a class="header" href="#set_modemode-1"><code>set_mode(mode)</code></a></h4>
+<p>トークナイズモードを設定します。</p>
+<ul>
+<li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
+<li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
+</ul>
+<pre><code class="language-ruby">builder.set_mode('normal')
+</code></pre>
+<h4 id="set_dictionarypath-1"><a class="header" href="#set_dictionarypath-1"><code>set_dictionary(path)</code></a></h4>
+<p>システム辞書のパスまたは URI を設定します。</p>
+<pre><code class="language-ruby"># 埋め込み辞書を使用
+builder.set_dictionary('embedded://ipadic')
+
+# 外部辞書を使用
+builder.set_dictionary('/path/to/dictionary')
+</code></pre>
+<h4 id="set_user_dictionaryuri-1"><a class="header" href="#set_user_dictionaryuri-1"><code>set_user_dictionary(uri)</code></a></h4>
+<p>ユーザー辞書の URI を設定します。</p>
+<pre><code class="language-ruby">builder.set_user_dictionary('/path/to/user_dictionary')
+</code></pre>
+<h4 id="set_keep_whitespacekeep-1"><a class="header" href="#set_keep_whitespacekeep-1"><code>set_keep_whitespace(keep)</code></a></h4>
+<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<pre><code class="language-ruby">builder.set_keep_whitespace(true)
+</code></pre>
+<h4 id="append_character_filterkind-args"><a class="header" href="#append_character_filterkind-args"><code>append_character_filter(kind, args)</code></a></h4>
+<p>前処理パイプラインに文字フィルタを追加します。</p>
+<pre><code class="language-ruby">builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
+</code></pre>
+<h4 id="append_token_filterkind-args"><a class="header" href="#append_token_filterkind-args"><code>append_token_filter(kind, args)</code></a></h4>
+<p>後処理パイプラインにトークンフィルタを追加します。<code>args</code> が不要な場合は <code>nil</code> を渡します。</p>
+<pre><code class="language-ruby">builder.append_token_filter('lowercase', nil)
+</code></pre>
+<h3 id="ビルド-2"><a class="header" href="#ビルド-2">ビルド</a></h3>
+<h4 id="build-3"><a class="header" href="#build-3"><code>build</code></a></h4>
+<p>設定された内容で <code>Tokenizer</code> をビルドして返します。</p>
+<pre><code class="language-ruby">tokenizer = builder.build
+</code></pre>
+<h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
+<p><code>Lindera::Tokenizer</code> はテキストに対して形態素解析を行います。</p>
+<h3 id="tokenizer-の作成-2"><a class="header" href="#tokenizer-の作成-2">Tokenizer の作成</a></h3>
+<h4 id="linderatokenizernewdictionary-mode-user_dictionary"><a class="header" href="#linderatokenizernewdictionary-mode-user_dictionary"><code>Lindera::Tokenizer.new(dictionary, mode, user_dictionary)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。<code>user_dictionary</code> が不要な場合は <code>nil</code> を渡します。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('embedded://ipadic')
+tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', nil)
+</code></pre>
+<p>ユーザー辞書を使用する場合：</p>
+<pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
+metadata = dictionary.metadata
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+</code></pre>
+<h3 id="tokenizer-メソッド-2"><a class="header" href="#tokenizer-メソッド-2">Tokenizer メソッド</a></h3>
+<h4 id="tokenizetext-2"><a class="header" href="#tokenizetext-2"><code>tokenize(text)</code></a></h4>
+<p>入力テキストをトークナイズし、<code>Token</code> オブジェクトの配列を返します。</p>
+<pre><code class="language-ruby">tokens = tokenizer.tokenize('形態素解析')
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;Token&gt;</code></p>
+<h4 id="tokenize_nbesttext-n-unique-cost_threshold"><a class="header" href="#tokenize_nbesttext-n-unique-cost_threshold"><code>tokenize_nbest(text, n, unique, cost_threshold)</code></a></h4>
+<p>N-best トークナイズ結果を返します。各結果はトータルパスコストとペアになっています。</p>
+<pre><code class="language-ruby">results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)
+results.each do |tokens, cost|
+  puts "#{cost}: #{tokens.map(&amp;:surface).join(' / ')}"
+end
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>トークナイズするテキスト</td></tr>
+<tr><td><code>n</code></td><td><code>Integer</code></td><td>返す結果の数</td></tr>
+<tr><td><code>unique</code></td><td><code>Boolean</code></td><td>結果の重複を排除（<code>false</code> で無効）</td></tr>
+<tr><td><code>cost_threshold</code></td><td><code>Integer</code> または <code>nil</code></td><td>最良パスからの最大コスト差（<code>nil</code> で無制限）</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;[Array&lt;Token&gt;, Integer]&gt;</code></p>
+<h2 id="token-2"><a class="header" href="#token-2">Token</a></h2>
+<p><code>Token</code> は単一の形態素トークンを表します。</p>
+<h3 id="プロパティ-4"><a class="header" href="#プロパティ-4">プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>surface</code></td><td><code>String</code></td><td>トークンの表層形</td></tr>
+<tr><td><code>byte_start</code></td><td><code>Integer</code></td><td>元テキストでの開始バイト位置</td></tr>
+<tr><td><code>byte_end</code></td><td><code>Integer</code></td><td>元テキストでの終了バイト位置</td></tr>
+<tr><td><code>position</code></td><td><code>Integer</code></td><td>トークンの位置インデックス</td></tr>
+<tr><td><code>word_id</code></td><td><code>Integer</code></td><td>辞書の単語 ID</td></tr>
+<tr><td><code>is_unknown</code></td><td><code>Boolean</code></td><td>辞書に登録されていない単語の場合 <code>true</code></td></tr>
+<tr><td><code>details</code></td><td><code>Array&lt;String&gt;</code> または <code>nil</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+</tbody></table>
+</div>
+<h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
+<h4 id="get_detailindex-1"><a class="header" href="#get_detailindex-1"><code>get_detail(index)</code></a></h4>
+<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>nil</code> を返します。</p>
+<pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
+pos = token.get_detail(0)        # 例: "名詞"
+subpos = token.get_detail(1)     # 例: "固有名詞"
+reading = token.get_detail(7)    # 例: "トウキョウ"
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>Integer</code></td><td>details 配列へのゼロベースインデックス</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>String</code> または <code>nil</code></p>
+<p><code>details</code> の構造は辞書によって異なります：</p>
+<ul>
+<li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
+<li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
+<li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-2"><a class="header" href="#辞書管理-2">辞書管理</a></h1>
+<p>Lindera Ruby は、形態素解析で使用する辞書の読み込み、ビルド、管理のためのメソッドを提供します。</p>
+<h2 id="辞書の読み込み-3"><a class="header" href="#辞書の読み込み-3">辞書の読み込み</a></h2>
+<h3 id="システム辞書-2"><a class="header" href="#システム辞書-2">システム辞書</a></h3>
+<p><code>Lindera.load_dictionary(uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+</code></pre>
+<p><strong>埋め込み辞書（上級者向け）</strong> -- <code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
+<pre><code class="language-ruby">dictionary = Lindera.load_dictionary('embedded://ipadic')
+</code></pre>
+<h3 id="ユーザー辞書-3"><a class="header" href="#ユーザー辞書-3">ユーザー辞書</a></h3>
+<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+metadata = dictionary.metadata
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+</code></pre>
+<p>トークナイザーの作成時にユーザー辞書を渡します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+metadata = dictionary.metadata
+user_dict = Lindera.load_user_dictionary('/path/to/user_dictionary', metadata)
+
+tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
+</code></pre>
+<p>または、ビルダー経由で設定します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('/path/to/ipadic')
+builder.set_user_dictionary('/path/to/user_dictionary')
+tokenizer = builder.build
+</code></pre>
+<h2 id="辞書のビルド-2"><a class="header" href="#辞書のビルド-2">辞書のビルド</a></h2>
+<h3 id="システム辞書のビルド-2"><a class="header" href="#システム辞書のビルド-2">システム辞書のビルド</a></h3>
+<p>ソースファイルからシステム辞書をビルドします：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+metadata = Lindera::Metadata.from_json_file('metadata.json')
+Lindera.build_dictionary('/path/to/input_dir', '/path/to/output_dir', metadata)
+</code></pre>
+<p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<h3 id="ユーザー辞書のビルド-3"><a class="header" href="#ユーザー辞書のビルド-3">ユーザー辞書のビルド</a></h3>
+<p>CSV ファイルからユーザー辞書をビルドします：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+metadata = Lindera::Metadata.new
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
+</code></pre>
+<h2 id="metadata-2"><a class="header" href="#metadata-2">Metadata</a></h2>
+<p><code>Lindera::Metadata</code> クラスは辞書のパラメータを設定します。</p>
+<h3 id="metadata-の作成-2"><a class="header" href="#metadata-の作成-2">Metadata の作成</a></h3>
+<pre><code class="language-ruby">require 'lindera'
+
+# デフォルトのメタデータ
+metadata = Lindera::Metadata.new
+
+# JSON ファイルからの読み込み
+metadata = Lindera::Metadata.from_json_file('metadata.json')
+</code></pre>
+<h3 id="辞書からのメタデータ取得"><a class="header" href="#辞書からのメタデータ取得">辞書からのメタデータ取得</a></h3>
+<p>読み込み済みの辞書からメタデータを取得できます：</p>
+<pre><code class="language-ruby">dictionary = Lindera.load_dictionary('/path/to/ipadic')
+metadata = dictionary.metadata
+</code></pre>
+<h3 id="プロパティ-5"><a class="header" href="#プロパティ-5">プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>String</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
+<tr><td><code>encoding</code></td><td><code>String</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
+<tr><td><code>default_word_cost</code></td><td><code>Integer</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
+<tr><td><code>default_left_context_id</code></td><td><code>Integer</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
+<tr><td><code>default_right_context_id</code></td><td><code>Integer</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
+<tr><td><code>default_field_value</code></td><td><code>String</code></td><td><code>"*"</code></td><td>欠損フィールドのデフォルト値</td></tr>
+<tr><td><code>flexible_csv</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>柔軟な CSV パースを許可</td></tr>
+<tr><td><code>skip_invalid_cost_or_id</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>無効なコストまたは ID のエントリーをスキップ</td></tr>
+<tr><td><code>normalize_details</code></td><td><code>Boolean</code></td><td><code>false</code></td><td>形態素の詳細情報を正規化</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン-2"><a class="header" href="#テキスト処理パイプライン-2">テキスト処理パイプライン</a></h1>
+<p>Lindera Ruby は、トークナイズ前に文字フィルタを適用し、トークナイズ後にトークンフィルタを適用する、組み合わせ可能なテキスト処理パイプラインをサポートしています。フィルタは <code>Lindera::TokenizerBuilder</code> に追加され、追加された順序で実行されます。</p>
+<pre><code class="language-text">Input Text
+  --&gt; Character Filters (preprocessing)
+  --&gt; Tokenization
+  --&gt; Token Filters (postprocessing)
+  --&gt; Output Tokens
+</code></pre>
+<h2 id="文字フィルタ-2"><a class="header" href="#文字フィルタ-2">文字フィルタ</a></h2>
+<p>文字フィルタはトークナイズ前に入力テキストを変換します。</p>
+<h3 id="unicode_normalize-3"><a class="header" href="#unicode_normalize-3">unicode_normalize</a></h3>
+<p>入力テキストに Unicode 正規化を適用します。</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
+tokenizer = builder.build
+</code></pre>
+<p>サポートされる正規化形式: <code>"nfc"</code>、<code>"nfkc"</code>、<code>"nfd"</code>、<code>"nfkd"</code>。</p>
+<h3 id="mapping-3"><a class="header" href="#mapping-3">mapping</a></h3>
+<p>マッピングテーブルに従って文字や文字列を置換します。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_character_filter('mapping', {
+  'mapping' =&gt; {
+    "\u30fc" =&gt; '-',
+    "\uff5e" =&gt; '~'
+  }
+})
+tokenizer = builder.build
+</code></pre>
+<h3 id="japanese_iteration_mark-3"><a class="header" href="#japanese_iteration_mark-3">japanese_iteration_mark</a></h3>
+<p>日本語の踊り字（繰り返し記号）を完全な形に展開します。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_character_filter('japanese_iteration_mark', {
+  'normalize_kanji' =&gt; 'true',
+  'normalize_kana' =&gt; 'true'
+})
+tokenizer = builder.build
+</code></pre>
+<h2 id="トークンフィルタ-2"><a class="header" href="#トークンフィルタ-2">トークンフィルタ</a></h2>
+<p>トークンフィルタはトークナイズ後にトークンを変換または除去します。</p>
+<h3 id="lowercase-2"><a class="header" href="#lowercase-2">lowercase</a></h3>
+<p>トークンの表層形を小文字に変換します。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('lowercase', nil)
+tokenizer = builder.build
+</code></pre>
+<h3 id="japanese_base_form-2"><a class="header" href="#japanese_base_form-2">japanese_base_form</a></h3>
+<p>辞書の形態素情報を使用して、活用形を基本形（辞書形）に置換します。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_base_form', nil)
+tokenizer = builder.build
+</code></pre>
+<h3 id="japanese_stop_tags-2"><a class="header" href="#japanese_stop_tags-2">japanese_stop_tags</a></h3>
+<p>指定されたタグに一致する品詞のトークンを除去します。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_stop_tags', {
+  'tags' =&gt; ['助詞', '助動詞']
+})
+tokenizer = builder.build
+</code></pre>
+<h3 id="japanese_keep_tags-2"><a class="header" href="#japanese_keep_tags-2">japanese_keep_tags</a></h3>
+<p>指定されたタグに一致する品詞のトークンのみを保持します。その他のトークンはすべて除去されます。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_keep_tags', {
+  'tags' =&gt; ['名詞']
+})
+tokenizer = builder.build
+</code></pre>
+<h3 id="japanese_katakana_stem"><a class="header" href="#japanese_katakana_stem">japanese_katakana_stem</a></h3>
+<p>カタカナ語の末尾にある長音記号を除去します。最小文字数を指定できます。</p>
+<pre><code class="language-ruby">builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('embedded://ipadic')
+builder.append_token_filter('japanese_katakana_stem', { 'min' =&gt; 3 })
+tokenizer = builder.build
+</code></pre>
+<h2 id="パイプラインの完全な例-2"><a class="header" href="#パイプラインの完全な例-2">パイプラインの完全な例</a></h2>
+<p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+builder = Lindera::TokenizerBuilder.new
+builder.set_mode('normal')
+builder.set_dictionary('embedded://ipadic')
+
+# Preprocessing
+builder.append_character_filter('unicode_normalize', { 'kind' =&gt; 'nfkc' })
+builder.append_character_filter('japanese_iteration_mark', {
+  'normalize_kanji' =&gt; 'true',
+  'normalize_kana' =&gt; 'true'
+})
+
+# Postprocessing
+builder.append_token_filter('japanese_base_form', nil)
+builder.append_token_filter('japanese_stop_tags', {
+  'tags' =&gt; ['助詞', '助動詞', '記号']
+})
+builder.append_token_filter('lowercase', nil)
+
+tokenizer = builder.build
+
+tokens = tokenizer.tokenize('Ｌｉｎｄｅｒａは形態素解析を行うライブラリです。')
+tokens.each do |token|
+  puts "#{token.surface}\t#{token.details.join(',')}"
+end
+</code></pre>
+<p>このパイプラインでは：</p>
+<ol>
+<li><code>unicode_normalize</code> が全角文字を半角に変換（NFKC 正規化）</li>
+<li><code>japanese_iteration_mark</code> が踊り字を展開</li>
+<li><code>japanese_base_form</code> が活用形のトークンを基本形に変換</li>
+<li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
+<li><code>lowercase</code> がアルファベットを小文字に正規化</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-2"><a class="header" href="#学習-2">学習</a></h1>
+<p>Lindera Ruby は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
+<h2 id="前提条件-4"><a class="header" href="#前提条件-4">前提条件</a></h2>
+<p><code>train</code> feature を有効にして lindera-ruby をビルドします：</p>
+<pre><code class="language-bash">LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
+</code></pre>
+<h2 id="モデルの学習-2"><a class="header" href="#モデルの学習-2">モデルの学習</a></h2>
+<p><code>Lindera.train</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+Lindera.train(
+  'resources/training/seed.csv',
+  'resources/training/corpus.txt',
+  'resources/training/char.def',
+  'resources/training/unk.def',
+  'resources/training/feature.def',
+  'resources/training/rewrite.def',
+  '/tmp/model.dat',
+  0.01,   # lambda (L1 regularization)
+  100,    # max_iter
+  nil     # max_threads (nil = auto-detect)
+)
+</code></pre>
+<h3 id="学習パラメータ-3"><a class="header" href="#学習パラメータ-3">学習パラメータ</a></h3>
+<p><code>Lindera.train</code> の引数は位置引数として順番に渡します：</p>
+<div class="table-wrapper"><table><thead><tr><th>順番</th><th>パラメータ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td>1</td><td>seed</td><td><code>String</code></td><td>種辞書ファイルのパス（CSV 形式）</td></tr>
+<tr><td>2</td><td>corpus</td><td><code>String</code></td><td>アノテーション付き学習コーパスのパス</td></tr>
+<tr><td>3</td><td>char_def</td><td><code>String</code></td><td>文字定義ファイルのパス（char.def）</td></tr>
+<tr><td>4</td><td>unk_def</td><td><code>String</code></td><td>未知語定義ファイルのパス（unk.def）</td></tr>
+<tr><td>5</td><td>feature_def</td><td><code>String</code></td><td>素性定義ファイルのパス（feature.def）</td></tr>
+<tr><td>6</td><td>rewrite_def</td><td><code>String</code></td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
+<tr><td>7</td><td>output</td><td><code>String</code></td><td>学習済みモデルファイルの出力パス</td></tr>
+<tr><td>8</td><td>lambda</td><td><code>Float</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
+<tr><td>9</td><td>max_iter</td><td><code>Integer</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td>10</td><td>max_threads</td><td><code>Integer</code> または <code>nil</code></td><td>スレッド数（<code>nil</code> = CPU コア数を自動検出）</td></tr>
+</tbody></table>
+</div>
+<h2 id="学習済みモデルのエクスポート-2"><a class="header" href="#学習済みモデルのエクスポート-2">学習済みモデルのエクスポート</a></h2>
+<p>学習後、<code>Lindera.export</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+Lindera.export('/tmp/model.dat', '/tmp/dictionary_source', 'resources/training/metadata.json')
+</code></pre>
+<h3 id="エクスポートパラメータ-3"><a class="header" href="#エクスポートパラメータ-3">エクスポートパラメータ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>順番</th><th>パラメータ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td>1</td><td>model</td><td><code>String</code></td><td>学習済みモデルファイルのパス（.dat）</td></tr>
+<tr><td>2</td><td>output</td><td><code>String</code></td><td>辞書ソースファイルの出力ディレクトリ</td></tr>
+<tr><td>3</td><td>metadata</td><td><code>String</code> または <code>nil</code></td><td>ベースとなる metadata.json ファイルのパス</td></tr>
+</tbody></table>
+</div>
+<p>エクスポートにより、出力ディレクトリに以下のファイルが作成されます：</p>
+<ul>
+<li><code>lex.csv</code> -- 学習済みコスト付きのレキシコンエントリー</li>
+<li><code>matrix.def</code> -- 連接コスト行列</li>
+<li><code>unk.def</code> -- 未知語定義</li>
+<li><code>char.def</code> -- 文字カテゴリ定義</li>
+<li><code>metadata.json</code> -- 更新されたメタデータ（<code>metadata</code> パラメータ指定時）</li>
+</ul>
+<h2 id="完全なワークフロー-2"><a class="header" href="#完全なワークフロー-2">完全なワークフロー</a></h2>
+<p>カスタム辞書の学習と使用の完全なワークフロー：</p>
+<pre><code class="language-ruby">require 'lindera'
+
+# Step 1: Train the CRF model
+Lindera.train(
+  'resources/training/seed.csv',
+  'resources/training/corpus.txt',
+  'resources/training/char.def',
+  'resources/training/unk.def',
+  'resources/training/feature.def',
+  'resources/training/rewrite.def',
+  '/tmp/model.dat',
+  0.01,  # lambda
+  100,   # max_iter
+  nil    # max_threads
+)
+
+# Step 2: Export to dictionary source files
+Lindera.export('/tmp/model.dat', '/tmp/dictionary_source', 'resources/training/metadata.json')
+
+# Step 3: Build the dictionary from exported source files
+metadata = Lindera::Metadata.from_json_file('/tmp/dictionary_source/metadata.json')
+Lindera.build_dictionary('/tmp/dictionary_source', '/tmp/dictionary', metadata)
+
+# Step 4: Use the trained dictionary
+builder = Lindera::TokenizerBuilder.new
+builder.set_dictionary('/tmp/dictionary')
+builder.set_mode('normal')
+tokenizer = builder.build
+
+tokens = tokenizer.tokenize('形態素解析のテスト')
+tokens.each do |token|
+  puts "#{token.surface}\t#{token.details.join(',')}"
+end
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-php"><a class="header" href="#lindera-php">Lindera PHP</a></h1>
+<p>Lindera PHP は、<a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a> を使用して構築された Lindera 形態素解析エンジンの PHP バインディングです。PHP 8.1 以降をサポートし、Lindera の高性能なトークナイズ機能を PHP エコシステムに提供します。</p>
+<h2 id="特徴-3"><a class="header" href="#特徴-3">特徴</a></h2>
+<ul>
+<li><strong>多言語対応</strong>: 日本語（IPADIC、IPADIC NEologd、UniDic）、韓国語（ko-dic）、中国語（CC-CEDICT、Jieba）のテキストをトークナイズ</li>
+<li><strong>テキスト処理パイプライン</strong>: 文字フィルタとトークンフィルタを組み合わせて、柔軟な前処理・後処理が可能</li>
+<li><strong>CRF ベースの辞書学習</strong>: アノテーション付きコーパスからカスタム形態素解析モデルを学習（<code>train</code> feature が必要）</li>
+<li><strong>複数のトークナイズモード</strong>: 解析粒度に応じた Normal モードと Decompose モード</li>
+<li><strong>N-best トークナイズ</strong>: コスト順にランク付けされた複数のトークナイズ候補を取得</li>
+<li><strong>ユーザー辞書</strong>: システム辞書をカスタム語彙で拡張</li>
+</ul>
+<h2 id="ドキュメント-3"><a class="header" href="#ドキュメント-3">ドキュメント</a></h2>
+<ul>
+<li><a href="./lindera-php/installation.html">インストール</a> -- 前提条件、ビルド手順、feature フラグ</li>
+<li><a href="./lindera-php/quickstart.html">クイックスタート</a> -- 最小限の使用例</li>
+<li><a href="./lindera-php/tokenizer_api.html">トークナイザー API</a> -- <code>TokenizerBuilder</code>、<code>Tokenizer</code>、<code>Token</code> クラスリファレンス</li>
+<li><a href="./lindera-php/dictionary_management.html">辞書管理</a> -- 辞書の読み込み、ビルド、管理</li>
+<li><a href="./lindera-php/text_processing_pipeline.html">テキスト処理パイプライン</a> -- 文字フィルタとトークンフィルタ</li>
+<li><a href="./lindera-php/training.html">学習</a> -- カスタム CRF モデルの学習と辞書のエクスポート</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-5"><a class="header" href="#インストール-5">インストール</a></h1>
+<blockquote>
+<p>[!NOTE]
+lindera-php はまだ Packagist に公開されていません。ソースからビルドする必要があります。</p>
+</blockquote>
+<h2 id="前提条件-5"><a class="header" href="#前提条件-5">前提条件</a></h2>
+<ul>
+<li><strong>PHP 8.1 以降</strong></li>
+<li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
+<li><strong>Composer</strong> -- PHP の依存関係管理（テスト実行時に必要）</li>
+</ul>
+<h2 id="辞書の入手-4"><a class="header" href="#辞書の入手-4">辞書の入手</a></h2>
+<p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
+<h3 id="github-releases-からのダウンロード-3"><a class="header" href="#github-releases-からのダウンロード-3">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手で���ます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：</p>
+<pre><code class="language-bash"># 例: IPADIC 辞書のダウンロードと展開
+curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
+</code></pre>
+<h2 id="ビルド-3"><a class="header" href="#ビルド-3">ビルド</a></h2>
+<p>lindera-php をビルドします：</p>
+<pre><code class="language-bash">cargo build -p lindera-php
+</code></pre>
+<p>または、プロジェクトの Makefile を使用します：</p>
+<pre><code class="language-bash">make php-build
+</code></pre>
+<h3 id="学習機能付きビルド-3"><a class="header" href="#学習機能付きビルド-3">学習機能付きビルド</a></h3>
+<p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります。デフォルトで有効になっています：</p>
+<pre><code class="language-bash">cargo build -p lindera-php --features train
+</code></pre>
+<h3 id="php-拡張の読み込み"><a class="header" href="#php-拡張の読み込み">PHP 拡張の読み込み</a></h3>
+<p>ビルド後、<code>-d extension=</code> オプションでビルドされた共有ライブラリを指定して PHP を実行します：</p>
+<pre><code class="language-bash">php -d extension=target/debug/liblindera_php.so script.php
+</code></pre>
+<p>リリースビルドの場合：</p>
+<pre><code class="language-bash">cargo build -p lindera-php --release
+php -d extension=target/release/liblindera_php.so script.php
+</code></pre>
+<h2 id="feature-フラグ-4"><a class="header" href="#feature-フラグ-4">Feature フラグ</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
+<tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書をバイナリに埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
+</tbody></table>
+</div>
+<p>複数の feature を組み合わせることができます：</p>
+<pre><code class="language-bash">cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
+</code></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><code class="language-php">$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+</code></pre>
+<p>詳細は <a href="lindera-php/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
+<h2 id="インストールの確認-3"><a class="header" href="#インストールの確認-3">インストールの確認</a></h2>
+<p>インストール後、PHP で lindera が利用可能であることを確認します：</p>
+<pre><code class="language-php">&lt;?php
+
+$version = Lindera\Dictionary::version();
+echo "Lindera version: {$version}\n";
+</code></pre>
+<p>実行方法：</p>
+<pre><code class="language-bash">php -d extension=target/debug/liblindera_php.so script.php
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート-4"><a class="header" href="#クイックスタート-4">クイックスタート</a></h1>
+<p>このガイドでは、lindera-php を使用してテキストをトークナイズする方法を紹介します。</p>
+<h2 id="基本的なトークナイズ-3"><a class="header" href="#基本的なトークナイズ-3">基本的なトークナイズ</a></h2>
+<p>辞書を読み込み、トークナイザーを作成してテキストをトークナイズします：</p>
+<pre><code class="language-php">&lt;?php
+
+// Load the dictionary
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+
+// Create a tokenizer
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// Tokenize the text
+$tokens = $tokenizer-&gt;tokenize('関西国際空港限定トートバッグ');
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\t" . implode(',', $token-&gt;details) . "\n";
+}
+</code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、展開したディレクトリのパスを指定してください。</p>
+</blockquote>
+<p>期待される出力：</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    UNK
+</code></pre>
+<h2 id="tokenizerbuilder-の使用"><a class="header" href="#tokenizerbuilder-の使用">TokenizerBuilder の使用</a></h2>
+<p><code>TokenizerBuilder</code> を使用すると、より柔軟にトークナイザーを設定できます：</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setMode('normal');
+$builder-&gt;setDictionary('/path/to/ipadic');
+$tokenizer = $builder-&gt;build();
+
+$tokens = $tokenizer-&gt;tokenize('すもももももももものうち');
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\t" . $token-&gt;getDetail(0) . "\n";
+}
+</code></pre>
+<h2 id="トークンプロパティへのアクセス-3"><a class="header" href="#トークンプロパティへのアクセス-3">トークンプロパティへのアクセス</a></h2>
+<p>各トークンは以下のプロパティを公開しています：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokens = $tokenizer-&gt;tokenize('東京タワー');
+
+foreach ($tokens as $token) {
+    echo "Surface: {$token-&gt;surface}\n";
+    echo "Byte range: {$token-&gt;byte_start}..{$token-&gt;byte_end}\n";
+    echo "Position: {$token-&gt;position}\n";
+    echo "Word ID: {$token-&gt;word_id}\n";
+    echo "Unknown: " . ($token-&gt;is_unknown ? 'true' : 'false') . "\n";
+    echo "Details: " . implode(',', $token-&gt;details) . "\n";
+    echo "\n";
+}
+</code></pre>
+<h2 id="n-best-トークナイズ-4"><a class="header" href="#n-best-トークナイズ-4">N-best トークナイズ</a></h2>
+<p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('/path/to/ipadic');
+$tokenizer = $builder-&gt;build();
+
+$results = $tokenizer-&gt;tokenizeNbest('東京都', 3);
+foreach ($results as $result) {
+    $surfaces = array_map(fn($t) =&gt; $t-&gt;surface, $result-&gt;tokens);
+    echo "Cost {$result-&gt;cost}: " . implode(' / ', $surfaces) . "\n";
+}
+</code></pre>
+<h2 id="decompose-モード-1"><a class="header" href="#decompose-モード-1">Decompose モード</a></h2>
+<p>Decompose モードでは、複合語をより小さな単位に分解します：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'decompose');
+
+$tokens = $tokenizer-&gt;tokenize('関西国際空港限定トートバッグ');
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\n";
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="トークナイザー-api"><a class="header" href="#トークナイザー-api">トークナイザー API</a></h1>
+<h2 id="tokenizerbuilder-4"><a class="header" href="#tokenizerbuilder-4">TokenizerBuilder</a></h2>
+<p><code>TokenizerBuilder</code> はビルダーパターンを使用して <code>Tokenizer</code> インスタンスを設定・構築します。</p>
+<h3 id="コンストラクタ-3"><a class="header" href="#コンストラクタ-3">コンストラクタ</a></h3>
+<h4 id="new-linderatokenizerbuilder"><a class="header" href="#new-linderatokenizerbuilder"><code>new Lindera\TokenizerBuilder()</code></a></h4>
+<p>デフォルト設定で新しいビルダーを作成します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+</code></pre>
+<h3 id="設定メソッド-3"><a class="header" href="#設定メソッド-3">設定メソッド</a></h3>
+<p>すべてのセッターメソッドはメソッドチェーンのために <code>$this</code> を返します。</p>
+<h4 id="setmodemode-1"><a class="header" href="#setmodemode-1"><code>setMode($mode)</code></a></h4>
+<p>トークナイズモードを設定します。</p>
+<ul>
+<li><code>"normal"</code> -- 標準的なトークナイズ（デフォルト）</li>
+<li><code>"decompose"</code> -- 複合語をより小さな単位に分解</li>
+</ul>
+<pre><code class="language-php">$builder-&gt;setMode('normal');
+</code></pre>
+<h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary($uri)</code></a></h4>
+<p>システム辞書のパスまたは URI を設定します。</p>
+<pre><code class="language-php">// 埋め込み辞書を使用
+$builder-&gt;setDictionary('embedded://ipadic');
+
+// 外部辞書を使用
+$builder-&gt;setDictionary('/path/to/dictionary');
+</code></pre>
+<h4 id="setuserdictionaryuri-1"><a class="header" href="#setuserdictionaryuri-1"><code>setUserDictionary($uri)</code></a></h4>
+<p>ユーザー辞書の URI を設定します。</p>
+<pre><code class="language-php">$builder-&gt;setUserDictionary('/path/to/user_dictionary');
+</code></pre>
+<h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace($keep)</code></a></h4>
+<p>出力に空白トークンを含めるかどうかを制御します。</p>
+<pre><code class="language-php">$builder-&gt;setKeepWhitespace(true);
+</code></pre>
+<h4 id="appendcharacterfilterkind-args-1"><a class="header" href="#appendcharacterfilterkind-args-1"><code>appendCharacterFilter($kind, $args)</code></a></h4>
+<p>前処理パイプラインに文字フィルタを追加します。</p>
+<pre><code class="language-php">$builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
+</code></pre>
+<h4 id="appendtokenfilterkind-args-1"><a class="header" href="#appendtokenfilterkind-args-1"><code>appendTokenFilter($kind, $args)</code></a></h4>
+<p>後処理パイプラインにトークンフィルタを追加します。</p>
+<pre><code class="language-php">$builder-&gt;appendTokenFilter('lowercase');
+$builder-&gt;appendTokenFilter('japanese_stop_tags', ['tags' =&gt; ['助詞', '助動詞']]);
+</code></pre>
+<h3 id="ビルド-4"><a class="header" href="#ビルド-4">ビルド</a></h3>
+<h4 id="build-4"><a class="header" href="#build-4"><code>build()</code></a></h4>
+<p>設定された内容で <code>Tokenizer</code> をビルドして返します。</p>
+<pre><code class="language-php">$tokenizer = $builder-&gt;build();
+</code></pre>
+<h2 id="tokenizer-3"><a class="header" href="#tokenizer-3">Tokenizer</a></h2>
+<p><code>Tokenizer</code> はテキストに対して形態素解析を行います。</p>
+<h3 id="tokenizer-の作成-3"><a class="header" href="#tokenizer-の作成-3">Tokenizer の作成</a></h3>
+<h4 id="new-linderatokenizerdictionary-mode-userdictionary"><a class="header" href="#new-linderatokenizerdictionary-mode-userdictionary"><code>new Lindera\Tokenizer($dictionary, $mode, $userDictionary)</code></a></h4>
+<p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+</code></pre>
+<p>ユーザー辞書を指定する場合：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+$metadata = $dictionary-&gt;metadata();
+$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
+
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+</code></pre>
+<h3 id="tokenizer-メソッド-3"><a class="header" href="#tokenizer-メソッド-3">Tokenizer メソッド</a></h3>
+<h4 id="tokenizetext-3"><a class="header" href="#tokenizetext-3"><code>tokenize($text)</code></a></h4>
+<p>入力テキストをトークナイズし、<code>Token</code> オブジェクトの配列を返します。</p>
+<pre><code class="language-php">$tokens = $tokenizer-&gt;tokenize('形態素解析');
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>array&lt;Token&gt;</code></p>
+<h4 id="tokenizenbesttext-n"><a class="header" href="#tokenizenbesttext-n"><code>tokenizeNbest($text, $n)</code></a></h4>
+<p>N-best トークナイズ結果を返します。各結果は <code>NbestResult</code> オブジェクトで、トークン配列とトータルパスコストを含みます。</p>
+<pre><code class="language-php">$results = $tokenizer-&gt;tokenizeNbest('すもももももももものうち', 3);
+foreach ($results as $result) {
+    echo "Cost: {$result-&gt;cost}\n";
+    foreach ($result-&gt;tokens as $token) {
+        echo "  {$token-&gt;surface}\n";
+    }
+}
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+<tr><td><code>$n</code></td><td><code>int</code></td><td>返す結果の数</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>array&lt;NbestResult&gt;</code></p>
+<h2 id="nbestresult"><a class="header" href="#nbestresult">NbestResult</a></h2>
+<p><code>NbestResult</code> は N-best トークナイズの個別の結果を表します。</p>
+<h3 id="nbestresult-プロパティ"><a class="header" href="#nbestresult-プロパティ">NbestResult プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>tokens</code></td><td><code>array&lt;Token&gt;</code></td><td>トークンの配列</td></tr>
+<tr><td><code>cost</code></td><td><code>int</code></td><td>トータルパスコスト</td></tr>
+</tbody></table>
+</div>
+<h2 id="token-3"><a class="header" href="#token-3">Token</a></h2>
+<p><code>Token</code> は単一の形態素トークンを表します。</p>
+<h3 id="token-プロパティ"><a class="header" href="#token-プロパティ">Token プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
+<tr><td><code>byte_start</code></td><td><code>int</code></td><td>元テキストでの開始バイト位置</td></tr>
+<tr><td><code>byte_end</code></td><td><code>int</code></td><td>元テキストでの終了バイト位置</td></tr>
+<tr><td><code>position</code></td><td><code>int</code></td><td>トークンの位置インデックス</td></tr>
+<tr><td><code>word_id</code></td><td><code>int</code></td><td>辞書の単語 ID</td></tr>
+<tr><td><code>is_unknown</code></td><td><code>bool</code></td><td>辞書に登録されていない単語の場合 <code>true</code></td></tr>
+<tr><td><code>details</code></td><td><code>array&lt;string&gt;</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
+</tbody></table>
+</div>
+<h3 id="token-メソッド-3"><a class="header" href="#token-メソッド-3">Token メソッド</a></h3>
+<h4 id="getdetailindex-1"><a class="header" href="#getdetailindex-1"><code>getDetail($index)</code></a></h4>
+<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
+<pre><code class="language-php">$token = $tokenizer-&gt;tokenize('東京')[0];
+$pos = $token-&gt;getDetail(0);        // 例: "名詞"
+$subpos = $token-&gt;getDetail(1);     // 例: "固有名詞"
+$reading = $token-&gt;getDetail(7);    // 例: "トウキョウ"
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$index</code></td><td><code>int</code></td><td>details 配列へのゼロベースインデックス</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>string</code> または <code>null</code></p>
+<p><code>details</code> の構造は辞書によって異なります：</p>
+<ul>
+<li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
+<li><strong>UniDic</strong>: UniDic 仕様に準拠した詳細な形態素情報</li>
+<li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
+</ul>
+<h2 id="mode-1"><a class="header" href="#mode-1">Mode</a></h2>
+<p><code>Mode</code> はトークナイズの動作モードを表します。</p>
+<h3 id="mode-の作成"><a class="header" href="#mode-の作成">Mode の作成</a></h3>
+<h4 id="new-linderamodename"><a class="header" href="#new-linderamodename"><code>new Lindera\Mode($name)</code></a></h4>
+<pre><code class="language-php">$mode = new Lindera\Mode('normal');
+$mode = new Lindera\Mode('decompose');
+$mode = new Lindera\Mode();  // デフォルト: 'normal'
+</code></pre>
+<h3 id="mode-プロパティ"><a class="header" href="#mode-プロパティ">Mode プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td>モード名（<code>"normal"</code> または <code>"decompose"</code>）</td></tr>
+</tbody></table>
+</div>
+<h3 id="mode-メソッド"><a class="header" href="#mode-メソッド">Mode メソッド</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>isNormal()</code></td><td><code>bool</code></td><td>Normal モードの場合 <code>true</code></td></tr>
+<tr><td><code>isDecompose()</code></td><td><code>bool</code></td><td>Decompose モードの場合 <code>true</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-3"><a class="header" href="#辞書管理-3">辞書管理</a></h1>
+<p>Lindera PHP は、形態素解析で使用する辞書の読み込み、ビルド、管理のためのクラスを提供します。</p>
+<h2 id="辞書の読み込み-4"><a class="header" href="#辞書の読み込み-4">辞書の読み込み</a></h2>
+<h3 id="システム辞書-3"><a class="header" href="#システム辞書-3">システム辞書</a></h3>
+<p><code>Lindera\Dictionary::load($uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+</code></pre>
+<p><strong>埋め込み辞書（上級者向け）</strong> -- <code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('embedded://ipadic');
+</code></pre>
+<h3 id="ユーザー辞書-4"><a class="header" href="#ユーザー辞書-4">ユーザー辞書</a></h3>
+<p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。<code>Lindera\Dictionary::loadUser()</code> を使用して読み込みます。</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$metadata = $dictionary-&gt;metadata();
+$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+</code></pre>
+<p>トークナイザーの作成時にユーザー辞書を渡します：</p>
+<pre><code class="language-php">&lt;?php
+
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$metadata = $dictionary-&gt;metadata();
+$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
+
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
+</code></pre>
+<p>または、ビルダー経由で設定します：</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('/path/to/ipadic');
+$builder-&gt;setUserDictionary('/path/to/user_dictionary');
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="dictionary-メソッド"><a class="header" href="#dictionary-メソッド">Dictionary メソッド</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>Dictionary::load($uri)</code></td><td><code>Dictionary</code></td><td>システム辞書を読み込む</td></tr>
+<tr><td><code>Dictionary::loadUser($path, $metadata)</code></td><td><code>UserDictionary</code></td><td>ユーザー辞書を読み込む</td></tr>
+<tr><td><code>Dictionary::version()</code></td><td><code>string</code></td><td>Lindera のバージョン文字列を返す</td></tr>
+<tr><td><code>Dictionary::build($source, $dest, $metadata)</code></td><td><code>void</code></td><td>辞書をビルドする</td></tr>
+<tr><td><code>$dictionary-&gt;metadata()</code></td><td><code>Metadata</code></td><td>辞書のメタデータを返す</td></tr>
+<tr><td><code>$dictionary-&gt;metadataName()</code></td><td><code>string</code></td><td>辞書名を返す</td></tr>
+<tr><td><code>$dictionary-&gt;metadataEncoding()</code></td><td><code>string</code></td><td>辞書のエンコーディングを返す</td></tr>
+</tbody></table>
+</div>
+<h2 id="辞書のビルド-3"><a class="header" href="#辞書のビルド-3">辞書のビルド</a></h2>
+<h3 id="システム辞書のビルド-3"><a class="header" href="#システム辞書のビルド-3">システム辞書のビルド</a></h3>
+<p>ソースファイルからシステム辞書をビルドします：</p>
+<pre><code class="language-php">&lt;?php
+
+$metadata = Lindera\Metadata::fromJsonFile('/path/to/metadata.json');
+Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata);
+</code></pre>
+<p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
+<p>以下は IPADIC 辞書をダウンロードしてビルドする例です：</p>
+<pre><code class="language-php">&lt;?php
+
+$url = 'https://lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz';
+$filename = '/tmp/mecab-ipadic-2.7.0-20070801.tar.gz';
+
+// Download and extract dictionary source
+file_put_contents($filename, file_get_contents($url));
+$phar = new PharData($filename);
+$phar-&gt;extractTo('/tmp/', null, true);
+
+// Load metadata and build
+$metadata = Lindera\Metadata::fromJsonFile('resources/ipadic_metadata.json');
+Lindera\Dictionary::build(
+    '/tmp/mecab-ipadic-2.7.0-20070801',
+    '/tmp/lindera-ipadic',
+    $metadata
+);
+</code></pre>
+<h2 id="metadata-3"><a class="header" href="#metadata-3">Metadata</a></h2>
+<p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
+<h3 id="metadata-の作成-3"><a class="header" href="#metadata-の作成-3">Metadata の作成</a></h3>
+<pre><code class="language-php">&lt;?php
+
+// デフォルトのメタデータ
+$metadata = Lindera\Metadata::createDefault();
+
+// カスタムメタデータ
+$metadata = new Lindera\Metadata('my_dictionary', 'UTF-8', -10000);
+</code></pre>
+<h3 id="json-からの読み込み-2"><a class="header" href="#json-からの読み込み-2">JSON からの読み込み</a></h3>
+<pre><code class="language-php">$metadata = Lindera\Metadata::fromJsonFile('metadata.json');
+</code></pre>
+<h3 id="プロパティ-6"><a class="header" href="#プロパティ-6">プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
+<tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
+<tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
+</tbody></table>
+</div>
+<h2 id="schema-1"><a class="header" href="#schema-1">Schema</a></h2>
+<p><code>Schema</code> クラスは辞書のフィールド構造を定義します。</p>
+<h3 id="schema-の作成-1"><a class="header" href="#schema-の作成-1">Schema の作成</a></h3>
+<pre><code class="language-php">&lt;?php
+
+// デフォルトスキーマ（IPADIC 互換）
+$schema = Lindera\Schema::createDefault();
+
+// カスタムスキーマ
+$schema = new Lindera\Schema(['surface', 'pos']);
+</code></pre>
+<h3 id="メソッド"><a class="header" href="#メソッド">メソッド</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>fieldCount()</code></td><td><code>int</code></td><td>フィールド数を返す</td></tr>
+<tr><td><code>getFieldIndex($name)</code></td><td><code>int</code></td><td>フィールドのインデックスを返す（見つからない場合は <code>-1</code>）</td></tr>
+<tr><td><code>getFieldByName($name)</code></td><td><code>Field</code> または <code>null</code></td><td>フィールド情報を返す</td></tr>
+<tr><td><code>getCustomFields()</code></td><td><code>array&lt;string&gt;</code></td><td>カスタムフィールド名の配列を返す</td></tr>
+<tr><td><code>validateRecord($record)</code></td><td><code>void</code></td><td>レコードがスキーマに適合するか検証する</td></tr>
+</tbody></table>
+</div>
+<h3 id="schema-プロパティ"><a class="header" href="#schema-プロパティ">Schema プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>fields</code></td><td><code>array&lt;string&gt;</code></td><td>フィールド名の配列</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="テキスト処理パイプライン-3"><a class="header" href="#テキスト処理パイプライン-3">テキスト処理パイプライン</a></h1>
+<p>Lindera PHP は、トークナイズ前に文字フィルタを適用し、トークナイズ後にトークンフィルタを適用する、組み合わせ可能なテキスト処理パイプラインをサポートしています。フィルタは <code>TokenizerBuilder</code> に追加され、追加された順序で実行されます。</p>
+<pre><code class="language-text">Input Text
+  --&gt; Character Filters (preprocessing)
+  --&gt; Tokenization
+  --&gt; Token Filters (postprocessing)
+  --&gt; Output Tokens
+</code></pre>
+<h2 id="文字フィルタ-3"><a class="header" href="#文字フィルタ-3">文字フィルタ</a></h2>
+<p>文字フィルタはトークナイズ前に入力テキストを変換します。</p>
+<h3 id="unicode_normalize-4"><a class="header" href="#unicode_normalize-4">unicode_normalize</a></h3>
+<p>入力テキストに Unicode 正規化を適用します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<p>サポートされる正規化形式: <code>"nfc"</code>、<code>"nfkc"</code>、<code>"nfd"</code>、<code>"nfkd"</code>。</p>
+<h3 id="mapping-4"><a class="header" href="#mapping-4">mapping</a></h3>
+<p>マッピングテーブルに従って文字や文字列を置換します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendCharacterFilter('mapping', [
+    'mapping' =&gt; [
+        'リンデラ' =&gt; 'lindera',
+    ],
+]);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="japanese_iteration_mark-4"><a class="header" href="#japanese_iteration_mark-4">japanese_iteration_mark</a></h3>
+<p>日本語の踊り字（繰り返し記号）を完全な形に展開します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendCharacterFilter('japanese_iteration_mark', [
+    'normalize_kanji' =&gt; 'true',
+    'normalize_kana' =&gt; 'true',
+]);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h2 id="トークンフィルタ-3"><a class="header" href="#トークンフィルタ-3">トークンフィルタ</a></h2>
+<p>トークンフィルタはトークナイズ後にトークンを変換または除去します。</p>
+<h3 id="lowercase-3"><a class="header" href="#lowercase-3">lowercase</a></h3>
+<p>トークンの表層形を小文字に変換します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('lowercase');
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="japanese_base_form-3"><a class="header" href="#japanese_base_form-3">japanese_base_form</a></h3>
+<p>辞書の形態素情報を使用して、活用形を基本形（辞書形）に置換します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_base_form', []);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="japanese_katakana_stem-1"><a class="header" href="#japanese_katakana_stem-1">japanese_katakana_stem</a></h3>
+<p>カタカナ語の語尾の長音記号を除去してステミングを行います。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_katakana_stem', ['min' =&gt; 3]);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="japanese_stop_tags-3"><a class="header" href="#japanese_stop_tags-3">japanese_stop_tags</a></h3>
+<p>指定されたタグに一致する品詞のトークンを除去します。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_stop_tags', [
+    'tags' =&gt; ['助詞', '助動詞', '記号'],
+]);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h3 id="japanese_keep_tags-3"><a class="header" href="#japanese_keep_tags-3">japanese_keep_tags</a></h3>
+<p>指定されたタグに一致する品詞のトークンのみを保持します。その他のトークンはすべて除去されます。</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+$builder-&gt;setDictionary('embedded://ipadic');
+$builder-&gt;appendTokenFilter('japanese_keep_tags', [
+    'tags' =&gt; ['名詞'],
+]);
+$tokenizer = $builder-&gt;build();
+</code></pre>
+<h2 id="パイプラインの完全な例-3"><a class="header" href="#パイプラインの完全な例-3">パイプラインの完全な例</a></h2>
+<p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
+<pre><code class="language-php">&lt;?php
+
+$builder = new Lindera\TokenizerBuilder();
+
+// Set mode and dictionary
+$builder-&gt;setMode('normal');
+$builder-&gt;setDictionary('embedded://ipadic');
+
+// Preprocessing
+$builder-&gt;appendCharacterFilter('unicode_normalize', ['kind' =&gt; 'nfkc']);
+$builder-&gt;appendCharacterFilter(
+    'japanese_iteration_mark',
+    ['normalize_kanji' =&gt; 'true', 'normalize_kana' =&gt; 'true']
+);
+$builder-&gt;appendCharacterFilter('mapping', ['mapping' =&gt; ['リンデラ' =&gt; 'lindera']]);
+
+// Postprocessing
+$builder-&gt;appendTokenFilter('japanese_katakana_stem', ['min' =&gt; 3]);
+$builder-&gt;appendTokenFilter('japanese_stop_tags', [
+    'tags' =&gt; [
+        '接続詞',
+        '助詞',
+        '助詞,格助詞',
+        '助詞,格助詞,一般',
+        '助詞,係助詞',
+        '助詞,副助詞',
+        '助詞,終助詞',
+        '助詞,連体化',
+        '助動詞',
+        '記号',
+        '記号,一般',
+        '記号,読点',
+        '記号,句点',
+        '記号,空白',
+    ],
+]);
+$builder-&gt;appendTokenFilter('lowercase');
+
+// Build the tokenizer
+$tokenizer = $builder-&gt;build();
+
+// Tokenize
+$text = 'Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。';
+$tokens = $tokenizer-&gt;tokenize($text);
+
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\t" . implode(',', $token-&gt;details) . "\n";
+}
+</code></pre>
+<p>このパイプラインでは：</p>
+<ol>
+<li><code>unicode_normalize</code> が全角文字を半角に変換（NFKC 正規化）</li>
+<li><code>japanese_iteration_mark</code> が踊り字を展開</li>
+<li><code>mapping</code> が指定された文字列を置換</li>
+<li><code>japanese_katakana_stem</code> がカタカナ語をステミング</li>
+<li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
+<li><code>lowercase</code> がアルファベットを小文字に正規化</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-3"><a class="header" href="#学習-3">学習</a></h1>
+<p>Lindera PHP は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
+<h2 id="前提条件-6"><a class="header" href="#前提条件-6">前提条件</a></h2>
+<p><code>train</code> feature を有効にして lindera-php をビルドします（デフォルトで有効）：</p>
+<pre><code class="language-bash">cargo build -p lindera-php --features train
+</code></pre>
+<h2 id="モデルの学習-3"><a class="header" href="#モデルの学習-3">モデルの学習</a></h2>
+<p><code>Lindera\Trainer::train()</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
+<pre><code class="language-php">&lt;?php
+
+Lindera\Trainer::train(
+    '/path/to/seed.csv',         // seed: 種辞書ファイル
+    '/path/to/corpus.txt',       // corpus: アノテーション付きコーパス
+    '/path/to/char.def',         // char_def: 文字定義ファイル
+    '/path/to/unk.def',          // unk_def: 未知語定義ファイル
+    '/path/to/feature.def',      // feature_def: 素性定義ファイル
+    '/path/to/rewrite.def',      // rewrite_def: 書き換えルール定義ファイル
+    '/tmp/model.dat',            // output: 学習済みモデルの出力パス
+    0.01,                        // lambda: L1 正則化コスト
+    100,                         // max_iter: 最大イテレーション数
+    null                         // max_threads: スレッド数（null = 自動検出）
+);
+</code></pre>
+<h3 id="学習パラメータ-4"><a class="header" href="#学習パラメータ-4">学習パラメータ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$seed</code></td><td><code>string</code></td><td>必須</td><td>種辞書ファイルのパス（CSV 形式）</td></tr>
+<tr><td><code>$corpus</code></td><td><code>string</code></td><td>必須</td><td>アノテーション付き学習コーパスのパス</td></tr>
+<tr><td><code>$charDef</code></td><td><code>string</code></td><td>必須</td><td>文字定義ファイルのパス（char.def）</td></tr>
+<tr><td><code>$unkDef</code></td><td><code>string</code></td><td>必須</td><td>未知語定義ファイルのパス（unk.def）</td></tr>
+<tr><td><code>$featureDef</code></td><td><code>string</code></td><td>必須</td><td>素性定義ファイルのパス（feature.def）</td></tr>
+<tr><td><code>$rewriteDef</code></td><td><code>string</code></td><td>必須</td><td>書き換えルール定義ファイルのパス（rewrite.def）</td></tr>
+<tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルの出力パス</td></tr>
+<tr><td><code>$lambda</code></td><td><code>float</code></td><td><code>0.01</code></td><td>L1 正則化コスト（0.0--1.0）</td></tr>
+<tr><td><code>$maxIter</code></td><td><code>int</code></td><td><code>100</code></td><td>最大学習イテレーション数</td></tr>
+<tr><td><code>$maxThreads</code></td><td><code>int</code> または <code>null</code></td><td><code>null</code></td><td>スレッド数（null = CPU コア数を自動検出）</td></tr>
+</tbody></table>
+</div>
+<h2 id="学習済みモデルのエクスポート-3"><a class="header" href="#学習済みモデルのエクスポート-3">学習済みモデルのエクスポート</a></h2>
+<p>学習後、<code>Lindera\Trainer::export()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
+<pre><code class="language-php">&lt;?php
+
+Lindera\Trainer::export(
+    '/tmp/model.dat',                    // model: 学習済みモデルファイル
+    '/tmp/dictionary_source',            // output: 出力ディレクトリ
+    '/path/to/metadata.json'             // metadata: メタデータファイル（省略可）
+);
+</code></pre>
+<h3 id="エクスポートパラメータ-4"><a class="header" href="#エクスポートパラメータ-4">エクスポートパラメータ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$model</code></td><td><code>string</code></td><td>必須</td><td>学習済みモデルファイルのパス（.dat）</td></tr>
+<tr><td><code>$output</code></td><td><code>string</code></td><td>必須</td><td>辞書ソースファイルの出力ディレクトリ</td></tr>
+<tr><td><code>$metadata</code></td><td><code>string</code> または <code>null</code></td><td><code>null</code></td><td>ベースとなる metadata.json ファイルのパス</td></tr>
+</tbody></table>
+</div>
+<p>エクスポートにより、出力ディレクトリに以下のファイルが作成されます：</p>
+<ul>
+<li><code>lex.csv</code> -- 学習済みコスト付きのレキシコンエントリー</li>
+<li><code>matrix.def</code> -- 連接コスト行列</li>
+<li><code>unk.def</code> -- 未知語定義</li>
+<li><code>char.def</code> -- 文字カテゴリ定義</li>
+<li><code>metadata.json</code> -- 更新されたメタデータ（<code>$metadata</code> パラメータ指定時）</li>
+</ul>
+<h2 id="完全なワークフロー-3"><a class="header" href="#完全なワークフロー-3">完全なワークフロー</a></h2>
+<p>カスタム辞書の学習と使用の完全なワークフロー：</p>
+<pre><code class="language-php">&lt;?php
+
+// Step 1: Train the CRF model
+Lindera\Trainer::train(
+    'resources/training/seed.csv',
+    'resources/training/corpus.txt',
+    'resources/training/char.def',
+    'resources/training/unk.def',
+    'resources/training/feature.def',
+    'resources/training/rewrite.def',
+    '/tmp/model.dat',
+    0.01,   // lambda
+    100,    // max_iter
+    null    // max_threads
+);
+
+// Step 2: Export to dictionary source files
+Lindera\Trainer::export(
+    '/tmp/model.dat',
+    '/tmp/dictionary_source',
+    'resources/training/metadata.json'
+);
+
+// Step 3: Build the dictionary from exported source files
+$metadata = Lindera\Metadata::fromJsonFile('/tmp/dictionary_source/metadata.json');
+Lindera\Dictionary::build('/tmp/dictionary_source', '/tmp/dictionary', $metadata);
+
+// Step 4: Use the trained dictionary
+$dictionary = Lindera\Dictionary::load('/tmp/dictionary');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+$tokens = $tokenizer-&gt;tokenize('形態素解析のテスト');
+foreach ($tokens as $token) {
+    echo $token-&gt;surface . "\t" . implode(',', $token-&gt;details) . "\n";
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-wasm"><a class="header" href="#lindera-wasm">Lindera WASM</a></h1>
 <p>Lindera WASM は、<a href="https://rustwasm.github.io/wasm-bindgen/">wasm-bindgen</a> を使用して構築された Lindera 形態素解析エンジンの WebAssembly バインディングです。Web ブラウザ、Node.js、バンドラー環境で日本語、韓国語、中国語のテキストトークナイズを直接実行できます。</p>
 <h2 id="配布フォーマット"><a class="header" href="#配布フォーマット">配布フォーマット</a></h2>
@@ -3372,23 +4769,39 @@ for (const token of tokens) {
 <li><a href="./lindera-wasm/tokenizer_api.html">Tokenizer API</a> -- JavaScript/TypeScript の完全な API リファレンス</li>
 <li><a href="./lindera-wasm/dictionary_management.html">辞書管理</a> -- 辞書の読み込みとビルド</li>
 <li><a href="./lindera-wasm/browser_usage.html">ブラウザでの使用</a> -- Web アプリケーションとの統合</li>
+<li><a href="./lindera-wasm/opfs.html">OPFS 辞書ストレージ</a> -- OPFS による辞書の永続キャッシュ</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-4"><a class="header" href="#インストール-4">インストール</a></h1>
-<h2 id="前提条件-4"><a class="header" href="#前提条件-4">前提条件</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-6"><a class="header" href="#インストール-6">インストール</a></h1>
+<h2 id="前提条件-7"><a class="header" href="#前提条件-7">前提条件</a></h2>
 <ul>
 <li><a href="https://www.rust-lang.org/tools/install">Rust</a>（stable ツールチェーン）</li>
 <li><a href="https://rustwasm.github.io/wasm-pack/installer/">wasm-pack</a>（v0.10 以降）</li>
 </ul>
+<h2 id="辞書の入手-5"><a class="header" href="#辞書の入手-5">辞書の入手</a></h2>
+<p>Lindera WASM はデフォルトで辞書を同梱しません。ブラウザ環境では、OPFS（Origin Private File System）API を使用して辞書を実行時にダウンロードする方法を推奨します。</p>
+<h3 id="github-releases-からのダウンロード-4"><a class="header" href="#github-releases-からのダウンロード-4">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。ブラウザ環境では、OPFS ヘルパーを使用して辞書をダウンロードしてキャッシュします：</p>
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+
+if (!await hasDictionary("ipadic")) {
+    await downloadDictionary(
+        "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+        "ipadic",
+    );
+}
+</code></pre>
+<p>詳細は <a href="lindera-wasm/./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
 <h2 id="wasm-pack-によるビルド"><a class="header" href="#wasm-pack-によるビルド">wasm-pack によるビルド</a></h2>
-<p>ターゲット環境に合わせて WASM パッケージをビルドします。辞書を埋め込むには、少なくとも1つの辞書 feature フラグを有効にする必要があります。</p>
+<p>ターゲット環境に合わせて WASM パッケージをビルドします：</p>
 <h3 id="webブラウザ向け-es-modules"><a class="header" href="#webブラウザ向け-es-modules">Web（ブラウザ向け ES Modules）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
 <h3 id="バンドラーwebpackviterollup"><a class="header" href="#バンドラーwebpackviterollup">バンドラー（Webpack、Vite、Rollup）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target bundler
 </code></pre>
 <p>出力は <code>lindera-wasm</code> クレート内の <code>pkg/</code> ディレクトリに書き込まれます。</p>
-<h2 id="利用可能な-feature-フラグ"><a class="header" href="#利用可能な-feature-フラグ">利用可能な Feature フラグ</a></h2>
+<h2 id="利用可能な-feature-フラグ上級者向け"><a class="header" href="#利用可能な-feature-フラグ上級者向け">利用可能な Feature フラグ（上級者向け）</a></h2>
+<p>辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>日本語</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic</td><td>日本語</td></tr>
@@ -3414,15 +4827,65 @@ lindera-wasm-{target}-{dict}
 <li><code>lindera-wasm-web-cjk</code></li>
 </ul>
 <p>公開前にパッケージ名を設定するには、生成された <code>pkg/package.json</code> の <code>name</code> フィールドを編集します。</p>
-<h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
-<p>ビルド済みパッケージが npm に公開されている場合：</p>
-<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
+<h2 id="npm-からのインストール-1"><a class="header" href="#npm-からのインストール-1">npm からのインストール</a></h2>
+<p>ビルド済みパッケージが npm で公開されています：</p>
+<pre><code class="language-bash">npm install lindera-wasm-web
 </code></pre>
 <p>または yarn で：</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
+<pre><code class="language-bash">yarn add lindera-wasm-web
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート-3"><a class="header" href="#クイックスタート-3">クイックスタート</a></h1>
-<h2 id="webブラウザ"><a class="header" href="#webブラウザ">Web（ブラウザ）</a></h2>
+<blockquote>
+<p>[!NOTE]
+npm パッケージには辞書が含まれていません。OPFS ヘルパーを使用して辞書を実行時にダウンロードしてください。詳細は <a href="lindera-wasm/./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート-5"><a class="header" href="#クイックスタート-5">クイックスタート</a></h1>
+<h2 id="webブラウザ----opfs-辞書ロード"><a class="header" href="#webブラウザ----opfs-辞書ロード">Web（ブラウザ） -- OPFS 辞書ロード</a></h2>
+<p>推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    await __wbg_init();
+
+    // キャッシュされていない場合は辞書をダウンロード
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+            "ipadic",
+        );
+    }
+
+    // OPFS から辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    // トークナイザーを構築
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("関西国際空港限定トートバッグ");
+    tokens.forEach(token =&gt; {
+        console.log(`${token.surface}\t${token.details.join(',')}`);
+    });
+}
+
+main();
+</code></pre>
+<blockquote>
+<p><strong>注意:</strong> ビルド済み辞書を <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードしてください。完全なワークフローは <a href="lindera-wasm/./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
+</blockquote>
+<p>期待される出力：</p>
+<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
+限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
+</code></pre>
+<h2 id="埋め込み辞書の使用上級者向け"><a class="header" href="#埋め込み辞書の使用上級者向け">埋め込み辞書の使用（上級者向け）</a></h2>
+<p><code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
 <pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 
 async function main() {
@@ -3441,20 +4904,23 @@ async function main() {
 
 main();
 </code></pre>
-<p>期待される出力：</p>
-<pre><code class="language-text">関西国際空港    名詞,固有名詞,一般,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
-限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    名詞,一般,*,*,*,*,*,*,*
-</code></pre>
 <h2 id="フィルタの使用"><a class="header" href="#フィルタの使用">フィルタの使用</a></h2>
 <p>トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 async function main() {
     await __wbg_init();
 
+    // OPFS にキャッシュ済みの辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
     const builder = new TokenizerBuilder();
-    builder.setDictionary("embedded://ipadic");
+    builder.setDictionaryInstance(dictionary);
     builder.setMode("normal");
 
     // Add Unicode NFKC normalization
@@ -3474,7 +4940,7 @@ async function main() {
 
 main();
 </code></pre>
-<h2 id="n-best-トークナイズ-3"><a class="header" href="#n-best-トークナイズ-3">N-Best トークナイズ</a></h2>
+<h2 id="n-best-トークナイズ-5"><a class="header" href="#n-best-トークナイズ-5">N-Best トークナイズ</a></h2>
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 results.forEach((result, rank) =&gt; {
@@ -3484,16 +4950,16 @@ results.forEach((result, rank) =&gt; {
     });
 });
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-2"><a class="header" href="#tokenizer-api-2">Tokenizer API</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tokenizer-api-3"><a class="header" href="#tokenizer-api-3">Tokenizer API</a></h1>
 <p>このページでは、lindera-wasm が公開する JavaScript/TypeScript API について説明します。</p>
-<h2 id="tokenizerbuilder-3"><a class="header" href="#tokenizerbuilder-3">TokenizerBuilder</a></h2>
+<h2 id="tokenizerbuilder-5"><a class="header" href="#tokenizerbuilder-5">TokenizerBuilder</a></h2>
 <p>設定済みの <code>Tokenizer</code> インスタンスを作成するためのビルダークラスです。</p>
-<h3 id="コンストラクタ-2"><a class="header" href="#コンストラクタ-2">コンストラクタ</a></h3>
+<h3 id="コンストラクタ-4"><a class="header" href="#コンストラクタ-4">コンストラクタ</a></h3>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 </code></pre>
 <p>デフォルト設定で新しいビルダーを作成します。</p>
-<h3 id="メソッド"><a class="header" href="#メソッド">メソッド</a></h3>
-<h4 id="setmodemode-1"><a class="header" href="#setmodemode-1"><code>setMode(mode)</code></a></h4>
+<h3 id="メソッド-1"><a class="header" href="#メソッド-1">メソッド</a></h3>
+<h4 id="setmodemode-2"><a class="header" href="#setmodemode-2"><code>setMode(mode)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>mode</code> (string) -- <code>"normal"</code> または <code>"decompose"</code></li>
@@ -3501,7 +4967,7 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">builder.setMode("normal");
 </code></pre>
-<h4 id="setdictionaryuri"><a class="header" href="#setdictionaryuri"><code>setDictionary(uri)</code></a></h4>
+<h4 id="setdictionaryuri-1"><a class="header" href="#setdictionaryuri-1"><code>setDictionary(uri)</code></a></h4>
 <p>トークナイズに使用する辞書を設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
@@ -3509,7 +4975,25 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
-<h4 id="setuserdictionaryuri-1"><a class="header" href="#setuserdictionaryuri-1"><code>setUserDictionary(uri)</code></a></h4>
+<h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
+<p>読み込み済みの辞書インスタンスをトークナイズに設定します。
+URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><strong>戻り値</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
+
+builder.setDictionaryInstance(dictionary);
+</code></pre>
+<h4 id="setuserdictionaryuri-2"><a class="header" href="#setuserdictionaryuri-2"><code>setUserDictionary(uri)</code></a></h4>
 <p>ユーザー定義辞書を設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- ユーザー辞書のパスまたは URI</li>
@@ -3517,7 +5001,13 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
 </code></pre>
-<h4 id="setkeepwhitespacekeep-1"><a class="header" href="#setkeepwhitespacekeep-1"><code>setKeepWhitespace(keep)</code></a></h4>
+<h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。URI の代わりにバイトデータから読み込んだユーザー辞書を使用する場合に使います。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
+<li><strong>戻り値</strong>: void</li>
+</ul>
+<h4 id="setkeepwhitespacekeep-2"><a class="header" href="#setkeepwhitespacekeep-2"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>出力に空白トークンを保持するかどうかを設定します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>keep</code> (boolean) -- <code>true</code> で空白トークンを保持</li>
@@ -3553,14 +5043,14 @@ results.forEach((result, rank) =&gt; {
     tags: ["助詞", "助動詞", "記号"]
 });
 </code></pre>
-<h4 id="build-3"><a class="header" href="#build-3"><code>build()</code></a></h4>
+<h4 id="build-5"><a class="header" href="#build-5"><code>build()</code></a></h4>
 <p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルダーは消費されます。</p>
 <ul>
 <li><strong>戻り値</strong>: <code>Tokenizer</code></li>
 </ul>
 <pre><code class="language-javascript">const tokenizer = builder.build();
 </code></pre>
-<h2 id="tokenizer-2"><a class="header" href="#tokenizer-2">Tokenizer</a></h2>
+<h2 id="tokenizer-4"><a class="header" href="#tokenizer-4">Tokenizer</a></h2>
 <p>メインのトークナイザークラスです。<code>TokenizerBuilder.build()</code> またはコンストラクタ経由で作成できます。</p>
 <h3 id="tokenizer-コンストラクタ"><a class="header" href="#tokenizer-コンストラクタ">Tokenizer コンストラクタ</a></h3>
 <pre><code class="language-javascript">const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
@@ -3574,8 +5064,8 @@ results.forEach((result, rank) =&gt; {
 </ul>
 </li>
 </ul>
-<h3 id="tokenizer-メソッド-2"><a class="header" href="#tokenizer-メソッド-2">Tokenizer メソッド</a></h3>
-<h4 id="tokenizetext-2"><a class="header" href="#tokenizetext-2"><code>tokenize(text)</code></a></h4>
+<h3 id="tokenizer-メソッド-4"><a class="header" href="#tokenizer-メソッド-4">Tokenizer メソッド</a></h3>
+<h4 id="tokenizetext-4"><a class="header" href="#tokenizetext-4"><code>tokenize(text)</code></a></h4>
 <p>入力テキストをトークナイズします。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>text</code> (string) -- トークナイズするテキスト</li>
@@ -3598,9 +5088,9 @@ results.forEach((result, rank) =&gt; {
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 </code></pre>
-<h2 id="token-2"><a class="header" href="#token-2">Token</a></h2>
+<h2 id="token-4"><a class="header" href="#token-4">Token</a></h2>
 <p>トークナイザーが生成する単一のトークンを表します。</p>
-<h3 id="プロパティ-4"><a class="header" href="#プロパティ-4">プロパティ</a></h3>
+<h3 id="プロパティ-7"><a class="header" href="#プロパティ-7">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
 <tr><td><code>byteStart</code></td><td><code>number</code></td><td>元テキストでの開始バイトオフセット</td></tr>
@@ -3611,8 +5101,8 @@ results.forEach((result, rank) =&gt; {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細フィールド</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
-<h4 id="getdetailindex-1"><a class="header" href="#getdetailindex-1"><code>getDetail(index)</code></a></h4>
+<h3 id="token-メソッド-4"><a class="header" href="#token-メソッド-4">Token メソッド</a></h3>
+<h4 id="getdetailindex-2"><a class="header" href="#getdetailindex-2"><code>getDetail(index)</code></a></h4>
 <p>指定されたインデックスの詳細文字列を返します。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>index</code> (number) -- details 配列へのゼロベースインデックス</li>
@@ -3683,24 +5173,107 @@ const dict = loadDictionary("embedded://ipadic");
 
 console.log(version()); // 例: "2.1.1"
 </code></pre>
+<h2 id="列挙型とユーティリティクラス"><a class="header" href="#列挙型とユーティリティクラス">列挙型とユーティリティクラス</a></h2>
+<h3 id="mode-2"><a class="header" href="#mode-2">Mode</a></h3>
+<p>トークナイズモードの列挙型です。</p>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>Mode.Normal</code></td><td>辞書コストに基づく標準的なトークナイズ</td></tr>
+<tr><td><code>Mode.Decompose</code></td><td>ペナルティベースのセグメンテーションによる複合語分解</td></tr>
+</tbody></table>
+</div>
+<h3 id="penalty"><a class="header" href="#penalty">Penalty</a></h3>
+<p>decompose モードの設定です。複合語をどの程度積極的に分解するかを制御します。</p>
+<pre><code class="language-javascript">const penalty = new Penalty(
+    kanjiThreshold?,     // 漢字の長さ閾値（デフォルト: 2）
+    kanjiPenalty?,       // 漢字の長さペナルティ（デフォルト: 3000）
+    otherThreshold?,     // その他の文字の長さ閾値（デフォルト: 7）
+    otherPenalty?,       // その他の文字の長さペナルティ（デフォルト: 1700）
+);
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>kanji_penalty_length_threshold</code></td><td><code>number</code></td><td><code>2</code></td><td>漢字複合語分割の長さ閾値</td></tr>
+<tr><td><code>kanji_penalty_length_penalty</code></td><td><code>number</code></td><td><code>3000</code></td><td>閾値を超える漢字複合語のペナルティコスト</td></tr>
+<tr><td><code>other_penalty_length_threshold</code></td><td><code>number</code></td><td><code>7</code></td><td>非漢字複合語分割の長さ閾値</td></tr>
+<tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>閾値を超える非漢字複合語のペナルティコスト</td></tr>
+</tbody></table>
+</div>
+<h3 id="linderaerror-1"><a class="header" href="#linderaerror-1">LinderaError</a></h3>
+<p>Lindera 操作のエラー型です。</p>
+<pre><code class="language-javascript">const error = new LinderaError("message");
+console.log(error.message);    // "message"
+console.log(error.toString()); // "message"
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ / メソッド</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>message</code></td><td><code>string</code></td><td>エラーメッセージ</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>エラーメッセージを返す</td></tr>
+</tbody></table>
+</div>
 <h2 id="snake_case-エイリアス"><a class="header" href="#snake_case-エイリアス">snake_case エイリアス</a></h2>
 <p>Python API との一貫性のため、すべてのメソッドは snake_case 形式でも利用可能です：</p>
 <div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
+<tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
+<tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
+<tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
 <tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
 <tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-2"><a class="header" href="#辞書管理-2">辞書管理</a></h1>
-<h2 id="埋め込み辞書-1"><a class="header" href="#埋め込み辞書-1">埋め込み辞書</a></h2>
-<p>WASM で辞書を使用する最も簡単な方法は、feature フラグを使用してビルド時に辞書を埋め込むことです。埋め込み辞書は <code>embedded://</code> URI スキームで読み込みます。</p>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-4"><a class="header" href="#辞書管理-4">辞書管理</a></h1>
+<h2 id="opfs-からの辞書読み込み"><a class="header" href="#opfs-からの辞書読み込み">OPFS からの辞書読み込み</a></h2>
+<p>WASM で辞書を使用する推奨方法は、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードし、OPFS 経由で読み込むことです。これにより、WASM バイナリに大きな辞書を埋め込む必要がなくなります。</p>
+<h3 id="バイトデータからの読み込み"><a class="header" href="#バイトデータからの読み込み">バイトデータからの読み込み</a></h3>
+<p>OPFS やその他のブラウザストレージに保存された辞書を <code>loadDictionaryFromBytes()</code> で読み込みます。</p>
+<h4 id="loaddictionaryfrombytesmetadata-dictda-dictvals-dictwordsidx-dictwords-matrixmtx-chardef-unk"><a class="header" href="#loaddictionaryfrombytesmetadata-dictda-dictvals-dictwordsidx-dictwords-matrixmtx-chardef-unk"><code>loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)</code></a></h4>
+<ul>
+<li><strong>パラメータ</strong>:
+<ul>
+<li><code>metadata</code> (<code>Uint8Array</code>) -- <code>metadata.json</code> の内容</li>
+<li><code>dictDa</code> (<code>Uint8Array</code>) -- <code>dict.da</code> の内容（Double-Array Trie）</li>
+<li><code>dictVals</code> (<code>Uint8Array</code>) -- <code>dict.vals</code> の内容（単語値データ）</li>
+<li><code>dictWordsIdx</code> (<code>Uint8Array</code>) -- <code>dict.wordsidx</code> の内容（単語詳細インデックス）</li>
+<li><code>dictWords</code> (<code>Uint8Array</code>) -- <code>dict.words</code> の内容（単語詳細）</li>
+<li><code>matrixMtx</code> (<code>Uint8Array</code>) -- <code>matrix.mtx</code> の内容（連接コスト行列）</li>
+<li><code>charDef</code> (<code>Uint8Array</code>) -- <code>char_def.bin</code> の内容（文字定義）</li>
+<li><code>unk</code> (<code>Uint8Array</code>) -- <code>unk.bin</code> の内容（未知語辞書）</li>
+</ul>
+</li>
+<li><strong>戻り値</strong>: <code>Dictionary</code></li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+// OPFS から辞書ファイルを読み込む
+const files = await loadDictionaryFiles("ipadic");
+
+// バイトデータから Dictionary を作成
+const dictionary = loadDictionaryFromBytes(
+    files.metadata,
+    files.dictDa,
+    files.dictVals,
+    files.dictWordsIdx,
+    files.dictWords,
+    files.matrixMtx,
+    files.charDef,
+    files.unk,
+);
+
+// TokenizerBuilder で使用
+const builder = new TokenizerBuilder();
+builder.setDictionaryInstance(dictionary);
+builder.setMode("normal");
+const tokenizer = builder.build();
+</code></pre>
+<p>ダウンロードとキャッシュを含む完全なワークフローは <a href="lindera-wasm/./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
+<h2 id="埋め込み辞書上級者向け"><a class="header" href="#埋め込み辞書上級者向け">埋め込み辞書（上級者向け）</a></h2>
+<p><code>embed-*</code> feature フラグ付きでビルドした場合、<code>embedded://</code> URI スキームで埋め込み辞書を読み込めます。WASM バイナリのサイズが大幅に増加します。</p>
 <h3 id="埋め込み辞書の読み込み"><a class="header" href="#埋め込み辞書の読み込み">埋め込み辞書の読み込み</a></h3>
 <pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
@@ -3716,14 +5289,12 @@ const dictionary = loadDictionary("embedded://ipadic");
 </tbody></table>
 </div>
 <h3 id="tokenizerbuilder-での使用"><a class="header" href="#tokenizerbuilder-での使用">TokenizerBuilder での使用</a></h3>
-<p><code>TokenizerBuilder</code> を使用する場合は、辞書の URI を直接設定します：</p>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="tokenizer-コンストラクタでの使用"><a class="header" href="#tokenizer-コンストラクタでの使用">Tokenizer コンストラクタでの使用</a></h3>
-<p>読み込み済みの辞書を <code>Tokenizer</code> コンストラクタに渡すこともできます：</p>
 <pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
@@ -3731,29 +5302,33 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h2 id="dictionary-クラス"><a class="header" href="#dictionary-クラス">Dictionary クラス</a></h2>
 <p><code>Dictionary</code> クラスは、読み込み済みの形態素解析辞書を表します。</p>
-<h3 id="プロパティ-5"><a class="header" href="#プロパティ-5">プロパティ</a></h3>
+<h3 id="プロパティ-8"><a class="header" href="#プロパティ-8">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td>辞書名（例: <code>"ipadic"</code>）</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td>辞書の文字エンコーディング</td></tr>
 <tr><td><code>metadata</code></td><td><code>Metadata</code></td><td>完全なメタデータオブジェクト</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-javascript">const dict = loadDictionary("embedded://ipadic");
-console.log(dict.name);     // "ipadic"
-console.log(dict.encoding); // "utf-8"
+<pre><code class="language-javascript">console.log(dictionary.name);     // "ipadic"
+console.log(dictionary.encoding); // "utf-8"
 </code></pre>
-<h2 id="ユーザー辞書-3"><a class="header" href="#ユーザー辞書-3">ユーザー辞書</a></h2>
+<h2 id="ユーザー辞書-5"><a class="header" href="#ユーザー辞書-5">ユーザー辞書</a></h2>
 <p>ユーザー辞書を使用すると、システム辞書にないカスタム語彙を追加できます。</p>
 <h3 id="ユーザー辞書の読み込み"><a class="header" href="#ユーザー辞書の読み込み">ユーザー辞書の読み込み</a></h3>
-<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
-const dictionary = loadDictionary("embedded://ipadic");
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
@@ -3763,10 +5338,10 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 </code></pre>
 <p>各行の構成: <code>surface,part_of_speech,reading</code></p>
-<h2 id="辞書のビルド-2"><a class="header" href="#辞書のビルド-2">辞書のビルド</a></h2>
+<h2 id="辞書のビルド-4"><a class="header" href="#辞書のビルド-4">辞書のビルド</a></h2>
 <p>JavaScript API を使用してソースファイルからコンパイル済み辞書をビルドできます。</p>
-<h3 id="システム辞書のビルド-2"><a class="header" href="#システム辞書のビルド-2">システム辞書のビルド</a></h3>
-<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web-ipadic';
+<h3 id="システム辞書のビルド-4"><a class="header" href="#システム辞書のビルド-4">システム辞書のビルド</a></h3>
+<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web';
 
 const metadata = {
     name: "custom-dict",
@@ -3776,28 +5351,124 @@ const metadata = {
 
 buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 </code></pre>
-<h3 id="ユーザー辞書のビルド-3"><a class="header" href="#ユーザー辞書のビルド-3">ユーザー辞書のビルド</a></h3>
-<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
+<h3 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h3>
+<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 </code></pre>
 <p><code>buildUserDictionary</code> の <code>metadata</code> パラメータは省略可能です。省略した場合はデフォルトのメタデータが使用されます。</p>
-<h2 id="metadata-2"><a class="header" href="#metadata-2">Metadata</a></h2>
-<p><code>Metadata</code> オブジェクトには以下のような辞書設定が含まれます：</p>
+<h2 id="metadata-4"><a class="header" href="#metadata-4">Metadata</a></h2>
+<p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
+<h3 id="コンストラクタ-5"><a class="header" href="#コンストラクタ-5">コンストラクタ</a></h3>
+<pre><code class="language-javascript">const metadata = new Metadata(name?, encoding?);
+</code></pre>
 <ul>
-<li>辞書名</li>
-<li>文字エンコーディング</li>
-<li>圧縮アルゴリズム</li>
-<li>辞書フィールドのスキーマ定義</li>
+<li><strong>パラメータ</strong>:
+<ul>
+<li><code>name</code> (string, 省略可) -- 辞書名（デフォルト: <code>"default"</code>）</li>
+<li><code>encoding</code> (string, 省略可) -- 文字エンコーディング（デフォルト: <code>"UTF-8"</code>）</li>
 </ul>
+</li>
+</ul>
+<h3 id="静的メソッド"><a class="header" href="#静的メソッド">静的メソッド</a></h3>
+<h4 id="metadatacreatedefault"><a class="header" href="#metadatacreatedefault"><code>Metadata.createDefault()</code></a></h4>
+<p>デフォルト値で <code>Metadata</code> インスタンスを作成します。</p>
+<pre><code class="language-javascript">const metadata = Metadata.createDefault();
+</code></pre>
+<h3 id="metadata-プロパティ"><a class="header" href="#metadata-プロパティ">Metadata プロパティ</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
+<tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
+<tr><td><code>dictionary_schema</code></td><td><code>Schema</code></td><td>IPADIC スキーマ</td><td>メイン辞書のスキーマ</td></tr>
+<tr><td><code>user_dictionary_schema</code></td><td><code>Schema</code></td><td>最小スキーマ</td><td>ユーザー辞書のスキーマ</td></tr>
+</tbody></table>
+</div>
+<p>すべてのプロパティは取得と設定の両方に対応しています：</p>
+<pre><code class="language-javascript">const metadata = Metadata.createDefault();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+</code></pre>
 <p>読み込み済み辞書のメタデータには <code>dictionary.metadata</code> からアクセスできます。</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ブラウザでの使用"><a class="header" href="#ブラウザでの使用">ブラウザでの使用</a></h1>
+<h3 id="schema-2"><a class="header" href="#schema-2">Schema</a></h3>
+<p><code>Schema</code> クラスは辞書エントリのフィールド構造を定義します。</p>
+<h4 id="schema-コンストラクタ"><a class="header" href="#schema-コンストラクタ">Schema コンストラクタ</a></h4>
+<pre><code class="language-javascript">const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+</code></pre>
+<h4 id="schema-静的メソッド"><a class="header" href="#schema-静的メソッド">Schema 静的メソッド</a></h4>
+<ul>
+<li><code>Schema.create_default()</code> -- デフォルトの IPADIC 互換スキーマを作成</li>
+</ul>
+<h4 id="schema-メソッド-1"><a class="header" href="#schema-メソッド-1">Schema メソッド</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>get_field_index(name)</code></td><td><code>number | undefined</code></td><td>フィールド名からインデックスを取得</td></tr>
+<tr><td><code>field_count()</code></td><td><code>number</code></td><td>フィールドの総数</td></tr>
+<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>インデックスからフィールド名を取得</td></tr>
+<tr><td><code>get_custom_fields()</code></td><td><code>string[]</code></td><td>インデックス 3 以降のフィールド（形態素素性）</td></tr>
+<tr><td><code>get_all_fields()</code></td><td><code>string[]</code></td><td>すべてのフィールド名</td></tr>
+<tr><td><code>get_field_by_name(name)</code></td><td><code>FieldDefinition | undefined</code></td><td>フィールド定義の完全な情報を取得</td></tr>
+</tbody></table>
+</div>
+<h4 id="fielddefinition-1"><a class="header" href="#fielddefinition-1">FieldDefinition</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>フィールドの位置インデックス</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>フィールド名</td></tr>
+<tr><td><code>field_type</code></td><td><code>FieldType</code></td><td>フィールド型の列挙値</td></tr>
+<tr><td><code>description</code></td><td><code>string | undefined</code></td><td>説明（省略可）</td></tr>
+</tbody></table>
+</div>
+<h4 id="fieldtype-1"><a class="header" href="#fieldtype-1">FieldType</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>FieldType.Surface</code></td><td>単語の表層形テキスト</td></tr>
+<tr><td><code>FieldType.LeftContextId</code></td><td>左文脈 ID</td></tr>
+<tr><td><code>FieldType.RightContextId</code></td><td>右文脈 ID</td></tr>
+<tr><td><code>FieldType.Cost</code></td><td>単語コスト</td></tr>
+<tr><td><code>FieldType.Custom</code></td><td>形態素素性フィールド</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="ブラウザでの使用"><a class="header" href="#ブラウザでの使用">ブラウザでの使用</a></h1>
 <h2 id="es-module-インポート"><a class="header" href="#es-module-インポート">ES Module インポート</a></h2>
 <p>ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの <code>__wbg_init</code> がこの初期化を処理します。</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<p>推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
+    await __wbg_init();
+
+    // キャッシュされていない場合は辞書をダウンロード
+    if (!await hasDictionary("ipadic")) {
+        await downloadDictionary(
+            "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+            "ipadic",
+        );
+    }
+
+    // OPFS から辞書を読み込み
+    const files = await loadDictionaryFiles("ipadic");
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    const tokens = tokenizer.tokenize("形態素解析を行います");
+    tokens.forEach(token =&gt; {
+        console.log(`${token.surface}: ${token.details.join(',')}`);
+    });
+}
+
+main();
+</code></pre>
+<h2 id="埋め込み辞書の使用上級者向け-1"><a class="header" href="#埋め込み辞書の使用上級者向け-1">埋め込み辞書の使用（上級者向け）</a></h2>
+<p><code>embed-*</code> feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+
+async function main() {
     await __wbg_init();
 
     const builder = new TokenizerBuilder();
@@ -3814,7 +5485,7 @@ async function main() {
 main();
 </code></pre>
 <h2 id="html-の例"><a class="header" href="#html-の例">HTML の例</a></h2>
-<p>lindera-wasm を使用した最小限の HTML ページ：</p>
+<p>OPFS 辞書ロードを使用した lindera-wasm の最小限の HTML ページ：</p>
 <pre><code class="language-html">&lt;!DOCTYPE html&gt;
 &lt;html lang="en"&gt;
 &lt;head&gt;
@@ -3824,20 +5495,41 @@ main();
 &lt;body&gt;
     &lt;textarea id="input" rows="4" cols="50"&gt;関西国際空港限定トートバッグ&lt;/textarea&gt;
     &lt;br&gt;
-    &lt;button id="tokenize"&gt;Tokenize&lt;/button&gt;
-    &lt;pre id="output"&gt;&lt;/pre&gt;
+    &lt;button id="tokenize" disabled&gt;Tokenize&lt;/button&gt;
+    &lt;pre id="output"&gt;Loading dictionary...&lt;/pre&gt;
 
     &lt;script type="module"&gt;
-        import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+        import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+        import { downloadDictionary, loadDictionaryFiles, hasDictionary } from './pkg/opfs.js';
 
         let tokenizer;
 
         async function init() {
             await __wbg_init();
+
+            // キャッシュされていない場合は辞書をダウンロード
+            if (!await hasDictionary("ipadic")) {
+                document.getElementById('output').textContent = 'Downloading dictionary...';
+                await downloadDictionary(
+                    "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+                    "ipadic",
+                );
+            }
+
+            // OPFS から辞書を読み込み
+            const files = await loadDictionaryFiles("ipadic");
+            const dictionary = loadDictionaryFromBytes(
+                files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+                files.dictWords, files.matrixMtx, files.charDef, files.unk,
+            );
+
             const builder = new TokenizerBuilder();
-            builder.setDictionary("embedded://ipadic");
+            builder.setDictionaryInstance(dictionary);
             builder.setMode("normal");
             tokenizer = builder.build();
+
+            document.getElementById('tokenize').disabled = false;
+            document.getElementById('output').textContent = 'Ready!';
         }
 
         document.getElementById('tokenize').addEventListener('click', () =&gt; {
@@ -3872,20 +5564,29 @@ module.exports = {
 };
 </code></pre>
 <p>次に、bundler ターゲットビルドを使用してインポートします：</p>
-<pre><code class="language-javascript">import { TokenizerBuilder } from 'lindera-wasm-bundler-ipadic';
+<pre><code class="language-javascript">import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
+import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+
+// OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 
 const builder = new TokenizerBuilder();
-builder.setDictionary("embedded://ipadic");
+builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <p>bundler ターゲットでは、<code>__wbg_init()</code> はバンドラーによって自動的に呼び出されます。</p>
 <h2 id="vite--rollup-のセットアップ"><a class="header" href="#vite--rollup-のセットアップ">Vite / Rollup のセットアップ</a></h2>
 <p>Vite は web ターゲットでの WASM をそのままサポートしています。ビルド済みの <code>pkg/</code> ディレクトリをプロジェクトに配置し、直接インポートします：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from './pkg/lindera_wasm.js';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
+import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
-// ... use TokenizerBuilder as normal
+// OPFS から辞書を読み込み、上記のように TokenizerBuilder を使用
 </code></pre>
 <p>bundler ターゲットで Vite を使用する場合は、<a href="https://github.com/nicolo-ribaudo/vite-plugin-wasm">vite-plugin-wasm</a> プラグインが必要になることがあります：</p>
 <pre><code class="language-javascript">// vite.config.js
@@ -3909,6 +5610,183 @@ export default {
 <li><strong>初期化は一度だけ</strong>: <code>__wbg_init()</code> はアプリケーション起動時に一度だけ呼び出し、トークナイズリクエストごとには呼び出さないでください。</li>
 <li><strong>トークナイザーの再利用</strong>: <code>Tokenizer</code> インスタンスは一度作成し、複数の <code>tokenize()</code> 呼び出しで再利用してください。</li>
 <li><strong>Web Workers</strong>: 大量のトークナイズ処理を行う場合は、メインスレッドのブロックを避けるため、Web Worker での Lindera の実行を検討してください。</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="opfs-辞書ストレージ"><a class="header" href="#opfs-辞書ストレージ">OPFS 辞書ストレージ</a></h1>
+<p>Lindera WASM は、Web ブラウザでの辞書の永続キャッシュのために OPFS（Origin Private File System）ヘルパーユーティリティを提供します。辞書を一度ダウンロードすれば、WASM バイナリに埋め込むことなく、セッションをまたいで再利用できます。</p>
+<h2 id="概要"><a class="header" href="#概要">概要</a></h2>
+<p>OPFS ヘルパーは、WASM パッケージとともに別の JavaScript モジュール（<code>opfs.js</code>）として配布されます。ブラウザの Origin Private File System を使用して、辞書のダウンロード、保存、読み込み、管理を行う関数を提供します。</p>
+<p>辞書は OPFS パス <code>lindera/dictionaries/&lt;name&gt;/</code> に保存されます。</p>
+<h2 id="インポート"><a class="header" href="#インポート">インポート</a></h2>
+<pre><code class="language-javascript">import { downloadDictionary, loadDictionaryFiles, removeDictionary,
+         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+</code></pre>
+<h2 id="関数"><a class="header" href="#関数">関数</a></h2>
+<h3 id="downloaddictionaryurl-name-options"><a class="header" href="#downloaddictionaryurl-name-options"><code>downloadDictionary(url, name, options?)</code></a></h3>
+<p>辞書の zip アーカイブをダウンロードし、展開して、ファイルを OPFS に保存します。</p>
+<p>アーカイブは、必要な 8 つの辞書ファイルを含む zip ファイルである必要があります。サブディレクトリにネストされていても構いません。</p>
+<ul>
+<li><strong>引数</strong>:
+<ul>
+<li><code>url</code> (string) -- 辞書 zip アーカイブの URL</li>
+<li><code>name</code> (string) -- 辞書の保存名（例: <code>"ipadic"</code>）</li>
+<li><code>options</code> (object, 省略可):
+<ul>
+<li><code>onProgress</code> (function) -- 進捗コールバック</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>戻り値</strong>: <code>Promise&lt;void&gt;</code></li>
+</ul>
+<pre><code class="language-javascript">await downloadDictionary(
+    "https://example.com/ipadic.zip",
+    "ipadic",
+    {
+        onProgress: (progress) =&gt; {
+            switch (progress.phase) {
+                case "downloading":
+                    console.log(`Downloading: ${progress.loaded}/${progress.total} bytes`);
+                    break;
+                case "extracting":
+                    console.log("Extracting archive...");
+                    break;
+                case "storing":
+                    console.log("Storing in OPFS...");
+                    break;
+                case "complete":
+                    console.log("Done!");
+                    break;
+            }
+        },
+    },
+);
+</code></pre>
+<h4 id="進捗コールバック"><a class="header" href="#進捗コールバック">進捗コールバック</a></h4>
+<p><code>onProgress</code> コールバックは以下の形式のオブジェクトを受け取ります:</p>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>phase</code></td><td><code>string</code></td><td><code>"downloading"</code>、<code>"extracting"</code>、<code>"storing"</code>、または <code>"complete"</code></td></tr>
+<tr><td><code>loaded</code></td><td><code>number | undefined</code></td><td>ダウンロード済みバイト数（<code>"downloading"</code> フェーズのみ）</td></tr>
+<tr><td><code>total</code></td><td><code>number | undefined</code></td><td>合計バイト数（判明している場合、<code>"downloading"</code> フェーズのみ）</td></tr>
+</tbody></table>
+</div>
+<h3 id="loaddictionaryfilesname"><a class="header" href="#loaddictionaryfilesname"><code>loadDictionaryFiles(name)</code></a></h3>
+<p>OPFS から辞書ファイルを <code>Uint8Array</code> 値のオブジェクトとして読み込みます。</p>
+<p>返されたオブジェクトは <code>loadDictionaryFromBytes()</code> にそのまま渡すことができます。</p>
+<ul>
+<li><strong>引数</strong>: <code>name</code> (string) -- 辞書名（例: <code>"ipadic"</code>）</li>
+<li><strong>戻り値</strong>: <code>Promise&lt;DictionaryFiles&gt;</code></li>
+</ul>
+<pre><code class="language-javascript">const files = await loadDictionaryFiles("ipadic");
+</code></pre>
+<h4 id="dictionaryfiles"><a class="header" href="#dictionaryfiles">DictionaryFiles</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>ソースファイル</th></tr></thead><tbody>
+<tr><td><code>metadata</code></td><td><code>Uint8Array</code></td><td><code>metadata.json</code></td></tr>
+<tr><td><code>dictDa</code></td><td><code>Uint8Array</code></td><td><code>dict.da</code>（Double-Array Trie）</td></tr>
+<tr><td><code>dictVals</code></td><td><code>Uint8Array</code></td><td><code>dict.vals</code>（単語値データ）</td></tr>
+<tr><td><code>dictWordsIdx</code></td><td><code>Uint8Array</code></td><td><code>dict.wordsidx</code>（単語詳細インデックス）</td></tr>
+<tr><td><code>dictWords</code></td><td><code>Uint8Array</code></td><td><code>dict.words</code>（単語詳細）</td></tr>
+<tr><td><code>matrixMtx</code></td><td><code>Uint8Array</code></td><td><code>matrix.mtx</code>（連接コスト行列）</td></tr>
+<tr><td><code>charDef</code></td><td><code>Uint8Array</code></td><td><code>char_def.bin</code>（文字定義）</td></tr>
+<tr><td><code>unk</code></td><td><code>Uint8Array</code></td><td><code>unk.bin</code>（未知語辞書）</td></tr>
+</tbody></table>
+</div>
+<h3 id="removedictionaryname"><a class="header" href="#removedictionaryname"><code>removeDictionary(name)</code></a></h3>
+<p>OPFS から辞書を削除します。</p>
+<ul>
+<li><strong>引数</strong>: <code>name</code> (string) -- 削除する辞書名</li>
+<li><strong>戻り値</strong>: <code>Promise&lt;void&gt;</code></li>
+</ul>
+<pre><code class="language-javascript">await removeDictionary("ipadic");
+</code></pre>
+<h3 id="listdictionaries"><a class="header" href="#listdictionaries"><code>listDictionaries()</code></a></h3>
+<p>OPFS に保存されているすべての辞書を一覧表示します。</p>
+<ul>
+<li><strong>戻り値</strong>: <code>Promise&lt;string[]&gt;</code> -- 辞書名の配列</li>
+</ul>
+<pre><code class="language-javascript">const names = await listDictionaries();
+console.log(names); // 例: ["ipadic", "unidic"]
+</code></pre>
+<h3 id="hasdictionaryname"><a class="header" href="#hasdictionaryname"><code>hasDictionary(name)</code></a></h3>
+<p>OPFS に辞書が存在するかどうかを確認します。</p>
+<ul>
+<li><strong>引数</strong>: <code>name</code> (string) -- 確認する辞書名</li>
+<li><strong>戻り値</strong>: <code>Promise&lt;boolean&gt;</code></li>
+</ul>
+<pre><code class="language-javascript">if (await hasDictionary("ipadic")) {
+    console.log("Dictionary is cached");
+}
+</code></pre>
+<h2 id="完全なワークフロー-4"><a class="header" href="#完全なワークフロー-4">完全なワークフロー</a></h2>
+<p>OPFS ベースの辞書を使用する一般的なワークフロー:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+
+async function main() {
+    await __wbg_init();
+
+    const DICT_NAME = "ipadic";
+    const DICT_URL = "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip";
+
+    // キャッシュされていない場合は辞書をダウンロード
+    if (!await hasDictionary(DICT_NAME)) {
+        await downloadDictionary(DICT_URL, DICT_NAME, {
+            onProgress: ({ phase, loaded, total }) =&gt; {
+                if (phase === "downloading" &amp;&amp; total) {
+                    console.log(`${(loaded / total * 100).toFixed(1)}%`);
+                }
+            },
+        });
+    }
+
+    // OPFS から辞書を読み込み
+    const files = await loadDictionaryFiles(DICT_NAME);
+    const dictionary = loadDictionaryFromBytes(
+        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    );
+
+    // トークナイザーを構築
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dictionary);
+    builder.setMode("normal");
+    const tokenizer = builder.build();
+
+    // トークナイズ
+    const tokens = tokenizer.tokenize("形態素解析を行います");
+    tokens.forEach(token =&gt; {
+        console.log(`${token.surface}\t${token.details.join(',')}`);
+    });
+}
+
+main();
+</code></pre>
+<h2 id="必要な辞書ファイル"><a class="header" href="#必要な辞書ファイル">必要な辞書ファイル</a></h2>
+<p>有効な辞書アーカイブには以下の 8 ファイルが含まれている必要があります:</p>
+<div class="table-wrapper"><table><thead><tr><th>ファイル</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>metadata.json</code></td><td>辞書メタデータ（名前、エンコーディング、スキーマなど）</td></tr>
+<tr><td><code>dict.da</code></td><td>Double-Array Trie 構造</td></tr>
+<tr><td><code>dict.vals</code></td><td>単語値データ</td></tr>
+<tr><td><code>dict.wordsidx</code></td><td>単語詳細インデックス</td></tr>
+<tr><td><code>dict.words</code></td><td>単語詳細（形態素素性）</td></tr>
+<tr><td><code>matrix.mtx</code></td><td>連接コスト行列</td></tr>
+<tr><td><code>char_def.bin</code></td><td>文字カテゴリ定義</td></tr>
+<tr><td><code>unk.bin</code></td><td>未知語辞書</td></tr>
+</tbody></table>
+</div>
+<h2 id="ブラウザ互換性"><a class="header" href="#ブラウザ互換性">ブラウザ互換性</a></h2>
+<p>OPFS は<a href="https://developer.mozilla.org/ja/docs/Web/Security/Secure_Contexts">安全なコンテキスト</a>（HTTPS または localhost）が必要で、以下のブラウザでサポートされています:</p>
+<ul>
+<li>Chrome 86+</li>
+<li>Edge 86+</li>
+<li>Firefox 111+</li>
+<li>Safari 15.2+</li>
+</ul>
+<p>zip の展開には <code>DecompressionStream</code> API を使用しており、以下が必要です:</p>
+<ul>
+<li>Chrome 80+</li>
+<li>Edge 80+</li>
+<li>Firefox 113+</li>
+<li>Safari 16.4+</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="lindera-ipadic"><a class="header" href="#lindera-ipadic">Lindera IPADIC</a></h1>
 <p>Lindera IPADIC は、<a href="https://github.com/lindera-morphology/mecab-ipadic">IPADIC</a> に基づく日本語辞書クレートです。IPADIC は、日本語の形態素解析で最も広く使われている辞書です。</p>
@@ -3974,9 +5852,9 @@ export default {
 <ul>
 <li><a href="https://docs.rs/lindera-ipadic">lindera-ipadic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-2"><a class="header" href="#ビルド-2">ビルド</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-5"><a class="header" href="#ビルド-5">ビルド</a></h1>
 <p>このページでは、ソースファイルから IPADIC 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-3"><a class="header" href="#システム辞書のビルド-3">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-5"><a class="header" href="#システム辞書のビルド-5">システム辞書のビルド</a></h2>
 <p>IPADIC のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell"># IPADIC ソースファイルのダウンロードと展開
 % curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
@@ -3988,7 +5866,7 @@ export default {
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -4149,9 +6027,9 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-ipadic-neologd">lindera-ipadic-neologd</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-3"><a class="header" href="#ビルド-3">ビルド</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-6"><a class="header" href="#ビルド-6">ビルド</a></h1>
 <p>このページでは、ソースファイルから IPADIC NEologd 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-4"><a class="header" href="#システム辞書のビルド-4">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-6"><a class="header" href="#システム辞書のビルド-6">システム辞書のビルド</a></h2>
 <p>IPADIC NEologd のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
@@ -4302,9 +6180,9 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-unidic">lindera-unidic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-4"><a class="header" href="#ビルド-4">ビルド</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-7"><a class="header" href="#ビルド-7">ビルド</a></h1>
 <p>このページでは、ソースファイルから UniDic 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-5"><a class="header" href="#システム辞書のビルド-5">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-7"><a class="header" href="#システム辞書のビルド-7">システム辞書のビルド</a></h2>
 <p>UniDic のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
 % tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
@@ -4314,7 +6192,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-unidic-2.1.2 \
   --metadata ./lindera-unidic/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
@@ -4455,8 +6333,8 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-ko-dic">lindera-ko-dic</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-5"><a class="header" href="#ビルド-5">ビルド</a></h1>
-<h2 id="システム辞書のビルド-6"><a class="header" href="#システム辞書のビルド-6">システム辞書のビルド</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-8"><a class="header" href="#ビルド-8">ビルド</a></h1>
+<h2 id="システム辞書のビルド-8"><a class="header" href="#システム辞書のビルド-8">システム辞書のビルド</a></h2>
 <p>mecab-ko-dic のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
@@ -4465,7 +6343,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
   --metadata ./lindera-ko-dic/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -4594,8 +6472,8 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-cc-cedict">lindera-cc-cedict</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-6"><a class="header" href="#ビルド-6">ビルド</a></h1>
-<h2 id="システム辞書のビルド-7"><a class="header" href="#システム辞書のビルド-7">システム辞書のビルド</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-9"><a class="header" href="#ビルド-9">ビルド</a></h1>
+<h2 id="システム辞書のビルド-9"><a class="header" href="#システム辞書のビルド-9">システム辞書のビルド</a></h2>
 <p>CC-CEDICT-MeCab のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
@@ -4604,7 +6482,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -4716,8 +6594,8 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <ul>
 <li><a href="https://docs.rs/lindera-jieba">lindera-jieba</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-7"><a class="header" href="#ビルド-7">ビルド</a></h1>
-<h2 id="システム辞書のビルド-8"><a class="header" href="#システム辞書のビルド-8">システム辞書のビルド</a></h2>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-10"><a class="header" href="#ビルド-10">ビルド</a></h1>
+<h2 id="システム辞書のビルド-10"><a class="header" href="#システム辞書のビルド-10">システム辞書のビルド</a></h2>
 <p>mecab-jieba のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
 % tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
@@ -4726,7 +6604,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -4795,12 +6673,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="./development/contributing.html">貢献ガイド</a> -- コントリビューター向けガイドライン</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルドとテスト"><a class="header" href="#ビルドとテスト">ビルドとテスト</a></h1>
-<h2 id="ビルド-8"><a class="header" href="#ビルド-8">ビルド</a></h2>
+<h2 id="ビルド-11"><a class="header" href="#ビルド-11">ビルド</a></h2>
 <h3 id="デフォルトビルド"><a class="header" href="#デフォルトビルド">デフォルトビルド</a></h3>
-<p>デフォルトの feature（<code>compress</code> + <code>mmap</code>）でワークスペースをビルドします：</p>
+<p>デフォルトの feature（<code>mmap</code>）でワークスペースをビルドします：</p>
 <pre><code class="language-bash">cargo build
 </code></pre>
-<h3 id="学習機能付きビルド-2"><a class="header" href="#学習機能付きビルド-2">学習機能付きビルド</a></h3>
+<h3 id="学習機能付きビルド-4"><a class="header" href="#学習機能付きビルド-4">学習機能付きビルド</a></h3>
 <p>CRF ベースの辞書学習機能を含めてビルドします：</p>
 <pre><code class="language-bash">cargo build --features train
 </code></pre>
@@ -4835,7 +6713,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>Clippy を警告をエラーとして扱うモードで実行します：</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
-<h2 id="ドキュメント-2"><a class="header" href="#ドキュメント-2">ドキュメント</a></h2>
+<h2 id="ドキュメント-4"><a class="header" href="#ドキュメント-4">ドキュメント</a></h2>
 <h3 id="api-ドキュメント"><a class="header" href="#api-ドキュメント">API ドキュメント</a></h3>
 <p>Rust の API ドキュメントを生成して開きます：</p>
 <pre><code class="language-bash">cargo doc --no-deps --open
@@ -4852,21 +6730,27 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <pre><code class="language-bash">markdownlint-cli2 "docs/src/**/*.md"
 </code></pre>
 <p>ルールはリポジトリルートの <code>.markdownlint.json</code> で設定されています。</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="feature-フラグ-3"><a class="header" href="#feature-フラグ-3">Feature フラグ</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="feature-フラグ-5"><a class="header" href="#feature-フラグ-5">Feature フラグ</a></h1>
 <p>Lindera は Cargo の feature フラグを使用して、オプション機能と辞書の埋め込みを制御します。</p>
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>compress</code></td><td>辞書の圧縮サポート</td><td>有効</td></tr>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-crf</code> に依存）</td><td>CLI のみ</td></tr>
 </tbody></table>
 </div>
 <ul>
-<li><code>compress</code> と <code>mmap</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。</li>
+<li><code>mmap</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。</li>
 <li><code>train</code> はデフォルトでは <code>lindera-cli</code> でのみ有効です。ライブラリとして使用する場合は <code>--features train</code> で明示的に有効にしてください。</li>
 </ul>
-<h2 id="辞書埋め込み-feature"><a class="header" href="#辞書埋め込み-feature">辞書埋め込み Feature</a></h2>
-<p>これらの feature はビルド済み辞書をバイナリに直接埋め込み、実行時に外部辞書ファイルを不要にします。</p>
+<h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
+<p>推奨される方法は、ビルド済み辞書を外部ファイルとして使用することです。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、実行時にそのパスを指定してください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>この使用方法では、追加の feature フラグは不要です。</p>
+<h2 id="辞書埋め込み-feature上級者向け"><a class="header" href="#辞書埋め込み-feature上級者向け">辞書埋め込み Feature（上級者向け）</a></h2>
+<p>これらの feature はビルド済み辞書をバイナリに直接埋め込み、実行時に外部辞書ファイルを不要にします。自己完結型バイナリが必要な上級者向けの機能です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>日本語</td></tr>
 <tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd</td><td>日本語</td></tr>
@@ -4880,7 +6764,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 </code></pre>
-<h2 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h2>
+<p>埋め込みを有効にした場合、以下のように辞書を読み込めます：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<h3 id="組み合わせ-feature"><a class="header" href="#組み合わせ-feature">組み合わせ Feature</a></h3>
 <p>多言語アプリケーション向けに、複数の辞書を一度に有効にするメタ Feature です。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>含まれる辞書</th></tr></thead><tbody>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba</td></tr>
@@ -4888,7 +6777,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic"] }
 <tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba</td></tr>
 </tbody></table>
 </div>
-<h2 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h2>
+<h3 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h3>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
 lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
@@ -4968,7 +6857,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="学習パイプライン"><a class="header" href="#学習パイプライン">学習パイプライン</a></h1>
 <p>Lindera は、カスタム形態素解析モデルを作成するための CRF ベースの辞書学習機能を提供します。この機能には <code>train</code> feature フラグが必要です。</p>
-<h2 id="概要"><a class="header" href="#概要">概要</a></h2>
+<h2 id="概要-1"><a class="header" href="#概要-1">概要</a></h2>
 <p>学習パイプラインは3つのステージで構成されます：</p>
 <pre><code class="language-text">lindera train --&gt; model.dat --&gt; lindera export --&gt; dictionary files --&gt; lindera build --&gt; compiled dictionary
 </code></pre>
@@ -5069,7 +6958,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 *  *
 </code></pre>
 <p>各行は <code>pattern&lt;TAB&gt;replacement</code> です。パターンはワイルドカードとして <code>*</code> を使用し、前方一致で照合されます。各セクションで最初に一致したルールが適用されます。ユニグラム、左文脈、右文脈に対して異なるルールを独立して適用できるため、スパース性を低減するきめ細かい素性正規化が可能です。</p>
-<h2 id="学習パラメータ-3"><a class="header" href="#学習パラメータ-3">学習パラメータ</a></h2>
+<h2 id="学習パラメータ-5"><a class="header" href="#学習パラメータ-5">学習パラメータ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>lambda</code></td><td>L1 正則化係数（過学習の制御）</td><td>0.01</td></tr>
 <tr><td><code>max-iterations</code></td><td>最大学習イテレーション数</td><td>100</td></tr>
@@ -5107,7 +6996,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <tr><td><code>metadata.json</code></td><td>辞書メタデータ</td></tr>
 </tbody></table>
 </div>
-<h3 id="build-4"><a class="header" href="#build-4">Build</a></h3>
+<h3 id="build-6"><a class="header" href="#build-6">Build</a></h3>
 <p>エクスポートされたソースファイルをバイナリ辞書にコンパイルします：</p>
 <pre><code class="language-bash">lindera build --input-dir ./dict-source --output-dir ./dict-compiled
 </code></pre>
@@ -5248,7 +7137,7 @@ cargo test
 <li><code>docs: update installation instructions</code></li>
 <li><code>refactor: split large training method into smaller functions</code></li>
 </ul>
-<h2 id="ドキュメント-3"><a class="header" href="#ドキュメント-3">ドキュメント</a></h2>
+<h2 id="ドキュメント-5"><a class="header" href="#ドキュメント-5">ドキュメント</a></h2>
 <ul>
 <li>
 <p>変更がユーザー向けドキュメントに影響する場合は、<code>docs/src/</code> 配下の関連ファイルを更新してください。</p>
@@ -5264,7 +7153,7 @@ cargo test
 </ul>
 <h2 id="依存関係"><a class="header" href="#依存関係">依存関係</a></h2>
 <p>新しい依存関係を追加する際は、ライセンスの互換性を確認してください。Lindera は MIT / Apache-2.0 デュアルライセンスを使用しています。</p>
-<h2 id="feature-フラグ-4"><a class="header" href="#feature-フラグ-4">Feature フラグ</a></h2>
+<h2 id="feature-フラグ-6"><a class="header" href="#feature-フラグ-6">Feature フラグ</a></h2>
 <p>学習関連コードの条件コンパイルには <code>#[cfg(feature = "train")]</code> を使用してください。完全なリストは <a href="development/./feature_flags.html">Feature フラグ</a> を参照してください。</p>
 <h2 id="問題の報告"><a class="header" href="#問題の報告">問題の報告</a></h2>
 <p>バグを報告する際は、以下の情報を含めてください：</p>

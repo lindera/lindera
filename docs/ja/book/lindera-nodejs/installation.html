@@ -179,7 +179,17 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
-<h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
+<h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
+<p>ビルド済みパッケージが npm で公開予定です：</p>
+<pre><code class="language-bash">npm install lindera-nodejs
+</code></pre>
+<blockquote>
+<p>[!NOTE]
+npm パッケージには辞書が含まれていません。下記の<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。
+ブラウザ/WASM での利用には <a href="../lindera-wasm/installation.html">lindera-wasm</a> を参照してください。</p>
+</blockquote>
+<h2 id="ソースからのビルド"><a class="header" href="#ソースからのビルド">ソースからのビルド</a></h2>
+<h3 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h3>
 <ul>
 <li><strong>Node.js 18 以降</strong>（LTS バージョン推奨）</li>
 <li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
@@ -187,6 +197,14 @@
 </ul>
 <p>NAPI-RS CLI をグローバルにインストールします：</p>
 <pre><code class="language-bash">npm install -g @napi-rs/cli
+</code></pre>
+<h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
+<p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
+<h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：</p>
+<pre><code class="language-bash"># 例: IPADIC 辞書のダウンロードと展開
+curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
+unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
 <h2 id="開発ビルド"><a class="header" href="#開発ビルド">開発ビルド</a></h2>
 <p>lindera-nodejs を開発モードでビルドします：</p>
@@ -201,33 +219,36 @@ npm run build
 <p><code>train</code> feature を有効にすると、CRF ベースの辞書学習機能が利用可能になります。デフォルトで有効になっています：</p>
 <pre><code class="language-bash">npm run build -- --features train
 </code></pre>
-<h3 id="辞書埋め込みビルド"><a class="header" href="#辞書埋め込みビルド">辞書埋め込みビルド</a></h3>
-<p>辞書をバイナリに直接埋め込むことで、実行時に外部辞書ファイルが不要になります：</p>
-<pre><code class="language-bash">npm run build -- --features embed-ipadic
-</code></pre>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
-<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）の埋め込み</td><td>無効</td></tr>
-<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書の埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic</code></td><td>日本語辞書（IPADIC）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>日本語辞書（UniDic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>日本語辞書（IPADIC NEologd）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>韓国語辞書（ko-dic）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>中国語辞書（CC-CEDICT）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>中国語辞書（Jieba）をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cjk</code></td><td>全 CJK 辞書をバイナリに埋め込み（IPADIC、ko-dic、Jieba）</td><td>無効</td></tr>
 </tbody></table>
 </div>
 <p>複数の feature を組み合わせることができます：</p>
 <pre><code class="language-bash">npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("embedded://ipadic");
+</code></pre>
+<p>詳細は <a href="../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <h2 id="インストールの確認"><a class="header" href="#インストールの確認">インストールの確認</a></h2>
 <p>インストール後、Node.js で lindera が利用可能であることを確認します：</p>
-<pre><code class="language-javascript">const lindera = require("lindera");
+<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
 
 console.log(lindera.version());
 </code></pre>
 <p>または ES modules を使用する場合：</p>
-<pre><code class="language-javascript">import { version } from "lindera";
+<pre><code class="language-javascript">import { version } from "lindera-nodejs";
 
 console.log(version());
 </code></pre>

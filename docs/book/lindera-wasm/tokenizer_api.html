@@ -203,14 +203,38 @@
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
+<h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
+<p>Sets a pre-loaded dictionary instance for tokenization.
+Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDictionaryFromBytes()</code>) instead of from a URI.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
+
+builder.setDictionaryInstance(dictionary);
+</code></pre>
 <h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
-<p>Sets a user-defined dictionary.</p>
+<p>Sets a user-defined dictionary by URI.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Path or URI to the user dictionary</li>
 <li><strong>Returns</strong>: void</li>
 </ul>
 <pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
 </code></pre>
+<h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
+<p>Sets a pre-loaded user dictionary instance. Use this when the user dictionary has been loaded from bytes instead of from a URI.</p>
+<ul>
+<li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
+<li><strong>Returns</strong>: void</li>
+</ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>Sets whether whitespace tokens are preserved in the output.</p>
 <ul>
@@ -377,17 +401,55 @@ const dict = loadDictionary("embedded://ipadic");
 
 console.log(version()); // e.g., "2.1.1"
 </code></pre>
+<h2 id="enums-and-utility-classes"><a class="header" href="#enums-and-utility-classes">Enums and Utility Classes</a></h2>
+<h3 id="mode"><a class="header" href="#mode">Mode</a></h3>
+<p>Tokenization mode enum.</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>Mode.Normal</code></td><td>Standard tokenization based on dictionary cost</td></tr>
+<tr><td><code>Mode.Decompose</code></td><td>Decompose compound words using penalty-based segmentation</td></tr>
+</tbody></table>
+</div>
+<h3 id="penalty"><a class="header" href="#penalty">Penalty</a></h3>
+<p>Configuration for decompose mode. Controls how aggressively compound words are decomposed.</p>
+<pre><code class="language-javascript">const penalty = new Penalty(
+    kanjiThreshold?,     // Kanji length threshold (default: 2)
+    kanjiPenalty?,       // Kanji length penalty (default: 3000)
+    otherThreshold?,     // Other character length threshold (default: 7)
+    otherPenalty?,       // Other character length penalty (default: 1700)
+);
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>kanji_penalty_length_threshold</code></td><td><code>number</code></td><td><code>2</code></td><td>Length threshold for kanji compound splitting</td></tr>
+<tr><td><code>kanji_penalty_length_penalty</code></td><td><code>number</code></td><td><code>3000</code></td><td>Penalty cost for kanji compounds exceeding threshold</td></tr>
+<tr><td><code>other_penalty_length_threshold</code></td><td><code>number</code></td><td><code>7</code></td><td>Length threshold for non-kanji compound splitting</td></tr>
+<tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>Penalty cost for non-kanji compounds exceeding threshold</td></tr>
+</tbody></table>
+</div>
+<h3 id="linderaerror"><a class="header" href="#linderaerror">LinderaError</a></h3>
+<p>Error type for Lindera operations.</p>
+<pre><code class="language-javascript">const error = new LinderaError("message");
+console.log(error.message);    // "message"
+console.log(error.toString()); // "message"
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Property / Method</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>message</code></td><td><code>string</code></td><td>Error message</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>Returns the error message</td></tr>
+</tbody></table>
+</div>
 <h2 id="snake-case-aliases"><a class="header" href="#snake-case-aliases">Snake-Case Aliases</a></h2>
 <p>For consistency with the Python API, all methods are also available in snake_case form:</p>
 <div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
+<tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
+<tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
+<tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
 <tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
 <tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>

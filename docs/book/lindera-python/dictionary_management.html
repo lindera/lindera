@@ -182,14 +182,13 @@
 <p>Lindera Python provides functions for loading, building, and managing dictionaries used in morphological analysis.</p>
 <h2 id="loading-dictionaries"><a class="header" href="#loading-dictionaries">Loading Dictionaries</a></h2>
 <h3 id="system-dictionaries"><a class="header" href="#system-dictionaries">System Dictionaries</a></h3>
-<p>Use <code>load_dictionary(uri)</code> to load a system dictionary.</p>
-<p><strong>Embedded dictionaries</strong> (requires the corresponding <code>embed-*</code> feature):</p>
+<p>Use <code>load_dictionary(uri)</code> to load a system dictionary. Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify the path to the extracted directory:</p>
 <pre><code class="language-python">from lindera import load_dictionary
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 </code></pre>
-<p><strong>External dictionaries</strong> (loaded from a directory on disk):</p>
-<pre><code class="language-python">dictionary = load_dictionary("/path/to/dictionary")
+<p><strong>Embedded dictionaries (advanced)</strong> -- if you built with an <code>embed-*</code> feature flag, you can load an embedded dictionary:</p>
+<pre><code class="language-python">dictionary = load_dictionary("embedded://ipadic")
 </code></pre>
 <h3 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h3>
 <p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
@@ -201,7 +200,7 @@ user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
 <p>Pass the user dictionary when building a tokenizer:</p>
 <pre><code class="language-python">from lindera import Tokenizer, load_dictionary, load_user_dictionary, Metadata
 
-dictionary = load_dictionary("embedded://ipadic")
+dictionary = load_dictionary("/path/to/ipadic")
 metadata = Metadata()
 user_dict = load_user_dictionary("/path/to/user_dictionary", metadata)
 
@@ -212,7 +211,7 @@ tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dict)
 
 tokenizer = (
     TokenizerBuilder()
-    .set_dictionary("embedded://ipadic")
+    .set_dictionary("/path/to/ipadic")
     .set_user_dictionary("/path/to/user_dictionary")
     .build()
 )
@@ -239,7 +238,7 @@ build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadat
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata"><a class="header" href="#creating-metadata">Creating Metadata</a></h3>
-<pre><code class="language-python">from lindera import Metadata, CompressionAlgorithm
+<pre><code class="language-python">from lindera import Metadata
 
 # Default metadata
 metadata = Metadata()
@@ -248,7 +247,6 @@ metadata = Metadata()
 metadata = Metadata(
     name="my_dictionary",
     encoding="UTF-8",
-    compress_algorithm=CompressionAlgorithm.Deflate,
     default_word_cost=-10000,
 )
 </code></pre>
@@ -259,7 +257,6 @@ metadata = Metadata(
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>str</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
 <tr><td><code>encoding</code></td><td><code>str</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
-<tr><td><code>compress_algorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>Compression algorithm</td></tr>
 <tr><td><code>default_word_cost</code></td><td><code>int</code></td><td><code>-10000</code></td><td>Default cost for unknown words</td></tr>
 <tr><td><code>default_left_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>Default left context ID</td></tr>
 <tr><td><code>default_right_context_id</code></td><td><code>int</code></td><td><code>1288</code></td><td>Default right context ID</td></tr>
@@ -282,15 +279,7 @@ print(metadata.name)  # "custom_dict"
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
 </code></pre>
-<h3 id="compressionalgorithm"><a class="header" href="#compressionalgorithm">CompressionAlgorithm</a></h3>
-<p>Available compression algorithms:</p>
-<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE compression (default)</td></tr>
-<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib compression</td></tr>
-<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip compression</td></tr>
-<tr><td><code>CompressionAlgorithm.Raw</code></td><td>No compression</td></tr>
-</tbody></table>
-</div>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

@@ -190,7 +190,7 @@
 <p>Character filters transform the input text before tokenization.</p>
 <h3 id="unicode_normalize"><a class="header" href="#unicode_normalize">unicode_normalize</a></h3>
 <p>Applies Unicode normalization to the input text.</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -256,7 +256,7 @@ const tokenizer = new TokenizerBuilder()
 </code></pre>
 <h2 id="complete-pipeline-example"><a class="header" href="#complete-pipeline-example">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

@@ -181,8 +181,24 @@
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "2.3.2", features = ["embed-ipadic"] }
+lindera = "3.0.0"
 </code></pre>
+<h2 id="辞書のセットアップ"><a class="header" href="#辞書のセットアップ">辞書のセットアップ</a></h2>
+<p>Linderaの実行にはビルド済み辞書が必要です。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、読み込み時にそのパスを指定してください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>詳細は <a href="../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
 <h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
 <p><code>LINDERA_DICTIONARIES_PATH</code> 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：</p>

@@ -182,43 +182,42 @@
 <p>Lindera Node.js は、形態素解析で使用する辞書の読み込み、ビルド、管理のための関数を提供します。</p>
 <h2 id="辞書の読み込み"><a class="header" href="#辞書の読み込み">辞書の読み込み</a></h2>
 <h3 id="システム辞書"><a class="header" href="#システム辞書">システム辞書</a></h3>
-<p><code>loadDictionary(uri)</code> を使用してシステム辞書を読み込みます。</p>
-<p><strong>埋め込み辞書</strong>（対応する <code>embed-*</code> feature が必要）：</p>
-<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
+<p><code>loadDictionary(uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 </code></pre>
-<p><strong>外部辞書</strong>（ディスク上のディレクトリから読み込み）：</p>
-<pre><code class="language-javascript">const dictionary = loadDictionary("/path/to/dictionary");
+<p><strong>埋め込み辞書（上級者向け）</strong> -- <code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
+<pre><code class="language-javascript">const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
 <h3 id="ユーザー辞書"><a class="header" href="#ユーザー辞書">ユーザー辞書</a></h3>
 <p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
-<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 </code></pre>
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
 
-const dictionary = loadDictionary("embedded://ipadic");
+const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <p>または、ビルダー経由で設定します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
+  .setDictionary("/path/to/ipadic")
   .setUserDictionary("/path/to/user_dictionary")
   .build();
 </code></pre>
 <h2 id="辞書のビルド"><a class="header" href="#辞書のビルド">辞書のビルド</a></h2>
 <h3 id="システム辞書のビルド"><a class="header" href="#システム辞書のビルド">システム辞書のビルド</a></h3>
 <p>ソースファイルからシステム辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -226,7 +225,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <h3 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera-nodejs");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -237,7 +236,7 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成"><a class="header" href="#metadata-の作成">Metadata の作成</a></h3>
-<pre><code class="language-javascript">const { Metadata, CompressionAlgorithm } = require("lindera");
+<pre><code class="language-javascript">const { Metadata } = require("lindera-nodejs");
 
 // デフォルトのメタデータ
 const metadata = new Metadata();
@@ -246,7 +245,6 @@ const metadata = new Metadata();
 const metadata = new Metadata({
   name: "my_dictionary",
   encoding: "UTF-8",
-  compressAlgorithm: CompressionAlgorithm.Deflate,
   defaultWordCost: -10000,
 });
 </code></pre>
@@ -257,7 +255,6 @@ const metadata = new Metadata({
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>辞書名</td></tr>
 <tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>文字エンコーディング</td></tr>
-<tr><td><code>compressAlgorithm</code></td><td><code>CompressionAlgorithm</code></td><td><code>Deflate</code></td><td>圧縮アルゴリズム</td></tr>
 <tr><td><code>defaultWordCost</code></td><td><code>number</code></td><td><code>-10000</code></td><td>未知語のデフォルトコスト</td></tr>
 <tr><td><code>defaultLeftContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの左文脈 ID</td></tr>
 <tr><td><code>defaultRightContextId</code></td><td><code>number</code></td><td><code>1288</code></td><td>デフォルトの右文脈 ID</td></tr>
@@ -280,13 +277,50 @@ console.log(metadata.name); // "custom_dict"
 <pre><code class="language-javascript">const metadata = new Metadata({ name: "test" });
 console.log(metadata.toObject());
 </code></pre>
-<h3 id="compressionalgorithm"><a class="header" href="#compressionalgorithm">CompressionAlgorithm</a></h3>
-<p>利用可能な圧縮アルゴリズム：</p>
+<h2 id="schema"><a class="header" href="#schema">Schema</a></h2>
+<p><code>Schema</code> クラスは辞書エントリーのフィールド構造を定義します。</p>
+<h3 id="schema-の作成"><a class="header" href="#schema-の作成">Schema の作成</a></h3>
+<pre><code class="language-javascript">const { Schema } = require("lindera-nodejs");
+
+// デフォルトの IPADIC 互換スキーマ
+const schema = Schema.createDefault();
+
+// カスタムスキーマ
+const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+</code></pre>
+<h3 id="schema-メソッド"><a class="header" href="#schema-メソッド">Schema メソッド</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>戻り値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>getFieldIndex(name)</code></td><td><code>number | null</code></td><td>フィールド名からインデックスを取得</td></tr>
+<tr><td><code>fieldCount()</code></td><td><code>number</code></td><td>フィールドの総数</td></tr>
+<tr><td><code>getFieldName(index)</code></td><td><code>string | null</code></td><td>インデックスからフィールド名を取得</td></tr>
+<tr><td><code>getCustomFields()</code></td><td><code>string[]</code></td><td>インデックス 4 以降のフィールド（形態素素性）</td></tr>
+<tr><td><code>getAllFields()</code></td><td><code>string[]</code></td><td>すべてのフィールド名</td></tr>
+<tr><td><code>getFieldByName(name)</code></td><td><code>FieldDefinition | null</code></td><td>フィールド定義の完全な情報を取得</td></tr>
+<tr><td><code>validateRecord(record)</code></td><td><code>void</code></td><td>CSV レコードをスキーマに対して検証</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-javascript">const schema = Schema.createDefault();
+
+console.log(schema.fieldCount());           // 13（IPADIC フォーマット）
+console.log(schema.getFieldIndex("pos1"));  // 例: 4
+console.log(schema.getAllFields());          // ["surface", "left_id", ...]
+console.log(schema.getCustomFields());      // インデックス 4 以降のフィールド
+</code></pre>
+<h3 id="fielddefinition"><a class="header" href="#fielddefinition">FieldDefinition</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>フィールドの位置インデックス</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>フィールド名</td></tr>
+<tr><td><code>fieldType</code></td><td><code>FieldType</code></td><td>フィールド型の列挙値</td></tr>
+<tr><td><code>description</code></td><td><code>string | undefined</code></td><td>任意の説明</td></tr>
+</tbody></table>
+</div>
+<h3 id="fieldtype"><a class="header" href="#fieldtype">FieldType</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>CompressionAlgorithm.Deflate</code></td><td>DEFLATE 圧縮（デフォルト）</td></tr>
-<tr><td><code>CompressionAlgorithm.Zlib</code></td><td>Zlib 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Gzip</code></td><td>Gzip 圧縮</td></tr>
-<tr><td><code>CompressionAlgorithm.Raw</code></td><td>圧縮なし</td></tr>
+<tr><td><code>FieldType.Surface</code></td><td>単語の表層形</td></tr>
+<tr><td><code>FieldType.LeftContextId</code></td><td>左文脈 ID</td></tr>
+<tr><td><code>FieldType.RightContextId</code></td><td>右文脈 ID</td></tr>
+<tr><td><code>FieldType.Cost</code></td><td>単語コスト</td></tr>
+<tr><td><code>FieldType.Custom</code></td><td>形態素素性フィールド</td></tr>
 </tbody></table>
 </div>
                     </main>

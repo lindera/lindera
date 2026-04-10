@@ -189,6 +189,22 @@
 <tr><td><a href="../lindera-jieba.html">Jieba</a></td><td>中国語</td><td><code>lindera-jieba</code></td><td>Jiebaベースの中国語辞書</td></tr>
 </tbody></table>
 </div>
+<h2 id="辞書の入手方法"><a class="header" href="#辞書の入手方法">辞書の入手方法</a></h2>
+<p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からダウンロードできます。対象言語の辞書アーカイブをダウンロードし、ローカルディレクトリに展開してください。</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ローカルパスから外部辞書を読み込む
+let dictionary = load_dictionary("/path/to/ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!TIP]
+外部辞書ファイルなしの自己完結型バイナリが必要な場合は、<code>embed-*</code> feature フラグを使って辞書を埋め込み、<code>embedded://</code> スキームでロードできます：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let dictionary = load_dictionary("embedded://ipadic")?;
+<span class="boring">}</span></code></pre></pre>
+<p>詳細は <a href="../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <p>各辞書クレートのドキュメントで、フォーマット詳細、ビルド手順、使用例を参照してください。</p>
 
                     </main>

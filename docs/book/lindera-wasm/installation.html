@@ -184,16 +184,31 @@
 <li><a href="https://www.rust-lang.org/tools/install">Rust</a> (stable toolchain)</li>
 <li><a href="https://rustwasm.github.io/wasm-pack/installer/">wasm-pack</a> (v0.10+)</li>
 </ul>
+<h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
+<p>Lindera WASM does not bundle dictionaries by default. The recommended approach for browser environments is to download dictionaries at runtime using the OPFS (Origin Private File System) API.</p>
+<h3 id="download-from-github-releases"><a class="header" href="#download-from-github-releases">Download from GitHub Releases</a></h3>
+<p>Pre-built dictionaries are available on the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page. In browser environments, use the OPFS helpers to download and cache dictionaries:</p>
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+
+if (!await hasDictionary("ipadic")) {
+    await downloadDictionary(
+        "https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip",
+        "ipadic",
+    );
+}
+</code></pre>
+<p>See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
 <h2 id="building-with-wasm-pack"><a class="header" href="#building-with-wasm-pack">Building with wasm-pack</a></h2>
-<p>Build the WASM package for your target environment. You must enable at least one dictionary feature flag to embed a dictionary.</p>
+<p>Build the WASM package for your target environment:</p>
 <h3 id="web-es-modules-for-browsers"><a class="header" href="#web-es-modules-for-browsers">Web (ES Modules for browsers)</a></h3>
-<pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
 <h3 id="bundler-webpack-vite-rollup"><a class="header" href="#bundler-webpack-vite-rollup">Bundler (Webpack, Vite, Rollup)</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler --features embed-ipadic
+<pre><code class="language-bash">wasm-pack build --target bundler
 </code></pre>
 <p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.</p>
-<h2 id="available-feature-flags"><a class="header" href="#available-feature-flags">Available Feature Flags</a></h2>
+<h2 id="available-feature-flags-advanced"><a class="header" href="#available-feature-flags-advanced">Available Feature Flags (Advanced)</a></h2>
+<p>For advanced users who want to embed dictionaries directly into the WASM binary, the following feature flags are available. This increases the binary size significantly but eliminates the need to download dictionaries at runtime.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Dictionary</th><th>Language</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC</td><td>Japanese</td></tr>
 <tr><td><code>embed-unidic</code></td><td>UniDic</td><td>Japanese</td></tr>
@@ -220,12 +235,16 @@ lindera-wasm-{target}-{dict}
 </ul>
 <p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
-<p>If pre-built packages are published to npm:</p>
-<pre><code class="language-bash">npm install lindera-wasm-web-ipadic
+<p>Pre-built packages are available on npm:</p>
+<pre><code class="language-bash">npm install lindera-wasm-web
 </code></pre>
 <p>Or with yarn:</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web-ipadic
+<pre><code class="language-bash">yarn add lindera-wasm-web
 </code></pre>
+<blockquote>
+<p>[!NOTE]
+The npm package does not include dictionaries. Use the OPFS helpers to download dictionaries at runtime. See <a href="./opfs.html">OPFS Dictionary Storage</a>.</p>
+</blockquote>
 
                     </main>
 

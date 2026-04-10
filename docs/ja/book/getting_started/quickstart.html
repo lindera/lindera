@@ -186,6 +186,7 @@
 <li>入力テキストをトークナイズ（形態素解析）</li>
 <li>トークンを出力</li>
 </ul>
+<p>まず、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリ（例: <code>/path/to/ipadic</code>）に展開してください。</p>
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
@@ -193,7 +194,7 @@ use lindera::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
-    let dictionary = load_dictionary("embedded://ipadic")?;
+    let dictionary = load_dictionary("/path/to/ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
     let tokenizer = Tokenizer::new(segmenter);
 
@@ -208,8 +209,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>上記の例は以下のように実行できます：</p>
-<pre><code class="language-shell">% cargo run --features=embed-ipadic --example=tokenize
+<pre><code class="language-shell">% cargo run --example=tokenize
 </code></pre>
+<blockquote>
+<p>[!TIP]
+<code>embed-ipadic</code> feature を使って辞書をバイナリに埋め込む場合（上級者向け）は、ファイルパスの代わりに <code>load_dictionary("embedded://ipadic")</code> を使用できます。詳細は <a href="../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
+</blockquote>
 <p>実行結果は以下のようになります：</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ
 token:  関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー

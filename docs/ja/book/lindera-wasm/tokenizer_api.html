@@ -203,6 +203,24 @@
 </ul>
 <pre><code class="language-javascript">builder.setDictionary("embedded://ipadic");
 </code></pre>
+<h4 id="setdictionaryinstancedictionary"><a class="header" href="#setdictionaryinstancedictionary"><code>setDictionaryInstance(dictionary)</code></a></h4>
+<p>読み込み済みの辞書インスタンスをトークナイズに設定します。
+URI の代わりにバイトデータから読み込んだ辞書（例: <code>loadDictionaryFromBytes()</code> 経由）を使用する場合に使います。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
+<li><strong>戻り値</strong>: void</li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
+
+builder.setDictionaryInstance(dictionary);
+</code></pre>
 <h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
 <p>ユーザー定義辞書を設定します。</p>
 <ul>
@@ -211,6 +229,12 @@
 </ul>
 <pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
 </code></pre>
+<h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。URI の代わりにバイトデータから読み込んだユーザー辞書を使用する場合に使います。</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
+<li><strong>戻り値</strong>: void</li>
+</ul>
 <h4 id="setkeepwhitespacekeep"><a class="header" href="#setkeepwhitespacekeep"><code>setKeepWhitespace(keep)</code></a></h4>
 <p>出力に空白トークンを保持するかどうかを設定します。</p>
 <ul>
@@ -377,17 +401,55 @@ const dict = loadDictionary("embedded://ipadic");
 
 console.log(version()); // 例: "2.1.1"
 </code></pre>
+<h2 id="列挙型とユーティリティクラス"><a class="header" href="#列挙型とユーティリティクラス">列挙型とユーティリティクラス</a></h2>
+<h3 id="mode"><a class="header" href="#mode">Mode</a></h3>
+<p>トークナイズモードの列挙型です。</p>
+<div class="table-wrapper"><table><thead><tr><th>値</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>Mode.Normal</code></td><td>辞書コストに基づく標準的なトークナイズ</td></tr>
+<tr><td><code>Mode.Decompose</code></td><td>ペナルティベースのセグメンテーションによる複合語分解</td></tr>
+</tbody></table>
+</div>
+<h3 id="penalty"><a class="header" href="#penalty">Penalty</a></h3>
+<p>decompose モードの設定です。複合語をどの程度積極的に分解するかを制御します。</p>
+<pre><code class="language-javascript">const penalty = new Penalty(
+    kanjiThreshold?,     // 漢字の長さ閾値（デフォルト: 2）
+    kanjiPenalty?,       // 漢字の長さペナルティ（デフォルト: 3000）
+    otherThreshold?,     // その他の文字の長さ閾値（デフォルト: 7）
+    otherPenalty?,       // その他の文字の長さペナルティ（デフォルト: 1700）
+);
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>kanji_penalty_length_threshold</code></td><td><code>number</code></td><td><code>2</code></td><td>漢字複合語分割の長さ閾値</td></tr>
+<tr><td><code>kanji_penalty_length_penalty</code></td><td><code>number</code></td><td><code>3000</code></td><td>閾値を超える漢字複合語のペナルティコスト</td></tr>
+<tr><td><code>other_penalty_length_threshold</code></td><td><code>number</code></td><td><code>7</code></td><td>非漢字複合語分割の長さ閾値</td></tr>
+<tr><td><code>other_penalty_length_penalty</code></td><td><code>number</code></td><td><code>1700</code></td><td>閾値を超える非漢字複合語のペナルティコスト</td></tr>
+</tbody></table>
+</div>
+<h3 id="linderaerror"><a class="header" href="#linderaerror">LinderaError</a></h3>
+<p>Lindera 操作のエラー型です。</p>
+<pre><code class="language-javascript">const error = new LinderaError("message");
+console.log(error.message);    // "message"
+console.log(error.toString()); // "message"
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>プロパティ / メソッド</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>message</code></td><td><code>string</code></td><td>エラーメッセージ</td></tr>
+<tr><td><code>toString()</code></td><td><code>string</code></td><td>エラーメッセージを返す</td></tr>
+</tbody></table>
+</div>
 <h2 id="snake_case-エイリアス"><a class="header" href="#snake_case-エイリアス">snake_case エイリアス</a></h2>
 <p>Python API との一貫性のため、すべてのメソッドは snake_case 形式でも利用可能です：</p>
 <div class="table-wrapper"><table><thead><tr><th>camelCase</th><th>snake_case</th></tr></thead><tbody>
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
+<tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
 <tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
+<tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
+<tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
 <tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
 <tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
 <tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>

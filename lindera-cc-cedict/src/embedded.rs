@@ -19,7 +19,7 @@ macro_rules! cccedict_data {
     };
 }
 
-// Metadata-specific macro (skips compression/decompression processing)
+// Metadata-specific macro
 macro_rules! cccedict_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "embed-cc-cedict")]

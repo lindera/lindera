@@ -179,8 +179,53 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="dictionary-management"><a class="header" href="#dictionary-management">Dictionary Management</a></h1>
-<h2 id="embedded-dictionaries"><a class="header" href="#embedded-dictionaries">Embedded Dictionaries</a></h2>
-<p>The simplest way to use dictionaries in WASM is to embed them at build time using feature flags. Embedded dictionaries are loaded via the <code>embedded://</code> URI scheme.</p>
+<h2 id="loading-dictionaries-from-opfs"><a class="header" href="#loading-dictionaries-from-opfs">Loading Dictionaries from OPFS</a></h2>
+<p>The recommended way to use dictionaries in WASM is to download them from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and load them via OPFS. This avoids embedding large dictionaries in the WASM binary.</p>
+<h3 id="loading-from-bytes"><a class="header" href="#loading-from-bytes">Loading from Bytes</a></h3>
+<p>Use <code>loadDictionaryFromBytes()</code> to construct a <code>Dictionary</code> from raw byte arrays stored in OPFS or other browser storage.</p>
+<h4 id="loaddictionaryfrombytesmetadata-dictda-dictvals-dictwordsidx-dictwords-matrixmtx-chardef-unk"><a class="header" href="#loaddictionaryfrombytesmetadata-dictda-dictvals-dictwordsidx-dictwords-matrixmtx-chardef-unk"><code>loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)</code></a></h4>
+<ul>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>metadata</code> (<code>Uint8Array</code>) -- Contents of <code>metadata.json</code></li>
+<li><code>dictDa</code> (<code>Uint8Array</code>) -- Contents of <code>dict.da</code> (Double-Array Trie)</li>
+<li><code>dictVals</code> (<code>Uint8Array</code>) -- Contents of <code>dict.vals</code> (word value data)</li>
+<li><code>dictWordsIdx</code> (<code>Uint8Array</code>) -- Contents of <code>dict.wordsidx</code> (word details index)</li>
+<li><code>dictWords</code> (<code>Uint8Array</code>) -- Contents of <code>dict.words</code> (word details)</li>
+<li><code>matrixMtx</code> (<code>Uint8Array</code>) -- Contents of <code>matrix.mtx</code> (connection cost matrix)</li>
+<li><code>charDef</code> (<code>Uint8Array</code>) -- Contents of <code>char_def.bin</code> (character definitions)</li>
+<li><code>unk</code> (<code>Uint8Array</code>) -- Contents of <code>unk.bin</code> (unknown word dictionary)</li>
+</ul>
+</li>
+<li><strong>Returns</strong>: <code>Dictionary</code></li>
+</ul>
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+
+// Load dictionary files from OPFS
+const files = await loadDictionaryFiles("ipadic");
+
+// Create a Dictionary from bytes
+const dictionary = loadDictionaryFromBytes(
+    files.metadata,
+    files.dictDa,
+    files.dictVals,
+    files.dictWordsIdx,
+    files.dictWords,
+    files.matrixMtx,
+    files.charDef,
+    files.unk,
+);
+
+// Use with TokenizerBuilder
+const builder = new TokenizerBuilder();
+builder.setDictionaryInstance(dictionary);
+builder.setMode("normal");
+const tokenizer = builder.build();
+</code></pre>
+<p>See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full OPFS workflow including downloading and caching.</p>
+<h2 id="embedded-dictionaries-advanced"><a class="header" href="#embedded-dictionaries-advanced">Embedded Dictionaries (Advanced)</a></h2>
+<p>If you built with an <code>embed-*</code> feature flag, you can load embedded dictionaries via the <code>embedded://</code> URI scheme. This increases the WASM binary size significantly.</p>
 <h3 id="loading-an-embedded-dictionary"><a class="header" href="#loading-an-embedded-dictionary">Loading an Embedded Dictionary</a></h3>
 <pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
 
@@ -196,14 +241,12 @@ const dictionary = loadDictionary("embedded://ipadic");
 </tbody></table>
 </div>
 <h3 id="using-with-tokenizerbuilder"><a class="header" href="#using-with-tokenizerbuilder">Using with TokenizerBuilder</a></h3>
-<p>When using <code>TokenizerBuilder</code>, you set the dictionary URI directly:</p>
 <pre><code class="language-javascript">const builder = new TokenizerBuilder();
 builder.setDictionary("embedded://ipadic");
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
-<p>You can also pass a loaded dictionary to the <code>Tokenizer</code> constructor:</p>
 <pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
@@ -218,22 +261,26 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 <tr><td><code>metadata</code></td><td><code>Metadata</code></td><td>Full metadata object</td></tr>
 </tbody></table>
 </div>
-<pre><code class="language-javascript">const dict = loadDictionary("embedded://ipadic");
-console.log(dict.name);     // "ipadic"
-console.log(dict.encoding); // "utf-8"
+<pre><code class="language-javascript">console.log(dictionary.name);     // "ipadic"
+console.log(dictionary.encoding); // "utf-8"
 </code></pre>
 <h2 id="user-dictionaries"><a class="header" href="#user-dictionaries">User Dictionaries</a></h2>
 <p>User dictionaries allow you to add custom words that are not in the system dictionary.</p>
 <h3 id="loading-a-user-dictionary"><a class="header" href="#loading-a-user-dictionary">Loading a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web';
 
 const metadata = dictionary.metadata;
 const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, loadUserDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
-const dictionary = loadDictionary("embedded://ipadic");
+const files = await loadDictionaryFiles("ipadic");
+const dictionary = loadDictionaryFromBytes(
+    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
+    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+);
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
@@ -246,7 +293,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 <h2 id="building-dictionaries"><a class="header" href="#building-dictionaries">Building Dictionaries</a></h2>
 <p>You can build compiled dictionaries from source files using the JavaScript API.</p>
 <h3 id="building-a-system-dictionary"><a class="header" href="#building-a-system-dictionary">Building a System Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { buildDictionary } from 'lindera-wasm-web';
 
 const metadata = {
     name: "custom-dict",
@@ -257,21 +304,80 @@ const metadata = {
 buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 </code></pre>
 <h3 id="building-a-user-dictionary"><a class="header" href="#building-a-user-dictionary">Building a User Dictionary</a></h3>
-<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web';
 
 buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
 </code></pre>
 <p>The <code>metadata</code> parameter is optional for <code>buildUserDictionary</code>. If omitted, default metadata is used.</p>
 <h2 id="metadata"><a class="header" href="#metadata">Metadata</a></h2>
-<p>The <code>Metadata</code> object contains dictionary configuration such as:</p>
+<p>The <code>Metadata</code> class configures dictionary parameters.</p>
+<h3 id="constructor"><a class="header" href="#constructor">Constructor</a></h3>
+<pre><code class="language-javascript">const metadata = new Metadata(name?, encoding?);
+</code></pre>
 <ul>
-<li>Dictionary name</li>
-<li>Character encoding</li>
-<li>Compression algorithm</li>
-<li>Schema definitions for dictionary fields</li>
+<li><strong>Parameters</strong>:
+<ul>
+<li><code>name</code> (string, optional) -- Dictionary name (default: <code>"default"</code>)</li>
+<li><code>encoding</code> (string, optional) -- Character encoding (default: <code>"UTF-8"</code>)</li>
 </ul>
-<p>You can access the metadata from a loaded dictionary via <code>dictionary.metadata</code>.</p>
-
+</li>
+</ul>
+<h3 id="static-methods"><a class="header" href="#static-methods">Static Methods</a></h3>
+<h4 id="metadatacreatedefault"><a class="header" href="#metadatacreatedefault"><code>Metadata.createDefault()</code></a></h4>
+<p>Creates a <code>Metadata</code> instance with default values.</p>
+<pre><code class="language-javascript">const metadata = Metadata.createDefault();
+</code></pre>
+<h3 id="metadata-properties"><a class="header" href="#metadata-properties">Metadata Properties</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>name</code></td><td><code>string</code></td><td><code>"default"</code></td><td>Dictionary name</td></tr>
+<tr><td><code>encoding</code></td><td><code>string</code></td><td><code>"UTF-8"</code></td><td>Character encoding</td></tr>
+<tr><td><code>dictionary_schema</code></td><td><code>Schema</code></td><td>IPADIC schema</td><td>Schema for the main dictionary</td></tr>
+<tr><td><code>user_dictionary_schema</code></td><td><code>Schema</code></td><td>Minimal schema</td><td>Schema for user dictionaries</td></tr>
+</tbody></table>
+</div>
+<p>All properties support both getting and setting:</p>
+<pre><code class="language-javascript">const metadata = Metadata.createDefault();
+metadata.name = "custom_dict";
+metadata.encoding = "EUC-JP";
+console.log(metadata.name); // "custom_dict"
+</code></pre>
+<p>You can also access the metadata from a loaded dictionary via <code>dictionary.metadata</code>.</p>
+<h3 id="schema"><a class="header" href="#schema">Schema</a></h3>
+<p>The <code>Schema</code> class defines the field structure of dictionary entries.</p>
+<h4 id="schema-constructor"><a class="header" href="#schema-constructor">Schema Constructor</a></h4>
+<pre><code class="language-javascript">const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "reading"]);
+</code></pre>
+<h4 id="schema-static-methods"><a class="header" href="#schema-static-methods">Schema Static Methods</a></h4>
+<ul>
+<li><code>Schema.create_default()</code> -- Creates a default IPADIC-like schema</li>
+</ul>
+<h4 id="schema-methods"><a class="header" href="#schema-methods">Schema Methods</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>get_field_index(name)</code></td><td><code>number | undefined</code></td><td>Get field index by name</td></tr>
+<tr><td><code>field_count()</code></td><td><code>number</code></td><td>Total number of fields</td></tr>
+<tr><td><code>get_field_name(index)</code></td><td><code>string | undefined</code></td><td>Get field name by index</td></tr>
+<tr><td><code>get_custom_fields()</code></td><td><code>string[]</code></td><td>Fields beyond index 3 (morphological features)</td></tr>
+<tr><td><code>get_all_fields()</code></td><td><code>string[]</code></td><td>All field names</td></tr>
+<tr><td><code>get_field_by_name(name)</code></td><td><code>FieldDefinition | undefined</code></td><td>Get full field definition</td></tr>
+</tbody></table>
+</div>
+<h4 id="fielddefinition"><a class="header" href="#fielddefinition">FieldDefinition</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>index</code></td><td><code>number</code></td><td>Field position index</td></tr>
+<tr><td><code>name</code></td><td><code>string</code></td><td>Field name</td></tr>
+<tr><td><code>field_type</code></td><td><code>FieldType</code></td><td>Field type enum</td></tr>
+<tr><td><code>description</code></td><td><code>string | undefined</code></td><td>Optional description</td></tr>
+</tbody></table>
+</div>
+<h4 id="fieldtype"><a class="header" href="#fieldtype">FieldType</a></h4>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>FieldType.Surface</code></td><td>Word surface text</td></tr>
+<tr><td><code>FieldType.LeftContextId</code></td><td>Left context ID</td></tr>
+<tr><td><code>FieldType.RightContextId</code></td><td>Right context ID</td></tr>
+<tr><td><code>FieldType.Cost</code></td><td>Word cost</td></tr>
+<tr><td><code>FieldType.Custom</code></td><td>Morphological feature field</td></tr>
+</tbody></table>
+</div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

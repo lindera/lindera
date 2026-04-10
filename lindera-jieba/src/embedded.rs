@@ -19,7 +19,7 @@ macro_rules! jieba_data {
     };
 }
 
-// Metadata-specific macro (skips compression/decompression processing)
+// Metadata-specific macro
 macro_rules! jieba_metadata {
     ($name: ident, $path: literal, $filename: literal) => {
         #[cfg(feature = "embed-jieba")]
