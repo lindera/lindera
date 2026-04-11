@@ -12,7 +12,14 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-build_rs = ["dep:reqwest"]
+build_rs = [
+    "dep:flate2",
+    "dep:md5",
+    "dep:rand",
+    "dep:reqwest",
+    "dep:tar",
+    "dep:tokio",
+]
 mmap = ["dep:memmap2"]
 train = ["dep:lindera-crf"]
 default = ["mmap"]
@@ -25,14 +32,14 @@ daachorse = { workspace = true }
 derive_builder = "0.20.2"
 encoding_rs = "0.8.35"
 encoding_rs_io = "0.1.7"
-flate2 = "1.1.9"
+flate2 = { version = "1.1.9", optional = true }
 glob = "0.3.3"
 log = { workspace = true }
-md5 = "0.8.0"
+md5 = { version = "0.8.0", optional = true }
 memmap2 = { version = "0.9.10", optional = true }
 num_cpus = { workspace = true }
 once_cell = { workspace = true }
-rand = { version = "0.10.0", default-features = false }
+rand = { version = "0.10.0", default-features = false, optional = true }
 regex = { workspace = true }
 reqwest = { version = "0.13.2", features = [
     "rustls",
@@ -43,9 +50,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-tar = "0.4.45"
+tar = { version = "0.4.45", optional = true }
 thiserror = "2.0.18"
-tokio = { workspace = true }
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand = { version = "0.10.0", default-features = false }
