@@ -426,7 +426,7 @@ impl PrefixDictionaryBuilder {
 
         for (key, word_entries) in word_entry_map {
             let len = word_entries.len() as u32;
-            let val = (id << 5) | len; // 27bit for word ID, 5bit for different parts of speech on the same surface.
+            let val = (id << 8) | len; // 24bit for word ID, 8bit for variant count (up to 255 per surface).
             keyset.push((key.as_bytes(), val));
             id += len;
         }

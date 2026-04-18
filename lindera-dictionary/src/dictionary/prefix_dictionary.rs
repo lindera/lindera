@@ -110,6 +110,21 @@ pub struct PrefixDictionary {
 }
 
 impl PrefixDictionary {
+    /// Decode the `(offset, count)` pair stored in the double-array value.
+    ///
+    /// System dictionaries use 8-bit count (supports up to 255 variants per
+    /// surface), while user dictionaries retain the legacy 5-bit count
+    /// encoding (max 31) for binary backward compatibility with pre-built
+    /// `.bin` user dictionary files.
+    #[inline]
+    pub(crate) fn decode_val(&self, val: u32) -> (u32, u32) {
+        if self.is_system {
+            (val >> 8u32, val & ((1u32 << 8) - 1u32))
+        } else {
+            (val >> 5u32, val & ((1u32 << 5) - 1u32))
+        }
+    }
+
     /// Load a `PrefixDictionary` from raw binary data.
     ///
     /// # Arguments
@@ -149,9 +164,7 @@ impl PrefixDictionary {
             .find_overlapping_iter(s)
             .filter(|m| m.start() == 0)
             .flat_map(move |m| {
-                let id = m.value();
-                let len = id & ((1u32 << 5) - 1u32);
-                let offset = id >> 5u32;
+                let (offset, len) = self.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
                 let data: &[u8] = &self.vals_data[offset_bytes..];
                 (0..len as usize).map(move |i| {
@@ -181,11 +194,9 @@ impl PrefixDictionary {
             .find_overlapping_iter(surface)
             .filter(|m| m.start() == 0 && m.end() == surface.len())
             .flat_map(move |m| {
-                let offset_len = m.value();
-                let offset = offset_len >> 5u32;
+                let (offset, len) = self.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
                 let data = &self.vals_data[offset_bytes..];
-                let len = offset_len & ((1u32 << 5) - 1u32);
                 (0..len as usize).map(move |i| {
                     WordEntry::deserialize(&data[WordEntry::SERIALIZED_LEN * i..], self.is_system)
                 })
@@ -207,9 +218,7 @@ impl PrefixDictionary {
             .find_overlapping_iter(&suffix_str)
             .filter(|m| m.start() == 0)
             .flat_map(|m| {
-                let offset_len = m.value();
-                let len = offset_len & ((1u32 << 5) - 1u32);
-                let offset = offset_len >> 5u32;
+                let (offset, len) = self.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
                 // 範囲チェックを追加
@@ -262,6 +271,16 @@ impl PrefixDictionary {
 }
 
 impl ArchivedPrefixDictionary {
+    /// Decode the `(offset, count)` pair. See [`PrefixDictionary::decode_val`].
+    #[inline]
+    fn decode_val(&self, val: u32) -> (u32, u32) {
+        if self.is_system {
+            (val >> 8u32, val & ((1u32 << 8) - 1u32))
+        } else {
+            (val >> 5u32, val & ((1u32 << 5) - 1u32))
+        }
+    }
+
     /// Find all prefix matches for the given string using the archived dictionary.
     ///
     /// # Arguments
@@ -288,8 +307,7 @@ impl ArchivedPrefixDictionary {
             .collect();
 
         Ok(matches.into_iter().flat_map(move |(end, offset_len)| {
-            let len = offset_len & ((1u32 << 5) - 1u32);
-            let offset = offset_len >> 5u32;
+            let (offset, len) = self.decode_val(offset_len);
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
             let vals = self.vals_data.as_slice();
@@ -337,8 +355,7 @@ impl ArchivedPrefixDictionary {
         Ok(matches
             .into_iter()
             .flat_map(|offset_len| {
-                let len = offset_len & ((1u32 << 5) - 1u32);
-                let offset = offset_len >> 5u32;
+                let (offset, len) = self.decode_val(offset_len);
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
                 let vals = self.vals_data.as_slice();
                 if offset_bytes >= vals.len() {

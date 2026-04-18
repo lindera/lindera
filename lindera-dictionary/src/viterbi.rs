@@ -383,12 +383,10 @@ impl Lattice {
         let mut matches_head = vec![usize::MAX; len + 1];
         let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
 
-        // System dictionary scan
+        // System dictionary scan (8-bit variant-count encoding)
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
-            let id = m.value();
-            let count = id & ((1u32 << 5) - 1u32);
-            let offset = id >> 5u32;
+            let (offset, count) = dict.decode_val(m.value());
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
             // Bounds check for safety, though daachorse should guarantee valid ids if built correctly
@@ -408,13 +406,11 @@ impl Lattice {
             }
         }
 
-        // User dictionary scan
+        // User dictionary scan (5-bit variant-count encoding for bwd compat)
         if let Some(ud) = user_dict {
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
-                let id = m.value();
-                let count = id & ((1u32 << 5) - 1u32);
-                let offset = id >> 5u32;
+                let (offset, count) = ud.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
                 if offset_bytes < ud.vals_data.len() {
@@ -932,12 +928,10 @@ impl Lattice {
         let mut matches_head = vec![usize::MAX; len + 1];
         let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
 
-        // System dictionary scan
+        // System dictionary scan (8-bit variant-count encoding)
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
-            let id = m.value();
-            let count = id & ((1u32 << 5) - 1u32);
-            let offset = id >> 5u32;
+            let (offset, count) = dict.decode_val(m.value());
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
             if offset_bytes < dict.vals_data.len() {
@@ -956,13 +950,11 @@ impl Lattice {
             }
         }
 
-        // User dictionary scan
+        // User dictionary scan (5-bit variant-count encoding for bwd compat)
         if let Some(ud) = user_dict {
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
-                let id = m.value();
-                let count = id & ((1u32 << 5) - 1u32);
-                let offset = id >> 5u32;
+                let (offset, count) = ud.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
                 if offset_bytes < ud.vals_data.len() {
