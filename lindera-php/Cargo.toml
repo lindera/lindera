@@ -34,7 +34,7 @@ default = ["train"] # No dictionaries included
 
 [dependencies]
 lindera = { workspace = true }
-ext-php-rs = "0.15.8"
+ext-php-rs = "0.15.11"
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
