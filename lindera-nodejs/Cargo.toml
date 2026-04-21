@@ -34,7 +34,7 @@ default = ["train"] # Training enabled by default
 [dependencies]
 lindera = { workspace = true }
 napi = { version = "3.8.4", features = ["napi8", "serde-json"] }
-napi-derive = "3.5.3"
+napi-derive = "3.5.4"
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
