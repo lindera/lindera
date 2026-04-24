@@ -554,7 +554,7 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter --manifest-path lindera-python/Cargo.toml
+          args: --release --out dist -i python3.10 --manifest-path lindera-python/Cargo.toml
           sccache: "true"
           manylinux: auto
           before-script-linux: |
