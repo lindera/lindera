@@ -1710,7 +1710,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1742,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1754,7 +1754,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "clap",
@@ -1765,7 +1765,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-crf"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -1777,7 +1777,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1810,7 +1810,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1822,7 +1822,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1834,7 +1834,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-jieba"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1846,7 +1846,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ko-dic"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1858,7 +1858,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-nodejs"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "lindera",
  "napi",
@@ -1872,7 +1872,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-php"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "ext-php-rs",
  "lindera",
@@ -1883,7 +1883,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "lindera",
  "num_cpus",
@@ -1894,7 +1894,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ruby"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "lindera",
  "magnus",
@@ -1905,7 +1905,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1917,7 +1917,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-wasm"
-version = "3.0.6"
+version = "3.0.7"
 dependencies = [
  "js-sys",
  "lindera",
