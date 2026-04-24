@@ -381,7 +381,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -436,7 +436,7 @@ jobs:
           zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }}
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -513,7 +513,7 @@ jobs:
         run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -565,7 +565,7 @@ jobs:
             fi
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -593,7 +593,7 @@ jobs:
           args: --out dist --manifest-path lindera-python/Cargo.toml
 
       - name: Upload artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -673,7 +673,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -744,7 +744,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
