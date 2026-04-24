@@ -33,13 +33,13 @@ embed-cjk3 = [
     "lindera/embed-cjk3",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 
-mmap = ["lindera/mmap"]                 # Use memory-mapped file
-train = ["lindera/train"]               # Enable training functionality
+mmap = ["lindera/mmap"]     # Use memory-mapped file
+train = ["lindera/train"]   # Enable training functionality
 default = ["mmap", "train"]
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { version = "4.6.0", features = ["derive", "cargo"] }
+clap = { version = "4.6.1", features = ["derive", "cargo"] }
 lindera = { workspace = true }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }

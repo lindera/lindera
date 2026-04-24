@@ -28,15 +28,15 @@ embed-cjk = [
 default = []
 
 [dependencies]
-js-sys = "0.3.94"
+js-sys = "0.3.95"
 lindera = { workspace = true }
 lindera-dictionary = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
 serde_json = { workspace = true }
-wasm-bindgen = { version = "0.2.117" }
+wasm-bindgen = { version = "0.2.118" }
 
 [dev-dependencies]
 serde_json = { workspace = true }
-wasm-bindgen = { version = "0.2.117" }
-wasm-bindgen-test = "0.3.67"
+wasm-bindgen = { version = "0.2.118" }
+wasm-bindgen-test = "0.3.68"
