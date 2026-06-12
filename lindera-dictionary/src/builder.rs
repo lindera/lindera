@@ -57,7 +57,7 @@ impl DictionaryBuilder {
         CharacterDefinitionBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
             .builder()
-            .unwrap()
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -70,7 +70,7 @@ impl DictionaryBuilder {
         UnknownDictionaryBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
             .builder()
-            .unwrap()
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, chardef, output_dir)
     }
 
@@ -86,7 +86,7 @@ impl DictionaryBuilder {
             .normalize_details(self.metadata.normalize_details)
             .schema(self.metadata.dictionary_schema.clone())
             .builder()
-            .unwrap()
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -98,7 +98,7 @@ impl DictionaryBuilder {
         ConnectionCostMatrixBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
             .builder()
-            .unwrap()
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -145,7 +145,7 @@ impl DictionaryBuilder {
                 Ok(result)
             })))
             .builder()
-            .unwrap()
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_file)
     }
 }

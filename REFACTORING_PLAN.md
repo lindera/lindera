@@ -204,16 +204,18 @@
 | 3b-1 | `loader/` 5 ファイルの `load`/`load_mmap` パターンをマクロまたはジェネリック関数に集約 | 約 200 行 → 80 行 |
 | 3b-2 | 未使用の `DictionaryLoader` トレイト(`loader.rs`)の役割を再定義 | 実際に使う形に直すか削除(削除は非公開なら即、公開ならフェーズ 6) |
 
-### 3c. エラー処理の正常化
+### 3c. エラー処理の正常化 — **一部実施済み(3c-2/3c-3/3c-5)**
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 3c-1 | エラー戦略の明文化 | 「公開 API は `LinderaResult`、内部の文脈付与に `anyhow`」を CONTRIBUTING に明記 |
-| 3c-2 | `builder.rs` の `.unwrap()` 5 箇所を `?` 化 | `*BuilderOptions::builder()` が `Result` を返す設計自体の見直し含む(非公開なら即、公開ならシグネチャ互換に注意) |
-| 3c-3 | `prefix_dictionary.rs` の CSV パース `unwrap()` 13 箇所をエラー化 | 不正な辞書 CSV でパニックせず、行番号付きエラーを返す |
-| 3c-4 | `Regex::new().unwrap()` を `LazyLock`(std)化 | `feature_extractor.rs` の 3 箇所 + capture unwrap の防御化 |
-| 3c-5 | `assets.rs` の環境変数 `unwrap()` 2 箇所の修正 | |
-| 3c-6 | `lindera-crf` の `trainer.rs`(28 箇所)/ `forward_backward.rs`(9 箇所)の unwrap 監査 | 数値変換 `try_from().unwrap()` は不変条件をコメント化するか `expect("理由")` に統一。ホットパスはパフォーマンス維持を優先し、無理にすべて Result 化しない |
+| # | 作業 | 詳細 | 状態 |
+|---|---|---|---|
+| 3c-1 | エラー戦略の明文化 | 「公開 API は `LinderaResult`、内部の文脈付与に `anyhow`」を CONTRIBUTING に明記 | 未着手 |
+| 3c-2 | `builder.rs` の `.unwrap()` 5 箇所を `?` 化 | `*BuilderOptions::builder()`(derive_builder 生成、全フィールド default で実際は失敗しない)を `map_err(LinderaErrorKind::Build)?` に置換 | ✅ |
+| 3c-3 | `prefix_dictionary.rs` の CSV パース `unwrap()` をエラー化 | `build_word_entry_map` の `word_cost/left_id/right_id` の `unwrap()` 3 箇所(実コード)を、直前の `is_none()` チェックと統合して `let-else` 束縛に置換。挙動完全同一(残りは `#[cfg(test)]` 内の `unwrap` で許容) | ✅ |
+| 3c-4 | `Regex::new().unwrap()` を `LazyLock`(std)化 | `feature_extractor.rs` の 3 箇所 + capture unwrap の防御化(train 専用ホットパス。独立 PR で対応) | 未着手 |
+| 3c-5 | `assets.rs` の環境変数 `unwrap()` 2 箇所の修正 | `CARGO_PKG_VERSION` / `OUT_DIR` を `ok_or_else(...)?` 化(build script では Cargo が必ず設定するが防御的に) | ✅ |
+| 3c-6 | `lindera-crf` の `trainer.rs`(28 箇所)/ `forward_backward.rs`(9 箇所)の unwrap 監査 | 数値変換 `try_from().unwrap()` は不変条件をコメント化するか `expect("理由")` に統一。ホットパスはパフォーマンス維持を優先し、無理にすべて Result 化しない | 未着手 |
+
+> 3c-2/3c-3/3c-5(辞書ビルド経路の素の `unwrap` 撲滅)を 1 PR で実施。3c-4(regex)/3c-6(crf) は train 専用ホットパスのため独立 PR に分離。検証は辞書を実際に再ビルドした上でゴールデンテスト 8 件 + dictionary ユニット 52 件で挙動不変を確認。
 
 ### 3d. 巨大ファイルの分割(機械的な移動のみ。ロジック変更禁止)
 
