@@ -49,6 +49,7 @@ pub mod lowercase;
 pub mod mapping;
 pub mod remove_diacritical_mark;
 pub mod stop_words;
+mod tags;
 pub mod uppercase;
 
 use serde_json::Value;
