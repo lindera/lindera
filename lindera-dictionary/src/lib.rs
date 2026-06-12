@@ -14,8 +14,8 @@ pub mod trainer;
 
 pub type LinderaResult<T> = Result<T, crate::error::LinderaError>;
 
-const VERERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn get_version() -> &'static str {
-    VERERSION
+    VERSION
 }
