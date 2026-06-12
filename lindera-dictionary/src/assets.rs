@@ -545,3 +545,32 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
 
     Ok(())
 }
+
+/// Shared body of every per-dictionary crate's `build.rs`.
+///
+/// Reads `metadata.json` from the crate root, fetches and builds the
+/// dictionary described by `params`, and embeds the result under
+/// `LINDERA_WORKDIR`.
+///
+/// When the crate's embed feature is disabled (`embed_enabled == false`) and
+/// no cache override is set via `LINDERA_DICTIONARIES_PATH` / `LINDERA_CACHE`,
+/// this is a no-op so the crate builds without downloading any data.
+pub async fn build_embedded_dictionary(
+    embed_enabled: bool,
+    params: FetchParams,
+) -> Result<(), Box<dyn Error>> {
+    if std::env::var_os("LINDERA_DICTIONARIES_PATH").is_none()
+        && std::env::var_os("LINDERA_CACHE").is_none()
+        && !embed_enabled
+    {
+        return Ok(());
+    }
+
+    let metadata_json = fs::read_to_string("metadata.json")?;
+    let metadata: crate::dictionary::metadata::Metadata = serde_json::from_str(&metadata_json)?;
+    let builder = DictionaryBuilder::new(metadata);
+
+    fetch(params, builder).await?;
+
+    Ok(())
+}

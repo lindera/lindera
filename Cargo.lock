@@ -1807,7 +1807,6 @@ name = "lindera-cc-cedict"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
@@ -1873,7 +1872,6 @@ name = "lindera-ipadic"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
@@ -1882,7 +1880,6 @@ name = "lindera-ipadic-neologd"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
@@ -1891,7 +1888,6 @@ name = "lindera-jieba"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
@@ -1900,7 +1896,6 @@ name = "lindera-ko-dic"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
@@ -1956,7 +1951,6 @@ name = "lindera-unidic"
 version = "3.0.7"
 dependencies = [
  "lindera-dictionary",
- "serde_json",
  "tokio",
 ]
 
