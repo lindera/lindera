@@ -229,7 +229,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
 
       - name: Run test
-        run: cargo test -p lindera-cli --features train
+        run: cargo test -p lindera-cli --features train,embed-ipadic
 
   test-lindera-python:
     name: Test lindera-python

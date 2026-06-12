@@ -110,20 +110,22 @@
 
 ---
 
-## フェーズ 0: 安全網の構築(挙動変更なし)
+## フェーズ 0: 安全網の構築(挙動変更なし) — **実施済み**
 
 **目的**: 以降の全フェーズで「壊していないこと」を機械的に検証できる状態を作る。
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 0-1 | ゴールデン(スナップショット)テスト追加 | `resources/bocchan.txt` 等を入力に、全 6 辞書 × Normal/Decompose モードのトークナイズ結果をスナップショット化(`insta` クレート推奨)。`lindera/tests/` に統合テストとして配置 |
-| 0-2 | CLI のスモークテスト | `tokenize` / `build` / `list` サブコマンドの E2E テスト(現状 CLI はテストゼロ) |
-| 0-3 | ベンチマーク基準値の記録 | 既存 `bench` ターゲットを実行し、tokenize スループットの基準値を記録。CI での回帰検出は任意(criterion の比較で十分) |
-| 0-4 | カバレッジ計測の導入(任意) | `cargo llvm-cov` で現状値を記録し、フェーズごとの劣化を監視 |
+| # | 作業 | 詳細 | 状態 |
+|---|---|---|---|
+| 0-1 | ゴールデン(スナップショット)テスト追加 | `lindera/tests/golden_tokenization.rs` に IPADIC / ko-dic / Jieba × Normal/Decompose + ユーザー辞書 + N-best のスナップショット 8 件(`insta`)。UniDic / NEologd / CC-CEDICT は辞書入手可能な環境で同じ `golden_tests!` マクロにより追加可能 | ✅ |
+| 0-2 | CLI のスモークテスト | `lindera-cli/tests/cli.rs`(`assert_cmd`)。help / version / list / 不正辞書エラー + `embed-ipadic` 時の mecab/wakati/json/decompose 出力検証。Makefile と CI の CLI テストを `--features train,embed-ipadic` に変更 | ✅ |
+| 0-3 | ベンチマーク基準値の記録 | `BENCHMARKING.md` に criterion の `--save-baseline` / `--baseline` による同一マシン比較手順と 3% 判定基準を明文化 | ✅ |
+| 0-4 | カバレッジ計測の導入(任意) | `cargo llvm-cov` で現状値を記録し、フェーズごとの劣化を監視 | 未着手(任意) |
 
 - **リスク**: ほぼなし(追加のみ)
 - **完了条件**: 全辞書のゴールデンテストが CI で実行され、グリーン
-- **規模感**: 小(1〜2 PR)
+- **メモ**: 辞書アーカイブは GitHub ミラー(`lindera/mecab-ipadic` 等)のタグ付き
+  ソースアーカイブが lindera.dev 配布物と MD5 まで同一。`LINDERA_DICTIONARIES_PATH`
+  のキャッシュディレクトリに配置すればオフライン環境でもビルド可能
 
 ---
 

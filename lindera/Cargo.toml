@@ -80,6 +80,7 @@ url = "2.5.8"
 criterion = { version = "0.8.2", default-features = false, features = [
     "html_reports",
 ] }
+insta = "1.43.2"
 serde_json = { workspace = true }
 
 [[bench]]

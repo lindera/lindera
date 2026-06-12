@@ -13,5 +13,8 @@ target
 perf.data*
 flamegraph.svg
 
+# insta pending snapshots
+*.snap.new
+
 # Temporary files
 .tmp/
