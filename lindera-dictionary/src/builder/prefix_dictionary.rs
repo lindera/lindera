@@ -186,14 +186,14 @@ impl PrefixDictionaryBuilder {
         let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
 
         for (row_id, row) in rows.iter().enumerate() {
-            let word_cost = self.parse_word_cost(row)?;
-            let left_id = self.parse_left_id(row)?;
-            let right_id = self.parse_right_id(row)?;
-
-            // Skip if any value is invalid
-            if word_cost.is_none() || left_id.is_none() || right_id.is_none() {
+            // Skip the row if any of these required fields is missing or invalid.
+            let (Some(word_cost), Some(left_id), Some(right_id)) = (
+                self.parse_word_cost(row)?,
+                self.parse_left_id(row)?,
+                self.parse_right_id(row)?,
+            ) else {
                 continue;
-            }
+            };
 
             let key = if self.normalize_details {
                 if let Some(surface) = self.get_field_value(row, "surface")? {
@@ -212,9 +212,9 @@ impl PrefixDictionaryBuilder {
                     crate::viterbi::LexType::System,
                     row_id as u32,
                 ),
-                word_cost: word_cost.unwrap(),
-                left_id: left_id.unwrap(),
-                right_id: right_id.unwrap(),
+                word_cost,
+                left_id,
+                right_id,
             });
         }
 

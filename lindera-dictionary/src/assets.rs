@@ -254,12 +254,18 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
         }
 
         (
-            cache_dir.join(std::env::var_os("CARGO_PKG_VERSION").unwrap()),
+            cache_dir.join(std::env::var_os("CARGO_PKG_VERSION").ok_or_else(|| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!("CARGO_PKG_VERSION environment variable is not set"))
+            })?),
             true,
         )
     } else {
         (
-            PathBuf::from(std::env::var_os("OUT_DIR").unwrap()), /* ex) target/debug/build/<pkg>/out */
+            PathBuf::from(std::env::var_os("OUT_DIR").ok_or_else(|| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!("OUT_DIR environment variable is not set"))
+            })?), /* ex) target/debug/build/<pkg>/out */
             false,
         )
     };
