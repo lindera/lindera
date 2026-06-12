@@ -1,0 +1,29 @@
+---
+source: lindera/tests/golden_tokenization.rs
+expression: "render(& tokenizer, CHINESE_TEXTS)"
+---
+## 可以进行中文形态学分析。
+可以	0..6	0:1	c,CHINESE,ke3 yi3,可以,可以,can/may/possible/able to/not bad/pretty good,2,可,以,high
+进行	6..12	1:1	v,CHINESE,jin4 xing2,進行,进行,(of a process etc) to proceed; to be in progress; to be underway/(of people) to carry out; to conduct (an investigation or discussion etc)/(of an army etc) to be on the march; to advance,2,进,行,high
+中文	12..18	2:1	nz,CHINESE,Zhong1 wen2,中文,中文,Chinese language,2,中,文,high
+形态	18..24	3:1	n,CHINESE,xing2 tai4,形態,形态,shape/form/pattern/morphology,2,形,态,high
+学	24..27	4:1	n,CHINESE,xue2,學,学,to learn/to study/to imitate/science/-ology,1,学,学,high
+分析	27..33	5:1	vn,CHINESE,fen1 xi1,分析,分析,to analyze/analysis/CL:個|个[ge4],2,分,析,high
+。	33..36	6:1	w,*,*,*,*,*,*,*,*,*
+
+## 北京是中华人民共和国的首都。
+北京	0..6	0:1	ns,CHINESE,Bei3 jing1,北京,北京,Beijing municipality, capital of the People's Republic of China (short name 京[Jing1]),2,北,京,high
+是	6..9	1:1	v,CHINESE,shi4,是,是,to be (followed by substantives only)/correct; right; true/(respectful acknowledgement of a command) very well/(adverb for emphatic assertion) / variant of 是[shi4],1,是,是,high
+中华人民共和国	9..30	2:1	ns,CHINESE,Zhong1 hua2 Ren2 min2 Gong4 he2 guo2,中華人民共和國,中华人民共和国,People's Republic of China,4+,中,国,high
+的	30..33	3:1	uj,CHINESE,de5,的,的,of; ~'s (possessive particle)/(used after an attribute when it modifies a noun)/(used at the end of a declarative sentence for emphasis)/(used after a noun, verb or adjective to form a nominal expression, as in 皮革的[pi2 ge2 de5] "one made of leather" or 跑堂兒的|跑堂儿的[pao3 tang2 r5 de5] "a waiter (literally, one who runs back and forth in a restaurant)" or 新的[xin1 de5] "new one")/also pr. [di4] or [di5] in poetry and songs / a taxi; a cab (abbr. for 的士[di1 shi4]) / really and truly / (bound form) bull's-eye; target,1,的,的,high
+首都	33..39	4:1	d,CHINESE,shou3 du1,首都,首都,capital (city)/CL:個|个[ge4],2,首,都,high
+。	39..42	5:1	w,*,*,*,*,*,*,*,*,*
+
+## 我喜欢吃苹果和香蕉。
+我	0..3	0:1	r,CHINESE,wo3,我,我,I; me; my,1,我,我,high
+喜欢	3..9	1:1	v,CHINESE,xi3 huan5,喜歡,喜欢,to like; to be fond of,2,喜,欢,high
+吃	9..12	2:1	v,CHINESE,chi1,吃,吃,to eat; to consume/to eat at (a cafeteria etc)/to eradicate; to destroy/to absorb/to suffer (shock, injury, defeat etc) / variant of 吃[chi1],1,吃,吃,high
+苹果	12..18	3:1	n,CHINESE,Ping2 guo3,蘋果,苹果,Apple (American tech company) / apple/CL:個|个[ge4],顆|颗[ke1],2,苹,果,high
+和	18..21	4:1	c,CHINESE,he2,咊,和,old variant of 和[he2] / surname He / (joining two nouns) and; together with; with (Taiwan pr. [han4])/(math.) sum/to make peace/(sports) to draw; to tie/(bound form) harmonious/(bound form) Japan; Japanese / to compose a poem in reply (to sb's poem) using the same rhyme sequence/to join in the singing/to chime in with others / to complete a set in mahjong or playing cards / to combine a powdery substance (flour, plaster etc) with water/Taiwan pr. [huo4] / to mix (ingredients) together/to blend/classifier for rinses of clothes/classifier for boilings of medicinal herbs / (literary) harmonious (variant of 和[he2]),1,和,和,high
+香蕉	21..27	5:1	n,CHINESE,xiang1 jiao1,香蕉,香蕉,banana/CL:根[gen1],把[ba3],2,香,蕉,mid
+。	27..30	6:1	w,*,*,*,*,*,*,*,*,*

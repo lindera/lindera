@@ -281,7 +281,7 @@ test-lindera: ## Test lindera
 	cargo test -p lindera --features embed-ipadic,train
 
 test-lindera-cli: ## Test lindera-cli
-	cargo test -p lindera-cli --features train
+	cargo test -p lindera-cli --features train,embed-ipadic
 
 test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python pytest)
 	cargo test -p lindera-python --lib
