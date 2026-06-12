@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::token_filter::tags::{TagPolicy, apply_tag_filter, parse_tags};
 
 pub const KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str = "korean_keep_tags";
 
@@ -24,23 +24,7 @@ impl KoreanKeepTagsTokenFilter {
     }
 
     pub fn from_config(config: &KoreanKeepTagsTokenFilterConfig) -> LinderaResult<Self> {
-        let tags: HashSet<String> = config["tags"]
-            .as_array()
-            .ok_or_else(|| {
-                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
-            })?
-            .iter()
-            .map(|v| {
-                v.as_str()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!("tag must be string"))
-                    })
-                    .map(|s| s.to_string())
-            })
-            .collect::<LinderaResult<HashSet<String>>>()?;
-
-        Ok(Self::new(tags))
+        Ok(Self::new(parse_tags(config)?))
     }
 }
 
@@ -77,22 +61,10 @@ impl TokenFilter for KoreanKeepTagsTokenFilter {
     ///
     /// The function returns a `LinderaResult<()>` if any issue occurs during token filtering, but typically no errors are expected during this operation.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        // Create a new vector to store the filtered tokens
-        let mut filtered_tokens = Vec::with_capacity(tokens.len());
-
-        // Iterate over the tokens and filter them based on the part-of-speech tags in the config.
-        for mut token in tokens.drain(..) {
-            // Get the part-of-speech tags.
-            let tag = token.get_detail(0).unwrap_or_default();
-
-            // Add the token to the filtered_tokens vector if the tag is in the set of tags.
-            if self.tags.contains(tag) {
-                filtered_tokens.push(token);
-            }
-        }
-
-        // Replace the original tokens vector with the filtered tokens.
-        *tokens = filtered_tokens;
+        apply_tag_filter(tokens, &self.tags, TagPolicy::Keep, |token| {
+            // Use the first part-of-speech tag as the comparison key.
+            token.get_detail(0).unwrap_or_default().to_string()
+        });
 
         Ok(())
     }

@@ -3,9 +3,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::error::LinderaErrorKind;
 use crate::token::Token;
 use crate::token_filter::TokenFilter;
+use crate::token_filter::tags::{TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags};
 
 pub const JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str = "japanese_stop_tags";
 
@@ -20,36 +20,13 @@ pub struct JapaneseStopTagsTokenFilter {
 
 impl JapaneseStopTagsTokenFilter {
     pub fn new(tags: HashSet<String>) -> Self {
-        let tags: HashSet<String> = tags
-            .into_iter()
-            .map(|v| {
-                let mut tag_parts: Vec<&str> = v.split(',').collect();
-                tag_parts.resize(4, "*");
-                tag_parts.join(",")
-            })
-            .collect();
-
-        Self { tags }
+        Self {
+            tags: normalize_japanese_tags(tags),
+        }
     }
 
     pub fn from_config(config: &JapaneseStopTagsTokenFilterConfig) -> LinderaResult<Self> {
-        let tags: HashSet<String> = config["tags"]
-            .as_array()
-            .ok_or_else(|| {
-                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
-            })?
-            .iter()
-            .map(|v| {
-                v.as_str()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!("tag must be string"))
-                    })
-                    .map(|s| s.to_string())
-            })
-            .collect::<LinderaResult<HashSet<String>>>()?;
-
-        Ok(Self::new(tags))
+        Ok(Self::new(parse_tags(config)?))
     }
 }
 
@@ -90,28 +67,14 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     ///
     /// Returns a `LinderaResult` error if there is an issue during processing, but typically this function is expected to complete successfully unless there are issues with the token or tag data.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        // Create a new vector to store the filtered tokens
-        let mut filtered_tokens = Vec::with_capacity(tokens.len());
-
-        // Iterate over the tokens and filter them based on the part-of-speech tags in the config.
-        for mut token in tokens.drain(..) {
+        apply_tag_filter(tokens, &self.tags, TagPolicy::Remove, |token| {
             let details = token.details();
-
             // If the length of the details is greater than or equal to 4,
             // the tag length is 4, otherwise 1 is assigned to tags_len.
             let tags_len = if details.len() >= 4 { 4 } else { 1 };
-
             // Make a string of the part-of-speech tags.
-            let tag = details[0..tags_len].join(",");
-
-            // Add the token to the filtered tokens vector if the part-of-speech tag is not in the config.
-            if !self.tags.contains(&tag) {
-                filtered_tokens.push(token);
-            }
-        }
-
-        // Replace the original tokens vector with the filtered tokens.
-        *tokens = filtered_tokens;
+            details[0..tags_len].join(",")
+        });
 
         Ok(())
     }
