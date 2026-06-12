@@ -214,35 +214,16 @@ pub fn resolve_embedded_loader(
     match dictionary_type {
         #[cfg(feature = "embed-ipadic")]
         DictionaryKind::IPADIC => Ok(Box::new(EmbeddedIPADICLoader::new())),
-        // #[cfg(not(feature = "embed-ipadic"))]
-        // DictionaryKind::IPADIC => Err(LinderaErrorKind::FeatureDisabled
-        //     .with_error(anyhow::anyhow!("IPADIC embedded feature is not enabled"))),
         #[cfg(feature = "embed-ipadic-neologd")]
         DictionaryKind::IPADICNEologd => Ok(Box::new(EmbeddedIPADICNEologdLoader::new())),
-        // #[cfg(not(feature = "embed-ipadic-neologd"))]
-        // DictionaryKind::IPADICNEologd => Err(LinderaErrorKind::FeatureDisabled.with_error(
-        //     anyhow::anyhow!("IPADIC-NEologd embedded feature is not enabled"),
-        // )),
         #[cfg(feature = "embed-unidic")]
         DictionaryKind::UniDic => Ok(Box::new(EmbeddedUniDicLoader::new())),
-        // #[cfg(not(feature = "embed-unidic"))]
-        // DictionaryKind::UniDic => Err(LinderaErrorKind::FeatureDisabled
-        //     .with_error(anyhow::anyhow!("UniDic embedded feature is not enabled"))),
         #[cfg(feature = "embed-ko-dic")]
         DictionaryKind::KoDic => Ok(Box::new(EmbeddedKoDicLoader::new())),
-        // #[cfg(not(feature = "embed-ko-dic"))]
-        // DictionaryKind::KoDic => Err(LinderaErrorKind::FeatureDisabled
-        //     .with_error(anyhow::anyhow!("KO-DIC embedded feature is not enabled"))),
         #[cfg(feature = "embed-cc-cedict")]
         DictionaryKind::CcCedict => Ok(Box::new(EmbeddedCcCedictLoader::new())),
-        // #[cfg(not(feature = "embed-cc-cedict"))]
-        // DictionaryKind::CcCedict => Err(LinderaErrorKind::FeatureDisabled
-        //     .with_error(anyhow::anyhow!("CC-CEDICT embedded feature is not enabled"))),
         #[cfg(feature = "embed-jieba")]
         DictionaryKind::Jieba => Ok(Box::new(EmbeddedJiebaLoader::new())),
-        // #[cfg(not(feature = "embed-jieba"))]
-        // DictionaryKind::Jieba => Err(LinderaErrorKind::FeatureDisabled
-        //     .with_error(anyhow::anyhow!("Jieba embedded feature is not enabled"))),
     }
 }
 

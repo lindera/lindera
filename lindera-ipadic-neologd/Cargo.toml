@@ -21,11 +21,7 @@ license = { workspace = true }
 embed-ipadic-neologd = [] # Embed IPADIC-NEologd dictionary in the binary
 
 [dependencies]
-anyhow = { workspace = true }
-byteorder = { workspace = true }
-csv = { workspace = true }
 lindera-dictionary = { workspace = true }
-serde_json = { workspace = true }
 
 [build-dependencies]
 lindera-dictionary = { workspace = true, features = ["build_rs"] }

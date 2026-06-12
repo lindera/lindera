@@ -12,14 +12,10 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-embed-cc-cedict = []                       # Embed CC-CEDICT dictionary in the binary
+embed-cc-cedict = [] # Embed CC-CEDICT dictionary in the binary
 
 [dependencies]
-anyhow = { workspace = true }
-byteorder = { workspace = true }
-csv = { workspace = true }
 lindera-dictionary = { workspace = true }
-serde_json = { workspace = true }
 
 [build-dependencies]
 lindera-dictionary = { workspace = true, features = ["build_rs"] }

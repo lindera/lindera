@@ -1806,9 +1806,6 @@ dependencies = [
 name = "lindera-cc-cedict"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",
@@ -1875,9 +1872,6 @@ dependencies = [
 name = "lindera-ipadic"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",
@@ -1887,9 +1881,6 @@ dependencies = [
 name = "lindera-ipadic-neologd"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",
@@ -1899,9 +1890,6 @@ dependencies = [
 name = "lindera-jieba"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",
@@ -1911,9 +1899,6 @@ dependencies = [
 name = "lindera-ko-dic"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",
@@ -1970,9 +1955,6 @@ dependencies = [
 name = "lindera-unidic"
 version = "3.0.7"
 dependencies = [
- "anyhow",
- "byteorder",
- "csv",
  "lindera-dictionary",
  "serde_json",
  "tokio",

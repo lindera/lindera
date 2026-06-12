@@ -129,22 +129,21 @@
 
 ---
 
-## フェーズ 1: 低リスクの即時クリーンアップ(挙動変更なし)
+## フェーズ 1: 低リスクの即時クリーンアップ(挙動変更なし) — **実施済み**
 
 **目的**: 議論の余地がない無駄を先に一掃し、以降の差分ノイズを減らす。
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 1-1 | `docs/book/`・`docs/ja/book/` を git 管理から除外 | `.gitignore` 追記 + `git rm -r --cached`。約 21MB 削減。`deploy-docs.yml` が CI で mdBook ビルドすることを確認してから実施 |
-| 1-2 | `VERERSION` タイポ修正 | 全 8 箇所(辞書クレート 6 + `lindera-dictionary/src/lib.rs:17` + `lindera/src/lib.rs:16`)を `VERSION` に。private const のため非破壊 |
-| 1-3 | コメントアウトコードの削除 | `lindera/src/dictionary.rs:217-245` の 6 辞書分のデッドコメントを削除(必要なら git 履歴に残ることを明記) |
-| 1-4 | 未使用依存の削除 | 辞書クレート 6 個の `anyhow` / `byteorder` / `csv` を `[dependencies]` から削除(build-dependencies のみ残す)。`cargo udeps` または `cargo machete` で全クレートを横断確認 |
-| 1-5 | `bocchan.txt` の重複解消 | 2 重コピーを 1 箇所(`resources/`)に統一し、参照側をパス変更 |
-| 1-6 | Cargo.toml の体裁統一 | `lindera-cc-cedict` の余分なスペース等、6 辞書クレートのフォーマット統一 |
+| # | 作業 | 詳細 | 状態 |
+|---|---|---|---|
+| 1-1 | `docs/book/`・`docs/ja/book/` を git 管理から除外 | `.gitignore` 追記 + `git rm -r --cached`(272 ファイル、約 14MB)。`deploy-docs.yml` が CI 上で mdBook をビルドして gh-pages に公開しており、コミット済み生成物は未使用であることを確認済み | ✅ |
+| 1-2 | `VERERSION` タイポ修正 | 全 9 クレート(辞書 6 + `lindera-dictionary` + `lindera` + `lindera-cli`)を `VERSION` に。private const のため非破壊 | ✅ |
+| 1-3 | コメントアウトコードの削除 | `lindera/src/dictionary.rs` の `resolve_embedded_loader` 内、6 辞書分のデッドコメントを削除 | ✅ |
+| 1-4 | 未使用依存の削除 | 辞書クレート 6 個の `[dependencies]` から `anyhow` / `byteorder` / `csv` / `serde_json` を削除(`lindera-dictionary` のみ残存。build-dependencies は不変) | ✅ |
+| 1-5 | `bocchan.txt` の重複解消 | `lindera-nodejs/resources/` と `lindera-python/resources/` の孤立コピー(参照ゼロ)を削除。`resources/bocchan.txt` に一本化 | ✅ |
+| 1-6 | Cargo.toml の体裁統一 | `lindera-cc-cedict` の余分なスペース除去、`lindera-jieba` の feature コメント追加 | ✅ |
 
 - **リスク**: 極小。1-1 のみ docs デプロイフローの確認が必要
 - **完了条件**: `cargo build --workspace` / 全テスト / docs デプロイがグリーン
-- **規模感**: 小(2〜3 PR)
 
 ---
 

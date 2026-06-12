@@ -18,3 +18,7 @@ flamegraph.svg
 
 # Temporary files
 .tmp/
+
+# mdBook build artifacts (built and deployed by deploy-docs.yml)
+docs/book/
+docs/ja/book/
