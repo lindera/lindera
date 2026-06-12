@@ -4,6 +4,7 @@ pub mod builder;
 pub mod dictionary;
 pub mod error;
 pub mod loader;
+mod macros;
 pub mod mode;
 pub mod nbest;
 pub mod util;

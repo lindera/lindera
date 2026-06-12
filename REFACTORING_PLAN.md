@@ -147,7 +147,7 @@
 
 ---
 
-## フェーズ 2: 辞書クレート 6 個の脱コピペ化(挙動変更なし)
+## フェーズ 2: 辞書クレート 6 個の脱コピペ化(挙動変更なし) — **実施済み(2-1〜2-3)**
 
 **目的**: 約 590 行 × 6 クレートの構造的重複を、宣言的な 1 箇所の定義に集約する。
 
@@ -163,20 +163,23 @@
 
 ### 作業項目
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 2-1 | `lindera-dictionary` にジェネリック `EmbeddedLoader` 実装 | 現 6 種の `EmbeddedXxxLoader` の共通部を抽出。`include_bytes!` のパスはマクロ引数で注入 |
-| 2-2 | 6 クレートの `embedded.rs` をマクロ呼び出しに置換 | 各クレート 88–96 行 → 10 行程度 |
-| 2-3 | 6 クレートの `build.rs` を共通関数呼び出しに置換 | jieba の `src_subdir` 差分はパラメータで吸収(既に `FetchParams` がサポート済み) |
-| 2-4 | `lindera/src/dictionary.rs` の feature 分岐整理 | 12 個の条件付き import と 3 回反復する `#[cfg(any(...))]` を、辞書レジストリ的なマクロ 1 箇所に集約 |
-| 2-5 | 公開名の互換維持 | `EmbeddedIPADICLoader` 等を `pub type` エイリアス + `#[deprecated]` で残す(削除はフェーズ 6) |
+| # | 作業 | 詳細 | 状態 |
+|---|---|---|---|
+| 2-1 | `lindera-dictionary` に共通マクロ実装 | `lindera-dictionary/src/macros.rs` に `#[macro_export] embedded_dictionary!($dir, $loader)` を追加。`include_bytes!` のパスは `$dir` 引数で注入、loader 構造体名は `$loader` で注入。到達不能だった `#[cfg(not(feature))]` 空配列分岐は廃止 | ✅ |
+| 2-2 | 6 クレートの `embedded.rs` をマクロ呼び出しに置換 | 各クレート 88–100 行 → マクロ 1 行(+ doc コメント) | ✅ |
+| 2-3 | 6 クレートの `build.rs` を共通関数呼び出しに置換 | `lindera-dictionary/src/assets.rs` に `build_embedded_dictionary(embed_enabled, FetchParams)` を追加。各 build.rs は `FetchParams` 定義 + 1 行呼び出しに(41 行 → 18 行)。jieba の `src_subdir: Some("dict-src")` は `FetchParams` で吸収。build-dependencies から不要になった `serde_json` も削除 | ✅ |
+| 2-4 | `lindera/src/dictionary.rs` の feature 分岐整理 | 12 個の条件付き import と 3 回反復する `#[cfg(any(...))]` を辞書レジストリ的マクロに集約 | 未着手(別 PR) |
+| 2-5 | 公開名の互換維持 | `EmbeddedIPADICLoader` 等の公開名はマクロが同名で生成するため**完全互換**(エイリアス不要)。`lindera/src/dictionary.rs` からの利用箇所は無変更 | ✅(互換維持済み) |
 
 - **リスク**: 中。feature フラグの組み合わせ爆発に注意。CI で `embed-*` 各 feature 単体 +
   `embed-cjk` 系のビルドマトリクスを必ず通す
 - **完了条件**: 全 feature 組み合わせでビルド・ゴールデンテストがグリーン。
   辞書クレート 1 つあたりの実装が 20 行以下
-- **規模感**: 中(3〜4 PR: 共通実装 → 2 クレート移行 → 残り 4 クレート → facade 整理)
-- **削減見込み**: 約 500 行 + 将来の辞書追加コストが「定数定義 1 ファイル」に低下
+- **実績**: embedded.rs + build.rs 計 12 ファイルが 786 行 → 160 行。共通実装(macros.rs ~100 行 +
+  assets ヘルパー ~29 行)を差し引いてもネット約 500 行削減。ゴールデンテスト 8 件 +
+  ユニット 111 件不変、fmt/clippy クリーン。ローカル検証は ipadic/ko-dic/jieba(キャッシュ利用)で
+  実施、残り 3 辞書(unidic/cc-cedict/neologd)は同一マクロ呼び出しのため CI でフル検証
+- **規模感**: 中(2-1〜2-3 を 1 PR。2-4 は facade 整理として別 PR)
 
 ---
 
