@@ -2,6 +2,18 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::ops::Range;
+use std::sync::LazyLock;
+
+/// Feature template patterns, compiled once on first use.
+///
+/// `%F[n]`, `%F?[n]`, `%t`, `%w` (surface), `%u` (all ufeature)
+static UNIGRAM_FEATURE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"%((F|F\?)\[([0-9]+)\]|t|w|u)").expect("valid unigram regex"));
+/// `%L[n]`, `%L?[n]`, `%l` (all lfeature), `%r` (all rfeature)
+static LEFT_FEATURE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"%((L|L\?)\[([0-9]+)\]|l|r)").expect("valid left regex"));
+static RIGHT_FEATURE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"%((R|R\?)\[([0-9]+)\]|l|r)").expect("valid right regex"));
 
 /// Feature type for template parsing
 #[derive(Debug, Clone)]
@@ -80,13 +92,6 @@ impl FeatureExtractor {
     where
         S: ToString,
     {
-        // Regex patterns for advanced feature parsing
-        // %F[n], %F?[n], %t, %w (surface), %u (all ufeature)
-        let unigram_feature_pattern = Regex::new(r"%((F|F\?)\[([0-9]+)\]|t|w|u)").unwrap();
-        // %L[n], %L?[n], %l (all lfeature), %r (all rfeature)
-        let left_feature_pattern = Regex::new(r"%((L|L\?)\[([0-9]+)\]|l|r)").unwrap();
-        let right_feature_pattern = Regex::new(r"%((R|R\?)\[([0-9]+)\]|l|r)").unwrap();
-
         // Parse unigram templates
         let mut parsed_unigram_templates = Vec::new();
         for template in unigram_templates {
@@ -94,7 +99,7 @@ impl FeatureExtractor {
             let mut required_indices = Vec::new();
             let mut captures = Vec::new();
 
-            for m in unigram_feature_pattern.captures_iter(&raw_template) {
+            for m in UNIGRAM_FEATURE_PATTERN.captures_iter(&raw_template) {
                 let pattern = m.get(0).unwrap();
                 let matched = m.get(1).unwrap().as_str();
                 match matched {
@@ -150,7 +155,7 @@ impl FeatureExtractor {
                 let mut required_indices = Vec::new();
                 let mut captures = Vec::new();
 
-                for m in left_feature_pattern.captures_iter(&raw_template) {
+                for m in LEFT_FEATURE_PATTERN.captures_iter(&raw_template) {
                     let pattern = m.get(0).unwrap();
                     let matched = m.get(1).unwrap().as_str();
                     match matched {
@@ -201,7 +206,7 @@ impl FeatureExtractor {
                 let mut required_indices = Vec::new();
                 let mut captures = Vec::new();
 
-                for m in right_feature_pattern.captures_iter(&raw_template) {
+                for m in RIGHT_FEATURE_PATTERN.captures_iter(&raw_template) {
                     let pattern = m.get(0).unwrap();
                     let matched = m.get(1).unwrap().as_str();
                     match matched {
