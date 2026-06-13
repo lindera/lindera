@@ -41,6 +41,17 @@ pub fn read_file(filename: &Path) -> LinderaResult<Vec<u8>> {
     Ok(buffer)
 }
 
+/// Reads a file into a 16-byte aligned buffer, as required when loading rkyv
+/// archives (e.g. `char_def.bin`, `unk.bin`).
+pub fn read_aligned_file(filename: &Path) -> LinderaResult<rkyv::util::AlignedVec<16>> {
+    let raw_data = read_file(filename)?;
+
+    let mut aligned_data = rkyv::util::AlignedVec::<16>::new();
+    aligned_data.extend_from_slice(&raw_data);
+
+    Ok(aligned_data)
+}
+
 #[cfg(feature = "mmap")]
 pub fn mmap_file(filename: &Path) -> LinderaResult<Mmap> {
     let file = File::open(filename).map_err(|err| {
