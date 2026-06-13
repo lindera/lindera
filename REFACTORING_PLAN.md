@@ -206,33 +206,45 @@
 
 - **検証**: ビルド済み FS 辞書を CLI で `--dict <path>` ロード(`read_aligned_file` を実走)し embedded と出力一致を確認。dictionary ユニット 52 件 + ゴールデン 8 件不変、fmt/clippy クリーン。
 
-### 3c. エラー処理の正常化 — **一部実施済み(3c-2/3c-3/3c-5)**
+### 3c. エラー処理の正常化 — **実施済み(3c-2〜3c-5)。3c-1/3c-6 は見送り**
 
 | # | 作業 | 詳細 | 状態 |
 |---|---|---|---|
-| 3c-1 | エラー戦略の明文化 | 「公開 API は `LinderaResult`、内部の文脈付与に `anyhow`」を CONTRIBUTING に明記 | 未着手 |
+| 3c-1 | エラー戦略の明文化 | 「公開 API は `LinderaResult`、内部の文脈付与に `anyhow`」を CONTRIBUTING に明記 | 見送り(ドキュメント作業、コード変更を伴わないため別途) |
 | 3c-2 | `builder.rs` の `.unwrap()` 5 箇所を `?` 化 | `*BuilderOptions::builder()`(derive_builder 生成、全フィールド default で実際は失敗しない)を `map_err(LinderaErrorKind::Build)?` に置換 | ✅ |
 | 3c-3 | `prefix_dictionary.rs` の CSV パース `unwrap()` をエラー化 | `build_word_entry_map` の `word_cost/left_id/right_id` の `unwrap()` 3 箇所(実コード)を、直前の `is_none()` チェックと統合して `let-else` 束縛に置換。挙動完全同一(残りは `#[cfg(test)]` 内の `unwrap` で許容) | ✅ |
-| 3c-4 | `Regex::new().unwrap()` を `LazyLock`(std)化 | `feature_extractor.rs` の 3 箇所 + capture unwrap の防御化(train 専用ホットパス。独立 PR で対応) | 未着手 |
+| 3c-4 | `Regex::new().unwrap()` を `LazyLock`(std)化 | `feature_extractor.rs` の 3 つの正規表現を関数内ローカル生成から module-level `LazyLock<Regex>` に移動(初回 1 回コンパイル、train 時の性能改善も兼ねる)。capture の `unwrap()` は正規表現のグループ構造から成功が保証される不変条件のため据え置き | ✅ |
 | 3c-5 | `assets.rs` の環境変数 `unwrap()` 2 箇所の修正 | `CARGO_PKG_VERSION` / `OUT_DIR` を `ok_or_else(...)?` 化(build script では Cargo が必ず設定するが防御的に) | ✅ |
-| 3c-6 | `lindera-crf` の `trainer.rs`(28 箇所)/ `forward_backward.rs`(9 箇所)の unwrap 監査 | 数値変換 `try_from().unwrap()` は不変条件をコメント化するか `expect("理由")` に統一。ホットパスはパフォーマンス維持を優先し、無理にすべて Result 化しない | 未着手 |
+| 3c-6 | `lindera-crf` の `trainer.rs`(28 箇所)/ `forward_backward.rs`(9 箇所)の unwrap 監査 | 見送り。train 専用ホットパスで、数値変換の `unwrap()` は不変条件が明確。`expect()` 置換は挙動不変かつ価値が小さく、37 箇所の変更はレビューコストに見合わない | 見送り |
 
-> 3c-2/3c-3/3c-5(辞書ビルド経路の素の `unwrap` 撲滅)を 1 PR で実施。3c-4(regex)/3c-6(crf) は train 専用ホットパスのため独立 PR に分離。検証は辞書を実際に再ビルドした上でゴールデンテスト 8 件 + dictionary ユニット 52 件で挙動不変を確認。
+> 3c-2/3c-3/3c-5(辞書ビルド経路の素の `unwrap` 撲滅)を 1 PR、3c-4(regex LazyLock)を別 PR で実施。検証はゴールデンテスト 8 件 + dictionary ユニット/trainer テストで挙動不変を確認。
 
-### 3d. 巨大ファイルの分割(機械的な移動のみ。ロジック変更禁止)
+### 3d. 巨大ファイルの分割 — **viterbi は見送り(性能回帰のため)。他は要再評価**
 
-| 対象 | 分割案 |
-|---|---|
-| `lindera/src/segmenter.rs`(1,882 行) | `segmenter/mod.rs` + `segmenter/config.rs`(設定パース)+ テストを下位モジュールへ。本体ロジックは 500 行以下に |
-| `lindera-dictionary/src/viterbi.rs`(1,147 行) | `viterbi/{lattice.rs, edge.rs, word_entry.rs}` に分割。`Lattice::set_text()`(220 行)を「文字情報バッファ構築 / 辞書スキャン / 格子構築」の 3 関数に分解 |
-| `lindera-dictionary/src/trainer/model.rs`(1,248 行) | シリアライズ部とモデル本体を分離 |
-| `lindera/src/token_filter/japanese_number.rs`(1,257 行) | 数値正規化ステートマシンとテストの分離 |
+| 対象 | 分割案 | 状態 |
+|---|---|---|
+| `lindera-dictionary/src/viterbi.rs`(1,147 行) | `viterbi/{lattice.rs, edge.rs, word_entry.rs}` | **見送り** |
+| `lindera/src/segmenter.rs`(1,882 行) | `segmenter/mod.rs` + 下位モジュール | 保留(viterbi 同様ホットパスのため要慎重評価) |
+| `lindera-dictionary/src/trainer/model.rs`(1,248 行) | シリアライズ部とモデル本体を分離 | 未着手(train 専用、ホットパスでない。比較的安全) |
+| `lindera/src/token_filter/japanese_number.rs`(1,257 行) | 数値正規化ステートマシンとテストの分離 | 未着手(トークンフィルタ、要ベンチ確認) |
 
-- **リスク**: 中〜高(viterbi はホットパス)。3d は `pub use` による再エクスポートでパスを維持し、
-  ベンチマークで 3% 以上の劣化がないことを確認
-- **完了条件**: ゴールデンテスト・全ユニットテスト・ベンチがグリーン。非テストコードの unwrap が
-  「不変条件をコメントで説明した expect」または `?` のみになる
-- **規模感**: 大(6〜8 PR)。3a / 3b / 3c / 3d はそれぞれ独立に進行可能
+#### viterbi.rs を見送った理由(検証結果)
+
+本番相当(`[profile.bench] lto = true, codegen-units = 1`)で、ベースラインと分割版を直接比較した:
+
+- **完全分割**(Lattice まで別ファイル): 非 LTO ベンチで +5〜30% 回帰
+- **データ型のみ分離**(Lattice は module root に据え置き、データ型に `#[inline]` 付与): 本番相当 LTO でも
+  `tokenize` −5.0% / `tokenize-with-lattice` −5.3% / `details-long-text` −4.2% の**回帰**(単一ファイルの方が速い)
+
+viterbi は極めて最適化に敏感なホットパスで、**モジュール分割そのもの**がコンパイラのコード生成
+(関数レイアウト・インライン化・命令キャッシュ局所性)を変え、`#[inline]` を補っても 3% 基準を満たせない。
+ファイル可読性の利益が性能コストに見合わないため、**単一ファイルのまま維持**する。
+
+> 教訓: ホットパスの巨大ファイルは「機械的なモジュール分割」でも性能が変わりうる。3d を進める場合は
+> 必ず本番相当(LTO)ベンチで検証し、回帰するものは分割しない。`segmenter.rs` も同じ懸念があるため、
+> 残りの 3d 対象に着手する際はベンチを前提とする。
+
+- **完了条件**: ゴールデンテスト・全ユニットテスト・**本番相当(LTO)ベンチで 3% 以内**
 
 ---
 
