@@ -1,0 +1,14 @@
+[package]
+name = "lindera-binding-core"
+version = { workspace = true }
+edition = { workspace = true }
+description = "Shared FFI-independent helpers for the Lindera language bindings."
+documentation = "https://docs.rs/lindera-binding-core"
+homepage = { workspace = true }
+repository = { workspace = true }
+keywords = ["morphological", "analysis", "binding"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+lindera = { workspace = true }

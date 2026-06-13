@@ -38,17 +38,17 @@ impl RbToken {
     /// # Returns
     ///
     /// A new `RbToken` instance.
-    pub fn from_token(mut token: Token) -> Self {
-        let details = token.details().iter().map(|s| s.to_string()).collect();
+    pub fn from_token(token: Token) -> Self {
+        let view = lindera_binding_core::TokenView::from_token(token);
 
         Self {
-            surface: token.surface.to_string(),
-            byte_start: token.byte_start,
-            byte_end: token.byte_end,
-            position: token.position,
-            word_id: token.word_id.id,
-            is_unknown: token.word_id.is_unknown(),
-            details: Some(details),
+            surface: view.surface,
+            byte_start: view.byte_start,
+            byte_end: view.byte_end,
+            position: view.position,
+            word_id: view.word_id,
+            is_unknown: view.is_unknown,
+            details: Some(view.details),
         }
     }
 
