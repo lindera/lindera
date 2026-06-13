@@ -197,12 +197,14 @@
 
 設定 JSON の互換性とトークナイズ挙動はゴールデンテスト 8 件 + タグフィルタ既存ユニットテスト 12 件で担保(全パス)。各ファイルの大半を占めるテストは挙動の証拠として全保持。
 
-### 3b. ローダー層の統一
+### 3b. ローダー層の統一 — **実施済み(範囲を限定)**
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 3b-1 | `loader/` 5 ファイルの `load`/`load_mmap` パターンをマクロまたはジェネリック関数に集約 | 約 200 行 → 80 行 |
-| 3b-2 | 未使用の `DictionaryLoader` トレイト(`loader.rs`)の役割を再定義 | 実際に使う形に直すか削除(削除は非公開なら即、公開ならフェーズ 6) |
+| # | 作業 | 詳細 | 状態 |
+|---|---|---|---|
+| 3b-1 | ローダーの逐語重複を集約 | **再調査の結果、ローダー層の重複は当初見積もり(200→80 行)より小さかった**。各ローダーの `load` 本体はファイル名・型・読み込み方式が異なり、唯一の**逐語完全重複**は `character_definition` と `unknown_dictionary` の「read_file → `AlignedVec<16>` → extend → `T::load`」の 5 行ブロック。これを `util::read_aligned_file` ヘルパーに集約(2 ファイルが各 3 行に)。`connection_cost_matrix`/`prefix_dictionary`/`metadata` の `load`/`load_mmap` 二重化は「`mmap` feature の有無」という本質的分岐であり、`read_file`(`Vec<u8>`)と `mmap_file`(`Mmap`)の戻り型が異なるため無理に統合せず温存(過剰なマクロ化を回避) | ✅ |
+| 3b-2 | `DictionaryLoader` トレイト(`loader.rs`)の扱い | **再確認の結果「未使用」ではない**。Phase 2 の `embedded_dictionary!` が各 `EmbeddedXxxLoader` に実装、`FSDictionaryLoader` も実装し、`lindera/src/dictionary.rs` が `Box<dyn DictionaryLoader>` で利用中。default メソッドがエラーを返す設計は「`load`/`load_from_path` の一方だけ実装するローダー」のための妥当な形。変更不要と判断 | ✅(現状維持) |
+
+- **検証**: ビルド済み FS 辞書を CLI で `--dict <path>` ロード(`read_aligned_file` を実走)し embedded と出力一致を確認。dictionary ユニット 52 件 + ゴールデン 8 件不変、fmt/clippy クリーン。
 
 ### 3c. エラー処理の正常化 — **一部実施済み(3c-2/3c-3/3c-5)**
 
