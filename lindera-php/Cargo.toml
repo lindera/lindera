@@ -34,6 +34,7 @@ default = ["train"] # No dictionaries included
 
 [dependencies]
 lindera = { workspace = true }
+lindera-binding-core = { workspace = true }
 ext-php-rs = "0.15.12"
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

@@ -1803,6 +1803,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "lindera-binding-core"
+version = "3.0.7"
+dependencies = [
+ "lindera",
+]
+
+[[package]]
 name = "lindera-cc-cedict"
 version = "3.0.7"
 dependencies = [
@@ -1904,6 +1911,7 @@ name = "lindera-nodejs"
 version = "3.0.7"
 dependencies = [
  "lindera",
+ "lindera-binding-core",
  "napi",
  "napi-build",
  "napi-derive",
@@ -1919,6 +1927,7 @@ version = "3.0.7"
 dependencies = [
  "ext-php-rs",
  "lindera",
+ "lindera-binding-core",
  "num_cpus",
  "serde",
  "serde_json",
@@ -1929,6 +1938,7 @@ name = "lindera-python"
 version = "3.0.7"
 dependencies = [
  "lindera",
+ "lindera-binding-core",
  "num_cpus",
  "pyo3",
  "serde",
@@ -1940,6 +1950,7 @@ name = "lindera-ruby"
 version = "3.0.7"
 dependencies = [
  "lindera",
+ "lindera-binding-core",
  "magnus",
  "num_cpus",
  "serde",
@@ -1960,6 +1971,7 @@ version = "3.0.7"
 dependencies = [
  "js-sys",
  "lindera",
+ "lindera-binding-core",
  "lindera-dictionary",
  "serde",
  "serde-wasm-bindgen",

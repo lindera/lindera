@@ -34,6 +34,7 @@ default = ["train"] # No directories included
 
 [dependencies]
 lindera = { workspace = true }
+lindera-binding-core = { workspace = true }
 magnus = { version = "0.8.2", features = ["rb-sys"] }
 num_cpus = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
