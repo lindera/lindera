@@ -123,21 +123,7 @@ impl JsSchema {
     /// A schema with the standard IPADIC field definitions.
     #[napi(factory)]
     pub fn create_default() -> Self {
-        Self::new(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ])
+        Self::new(lindera_binding_core::schema::default_dictionary_fields())
     }
 
     /// Returns the field names in the schema.
@@ -240,27 +226,8 @@ impl JsSchema {
     /// * `record` - Array of field values to validate.
     #[napi]
     pub fn validate_record(&self, record: Vec<String>) -> napi::Result<()> {
-        if record.len() < self.fields.len() {
-            return Err(napi::Error::new(
-                napi::Status::InvalidArg,
-                format!(
-                    "CSV row has {} fields but schema requires {} fields",
-                    record.len(),
-                    self.fields.len()
-                ),
-            ));
-        }
-
-        for (index, field_name) in self.fields.iter().enumerate() {
-            if index < record.len() && record[index].trim().is_empty() {
-                return Err(napi::Error::new(
-                    napi::Status::InvalidArg,
-                    format!("Field {field_name} is missing or empty"),
-                ));
-            }
-        }
-
-        Ok(())
+        lindera_binding_core::schema::validate_record(&self.fields, &record)
+            .map_err(|message| napi::Error::new(napi::Status::InvalidArg, message))
     }
 }
 

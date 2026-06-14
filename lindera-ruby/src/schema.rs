@@ -190,21 +190,7 @@ impl RbSchema {
     ///
     /// A new `RbSchema` with default IPADIC fields.
     fn create_default() -> Self {
-        Self::new(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ])
+        Self::new(lindera_binding_core::schema::default_dictionary_fields())
     }
 
     /// Returns the list of field names as a Ruby array.
@@ -324,27 +310,8 @@ impl RbSchema {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
         let values: Vec<String> = record.to_vec()?;
 
-        if values.len() < self.fields.len() {
-            return Err(Error::new(
-                ruby.exception_arg_error(),
-                format!(
-                    "CSV row has {} fields but schema requires {} fields",
-                    values.len(),
-                    self.fields.len()
-                ),
-            ));
-        }
-
-        for (index, field_name) in self.fields.iter().enumerate() {
-            if index < values.len() && values[index].trim().is_empty() {
-                return Err(Error::new(
-                    ruby.exception_arg_error(),
-                    format!("Field {field_name} is missing or empty"),
-                ));
-            }
-        }
-
-        Ok(())
+        lindera_binding_core::schema::validate_record(&self.fields, &values)
+            .map_err(|message| Error::new(ruby.exception_arg_error(), message))
     }
 
     /// Returns the string representation of the schema.
