@@ -191,21 +191,7 @@ impl PySchema {
 
     #[staticmethod]
     pub fn create_default() -> Self {
-        Self::new(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ])
+        Self::new(lindera_binding_core::schema::default_dictionary_fields())
     }
 
     pub fn get_field_index(&self, field_name: &str) -> Option<usize> {
@@ -259,24 +245,8 @@ impl PySchema {
     }
 
     pub fn validate_record(&self, record: Vec<String>) -> PyResult<()> {
-        if record.len() < self.fields.len() {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "CSV row has {} fields but schema requires {} fields",
-                record.len(),
-                self.fields.len()
-            )));
-        }
-
-        // Check that required fields are not empty
-        for (index, field_name) in self.fields.iter().enumerate() {
-            if index < record.len() && record[index].trim().is_empty() {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                    "Field {field_name} is missing or empty"
-                )));
-            }
-        }
-
-        Ok(())
+        lindera_binding_core::schema::validate_record(&self.fields, &record)
+            .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)
     }
 
     fn __str__(&self) -> String {

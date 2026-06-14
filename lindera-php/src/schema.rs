@@ -264,21 +264,7 @@ impl PhpSchema {
     ///
     /// A Schema with the default 13 fields.
     pub fn create_default() -> Self {
-        Self::__construct(vec![
-            "surface".to_string(),
-            "left_context_id".to_string(),
-            "right_context_id".to_string(),
-            "cost".to_string(),
-            "major_pos".to_string(),
-            "middle_pos".to_string(),
-            "small_pos".to_string(),
-            "fine_pos".to_string(),
-            "conjugation_type".to_string(),
-            "conjugation_form".to_string(),
-            "base_form".to_string(),
-            "reading".to_string(),
-            "pronunciation".to_string(),
-        ])
+        Self::__construct(lindera_binding_core::schema::default_dictionary_fields())
     }
 
     /// Returns the list of all field names.
@@ -397,23 +383,8 @@ impl PhpSchema {
     ///
     /// Nothing on success, throws on validation failure.
     pub fn validate_record(&self, record: Vec<String>) -> PhpResult<()> {
-        if record.len() < self.fields.len() {
-            return Err(lindera_value_err(format!(
-                "CSV row has {} fields but schema requires {} fields",
-                record.len(),
-                self.fields.len()
-            )));
-        }
-
-        for (index, field_name) in self.fields.iter().enumerate() {
-            if index < record.len() && record[index].trim().is_empty() {
-                return Err(lindera_value_err(format!(
-                    "Field {field_name} is missing or empty"
-                )));
-            }
-        }
-
-        Ok(())
+        lindera_binding_core::schema::validate_record(&self.fields, &record)
+            .map_err(lindera_value_err)
     }
 
     /// Returns a string representation.
