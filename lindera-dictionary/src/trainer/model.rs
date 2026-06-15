@@ -173,12 +173,7 @@ impl Model {
                 // Create word ID for user dictionary entry
                 let word_id = WordId::new(LexType::User, self.user_entries.len() as u32);
 
-                let entry = WordEntry {
-                    word_id,
-                    word_cost: cost,
-                    left_id: left_id as u16,
-                    right_id: right_id as u16,
-                };
+                let entry = WordEntry::new(word_id, cost, left_id as u16, right_id as u16);
 
                 // Extract features and create feature set for this user entry
                 let first_char = surface.chars().next().unwrap_or('\0');
@@ -701,7 +696,7 @@ impl Model {
             // Try to find in user_entries first
             if idx < self.user_entries.len() {
                 let (_, entry, _) = &self.user_entries[idx];
-                return (entry.left_id as u32, entry.right_id as u32);
+                return (entry.left_id(), entry.right_id());
             }
         }
 
@@ -719,7 +714,7 @@ impl Model {
 
         // Ultimate fallback: use first user_entry's IDs or default to 0
         if let Some((_, entry, _)) = self.user_entries.first() {
-            (entry.left_id as u32, entry.right_id as u32)
+            (entry.left_id(), entry.right_id())
         } else {
             (0, 0)
         }
@@ -732,7 +727,7 @@ impl Model {
 
         // Get maximum ID from all user_entries
         for (_, entry, _) in &self.user_entries {
-            max_id = max_id.max(entry.left_id as u32).max(entry.right_id as u32);
+            max_id = max_id.max(entry.left_id()).max(entry.right_id());
         }
 
         max_id
