@@ -1,0 +1,29 @@
+name: "Set up Rust"
+description: "Check out the repository and install the Rust toolchain."
+
+inputs:
+  toolchain:
+    description: "Rust toolchain (rustup spec) to install."
+    required: false
+    default: "stable"
+  target:
+    description: "Additional target triple to install (empty to skip)."
+    required: false
+    default: ""
+  components:
+    description: "Comma-separated toolchain components to install (empty to skip)."
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run checkout
+      uses: actions/checkout@v6
+
+    - name: Install toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        target: ${{ inputs.target }}
+        components: ${{ inputs.components }}
