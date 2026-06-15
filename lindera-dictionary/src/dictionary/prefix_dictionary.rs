@@ -236,7 +236,7 @@ impl PrefixDictionary {
                                 self.is_system,
                             );
                             Some(Match {
-                                word_idx: WordIdx::new(word_entry.word_id.id),
+                                word_idx: WordIdx::new(word_entry.word_id().id()),
                                 end_char: m.end(), // prefix_len in bytes? No, m.end() is byte index.
                                                    // Match expects char length?
                                                    // Original code: end_char: prefix_len

@@ -49,9 +49,12 @@ pub enum LexType {
 )]
 
 pub struct WordId {
-    pub id: u32,
-    pub is_system: bool,
-    pub lex_type: LexType,
+    /// Numeric identifier of the word within its lexicon.
+    id: u32,
+    /// Whether the word originates from the system dictionary.
+    is_system: bool,
+    /// Lexicon type the word belongs to.
+    lex_type: LexType,
 }
 
 impl WordId {
@@ -64,14 +67,30 @@ impl WordId {
         }
     }
 
+    /// Returns the numeric identifier of the word within its lexicon.
+    ///
+    /// # 戻り値
+    ///
+    /// The lexicon-local word id.
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
+    /// Returns `true` when the word is an unknown-word entry.
+    #[inline]
     pub fn is_unknown(&self) -> bool {
         matches!(self.lex_type, LexType::Unknown)
     }
 
+    /// Returns `true` when the word originates from the system dictionary.
+    #[inline]
     pub fn is_system(&self) -> bool {
         self.is_system
     }
 
+    /// Returns the lexicon type of the word.
+    #[inline]
     pub fn lex_type(&self) -> LexType {
         self.lex_type
     }
@@ -102,24 +121,64 @@ impl Default for WordId {
 )]
 
 pub struct WordEntry {
-    pub word_id: WordId,
-    pub word_cost: i16,
-    pub left_id: u16,
-    pub right_id: u16,
+    /// Word id identifying this entry in the dictionary.
+    word_id: WordId,
+    /// Emission (word) cost of the entry.
+    word_cost: i16,
+    /// Left context id used by the connection matrix.
+    left_id: u16,
+    /// Right context id used by the connection matrix.
+    right_id: u16,
 }
 
 impl WordEntry {
-    pub const SERIALIZED_LEN: usize = 10;
+    /// Length in bytes of the serialized representation.
+    pub(crate) const SERIALIZED_LEN: usize = 10;
 
+    /// Creates a new word entry from its raw components.
+    ///
+    /// # 引数
+    ///
+    /// * `word_id` - The word id identifying the entry.
+    /// * `word_cost` - The emission cost of the word.
+    /// * `left_id` - The left context id.
+    /// * `right_id` - The right context id.
+    #[inline]
+    pub fn new(word_id: WordId, word_cost: i16, left_id: u16, right_id: u16) -> Self {
+        WordEntry {
+            word_id,
+            word_cost,
+            left_id,
+            right_id,
+        }
+    }
+
+    /// Returns the word id of this entry.
+    #[inline]
+    pub fn word_id(&self) -> WordId {
+        self.word_id
+    }
+
+    /// Returns the emission (word) cost of this entry.
+    #[inline]
+    pub fn word_cost(&self) -> i16 {
+        self.word_cost
+    }
+
+    /// Returns the left context id, widened to `u32`.
+    #[inline]
     pub fn left_id(&self) -> u32 {
         self.left_id as u32
     }
 
+    /// Returns the right context id, widened to `u32`.
+    #[inline]
     pub fn right_id(&self) -> u32 {
         self.right_id as u32
     }
 
-    pub fn serialize<W: io::Write>(&self, wtr: &mut W) -> io::Result<()> {
+    /// Serializes this entry into `wtr` in little-endian byte order.
+    pub(crate) fn serialize<W: io::Write>(&self, wtr: &mut W) -> io::Result<()> {
         wtr.write_u32::<LittleEndian>(self.word_id.id)?;
         wtr.write_i16::<LittleEndian>(self.word_cost)?;
         wtr.write_u16::<LittleEndian>(self.left_id)?;
@@ -127,7 +186,8 @@ impl WordEntry {
         Ok(())
     }
 
-    pub fn deserialize(data: &[u8], is_system_entry: bool) -> WordEntry {
+    /// Deserializes a word entry from `data`.
+    pub(crate) fn deserialize(data: &[u8], is_system_entry: bool) -> WordEntry {
         let word_id = WordId::new(
             if is_system_entry {
                 LexType::System
@@ -148,32 +208,65 @@ impl WordEntry {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub enum EdgeType {
-    #[default]
-    KNOWN,
-    UNKNOWN,
-    USER,
-    INSERTED,
-}
-
 #[derive(Default, Clone, Debug)]
 pub struct Edge {
-    pub edge_type: EdgeType,
-    pub word_entry: WordEntry,
+    /// Word entry backing this edge.
+    word_entry: WordEntry,
 
-    pub path_cost: i32,
-    pub left_index: u16, // Index in the previous position's vector
+    /// Best forward path cost reaching this edge.
+    path_cost: i32,
+    /// Index of the chosen left edge in the previous position's vector.
+    left_index: u16,
 
-    pub start_index: u32,
-    pub stop_index: u32,
+    /// Start byte position of the edge.
+    start_index: u32,
+    /// Stop byte position of the edge.
+    stop_index: u32,
 
-    pub kanji_only: bool,
+    /// Whether the edge surface consists solely of kanji.
+    kanji_only: bool,
 }
 
 impl Edge {
+    /// Returns the number of characters spanned by this edge.
     pub fn num_chars(&self) -> usize {
         (self.stop_index - self.start_index) as usize / 3
+    }
+
+    /// Returns the word entry backing this edge.
+    #[inline]
+    pub(crate) fn word_entry(&self) -> &WordEntry {
+        &self.word_entry
+    }
+
+    /// Returns the best forward path cost reaching this edge.
+    #[inline]
+    pub(crate) fn path_cost(&self) -> i32 {
+        self.path_cost
+    }
+
+    /// Returns the index of the chosen left edge in the previous position.
+    #[inline]
+    pub(crate) fn left_index(&self) -> u16 {
+        self.left_index
+    }
+
+    /// Returns the start byte position of this edge.
+    #[inline]
+    pub(crate) fn start_index(&self) -> u32 {
+        self.start_index
+    }
+
+    /// Returns the stop byte position of this edge.
+    #[inline]
+    pub(crate) fn stop_index(&self) -> u32 {
+        self.stop_index
+    }
+
+    /// Returns whether the edge surface consists solely of kanji.
+    #[inline]
+    pub(crate) fn kanji_only(&self) -> bool {
+        self.kanji_only
     }
 }
 
@@ -183,13 +276,39 @@ impl Edge {
 #[derive(Clone, Debug)]
 pub struct PathEntry {
     /// Index of this edge in ends_at[stop_index]
-    pub edge_index: u16,
+    edge_index: u16,
     /// Byte position where the left edge ends (= this edge's start_index)
-    pub left_pos: u32,
+    left_pos: u32,
     /// Index of the left edge in ends_at[left_pos]
-    pub left_index: u16,
+    left_index: u16,
     /// Total forward cost: left_edge.path_cost + conn_cost + penalty_cost
-    pub cost: i32,
+    cost: i32,
+}
+
+impl PathEntry {
+    /// Returns the index of this edge in `ends_at[stop_index]`.
+    #[inline]
+    pub(crate) fn edge_index(&self) -> u16 {
+        self.edge_index
+    }
+
+    /// Returns the byte position where the left edge ends.
+    #[inline]
+    pub(crate) fn left_pos(&self) -> u32 {
+        self.left_pos
+    }
+
+    /// Returns the index of the left edge in `ends_at[left_pos]`.
+    #[inline]
+    pub(crate) fn left_index(&self) -> u16 {
+        self.left_index
+    }
+
+    /// Returns the total forward cost of this transition.
+    #[inline]
+    pub(crate) fn cost(&self) -> i32 {
+        self.cost
+    }
 }
 
 #[derive(Clone, Default)]
@@ -226,15 +345,8 @@ pub fn is_kanji(c: char) -> bool {
 impl Lattice {
     /// Helper method to create an edge efficiently
     #[inline]
-    fn create_edge(
-        edge_type: EdgeType,
-        word_entry: WordEntry,
-        start: usize,
-        stop: usize,
-        kanji_only: bool,
-    ) -> Edge {
+    fn create_edge(word_entry: WordEntry, start: usize, stop: usize, kanji_only: bool) -> Edge {
         Edge {
-            edge_type,
             word_entry,
             left_index: u16::MAX,
             start_index: start as u32,
@@ -450,11 +562,8 @@ impl Lattice {
                     let prefix_len = end - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
                     let edge = Self::create_edge(
-                        EdgeType::KNOWN,
                         word_entry, // WordEntry is Copy
-                        start,
-                        end,
-                        kanji_only,
+                        start, end, kanji_only,
                     );
                     self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                     found = true;
@@ -566,13 +675,7 @@ impl Lattice {
 
             for &word_id in unknown_dictionary.lookup_word_ids(category) {
                 let word_entry = unknown_dictionary.word_entry(word_id);
-                let edge = Self::create_edge(
-                    EdgeType::UNKNOWN,
-                    word_entry,
-                    start,
-                    start + byte_len,
-                    kanji_only,
-                );
+                let edge = Self::create_edge(word_entry, start, start + byte_len, kanji_only);
                 self.add_edge_in_lattice(edge, cost_matrix, search_mode);
             }
             return Some(start + byte_len);
@@ -824,13 +927,7 @@ impl Lattice {
 
             for &word_id in unknown_dictionary.lookup_word_ids(category) {
                 let word_entry = unknown_dictionary.word_entry(word_id);
-                let edge = Self::create_edge(
-                    EdgeType::UNKNOWN,
-                    word_entry,
-                    start,
-                    start + byte_len,
-                    kanji_only,
-                );
+                let edge = Self::create_edge(word_entry, start, start + byte_len, kanji_only);
                 self.add_edge_in_lattice_nbest(edge, cost_matrix, search_mode);
             }
             return Some(start + byte_len);
@@ -990,8 +1087,7 @@ impl Lattice {
 
                     let prefix_len = end - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                    let edge =
-                        Self::create_edge(EdgeType::KNOWN, word_entry, start, end, kanji_only);
+                    let edge = Self::create_edge(word_entry, start, end, kanji_only);
                     self.add_edge_in_lattice_nbest(edge, cost_matrix, search_mode);
                     found = true;
 
@@ -1129,16 +1225,8 @@ mod tests {
     #[test]
     fn test_word_entry() {
         let mut buffer = Vec::new();
-        let word_entry = WordEntry {
-            word_id: WordId {
-                id: 1u32,
-                is_system: true,
-                lex_type: LexType::System,
-            },
-            word_cost: -17i16,
-            left_id: 1411u16,
-            right_id: 1412u16,
-        };
+        let word_entry =
+            WordEntry::new(WordId::new(LexType::System, 1u32), -17i16, 1411u16, 1412u16);
         word_entry.serialize(&mut buffer).unwrap();
         assert_eq!(WordEntry::SERIALIZED_LEN, buffer.len());
         let word_entry2 = WordEntry::deserialize(&buffer[..], true);

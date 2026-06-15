@@ -207,15 +207,12 @@ impl PrefixDictionaryBuilder {
                 continue;
             };
 
-            word_entry_map.entry(key).or_default().push(WordEntry {
-                word_id: crate::viterbi::WordId::new(
-                    crate::viterbi::LexType::System,
-                    row_id as u32,
-                ),
+            word_entry_map.entry(key).or_default().push(WordEntry::new(
+                crate::viterbi::WordId::new(crate::viterbi::LexType::System, row_id as u32),
                 word_cost,
                 left_id,
                 right_id,
-            });
+            ));
         }
 
         Ok(word_entry_map)
@@ -473,7 +470,7 @@ impl PrefixDictionaryBuilder {
                         .with_error(anyhow::anyhow!(err))
                         .add_context(format!(
                             "Failed to serialize word entry (id: {})",
-                            word_entry.word_id.id
+                            word_entry.word_id().id()
                         ))
                 })?;
             }
