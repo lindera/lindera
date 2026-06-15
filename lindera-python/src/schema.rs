@@ -446,16 +446,13 @@ mod tests {
         assert!(schema.get_field_by_name("nonexistent").is_none());
     }
 
-    #[test]
-    fn test_pyschema_validate_record() {
-        let schema = PySchema::new(vec!["surface".to_string(), "reading".to_string()]);
-        assert!(
-            schema
-                .validate_record(vec!["x".to_string(), "y".to_string()])
-                .is_ok()
-        );
-        assert!(schema.validate_record(vec!["x".to_string()]).is_err());
-    }
+    // Note: `validate_record` is intentionally not unit-tested here. It maps
+    // `CoreError` to a Python exception via `to_py_error`, which references the
+    // Python C-API exception types; exercising it would pull those symbols into
+    // the standalone `cargo test --lib` binary, which (with pyo3
+    // `extension-module`) does not link libpython. The logic is covered by
+    // `lindera-binding-core`'s `core_schema_validate_record` test and by the
+    // Python pytest suite.
 
     #[test]
     fn test_pyschema_roundtrip() {
