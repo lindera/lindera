@@ -14,11 +14,55 @@ PYTEST          := $(PYTHON_VENV_DIR)/bin/pytest
 # ── WASM ────────────────────────────────────────────────────────────────────
 WASM_FEATURES = embed-ipadic
 
+# Run a cargo command with RbConfig values exported, as the Ruby binding build
+# expects (used by both lint and test for lindera-ruby).
+CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
+
+# ── Per-crate configuration ───────────────────────────────────────────────────
+#
+# Crates driven by plain cargo commands are handled by the pattern rules below
+# (clean-%, format-%, lint-%, test-%, build-%). The language bindings need extra
+# tooling, so they keep explicit targets, which override the matching pattern.
+#
+# `make <verb>` (clean/format/lint/test/build) runs the verb for every crate in
+# dependency order.
+
+# Crates whose verbs are plain cargo invocations.
+CARGO_CRATES := lindera-crf lindera-dictionary lindera-ipadic lindera-ipadic-neologd \
+	lindera-unidic lindera-ko-dic lindera-cc-cedict lindera-jieba lindera lindera-cli \
+	lindera-binding-core
+
+# Language bindings with bespoke tooling (explicit targets below).
+BINDING_CRATES := lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm
+
+# All crates, in the order the aggregate targets should visit them.
+ALL_CRATES := $(CARGO_CRATES) $(BINDING_CRATES)
+
+# Per-crate cargo features, used by lint/test/build unless a per-target
+# override (TEST_FEATURES_* / BUILD_FEATURES_*) is set. Crates without an entry
+# are built with no extra features.
+FEATURES_lindera-dictionary     := --features train
+FEATURES_lindera-ipadic         := --features embed-ipadic
+FEATURES_lindera-ipadic-neologd := --features embed-ipadic-neologd
+FEATURES_lindera-unidic         := --features embed-unidic
+FEATURES_lindera-ko-dic         := --features embed-ko-dic
+FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
+FEATURES_lindera-jieba          := --features embed-jieba
+FEATURES_lindera                := --features embed-ipadic,train
+FEATURES_lindera-cli            := --features train
+
+# Per-target feature overrides (where lint/test/build differ).
+TEST_FEATURES_lindera-cli       := --features train,embed-ipadic
+BUILD_FEATURES_lindera          := --features train
+
 .DEFAULT_GOAL := help
 
 help: ## Show help
 	@echo "Available targets:"
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-30s %s\n", $$1, $$2}'
+	@echo ""
+	@echo "Per-crate targets (cargo crates): {clean,format,lint,test,build}-<crate>"
+	@echo "  crates: $(CARGO_CRATES)"
 
 # ── Python venv setup ───────────────────────────────────────────────────────
 
@@ -34,35 +78,8 @@ clean-venv: ## Remove the lindera-python venv
 
 # ── Clean ───────────────────────────────────────────────────────────────────
 
-clean-lindera-crf: ## Clean lindera-crf
-	cargo clean -p lindera-crf
-
-clean-lindera-dictionary: ## Clean lindera-dictionary
-	cargo clean -p lindera-dictionary
-
-clean-lindera-ipadic: ## Clean lindera-ipadic
-	cargo clean -p lindera-ipadic
-
-clean-lindera-ipadic-neologd: ## Clean lindera-ipadic-neologd
-	cargo clean -p lindera-ipadic-neologd
-
-clean-lindera-unidic: ## Clean lindera-unidic
-	cargo clean -p lindera-unidic
-
-clean-lindera-ko-dic: ## Clean lindera-ko-dic
-	cargo clean -p lindera-ko-dic
-
-clean-lindera-cc-cedict: ## Clean lindera-cc-cedict
-	cargo clean -p lindera-cc-cedict
-
-clean-lindera-jieba: ## Clean lindera-jieba
-	cargo clean -p lindera-jieba
-
-clean-lindera: ## Clean lindera
-	cargo clean -p lindera
-
-clean-lindera-cli: ## Clean lindera-cli
-	cargo clean -p lindera-cli
+clean-%:
+	cargo clean -p $*
 
 clean-lindera-python: ## Clean lindera-python build artifacts
 	rm -rf lindera-python/target
@@ -96,53 +113,12 @@ clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -f lindera-wasm/example/temp.json
 
 clean: ## Clean all build artifacts
-	make clean-lindera-crf
-	make clean-lindera-dictionary
-	make clean-lindera-ipadic
-	make clean-lindera-ipadic-neologd
-	make clean-lindera-unidic
-	make clean-lindera-ko-dic
-	make clean-lindera-cc-cedict
-	make clean-lindera-jieba
-	make clean-lindera
-	make clean-lindera-cli
-	make clean-lindera-python
-	make clean-lindera-nodejs
-	make clean-lindera-ruby
-	make clean-lindera-php
-	make clean-lindera-wasm
+	$(foreach c,$(ALL_CRATES),make clean-$(c) &&) true
 
 # ── Format ──────────────────────────────────────────────────────────────────
 
-format-lindera-crf: ## Format lindera-crf
-	cargo fmt -p lindera-crf
-
-format-lindera-dictionary: ## Format lindera-dictionary
-	cargo fmt -p lindera-dictionary
-
-format-lindera-ipadic: ## Format lindera-ipadic
-	cargo fmt -p lindera-ipadic
-
-format-lindera-ipadic-neologd: ## Format lindera-ipadic-neologd
-	cargo fmt -p lindera-ipadic-neologd
-
-format-lindera-unidic: ## Format lindera-unidic
-	cargo fmt -p lindera-unidic
-
-format-lindera-ko-dic: ## Format lindera-ko-dic
-	cargo fmt -p lindera-ko-dic
-
-format-lindera-cc-cedict: ## Format lindera-cc-cedict
-	cargo fmt -p lindera-cc-cedict
-
-format-lindera-jieba: ## Format lindera-jieba
-	cargo fmt -p lindera-jieba
-
-format-lindera: ## Format lindera
-	cargo fmt -p lindera
-
-format-lindera-cli: ## Format lindera-cli
-	cargo fmt -p lindera-cli
+format-%:
+	cargo fmt -p $*
 
 format-lindera-python: ## Format lindera-python
 	cargo fmt -p lindera-python
@@ -166,53 +142,12 @@ format-lindera-wasm: ## Format lindera-wasm
 	prettier --write lindera-wasm/js/ lindera-wasm/example/
 
 format: ## Format all crates
-	make format-lindera-crf
-	make format-lindera-dictionary
-	make format-lindera-ipadic
-	make format-lindera-ipadic-neologd
-	make format-lindera-unidic
-	make format-lindera-ko-dic
-	make format-lindera-cc-cedict
-	make format-lindera-jieba
-	make format-lindera
-	make format-lindera-cli
-	make format-lindera-python
-	make format-lindera-nodejs
-	make format-lindera-ruby
-	make format-lindera-php
-	make format-lindera-wasm
+	$(foreach c,$(ALL_CRATES),make format-$(c) &&) true
 
 # ── Lint ────────────────────────────────────────────────────────────────────
 
-lint-lindera-crf: ## Lint lindera-crf
-	cargo clippy -p lindera-crf -- -D warnings
-
-lint-lindera-dictionary: ## Lint lindera-dictionary
-	cargo clippy -p lindera-dictionary --features train -- -D warnings
-
-lint-lindera-ipadic: ## Lint lindera-ipadic
-	cargo clippy -p lindera-ipadic --features embed-ipadic -- -D warnings
-
-lint-lindera-ipadic-neologd: ## Lint lindera-ipadic-neologd
-	cargo clippy -p lindera-ipadic-neologd --features embed-ipadic-neologd -- -D warnings
-
-lint-lindera-unidic: ## Lint lindera-unidic
-	cargo clippy -p lindera-unidic --features embed-unidic -- -D warnings
-
-lint-lindera-ko-dic: ## Lint lindera-ko-dic
-	cargo clippy -p lindera-ko-dic --features embed-ko-dic -- -D warnings
-
-lint-lindera-cc-cedict: ## Lint lindera-cc-cedict
-	cargo clippy -p lindera-cc-cedict --features embed-cc-cedict -- -D warnings
-
-lint-lindera-jieba: ## Lint lindera-jieba
-	cargo clippy -p lindera-jieba --features embed-jieba -- -D warnings
-
-lint-lindera: ## Lint lindera
-	cargo clippy -p lindera --features embed-ipadic,train -- -D warnings
-
-lint-lindera-cli: ## Lint lindera-cli
-	cargo clippy -p lindera-cli --features train -- -D warnings
+lint-%:
+	cargo clippy -p $* $(FEATURES_$*) -- -D warnings
 
 lint-lindera-python: ## Lint lindera-python
 	cargo clippy -p lindera-python -- -D warnings
@@ -235,53 +170,12 @@ lint-lindera-wasm: ## Lint lindera-wasm (wasm32 target)
 	prettier --check lindera-wasm/js/ lindera-wasm/example/
 
 lint: ## Lint all crates
-	make lint-lindera-crf
-	make lint-lindera-dictionary
-	make lint-lindera-ipadic
-	make lint-lindera-ipadic-neologd
-	make lint-lindera-unidic
-	make lint-lindera-ko-dic
-	make lint-lindera-cc-cedict
-	make lint-lindera-jieba
-	make lint-lindera
-	make lint-lindera-cli
-	make lint-lindera-python
-	make lint-lindera-nodejs
-	make lint-lindera-ruby
-	make lint-lindera-php
-	make lint-lindera-wasm
+	$(foreach c,$(ALL_CRATES),make lint-$(c) &&) true
 
 # ── Test ────────────────────────────────────────────────────────────────────
 
-test-lindera-crf: ## Test lindera-crf
-	cargo test -p lindera-crf
-
-test-lindera-dictionary: ## Test lindera-dictionary
-	cargo test -p lindera-dictionary --features train
-
-test-lindera-ipadic: ## Test lindera-ipadic
-	cargo test -p lindera-ipadic --features embed-ipadic
-
-test-lindera-ipadic-neologd: ## Test lindera-ipadic-neologd
-	cargo test -p lindera-ipadic-neologd --features embed-ipadic-neologd
-
-test-lindera-unidic: ## Test lindera-unidic
-	cargo test -p lindera-unidic --features embed-unidic
-
-test-lindera-ko-dic: ## Test lindera-ko-dic
-	cargo test -p lindera-ko-dic --features embed-ko-dic
-
-test-lindera-cc-cedict: ## Test lindera-cc-cedict
-	cargo test -p lindera-cc-cedict --features embed-cc-cedict
-
-test-lindera-jieba: ## Test lindera-jieba
-	cargo test -p lindera-jieba --features embed-jieba
-
-test-lindera: ## Test lindera
-	cargo test -p lindera --features embed-ipadic,train
-
-test-lindera-cli: ## Test lindera-cli
-	cargo test -p lindera-cli --features train,embed-ipadic
+test-%:
+	cargo test -p $* $(if $(TEST_FEATURES_$*),$(TEST_FEATURES_$*),$(FEATURES_$*))
 
 test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python pytest)
 	cargo test -p lindera-python --lib
@@ -290,8 +184,6 @@ test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python
 test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test)
 	cargo test -p lindera-nodejs --lib
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test
-
-CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| ENV["RBCONFIG_\#{k.upcase}"] = v }; exec(*ARGV)' --
 
 test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
@@ -309,53 +201,12 @@ test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
 	cd lindera-wasm && wasm-pack test --node --features=$(WASM_FEATURES)
 
 test: ## Test all crates
-	make test-lindera-crf
-	make test-lindera-dictionary
-	make test-lindera-ipadic
-	make test-lindera-ipadic-neologd
-	make test-lindera-unidic
-	make test-lindera-ko-dic
-	make test-lindera-cc-cedict
-	make test-lindera-jieba
-	make test-lindera
-	make test-lindera-cli
-	make test-lindera-python
-	make test-lindera-nodejs
-	make test-lindera-ruby
-	make test-lindera-php
-	make test-lindera-wasm
+	$(foreach c,$(ALL_CRATES),make test-$(c) &&) true
 
 # ── Build ───────────────────────────────────────────────────────────────────
 
-build-lindera-crf: ## Build lindera-crf (release)
-	cargo build -p lindera-crf --release
-
-build-lindera-dictionary: ## Build lindera-dictionary (release)
-	cargo build -p lindera-dictionary --release --features train
-
-build-lindera-ipadic: ## Build lindera-ipadic (release)
-	cargo build -p lindera-ipadic --release --features embed-ipadic
-
-build-lindera-ipadic-neologd: ## Build lindera-ipadic-neologd (release)
-	cargo build -p lindera-ipadic-neologd --release --features embed-ipadic-neologd
-
-build-lindera-unidic: ## Build lindera-unidic (release)
-	cargo build -p lindera-unidic --release --features embed-unidic
-
-build-lindera-ko-dic: ## Build lindera-ko-dic (release)
-	cargo build -p lindera-ko-dic --release --features embed-ko-dic
-
-build-lindera-cc-cedict: ## Build lindera-cc-cedict (release)
-	cargo build -p lindera-cc-cedict --release --features embed-cc-cedict
-
-build-lindera-jieba: ## Build lindera-jieba (release)
-	cargo build -p lindera-jieba --release --features embed-jieba
-
-build-lindera: ## Build lindera (release)
-	cargo build -p lindera --release --features train
-
-build-lindera-cli: ## Build lindera-cli (release)
-	cargo build -p lindera-cli --release --features train
+build-%:
+	cargo build -p $* --release $(if $(BUILD_FEATURES_$*),$(BUILD_FEATURES_$*),$(FEATURES_$*))
 
 build-lindera-python: setup-venv ## Build lindera-python wheel (release)
 	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) build --release --features train
@@ -375,21 +226,7 @@ build-lindera-wasm: ## Build lindera-wasm (wasm-pack, --target web)
 	cp lindera-wasm/js/opfs.d.ts lindera-wasm/pkg/
 
 build: ## Build all crates (release)
-	make build-lindera-crf
-	make build-lindera-dictionary
-	make build-lindera-ipadic
-	make build-lindera-ipadic-neologd
-	make build-lindera-unidic
-	make build-lindera-ko-dic
-	make build-lindera-cc-cedict
-	make build-lindera-jieba
-	make build-lindera
-	make build-lindera-cli
-	make build-lindera-python
-	make build-lindera-nodejs
-	make build-lindera-ruby
-	make build-lindera-php
-	make build-lindera-wasm
+	$(foreach c,$(ALL_CRATES),make build-$(c) &&) true
 
 # ── Benchmark ───────────────────────────────────────────────────────────────
 
@@ -429,6 +266,9 @@ tag: ## Make a tag for the current version
 	git tag v$(LINDERA_VERSION)
 	git push origin v$(LINDERA_VERSION)
 
+# Resolve a workspace crate's version from cargo metadata.
+crate_version = $(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="$(1)") | .version')
+
 define PUBLISH_CRATE
 	@if [ -z "$$(curl -s -XGET -H "User-Agent: $(USER_AGENT) ($(USER)@$(HOSTNAME))" https://crates.io/api/v1/crates/$(1) | jq -r '.versions[].num | select(. == "$(2)")')" ]; then \
 		echo "Publishing $(1) v$(2)..."; \
@@ -439,19 +279,22 @@ define PUBLISH_CRATE
 	fi
 endef
 
+# Crates published to crates.io, in dependency order. Each call is a separate
+# recipe line (the multi-line PUBLISH_CRATE macro cannot be folded with foreach).
 publish: ## Publish packages to crates.io
-	$(call PUBLISH_CRATE,lindera-crf,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-crf") | .version'))
-	$(call PUBLISH_CRATE,lindera-dictionary,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-dictionary") | .version'))
-	$(call PUBLISH_CRATE,lindera-cc-cedict,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cc-cedict") | .version'))
-	$(call PUBLISH_CRATE,lindera-ipadic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic") | .version'))
-	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ipadic-neologd") | .version'))
-	$(call PUBLISH_CRATE,lindera-jieba,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-jieba") | .version'))
-	$(call PUBLISH_CRATE,lindera-ko-dic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ko-dic") | .version'))
-	$(call PUBLISH_CRATE,lindera-unidic,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-unidic") | .version'))
+	$(call PUBLISH_CRATE,lindera-crf,$(call crate_version,lindera-crf))
+	$(call PUBLISH_CRATE,lindera-dictionary,$(call crate_version,lindera-dictionary))
+	$(call PUBLISH_CRATE,lindera-cc-cedict,$(call crate_version,lindera-cc-cedict))
+	$(call PUBLISH_CRATE,lindera-ipadic,$(call crate_version,lindera-ipadic))
+	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(call crate_version,lindera-ipadic-neologd))
+	$(call PUBLISH_CRATE,lindera-jieba,$(call crate_version,lindera-jieba))
+	$(call PUBLISH_CRATE,lindera-ko-dic,$(call crate_version,lindera-ko-dic))
+	$(call PUBLISH_CRATE,lindera-unidic,$(call crate_version,lindera-unidic))
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
-	$(call PUBLISH_CRATE,lindera-cli,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version'))
-	$(call PUBLISH_CRATE,lindera-python,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-python") | .version'))
-	$(call PUBLISH_CRATE,lindera-nodejs,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-nodejs") | .version'))
-	$(call PUBLISH_CRATE,lindera-ruby,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-ruby") | .version'))
-	$(call PUBLISH_CRATE,lindera-php,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-php") | .version'))
-	$(call PUBLISH_CRATE,lindera-wasm,$(shell cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-wasm") | .version'))
+	$(call PUBLISH_CRATE,lindera-cli,$(call crate_version,lindera-cli))
+	$(call PUBLISH_CRATE,lindera-binding-core,$(call crate_version,lindera-binding-core))
+	$(call PUBLISH_CRATE,lindera-python,$(call crate_version,lindera-python))
+	$(call PUBLISH_CRATE,lindera-nodejs,$(call crate_version,lindera-nodejs))
+	$(call PUBLISH_CRATE,lindera-ruby,$(call crate_version,lindera-ruby))
+	$(call PUBLISH_CRATE,lindera-php,$(call crate_version,lindera-php))
+	$(call PUBLISH_CRATE,lindera-wasm,$(call crate_version,lindera-wasm))
