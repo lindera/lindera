@@ -11,8 +11,10 @@ pub mod error;
 pub mod metadata;
 pub mod schema;
 pub mod token;
+pub mod tokenizer;
 
 pub use error::{CoreError, CoreResult, ErrorKind};
 pub use metadata::CoreMetadata;
 pub use schema::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 pub use token::TokenView;
+pub use tokenizer::{CoreTokenizer, CoreTokenizerBuilder};
