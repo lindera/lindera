@@ -1807,6 +1807,7 @@ name = "lindera-binding-core"
 version = "3.0.7"
 dependencies = [
  "lindera",
+ "serde_json",
 ]
 
 [[package]]

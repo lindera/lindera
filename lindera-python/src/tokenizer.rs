@@ -1,6 +1,9 @@
 //! Tokenizer implementation for morphological analysis.
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
+//! The build-flow orchestration is delegated to
+//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! this module only adds the PyO3 wrappers and the PyDict-to-JSON conversion.
 //!
 //! # Examples
 //!
@@ -16,21 +19,24 @@
 //! ```
 
 use std::path::Path;
-use std::str::FromStr;
 
-use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{PyDictionary, PyUserDictionary};
+use crate::error::to_py_error;
 use crate::token::PyToken;
 use crate::util::pydict_to_value;
 
-pub type PyDictRef<'a> = &'a Bound<'a, PyDict>;
+/// Converts the optional filter-argument dict into a JSON value.
+fn filter_args(args: Option<&Bound<'_, PyDict>>) -> PyResult<serde_json::Value> {
+    match args {
+        Some(dict) => pydict_to_value(dict),
+        None => Ok(serde_json::Value::Object(serde_json::Map::new())),
+    }
+}
 
 /// Builder for creating a `Tokenizer` with custom configuration.
 ///
@@ -47,7 +53,7 @@ pub type PyDictRef<'a> = &'a Bound<'a, PyDict>;
 /// ```
 #[pyclass(name = "TokenizerBuilder")]
 pub struct PyTokenizerBuilder {
-    pub inner: TokenizerBuilder,
+    pub inner: CoreTokenizerBuilder,
 }
 
 #[pymethods]
@@ -64,10 +70,7 @@ impl PyTokenizerBuilder {
     #[new]
     #[pyo3(signature = ())]
     fn new() -> PyResult<Self> {
-        let inner = TokenizerBuilder::new().map_err(|err| {
-            PyValueError::new_err(format!("Failed to create TokenizerBuilder: {err}"))
-        })?;
-
+        let inner = CoreTokenizerBuilder::new().map_err(to_py_error)?;
         Ok(Self { inner })
     }
 
@@ -83,10 +86,7 @@ impl PyTokenizerBuilder {
     #[pyo3(signature = (file_path))]
     #[allow(clippy::wrong_self_convention)]
     fn from_file(&self, file_path: &str) -> PyResult<Self> {
-        let inner = TokenizerBuilder::from_file(Path::new(file_path)).map_err(|err| {
-            PyValueError::new_err(format!("Failed to load config from file: {err}"))
-        })?;
-
+        let inner = CoreTokenizerBuilder::from_file(Path::new(file_path)).map_err(to_py_error)?;
         Ok(Self { inner })
     }
 
@@ -101,11 +101,7 @@ impl PyTokenizerBuilder {
     /// Self for method chaining.
     #[pyo3(signature = (mode))]
     fn set_mode<'a>(mut slf: PyRefMut<'a, Self>, mode: &str) -> PyResult<PyRefMut<'a, Self>> {
-        let m = Mode::from_str(mode)
-            .map_err(|err| PyValueError::new_err(format!("Failed to create mode: {err}")))?;
-
-        slf.inner.set_segmenter_mode(&m);
-
+        slf.inner.set_mode(mode).map_err(to_py_error)?;
         Ok(slf)
     }
 
@@ -120,8 +116,7 @@ impl PyTokenizerBuilder {
     /// Self for method chaining.
     #[pyo3(signature = (path))]
     fn set_dictionary<'a>(mut slf: PyRefMut<'a, Self>, path: &str) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner.set_segmenter_dictionary(path);
-
+        slf.inner.set_dictionary(path);
         Ok(slf)
     }
 
@@ -139,7 +134,7 @@ impl PyTokenizerBuilder {
         mut slf: PyRefMut<'a, Self>,
         uri: &str,
     ) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner.set_segmenter_user_dictionary(uri);
+        slf.inner.set_user_dictionary(uri);
         Ok(slf)
     }
 
@@ -157,7 +152,7 @@ impl PyTokenizerBuilder {
         mut slf: PyRefMut<'a, Self>,
         keep_whitespace: bool,
     ) -> PyResult<PyRefMut<'a, Self>> {
-        slf.inner.set_segmenter_keep_whitespace(keep_whitespace);
+        slf.inner.set_keep_whitespace(keep_whitespace);
         Ok(slf)
     }
 
@@ -177,14 +172,8 @@ impl PyTokenizerBuilder {
         kind: &str,
         args: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<PyRefMut<'a, Self>> {
-        let filter_args = if let Some(dict) = args {
-            pydict_to_value(dict)?
-        } else {
-            serde_json::Value::Object(serde_json::Map::new())
-        };
-
-        slf.inner.append_character_filter(kind, &filter_args);
-
+        let args = filter_args(args)?;
+        slf.inner.append_character_filter(kind, &args);
         Ok(slf)
     }
 
@@ -204,14 +193,8 @@ impl PyTokenizerBuilder {
         kind: &str,
         args: Option<&Bound<'_, PyDict>>,
     ) -> PyResult<PyRefMut<'a, Self>> {
-        let filter_args = if let Some(dict) = args {
-            pydict_to_value(dict)?
-        } else {
-            serde_json::Value::Object(serde_json::Map::new())
-        };
-
-        slf.inner.append_token_filter(kind, &filter_args);
-
+        let args = filter_args(args)?;
+        slf.inner.append_token_filter(kind, &args);
         Ok(slf)
     }
 
@@ -226,12 +209,8 @@ impl PyTokenizerBuilder {
     /// Returns an error if the tokenizer cannot be built with the current configuration.
     #[pyo3(signature = ())]
     fn build(&self) -> PyResult<PyTokenizer> {
-        let tokenizer = self
-            .inner
-            .build()
-            .map_err(|err| PyValueError::new_err(format!("Failed to build tokenizer: {err}")))?;
-
-        Ok(PyTokenizer { inner: tokenizer })
+        let inner = self.inner.build().map_err(to_py_error)?;
+        Ok(PyTokenizer { inner })
     }
 }
 
@@ -251,7 +230,7 @@ impl PyTokenizerBuilder {
 /// ```
 #[pyclass(name = "Tokenizer")]
 pub struct PyTokenizer {
-    inner: Tokenizer,
+    inner: CoreTokenizer,
 }
 
 #[pymethods]
@@ -274,16 +253,11 @@ impl PyTokenizer {
         mode: &str,
         user_dictionary: Option<PyUserDictionary>,
     ) -> PyResult<Self> {
-        let m = Mode::from_str(mode)
-            .map_err(|err| PyValueError::new_err(format!("Failed to create mode: {err}")))?;
+        let inner =
+            CoreTokenizer::from_segmenter(mode, dictionary.inner, user_dictionary.map(|d| d.inner))
+                .map_err(to_py_error)?;
 
-        let dict = dictionary.inner;
-        let user_dict = user_dictionary.map(|d| d.inner);
-
-        let segmenter = Segmenter::new(m, dict, user_dict);
-        let tokenizer = Tokenizer::new(segmenter);
-
-        Ok(Self { inner: tokenizer })
+        Ok(Self { inner })
     }
 
     /// Tokenizes the given text.
@@ -301,16 +275,8 @@ impl PyTokenizer {
     /// Returns an error if tokenization fails.
     #[pyo3(signature = (text))]
     fn tokenize(&self, text: &str) -> PyResult<Vec<PyToken>> {
-        // Tokenize the processed text
-        let tokens = self
-            .inner
-            .tokenize(text)
-            .map_err(|err| PyValueError::new_err(format!("Failed to tokenize text: {err}")))?;
-
-        // Convert to PyToken objects
-        let py_tokens: Vec<PyToken> = tokens.into_iter().map(PyToken::from_token).collect();
-
-        Ok(py_tokens)
+        let views = self.inner.tokenize(text).map_err(to_py_error)?;
+        Ok(views.into_iter().map(PyToken::from_view).collect())
     }
 
     /// Tokenizes the given text and returns N-best results.
@@ -338,13 +304,11 @@ impl PyTokenizer {
         let results = self
             .inner
             .tokenize_nbest(text, n, unique, cost_threshold)
-            .map_err(|err| {
-                PyValueError::new_err(format!("Failed to tokenize_nbest text: {err}"))
-            })?;
+            .map_err(to_py_error)?;
 
         let py_results: Vec<(Vec<PyToken>, i64)> = results
             .into_iter()
-            .map(|(tokens, cost)| (tokens.into_iter().map(PyToken::from_token).collect(), cost))
+            .map(|(views, cost)| (views.into_iter().map(PyToken::from_view).collect(), cost))
             .collect();
 
         Ok(py_results)
