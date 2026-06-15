@@ -18,10 +18,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           components: rustfmt
 
       - name: Run format
@@ -35,10 +34,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -61,10 +58,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -83,10 +79,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -102,10 +96,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -121,10 +113,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -140,10 +130,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -159,10 +147,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -178,10 +164,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -211,10 +195,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -233,10 +216,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -252,10 +233,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -278,10 +257,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -303,10 +280,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
@@ -331,10 +306,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -354,10 +327,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: wasm32-unknown-unknown
 
       - name: Install wasm-pack
@@ -415,10 +387,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Build dictionary
         run: |
@@ -486,8 +456,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
@@ -638,10 +608,9 @@ jobs:
           bundler-cache: true
           working-directory: lindera-ruby
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -701,10 +670,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Setup PHP
@@ -767,10 +735,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: wasm32-unknown-unknown
 
       - name: Install wasm-pack
@@ -851,10 +818,9 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Cache Cargo
@@ -884,10 +850,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Publish crates
         run: |
