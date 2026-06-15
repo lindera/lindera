@@ -26,6 +26,16 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      cache:
+        description: "Enable Swatinem/rust-cache (used by release.yml)."
+        required: false
+        type: boolean
+        default: false
+      cache-key:
+        description: "Extra cache key (e.g. the target triple); empty for the default."
+        required: false
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -38,6 +48,12 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ inputs.target }}
+
+      - name: Cache Cargo
+        if: ${{ inputs.cache }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.cache-key }}
 
       - name: Run test
         run: cargo test -p ${{ inputs.crate }} ${{ inputs.features }}${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }}
