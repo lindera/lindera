@@ -12,4 +12,5 @@ pub mod schema;
 pub mod token;
 
 pub use error::{CoreError, CoreResult, ErrorKind};
+pub use schema::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 pub use token::TokenView;
