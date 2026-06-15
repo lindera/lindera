@@ -321,6 +321,26 @@ fn list(_args: ListArgs) -> LinderaResult<()> {
     Ok(())
 }
 
+/// Maps an error into a `LinderaError` with the `Io` kind.
+///
+/// Replaces the repeated `|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))`
+/// closure used throughout the CLI's I/O calls.
+fn io_err<E>(err: E) -> LinderaError
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))
+}
+
+/// Writes tokens to stdout in the requested output format.
+fn write_output(format: Format, tokens: Vec<Token>) -> LinderaResult<()> {
+    match format {
+        Format::Mecab => mecab_output(tokens),
+        Format::Json => json_output(tokens),
+        Format::Wakati => wakati_output(tokens),
+    }
+}
+
 fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
     for token in tokens.iter_mut() {
         let details = token.details().join(",");
@@ -401,9 +421,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 
     // input file
     let mut reader: Box<dyn BufRead> = if let Some(input_file) = args.input_file {
-        Box::new(BufReader::new(File::open(input_file).map_err(|err| {
-            LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))
-        })?))
+        Box::new(BufReader::new(File::open(input_file).map_err(io_err)?))
     } else {
         Box::new(BufReader::new(io::stdin()))
     };
@@ -415,9 +433,7 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     loop {
         // read the text to be tokenized from stdin
         let mut text = String::new();
-        let size = reader
-            .read_line(&mut text)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        let size = reader.read_line(&mut text).map_err(io_err)?;
         if size == 0 {
             // EOS
             break;
@@ -427,34 +443,12 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
             let results =
                 tokenizer.tokenize_nbest(text.trim(), nbest, nbest_unique, nbest_cost_threshold)?;
             for (rank, (tokens, cost)) in results.into_iter().enumerate() {
-                match output_format {
-                    Format::Mecab => {
-                        println!("NBEST {} (cost={})", rank + 1, cost);
-                        mecab_output(tokens)?;
-                    }
-                    Format::Json => {
-                        println!("NBEST {} (cost={})", rank + 1, cost);
-                        json_output(tokens)?;
-                    }
-                    Format::Wakati => {
-                        println!("NBEST {} (cost={})", rank + 1, cost);
-                        wakati_output(tokens)?;
-                    }
-                }
+                println!("NBEST {} (cost={})", rank + 1, cost);
+                write_output(output_format, tokens)?;
             }
         } else {
             let tokens = tokenizer.tokenize(text.trim())?;
-            match output_format {
-                Format::Mecab => {
-                    mecab_output(tokens)?;
-                }
-                Format::Json => {
-                    json_output(tokens)?;
-                }
-                Format::Wakati => {
-                    wakati_output(tokens)?;
-                }
-            }
+            write_output(output_format, tokens)?;
         }
     }
 
@@ -462,11 +456,8 @@ fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
 }
 
 fn build(args: BuildArgs) -> LinderaResult<()> {
-    let metadata: Metadata = serde_json::from_reader(
-        File::open(&args.metadata)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?,
-    )
-    .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let metadata: Metadata =
+        serde_json::from_reader(File::open(&args.metadata).map_err(io_err)?).map_err(io_err)?;
 
     let builder = DictionaryBuilder::new(metadata);
 
@@ -522,8 +513,7 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     };
 
     // Load corpus
-    let corpus_file = File::open(&args.corpus)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let corpus_file = File::open(&args.corpus).map_err(io_err)?;
     let corpus =
         Corpus::from_reader(corpus_file).map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
@@ -537,11 +527,9 @@ fn train(args: TrainArgs) -> LinderaResult<()> {
     // Save model
     // Create parent directory if it doesn't exist
     if let Some(parent) = args.output.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        std::fs::create_dir_all(parent).map_err(io_err)?;
     }
-    let mut output_file = File::create(&args.output)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut output_file = File::create(&args.output).map_err(io_err)?;
     model
         .write_model(&mut output_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
@@ -556,8 +544,7 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     use std::fs::{self, File};
 
     // Load trained model
-    let model_file = File::open(&args.model)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let model_file = File::open(&args.model).map_err(io_err)?;
     let mut model: SerializableModel =
         lindera::dictionary::trainer::model::Model::read_model(model_file)
             .map_err(|err| LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err)))?;
@@ -568,8 +555,7 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     }
 
     // Create output directory
-    fs::create_dir_all(&args.output)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    fs::create_dir_all(&args.output).map_err(io_err)?;
 
     // Export dictionary files
     let lexicon_path = args.output.join("lex.csv");
@@ -580,59 +566,51 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
     let rewrite_def_path = args.output.join("rewrite.def");
 
     // Write lexicon file using SerializableModel methods
-    let mut lexicon_file = File::create(&lexicon_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut lexicon_file = File::create(&lexicon_path).map_err(io_err)?;
     model
         .write_lexicon(&mut lexicon_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write connection matrix
-    let mut connector_file = File::create(&connector_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut connector_file = File::create(&connector_path).map_err(io_err)?;
     model
         .write_connection_costs(&mut connector_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write unknown word definitions
-    let mut unk_file = File::create(&unk_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut unk_file = File::create(&unk_path).map_err(io_err)?;
     model
         .write_unknown_dictionary(&mut unk_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write character definition file
-    let mut char_def_file = File::create(&char_def_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut char_def_file = File::create(&char_def_path).map_err(io_err)?;
     model
         .write_char_def(&mut char_def_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write feature definition file
-    let mut feature_def_file = File::create(&feature_def_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut feature_def_file = File::create(&feature_def_path).map_err(io_err)?;
     model
         .write_feature_def(&mut feature_def_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write rewrite rule definition file
-    let mut rewrite_def_file = File::create(&rewrite_def_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut rewrite_def_file = File::create(&rewrite_def_path).map_err(io_err)?;
     model
         .write_rewrite_def(&mut rewrite_def_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write left-id.def
     let left_id_path = args.output.join("left-id.def");
-    let mut left_id_file = File::create(&left_id_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut left_id_file = File::create(&left_id_path).map_err(io_err)?;
     model
         .write_left_id_def(&mut left_id_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
 
     // Write right-id.def
     let right_id_path = args.output.join("right-id.def");
-    let mut right_id_file = File::create(&right_id_path)
-        .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+    let mut right_id_file = File::create(&right_id_path).map_err(io_err)?;
     model
         .write_right_id_def(&mut right_id_file)
         .map_err(|err| LinderaErrorKind::Io.with_error(err))?;
@@ -651,8 +629,7 @@ fn export(args: ExportArgs) -> LinderaResult<()> {
 
     if let Some(metadata_path) = &args.metadata {
         let output_metadata_path = args.output.join("metadata.json");
-        let mut metadata_file = File::create(&output_metadata_path)
-            .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
+        let mut metadata_file = File::create(&output_metadata_path).map_err(io_err)?;
 
         model
             .update_metadata_json(metadata_path, &mut metadata_file)
