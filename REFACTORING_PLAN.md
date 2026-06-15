@@ -1,397 +1,447 @@
-# Lindera コードベース全面リファクタリング計画
+# Lindera Codebase-Wide Refactoring Plan
 
-本ドキュメントは、ワークスペース全体(18 クレート、Rust ソース約 177 ファイル)の調査に基づく、
-フェーズ分けされたリファクタリング計画である。各フェーズは独立してマージ可能な単位に分割し、
-「常にグリーンな CI を維持したまま段階的に進める」ことを大原則とする。
-
----
-
-## 進捗サマリ(非破壊フェーズ完了)
-
-semver 非破壊(patch/minor)の Phase 0〜5 はマージ完了。破壊的変更は Phase 6 (v4.0.0) に集約。
-
-| Phase | 内容 | 結果 |
-|---|---|---|
-| 0 | 安全網(ゴールデン 8 + CLI スモーク 8 + ベンチ基準手順) | ✅ |
-| 1 | 即時クリーンアップ(生成物 ~14MB 除外、`VERSION` タイポ、未使用依存、`bocchan` 重複) | ✅ |
-| 2 | 辞書クレート 6 個の脱コピペ(`embedded_dictionary!` マクロ + build ヘルパー、786→160 行) | ✅ |
-| 3a | タグフィルタ 4 種の共通化(`token_filter/tags.rs`) | ✅ |
-| 3b | ローダーの `read_aligned_file` 集約 | ✅ |
-| 3c | 辞書ビルド経路の `unwrap` 撲滅 + feature_extractor の Regex を `LazyLock` 化 | ✅(3c-1/3c-6 は見送り) |
-| 3d | 巨大ファイル分割 | **viterbi は本番相当 LTO ベンチで ~5% 回帰のため見送り**(検証済み) |
-| 4 | バインディング共通化(`lindera-binding-core`: `TokenView`、schema 既定/検証) | ✅(4-1/4-2)。完全ファサードは Phase 6 |
-| 5 | ビルド基盤(Makefile ループ化、setup-rust composite、test-crate reusable、CLI 分割) | ✅(5-1/5-2/5-3/5-5)。5-4 は見送り |
-| 6 | 公開 API 再設計・破壊的変更(v4.0.0) | 未着手 |
-
-**主要な工学的発見**: (1) viterbi はモジュール分割そのものがコード生成を変え本番でも回帰する → 単一ファイル維持。(2) バインディングは FFI 密結合で、非破壊に抽出できる純粋ロジックは限定的 → 完全ファサード化は破壊的変更として Phase 6 へ。(3) ローカル composite action は checkout 後でないと解決不可 → checkout は各ジョブに残す。
+This document is a phased refactoring plan based on a survey of the entire workspace (18 crates,
+~177 Rust source files). Each phase is split into an independently mergeable unit, and the overriding
+principle is to **proceed incrementally while always keeping CI green**.
 
 ---
 
-## 調査で判明した技術的負債の全体像
+## Progress summary (non-breaking phases complete)
 
-### A. 辞書クレート 6 個がほぼ完全なコピペクローン
+The semver non-breaking (patch/minor) Phases 0–5 are merged. Breaking changes are consolidated into
+Phase 6 (v4.0.0).
 
-`lindera-ipadic` / `lindera-ipadic-neologd` / `lindera-unidic` / `lindera-ko-dic` /
-`lindera-cc-cedict` / `lindera-jieba` の 6 クレートは、`build.rs`(41 行)・
-`src/lib.rs`(9 行)・`src/embedded.rs`(88〜96 行)が **97% 以上同一**。
+| Phase | Content | Result |
+| --- | --- | --- |
+| 0 | Safety net (8 golden + 8 CLI smoke + bench baseline procedure) | ✅ |
+| 1 | Immediate cleanup (exclude ~14 MB of artifacts, `VERSION` typo, unused deps, `bocchan` duplication) | ✅ |
+| 2 | De-duplicate the 6 dictionary crates (`embedded_dictionary!` macro + build helper, 786 → 160 lines) | ✅ |
+| 3a | Unify the 4 tag filters (`token_filter/tags.rs`) | ✅ |
+| 3b | Consolidate the loader's `read_aligned_file` | ✅ |
+| 3c | Eliminate `unwrap` on the dictionary-build path + move feature_extractor regexes to `LazyLock` | ✅ (3c-1/3c-6 deferred) |
+| 3d | Split oversized files | **viterbi deferred — ~5% regression on a production-equivalent LTO bench** (verified) |
+| 4 | Shared binding layer (`lindera-binding-core`: `TokenView`, schema default/validate) | ✅ (4-1/4-2). Full facade → Phase 6 |
+| 5 | Build infra (Makefile loops, setup-rust composite, reusable test-crate, CLI split) | ✅ (5-1/5-2/5-3/5-5). 5-4 deferred |
+| 6 | Public-API redesign / breaking changes (v4.0.0) | Not started |
 
-- 実際に異なるのは: 辞書 URL、MD5 ハッシュ、アーカイブ名、ダミー入力、feature フラグ名のみ
-  (ロジック差分は jieba の `src_subdir: Some("dict-src")` の 1 箇所だけ)
-- 合計約 590 行の重複。マクロ/struct 名(`EmbeddedIPADICLoader` 等)の違いは不必要なバリエーション
-- `VERERSION` というタイポ(正しくは `VERSION`)が全 6 クレート + `lindera-dictionary/src/lib.rs:17` +
-  `lindera/src/lib.rs:16` にコピペで伝播している
-- 全 6 クレートで `anyhow` / `byteorder` / `csv` が通常依存として宣言されているが未使用
-  (build-dependencies としてのみ必要)
+**Key engineering findings**: (1) viterbi regresses in production builds because module splitting alone
+changes code generation → keep it a single file. (2) The bindings are tightly FFI-coupled, so the pure
+logic extractable without a break is limited → the full facade is a breaking change deferred to
+Phase 6. (3) A local composite action only resolves after checkout → keep checkout in each job.
 
-### B. 言語バインディング 5 種に共有レイヤーがゼロ
+---
 
-`lindera-python` / `lindera-php` / `lindera-ruby` / `lindera-nodejs` / `lindera-wasm`
-(合計約 11,750 行)は、それぞれが独立に同じラッパーを再実装している。
+## Overview of the technical debt found in the survey
 
-| モジュール | Python | PHP | Ruby | Node.js | WASM | ロジック類似度 |
-|---|---|---|---|---|---|---|
+### A. The 6 dictionary crates are near-complete copy-paste clones
+
+The 6 crates `lindera-ipadic` / `lindera-ipadic-neologd` / `lindera-unidic` / `lindera-ko-dic` /
+`lindera-cc-cedict` / `lindera-jieba` have `build.rs` (41 lines), `src/lib.rs` (9 lines), and
+`src/embedded.rs` (88–96 lines) that are **>97% identical**.
+
+- What actually differs: only the dictionary URL, MD5 hash, archive name, dummy input, and feature
+  flag name (the only logic difference is jieba's single `src_subdir: Some("dict-src")`).
+- ~590 lines of duplication in total. The varying macro/struct names (`EmbeddedIPADICLoader`, etc.) are
+  unnecessary variation.
+- A `VERERSION` typo (should be `VERSION`) has propagated by copy-paste across all 6 crates plus
+  `lindera-dictionary/src/lib.rs:17` and `lindera/src/lib.rs:16`.
+- All 6 crates declare `anyhow` / `byteorder` / `csv` as regular dependencies, but they are unused
+  (needed only as build-dependencies).
+
+### B. The 5 language bindings have zero shared layer
+
+`lindera-python` / `lindera-php` / `lindera-ruby` / `lindera-nodejs` / `lindera-wasm` (~11,750 lines
+total) each independently re-implement the same wrappers.
+
+| Module | Python | PHP | Ruby | Node.js | WASM | Logic similarity |
+| --- | --- | --- | --- | --- | --- | --- |
 | tokenizer.rs | 361 | 310 | 313 | 239 | 548 | 80–90% |
 | schema.rs | 579 | 509 | 641 | 430 | 452 | 85%+ |
 | metadata.rs | 447 | 389 | 433 | 425 | 197 | 80%+ |
-| util/convert(値変換) | 115 | 87 | 159 | 53 | 0 | 70–75% |
+| util/convert (value conversion) | 115 | 87 | 159 | 53 | 0 | 70–75% |
 
-- 重複は推定 **2,000 行超**。コア API の変更が 5 箇所への追従を要求する
-- API の不一致も発生済み:
-  - `Token.details` が PHP では `Vec<String>`、他は `Option<Vec<String>>`
-  - ビルダーの戻り値が Python はフルーエント(`PyRefMut<Self>`)、他は in-place 変更
-  - エラー処理パターンが 5 通り(クラス / 関数ヘルパー / JsValue ラップ)
-  - `character_filter` / `token_filter` / `segmenter` モジュールの有無がバインディングごとにバラバラ
-    (PHP・Node.js には segmenter なし)
+- Estimated **2,000+ lines** of duplication. Any core API change requires following up in 5 places.
+- API inconsistencies have already appeared:
+  - `Token.details` is `Vec<String>` in PHP but `Option<Vec<String>>` elsewhere.
+  - The builder return type is fluent in Python (`PyRefMut<Self>`) but in-place mutation elsewhere.
+  - Error handling follows 5 different patterns (class / function helper / JsValue wrap).
+  - The presence of the `character_filter` / `token_filter` / `segmenter` modules varies per binding
+    (PHP and Node.js lack `segmenter`).
 
-### C. コアクレートの肥大化と重複
+### C. Core-crate bloat and duplication
 
-- **500 行超のファイルが 7 つ**:
-  - `lindera/src/segmenter.rs` — 1,882 行
-  - `lindera-dictionary/src/trainer/model.rs` — 1,248 行
-  - `lindera-dictionary/src/viterbi.rs` — 1,147 行(`Lattice::set_text()` が約 220 行の巨大関数)
-  - `lindera-dictionary/src/trainer.rs` — 971 行
-  - `lindera-dictionary/src/trainer/config.rs` — 793 行
-  - `lindera-dictionary/src/builder/prefix_dictionary.rs` — 706 行
-  - `lindera/src/token_filter/japanese_number.rs` — 1,257 行
-- **タグフィルタ 4 種の重複**: `japanese_keep_tags.rs`(479 行)/ `japanese_stop_tags.rs`(437 行)/
-  `korean_keep_tags.rs`(384 行)/ `korean_stop_tags.rs`(446 行)は keep/stop の真偽が反転しているだけの
-  同一ロジック。約 800 行 → 200 行程度に集約可能
-- **ローダーの定型コード重複**: `lindera-dictionary/src/loader/` 配下 5 ファイルが
-  `load()` / `load_mmap()` の同一パターンを繰り返す(約 200 行 → 80 行)。
-  `loader.rs` の `DictionaryLoader` トレイトは定義されているのにほぼ未使用
-- **`lindera/src/dictionary.rs`**: 6 辞書 × `#[cfg(feature)]` の条件付き import が 12 個、
-  同一の `#[cfg(any(...))]` 6 連 feature 条件が 3 回以上繰り返し。
-  217–245 行にはコメントアウトされたエラー処理(全 6 辞書分)が放置
+- **7 files exceed 500 lines**:
+  - `lindera/src/segmenter.rs` — 1,882 lines
+  - `lindera-dictionary/src/trainer/model.rs` — 1,248 lines
+  - `lindera-dictionary/src/viterbi.rs` — 1,147 lines (`Lattice::set_text()` is a ~220-line giant)
+  - `lindera-dictionary/src/trainer.rs` — 971 lines
+  - `lindera-dictionary/src/trainer/config.rs` — 793 lines
+  - `lindera-dictionary/src/builder/prefix_dictionary.rs` — 706 lines
+  - `lindera/src/token_filter/japanese_number.rs` — 1,257 lines
+- **The 4 tag filters duplicate each other**: `japanese_keep_tags.rs` (479) / `japanese_stop_tags.rs`
+  (437) / `korean_keep_tags.rs` (384) / `korean_stop_tags.rs` (446) are the same logic with the
+  keep/stop boolean inverted. ~800 lines → consolidatable to ~200.
+- **Boilerplate duplication in the loaders**: the 5 files under `lindera-dictionary/src/loader/`
+  repeat the same `load()` / `load_mmap()` pattern (~200 lines → 80). The `DictionaryLoader` trait in
+  `loader.rs` is defined but almost unused.
+- **`lindera/src/dictionary.rs`**: 12 conditional imports for 6 dictionaries × `#[cfg(feature)]`, and
+  the same 6-way `#[cfg(any(...))]` condition is repeated 3+ times. Lines 217–245 leave commented-out
+  error handling (for all 6 dictionaries) lying around.
 
-### D. エラー処理の不統一と `unwrap()` 散在
+### D. Inconsistent error handling and scattered `unwrap()`
 
-- `unwrap`/`expect` 合計: lindera 384 / lindera-dictionary 136 / lindera-crf 37+(多くはテストだが、非テストコードにも相当数)
-- 非テストコードの問題箇所:
-  - `lindera-dictionary/src/builder.rs:60,73,89,101,148` — ビルダー呼び出しに `.unwrap()` 連鎖
-  - `lindera-dictionary/src/builder/prefix_dictionary.rs` — CSV フィールドパースに `unwrap()` 13 箇所
-  - `lindera-dictionary/src/trainer/feature_extractor.rs` — `Regex::new().unwrap()` 3 箇所 + capture の `unwrap()` 9 箇所以上
-  - `lindera-dictionary/src/assets.rs:257,262` — 環境変数の `unwrap()`
-- `LinderaError`(`LinderaErrorKind` 41 バリアント)と `anyhow` の併用で戦略が不統一
-- CLI では `.map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?` パターンが 15 回以上反復
+- `unwrap`/`expect` totals: lindera 384 / lindera-dictionary 136 / lindera-crf 37+ (many in tests, but
+  a fair number in non-test code too).
+- Non-test problem sites:
+  - `lindera-dictionary/src/builder.rs:60,73,89,101,148` — chained `.unwrap()` on builder calls.
+  - `lindera-dictionary/src/builder/prefix_dictionary.rs` — 13 `unwrap()` on CSV field parsing.
+  - `lindera-dictionary/src/trainer/feature_extractor.rs` — 3 `Regex::new().unwrap()` plus 9+ `unwrap()`
+    on captures.
+  - `lindera-dictionary/src/assets.rs:257,262` — `unwrap()` on environment variables.
+- Mixing `LinderaError` (`LinderaErrorKind`, 41 variants) with `anyhow` gives an inconsistent strategy.
+- The CLI repeats the `.map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?` pattern
+  15+ times.
 
-### E. 公開 API のカプセル化不足
+### E. Insufficient public-API encapsulation
 
-- `lindera-dictionary/src/viterbi.rs` の内部構造体が全フィールド `pub`:
-  `WordId { id, is_system, lex_type }`、`WordEntry`、`Edge { path_cost, ... }`、`PathEntry`、
-  `Lattice` の内部バッファまで露出。利用側が実装詳細に依存できてしまう
-- `WordEntry` のシリアライズ詳細(`SERIALIZED_LEN` 等)も公開
+- The internal structs in `lindera-dictionary/src/viterbi.rs` have all fields `pub`:
+  `WordId { id, is_system, lex_type }`, `WordEntry`, `Edge { path_cost, ... }`, `PathEntry`, and even
+  `Lattice`'s internal buffers are exposed. Consumers can depend on implementation details.
+- `WordEntry`'s serialization details (`SERIALIZED_LEN`, etc.) are also public.
 
-### F. ビルド基盤・CI・リポジトリ衛生
+### F. Build infra / CI / repository hygiene
 
-- **Makefile(458 行)**: 13 クレート × clean/format/lint/test/build のほぼ同一ターゲットを手書き反復
-- **GitHub Actions(計 2,028 行)**:
-  - `release.yml`(1,103 行)と `regression.yml`(495 行)にほぼ同一のテストジョブ 13 個ずつが二重定義
-  - Ruby/PHP/Node.js のリリースジョブはプラットフォームマトリクス含め 90% 以上のクローン
-  - `cargo metadata | jq` によるバージョン検出が 5 箇所以上で反復
-- **生成物のコミット**: `docs/book/` と `docs/ja/book/` の mdBook 生成 HTML/JS 約 21MB
-  (`mermaid.min.js` 2.9MB × 2、`searchindex.js` 1.6MB 等)が git 管理下。`.gitignore` 未整備
-- `resources/bocchan.txt`(308KB)がリポジトリ内に 2 重コピー
-- 後方互換シム: `LINDERA_CACHE` 環境変数の非推奨サポート(`assets.rs:238`)、
-  ユーザー辞書の「5-bit variant-count encoding」旧形式互換(`viterbi.rs:409,953`)
+- **Makefile (458 lines)**: clean/format/lint/test/build targets for 13 crates are written out by hand,
+  nearly identical.
+- **GitHub Actions (2,028 lines total)**:
+  - `release.yml` (1,103 lines) and `regression.yml` (495 lines) each duplicate ~13 nearly identical
+    test jobs.
+  - The Ruby/PHP/Node.js release jobs are >90% clones including the platform matrix.
+  - Version detection via `cargo metadata | jq` is repeated in 5+ places.
+- **Committed artifacts**: ~21 MB of mdBook-generated HTML/JS in `docs/book/` and `docs/ja/book/`
+  (`mermaid.min.js` 2.9 MB × 2, `searchindex.js` 1.6 MB, etc.) are under git. `.gitignore` is not set up.
+- `resources/bocchan.txt` (308 KB) is duplicated inside the repository.
+- Backward-compat shims: deprecated support for the `LINDERA_CACHE` env var (`assets.rs:238`), and the
+  user dictionary's "5-bit variant-count encoding" legacy-format compatibility (`viterbi.rs:409,953`).
 
-### G. テスト体制
+### G. Test setup
 
-- 合計 278 個のインラインテスト。`tests/` ディレクトリによる統合テストはゼロ
-- 辞書クレート 6 個と CLI はテストゼロ
-- リファクタリングの安全網としては「トークナイズ結果のスナップショット(ゴールデン)テスト」が不在
-
----
-
-## リファクタリング方針
-
-1. **挙動を変えるリファクタリングと変えないリファクタリングを混ぜない**。各 PR はどちらか一方
-2. **フェーズ 0 で安全網を先に作る**。ゴールデンテストとベンチマーク基準値なしに viterbi / segmenter には触らない
-3. **semver を尊重する**。フェーズ 1〜5 は非破壊(patch/minor)、破壊的変更はフェーズ 6 (v4.0.0) に集約
-4. 各フェーズの PR は **小さく、レビュー可能なサイズ**(目安: 差分 ±1,000 行以内)に分割
+- 278 inline tests total. Zero integration tests under a `tests/` directory.
+- The 6 dictionary crates and the CLI have zero tests.
+- As a refactoring safety net, a "tokenization-result snapshot (golden) test" is absent.
 
 ---
 
-## フェーズ 0: 安全網の構築(挙動変更なし) — **実施済み**
+## Refactoring principles
 
-**目的**: 以降の全フェーズで「壊していないこと」を機械的に検証できる状態を作る。
-
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 0-1 | ゴールデン(スナップショット)テスト追加 | `lindera/tests/golden_tokenization.rs` に IPADIC / ko-dic / Jieba × Normal/Decompose + ユーザー辞書 + N-best のスナップショット 8 件(`insta`)。UniDic / NEologd / CC-CEDICT は辞書入手可能な環境で同じ `golden_tests!` マクロにより追加可能 | ✅ |
-| 0-2 | CLI のスモークテスト | `lindera-cli/tests/cli.rs`(`assert_cmd`)。help / version / list / 不正辞書エラー + `embed-ipadic` 時の mecab/wakati/json/decompose 出力検証。Makefile と CI の CLI テストを `--features train,embed-ipadic` に変更 | ✅ |
-| 0-3 | ベンチマーク基準値の記録 | `BENCHMARKING.md` に criterion の `--save-baseline` / `--baseline` による同一マシン比較手順と 3% 判定基準を明文化 | ✅ |
-| 0-4 | カバレッジ計測の導入(任意) | `cargo llvm-cov` で現状値を記録し、フェーズごとの劣化を監視 | 未着手(任意) |
-
-- **リスク**: ほぼなし(追加のみ)
-- **完了条件**: 全辞書のゴールデンテストが CI で実行され、グリーン
-- **メモ**: 辞書アーカイブは GitHub ミラー(`lindera/mecab-ipadic` 等)のタグ付き
-  ソースアーカイブが lindera.dev 配布物と MD5 まで同一。`LINDERA_DICTIONARIES_PATH`
-  のキャッシュディレクトリに配置すればオフライン環境でもビルド可能
+1. **Do not mix behavior-changing and behavior-preserving refactoring.** Each PR is one or the other.
+2. **Build the safety net first, in Phase 0.** Do not touch viterbi / segmenter without golden tests
+   and benchmark baselines.
+3. **Respect semver.** Phases 1–5 are non-breaking (patch/minor); breaking changes are consolidated
+   into Phase 6 (v4.0.0).
+4. Split each phase's PRs into **small, reviewable sizes** (rule of thumb: ±1,000 lines of diff or less).
 
 ---
 
-## フェーズ 1: 低リスクの即時クリーンアップ(挙動変更なし) — **実施済み**
+## Phase 0: Build the safety net (no behavior change) — **done**
 
-**目的**: 議論の余地がない無駄を先に一掃し、以降の差分ノイズを減らす。
+**Goal**: reach a state where every subsequent phase can mechanically verify "nothing is broken".
 
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 1-1 | `docs/book/`・`docs/ja/book/` を git 管理から除外 | `.gitignore` 追記 + `git rm -r --cached`(272 ファイル、約 14MB)。`deploy-docs.yml` が CI 上で mdBook をビルドして gh-pages に公開しており、コミット済み生成物は未使用であることを確認済み | ✅ |
-| 1-2 | `VERERSION` タイポ修正 | 全 9 クレート(辞書 6 + `lindera-dictionary` + `lindera` + `lindera-cli`)を `VERSION` に。private const のため非破壊 | ✅ |
-| 1-3 | コメントアウトコードの削除 | `lindera/src/dictionary.rs` の `resolve_embedded_loader` 内、6 辞書分のデッドコメントを削除 | ✅ |
-| 1-4 | 未使用依存の削除 | 辞書クレート 6 個の `[dependencies]` から `anyhow` / `byteorder` / `csv` / `serde_json` を削除(`lindera-dictionary` のみ残存。build-dependencies は不変) | ✅ |
-| 1-5 | `bocchan.txt` の重複解消 | `lindera-nodejs/resources/` と `lindera-python/resources/` の孤立コピー(参照ゼロ)を削除。`resources/bocchan.txt` に一本化 | ✅ |
-| 1-6 | Cargo.toml の体裁統一 | `lindera-cc-cedict` の余分なスペース除去、`lindera-jieba` の feature コメント追加 | ✅ |
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 0-1 | Add golden (snapshot) tests | 8 snapshots (`insta`) in `lindera/tests/golden_tokenization.rs`: IPADIC / ko-dic / Jieba × Normal/Decompose + user dictionary + N-best. UniDic / NEologd / CC-CEDICT can be added via the same `golden_tests!` macro where the dictionaries are available | ✅ |
+| 0-2 | CLI smoke tests | `lindera-cli/tests/cli.rs` (`assert_cmd`): help / version / list / invalid-dictionary error + mecab/wakati/json/decompose output checks with `embed-ipadic`. Changed the Makefile and CI CLI tests to `--features train,embed-ipadic` | ✅ |
+| 0-3 | Record benchmark baselines | Documented in `BENCHMARKING.md`: same-machine comparison via criterion's `--save-baseline` / `--baseline` and the 3% judgment criterion | ✅ |
+| 0-4 | Introduce coverage measurement (optional) | Record current values with `cargo llvm-cov` and watch for per-phase regressions | Not started (optional) |
 
-- **リスク**: 極小。1-1 のみ docs デプロイフローの確認が必要
-- **完了条件**: `cargo build --workspace` / 全テスト / docs デプロイがグリーン
-
----
-
-## フェーズ 2: 辞書クレート 6 個の脱コピペ化(挙動変更なし) — **実施済み(2-1〜2-3)**
-
-**目的**: 約 590 行 × 6 クレートの構造的重複を、宣言的な 1 箇所の定義に集約する。
-
-### 設計方針
-
-`lindera-dictionary` に以下を追加し、各辞書クレートを「パラメータ定義のみ」に縮退させる:
-
-1. **`decl_dictionary!` マクロ(または共通関数)** — `src/embedded.rs` の生成を担う。
-   現状の `ipadic_data!` / `EmbeddedIPADICLoader` 等の名前バリエーションは廃し、
-   ジェネリックな `EmbeddedLoader`(辞書名をフィールドに持つ)+ マクロで data include を生成
-2. **`build.rs` 共通化** — `lindera_dictionary::assets::build_dictionary(FetchParams)` を呼ぶだけの
-   3〜5 行に縮退。`FetchParams` は既に共有実装があるため、各クレートの build.rs は定数定義のみ
-
-### 作業項目
-
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 2-1 | `lindera-dictionary` に共通マクロ実装 | `lindera-dictionary/src/macros.rs` に `#[macro_export] embedded_dictionary!($dir, $loader)` を追加。`include_bytes!` のパスは `$dir` 引数で注入、loader 構造体名は `$loader` で注入。到達不能だった `#[cfg(not(feature))]` 空配列分岐は廃止 | ✅ |
-| 2-2 | 6 クレートの `embedded.rs` をマクロ呼び出しに置換 | 各クレート 88–100 行 → マクロ 1 行(+ doc コメント) | ✅ |
-| 2-3 | 6 クレートの `build.rs` を共通関数呼び出しに置換 | `lindera-dictionary/src/assets.rs` に `build_embedded_dictionary(embed_enabled, FetchParams)` を追加。各 build.rs は `FetchParams` 定義 + 1 行呼び出しに(41 行 → 18 行)。jieba の `src_subdir: Some("dict-src")` は `FetchParams` で吸収。build-dependencies から不要になった `serde_json` も削除 | ✅ |
-| 2-4 | `lindera/src/dictionary.rs` の feature 分岐整理 | 12 個の条件付き import と 3 回反復する `#[cfg(any(...))]` を辞書レジストリ的マクロに集約 | 未着手(別 PR) |
-| 2-5 | 公開名の互換維持 | `EmbeddedIPADICLoader` 等の公開名はマクロが同名で生成するため**完全互換**(エイリアス不要)。`lindera/src/dictionary.rs` からの利用箇所は無変更 | ✅(互換維持済み) |
-
-- **リスク**: 中。feature フラグの組み合わせ爆発に注意。CI で `embed-*` 各 feature 単体 +
-  `embed-cjk` 系のビルドマトリクスを必ず通す
-- **完了条件**: 全 feature 組み合わせでビルド・ゴールデンテストがグリーン。
-  辞書クレート 1 つあたりの実装が 20 行以下
-- **実績**: embedded.rs + build.rs 計 12 ファイルが 786 行 → 160 行。共通実装(macros.rs ~100 行 +
-  assets ヘルパー ~29 行)を差し引いてもネット約 500 行削減。ゴールデンテスト 8 件 +
-  ユニット 111 件不変、fmt/clippy クリーン。ローカル検証は ipadic/ko-dic/jieba(キャッシュ利用)で
-  実施、残り 3 辞書(unidic/cc-cedict/neologd)は同一マクロ呼び出しのため CI でフル検証
-- **規模感**: 中(2-1〜2-3 を 1 PR。2-4 は facade 整理として別 PR)
+- **Risk**: nearly none (additive only).
+- **Done when**: golden tests for all dictionaries run green in CI.
+- **Note**: each dictionary archive's tagged source archive on the GitHub mirror
+  (`lindera/mecab-ipadic`, etc.) is MD5-identical to the lindera.dev distribution. Placing it in the
+  `LINDERA_DICTIONARIES_PATH` cache directory makes builds possible even offline.
 
 ---
 
-## フェーズ 3: コアクレートの内部品質改善(挙動変更なし)
+## Phase 1: Low-risk immediate cleanup (no behavior change) — **done**
 
-**目的**: `lindera` / `lindera-dictionary` / `lindera-crf` の重複・巨大ファイル・unwrap を解消する。
-**前提**: フェーズ 0 のゴールデンテスト・ベンチ基準値が必須。
+**Goal**: sweep away the indisputable waste first to reduce diff noise in later phases.
 
-### 3a. タグフィルタの統合 — **実施済み**
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 1-1 | Exclude `docs/book/` and `docs/ja/book/` from git | `.gitignore` addition + `git rm -r --cached` (272 files, ~14 MB). Confirmed the committed artifacts are unused: `deploy-docs.yml` builds mdBook in CI and publishes to gh-pages | ✅ |
+| 1-2 | Fix the `VERERSION` typo | Changed to `VERSION` across all 9 crates (6 dictionaries + `lindera-dictionary` + `lindera` + `lindera-cli`). Non-breaking since it is a private const | ✅ |
+| 1-3 | Remove commented-out code | Removed the dead comments for all 6 dictionaries inside `resolve_embedded_loader` in `lindera/src/dictionary.rs` | ✅ |
+| 1-4 | Remove unused dependencies | Removed `anyhow` / `byteorder` / `csv` / `serde_json` from the `[dependencies]` of the 6 dictionary crates (only `lindera-dictionary` retains them; build-dependencies unchanged) | ✅ |
+| 1-5 | De-duplicate `bocchan.txt` | Removed the orphaned copies (zero references) in `lindera-nodejs/resources/` and `lindera-python/resources/`. Unified on `resources/bocchan.txt` | ✅ |
+| 1-6 | Unify Cargo.toml formatting | Removed stray whitespace in `lindera-cc-cedict`, added a feature comment in `lindera-jieba` | ✅ |
 
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 3a-1 | 汎用 `tags` 内部モジュール新設 | `lindera/src/token_filter/tags.rs` に `parse_tags`(設定の `tags` 配列パース)/ `normalize_japanese_tags`(4 要素正規化)/ `TagPolicy { Keep, Remove }` / `apply_tag_filter`(drain ループ外枠 + 判定)を追加。タグ抽出ロジックはフィルタ間で微妙に異なる(日本語: 最大 4 要素 join、`keep` は `min(4)` / `stop` は `len>=4?4:1`、韓国語: 第 1 要素のみ)ため、抽出はクロージャで各ラッパーから注入し**挙動を 1 バイトも変えない** | ✅ |
-| 3a-2 | 4 フィルタを薄いラッパー化 | `JapaneseKeepTagsTokenFilter` 等の公開型・設定フォーマット・挙動は完全維持。各 `from_config`/`new`/`apply` を共通ヘルパーへ委譲(本体ロジック 4×約 114 行 → 4×約 35 行) | ✅ |
-
-設定 JSON の互換性とトークナイズ挙動はゴールデンテスト 8 件 + タグフィルタ既存ユニットテスト 12 件で担保(全パス)。各ファイルの大半を占めるテストは挙動の証拠として全保持。
-
-### 3b. ローダー層の統一 — **実施済み(範囲を限定)**
-
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 3b-1 | ローダーの逐語重複を集約 | **再調査の結果、ローダー層の重複は当初見積もり(200→80 行)より小さかった**。各ローダーの `load` 本体はファイル名・型・読み込み方式が異なり、唯一の**逐語完全重複**は `character_definition` と `unknown_dictionary` の「read_file → `AlignedVec<16>` → extend → `T::load`」の 5 行ブロック。これを `util::read_aligned_file` ヘルパーに集約(2 ファイルが各 3 行に)。`connection_cost_matrix`/`prefix_dictionary`/`metadata` の `load`/`load_mmap` 二重化は「`mmap` feature の有無」という本質的分岐であり、`read_file`(`Vec<u8>`)と `mmap_file`(`Mmap`)の戻り型が異なるため無理に統合せず温存(過剰なマクロ化を回避) | ✅ |
-| 3b-2 | `DictionaryLoader` トレイト(`loader.rs`)の扱い | **再確認の結果「未使用」ではない**。Phase 2 の `embedded_dictionary!` が各 `EmbeddedXxxLoader` に実装、`FSDictionaryLoader` も実装し、`lindera/src/dictionary.rs` が `Box<dyn DictionaryLoader>` で利用中。default メソッドがエラーを返す設計は「`load`/`load_from_path` の一方だけ実装するローダー」のための妥当な形。変更不要と判断 | ✅(現状維持) |
-
-- **検証**: ビルド済み FS 辞書を CLI で `--dict <path>` ロード(`read_aligned_file` を実走)し embedded と出力一致を確認。dictionary ユニット 52 件 + ゴールデン 8 件不変、fmt/clippy クリーン。
-
-### 3c. エラー処理の正常化 — **実施済み(3c-2〜3c-5)。3c-1/3c-6 は見送り**
-
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 3c-1 | エラー戦略の明文化 | 「公開 API は `LinderaResult`、内部の文脈付与に `anyhow`」を CONTRIBUTING に明記 | 見送り(ドキュメント作業、コード変更を伴わないため別途) |
-| 3c-2 | `builder.rs` の `.unwrap()` 5 箇所を `?` 化 | `*BuilderOptions::builder()`(derive_builder 生成、全フィールド default で実際は失敗しない)を `map_err(LinderaErrorKind::Build)?` に置換 | ✅ |
-| 3c-3 | `prefix_dictionary.rs` の CSV パース `unwrap()` をエラー化 | `build_word_entry_map` の `word_cost/left_id/right_id` の `unwrap()` 3 箇所(実コード)を、直前の `is_none()` チェックと統合して `let-else` 束縛に置換。挙動完全同一(残りは `#[cfg(test)]` 内の `unwrap` で許容) | ✅ |
-| 3c-4 | `Regex::new().unwrap()` を `LazyLock`(std)化 | `feature_extractor.rs` の 3 つの正規表現を関数内ローカル生成から module-level `LazyLock<Regex>` に移動(初回 1 回コンパイル、train 時の性能改善も兼ねる)。capture の `unwrap()` は正規表現のグループ構造から成功が保証される不変条件のため据え置き | ✅ |
-| 3c-5 | `assets.rs` の環境変数 `unwrap()` 2 箇所の修正 | `CARGO_PKG_VERSION` / `OUT_DIR` を `ok_or_else(...)?` 化(build script では Cargo が必ず設定するが防御的に) | ✅ |
-| 3c-6 | `lindera-crf` の `trainer.rs`(28 箇所)/ `forward_backward.rs`(9 箇所)の unwrap 監査 | 見送り。train 専用ホットパスで、数値変換の `unwrap()` は不変条件が明確。`expect()` 置換は挙動不変かつ価値が小さく、37 箇所の変更はレビューコストに見合わない | 見送り |
-
-> 3c-2/3c-3/3c-5(辞書ビルド経路の素の `unwrap` 撲滅)を 1 PR、3c-4(regex LazyLock)を別 PR で実施。検証はゴールデンテスト 8 件 + dictionary ユニット/trainer テストで挙動不変を確認。
-
-### 3d. 巨大ファイルの分割 — **viterbi は見送り(性能回帰のため)。他は要再評価**
-
-| 対象 | 分割案 | 状態 |
-|---|---|---|
-| `lindera-dictionary/src/viterbi.rs`(1,147 行) | `viterbi/{lattice.rs, edge.rs, word_entry.rs}` | **見送り** |
-| `lindera/src/segmenter.rs`(1,882 行) | `segmenter/mod.rs` + 下位モジュール | 保留(viterbi 同様ホットパスのため要慎重評価) |
-| `lindera-dictionary/src/trainer/model.rs`(1,248 行) | シリアライズ部とモデル本体を分離 | 未着手(train 専用、ホットパスでない。比較的安全) |
-| `lindera/src/token_filter/japanese_number.rs`(1,257 行) | 数値正規化ステートマシンとテストの分離 | 未着手(トークンフィルタ、要ベンチ確認) |
-
-#### viterbi.rs を見送った理由(検証結果)
-
-本番相当(`[profile.bench] lto = true, codegen-units = 1`)で、ベースラインと分割版を直接比較した:
-
-- **完全分割**(Lattice まで別ファイル): 非 LTO ベンチで +5〜30% 回帰
-- **データ型のみ分離**(Lattice は module root に据え置き、データ型に `#[inline]` 付与): 本番相当 LTO でも
-  `tokenize` −5.0% / `tokenize-with-lattice` −5.3% / `details-long-text` −4.2% の**回帰**(単一ファイルの方が速い)
-
-viterbi は極めて最適化に敏感なホットパスで、**モジュール分割そのもの**がコンパイラのコード生成
-(関数レイアウト・インライン化・命令キャッシュ局所性)を変え、`#[inline]` を補っても 3% 基準を満たせない。
-ファイル可読性の利益が性能コストに見合わないため、**単一ファイルのまま維持**する。
-
-> 教訓: ホットパスの巨大ファイルは「機械的なモジュール分割」でも性能が変わりうる。3d を進める場合は
-> 必ず本番相当(LTO)ベンチで検証し、回帰するものは分割しない。`segmenter.rs` も同じ懸念があるため、
-> 残りの 3d 対象に着手する際はベンチを前提とする。
-
-- **完了条件**: ゴールデンテスト・全ユニットテスト・**本番相当(LTO)ベンチで 3% 以内**
+- **Risk**: minimal. Only 1-1 needs a check of the docs deploy flow.
+- **Done when**: `cargo build --workspace` / all tests / docs deploy are green.
 
 ---
 
-## フェーズ 4: バインディング共通レイヤーの導入 — **非破壊範囲で完了(4-1/4-2)。完全版は Phase 6**
+## Phase 2: De-duplicate the 6 dictionary crates (no behavior change) — **done (2-1 to 2-3)**
 
-**目的**: 5 バインディング × 2,000 行超の重複を共有クレートに集約し、API の不一致を解消する。
+**Goal**: consolidate the ~590 lines × 6 crates of structural duplication into a single declarative
+definition.
 
-### 設計方針
+### Design approach
 
-新クレート **`lindera-binding-core`**(FFI 非依存・pure Rust)を新設:
+Add the following to `lindera-dictionary` and reduce each dictionary crate to "parameter definitions
+only":
 
-- `TokenizerFacade` — builder 構築 / from_file / set_mode / filter 追加 / tokenize / tokenize_nbest の
-  共通フロー。各バインディングは「FFI 型 ⇔ serde_json::Value」の変換だけを実装
-- 共通 DTO — `TokenDto` / `SchemaDto` / `MetadataDto`(serde 対応)。各 FFI への変換は
-  `From`/`TryFrom` を各バインディング側に薄く実装
-- エラーは `BindingError`(`thiserror`)1 種に統一し、各バインディングは自言語の例外型への
-  マッピング関数 1 つだけ持つ
+1. **A `decl_dictionary!` macro (or shared function)** to generate `src/embedded.rs`. Drop the current
+   name variations (`ipadic_data!`, `EmbeddedIPADICLoader`, etc.) and generate the data include with a
+   generic `EmbeddedLoader` (holding the dictionary name as a field) plus a macro.
+2. **Shared `build.rs`** reduced to 3–5 lines that just call
+   `lindera_dictionary::assets::build_dictionary(FetchParams)`. Since `FetchParams` already has a shared
+   implementation, each crate's build.rs becomes only constant definitions.
 
-各バインディングの値変換ヘルパー(`util.rs` / `convert.rs`、合計約 414 行)は
-「FFI 値 → `serde_json::Value`」変換に役割を限定して残す(これは言語固有なので消せない)。
+### Work items
 
-> **環境メモ**: 当初「FFI ビルド検証が重い」と想定したが、5 バインディングすべてが
-> `cargo check` / `cargo test --lib`(FFI ツールチェーン不要の Rust 部分)を通ることを確認済み。
-> したがって共通化した純粋ロジックは plain `cargo test` で検証でき、段階的・低リスクに進められる。
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 2-1 | Implement the shared macro in `lindera-dictionary` | Added `#[macro_export] embedded_dictionary!($dir, $loader)` to `lindera-dictionary/src/macros.rs`. The `include_bytes!` path is injected via `$dir`, the loader struct name via `$loader`. Dropped the unreachable `#[cfg(not(feature))]` empty-array branch | ✅ |
+| 2-2 | Replace the 6 crates' `embedded.rs` with macro calls | 88–100 lines per crate → 1 macro line (+ doc comment) | ✅ |
+| 2-3 | Replace the 6 crates' `build.rs` with a shared function call | Added `build_embedded_dictionary(embed_enabled, FetchParams)` to `lindera-dictionary/src/assets.rs`. Each build.rs becomes a `FetchParams` definition + 1-line call (41 → 18 lines). jieba's `src_subdir: Some("dict-src")` is absorbed by `FetchParams`. Also removed the now-unneeded `serde_json` build-dependency | ✅ |
+| 2-4 | Tidy the feature branching in `lindera/src/dictionary.rs` | Consolidate the 12 conditional imports and the 3× repeated `#[cfg(any(...))]` into a dictionary-registry-style macro | Not started (separate PR) |
+| 2-5 | Preserve public name compatibility | Public names like `EmbeddedIPADICLoader` are generated with the same name by the macro, so it is **fully compatible** (no aliases needed). Call sites in `lindera/src/dictionary.rs` are unchanged | ✅ (compatibility preserved) |
 
-### 作業項目
-
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 4-1 | `lindera-binding-core` 新設 + Token 抽出 | クレート新設(workspace 登録)。FFI 非依存の `TokenView::from_token(lindera::token::Token)`(surface / byte 範囲 / position / word_id / is_unknown / details の抽出)を追加し、5 バインディング全ての `from_token` を `TokenView` 経由に置換。token 抽出ロジックが 1 箇所に集約 | ✅ |
-| 4-2 | Schema の重複ロジック抽出 | `CoreSchema` でクラス全体をラップすると `#[pyo3(get)] fields` 等の公開属性が getter 化され**言語 API 互換が崩れる**ため、Token と同じく「完全重複する純粋部分のみ」を抽出。`schema::default_dictionary_fields()`(13 フィールド)と `schema::validate_record()` を core に追加し、Python/PHP/Ruby/Node.js の `create_default`/`validate_record` を委譲。各クラスの構造・FFI 属性は不変。**発見**: バインディングの `middle_pos/small_pos/fine_pos` は `lindera::Schema::default()` の `pos_detail_1/2/3` と非互換(wasm のみ後者)で、これは既存の API 不整合として 4-5 に持ち越し(挙動を変えないため middle_pos 系を温存)。wasm は既に `lindera::Schema` をラップしており対象外 | ✅ |
-| 4-3 | Metadata 抽出 | `CoreMetadata`(デフォルト値・schema 配線)を core に | 未着手 |
-| 4-4 | Tokenizer/builder オーケストレーション抽出 | `CoreTokenizerBuilder` / `CoreTokenizer`(build フロー・tokenize・nbest)を core に | 未着手 |
-| 4-5 | Error 抽出 + API 不一致の解消 | `CoreError` + 各言語例外への 1 行コンバータ。`Token.details` 型の統一等(言語パッケージとして破壊的なものはメジャーアップに合わせる) | 未着手 |
-| 4-6 | 機能パリティ表 / 値変換トレイト | segmenter 等の有無を docs 化。値変換(`serde_json::Value` ⇔ FFI 型)は本質的に FFI 依存のためトレイト化に留める | 未着手 |
-
-各抽出は独立した PR。Token(4-1)→ Schema(4-2) を実施。
-
-### 4-3 以降の方針転換(重要)
-
-4-1/4-2 を通じて判明した構造的事実: 各バインディングのラッパー(`Token`/`Schema`/`Metadata`/`TokenizerBuilder`/`Tokenizer`)は **FFI クラス(`#[pyclass]` / `#[napi]` / magnus / wasm-bindgen)と密結合**しており、メソッドの大半は `inner.method()` への委譲か、公開属性(`#[pyo3(get)]` 等)である。**非破壊(patch/minor)で安全に抽出できる「純粋ロジック」は token の details 抽出・schema の default/validate のような "lindera にない加工" に限られ、それは 4-1/4-2 で取り切った。**
-
-- **4-3 Metadata**: getter/setter が大半(FFI 固有)。純粋重複はデフォルト値定数のみで行数削減効果が乏しく、PR 1 本(毎回のコンフリクト解消含む)に見合わない → **スキップ**(`middle_pos` 不整合も含め Phase 6 で整理)。
-- **4-4 Tokenizer / 4-5 Error / 値変換**: メソッドは FFI 公開 + `inner` 委譲、値変換は FFI 依存。これらを真に共通化する「完全ファサード化」(`CoreTokenizerBuilder`/`CoreTokenizer`/`CoreSchema` で各バインディングをラップし、各クラスを FFI 変換層に純化する設計)は、公開属性の getter 化や `Token.details` 型統一など**言語 API の破壊的変更**を伴う。
-
-→ **最も美しい完全ファサード化は破壊的変更であり、semver に従い Phase 6 (v4.0.0) に集約する**。非破壊フェーズでの Phase 4 は 4-1/4-2 で区切る。
-
-- **完了条件(非破壊フェーズ)**: token/schema の純粋重複が `lindera-binding-core` に集約済み(達成)
-- **実績**: `lindera-binding-core` 新設、`TokenView`(token 抽出)・`schema::{default_dictionary_fields, validate_record}` を 5/4 バインディングで共有
-- **Phase 6 で実施**: 完全ファサード化(CoreTokenizer 等)+ API 不一致解消(`Token.details` 型、`middle_pos`/`pos_detail`)。削減見込み 約 2,000 行 + コア API 追従が 5 → 1
+- **Risk**: medium. Watch for feature-flag combinatorial explosion. CI must pass each `embed-*` feature
+  individually plus the `embed-cjk`-family build matrix.
+- **Done when**: builds and golden tests are green for all feature combinations; each dictionary crate's
+  implementation is ≤ 20 lines.
+- **Result**: embedded.rs + build.rs across 12 files went 786 → 160 lines. Net ~500-line reduction even
+  after subtracting the shared implementation (macros.rs ~100 lines + assets helper ~29 lines). The 8
+  golden tests + 111 unit tests unchanged, fmt/clippy clean. Local verification ran on
+  ipadic/ko-dic/jieba (using the cache); the remaining 3 dictionaries (unidic/cc-cedict/neologd) use the
+  same macro call and are fully verified in CI.
+- **Scale**: medium (2-1 to 2-3 in one PR; 2-4 is a separate PR as facade tidying).
 
 ---
 
-## フェーズ 5: ビルド基盤・CI・CLI の整理(挙動変更なし) — **実施済み(5-1/5-2/5-3/5-5)。5-4 は見送り**
+## Phase 3: Improve core-crate internal quality (no behavior change)
 
-**目的**: Makefile / GitHub Actions / CLI の定型反復を構造化する。
+**Goal**: resolve duplication, oversized files, and `unwrap` in `lindera` / `lindera-dictionary` /
+`lindera-crf`.
+**Prerequisite**: the Phase 0 golden tests and bench baselines are mandatory.
 
-| # | 作業 | 詳細 | 状態 |
-|---|---|---|---|
-| 5-1 | Makefile のループ化 | cargo 系 11 クレート(辞書 6 + crf/dictionary/lindera/cli + 新 `lindera-binding-core`)の clean/format/lint/test/build をパターンルール(`clean-%` 等)+ per-crate feature 変数に集約。lint/test/build で feature が異なる例外(`lindera` の build、`cli` の test)は `TEST_FEATURES_*` / `BUILD_FEATURES_*` で上書き。FFI 系 5 クレートは bespoke ツール(maturin/napi/rake/composer/wasm-pack)のため明示ターゲットで温存(パターンを上書き)。集約 `clean/format/lint/test/build` は `foreach`。**458 行 → 300 行**、全ターゲット名・コマンドは不変(`make -n` で全パターン検証)、`lindera-binding-core` を Makefile と publish に追加 | ✅ |
-| 5-2 | CI: composite action 抽出 | `.github/actions/setup-rust`(checkout + toolchain、optional な toolchain/target/components/cache)を新設し、`regression.yml`(16 箇所)+ `release.yml`(23 箇所)の checkout+toolchain を集約。**ローカル composite action は checkout 後でないと解決できない**ため、checkout は各ジョブに残し composite は toolchain install を担当(dtolnay バージョンとデフォルトを 1 箇所に集約) | ✅ |
-| 5-3 | CI: テストジョブの共通化 | 二重定義された cargo test 系 10 ジョブ(crf/dictionary/6 辞書/lindera/cli)を `workflow_call` の再利用可能ワークフロー `test-crate.yml`(crate/features/target/runs-on/cache 入力、matrix は呼び出し側)に集約し、`regression.yml`・`release.yml` 双方から `uses:` で呼ぶ。bindings は `make` 経由のため個別維持。reusable は `regression.yml` 経由で CI 実証済み | ✅ |
-| 5-4 | CI: バインディングリリースジョブの matrix 統一 | Ruby/PHP/Node.js のプラットフォームマトリクス重複と version 検出の output 化。**見送り**: `release.yml` 専用で PR では実行されず CI 検証不可、失敗時にリリースが壊れるため、削減価値に対しリスクが見合わない | 見送り |
-| 5-5 | CLI リファクタ | **①②③実施済み**: ① `tokenize()` の出力フォーマット match 二重化を `write_output(format, tokens)` に統合。② `LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))` 18 箇所を `io_err` ヘルパーに集約(From 経由の `with_error(err)` は挙動維持のため温存)。③ main.rs を `commands/{list,tokenize,build,train,export}.rs` に分割し、共通 `io_err` は `commands/mod.rs` に。各 Args 構造体・サブコマンド関数を各モジュールへ移動。**main.rs 672→51 行**(全体は main.rs 51 + commands/ 約 640 行)。④ Phase 0 の CLI スモークテスト(8 件)で全担保。CLI はホットパスでないため分割の性能影響なし | ✅ |
+### 3a. Unify the tag filters — **done**
 
-- **リスク**: 中(CI は壊すと気づきにくい)。5-3/5-4 はまず regression.yml で検証し、
-  リリースフローは dry-run またはタグ打ち前のテストリリースで確認。**5-1 は CI が Makefile に依存せず cargo 直呼びのため CI 影響なし**(開発者用ターゲットのみ)
-- **完了条件**: CI 定義の合計行数が半減(約 2,000 行 → 1,000 行程度)、Makefile が 200 行以下、
-  regression / release 両ワークフローがグリーン
-- **規模感**: 中(3〜4 PR)
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 3a-1 | New generic `tags` internal module | Added `parse_tags` (parses the config `tags` array) / `normalize_japanese_tags` (4-element normalization) / `TagPolicy { Keep, Remove }` / `apply_tag_filter` (the outer drain loop + decision) to `lindera/src/token_filter/tags.rs`. Because the tag-extraction logic differs subtly between filters (Japanese: join up to 4 elements, `keep` uses `min(4)` / `stop` uses `len>=4?4:1`; Korean: first element only), extraction is injected from each wrapper as a closure so the **behavior does not change by a single byte** | ✅ |
+| 3a-2 | Reduce the 4 filters to thin wrappers | The public types, config formats, and behavior of `JapaneseKeepTagsTokenFilter`, etc. are fully preserved. Each `from_config`/`new`/`apply` delegates to the shared helper (core logic 4×~114 → 4×~35 lines) | ✅ |
+
+The config-JSON compatibility and tokenization behavior are guaranteed by the 8 golden tests + the 12
+existing tag-filter unit tests (all pass). The tests that make up most of each file are all kept as
+evidence of behavior.
+
+### 3b. Unify the loader layer — **done (scope narrowed)**
+
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 3b-1 | Consolidate verbatim loader duplication | **On re-investigation, the loader-layer duplication was smaller than the initial estimate (200→80 lines).** Each loader's `load` body differs in file name, type, and read method; the only **verbatim full duplication** is the 5-line "read_file → `AlignedVec<16>` → extend → `T::load`" block in `character_definition` and `unknown_dictionary`. Consolidated this into a `util::read_aligned_file` helper (the 2 files become 3 lines each). The `load`/`load_mmap` doubling in `connection_cost_matrix`/`prefix_dictionary`/`metadata` is the essential "with/without the `mmap` feature" branch, and since the return types of `read_file` (`Vec<u8>`) and `mmap_file` (`Mmap`) differ, it was preserved rather than forced together (avoiding over-macroization) | ✅ |
+| 3b-2 | Disposition of the `DictionaryLoader` trait (`loader.rs`) | **On re-check it is not "unused".** Phase 2's `embedded_dictionary!` implements it on each `EmbeddedXxxLoader`, `FSDictionaryLoader` also implements it, and `lindera/src/dictionary.rs` uses it via `Box<dyn DictionaryLoader>`. The design where a default method returns an error is a reasonable shape for "loaders that implement only one of `load`/`load_from_path`". Judged: no change needed | ✅ (kept as is) |
+
+- **Verification**: loaded a prebuilt FS dictionary via the CLI with `--dict <path>` (exercising
+  `read_aligned_file`) and confirmed identical output to embedded. The 52 dictionary unit tests + 8
+  golden tests unchanged, fmt/clippy clean.
+
+### 3c. Normalize error handling — **done (3c-2 to 3c-5); 3c-1/3c-6 deferred**
+
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 3c-1 | Document the error strategy | State in CONTRIBUTING that "public APIs use `LinderaResult`; internal context-adding uses `anyhow`" | Deferred (documentation work, no code change — to be done separately) |
+| 3c-2 | Convert the 5 `.unwrap()` in `builder.rs` to `?` | Replace `*BuilderOptions::builder()` (derive_builder-generated, all-default fields so it never actually fails) with `map_err(LinderaErrorKind::Build)?` | ✅ |
+| 3c-3 | Turn the CSV-parse `unwrap()` in `prefix_dictionary.rs` into errors | Replace the 3 real-code `unwrap()` for `word_cost/left_id/right_id` in `build_word_entry_map` with a `let-else` binding merged with the preceding `is_none()` check. Behavior fully identical (the rest are `unwrap` inside `#[cfg(test)]`, allowed) | ✅ |
+| 3c-4 | Convert `Regex::new().unwrap()` to `LazyLock` (std) | Moved the 3 regexes in `feature_extractor.rs` from in-function local creation to module-level `LazyLock<Regex>` (compiled once on first use, also improving train-time performance). The `unwrap()` on captures is left as-is since success is guaranteed by the regex group structure as an invariant | ✅ |
+| 3c-5 | Fix the 2 env-var `unwrap()` in `assets.rs` | Changed `CARGO_PKG_VERSION` / `OUT_DIR` to `ok_or_else(...)?` (Cargo always sets them in a build script, but defensively) | ✅ |
+| 3c-6 | Audit the unwraps in `lindera-crf`'s `trainer.rs` (28 sites) / `forward_backward.rs` (9 sites) | Deferred. On the train-only hot path, the `unwrap()` on numeric conversions have clear invariants. Replacing them with `expect()` is behavior-preserving but low value, and 37 changes are not worth the review cost | Deferred |
+
+> 3c-2/3c-3/3c-5 (eliminating bare `unwrap` on the dictionary-build path) in one PR; 3c-4 (regex
+> LazyLock) in a separate PR. Verification confirmed unchanged behavior via the 8 golden tests +
+> dictionary unit/trainer tests.
+
+### 3d. Split oversized files — **viterbi deferred (perf regression); others need re-evaluation**
+
+| Target | Split proposal | Status |
+| --- | --- | --- |
+| `lindera-dictionary/src/viterbi.rs` (1,147 lines) | `viterbi/{lattice.rs, edge.rs, word_entry.rs}` | **Deferred** |
+| `lindera/src/segmenter.rs` (1,882 lines) | `segmenter/mod.rs` + submodules | On hold (a hot path like viterbi, needs careful evaluation) |
+| `lindera-dictionary/src/trainer/model.rs` (1,248 lines) | Separate the serialization part from the model body | Not started (train-only, not a hot path; relatively safe) |
+| `lindera/src/token_filter/japanese_number.rs` (1,257 lines) | Separate the numeric-normalization state machine from the tests | Not started (token filter, needs a bench check) |
+
+#### Why viterbi.rs was deferred (verification results)
+
+On a production-equivalent build (`[profile.bench] lto = true, codegen-units = 1`), the baseline and the
+split version were compared directly:
+
+- **Full split** (Lattice in a separate file too): +5–30% regression on the non-LTO bench.
+- **Data types only** (Lattice left at the module root, `#[inline]` added to data types): even on
+  production-equivalent LTO, a **regression** of `tokenize` −5.0% / `tokenize-with-lattice` −5.3% /
+  `details-long-text` −4.2% (the single file is faster).
+
+viterbi is an extremely optimization-sensitive hot path: **module splitting itself** changes the
+compiler's code generation (function layout, inlining, instruction-cache locality), and even adding
+`#[inline]` cannot meet the 3% bar. The readability benefit does not justify the performance cost, so
+**keep it a single file**.
+
+> Lesson: even a "mechanical module split" of an oversized hot-path file can change performance. When
+> pursuing 3d, always verify on a production-equivalent (LTO) bench, and do not split anything that
+> regresses. `segmenter.rs` has the same concern, so make a bench a precondition before tackling the
+> remaining 3d targets.
+
+- **Done when**: golden tests, all unit tests, and the **production-equivalent (LTO) bench within 3%**.
 
 ---
 
-## フェーズ 6: 公開 API 再設計と破壊的変更の一括実施(v4.0.0)
+## Phase 4: Introduce a shared binding layer — **done within the non-breaking scope (4-1/4-2); full version → Phase 6**
 
-**目的**: フェーズ 1〜5 で `#[deprecated]` に留めた項目と、semver 上先送りした破壊的変更を
-メジャーバージョンで一括清算する。
+**Goal**: consolidate the 2,000+ lines of duplication across the 5 bindings into a shared crate and
+resolve the API inconsistencies.
 
-| # | 作業 | 詳細 |
-|---|---|---|
-| 6-1 | viterbi 内部のカプセル化 | `WordId` / `WordEntry` / `Edge` / `PathEntry` / `Lattice` の `pub` フィールドをアクセサメソッド化。`WordEntry` のシリアライズ詳細(`SERIALIZED_LEN` 等)を非公開に |
-| 6-2 | deprecated 項目の削除 | フェーズ 2 の `EmbeddedXxxLoader` エイリアス、`LINDERA_CACHE` 環境変数シム(`assets.rs:238`)を削除 |
-| 6-3 | 旧形式互換コードの削除判断 | ユーザー辞書の「5-bit variant-count encoding」旧形式互換(`viterbi.rs:409,953`)について、対応辞書バイナリの世代を調査の上、削除または明示的なマイグレーションツールに移行 |
-| 6-4 | `pub` 監査 | `cargo public-api` 等で公開 API を棚卸しし、実装詳細の露出(builder の `*Options` 命名不統一含む)を整理 |
-| 6-5 | ビルダー API の `Result` 化 | フェーズ 3c で内部対応した `*BuilderOptions::builder().unwrap()` パターンの公開シグネチャを是正 |
-| 6-6 | マイグレーションガイド作成 | `docs/` に v3 → v4 移行ガイド(日英)を追加 |
+### Design approach (shared binding layer)
 
-- **リスク**: 高(エコシステム影響)。事前に v4.0.0-alpha を切り、主要ユーザー
-  (lindera-tantivy 等の連携プロジェクト)で検証期間を設ける
-- **完了条件**: `cargo public-api` の差分がマイグレーションガイドと一致。
-  全バインディングが v4 コアでグリーン
-- **規模感**: 中〜大(4〜6 PR + alpha/beta リリースサイクル)
+Create a new crate **`lindera-binding-core`** (FFI-independent, pure Rust):
+
+- `TokenizerFacade` — the shared flow for builder construction / from_file / set_mode / filter
+  addition / tokenize / tokenize_nbest. Each binding implements only the "FFI type ⇔ serde_json::Value"
+  conversion.
+- Shared DTOs — `TokenDto` / `SchemaDto` / `MetadataDto` (serde-enabled). Conversion to each FFI is a
+  thin `From`/`TryFrom` implemented on the binding side.
+- Errors unified into a single `BindingError` (`thiserror`); each binding holds only one mapping
+  function to its own exception type.
+
+Each binding's value-conversion helpers (`util.rs` / `convert.rs`, ~414 lines total) remain, with their
+role limited to "FFI value → `serde_json::Value`" conversion (this is language-specific and cannot be
+removed).
+
+> **Environment note**: although we initially assumed "FFI build verification is heavy", we confirmed
+> that all 5 bindings pass `cargo check` / `cargo test --lib` (the Rust part that needs no FFI
+> toolchain). Therefore the consolidated pure logic can be verified with plain `cargo test`, allowing
+> incremental, low-risk progress.
+
+### Work items (binding extraction)
+
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 4-1 | Create `lindera-binding-core` + token extraction | New crate (registered in the workspace). Added the FFI-independent `TokenView::from_token(lindera::token::Token)` (extracts surface / byte range / position / word_id / is_unknown / details) and replaced `from_token` in all 5 bindings to go through `TokenView`. Token-extraction logic is consolidated in one place | ✅ |
+| 4-2 | Extract the duplicated schema logic | Wrapping the whole class in a `CoreSchema` would turn public attributes like `#[pyo3(get)] fields` into getters and **break language API compatibility**, so — as with Token — only the "fully duplicated pure parts" are extracted. Added `schema::default_dictionary_fields()` (13 fields) and `schema::validate_record()` to core, and delegated `create_default`/`validate_record` in Python/PHP/Ruby/Node.js. Each class's structure and FFI attributes are unchanged. **Finding**: the bindings' `middle_pos/small_pos/fine_pos` is incompatible with `lindera::Schema::default()`'s `pos_detail_1/2/3` (only wasm uses the latter); carried over to 4-5 as an existing API inconsistency (kept the middle_pos family to avoid changing behavior). wasm already wraps `lindera::Schema`, so it is out of scope | ✅ |
+| 4-3 | Extract Metadata | `CoreMetadata` (default values, schema wiring) into core | Not started |
+| 4-4 | Extract Tokenizer/builder orchestration | `CoreTokenizerBuilder` / `CoreTokenizer` (build flow, tokenize, nbest) into core | Not started |
+| 4-5 | Extract Error + resolve API inconsistencies | `CoreError` + a 1-line converter to each language exception. Unify the `Token.details` type, etc. (anything breaking as a language package aligns with the major bump) | Not started |
+| 4-6 | Feature-parity table / value-conversion trait | Document the presence of segmenter, etc. Value conversion (`serde_json::Value` ⇔ FFI type) is inherently FFI-dependent, so limit it to a trait | Not started |
+
+Each extraction is an independent PR. Token (4-1) → Schema (4-2) were done.
+
+### Change of direction from 4-3 onward (important)
+
+A structural fact revealed through 4-1/4-2: each binding's wrappers
+(`Token`/`Schema`/`Metadata`/`TokenizerBuilder`/`Tokenizer`) are **tightly coupled to the FFI class**
+(`#[pyclass]` / `#[napi]` / magnus / wasm-bindgen), and most methods are either delegation to
+`inner.method()` or public attributes (`#[pyo3(get)]`, etc.). **The "pure logic" that can be safely
+extracted non-breakingly (patch/minor) is limited to "processing not present in lindera" such as token
+details extraction and schema default/validate — and that was fully captured in 4-1/4-2.**
+
+- **4-3 Metadata**: mostly getters/setters (FFI-specific). The pure duplication is only the
+  default-value constants, with little line-reduction benefit — not worth a PR (including resolving the
+  recurring conflicts each time) → **skip** (organize in Phase 6, including the `middle_pos`
+  inconsistency).
+- **4-4 Tokenizer / 4-5 Error / value conversion**: the methods are FFI-public + `inner` delegation, and
+  value conversion is FFI-dependent. Truly consolidating these — the "full facade" design (wrapping each
+  binding with `CoreTokenizerBuilder`/`CoreTokenizer`/`CoreSchema` and purifying each class into an FFI
+  translation layer) — entails **breaking language-API changes** such as turning public attributes into
+  getters and unifying the `Token.details` type.
+
+→ **The most beautiful full facade is a breaking change, and per semver is consolidated into Phase 6
+(v4.0.0).** The non-breaking Phase 4 ends at 4-1/4-2.
+
+- **Done when (non-breaking phase)**: the token/schema pure duplication is consolidated into
+  `lindera-binding-core` (achieved).
+- **Result**: created `lindera-binding-core`; `TokenView` (token extraction) and
+  `schema::{default_dictionary_fields, validate_record}` are shared across 5/4 bindings.
+- **To do in Phase 6**: the full facade (`CoreTokenizer`, etc.) + resolving API inconsistencies
+  (`Token.details` type, `middle_pos`/`pos_detail`). Expected ~2,000-line reduction + core-API
+  follow-up going 5 → 1.
 
 ---
 
-## フェーズ間の依存関係と推奨順序
+## Phase 5: Tidy build infra / CI / CLI (no behavior change) — **done (5-1/5-2/5-3/5-5); 5-4 deferred**
 
+**Goal**: structure the boilerplate repetition in the Makefile / GitHub Actions / CLI.
+
+| # | Task | Detail | Status |
+| --- | --- | --- | --- |
+| 5-1 | Loop-ify the Makefile | Consolidated clean/format/lint/test/build for the 11 cargo crates (6 dictionaries + crf/dictionary/lindera/cli + the new `lindera-binding-core`) into pattern rules (`clean-%`, etc.) + per-crate feature variables. Exceptions where lint/test/build use different features (`lindera`'s build, `cli`'s test) are overridden via `TEST_FEATURES_*` / `BUILD_FEATURES_*`. The 5 FFI crates use bespoke tooling (maturin/napi/rake/composer/wasm-pack) and are preserved as explicit targets (overriding the pattern). The aggregate `clean/format/lint/test/build` uses `foreach`. **458 → 300 lines**, all target names/commands unchanged (all patterns verified with `make -n`), and `lindera-binding-core` added to the Makefile and publish | ✅ |
+| 5-2 | CI: extract a composite action | Created `.github/actions/setup-rust` (checkout + toolchain, with optional toolchain/target/components/cache) and consolidated the checkout+toolchain in `regression.yml` (16 sites) + `release.yml` (23 sites). Since **a local composite action only resolves after checkout**, checkout stays in each job and the composite handles toolchain install (centralizing the dtolnay version and defaults) | ✅ |
+| 5-3 | CI: unify the test jobs | Consolidated the 10 duplicated cargo-test jobs (crf/dictionary/6 dictionaries/lindera/cli) into a `workflow_call` reusable workflow `test-crate.yml` (inputs: crate/features/target/runs-on/cache; matrix on the caller side), called from both `regression.yml` and `release.yml` via `uses:`. Bindings go through `make` and are kept separately. The reusable workflow is CI-proven via `regression.yml` | ✅ |
+| 5-4 | CI: unify the binding release-job matrix | De-duplicate the Ruby/PHP/Node.js platform matrix and output-ify version detection. **Deferred**: `release.yml`-only, not run on PRs and thus not CI-verifiable; failures break a release, so the risk is not worth the reduction value | Deferred |
+| 5-5 | CLI refactor | **①②③ done**: ① consolidated the doubled output-format match in `tokenize()` into `write_output(format, tokens)`. ② consolidated the 18 `LinderaErrorKind::Io.with_error(anyhow::anyhow!(err))` sites into an `io_err` helper (the `with_error(err)` via `From` is kept to preserve behavior). ③ split main.rs into `commands/{list,tokenize,build,train,export}.rs`, with the shared `io_err` in `commands/mod.rs`. Moved each Args struct and subcommand function into its module. **main.rs 672 → 51 lines** (overall: main.rs 51 + commands/ ~640 lines). ④ all guaranteed by the Phase 0 CLI smoke tests (8). The CLI is not a hot path, so the split has no performance impact | ✅ |
+
+- **Risk**: medium (CI breakage is hard to notice). Verify 5-3/5-4 on regression.yml first, and confirm
+  the release flow with a dry-run or a test release before tagging. **5-1 has no CI impact** since CI
+  does not depend on the Makefile and calls cargo directly (developer-only targets).
+- **Done when**: the total CI definition line count is halved (~2,028 → ~1,000), the Makefile is ≤ 200
+  lines, and both the regression / release workflows are green.
+- **Scale**: medium (3–4 PRs).
+
+---
+
+## Phase 6: Public-API redesign and a single round of breaking changes (v4.0.0)
+
+**Goal**: settle, in one major version, the items left at `#[deprecated]` in Phases 1–5 and the breaking
+changes deferred for semver reasons.
+
+| # | Task | Detail |
+| --- | --- | --- |
+| 6-1 | Encapsulate viterbi internals | Convert the `pub` fields of `WordId` / `WordEntry` / `Edge` / `PathEntry` / `Lattice` to accessor methods. Make `WordEntry`'s serialization details (`SERIALIZED_LEN`, etc.) private |
+| 6-2 | Remove deprecated items | Remove the Phase 2 `EmbeddedXxxLoader` aliases and the `LINDERA_CACHE` env-var shim (`assets.rs:238`) |
+| 6-3 | Decide on legacy-format compatibility code | For the user dictionary's "5-bit variant-count encoding" legacy compatibility (`viterbi.rs:409,953`), investigate the generation of supported dictionary binaries and either remove it or migrate to an explicit migration tool |
+| 6-4 | `pub` audit | Inventory the public API with `cargo public-api`, etc., and clean up exposed implementation details (including the inconsistent `*Options` naming in builders) |
+| 6-5 | Make the builder API return `Result` | Fix the public signatures of the `*BuilderOptions::builder().unwrap()` pattern handled internally in Phase 3c |
+| 6-6 | Write a migration guide | Add a v3 → v4 migration guide (English and Japanese) to `docs/` |
+
+- **Risk**: high (ecosystem impact). Cut a v4.0.0-alpha beforehand and set a validation period with key
+  users (downstream projects such as lindera-tantivy).
+- **Done when**: the `cargo public-api` diff matches the migration guide; all bindings are green on the
+  v4 core.
+- **Scale**: medium–large (4–6 PRs + an alpha/beta release cycle).
+
+---
+
+## Inter-phase dependencies and recommended order
+
+```text
+Phase 0 (safety net) ──┬─→ Phase 1 (immediate cleanup)
+                       ├─→ Phase 2 (dictionary consolidation) ──┐
+                       ├─→ Phase 3 (core quality) ──────────────┤
+                       ├─→ Phase 4 (binding consolidation) ─────┼─→ Phase 6 (v4.0.0)
+                       └─→ Phase 5 (build infra / CI) ──────────┘
 ```
-フェーズ0 (安全網) ──┬─→ フェーズ1 (即時クリーンアップ)
-                      ├─→ フェーズ2 (辞書クレート統合) ──┐
-                      ├─→ フェーズ3 (コア品質) ──────────┤
-                      ├─→ フェーズ4 (バインディング統合) ┼─→ フェーズ6 (v4.0.0)
-                      └─→ フェーズ5 (ビルド基盤/CI)──────┘
-```
 
-- フェーズ 1・2・3・5 は**並行可能**(コンフリクト面: フェーズ 2 と 3 は `lindera-dictionary` を共有するため、2 → 3b の順を推奨)
-- フェーズ 4 はフェーズ 3 のコア API 安定後が望ましい(追従コスト削減のため)
-- フェーズ 6 のみ全フェーズ完了後
+- Phases 1, 2, 3, and 5 **can run in parallel** (conflict surface: Phases 2 and 3 share
+  `lindera-dictionary`, so the 2 → 3b order is recommended).
+- Phase 4 is best done after Phase 3's core API stabilizes (to reduce follow-up cost).
+- Phase 6 only after all phases are complete.
 
-## 効果の見積もり(概算)
+## Effect estimate (approximate)
 
-| 項目 | Before | After |
-|---|---|---|
-| 辞書クレートの実装行数 | 約 590 行(6 クレート重複) | 約 100 行(定義のみ) |
-| バインディングの重複行数 | 約 2,000 行超 | 各 150 行以下の FFI 変換層 |
-| タグフィルタ | 約 800 行 | 約 200 行 |
-| Makefile | 458 行 | 約 150 行 |
-| CI 定義 | 約 2,028 行 | 約 1,000 行 |
-| リポジトリサイズ | docs 生成物 21MB 込み | 21MB 削減 |
-| 非テストコードの素の unwrap | 30+ 箇所 | 0(理由付き expect か `?` のみ) |
-| 新辞書追加コスト | クレート 1 式コピペ | パラメータ定義 1 ファイル |
+| Item | Before | After |
+| --- | --- | --- |
+| Dictionary-crate implementation lines | ~590 (6-crate duplication) | ~100 (definitions only) |
+| Binding duplication lines | 2,000+ | ≤ 150 each, an FFI translation layer |
+| Tag filters | ~800 lines | ~200 lines |
+| Makefile | 458 lines | ~150 lines |
+| CI definitions | ~2,028 lines | ~1,000 lines |
+| Repository size | including 21 MB of docs artifacts | 21 MB smaller |
+| Bare unwrap in non-test code | 30+ sites | 0 (only justified expect or `?`) |
+| Cost to add a new dictionary | copy a whole crate set | 1 parameter-definition file |
 
-## 各 PR 共通の完了チェックリスト
+## Common completion checklist for every PR
 
-- [ ] `cargo fmt --check` / `cargo clippy --workspace --all-targets`(Makefile の lint 相当)がグリーン
-- [ ] 全 feature 組み合わせ(少なくとも `embed-*` 単体 6 通り + `embed-cjk` + `train` + `mmap`)でビルド成功
-- [ ] フェーズ 0 のゴールデンテストがグリーン(= トークナイズ結果不変)
-- [ ] ベンチマーク劣化 3% 以内(viterbi / segmenter / tokenizer に触れた場合)
-- [ ] 公開 API の意図しない変更がない(フェーズ 6 以外)
+- [ ] `cargo fmt --check` / `cargo clippy --workspace --all-targets` (equivalent to the Makefile lint) is green
+- [ ] Builds succeed for all feature combinations (at least the 6 individual `embed-*` + `embed-cjk` + `train` + `mmap`)
+- [ ] The Phase 0 golden tests are green (i.e. tokenization results unchanged)
+- [ ] Benchmark regression within 3% (when touching viterbi / segmenter / tokenizer)
+- [ ] No unintended public-API changes (outside Phase 6)
