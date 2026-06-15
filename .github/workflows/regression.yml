@@ -16,10 +16,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           components: rustfmt
 
       - name: Run format
@@ -162,10 +161,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-crf
@@ -188,10 +185,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: ${{ matrix.platform.target }}
 
       - name: Run test
@@ -208,10 +204,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-ipadic --features embed-ipadic
@@ -227,10 +221,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-ipadic-neologd --features embed-ipadic-neologd
@@ -246,10 +238,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-unidic --features embed-unidic
@@ -265,10 +255,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-ko-dic --features embed-ko-dic
@@ -284,10 +272,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-cc-cedict --features embed-cc-cedict
@@ -303,10 +289,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-jieba --features embed-jieba
@@ -338,8 +322,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
           toolchain: ${{ matrix.toolchain }}
           target: ${{ matrix.platform.target }}
@@ -358,10 +342,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Run test
         run: cargo test -p lindera-cli --features train,embed-ipadic
@@ -377,10 +359,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -403,10 +383,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -428,10 +406,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -456,10 +432,8 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: stable
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -482,10 +456,9 @@ jobs:
       - name: Run checkout
         uses: actions/checkout@v6
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@v1
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          toolchain: stable
           target: wasm32-unknown-unknown
 
       - name: Install wasm-pack
