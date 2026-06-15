@@ -156,16 +156,9 @@ jobs:
     name: Test lindera-crf
     needs: [format, detect-changes]
     if: github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-crf == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-crf
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-crf
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
@@ -180,18 +173,12 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
-    runs-on: ${{ matrix.platform.runner }}
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          target: ${{ matrix.platform.target }}
-
-      - name: Run test
-        run: cargo test -p lindera-dictionary --features train --target "${{ matrix.platform.target }}"
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-dictionary
+      features: "--features train"
+      target: ${{ matrix.platform.target }}
+      runs-on: ${{ matrix.platform.runner }}
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -199,16 +186,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ipadic == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-ipadic --features embed-ipadic
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-ipadic
+      features: "--features embed-ipadic"
 
   test-lindera-ipadic-neologd:
     name: Test lindera-ipadic-neologd
@@ -216,16 +197,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ipadic-neologd == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-ipadic-neologd --features embed-ipadic-neologd
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-ipadic-neologd
+      features: "--features embed-ipadic-neologd"
 
   test-lindera-unidic:
     name: Test lindera-unidic
@@ -233,16 +208,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-unidic == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-unidic --features embed-unidic
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-unidic
+      features: "--features embed-unidic"
 
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
@@ -250,16 +219,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ko-dic == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-ko-dic --features embed-ko-dic
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-ko-dic
+      features: "--features embed-ko-dic"
 
   test-lindera-cc-cedict:
     name: Test lindera-cc-cedict
@@ -267,16 +230,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cc-cedict == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-cc-cedict --features embed-cc-cedict
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-cc-cedict
+      features: "--features embed-cc-cedict"
 
   test-lindera-jieba:
     name: Test lindera-jieba
@@ -284,16 +241,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-jieba == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-jieba --features embed-jieba
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-jieba
+      features: "--features embed-jieba"
 
   test-lindera:
     name: Test lindera (${{ matrix.platform.target }})
@@ -317,19 +268,12 @@ jobs:
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
         toolchain: [stable]
-    runs-on: ${{ matrix.platform.runner }}
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          target: ${{ matrix.platform.target }}
-
-      - name: Run test
-        run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--features embed-ipadic,embed-ko-dic,train"
+      target: ${{ matrix.platform.target }}
+      runs-on: ${{ matrix.platform.runner }}
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -337,16 +281,10 @@ jobs:
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cli == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run checkout
-        uses: actions/checkout@v6
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-
-      - name: Run test
-        run: cargo test -p lindera-cli --features train,embed-ipadic
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-cli
+      features: "--features train,embed-ipadic"
 
   test-lindera-python:
     name: Test lindera-python

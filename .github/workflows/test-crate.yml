@@ -1,0 +1,43 @@
+name: Test crate
+
+# Reusable workflow that runs `cargo test` for a single workspace crate.
+# Shared by regression.yml and release.yml so the per-crate test steps are
+# defined once. Callers control needs/if and (for cross-platform crates) the
+# matrix, passing the target/runner through inputs.
+on:
+  workflow_call:
+    inputs:
+      crate:
+        description: "Crate to test (cargo -p name)."
+        required: true
+        type: string
+      features:
+        description: 'Full feature flag string, e.g. "--features train" (empty for none).'
+        required: false
+        type: string
+        default: ""
+      target:
+        description: "Target triple to test against (empty for the host target)."
+        required: false
+        type: string
+        default: ""
+      runs-on:
+        description: "Runner to execute on."
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  test:
+    runs-on: ${{ inputs.runs-on }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ inputs.target }}
+
+      - name: Run test
+        run: cargo test -p ${{ inputs.crate }} ${{ inputs.features }}${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }}
