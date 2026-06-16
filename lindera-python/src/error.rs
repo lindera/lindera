@@ -4,8 +4,10 @@
 
 use std::fmt;
 
-use pyo3::exceptions::PyException;
+use pyo3::exceptions::{PyException, PyIOError, PyValueError};
 use pyo3::prelude::*;
+
+use lindera_binding_core::{CoreError, ErrorKind};
 
 /// Error type for Lindera operations.
 ///
@@ -49,6 +51,28 @@ impl std::error::Error for PyLinderaError {}
 impl From<PyLinderaError> for PyErr {
     fn from(err: PyLinderaError) -> PyErr {
         PyException::new_err(err.message)
+    }
+}
+
+/// Maps a [`CoreError`] onto the matching Python exception.
+///
+/// I/O failures become `IOError`; everything else becomes `ValueError`,
+/// preserving the exception types the bindings raised before the migration.
+/// (A `From<CoreError> for PyErr` impl is not possible here because of the
+/// orphan rule, so binding methods use this with `map_err`.)
+///
+/// # 引数
+///
+/// * `err` - The core error to convert.
+///
+/// # 戻り値
+///
+/// The equivalent Python exception.
+pub fn to_py_error(err: CoreError) -> PyErr {
+    let message = err.message().to_string();
+    match err.kind() {
+        ErrorKind::Io => PyIOError::new_err(message),
+        _ => PyValueError::new_err(message),
     }
 }
 

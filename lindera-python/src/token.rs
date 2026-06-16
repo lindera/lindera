@@ -67,9 +67,8 @@ impl PyToken {
 }
 
 impl PyToken {
-    pub fn from_token(token: Token) -> Self {
-        let view = lindera_binding_core::TokenView::from_token(token);
-
+    /// Builds a `PyToken` from a binding-core [`TokenView`].
+    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,
             byte_start: view.byte_start,
@@ -79,6 +78,11 @@ impl PyToken {
             is_unknown: view.is_unknown,
             details: Some(view.details),
         }
+    }
+
+    /// Builds a `PyToken` from a `lindera` token via [`TokenView`].
+    pub fn from_token(token: Token) -> Self {
+        Self::from_view(lindera_binding_core::TokenView::from_token(token))
     }
 }
 

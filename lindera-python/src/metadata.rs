@@ -1,7 +1,9 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! character encodings and schema definitions.
+//! character encodings and schema definitions. The defaults and schema wiring are
+//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! PyO3 wrappers.
 //!
 //! # Examples
 //!
@@ -24,12 +26,14 @@ use std::collections::HashMap;
 use pyo3::prelude::*;
 
 use lindera::dictionary::Metadata;
+use lindera_binding_core::CoreMetadata;
 
 use crate::schema::PySchema;
 
 /// Dictionary metadata configuration.
 ///
-/// Contains all configuration parameters for building and using dictionaries.
+/// A thin PyO3 wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// the default values and the schema wiring.
 ///
 /// # Fields
 ///
@@ -47,17 +51,8 @@ use crate::schema::PySchema;
 #[pyclass(name = "Metadata", from_py_object)]
 #[derive(Debug, Clone)]
 pub struct PyMetadata {
-    name: String,
-    encoding: String,
-    default_word_cost: i16,
-    default_left_context_id: u16,
-    default_right_context_id: u16,
-    default_field_value: String,
-    flexible_csv: bool,
-    skip_invalid_cost_or_id: bool,
-    normalize_details: bool,
-    dictionary_schema: PySchema,
-    user_dictionary_schema: PySchema,
+    /// The backing binding-core metadata.
+    pub inner: CoreMetadata,
 }
 
 #[pymethods]
@@ -79,31 +74,27 @@ impl PyMetadata {
         user_dictionary_schema: Option<PySchema>,
     ) -> Self {
         PyMetadata {
-            name: name.unwrap_or_else(|| "default".to_string()),
-            encoding: encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            default_word_cost: default_word_cost.unwrap_or(-10000),
-            default_left_context_id: default_left_context_id.unwrap_or(1288),
-            default_right_context_id: default_right_context_id.unwrap_or(1288),
-            default_field_value: default_field_value.unwrap_or_else(|| "*".to_string()),
-            flexible_csv: flexible_csv.unwrap_or(false),
-            skip_invalid_cost_or_id: skip_invalid_cost_or_id.unwrap_or(false),
-            normalize_details: normalize_details.unwrap_or(false),
-            dictionary_schema: dictionary_schema.unwrap_or_else(PySchema::create_default),
-            user_dictionary_schema: user_dictionary_schema.unwrap_or_else(|| {
-                PySchema::new(vec![
-                    "surface".to_string(),
-                    "reading".to_string(),
-                    "pronunciation".to_string(),
-                ])
-            }),
+            inner: CoreMetadata::new(
+                name,
+                encoding,
+                default_word_cost,
+                default_left_context_id,
+                default_right_context_id,
+                default_field_value,
+                flexible_csv,
+                skip_invalid_cost_or_id,
+                normalize_details,
+                dictionary_schema.map(Into::into),
+                user_dictionary_schema.map(Into::into),
+            ),
         }
     }
 
     #[staticmethod]
     pub fn create_default() -> Self {
-        PyMetadata::new(
-            None, None, None, None, None, None, None, None, None, None, None,
-        )
+        PyMetadata {
+            inner: CoreMetadata::create_default(),
+        }
     }
 
     #[staticmethod]
@@ -123,150 +114,153 @@ impl PyMetadata {
 
     #[getter]
     pub fn name(&self) -> &str {
-        &self.name
+        &self.inner.name
     }
 
     #[setter]
     pub fn set_name(&mut self, name: String) {
-        self.name = name;
+        self.inner.name = name;
     }
 
     #[getter]
     pub fn encoding(&self) -> &str {
-        &self.encoding
+        &self.inner.encoding
     }
 
     #[setter]
     pub fn set_encoding(&mut self, encoding: String) {
-        self.encoding = encoding;
+        self.inner.encoding = encoding;
     }
 
     #[getter]
     pub fn default_word_cost(&self) -> i16 {
-        self.default_word_cost
+        self.inner.default_word_cost
     }
 
     #[setter]
     pub fn set_default_word_cost(&mut self, cost: i16) {
-        self.default_word_cost = cost;
+        self.inner.default_word_cost = cost;
     }
 
     #[getter]
     pub fn default_left_context_id(&self) -> u16 {
-        self.default_left_context_id
+        self.inner.default_left_context_id
     }
 
     #[setter]
     pub fn set_default_left_context_id(&mut self, id: u16) {
-        self.default_left_context_id = id;
+        self.inner.default_left_context_id = id;
     }
 
     #[getter]
     pub fn default_right_context_id(&self) -> u16 {
-        self.default_right_context_id
+        self.inner.default_right_context_id
     }
 
     #[setter]
     pub fn set_default_right_context_id(&mut self, id: u16) {
-        self.default_right_context_id = id;
+        self.inner.default_right_context_id = id;
     }
 
     #[getter]
     pub fn default_field_value(&self) -> &str {
-        &self.default_field_value
+        &self.inner.default_field_value
     }
 
     #[setter]
     pub fn set_default_field_value(&mut self, value: String) {
-        self.default_field_value = value;
+        self.inner.default_field_value = value;
     }
 
     #[getter]
     pub fn flexible_csv(&self) -> bool {
-        self.flexible_csv
+        self.inner.flexible_csv
     }
 
     #[setter]
     pub fn set_flexible_csv(&mut self, value: bool) {
-        self.flexible_csv = value;
+        self.inner.flexible_csv = value;
     }
 
     #[getter]
     pub fn skip_invalid_cost_or_id(&self) -> bool {
-        self.skip_invalid_cost_or_id
+        self.inner.skip_invalid_cost_or_id
     }
 
     #[setter]
     pub fn set_skip_invalid_cost_or_id(&mut self, value: bool) {
-        self.skip_invalid_cost_or_id = value;
+        self.inner.skip_invalid_cost_or_id = value;
     }
 
     #[getter]
     pub fn normalize_details(&self) -> bool {
-        self.normalize_details
+        self.inner.normalize_details
     }
 
     #[setter]
     pub fn set_normalize_details(&mut self, value: bool) {
-        self.normalize_details = value;
+        self.inner.normalize_details = value;
     }
 
     #[getter]
     pub fn dictionary_schema(&self) -> PySchema {
-        self.dictionary_schema.clone()
+        PySchema::from(self.inner.dictionary_schema.clone())
     }
 
     #[setter]
     pub fn set_dictionary_schema(&mut self, schema: PySchema) {
-        self.dictionary_schema = schema;
+        self.inner.dictionary_schema = schema.into();
     }
 
     #[getter]
     pub fn user_dictionary_schema(&self) -> PySchema {
-        self.user_dictionary_schema.clone()
+        PySchema::from(self.inner.user_dictionary_schema.clone())
     }
 
     #[setter]
     pub fn set_user_dictionary_schema(&mut self, schema: PySchema) {
-        self.user_dictionary_schema = schema;
+        self.inner.user_dictionary_schema = schema.into();
     }
 
     pub fn to_dict(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
-        dict.insert("name".to_string(), self.name.clone());
-        dict.insert("encoding".to_string(), self.encoding.clone());
+        dict.insert("name".to_string(), self.inner.name.clone());
+        dict.insert("encoding".to_string(), self.inner.encoding.clone());
         dict.insert(
             "default_word_cost".to_string(),
-            self.default_word_cost.to_string(),
+            self.inner.default_word_cost.to_string(),
         );
         dict.insert(
             "default_left_context_id".to_string(),
-            self.default_left_context_id.to_string(),
+            self.inner.default_left_context_id.to_string(),
         );
         dict.insert(
             "default_right_context_id".to_string(),
-            self.default_right_context_id.to_string(),
+            self.inner.default_right_context_id.to_string(),
         );
         dict.insert(
             "default_field_value".to_string(),
-            self.default_field_value.clone(),
+            self.inner.default_field_value.clone(),
         );
-        dict.insert("flexible_csv".to_string(), self.flexible_csv.to_string());
+        dict.insert(
+            "flexible_csv".to_string(),
+            self.inner.flexible_csv.to_string(),
+        );
         dict.insert(
             "skip_invalid_cost_or_id".to_string(),
-            self.skip_invalid_cost_or_id.to_string(),
+            self.inner.skip_invalid_cost_or_id.to_string(),
         );
         dict.insert(
             "normalize_details".to_string(),
-            self.normalize_details.to_string(),
+            self.inner.normalize_details.to_string(),
         );
         dict.insert(
             "dictionary_schema_fields".to_string(),
-            self.dictionary_schema.fields.join(","),
+            self.inner.dictionary_schema.fields().join(","),
         );
         dict.insert(
             "user_dictionary_schema_fields".to_string(),
-            self.user_dictionary_schema.fields.join(","),
+            self.inner.user_dictionary_schema.fields().join(","),
         );
         dict
     }
@@ -274,52 +268,30 @@ impl PyMetadata {
     fn __str__(&self) -> String {
         format!(
             "Metadata(name='{}', encoding='{}')",
-            self.name, self.encoding,
+            self.inner.name, self.inner.encoding,
         )
     }
 
     fn __repr__(&self) -> String {
         format!(
             "Metadata(name='{}', encoding='{}', schema_fields={})",
-            self.name,
-            self.encoding,
-            self.dictionary_schema.field_count()
+            self.inner.name,
+            self.inner.encoding,
+            self.inner.dictionary_schema.field_count()
         )
     }
 }
 
 impl From<PyMetadata> for Metadata {
     fn from(metadata: PyMetadata) -> Self {
-        Metadata::new(
-            metadata.name,
-            metadata.encoding,
-            metadata.default_word_cost,
-            metadata.default_left_context_id,
-            metadata.default_right_context_id,
-            metadata.default_field_value,
-            metadata.flexible_csv,
-            metadata.skip_invalid_cost_or_id,
-            metadata.normalize_details,
-            metadata.dictionary_schema.into(),
-            metadata.user_dictionary_schema.into(),
-        )
+        metadata.inner.into()
     }
 }
 
 impl From<Metadata> for PyMetadata {
     fn from(metadata: Metadata) -> Self {
         PyMetadata {
-            name: metadata.name,
-            encoding: metadata.encoding,
-            default_word_cost: metadata.default_word_cost,
-            default_left_context_id: metadata.default_left_context_id,
-            default_right_context_id: metadata.default_right_context_id,
-            default_field_value: metadata.default_field_value,
-            flexible_csv: metadata.flexible_csv,
-            skip_invalid_cost_or_id: metadata.skip_invalid_cost_or_id,
-            normalize_details: metadata.normalize_details,
-            dictionary_schema: metadata.dictionary_schema.into(),
-            user_dictionary_schema: metadata.user_dictionary_schema.into(),
+            inner: CoreMetadata::from(metadata),
         }
     }
 }
@@ -388,33 +360,33 @@ mod tests {
             userdic_schema,
         );
         let py_meta: PyMetadata = meta.into();
-        assert_eq!(py_meta.name, "my_dict");
-        assert_eq!(py_meta.encoding, "UTF-8");
-        assert_eq!(py_meta.default_word_cost, -10000);
-        assert_eq!(py_meta.default_left_context_id, 1288);
-        assert_eq!(py_meta.default_right_context_id, 1288);
-        assert_eq!(py_meta.default_field_value, "*");
-        assert!(!py_meta.flexible_csv);
-        assert!(!py_meta.skip_invalid_cost_or_id);
-        assert!(!py_meta.normalize_details);
-        assert_eq!(py_meta.dictionary_schema.fields.len(), 4);
-        assert_eq!(py_meta.user_dictionary_schema.fields.len(), 2);
+        assert_eq!(py_meta.name(), "my_dict");
+        assert_eq!(py_meta.encoding(), "UTF-8");
+        assert_eq!(py_meta.default_word_cost(), -10000);
+        assert_eq!(py_meta.default_left_context_id(), 1288);
+        assert_eq!(py_meta.default_right_context_id(), 1288);
+        assert_eq!(py_meta.default_field_value(), "*");
+        assert!(!py_meta.flexible_csv());
+        assert!(!py_meta.skip_invalid_cost_or_id());
+        assert!(!py_meta.normalize_details());
+        assert_eq!(py_meta.dictionary_schema().fields().len(), 4);
+        assert_eq!(py_meta.user_dictionary_schema().fields().len(), 2);
     }
 
     #[test]
     fn test_pymetadata_default_values() {
         let py_meta = PyMetadata::create_default();
-        assert_eq!(py_meta.name, "default");
-        assert_eq!(py_meta.encoding, "UTF-8");
-        assert_eq!(py_meta.default_word_cost, -10000);
-        assert_eq!(py_meta.default_left_context_id, 1288);
-        assert_eq!(py_meta.default_right_context_id, 1288);
-        assert_eq!(py_meta.default_field_value, "*");
-        assert!(!py_meta.flexible_csv);
-        assert!(!py_meta.skip_invalid_cost_or_id);
-        assert!(!py_meta.normalize_details);
-        assert_eq!(py_meta.dictionary_schema.field_count(), 13);
-        assert_eq!(py_meta.user_dictionary_schema.fields.len(), 3);
+        assert_eq!(py_meta.name(), "default");
+        assert_eq!(py_meta.encoding(), "UTF-8");
+        assert_eq!(py_meta.default_word_cost(), -10000);
+        assert_eq!(py_meta.default_left_context_id(), 1288);
+        assert_eq!(py_meta.default_right_context_id(), 1288);
+        assert_eq!(py_meta.default_field_value(), "*");
+        assert!(!py_meta.flexible_csv());
+        assert!(!py_meta.skip_invalid_cost_or_id());
+        assert!(!py_meta.normalize_details());
+        assert_eq!(py_meta.dictionary_schema().field_count(), 13);
+        assert_eq!(py_meta.user_dictionary_schema().fields().len(), 3);
     }
 
     #[test]
@@ -434,14 +406,14 @@ mod tests {
         );
         let meta: Metadata = py_meta.into();
         let roundtripped: PyMetadata = meta.into();
-        assert_eq!(roundtripped.name, "roundtrip");
-        assert_eq!(roundtripped.encoding, "UTF-8");
-        assert_eq!(roundtripped.default_word_cost, -8000);
-        assert_eq!(roundtripped.default_left_context_id, 500);
-        assert_eq!(roundtripped.default_right_context_id, 600);
-        assert_eq!(roundtripped.default_field_value, "?");
-        assert!(roundtripped.flexible_csv);
-        assert!(!roundtripped.skip_invalid_cost_or_id);
-        assert!(roundtripped.normalize_details);
+        assert_eq!(roundtripped.name(), "roundtrip");
+        assert_eq!(roundtripped.encoding(), "UTF-8");
+        assert_eq!(roundtripped.default_word_cost(), -8000);
+        assert_eq!(roundtripped.default_left_context_id(), 500);
+        assert_eq!(roundtripped.default_right_context_id(), 600);
+        assert_eq!(roundtripped.default_field_value(), "?");
+        assert!(roundtripped.flexible_csv());
+        assert!(!roundtripped.skip_invalid_cost_or_id());
+        assert!(roundtripped.normalize_details());
     }
 }
