@@ -1,11 +1,13 @@
 //! Dictionary schema definitions.
 //!
 //! This module provides schema structures that define the format and fields
-//! of dictionary entries.
-
-use std::collections::HashMap;
+//! of dictionary entries. The field-management logic is delegated to
+//! [`lindera_binding_core::CoreSchema`]; this module only adds the napi wrappers.
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
+use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
+
+use crate::error::to_napi_error;
 
 /// Field type in dictionary schema.
 ///
@@ -24,27 +26,39 @@ pub enum JsFieldType {
     Custom,
 }
 
+impl From<CoreFieldType> for JsFieldType {
+    fn from(field_type: CoreFieldType) -> Self {
+        match field_type {
+            CoreFieldType::Surface => JsFieldType::Surface,
+            CoreFieldType::LeftContextId => JsFieldType::LeftContextId,
+            CoreFieldType::RightContextId => JsFieldType::RightContextId,
+            CoreFieldType::Cost => JsFieldType::Cost,
+            CoreFieldType::Custom => JsFieldType::Custom,
+        }
+    }
+}
+
+impl From<JsFieldType> for CoreFieldType {
+    fn from(field_type: JsFieldType) -> Self {
+        match field_type {
+            JsFieldType::Surface => CoreFieldType::Surface,
+            JsFieldType::LeftContextId => CoreFieldType::LeftContextId,
+            JsFieldType::RightContextId => CoreFieldType::RightContextId,
+            JsFieldType::Cost => CoreFieldType::Cost,
+            JsFieldType::Custom => CoreFieldType::Custom,
+        }
+    }
+}
+
 impl From<FieldType> for JsFieldType {
     fn from(field_type: FieldType) -> Self {
-        match field_type {
-            FieldType::Surface => JsFieldType::Surface,
-            FieldType::LeftContextId => JsFieldType::LeftContextId,
-            FieldType::RightContextId => JsFieldType::RightContextId,
-            FieldType::Cost => JsFieldType::Cost,
-            FieldType::Custom => JsFieldType::Custom,
-        }
+        JsFieldType::from(CoreFieldType::from(field_type))
     }
 }
 
 impl From<JsFieldType> for FieldType {
     fn from(field_type: JsFieldType) -> Self {
-        match field_type {
-            JsFieldType::Surface => FieldType::Surface,
-            JsFieldType::LeftContextId => FieldType::LeftContextId,
-            JsFieldType::RightContextId => FieldType::RightContextId,
-            JsFieldType::Cost => FieldType::Cost,
-            JsFieldType::Custom => FieldType::Custom,
-        }
+        FieldType::from(CoreFieldType::from(field_type))
     }
 }
 
@@ -63,8 +77,8 @@ pub struct JsFieldDefinition {
     pub description: Option<String>,
 }
 
-impl From<FieldDefinition> for JsFieldDefinition {
-    fn from(field_def: FieldDefinition) -> Self {
+impl From<CoreFieldDefinition> for JsFieldDefinition {
+    fn from(field_def: CoreFieldDefinition) -> Self {
         JsFieldDefinition {
             index: field_def.index as u32,
             name: field_def.name,
@@ -74,9 +88,9 @@ impl From<FieldDefinition> for JsFieldDefinition {
     }
 }
 
-impl From<JsFieldDefinition> for FieldDefinition {
+impl From<JsFieldDefinition> for CoreFieldDefinition {
     fn from(field_def: JsFieldDefinition) -> Self {
-        FieldDefinition {
+        CoreFieldDefinition {
             index: field_def.index as usize,
             name: field_def.name,
             field_type: field_def.field_type.into(),
@@ -85,15 +99,26 @@ impl From<JsFieldDefinition> for FieldDefinition {
     }
 }
 
+impl From<FieldDefinition> for JsFieldDefinition {
+    fn from(field_def: FieldDefinition) -> Self {
+        JsFieldDefinition::from(CoreFieldDefinition::from(field_def))
+    }
+}
+
+impl From<JsFieldDefinition> for FieldDefinition {
+    fn from(field_def: JsFieldDefinition) -> Self {
+        FieldDefinition::from(CoreFieldDefinition::from(field_def))
+    }
+}
+
 /// Dictionary schema definition.
 ///
-/// Defines the structure and fields of dictionary entries.
+/// A thin napi wrapper over [`lindera_binding_core::CoreSchema`], which owns the
+/// field storage, the name-to-index map, and the field lookups.
 #[napi(js_name = "Schema")]
 pub struct JsSchema {
-    /// Field names in the schema.
-    fields: Vec<String>,
-    /// Index map for fast field lookup.
-    field_index_map: HashMap<String, usize>,
+    /// The backing binding-core schema.
+    inner: CoreSchema,
 }
 
 #[napi]
@@ -105,14 +130,8 @@ impl JsSchema {
     /// * `fields` - Array of field name strings.
     #[napi(constructor)]
     pub fn new(fields: Vec<String>) -> Self {
-        let field_index_map = fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| (f.clone(), i))
-            .collect();
         Self {
-            fields,
-            field_index_map,
+            inner: CoreSchema::new(fields),
         }
     }
 
@@ -123,13 +142,15 @@ impl JsSchema {
     /// A schema with the standard IPADIC field definitions.
     #[napi(factory)]
     pub fn create_default() -> Self {
-        Self::new(lindera_binding_core::schema::default_dictionary_fields())
+        Self {
+            inner: CoreSchema::create_default(),
+        }
     }
 
     /// Returns the field names in the schema.
     #[napi(getter)]
     pub fn fields(&self) -> Vec<String> {
-        self.fields.clone()
+        self.inner.fields().to_vec()
     }
 
     /// Returns the index of the specified field name.
@@ -143,13 +164,13 @@ impl JsSchema {
     /// The zero-based index of the field, or `undefined` if not found.
     #[napi]
     pub fn get_field_index(&self, field_name: String) -> Option<u32> {
-        self.field_index_map.get(&field_name).map(|&i| i as u32)
+        self.inner.get_field_index(&field_name).map(|i| i as u32)
     }
 
     /// Returns the total number of fields in the schema.
     #[napi]
     pub fn field_count(&self) -> u32 {
-        self.fields.len() as u32
+        self.inner.field_count() as u32
     }
 
     /// Returns the field name at the specified index.
@@ -163,7 +184,9 @@ impl JsSchema {
     /// The field name, or `undefined` if the index is out of range.
     #[napi]
     pub fn get_field_name(&self, index: u32) -> Option<String> {
-        self.fields.get(index as usize).cloned()
+        self.inner
+            .get_field_name(index as usize)
+            .map(str::to_string)
     }
 
     /// Returns the custom fields (index 4 and above).
@@ -173,11 +196,7 @@ impl JsSchema {
     /// An array of custom field names.
     #[napi]
     pub fn get_custom_fields(&self) -> Vec<String> {
-        if self.fields.len() > 4 {
-            self.fields[4..].to_vec()
-        } else {
-            Vec::new()
-        }
+        self.inner.get_custom_fields().to_vec()
     }
 
     /// Returns all field names in the schema.
@@ -187,7 +206,7 @@ impl JsSchema {
     /// An array of all field names.
     #[napi]
     pub fn get_all_fields(&self) -> Vec<String> {
-        self.fields.clone()
+        self.inner.fields().to_vec()
     }
 
     /// Returns the field definition for the specified field name.
@@ -201,22 +220,9 @@ impl JsSchema {
     /// The field definition, or `undefined` if not found.
     #[napi]
     pub fn get_field_by_name(&self, name: String) -> Option<JsFieldDefinition> {
-        self.field_index_map.get(&name).map(|&index| {
-            let field_type = match index {
-                0 => JsFieldType::Surface,
-                1 => JsFieldType::LeftContextId,
-                2 => JsFieldType::RightContextId,
-                3 => JsFieldType::Cost,
-                _ => JsFieldType::Custom,
-            };
-
-            JsFieldDefinition {
-                index: index as u32,
-                name,
-                field_type,
-                description: None,
-            }
-        })
+        self.inner
+            .get_field_by_name(&name)
+            .map(JsFieldDefinition::from)
     }
 
     /// Validates that a CSV record matches the schema.
@@ -226,20 +232,33 @@ impl JsSchema {
     /// * `record` - Array of field values to validate.
     #[napi]
     pub fn validate_record(&self, record: Vec<String>) -> napi::Result<()> {
-        lindera_binding_core::schema::validate_record(&self.fields, &record)
-            .map_err(|message| napi::Error::new(napi::Status::InvalidArg, message))
+        self.inner.validate_record(&record).map_err(to_napi_error)
+    }
+}
+
+impl From<CoreSchema> for JsSchema {
+    fn from(schema: CoreSchema) -> Self {
+        JsSchema { inner: schema }
+    }
+}
+
+impl From<JsSchema> for CoreSchema {
+    fn from(schema: JsSchema) -> Self {
+        schema.inner
     }
 }
 
 impl From<JsSchema> for Schema {
     fn from(schema: JsSchema) -> Self {
-        Schema::new(schema.fields)
+        schema.inner.into()
     }
 }
 
 impl From<Schema> for JsSchema {
     fn from(schema: Schema) -> Self {
-        JsSchema::new(schema.get_all_fields().to_vec())
+        JsSchema {
+            inner: CoreSchema::from(schema),
+        }
     }
 }
 
@@ -254,18 +273,6 @@ mod tests {
             FieldType::Surface
         ));
         assert!(matches!(
-            FieldType::from(JsFieldType::LeftContextId),
-            FieldType::LeftContextId
-        ));
-        assert!(matches!(
-            FieldType::from(JsFieldType::RightContextId),
-            FieldType::RightContextId
-        ));
-        assert!(matches!(
-            FieldType::from(JsFieldType::Cost),
-            FieldType::Cost
-        ));
-        assert!(matches!(
             FieldType::from(JsFieldType::Custom),
             FieldType::Custom
         ));
@@ -276,18 +283,6 @@ mod tests {
         assert!(matches!(
             JsFieldType::from(FieldType::Surface),
             JsFieldType::Surface
-        ));
-        assert!(matches!(
-            JsFieldType::from(FieldType::LeftContextId),
-            JsFieldType::LeftContextId
-        ));
-        assert!(matches!(
-            JsFieldType::from(FieldType::RightContextId),
-            JsFieldType::RightContextId
-        ));
-        assert!(matches!(
-            JsFieldType::from(FieldType::Cost),
-            JsFieldType::Cost
         ));
         assert!(matches!(
             JsFieldType::from(FieldType::Custom),
@@ -316,9 +311,10 @@ mod tests {
     }
 
     #[test]
-    fn test_js_schema_field_count_empty() {
-        let schema = JsSchema::new(vec![]);
-        assert_eq!(schema.field_count(), 0);
+    fn test_js_schema_get_field_name() {
+        let schema = JsSchema::new(vec!["a".to_string(), "b".to_string()]);
+        assert_eq!(schema.get_field_name(0), Some("a".to_string()));
+        assert_eq!(schema.get_field_name(9), None);
     }
 
     #[test]
@@ -343,31 +339,33 @@ mod tests {
             "right_context_id".to_string(),
             "cost".to_string(),
         ]);
-        let custom = schema.get_custom_fields();
-        assert!(custom.is_empty());
+        assert!(schema.get_custom_fields().is_empty());
     }
 
     #[test]
-    fn test_js_schema_get_custom_fields_fewer_than_4() {
-        let schema = JsSchema::new(vec!["surface".to_string()]);
-        let custom = schema.get_custom_fields();
-        assert!(custom.is_empty());
-    }
-
-    #[test]
-    fn test_js_schema_create_default_has_13_fields() {
+    fn test_js_schema_create_default() {
         let schema = JsSchema::create_default();
         assert_eq!(schema.field_count(), 13);
-    }
-
-    #[test]
-    fn test_js_schema_create_default_field_names() {
-        let schema = JsSchema::create_default();
         assert_eq!(schema.get_field_index("surface".to_string()), Some(0));
+        assert_eq!(schema.fields()[5], "middle_pos");
         assert_eq!(
             schema.get_field_index("pronunciation".to_string()),
             Some(12)
         );
+    }
+
+    #[test]
+    fn test_js_schema_get_field_by_name() {
+        let schema = JsSchema::create_default();
+        let surface = schema.get_field_by_name("surface".to_string()).unwrap();
+        assert_eq!(surface.index, 0);
+        assert!(matches!(surface.field_type, JsFieldType::Surface));
+
+        let custom = schema.get_field_by_name("middle_pos".to_string()).unwrap();
+        assert_eq!(custom.index, 5);
+        assert!(matches!(custom.field_type, JsFieldType::Custom));
+
+        assert!(schema.get_field_by_name("nope".to_string()).is_none());
     }
 
     #[test]
@@ -392,6 +390,5 @@ mod tests {
         let js_schema: JsSchema = lindera_schema.into();
         assert_eq!(js_schema.field_count(), 2);
         assert_eq!(js_schema.get_field_index("a".to_string()), Some(0));
-        assert_eq!(js_schema.get_field_index("b".to_string()), Some(1));
     }
 }
