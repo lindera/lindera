@@ -1,17 +1,17 @@
 //! Tokenizer implementation for morphological analysis in PHP.
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
+//! The build-flow orchestration is delegated to
+//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! this module only adds the ext-php-rs wrappers and the Zval conversion.
 
 use std::cell::RefCell;
 use std::path::Path;
-use std::str::FromStr;
 
 use ext_php_rs::prelude::*;
 use ext_php_rs::types::Zval;
 
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::convert::zval_to_value;
 use crate::dictionary::{PhpDictionary, PhpUserDictionary};
@@ -26,7 +26,7 @@ use crate::token::PhpToken;
 #[php(name = "Lindera\\TokenizerBuilder")]
 pub struct PhpTokenizerBuilder {
     /// The inner builder (wrapped in RefCell for interior mutability).
-    inner: RefCell<TokenizerBuilder>,
+    inner: RefCell<CoreTokenizerBuilder>,
 }
 
 #[php_impl]
@@ -37,10 +37,7 @@ impl PhpTokenizerBuilder {
     ///
     /// A new TokenizerBuilder instance.
     pub fn __construct() -> PhpResult<Self> {
-        let inner = TokenizerBuilder::new().map_err(|err| {
-            lindera_value_err(format!("Failed to create TokenizerBuilder: {err}"))
-        })?;
-
+        let inner = CoreTokenizerBuilder::new().map_err(lindera_value_err)?;
         Ok(Self {
             inner: RefCell::new(inner),
         })
@@ -52,9 +49,8 @@ impl PhpTokenizerBuilder {
     ///
     /// * `file_path` - Path to the configuration file.
     pub fn from_file(&self, file_path: String) -> PhpResult<()> {
-        let builder = TokenizerBuilder::from_file(Path::new(&file_path))
-            .map_err(|err| lindera_value_err(format!("Failed to load config from file: {err}")))?;
-
+        let builder =
+            CoreTokenizerBuilder::from_file(Path::new(&file_path)).map_err(lindera_value_err)?;
         *self.inner.borrow_mut() = builder;
         Ok(())
     }
@@ -65,10 +61,8 @@ impl PhpTokenizerBuilder {
     ///
     /// * `mode` - Mode string ("normal" or "decompose").
     pub fn set_mode(&self, mode: String) -> PhpResult<()> {
-        let m = Mode::from_str(&mode)
-            .map_err(|err| lindera_value_err(format!("Failed to create mode: {err}")))?;
-
-        self.inner.borrow_mut().set_segmenter_mode(&m);
+        let mut builder = self.inner.borrow_mut();
+        builder.set_mode(&mode).map_err(lindera_value_err)?;
         Ok(())
     }
 
@@ -78,7 +72,7 @@ impl PhpTokenizerBuilder {
     ///
     /// * `path` - Path to the dictionary directory or embedded dictionary name.
     pub fn set_dictionary(&self, path: String) -> PhpResult<()> {
-        self.inner.borrow_mut().set_segmenter_dictionary(&path);
+        self.inner.borrow_mut().set_dictionary(&path);
         Ok(())
     }
 
@@ -88,7 +82,7 @@ impl PhpTokenizerBuilder {
     ///
     /// * `uri` - URI to the user dictionary.
     pub fn set_user_dictionary(&self, uri: String) -> PhpResult<()> {
-        self.inner.borrow_mut().set_segmenter_user_dictionary(&uri);
+        self.inner.borrow_mut().set_user_dictionary(&uri);
         Ok(())
     }
 
@@ -98,9 +92,7 @@ impl PhpTokenizerBuilder {
     ///
     /// * `keep_whitespace` - If true, whitespace tokens will be included.
     pub fn set_keep_whitespace(&self, keep_whitespace: bool) -> PhpResult<()> {
-        self.inner
-            .borrow_mut()
-            .set_segmenter_keep_whitespace(keep_whitespace);
+        self.inner.borrow_mut().set_keep_whitespace(keep_whitespace);
         Ok(())
     }
 
@@ -148,13 +140,8 @@ impl PhpTokenizerBuilder {
     ///
     /// A configured Tokenizer instance ready for use.
     pub fn build(&self) -> PhpResult<PhpTokenizer> {
-        let tokenizer = self
-            .inner
-            .borrow()
-            .build()
-            .map_err(|err| lindera_value_err(format!("Failed to build tokenizer: {err}")))?;
-
-        Ok(PhpTokenizer { inner: tokenizer })
+        let inner = self.inner.borrow().build().map_err(lindera_value_err)?;
+        Ok(PhpTokenizer { inner })
     }
 }
 
@@ -164,8 +151,8 @@ impl PhpTokenizerBuilder {
 #[php_class]
 #[php(name = "Lindera\\Tokenizer")]
 pub struct PhpTokenizer {
-    /// The inner Lindera tokenizer.
-    inner: Tokenizer,
+    /// The inner binding-core tokenizer.
+    inner: CoreTokenizer,
 }
 
 #[php_impl]
@@ -187,16 +174,14 @@ impl PhpTokenizer {
         user_dictionary: Option<&PhpUserDictionary>,
     ) -> PhpResult<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
-        let m = Mode::from_str(&mode_str)
-            .map_err(|err| lindera_value_err(format!("Failed to create mode: {err}")))?;
 
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-        let segmenter = Segmenter::new(m, dict, user_dict);
-        let tokenizer = Tokenizer::new(segmenter);
+        let inner =
+            CoreTokenizer::from_segmenter(&mode_str, dict, user_dict).map_err(lindera_value_err)?;
 
-        Ok(Self { inner: tokenizer })
+        Ok(Self { inner })
     }
 
     /// Tokenizes the given text.
@@ -209,14 +194,8 @@ impl PhpTokenizer {
     ///
     /// A list of Token objects containing morphological features.
     pub fn tokenize(&self, text: String) -> PhpResult<Vec<PhpToken>> {
-        let tokens = self
-            .inner
-            .tokenize(&text)
-            .map_err(|err| lindera_value_err(format!("Failed to tokenize text: {err}")))?;
-
-        let php_tokens: Vec<PhpToken> = tokens.into_iter().map(PhpToken::from_token).collect();
-
-        Ok(php_tokens)
+        let views = self.inner.tokenize(&text).map_err(lindera_value_err)?;
+        Ok(views.into_iter().map(PhpToken::from_view).collect())
     }
 
     /// Tokenizes the given text and returns N-best results.
@@ -234,7 +213,7 @@ impl PhpTokenizer {
     ///
     /// # Returns
     ///
-    /// A Zval containing an array of {"tokens": [...], "cost": int} entries.
+    /// A list of NbestResult entries.
     pub fn tokenize_nbest(
         &self,
         text: String,
@@ -246,12 +225,12 @@ impl PhpTokenizer {
         let results = self
             .inner
             .tokenize_nbest(&text, n as usize, unique_flag, cost_threshold)
-            .map_err(|err| lindera_value_err(format!("Failed to tokenize_nbest text: {err}")))?;
+            .map_err(lindera_value_err)?;
 
         let php_results: Vec<PhpNbestResult> = results
             .into_iter()
-            .map(|(tokens, cost)| {
-                let php_tokens = tokens.into_iter().map(PhpToken::from_token).collect();
+            .map(|(views, cost)| {
+                let php_tokens = views.into_iter().map(PhpToken::from_view).collect();
                 PhpNbestResult {
                     tokens: php_tokens,
                     cost,
