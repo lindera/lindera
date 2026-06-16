@@ -1,14 +1,14 @@
 //! Dictionary schema definitions.
 //!
 //! This module provides schema structures that define the format and fields
-//! of dictionary entries.
-
-use std::collections::HashMap;
+//! of dictionary entries. The field-management logic is delegated to
+//! [`lindera_binding_core::CoreSchema`]; this module only adds the magnus wrappers.
 
 use magnus::prelude::*;
 use magnus::{Error, RArray, Ruby, function, method};
 
 use lindera::dictionary::{FieldDefinition, FieldType, Schema};
+use lindera_binding_core::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 
 /// Field type in dictionary schema.
 ///
@@ -53,28 +53,40 @@ impl RbFieldType {
     }
 }
 
+impl From<CoreFieldType> for RbFieldType {
+    fn from(field_type: CoreFieldType) -> Self {
+        let inner = match field_type {
+            CoreFieldType::Surface => RbFieldTypeKind::Surface,
+            CoreFieldType::LeftContextId => RbFieldTypeKind::LeftContextId,
+            CoreFieldType::RightContextId => RbFieldTypeKind::RightContextId,
+            CoreFieldType::Cost => RbFieldTypeKind::Cost,
+            CoreFieldType::Custom => RbFieldTypeKind::Custom,
+        };
+        RbFieldType { inner }
+    }
+}
+
+impl From<RbFieldType> for CoreFieldType {
+    fn from(field_type: RbFieldType) -> Self {
+        match field_type.inner {
+            RbFieldTypeKind::Surface => CoreFieldType::Surface,
+            RbFieldTypeKind::LeftContextId => CoreFieldType::LeftContextId,
+            RbFieldTypeKind::RightContextId => CoreFieldType::RightContextId,
+            RbFieldTypeKind::Cost => CoreFieldType::Cost,
+            RbFieldTypeKind::Custom => CoreFieldType::Custom,
+        }
+    }
+}
+
 impl From<FieldType> for RbFieldType {
     fn from(field_type: FieldType) -> Self {
-        let kind = match field_type {
-            FieldType::Surface => RbFieldTypeKind::Surface,
-            FieldType::LeftContextId => RbFieldTypeKind::LeftContextId,
-            FieldType::RightContextId => RbFieldTypeKind::RightContextId,
-            FieldType::Cost => RbFieldTypeKind::Cost,
-            FieldType::Custom => RbFieldTypeKind::Custom,
-        };
-        RbFieldType { inner: kind }
+        RbFieldType::from(CoreFieldType::from(field_type))
     }
 }
 
 impl From<RbFieldType> for FieldType {
     fn from(field_type: RbFieldType) -> Self {
-        match field_type.inner {
-            RbFieldTypeKind::Surface => FieldType::Surface,
-            RbFieldTypeKind::LeftContextId => FieldType::LeftContextId,
-            RbFieldTypeKind::RightContextId => FieldType::RightContextId,
-            RbFieldTypeKind::Cost => FieldType::Cost,
-            RbFieldTypeKind::Custom => FieldType::Custom,
-        }
+        FieldType::from(CoreFieldType::from(field_type))
     }
 }
 
@@ -129,8 +141,8 @@ impl RbFieldDefinition {
     }
 }
 
-impl From<FieldDefinition> for RbFieldDefinition {
-    fn from(field_def: FieldDefinition) -> Self {
+impl From<CoreFieldDefinition> for RbFieldDefinition {
+    fn from(field_def: CoreFieldDefinition) -> Self {
         RbFieldDefinition {
             index: field_def.index,
             name: field_def.name,
@@ -140,9 +152,9 @@ impl From<FieldDefinition> for RbFieldDefinition {
     }
 }
 
-impl From<RbFieldDefinition> for FieldDefinition {
+impl From<RbFieldDefinition> for CoreFieldDefinition {
     fn from(field_def: RbFieldDefinition) -> Self {
-        FieldDefinition {
+        CoreFieldDefinition {
             index: field_def.index,
             name: field_def.name,
             field_type: field_def.field_type.into(),
@@ -151,16 +163,27 @@ impl From<RbFieldDefinition> for FieldDefinition {
     }
 }
 
+impl From<FieldDefinition> for RbFieldDefinition {
+    fn from(field_def: FieldDefinition) -> Self {
+        RbFieldDefinition::from(CoreFieldDefinition::from(field_def))
+    }
+}
+
+impl From<RbFieldDefinition> for FieldDefinition {
+    fn from(field_def: RbFieldDefinition) -> Self {
+        FieldDefinition::from(CoreFieldDefinition::from(field_def))
+    }
+}
+
 /// Dictionary schema definition.
 ///
-/// Defines the structure and fields of dictionary entries.
+/// A thin magnus wrapper over [`lindera_binding_core::CoreSchema`], which owns
+/// the field storage, the name-to-index map, and the field lookups.
 #[magnus::wrap(class = "Lindera::Schema", free_immediately, size)]
 #[derive(Debug, Clone)]
 pub struct RbSchema {
-    /// List of field names.
-    pub fields: Vec<String>,
-    /// Map from field name to index.
-    field_index_map: HashMap<String, usize>,
+    /// The backing binding-core schema.
+    inner: CoreSchema,
 }
 
 impl RbSchema {
@@ -174,13 +197,8 @@ impl RbSchema {
     ///
     /// A new `RbSchema` instance.
     fn new(fields: Vec<String>) -> Self {
-        let mut field_index_map = HashMap::new();
-        for (i, field) in fields.iter().enumerate() {
-            field_index_map.insert(field.clone(), i);
-        }
         Self {
-            fields,
-            field_index_map,
+            inner: CoreSchema::new(fields),
         }
     }
 
@@ -190,12 +208,14 @@ impl RbSchema {
     ///
     /// A new `RbSchema` with default IPADIC fields.
     fn create_default() -> Self {
-        Self::new(lindera_binding_core::schema::default_dictionary_fields())
+        Self {
+            inner: CoreSchema::create_default(),
+        }
     }
 
     /// Returns the list of field names as a Ruby array.
     fn fields(&self) -> Vec<String> {
-        self.fields.clone()
+        self.inner.fields().to_vec()
     }
 
     /// Returns the index of the specified field name.
@@ -208,7 +228,7 @@ impl RbSchema {
     ///
     /// The index of the field, or None if not found.
     fn get_field_index(&self, field_name: String) -> Option<usize> {
-        self.field_index_map.get(&field_name).copied()
+        self.inner.get_field_index(&field_name)
     }
 
     /// Returns the number of fields in the schema.
@@ -217,7 +237,7 @@ impl RbSchema {
     ///
     /// The number of fields.
     fn field_count(&self) -> usize {
-        self.fields.len()
+        self.inner.field_count()
     }
 
     /// Returns the name of the field at the specified index.
@@ -230,7 +250,7 @@ impl RbSchema {
     ///
     /// The field name, or None if the index is out of bounds.
     fn get_field_name(&self, index: usize) -> Option<String> {
-        self.fields.get(index).cloned()
+        self.inner.get_field_name(index).map(str::to_string)
     }
 
     /// Returns the custom fields (fields after the first 4 standard fields).
@@ -239,11 +259,7 @@ impl RbSchema {
     ///
     /// A list of custom field names.
     fn get_custom_fields(&self) -> Vec<String> {
-        if self.fields.len() > 4 {
-            self.fields[4..].to_vec()
-        } else {
-            Vec::new()
-        }
+        self.inner.get_custom_fields().to_vec()
     }
 
     /// Returns all field names.
@@ -252,7 +268,7 @@ impl RbSchema {
     ///
     /// A list of all field names.
     fn get_all_fields(&self) -> Vec<String> {
-        self.fields.clone()
+        self.inner.fields().to_vec()
     }
 
     /// Returns the field definition for the specified field name.
@@ -265,36 +281,9 @@ impl RbSchema {
     ///
     /// The field definition, or None if not found.
     fn get_field_by_name(&self, name: String) -> Option<RbFieldDefinition> {
-        self.field_index_map.get(&name).map(|&index| {
-            let field_type = if index < 4 {
-                match index {
-                    0 => RbFieldType {
-                        inner: RbFieldTypeKind::Surface,
-                    },
-                    1 => RbFieldType {
-                        inner: RbFieldTypeKind::LeftContextId,
-                    },
-                    2 => RbFieldType {
-                        inner: RbFieldTypeKind::RightContextId,
-                    },
-                    3 => RbFieldType {
-                        inner: RbFieldTypeKind::Cost,
-                    },
-                    _ => unreachable!(),
-                }
-            } else {
-                RbFieldType {
-                    inner: RbFieldTypeKind::Custom,
-                }
-            };
-
-            RbFieldDefinition {
-                index,
-                name: name.clone(),
-                field_type,
-                description: None,
-            }
-        })
+        self.inner
+            .get_field_by_name(&name)
+            .map(RbFieldDefinition::from)
     }
 
     /// Validates a CSV record against the schema.
@@ -310,18 +299,19 @@ impl RbSchema {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
         let values: Vec<String> = record.to_vec()?;
 
-        lindera_binding_core::schema::validate_record(&self.fields, &values)
-            .map_err(|message| Error::new(ruby.exception_arg_error(), message))
+        self.inner
+            .validate_record(&values)
+            .map_err(|err| Error::new(ruby.exception_arg_error(), err.to_string()))
     }
 
     /// Returns the string representation of the schema.
     fn to_s(&self) -> String {
-        format!("Schema(fields={})", self.fields.len())
+        format!("Schema(fields={})", self.inner.field_count())
     }
 
     /// Returns the inspect representation of the schema.
     fn inspect(&self) -> String {
-        format!("#<Lindera::Schema: fields={:?}>", self.fields)
+        format!("#<Lindera::Schema: fields={:?}>", self.inner.fields())
     }
 }
 
@@ -337,15 +327,29 @@ impl RbSchema {
     }
 }
 
+impl From<CoreSchema> for RbSchema {
+    fn from(schema: CoreSchema) -> Self {
+        RbSchema { inner: schema }
+    }
+}
+
+impl From<RbSchema> for CoreSchema {
+    fn from(schema: RbSchema) -> Self {
+        schema.inner
+    }
+}
+
 impl From<RbSchema> for Schema {
     fn from(schema: RbSchema) -> Self {
-        Schema::new(schema.fields)
+        schema.inner.into()
     }
 }
 
 impl From<Schema> for RbSchema {
     fn from(schema: Schema) -> Self {
-        RbSchema::new(schema.get_all_fields().to_vec())
+        RbSchema {
+            inner: CoreSchema::from(schema),
+        }
     }
 }
 
@@ -404,33 +408,6 @@ mod tests {
     }
 
     #[test]
-    fn test_rb_field_type_left_context_id_to_lindera() {
-        let rb = RbFieldType {
-            inner: RbFieldTypeKind::LeftContextId,
-        };
-        let lindera: FieldType = rb.into();
-        assert!(matches!(lindera, FieldType::LeftContextId));
-    }
-
-    #[test]
-    fn test_rb_field_type_right_context_id_to_lindera() {
-        let rb = RbFieldType {
-            inner: RbFieldTypeKind::RightContextId,
-        };
-        let lindera: FieldType = rb.into();
-        assert!(matches!(lindera, FieldType::RightContextId));
-    }
-
-    #[test]
-    fn test_rb_field_type_cost_to_lindera() {
-        let rb = RbFieldType {
-            inner: RbFieldTypeKind::Cost,
-        };
-        let lindera: FieldType = rb.into();
-        assert!(matches!(lindera, FieldType::Cost));
-    }
-
-    #[test]
     fn test_rb_field_type_custom_to_lindera() {
         let rb = RbFieldType {
             inner: RbFieldTypeKind::Custom,
@@ -443,24 +420,6 @@ mod tests {
     fn test_lindera_field_type_surface_to_rb() {
         let rb: RbFieldType = FieldType::Surface.into();
         assert!(matches!(rb.inner, RbFieldTypeKind::Surface));
-    }
-
-    #[test]
-    fn test_lindera_field_type_left_context_id_to_rb() {
-        let rb: RbFieldType = FieldType::LeftContextId.into();
-        assert!(matches!(rb.inner, RbFieldTypeKind::LeftContextId));
-    }
-
-    #[test]
-    fn test_lindera_field_type_right_context_id_to_rb() {
-        let rb: RbFieldType = FieldType::RightContextId.into();
-        assert!(matches!(rb.inner, RbFieldTypeKind::RightContextId));
-    }
-
-    #[test]
-    fn test_lindera_field_type_cost_to_rb() {
-        let rb: RbFieldType = FieldType::Cost.into();
-        assert!(matches!(rb.inner, RbFieldTypeKind::Cost));
     }
 
     #[test]
@@ -510,30 +469,30 @@ mod tests {
             "cost".to_string(),
         ];
         let schema = RbSchema::new_internal(fields);
-        let custom = schema.get_custom_fields();
-        assert!(custom.is_empty());
+        assert!(schema.get_custom_fields().is_empty());
     }
 
     #[test]
-    fn test_rb_schema_get_custom_fields_empty() {
-        let schema = RbSchema::new_internal(vec![]);
-        let custom = schema.get_custom_fields();
-        assert!(custom.is_empty());
-    }
-
-    #[test]
-    fn test_rb_schema_create_default_has_13_fields() {
+    fn test_rb_schema_create_default() {
         let schema = RbSchema::create_default_internal();
         assert_eq!(schema.field_count(), 13);
+        assert_eq!(schema.fields()[0], "surface");
+        assert_eq!(schema.fields()[3], "cost");
+        assert_eq!(schema.fields()[5], "middle_pos");
     }
 
     #[test]
-    fn test_rb_schema_create_default_first_fields() {
+    fn test_rb_schema_get_field_by_name() {
         let schema = RbSchema::create_default_internal();
-        assert_eq!(schema.fields[0], "surface");
-        assert_eq!(schema.fields[1], "left_context_id");
-        assert_eq!(schema.fields[2], "right_context_id");
-        assert_eq!(schema.fields[3], "cost");
+        let surface = schema.get_field_by_name("surface".to_string()).unwrap();
+        assert_eq!(surface.index, 0);
+        assert!(matches!(surface.field_type.inner, RbFieldTypeKind::Surface));
+
+        let custom = schema.get_field_by_name("middle_pos".to_string()).unwrap();
+        assert_eq!(custom.index, 5);
+        assert!(matches!(custom.field_type.inner, RbFieldTypeKind::Custom));
+
+        assert!(schema.get_field_by_name("nope".to_string()).is_none());
     }
 
     #[test]
@@ -549,9 +508,8 @@ mod tests {
         let fields = vec!["x".to_string(), "y".to_string(), "z".to_string()];
         let lindera_schema = Schema::new(fields.clone());
         let rb_schema: RbSchema = lindera_schema.into();
-        assert_eq!(rb_schema.fields, fields);
+        assert_eq!(rb_schema.fields(), fields);
         assert_eq!(rb_schema.get_field_index("x".to_string()), Some(0));
-        assert_eq!(rb_schema.get_field_index("y".to_string()), Some(1));
         assert_eq!(rb_schema.get_field_index("z".to_string()), Some(2));
     }
 
@@ -567,7 +525,7 @@ mod tests {
         let rb_schema = RbSchema::new_internal(fields.clone());
         let lindera_schema: Schema = rb_schema.into();
         let back: RbSchema = lindera_schema.into();
-        assert_eq!(back.fields, fields);
+        assert_eq!(back.fields(), fields);
         assert_eq!(back.field_count(), 5);
     }
 

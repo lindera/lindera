@@ -39,8 +39,19 @@ impl RbToken {
     ///
     /// A new `RbToken` instance.
     pub fn from_token(token: Token) -> Self {
-        let view = lindera_binding_core::TokenView::from_token(token);
+        Self::from_view(lindera_binding_core::TokenView::from_token(token))
+    }
 
+    /// Creates a new `RbToken` from a binding-core `TokenView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - Token view produced by the binding-core tokenizer.
+    ///
+    /// # Returns
+    ///
+    /// A new `RbToken` instance.
+    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,
             byte_start: view.byte_start,
