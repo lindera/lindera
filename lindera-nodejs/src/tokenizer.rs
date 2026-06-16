@@ -1,13 +1,13 @@
 //! Tokenizer implementation for morphological analysis.
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
+//! The build-flow orchestration is delegated to
+//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! this module only adds the napi wrappers and the JS-value conversion.
 
 use std::path::Path;
-use std::str::FromStr;
 
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
@@ -20,7 +20,7 @@ use crate::util::js_value_to_serde_value;
 /// dictionaries, modes, and filter pipelines.
 #[napi(js_name = "TokenizerBuilder")]
 pub struct JsTokenizerBuilder {
-    inner: TokenizerBuilder,
+    inner: CoreTokenizerBuilder,
 }
 
 #[napi]
@@ -28,9 +28,7 @@ impl JsTokenizerBuilder {
     /// Creates a new TokenizerBuilder with default configuration.
     #[napi(constructor)]
     pub fn new() -> napi::Result<Self> {
-        let inner = TokenizerBuilder::new()
-            .map_err(|err| to_napi_error(format!("Failed to create TokenizerBuilder: {err}")))?;
-
+        let inner = CoreTokenizerBuilder::new().map_err(to_napi_error)?;
         Ok(Self { inner })
     }
 
@@ -45,9 +43,8 @@ impl JsTokenizerBuilder {
     /// A new TokenizerBuilder with the loaded configuration.
     #[napi]
     pub fn from_file(&self, file_path: String) -> napi::Result<JsTokenizerBuilder> {
-        let inner = TokenizerBuilder::from_file(Path::new(&file_path))
-            .map_err(|err| to_napi_error(format!("Failed to load config from file: {err}")))?;
-
+        let inner =
+            CoreTokenizerBuilder::from_file(Path::new(&file_path)).map_err(to_napi_error)?;
         Ok(JsTokenizerBuilder { inner })
     }
 
@@ -58,10 +55,7 @@ impl JsTokenizerBuilder {
     /// * `mode` - Mode string ("normal" or "decompose").
     #[napi]
     pub fn set_mode(&mut self, mode: String) -> napi::Result<()> {
-        let m = Mode::from_str(&mode)
-            .map_err(|err| to_napi_error(format!("Failed to create mode: {err}")))?;
-
-        self.inner.set_segmenter_mode(&m);
+        self.inner.set_mode(&mode).map_err(to_napi_error)?;
         Ok(())
     }
 
@@ -72,7 +66,7 @@ impl JsTokenizerBuilder {
     /// * `path` - Path to the dictionary directory or embedded URI (e.g. "embedded://ipadic").
     #[napi]
     pub fn set_dictionary(&mut self, path: String) {
-        self.inner.set_segmenter_dictionary(&path);
+        self.inner.set_dictionary(&path);
     }
 
     /// Sets the user dictionary URI.
@@ -82,7 +76,7 @@ impl JsTokenizerBuilder {
     /// * `uri` - URI to the user dictionary.
     #[napi]
     pub fn set_user_dictionary(&mut self, uri: String) {
-        self.inner.set_segmenter_user_dictionary(&uri);
+        self.inner.set_user_dictionary(&uri);
     }
 
     /// Sets whether to keep whitespace in tokenization results.
@@ -92,7 +86,7 @@ impl JsTokenizerBuilder {
     /// * `keep_whitespace` - If true, whitespace tokens will be included in results.
     #[napi]
     pub fn set_keep_whitespace(&mut self, keep_whitespace: bool) {
-        self.inner.set_segmenter_keep_whitespace(keep_whitespace);
+        self.inner.set_keep_whitespace(keep_whitespace);
     }
 
     /// Appends a character filter to the preprocessing pipeline.
@@ -136,12 +130,8 @@ impl JsTokenizerBuilder {
     /// A configured Tokenizer instance ready for use.
     #[napi]
     pub fn build(&self) -> napi::Result<JsTokenizer> {
-        let tokenizer = self
-            .inner
-            .build()
-            .map_err(|err| to_napi_error(format!("Failed to build tokenizer: {err}")))?;
-
-        Ok(JsTokenizer { inner: tokenizer })
+        let inner = self.inner.build().map_err(to_napi_error)?;
+        Ok(JsTokenizer { inner })
     }
 }
 
@@ -150,7 +140,7 @@ impl JsTokenizerBuilder {
 /// The tokenizer processes text and returns tokens with their morphological features.
 #[napi(js_name = "Tokenizer")]
 pub struct JsTokenizer {
-    inner: Tokenizer,
+    inner: CoreTokenizer,
 }
 
 #[napi]
@@ -169,16 +159,13 @@ impl JsTokenizer {
         user_dictionary: Option<&JsUserDictionary>,
     ) -> napi::Result<Self> {
         let mode_str = mode.unwrap_or_else(|| "normal".to_string());
-        let m = Mode::from_str(&mode_str)
-            .map_err(|err| to_napi_error(format!("Failed to create mode: {err}")))?;
-
         let dict = dictionary.inner.clone();
         let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-        let segmenter = Segmenter::new(m, dict, user_dict);
-        let tokenizer = Tokenizer::new(segmenter);
+        let inner =
+            CoreTokenizer::from_segmenter(&mode_str, dict, user_dict).map_err(to_napi_error)?;
 
-        Ok(Self { inner: tokenizer })
+        Ok(Self { inner })
     }
 
     /// Tokenizes the given text.
@@ -192,14 +179,8 @@ impl JsTokenizer {
     /// An array of Token objects containing morphological features.
     #[napi]
     pub fn tokenize(&self, text: String) -> napi::Result<Vec<JsToken>> {
-        let tokens = self
-            .inner
-            .tokenize(&text)
-            .map_err(|err| to_napi_error(format!("Failed to tokenize text: {err}")))?;
-
-        let js_tokens: Vec<JsToken> = tokens.into_iter().map(JsToken::from_token).collect();
-
-        Ok(js_tokens)
+        let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
+        Ok(views.into_iter().map(JsToken::from_view).collect())
     }
 
     /// Tokenizes the given text and returns N-best results.
@@ -225,12 +206,12 @@ impl JsTokenizer {
         let results = self
             .inner
             .tokenize_nbest(&text, n as usize, unique.unwrap_or(false), cost_threshold)
-            .map_err(|err| to_napi_error(format!("Failed to tokenize_nbest text: {err}")))?;
+            .map_err(to_napi_error)?;
 
         let js_results: Vec<JsNbestResult> = results
             .into_iter()
-            .map(|(tokens, cost)| {
-                JsNbestResult::new(tokens.into_iter().map(JsToken::from_token).collect(), cost)
+            .map(|(views, cost)| {
+                JsNbestResult::new(views.into_iter().map(JsToken::from_view).collect(), cost)
             })
             .collect();
 
