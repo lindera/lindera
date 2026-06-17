@@ -427,7 +427,7 @@ mod tests {
         let schema = PySchema::create_default();
         assert_eq!(schema.field_count(), 13);
         assert_eq!(schema.fields()[0], "surface");
-        assert_eq!(schema.fields()[5], "middle_pos");
+        assert_eq!(schema.fields()[5], "pos_detail_1");
         assert_eq!(schema.fields()[12], "pronunciation");
         assert_eq!(schema.get_field_index("cost"), Some(3));
     }

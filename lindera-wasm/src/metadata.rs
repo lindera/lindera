@@ -1,34 +1,36 @@
 use wasm_bindgen::prelude::*;
 
 use lindera::dictionary::Metadata;
+use lindera_binding_core::CoreMetadata;
 
 use crate::schema::JsSchema;
 
 /// Dictionary metadata configuration.
+///
+/// A thin wasm-bindgen wrapper over [`lindera_binding_core::CoreMetadata`], which
+/// owns the default values and the schema wiring.
 #[wasm_bindgen(js_name = "Metadata")]
 #[derive(Clone)]
 pub struct JsMetadata {
-    pub(crate) inner: Metadata,
+    /// The backing binding-core metadata.
+    pub(crate) inner: CoreMetadata,
 }
 
 #[wasm_bindgen]
 impl JsMetadata {
     #[wasm_bindgen(constructor)]
     pub fn new(name: Option<String>, encoding: Option<String>) -> Self {
-        let mut inner = Metadata::default();
-        if let Some(n) = name {
-            inner.name = n;
+        Self {
+            inner: CoreMetadata::new(
+                name, encoding, None, None, None, None, None, None, None, None, None,
+            ),
         }
-        if let Some(e) = encoding {
-            inner.encoding = e;
-        }
-        Self { inner }
     }
 
     #[wasm_bindgen(js_name = "createDefault")]
     pub fn create_default() -> Self {
         Self {
-            inner: Metadata::default(),
+            inner: CoreMetadata::create_default(),
         }
     }
 
@@ -54,38 +56,36 @@ impl JsMetadata {
 
     #[wasm_bindgen(getter)]
     pub fn dictionary_schema(&self) -> JsSchema {
-        JsSchema {
-            inner: self.inner.dictionary_schema.clone(),
-        }
+        JsSchema::from(self.inner.dictionary_schema.clone())
     }
 
     #[wasm_bindgen(setter)]
     pub fn set_dictionary_schema(&mut self, schema: JsSchema) {
-        self.inner.dictionary_schema = schema.inner;
+        self.inner.dictionary_schema = schema.into();
     }
 
     #[wasm_bindgen(getter)]
     pub fn user_dictionary_schema(&self) -> JsSchema {
-        JsSchema {
-            inner: self.inner.user_dictionary_schema.clone(),
-        }
+        JsSchema::from(self.inner.user_dictionary_schema.clone())
     }
 
     #[wasm_bindgen(setter)]
     pub fn set_user_dictionary_schema(&mut self, schema: JsSchema) {
-        self.inner.user_dictionary_schema = schema.inner;
+        self.inner.user_dictionary_schema = schema.into();
     }
 }
 
 impl From<Metadata> for JsMetadata {
     fn from(metadata: Metadata) -> Self {
-        JsMetadata { inner: metadata }
+        JsMetadata {
+            inner: CoreMetadata::from(metadata),
+        }
     }
 }
 
 impl From<JsMetadata> for Metadata {
     fn from(metadata: JsMetadata) -> Self {
-        metadata.inner
+        metadata.inner.into()
     }
 }
 

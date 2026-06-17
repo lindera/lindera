@@ -422,7 +422,7 @@ mod tests {
         let schema = PhpSchema::create_default();
         assert_eq!(schema.fields().len(), 13);
         assert_eq!(schema.fields()[0], "surface");
-        assert_eq!(schema.fields()[5], "middle_pos");
+        assert_eq!(schema.fields()[5], "pos_detail_1");
         assert_eq!(schema.fields()[12], "pronunciation");
     }
 
@@ -441,7 +441,9 @@ mod tests {
         assert_eq!(surface.index, 0);
         assert_eq!(surface.field_type, "surface");
 
-        let custom = schema.get_field_by_name("middle_pos".to_string()).unwrap();
+        let custom = schema
+            .get_field_by_name("pos_detail_1".to_string())
+            .unwrap();
         assert_eq!(custom.index, 5);
         assert_eq!(custom.field_type, "custom");
 

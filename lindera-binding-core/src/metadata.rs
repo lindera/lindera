@@ -168,9 +168,9 @@ mod tests {
         assert!(!m.flexible_csv);
         assert!(!m.skip_invalid_cost_or_id);
         assert!(!m.normalize_details);
-        // Binding default keeps `middle_pos` naming (unification tracked in #720).
+        // The default dictionary schema uses the unified `pos_detail_*` names.
         assert_eq!(m.dictionary_schema.field_count(), 13);
-        assert_eq!(m.dictionary_schema.fields()[5], "middle_pos");
+        assert_eq!(m.dictionary_schema.fields()[5], "pos_detail_1");
         assert_eq!(m.user_dictionary_schema.fields().len(), 3);
         assert_eq!(m.user_dictionary_schema.fields()[1], "reading");
     }
@@ -209,6 +209,6 @@ mod tests {
 
         let back: CoreMetadata = lindera.into();
         assert_eq!(back.name, "default");
-        assert_eq!(back.dictionary_schema.fields()[5], "middle_pos");
+        assert_eq!(back.dictionary_schema.fields()[5], "pos_detail_1");
     }
 }

@@ -478,7 +478,7 @@ mod tests {
         assert_eq!(schema.field_count(), 13);
         assert_eq!(schema.fields()[0], "surface");
         assert_eq!(schema.fields()[3], "cost");
-        assert_eq!(schema.fields()[5], "middle_pos");
+        assert_eq!(schema.fields()[5], "pos_detail_1");
     }
 
     #[test]
@@ -488,7 +488,9 @@ mod tests {
         assert_eq!(surface.index, 0);
         assert!(matches!(surface.field_type.inner, RbFieldTypeKind::Surface));
 
-        let custom = schema.get_field_by_name("middle_pos".to_string()).unwrap();
+        let custom = schema
+            .get_field_by_name("pos_detail_1".to_string())
+            .unwrap();
         assert_eq!(custom.index, 5);
         assert!(matches!(custom.field_type.inner, RbFieldTypeKind::Custom));
 
