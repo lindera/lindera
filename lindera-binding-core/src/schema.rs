@@ -8,16 +8,13 @@ use lindera::dictionary::{FieldDefinition, FieldType, Schema};
 
 use crate::error::{CoreError, CoreResult};
 
-/// Default dictionary schema field names used by the Python/PHP/Ruby/Node.js
-/// bindings' `Schema.create_default()`.
+/// Default dictionary schema field names shared by all bindings'
+/// `Schema.create_default()`.
 ///
-/// NOTE: these intentionally differ from
-/// [`lindera::dictionary::Schema::default()`], which uses
-/// `pos_detail_1/2/3` where these use `middle_pos/small_pos/fine_pos`. The
-/// WASM binding uses `Schema::default()`, so the two field-naming schemes
-/// currently diverge — a pre-existing API inconsistency left for a later
-/// reconciliation. This function preserves the historical
-/// Python/PHP/Ruby/Node.js naming exactly.
+/// These match [`lindera::dictionary::Schema::default()`] exactly, including the
+/// `pos_detail_1/2/3` POS-detail field names. (Earlier the Python/PHP/Ruby/Node.js
+/// bindings used `middle_pos/small_pos/fine_pos` while WASM used `pos_detail_*`;
+/// that inconsistency was reconciled onto `pos_detail_*` in v4.0.0.)
 pub fn default_dictionary_fields() -> Vec<String> {
     [
         "surface",
@@ -25,9 +22,9 @@ pub fn default_dictionary_fields() -> Vec<String> {
         "right_context_id",
         "cost",
         "major_pos",
-        "middle_pos",
-        "small_pos",
-        "fine_pos",
+        "pos_detail_1",
+        "pos_detail_2",
+        "pos_detail_3",
         "conjugation_type",
         "conjugation_form",
         "base_form",
@@ -252,7 +249,7 @@ mod tests {
     fn default_fields_count() {
         assert_eq!(default_dictionary_fields().len(), 13);
         assert_eq!(default_dictionary_fields()[0], "surface");
-        assert_eq!(default_dictionary_fields()[5], "middle_pos");
+        assert_eq!(default_dictionary_fields()[5], "pos_detail_1");
     }
 
     #[test]
@@ -313,14 +310,18 @@ mod tests {
     }
 
     #[test]
-    fn core_schema_default_matches_binding_fields() {
+    fn core_schema_default_matches_lindera() {
         let schema = CoreSchema::create_default();
         assert_eq!(schema.field_count(), 13);
         assert_eq!(schema.fields()[0], "surface");
-        // Binding default uses `middle_pos` (not lindera's `pos_detail_1`); the
-        // unification is tracked separately and intentionally not done here.
-        assert_eq!(schema.fields()[5], "middle_pos");
+        // The default now matches `lindera::dictionary::Schema::default()`,
+        // including the `pos_detail_*` POS-detail names (unified in v4.0.0).
+        assert_eq!(schema.fields()[5], "pos_detail_1");
         assert_eq!(schema.fields()[12], "pronunciation");
+        assert_eq!(
+            schema.fields(),
+            lindera::dictionary::Schema::default().get_all_fields()
+        );
     }
 
     #[test]
