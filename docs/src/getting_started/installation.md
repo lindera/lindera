@@ -44,9 +44,6 @@ cargo build --features=ipadic
 
 When set, dictionary source files are stored in `$LINDERA_DICTIONARIES_PATH/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
 
-> [!NOTE]
-> `LINDERA_CACHE` is deprecated but still supported for backward compatibility. It will be used if `LINDERA_DICTIONARIES_PATH` is not set.
-
 ### LINDERA_CONFIG_PATH
 
 The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.

@@ -44,9 +44,6 @@ cargo build --features=ipadic
 
 設定された場合、辞書ソースファイルは `$LINDERA_DICTIONARIES_PATH/<version>/` （`<version>` は lindera-dictionary クレートのバージョン）に保存されます。キャッシュはMD5チェックサムを使用してファイルを検証し、無効なファイルは自動的に再ダウンロードされます。
 
-> [!NOTE]
-> `LINDERA_CACHE` は非推奨ですが、後方互換性のために引き続きサポートされています。`LINDERA_DICTIONARIES_PATH` が設定されていない場合に使用されます。
-
 ### LINDERA_CONFIG_PATH
 
 `LINDERA_CONFIG_PATH` 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。
