@@ -112,17 +112,13 @@ pub struct PrefixDictionary {
 impl PrefixDictionary {
     /// Decode the `(offset, count)` pair stored in the double-array value.
     ///
-    /// System dictionaries use 8-bit count (supports up to 255 variants per
-    /// surface), while user dictionaries retain the legacy 5-bit count
-    /// encoding (max 31) for binary backward compatibility with pre-built
-    /// `.bin` user dictionary files.
+    /// Both system and user dictionaries pack the word-id offset in the high
+    /// 24 bits and the per-surface variant count in the low 8 bits (up to 255
+    /// variants). The legacy 5-bit user-dictionary encoding was retired in
+    /// v4.0.0; user `.bin` files built with v3 must be rebuilt from CSV.
     #[inline]
     pub(crate) fn decode_val(&self, val: u32) -> (u32, u32) {
-        if self.is_system {
-            (val >> 8u32, val & ((1u32 << 8) - 1u32))
-        } else {
-            (val >> 5u32, val & ((1u32 << 5) - 1u32))
-        }
+        (val >> 8u32, val & ((1u32 << 8) - 1u32))
     }
 
     /// Load a `PrefixDictionary` from raw binary data.
@@ -274,11 +270,7 @@ impl ArchivedPrefixDictionary {
     /// Decode the `(offset, count)` pair. See [`PrefixDictionary::decode_val`].
     #[inline]
     fn decode_val(&self, val: u32) -> (u32, u32) {
-        if self.is_system {
-            (val >> 8u32, val & ((1u32 << 8) - 1u32))
-        } else {
-            (val >> 5u32, val & ((1u32 << 5) - 1u32))
-        }
+        (val >> 8u32, val & ((1u32 << 8) - 1u32))
     }
 
     /// Find all prefix matches for the given string using the archived dictionary.
