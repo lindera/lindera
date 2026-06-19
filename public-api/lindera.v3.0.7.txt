@@ -1,0 +1,663 @@
+pub mod lindera
+pub mod lindera::character_filter
+pub mod lindera::character_filter::japanese_iteration_mark
+pub struct lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::normalize_kana: bool
+pub lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::normalize_kanji: bool
+impl lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::from_config(&lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::new(bool, bool) -> Self
+impl core::clone::Clone for lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::clone(&self) -> lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+impl core::fmt::Debug for lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::name(&self) -> &'static str
+pub const lindera::character_filter::japanese_iteration_mark::JAPANESE_ITERATION_MARK_CHARACTER_FILTER_NAME: &str
+pub type lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilterConfig = serde_json::value::Value
+pub mod lindera::character_filter::mapping
+pub struct lindera::character_filter::mapping::MappingCharacterFilter
+impl lindera::character_filter::mapping::MappingCharacterFilter
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::from_config(&lindera::character_filter::mapping::MappingCharacterFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::new(std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>) -> lindera::LinderaResult<Self>
+impl core::clone::Clone for lindera::character_filter::mapping::MappingCharacterFilter
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::clone(&self) -> lindera::character_filter::mapping::MappingCharacterFilter
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::mapping::MappingCharacterFilter
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::name(&self) -> &'static str
+pub const lindera::character_filter::mapping::MAPPING_CHARACTER_FILTER_NAME: &str
+pub type lindera::character_filter::mapping::MappingCharacterFilterConfig = serde_json::value::Value
+pub mod lindera::character_filter::regex
+pub struct lindera::character_filter::regex::RegexCharacterFilter
+impl lindera::character_filter::regex::RegexCharacterFilter
+pub fn lindera::character_filter::regex::RegexCharacterFilter::from_config(&lindera::character_filter::regex::RegexCharacterFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::character_filter::regex::RegexCharacterFilter::new(&str, &str) -> lindera::LinderaResult<Self>
+impl core::clone::Clone for lindera::character_filter::regex::RegexCharacterFilter
+pub fn lindera::character_filter::regex::RegexCharacterFilter::clone(&self) -> lindera::character_filter::regex::RegexCharacterFilter
+impl core::fmt::Debug for lindera::character_filter::regex::RegexCharacterFilter
+pub fn lindera::character_filter::regex::RegexCharacterFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::regex::RegexCharacterFilter
+pub fn lindera::character_filter::regex::RegexCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::regex::RegexCharacterFilter::name(&self) -> &'static str
+pub const lindera::character_filter::regex::REGEX_CHARACTER_FILTER_NAME: &str
+pub type lindera::character_filter::regex::RegexCharacterFilterConfig = serde_json::value::Value
+pub mod lindera::character_filter::unicode_normalize
+pub enum lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::NFC
+pub lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::NFD
+pub lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::NFKC
+pub lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::NFKD
+impl lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::as_str(&self) -> &str
+impl core::clone::Clone for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::clone(&self) -> lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+impl core::cmp::Eq for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+impl core::cmp::PartialEq for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::eq(&self, &lindera::character_filter::unicode_normalize::UnicodeNormalizeKind) -> bool
+impl core::fmt::Debug for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+impl core::str::traits::FromStr for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub type lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::from_str(&str) -> core::result::Result<Self, Self::Err>
+impl serde_core::ser::Serialize for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera::character_filter::unicode_normalize::UnicodeNormalizeKind
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeKind::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub struct lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+impl lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::from_config(&lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::new(lindera::character_filter::unicode_normalize::UnicodeNormalizeKind) -> Self
+impl core::clone::Clone for lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::clone(&self) -> lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+impl core::fmt::Debug for lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::name(&self) -> &'static str
+pub const lindera::character_filter::unicode_normalize::UNICODE_NORMALIZE_CHARACTER_FILTER_NAME: &str
+pub type lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilterConfig = serde_json::value::Value
+pub struct lindera::character_filter::BoxCharacterFilter(_)
+impl core::ops::deref::Deref for lindera::character_filter::BoxCharacterFilter
+pub type lindera::character_filter::BoxCharacterFilter::Target = dyn lindera::character_filter::CharacterFilter
+pub fn lindera::character_filter::BoxCharacterFilter::deref(&self) -> &dyn lindera::character_filter::CharacterFilter
+impl<T: lindera::character_filter::CharacterFilter> core::convert::From<T> for lindera::character_filter::BoxCharacterFilter
+pub fn lindera::character_filter::BoxCharacterFilter::from(T) -> lindera::character_filter::BoxCharacterFilter
+pub struct lindera::character_filter::CharacterFilterLoader
+impl lindera::character_filter::CharacterFilterLoader
+pub fn lindera::character_filter::CharacterFilterLoader::load_from_cli_flag(&str) -> lindera::LinderaResult<lindera::character_filter::BoxCharacterFilter>
+pub fn lindera::character_filter::CharacterFilterLoader::load_from_value(&str, &serde_json::value::Value) -> lindera::LinderaResult<lindera::character_filter::BoxCharacterFilter>
+pub struct lindera::character_filter::OffsetMapping
+pub lindera::character_filter::OffsetMapping::transformations: alloc::vec::Vec<lindera::character_filter::Transformation>
+impl lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::add_transformation(&mut self, lindera::character_filter::Transformation)
+pub fn lindera::character_filter::OffsetMapping::compose(self, lindera::character_filter::OffsetMapping) -> lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::correct_offset(&self, usize, usize) -> usize
+pub fn lindera::character_filter::OffsetMapping::is_empty(&self) -> bool
+pub fn lindera::character_filter::OffsetMapping::new() -> Self
+pub fn lindera::character_filter::OffsetMapping::with_transformations(alloc::vec::Vec<lindera::character_filter::Transformation>) -> Self
+impl core::clone::Clone for lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::clone(&self) -> lindera::character_filter::OffsetMapping
+impl core::cmp::PartialEq for lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::eq(&self, &lindera::character_filter::OffsetMapping) -> bool
+impl core::default::Default for lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::default() -> lindera::character_filter::OffsetMapping
+impl core::fmt::Debug for lindera::character_filter::OffsetMapping
+pub fn lindera::character_filter::OffsetMapping::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::character_filter::OffsetMapping
+pub struct lindera::character_filter::Transformation
+pub lindera::character_filter::Transformation::filtered_end: usize
+pub lindera::character_filter::Transformation::filtered_start: usize
+pub lindera::character_filter::Transformation::original_end: usize
+pub lindera::character_filter::Transformation::original_start: usize
+impl lindera::character_filter::Transformation
+pub fn lindera::character_filter::Transformation::new(usize, usize, usize, usize) -> Self
+impl core::clone::Clone for lindera::character_filter::Transformation
+pub fn lindera::character_filter::Transformation::clone(&self) -> lindera::character_filter::Transformation
+impl core::cmp::PartialEq for lindera::character_filter::Transformation
+pub fn lindera::character_filter::Transformation::eq(&self, &lindera::character_filter::Transformation) -> bool
+impl core::fmt::Debug for lindera::character_filter::Transformation
+pub fn lindera::character_filter::Transformation::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::character_filter::Transformation
+pub trait lindera::character_filter::CharacterFilter: 'static + core::marker::Send + core::marker::Sync + lindera::character_filter::CharacterFilterClone
+pub fn lindera::character_filter::CharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::CharacterFilter::name(&self) -> &str
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter::name(&self) -> &'static str
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::mapping::MappingCharacterFilter
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::mapping::MappingCharacterFilter::name(&self) -> &'static str
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::regex::RegexCharacterFilter
+pub fn lindera::character_filter::regex::RegexCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::regex::RegexCharacterFilter::name(&self) -> &'static str
+impl lindera::character_filter::CharacterFilter for lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::apply(&self, &mut alloc::string::String) -> lindera::LinderaResult<lindera::character_filter::OffsetMapping>
+pub fn lindera::character_filter::unicode_normalize::UnicodeNormalizeCharacterFilter::name(&self) -> &'static str
+pub trait lindera::character_filter::CharacterFilterClone
+pub fn lindera::character_filter::CharacterFilterClone::box_clone(&self) -> lindera::character_filter::BoxCharacterFilter
+impl<T: lindera::character_filter::CharacterFilter + core::clone::Clone + 'static> lindera::character_filter::CharacterFilterClone for T
+pub fn T::box_clone(&self) -> lindera::character_filter::BoxCharacterFilter
+pub mod lindera::dictionary
+pub enum lindera::dictionary::DictionaryKind
+impl lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::as_str(&self) -> &str
+pub fn lindera::dictionary::DictionaryKind::contained_variants() -> alloc::vec::Vec<lindera::dictionary::DictionaryKind>
+pub fn lindera::dictionary::DictionaryKind::variants() -> alloc::vec::Vec<lindera::dictionary::DictionaryKind>
+impl core::clone::Clone for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::clone(&self) -> lindera::dictionary::DictionaryKind
+impl core::cmp::Eq for lindera::dictionary::DictionaryKind
+impl core::cmp::PartialEq for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::eq(&self, &lindera::dictionary::DictionaryKind) -> bool
+impl core::fmt::Debug for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::dictionary::DictionaryKind
+impl core::str::traits::FromStr for lindera::dictionary::DictionaryKind
+pub type lindera::dictionary::DictionaryKind::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::dictionary::DictionaryKind::from_str(&str) -> core::result::Result<lindera::dictionary::DictionaryKind, Self::Err>
+impl serde_core::ser::Serialize for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl strum::IntoEnumIterator for lindera::dictionary::DictionaryKind
+pub type lindera::dictionary::DictionaryKind::Iterator = lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKind::iter() -> lindera::dictionary::DictionaryKindIter
+impl<'de> serde_core::de::Deserialize<'de> for lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKind::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub enum lindera::dictionary::DictionaryScheme
+pub lindera::dictionary::DictionaryScheme::File
+impl lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::as_str(&self) -> &str
+impl core::clone::Clone for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::clone(&self) -> lindera::dictionary::DictionaryScheme
+impl core::cmp::Eq for lindera::dictionary::DictionaryScheme
+impl core::cmp::PartialEq for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::eq(&self, &lindera::dictionary::DictionaryScheme) -> bool
+impl core::fmt::Debug for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::dictionary::DictionaryScheme
+impl core::str::traits::FromStr for lindera::dictionary::DictionaryScheme
+pub type lindera::dictionary::DictionaryScheme::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::dictionary::DictionaryScheme::from_str(&str) -> core::result::Result<lindera::dictionary::DictionaryScheme, Self::Err>
+impl serde_core::ser::Serialize for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl strum::IntoEnumIterator for lindera::dictionary::DictionaryScheme
+pub type lindera::dictionary::DictionaryScheme::Iterator = lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionaryScheme::iter() -> lindera::dictionary::DictionarySchemeIter
+impl<'de> serde_core::de::Deserialize<'de> for lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionaryScheme::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub struct lindera::dictionary::DictionaryKindIter
+impl core::clone::Clone for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::clone(&self) -> lindera::dictionary::DictionaryKindIter
+impl core::fmt::Debug for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::iter::traits::double_ended::DoubleEndedIterator for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::next_back(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+impl core::iter::traits::exact_size::ExactSizeIterator for lindera::dictionary::DictionaryKindIter
+pub fn lindera::dictionary::DictionaryKindIter::len(&self) -> usize
+impl core::iter::traits::iterator::Iterator for lindera::dictionary::DictionaryKindIter
+pub type lindera::dictionary::DictionaryKindIter::Item = lindera::dictionary::DictionaryKind
+pub fn lindera::dictionary::DictionaryKindIter::next(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionaryKindIter::nth(&mut self, usize) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionaryKindIter::size_hint(&self) -> (usize, core::option::Option<usize>)
+impl core::iter::traits::marker::FusedIterator for lindera::dictionary::DictionaryKindIter
+pub struct lindera::dictionary::DictionarySchemeIter
+impl core::clone::Clone for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::clone(&self) -> lindera::dictionary::DictionarySchemeIter
+impl core::fmt::Debug for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::iter::traits::double_ended::DoubleEndedIterator for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::next_back(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+impl core::iter::traits::exact_size::ExactSizeIterator for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::DictionarySchemeIter::len(&self) -> usize
+impl core::iter::traits::iterator::Iterator for lindera::dictionary::DictionarySchemeIter
+pub type lindera::dictionary::DictionarySchemeIter::Item = lindera::dictionary::DictionaryScheme
+pub fn lindera::dictionary::DictionarySchemeIter::next(&mut self) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionarySchemeIter::nth(&mut self, usize) -> core::option::Option<<Self as core::iter::traits::iterator::Iterator>::Item>
+pub fn lindera::dictionary::DictionarySchemeIter::size_hint(&self) -> (usize, core::option::Option<usize>)
+impl core::iter::traits::marker::FusedIterator for lindera::dictionary::DictionarySchemeIter
+pub fn lindera::dictionary::load_dictionary(&str) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_embedded_dictionary(lindera::dictionary::DictionaryKind) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_fs_dictionary(&std::path::Path) -> lindera::LinderaResult<lindera::dictionary::Dictionary>
+pub fn lindera::dictionary::load_user_dictionary(&str, &lindera::dictionary::Metadata) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::load_user_dictionary_from_bin(&std::path::Path) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::load_user_dictionary_from_csv(&lindera::dictionary::Metadata, &std::path::Path) -> lindera::LinderaResult<lindera::dictionary::UserDictionary>
+pub fn lindera::dictionary::resolve_embedded_loader(lindera::dictionary::DictionaryKind) -> lindera::LinderaResult<alloc::boxed::Box<dyn lindera_dictionary::loader::DictionaryLoader>>
+pub type lindera::dictionary::Dictionary = lindera_dictionary::dictionary::Dictionary
+pub type lindera::dictionary::DictionaryBuilder = lindera_dictionary::builder::DictionaryBuilder
+pub type lindera::dictionary::DictionaryConfig = serde_json::value::Value
+pub type lindera::dictionary::FieldDefinition = lindera_dictionary::dictionary::schema::FieldDefinition
+pub type lindera::dictionary::FieldType = lindera_dictionary::dictionary::schema::FieldType
+pub type lindera::dictionary::Lattice = lindera_dictionary::viterbi::Lattice
+pub type lindera::dictionary::Metadata = lindera_dictionary::dictionary::metadata::Metadata
+pub type lindera::dictionary::Schema = lindera_dictionary::dictionary::schema::Schema
+pub type lindera::dictionary::UserDictionary = lindera_dictionary::dictionary::UserDictionary
+pub type lindera::dictionary::UserDictionaryConfig = serde_json::value::Value
+pub type lindera::dictionary::WordId = lindera_dictionary::viterbi::WordId
+pub mod lindera::error
+pub type lindera::error::LinderaError = lindera_dictionary::error::LinderaError
+pub type lindera::error::LinderaErrorKind = lindera_dictionary::error::LinderaErrorKind
+pub mod lindera::mode
+pub type lindera::mode::Mode = lindera_dictionary::mode::Mode
+pub type lindera::mode::Penalty = lindera_dictionary::mode::Penalty
+pub mod lindera::segmenter
+pub struct lindera::segmenter::Segmenter
+pub lindera::segmenter::Segmenter::dictionary: lindera_dictionary::dictionary::Dictionary
+pub lindera::segmenter::Segmenter::keep_whitespace: bool
+pub lindera::segmenter::Segmenter::mode: lindera_dictionary::mode::Mode
+pub lindera::segmenter::Segmenter::user_dictionary: core::option::Option<lindera_dictionary::dictionary::UserDictionary>
+impl lindera::segmenter::Segmenter
+pub fn lindera::segmenter::Segmenter::from_config(&lindera::segmenter::SegmenterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::segmenter::Segmenter::keep_whitespace(self, bool) -> Self
+pub fn lindera::segmenter::Segmenter::new(lindera_dictionary::mode::Mode, lindera_dictionary::dictionary::Dictionary, core::option::Option<lindera_dictionary::dictionary::UserDictionary>) -> Self
+pub fn lindera::segmenter::Segmenter::segment<'a>(&'a self, alloc::borrow::Cow<'a, str>) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+pub fn lindera::segmenter::Segmenter::segment_nbest<'a>(&'a self, alloc::borrow::Cow<'a, str>, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::segmenter::Segmenter::segment_nbest_with_lattice<'a>(&'a self, alloc::borrow::Cow<'a, str>, &mut lindera_dictionary::viterbi::Lattice, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::segmenter::Segmenter::segment_with_lattice<'a>(&'a self, alloc::borrow::Cow<'a, str>, &mut lindera_dictionary::viterbi::Lattice) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+impl core::clone::Clone for lindera::segmenter::Segmenter
+pub fn lindera::segmenter::Segmenter::clone(&self) -> lindera::segmenter::Segmenter
+pub type lindera::segmenter::SegmenterConfig = serde_json::value::Value
+pub mod lindera::token
+pub struct lindera::token::Token<'a>
+pub lindera::token::Token::byte_end: usize
+pub lindera::token::Token::byte_start: usize
+pub lindera::token::Token::details: core::option::Option<alloc::vec::Vec<alloc::borrow::Cow<'a, str>>>
+pub lindera::token::Token::dictionary: &'a lindera::dictionary::Dictionary
+pub lindera::token::Token::position: usize
+pub lindera::token::Token::position_length: usize
+pub lindera::token::Token::surface: alloc::borrow::Cow<'a, str>
+pub lindera::token::Token::user_dictionary: core::option::Option<&'a lindera::dictionary::UserDictionary>
+pub lindera::token::Token::word_id: lindera::dictionary::WordId
+impl<'a> lindera::token::Token<'a>
+pub fn lindera::token::Token<'a>::as_value(&mut self) -> serde_json::value::Value
+pub fn lindera::token::Token<'a>::details(&mut self) -> alloc::vec::Vec<&str>
+pub fn lindera::token::Token<'a>::get(&mut self, &str) -> core::option::Option<&str>
+pub fn lindera::token::Token<'a>::get_detail(&mut self, usize) -> core::option::Option<&str>
+pub fn lindera::token::Token<'a>::new(alloc::borrow::Cow<'a, str>, usize, usize, usize, lindera::dictionary::WordId, &'a lindera::dictionary::Dictionary, core::option::Option<&'a lindera::dictionary::UserDictionary>) -> Self
+pub fn lindera::token::Token<'a>::set_detail(&mut self, usize, alloc::borrow::Cow<'a, str>)
+impl<'a> core::clone::Clone for lindera::token::Token<'a>
+pub fn lindera::token::Token<'a>::clone(&self) -> lindera::token::Token<'a>
+pub mod lindera::token_filter
+pub mod lindera::token_filter::japanese_base_form
+pub struct lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+impl lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::from_config(&lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::new() -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::clone(&self) -> lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+impl core::default::Default for lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::default() -> Self
+impl core::fmt::Debug for lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_base_form::JAPANESE_BASE_FORM_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_compound_word
+pub struct lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+impl lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::from_config(&lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>, core::option::Option<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::clone(&self) -> lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_compound_word::JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_kana
+pub enum lindera::token_filter::japanese_kana::KanaKind
+pub lindera::token_filter::japanese_kana::KanaKind::Hiragana
+pub lindera::token_filter::japanese_kana::KanaKind::Katakana
+impl lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::as_str(&self) -> &str
+impl core::clone::Clone for lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::clone(&self) -> lindera::token_filter::japanese_kana::KanaKind
+impl core::cmp::Eq for lindera::token_filter::japanese_kana::KanaKind
+impl core::cmp::PartialEq for lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::eq(&self, &lindera::token_filter::japanese_kana::KanaKind) -> bool
+impl core::fmt::Debug for lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera::token_filter::japanese_kana::KanaKind
+impl core::str::traits::FromStr for lindera::token_filter::japanese_kana::KanaKind
+pub type lindera::token_filter::japanese_kana::KanaKind::Err = lindera_dictionary::error::LinderaError
+pub fn lindera::token_filter::japanese_kana::KanaKind::from_str(&str) -> core::result::Result<Self, Self::Err>
+impl serde_core::ser::Serialize for lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera::token_filter::japanese_kana::KanaKind
+pub fn lindera::token_filter::japanese_kana::KanaKind::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub struct lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+impl lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::from_config(&lindera::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::new(lindera::token_filter::japanese_kana::KanaKind) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::clone(&self) -> lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_kana::JAPANESE_KANA_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_kana::JapaneseKanaTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_katakana_stem
+pub struct lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+impl lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::from_config(&lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::new(core::num::nonzero::NonZeroUsize) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::clone(&self) -> lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_katakana_stem::JAPANESE_KATAKANA_STEM_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_keep_tags
+pub struct lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+impl lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::from_config(&lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::clone(&self) -> lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_keep_tags::JAPANESE_KEEP_TAGS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_number
+pub struct lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+impl lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::from_config(&lindera::token_filter::japanese_number::JapaneseNumberTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::new(core::option::Option<std::collections::hash::set::HashSet<alloc::string::String>>) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::clone(&self) -> lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_number::JAPANESE_NUMBER_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_number::JapaneseNumberTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_reading_form
+pub struct lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+impl lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::from_config(&lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::new() -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::clone(&self) -> lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+impl core::default::Default for lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::default() -> Self
+impl core::fmt::Debug for lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_reading_form::JAPANESE_READING_FORM_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::japanese_stop_tags
+pub struct lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+impl lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::from_config(&lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::clone(&self) -> lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::japanese_stop_tags::JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::keep_words
+pub struct lindera::token_filter::keep_words::KeepWordsTokenFilter
+impl lindera::token_filter::keep_words::KeepWordsTokenFilter
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::from_config(&lindera::token_filter::keep_words::KeepWordsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::keep_words::KeepWordsTokenFilter
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::clone(&self) -> lindera::token_filter::keep_words::KeepWordsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::keep_words::KeepWordsTokenFilter
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::keep_words::KeepWordsTokenFilter
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::keep_words::KEEP_WORDS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::keep_words::KeepWordsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::korean_keep_tags
+pub struct lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+impl lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::from_config(&lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::clone(&self) -> lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::korean_keep_tags::KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::korean_reading_form
+pub struct lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+impl lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::from_config(&lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::new() -> Self
+impl core::clone::Clone for lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::clone(&self) -> lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+impl core::default::Default for lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::default() -> Self
+impl core::fmt::Debug for lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::korean_reading_form::KOREAN_READING_FORM_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::korean_stop_tags
+pub struct lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+impl lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::from_config(&lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::clone(&self) -> lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::korean_stop_tags::KOREAN_STOP_TAGS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::length
+pub struct lindera::token_filter::length::LengthTokenFilter
+impl lindera::token_filter::length::LengthTokenFilter
+pub fn lindera::token_filter::length::LengthTokenFilter::from_config(&lindera::token_filter::length::LengthTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::length::LengthTokenFilter::new(core::option::Option<usize>, core::option::Option<usize>) -> Self
+impl core::clone::Clone for lindera::token_filter::length::LengthTokenFilter
+pub fn lindera::token_filter::length::LengthTokenFilter::clone(&self) -> lindera::token_filter::length::LengthTokenFilter
+impl core::fmt::Debug for lindera::token_filter::length::LengthTokenFilter
+pub fn lindera::token_filter::length::LengthTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::length::LengthTokenFilter
+pub fn lindera::token_filter::length::LengthTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::length::LengthTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::length::LENGTH_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::length::LengthTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::lowercase
+pub struct lindera::token_filter::lowercase::LowercaseTokenFilter
+impl lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::from_config(&lindera::token_filter::lowercase::LowercaseTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::new() -> Self
+impl core::clone::Clone for lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::clone(&self) -> lindera::token_filter::lowercase::LowercaseTokenFilter
+impl core::default::Default for lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::default() -> Self
+impl core::fmt::Debug for lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::lowercase::LOWERCASE_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::lowercase::LowercaseTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::mapping
+pub struct lindera::token_filter::mapping::MappingTokenFilter
+impl lindera::token_filter::mapping::MappingTokenFilter
+pub fn lindera::token_filter::mapping::MappingTokenFilter::from_config(&lindera::token_filter::mapping::MappingTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::mapping::MappingTokenFilter::new(std::collections::hash::map::HashMap<alloc::string::String, alloc::string::String>) -> lindera::LinderaResult<Self>
+impl core::clone::Clone for lindera::token_filter::mapping::MappingTokenFilter
+pub fn lindera::token_filter::mapping::MappingTokenFilter::clone(&self) -> lindera::token_filter::mapping::MappingTokenFilter
+impl lindera::token_filter::TokenFilter for lindera::token_filter::mapping::MappingTokenFilter
+pub fn lindera::token_filter::mapping::MappingTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::mapping::MappingTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::mapping::MAPPING_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::mapping::MappingTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::remove_diacritical_mark
+pub struct lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+impl lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::from_config(&lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::new(bool) -> Self
+impl core::clone::Clone for lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::clone(&self) -> lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+impl core::fmt::Debug for lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::remove_diacritical_mark::REMOVE_DIACRITICAL_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::stop_words
+pub struct lindera::token_filter::stop_words::StopWordsTokenFilter
+impl lindera::token_filter::stop_words::StopWordsTokenFilter
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::from_config(&lindera::token_filter::stop_words::StopWordsTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::new(std::collections::hash::set::HashSet<alloc::string::String>) -> Self
+impl core::clone::Clone for lindera::token_filter::stop_words::StopWordsTokenFilter
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::clone(&self) -> lindera::token_filter::stop_words::StopWordsTokenFilter
+impl core::fmt::Debug for lindera::token_filter::stop_words::StopWordsTokenFilter
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::stop_words::StopWordsTokenFilter
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::stop_words::STOP_WORDS_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::stop_words::StopWordsTokenFilterConfig = serde_json::value::Value
+pub mod lindera::token_filter::uppercase
+pub struct lindera::token_filter::uppercase::UppercaseTokenFilter
+impl lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::from_config(&lindera::token_filter::uppercase::UppercaseTokenFilterConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::new() -> Self
+impl core::clone::Clone for lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::clone(&self) -> lindera::token_filter::uppercase::UppercaseTokenFilter
+impl core::default::Default for lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::default() -> Self
+impl core::fmt::Debug for lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl lindera::token_filter::TokenFilter for lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::name(&self) -> &'static str
+pub const lindera::token_filter::uppercase::UPPERCASE_TOKEN_FILTER_NAME: &str
+pub type lindera::token_filter::uppercase::UppercaseTokenFilterConfig = serde_json::value::Value
+pub struct lindera::token_filter::BoxTokenFilter(_)
+impl core::ops::deref::Deref for lindera::token_filter::BoxTokenFilter
+pub type lindera::token_filter::BoxTokenFilter::Target = dyn lindera::token_filter::TokenFilter
+pub fn lindera::token_filter::BoxTokenFilter::deref(&self) -> &dyn lindera::token_filter::TokenFilter
+impl<T: lindera::token_filter::TokenFilter> core::convert::From<T> for lindera::token_filter::BoxTokenFilter
+pub fn lindera::token_filter::BoxTokenFilter::from(T) -> lindera::token_filter::BoxTokenFilter
+pub struct lindera::token_filter::TokenFilterLoader
+impl lindera::token_filter::TokenFilterLoader
+pub fn lindera::token_filter::TokenFilterLoader::load_from_cli_flag(&str) -> lindera::LinderaResult<lindera::token_filter::BoxTokenFilter>
+pub fn lindera::token_filter::TokenFilterLoader::load_from_value(&str, &serde_json::value::Value) -> lindera::LinderaResult<lindera::token_filter::BoxTokenFilter>
+pub trait lindera::token_filter::TokenFilter: 'static + core::marker::Send + core::marker::Sync + lindera::token_filter::TokenFilterClone
+pub fn lindera::token_filter::TokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::TokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_base_form::JapaneseBaseFormTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_kana::JapaneseKanaTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_number::JapaneseNumberTokenFilter
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_number::JapaneseNumberTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::keep_words::KeepWordsTokenFilter
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::keep_words::KeepWordsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_keep_tags::KoreanKeepTagsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_reading_form::KoreanReadingFormTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::korean_stop_tags::KoreanStopTagsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::length::LengthTokenFilter
+pub fn lindera::token_filter::length::LengthTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::length::LengthTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::lowercase::LowercaseTokenFilter
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::lowercase::LowercaseTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::mapping::MappingTokenFilter
+pub fn lindera::token_filter::mapping::MappingTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::mapping::MappingTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::remove_diacritical_mark::RemoveDiacriticalMarkTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::stop_words::StopWordsTokenFilter
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::stop_words::StopWordsTokenFilter::name(&self) -> &'static str
+impl lindera::token_filter::TokenFilter for lindera::token_filter::uppercase::UppercaseTokenFilter
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::apply(&self, &mut alloc::vec::Vec<lindera::token::Token<'_>>) -> lindera::LinderaResult<()>
+pub fn lindera::token_filter::uppercase::UppercaseTokenFilter::name(&self) -> &'static str
+pub trait lindera::token_filter::TokenFilterClone
+pub fn lindera::token_filter::TokenFilterClone::box_clone(&self) -> lindera::token_filter::BoxTokenFilter
+impl<T: lindera::token_filter::TokenFilter + core::clone::Clone + 'static> lindera::token_filter::TokenFilterClone for T
+pub fn T::box_clone(&self) -> lindera::token_filter::BoxTokenFilter
+pub mod lindera::tokenizer
+pub struct lindera::tokenizer::Tokenizer
+pub lindera::tokenizer::Tokenizer::character_filters: alloc::vec::Vec<lindera::character_filter::BoxCharacterFilter>
+pub lindera::tokenizer::Tokenizer::segmenter: lindera::segmenter::Segmenter
+pub lindera::tokenizer::Tokenizer::token_filters: alloc::vec::Vec<lindera::token_filter::BoxTokenFilter>
+impl lindera::tokenizer::Tokenizer
+pub fn lindera::tokenizer::Tokenizer::append_character_filter(&mut self, lindera::character_filter::BoxCharacterFilter) -> &mut Self
+pub fn lindera::tokenizer::Tokenizer::append_token_filter(&mut self, lindera::token_filter::BoxTokenFilter) -> &mut Self
+pub fn lindera::tokenizer::Tokenizer::from_config(&lindera::tokenizer::TokenizerConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::tokenizer::Tokenizer::new(lindera::segmenter::Segmenter) -> Self
+pub fn lindera::tokenizer::Tokenizer::tokenize<'a>(&'a self, &'a str) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+pub fn lindera::tokenizer::Tokenizer::tokenize_nbest<'a>(&'a self, &'a str, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::tokenizer::Tokenizer::tokenize_nbest_with_lattice<'a>(&'a self, &'a str, &mut lindera::dictionary::Lattice, usize, bool, core::option::Option<i64>) -> lindera::LinderaResult<alloc::vec::Vec<(alloc::vec::Vec<lindera::token::Token<'a>>, i64)>>
+pub fn lindera::tokenizer::Tokenizer::tokenize_with_lattice<'a>(&'a self, &'a str, &mut lindera::dictionary::Lattice) -> lindera::LinderaResult<alloc::vec::Vec<lindera::token::Token<'a>>>
+impl core::clone::Clone for lindera::tokenizer::Tokenizer
+pub fn lindera::tokenizer::Tokenizer::clone(&self) -> Self
+pub struct lindera::tokenizer::TokenizerBuilder
+impl lindera::tokenizer::TokenizerBuilder
+pub fn lindera::tokenizer::TokenizerBuilder::append_character_filter(&mut self, &str, &serde_json::value::Value) -> &mut Self
+pub fn lindera::tokenizer::TokenizerBuilder::append_token_filter(&mut self, &str, &serde_json::value::Value) -> &mut Self
+pub fn lindera::tokenizer::TokenizerBuilder::build(&self) -> lindera::LinderaResult<lindera::tokenizer::Tokenizer>
+pub fn lindera::tokenizer::TokenizerBuilder::from_config(lindera::tokenizer::TokenizerConfig) -> lindera::LinderaResult<Self>
+pub fn lindera::tokenizer::TokenizerBuilder::from_file(&std::path::Path) -> lindera::LinderaResult<Self>
+pub fn lindera::tokenizer::TokenizerBuilder::new() -> lindera::LinderaResult<Self>
+pub fn lindera::tokenizer::TokenizerBuilder::set_segmenter_dictionary(&mut self, &str) -> &mut Self
+pub fn lindera::tokenizer::TokenizerBuilder::set_segmenter_keep_whitespace(&mut self, bool) -> &mut Self
+pub fn lindera::tokenizer::TokenizerBuilder::set_segmenter_mode(&mut self, &lindera::mode::Mode) -> &mut Self
+pub fn lindera::tokenizer::TokenizerBuilder::set_segmenter_user_dictionary(&mut self, &str) -> &mut Self
+impl core::fmt::Debug for lindera::tokenizer::TokenizerBuilder
+pub fn lindera::tokenizer::TokenizerBuilder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub type lindera::tokenizer::TokenizerConfig = serde_json::value::Value
+pub fn lindera::get_version() -> &'static str
+pub type lindera::LinderaResult<T> = lindera_dictionary::LinderaResult<T>

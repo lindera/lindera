@@ -1,0 +1,5 @@
+--- lindera v3.0.7 (public API)
++++ lindera v4 (public API)
+@@ no differences @@
+ The lindera public Rust API is identical between v3.0.7 and v4 (default features, -ss).
+ See lindera.v4.txt for the full 663-item inventory.
