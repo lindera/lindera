@@ -33,7 +33,7 @@ pub struct PyToken {
 
     /// Morphological details of the token.
     #[pyo3(get)]
-    pub details: Option<Vec<String>>,
+    pub details: Vec<String>,
 }
 
 #[pymethods]
@@ -49,7 +49,7 @@ impl PyToken {
     /// The detail string if found, otherwise None.
     #[pyo3(signature = (index))]
     fn get_detail(&self, index: usize) -> Option<String> {
-        self.details.as_ref().and_then(|d| d.get(index).cloned())
+        self.details.get(index).cloned()
     }
 
     /// Returns a string representation of the token.
@@ -76,7 +76,7 @@ impl PyToken {
             position: view.position,
             word_id: view.word_id,
             is_unknown: view.is_unknown,
-            details: Some(view.details),
+            details: view.details,
         }
     }
 
