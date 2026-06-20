@@ -35,7 +35,6 @@ pub mod error;
 pub mod metadata;
 pub mod mode;
 pub mod schema;
-pub mod segmenter;
 pub mod token;
 pub mod token_filter;
 pub mod tokenizer;
