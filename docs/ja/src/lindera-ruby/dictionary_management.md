@@ -119,4 +119,3 @@ metadata = dictionary.metadata
 | `flexible_csv` | `Boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skip_invalid_cost_or_id` | `Boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |
 | `normalize_details` | `Boolean` | `false` | 形態素の詳細情報を正規化 |
-
