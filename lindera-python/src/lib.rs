@@ -35,7 +35,6 @@ pub mod error;
 pub mod metadata;
 pub mod mode;
 pub mod schema;
-pub mod segmenter;
 pub mod token;
 pub mod token_filter;
 pub mod tokenizer;
@@ -62,7 +61,6 @@ fn lindera(m: &Bound<'_, PyModule>) -> PyResult<()> {
     mode::register(m)?;
     metadata::register(m)?;
     schema::register(m)?;
-    segmenter::register(m)?;
     character_filter::register(m)?;
     token_filter::register(m)?;
     error::register(m)?;
