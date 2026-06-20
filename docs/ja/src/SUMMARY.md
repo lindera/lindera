@@ -115,6 +115,10 @@
 
 ---
 
+- [v3 から v4 への移行](./migration_v3_to_v4.md)
+
+---
+
 - [開発ガイド](./development.md)
     - [ビルドとテスト](./development/build_and_test.md)
     - [Feature フラグ](./development/feature_flags.md)

@@ -147,4 +147,3 @@ print(metadata.name)  # "custom_dict"
 metadata = Metadata(name="test")
 print(metadata.to_dict())
 ```
-

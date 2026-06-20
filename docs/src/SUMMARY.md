@@ -115,6 +115,10 @@
 
 ---
 
+- [Migration v3 to v4](./migration_v3_to_v4.md)
+
+---
+
 - [Development Guide](./development.md)
     - [Build & Test](./development/build_and_test.md)
     - [Feature Flags](./development/feature_flags.md)
