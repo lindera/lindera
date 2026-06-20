@@ -495,7 +495,7 @@ impl Lattice {
         let mut matches_head = vec![usize::MAX; len + 1];
         let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
 
-        // System dictionary scan (8-bit variant-count encoding)
+        // System dictionary scan
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
             let (offset, count) = dict.decode_val(m.value());
@@ -518,7 +518,7 @@ impl Lattice {
             }
         }
 
-        // User dictionary scan (5-bit variant-count encoding for bwd compat)
+        // User dictionary scan
         if let Some(ud) = user_dict {
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
@@ -1025,7 +1025,7 @@ impl Lattice {
         let mut matches_head = vec![usize::MAX; len + 1];
         let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
 
-        // System dictionary scan (8-bit variant-count encoding)
+        // System dictionary scan
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
             let (offset, count) = dict.decode_val(m.value());
@@ -1047,7 +1047,7 @@ impl Lattice {
             }
         }
 
-        // User dictionary scan (5-bit variant-count encoding for bwd compat)
+        // User dictionary scan
         if let Some(ud) = user_dict {
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();

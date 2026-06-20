@@ -205,13 +205,11 @@ impl UserDictionaryBuilder {
         let mut keyset: Vec<(&[u8], u32)> = vec![];
         for (key, word_entries) in &word_entry_map {
             let len = word_entries.len() as u32;
-            // User dictionaries keep the legacy 5-bit variant-count encoding
-            // (max 31 variants per surface) for binary backward compatibility
-            // with existing pre-built `.bin` user dictionary files. User dicts
-            // are user-defined and realistically never hit the 5-bit limit on
-            // a single surface (that only happened for the Korean system
-            // dictionary entry "이" which has 32 POS variants).
-            let val = (id << 5) | len;
+            // 24bit for word ID, 8bit for variant count (up to 255 per surface),
+            // matching the system dictionary encoding. The legacy 5-bit user
+            // encoding (max 31 variants) was retired in v4.0.0; user dictionary
+            // `.bin` files built with v3 must be rebuilt from their CSV source.
+            let val = (id << 8) | len;
             keyset.push((key.as_bytes(), val));
             id += len;
         }
