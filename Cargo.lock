@@ -1771,7 +1771,7 @@ dependencies = [
 
 [[package]]
 name = "lindera"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1804,14 +1804,15 @@ dependencies = [
 
 [[package]]
 name = "lindera-binding-core"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera",
+ "serde_json",
 ]
 
 [[package]]
 name = "lindera-cc-cedict"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1819,7 +1820,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-cli"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1831,7 +1832,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-crf"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "argmin",
  "argmin-math",
@@ -1843,7 +1844,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-dictionary"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1876,7 +1877,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1884,7 +1885,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ipadic-neologd"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1892,7 +1893,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-jieba"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1900,7 +1901,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ko-dic"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1908,7 +1909,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-nodejs"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera",
  "lindera-binding-core",
@@ -1923,7 +1924,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-php"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "ext-php-rs",
  "lindera",
@@ -1935,7 +1936,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-python"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera",
  "lindera-binding-core",
@@ -1947,7 +1948,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-ruby"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera",
  "lindera-binding-core",
@@ -1959,7 +1960,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-unidic"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "lindera-dictionary",
  "tokio",
@@ -1967,7 +1968,7 @@ dependencies = [
 
 [[package]]
 name = "lindera-wasm"
-version = "3.0.7"
+version = "4.0.0"
 dependencies = [
  "js-sys",
  "lindera",

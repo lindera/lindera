@@ -1,17 +1,17 @@
 //! Tokenizer implementation for morphological analysis.
 //!
 //! This module provides a builder pattern for creating tokenizers and the tokenizer itself.
+//! The build-flow orchestration is delegated to
+//! [`lindera_binding_core::CoreTokenizerBuilder`] / [`lindera_binding_core::CoreTokenizer`];
+//! this module only adds the magnus wrappers and the Ruby-hash conversion.
 
 use std::cell::RefCell;
 use std::path::Path;
-use std::str::FromStr;
 
 use magnus::prelude::*;
 use magnus::{Error, RArray, RHash, Ruby, function, method};
 
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{RbDictionary, RbUserDictionary};
 use crate::error::to_magnus_error;
@@ -24,8 +24,8 @@ use crate::util::rb_hash_to_json;
 /// Uses `RefCell` for interior mutability since Magnus `method!` requires `&self`.
 #[magnus::wrap(class = "Lindera::TokenizerBuilder", free_immediately, size)]
 pub struct RbTokenizerBuilder {
-    /// Inner Lindera tokenizer builder (wrapped in RefCell for interior mutability).
-    inner: RefCell<TokenizerBuilder>,
+    /// Inner binding-core tokenizer builder (wrapped in RefCell for interior mutability).
+    inner: RefCell<CoreTokenizerBuilder>,
 }
 
 impl RbTokenizerBuilder {
@@ -36,9 +36,8 @@ impl RbTokenizerBuilder {
     /// A new `RbTokenizerBuilder` instance.
     fn new() -> Result<Self, Error> {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let inner = TokenizerBuilder::new().map_err(|err| {
-            to_magnus_error(&ruby, format!("Failed to create TokenizerBuilder: {err}"))
-        })?;
+        let inner =
+            CoreTokenizerBuilder::new().map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
         Ok(Self {
             inner: RefCell::new(inner),
         })
@@ -55,9 +54,8 @@ impl RbTokenizerBuilder {
     /// A new `RbTokenizerBuilder` with the loaded configuration.
     fn from_file(file_path: String) -> Result<Self, Error> {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let inner = TokenizerBuilder::from_file(Path::new(&file_path)).map_err(|err| {
-            to_magnus_error(&ruby, format!("Failed to load config from file: {err}"))
-        })?;
+        let inner = CoreTokenizerBuilder::from_file(Path::new(&file_path))
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
         Ok(Self {
             inner: RefCell::new(inner),
         })
@@ -70,9 +68,10 @@ impl RbTokenizerBuilder {
     /// * `mode` - Mode string ("normal" or "decompose").
     fn set_mode(&self, mode: String) -> Result<(), Error> {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let m = Mode::from_str(&mode)
-            .map_err(|err| to_magnus_error(&ruby, format!("Failed to create mode: {err}")))?;
-        self.inner.borrow_mut().set_segmenter_mode(&m);
+        let mut builder = self.inner.borrow_mut();
+        builder
+            .set_mode(&mode)
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
         Ok(())
     }
 
@@ -82,7 +81,7 @@ impl RbTokenizerBuilder {
     ///
     /// * `path` - Path to the dictionary directory.
     fn set_dictionary(&self, path: String) {
-        self.inner.borrow_mut().set_segmenter_dictionary(&path);
+        self.inner.borrow_mut().set_dictionary(&path);
     }
 
     /// Sets the user dictionary URI.
@@ -91,7 +90,7 @@ impl RbTokenizerBuilder {
     ///
     /// * `uri` - URI to the user dictionary.
     fn set_user_dictionary(&self, uri: String) {
-        self.inner.borrow_mut().set_segmenter_user_dictionary(&uri);
+        self.inner.borrow_mut().set_user_dictionary(&uri);
     }
 
     /// Sets whether to keep whitespace in tokenization results.
@@ -100,9 +99,7 @@ impl RbTokenizerBuilder {
     ///
     /// * `keep_whitespace` - If true, whitespace tokens will be included.
     fn set_keep_whitespace(&self, keep_whitespace: bool) {
-        self.inner
-            .borrow_mut()
-            .set_segmenter_keep_whitespace(keep_whitespace);
+        self.inner.borrow_mut().set_keep_whitespace(keep_whitespace);
     }
 
     /// Appends a character filter to the filter pipeline.
@@ -150,11 +147,12 @@ impl RbTokenizerBuilder {
     /// A configured `RbTokenizer` instance.
     fn build(&self) -> Result<RbTokenizer, Error> {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let tokenizer =
-            self.inner.borrow().build().map_err(|err| {
-                to_magnus_error(&ruby, format!("Failed to build tokenizer: {err}"))
-            })?;
-        Ok(RbTokenizer { inner: tokenizer })
+        let inner = self
+            .inner
+            .borrow()
+            .build()
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+        Ok(RbTokenizer { inner })
     }
 }
 
@@ -163,8 +161,8 @@ impl RbTokenizerBuilder {
 /// The tokenizer processes text and returns tokens with their morphological features.
 #[magnus::wrap(class = "Lindera::Tokenizer", free_immediately, size)]
 pub struct RbTokenizer {
-    /// Inner Lindera tokenizer.
-    inner: Tokenizer,
+    /// Inner binding-core tokenizer.
+    inner: CoreTokenizer,
 }
 
 /// Creates a new tokenizer with the given dictionary and mode.
@@ -185,16 +183,14 @@ fn tokenizer_new(
 ) -> Result<RbTokenizer, Error> {
     let ruby = Ruby::get().expect("Ruby runtime not initialized");
     let mode_str = mode.as_deref().unwrap_or("normal");
-    let m = Mode::from_str(mode_str)
-        .map_err(|err| to_magnus_error(&ruby, format!("Failed to create mode: {err}")))?;
 
     let dict = dictionary.inner.clone();
     let user_dict = user_dictionary.map(|d| d.inner.clone());
 
-    let segmenter = Segmenter::new(m, dict, user_dict);
-    let tokenizer = Tokenizer::new(segmenter);
+    let inner = CoreTokenizer::from_segmenter(mode_str, dict, user_dict)
+        .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
-    Ok(RbTokenizer { inner: tokenizer })
+    Ok(RbTokenizer { inner })
 }
 
 impl RbTokenizer {
@@ -209,15 +205,14 @@ impl RbTokenizer {
     /// An array of Token objects.
     fn tokenize(&self, text: String) -> Result<RArray, Error> {
         let ruby = Ruby::get().expect("Ruby runtime not initialized");
-        let tokens = self
+        let views = self
             .inner
             .tokenize(&text)
-            .map_err(|err| to_magnus_error(&ruby, format!("Failed to tokenize text: {err}")))?;
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
-        let rb_tokens: Vec<RbToken> = tokens.into_iter().map(RbToken::from_token).collect();
-        let arr = ruby.ary_new_capa(rb_tokens.len());
-        for token in rb_tokens {
-            arr.push(ruby.into_value(token))?;
+        let arr = ruby.ary_new_capa(views.len());
+        for view in views {
+            arr.push(ruby.into_value(RbToken::from_view(view)))?;
         }
         Ok(arr)
     }
@@ -245,16 +240,13 @@ impl RbTokenizer {
         let results = self
             .inner
             .tokenize_nbest(&text, n, unique.unwrap_or(false), cost_threshold)
-            .map_err(|err| {
-                to_magnus_error(&ruby, format!("Failed to tokenize_nbest text: {err}"))
-            })?;
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
 
         let rb_results = ruby.ary_new_capa(results.len());
-        for (tokens, cost) in results {
-            let rb_tokens: Vec<RbToken> = tokens.into_iter().map(RbToken::from_token).collect();
-            let token_arr = ruby.ary_new_capa(rb_tokens.len());
-            for token in rb_tokens {
-                token_arr.push(ruby.into_value(token))?;
+        for (views, cost) in results {
+            let token_arr = ruby.ary_new_capa(views.len());
+            for view in views {
+                token_arr.push(ruby.into_value(RbToken::from_view(view)))?;
             }
             let pair = ruby.ary_new_capa(2);
             pair.push(token_arr)?;

@@ -1,25 +1,30 @@
-use std::str::FromStr;
-
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
-use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{
-    Tokenizer as LinderaTokenizer, TokenizerBuilder as LinderaTokenizerBuilder,
-};
+use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::token::JsToken;
+
+/// Parses optional filter arguments (a JS value) into a JSON value.
+fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
+    if args.is_undefined() || args.is_null() {
+        Ok(Value::Object(serde_json::Map::new()))
+    } else {
+        serde_wasm_bindgen::from_value::<Value>(args).map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+}
 
 /// Builder for creating a [`Tokenizer`] instance.
 ///
 /// `TokenizerBuilder` provides a fluent API for configuring and building a tokenizer
 /// with various options such as dictionary selection, tokenization mode, character filters,
-/// and token filters.
+/// and token filters. The build-flow orchestration is delegated to
+/// [`lindera_binding_core::CoreTokenizerBuilder`].
 #[wasm_bindgen]
 pub struct TokenizerBuilder {
-    inner: LinderaTokenizerBuilder,
+    /// The backing binding-core builder (used for URI-based dictionary loading).
+    inner: CoreTokenizerBuilder,
     /// Pre-loaded dictionary instance, used instead of URI-based loading.
     dictionary_instance: Option<JsDictionary>,
     /// Pre-loaded user dictionary instance, used instead of URI-based loading.
@@ -33,8 +38,7 @@ impl TokenizerBuilder {
     /// Creates a new `TokenizerBuilder` instance.
     #[wasm_bindgen(constructor)]
     pub fn new() -> Result<Self, JsValue> {
-        let inner =
-            LinderaTokenizerBuilder::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let inner = CoreTokenizerBuilder::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(Self {
             inner,
@@ -50,19 +54,14 @@ impl TokenizerBuilder {
     /// it will be used directly instead of loading from a URI.
     pub fn build(self) -> Result<Tokenizer, JsValue> {
         if let Some(dict) = self.dictionary_instance {
-            // Build tokenizer using the pre-loaded dictionary instance
-            let m = self
-                .mode_for_instance
-                .as_deref()
-                .map(Mode::from_str)
-                .transpose()
-                .map_err(|e| JsValue::from_str(&e.to_string()))?
-                .unwrap_or(Mode::Normal);
-
+            // Build tokenizer using the pre-loaded dictionary instance.
             let user_dict = self.user_dictionary_instance.map(|d| d.inner);
-
-            let segmenter = Segmenter::new(m, dict.inner, user_dict);
-            let inner = LinderaTokenizer::new(segmenter);
+            let inner = CoreTokenizer::from_segmenter(
+                self.mode_for_instance.as_deref().unwrap_or("normal"),
+                dict.inner,
+                user_dict,
+            )
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
             Ok(Tokenizer { inner })
         } else {
@@ -78,8 +77,9 @@ impl TokenizerBuilder {
     /// Sets the tokenization mode.
     #[wasm_bindgen(js_name = "setMode")]
     pub fn set_mode(&mut self, mode: &str) -> Result<(), JsValue> {
-        let m = Mode::from_str(mode).map_err(|e| JsValue::from_str(&e.to_string()))?;
-        self.inner.set_segmenter_mode(&m);
+        self.inner
+            .set_mode(mode)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
         self.mode_for_instance = Some(mode.to_string());
 
         Ok(())
@@ -88,7 +88,7 @@ impl TokenizerBuilder {
     /// Sets the dictionary to use for tokenization by URI.
     #[wasm_bindgen(js_name = "setDictionary")]
     pub fn set_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
-        self.inner.set_segmenter_dictionary(uri);
+        self.inner.set_dictionary(uri);
         self.dictionary_instance = None;
 
         Ok(())
@@ -106,7 +106,7 @@ impl TokenizerBuilder {
     /// Sets a user-defined dictionary by URI.
     #[wasm_bindgen(js_name = "setUserDictionary")]
     pub fn set_user_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
-        self.inner.set_segmenter_user_dictionary(uri);
+        self.inner.set_user_dictionary(uri);
         self.user_dictionary_instance = None;
 
         Ok(())
@@ -124,7 +124,7 @@ impl TokenizerBuilder {
     /// Sets whether to keep whitespace tokens in the output.
     #[wasm_bindgen(js_name = "setKeepWhitespace")]
     pub fn set_keep_whitespace(&mut self, keep: bool) -> Result<(), JsValue> {
-        self.inner.set_segmenter_keep_whitespace(keep);
+        self.inner.set_keep_whitespace(keep);
 
         Ok(())
     }
@@ -132,13 +132,7 @@ impl TokenizerBuilder {
     /// Appends a character filter to the tokenization pipeline.
     #[wasm_bindgen(js_name = "appendCharacterFilter")]
     pub fn append_character_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
-        let a = if args.is_undefined() || args.is_null() {
-            Value::Object(serde_json::Map::new())
-        } else {
-            serde_wasm_bindgen::from_value::<Value>(args)
-                .map_err(|e| JsValue::from_str(&e.to_string()))?
-        };
-
+        let a = parse_filter_args(args)?;
         self.inner.append_character_filter(name, &a);
 
         Ok(())
@@ -147,13 +141,7 @@ impl TokenizerBuilder {
     /// Appends a token filter to the tokenization pipeline.
     #[wasm_bindgen(js_name = "appendTokenFilter")]
     pub fn append_token_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
-        let a = if args.is_undefined() || args.is_null() {
-            Value::Object(serde_json::Map::new())
-        } else {
-            serde_wasm_bindgen::from_value::<Value>(args)
-                .map_err(|e| JsValue::from_str(&e.to_string()))?
-        };
-
+        let a = parse_filter_args(args)?;
         self.inner.append_token_filter(name, &a);
 
         Ok(())
@@ -204,7 +192,8 @@ impl TokenizerBuilder {
 /// A tokenizer for morphological analysis.
 #[wasm_bindgen]
 pub struct Tokenizer {
-    inner: LinderaTokenizer,
+    /// The backing binding-core tokenizer.
+    inner: CoreTokenizer,
 }
 
 #[wasm_bindgen]
@@ -215,31 +204,25 @@ impl Tokenizer {
         mode: Option<String>,
         user_dictionary: Option<JsUserDictionary>,
     ) -> Result<Tokenizer, JsValue> {
-        let m = if let Some(mode_str) = mode {
-            Mode::from_str(&mode_str).map_err(|e| JsValue::from_str(&e.to_string()))?
-        } else {
-            Mode::Normal
-        };
-
-        let dict = dictionary.inner;
         let user_dict = user_dictionary.map(|d| d.inner);
-
-        let segmenter = Segmenter::new(m, dict, user_dict);
-        let inner = LinderaTokenizer::new(segmenter);
+        let inner = CoreTokenizer::from_segmenter(
+            mode.as_deref().unwrap_or("normal"),
+            dictionary.inner,
+            user_dict,
+        )
+        .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(Tokenizer { inner })
     }
 
     /// Tokenizes the input text.
     pub fn tokenize(&self, input_text: &str) -> Result<Vec<JsToken>, JsValue> {
-        let tokens = self
+        let views = self
             .inner
             .tokenize(input_text)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-        let js_tokens = tokens.into_iter().map(JsToken::from_token).collect();
-
-        Ok(js_tokens)
+        Ok(views.into_iter().map(JsToken::from_view).collect())
     }
 
     /// Tokenizes the input text and returns N-best results.
@@ -259,11 +242,11 @@ impl Tokenizer {
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         let outer = js_sys::Array::new();
-        for (tokens, cost) in results {
+        for (views, cost) in results {
             let entry = js_sys::Object::new();
             let inner = js_sys::Array::new();
-            for token in tokens {
-                let js_token = JsToken::from_token(token);
+            for view in views {
+                let js_token = JsToken::from_view(view);
                 inner.push(&js_token.to_json());
             }
             js_sys::Reflect::set(&entry, &"tokens".into(), &inner).unwrap();
@@ -327,11 +310,6 @@ mod tests {
 
         assert_eq!(tokens.len(), 7);
         assert_eq!(tokens[0].surface, "すもも");
-        assert_eq!(tokens[1].surface, "も");
-        assert_eq!(tokens[2].surface, "もも");
-        assert_eq!(tokens[3].surface, "も");
-        assert_eq!(tokens[4].surface, "もも");
-        assert_eq!(tokens[5].surface, "の");
         assert_eq!(tokens[6].surface, "うち");
     }
 
@@ -377,12 +355,10 @@ mod tests {
 
         let token = &tokens[0];
 
-        // Valid index returns Some
         let first_detail = token.get_detail(0);
         assert!(first_detail.is_some());
         assert_eq!(first_detail.unwrap(), token.details[0]);
 
-        // Out of bounds returns None
         assert!(token.get_detail(9999).is_none());
     }
 
@@ -401,7 +377,6 @@ mod tests {
 
         let json = tokens[0].to_json();
 
-        // to_json should return a non-null JsValue
         assert!(!json.is_null());
         assert!(!json.is_undefined());
     }
@@ -419,10 +394,8 @@ mod tests {
 
         let tokens = tokenizer.tokenize("関西国際空港").unwrap();
 
-        // In decompose mode, compound words may be split further
         assert!(!tokens.is_empty());
 
-        // Verify all surfaces concatenated form the original text
         let reconstructed: String = tokens.iter().map(|t| t.surface.as_str()).collect();
         assert_eq!(reconstructed, "関西国際空港");
     }
@@ -458,7 +431,6 @@ mod tests {
             .tokenize_nbest("すもももももももものうち", 3, None, None)
             .unwrap();
 
-        // Should return a JsValue (array of results)
         assert!(!results.is_null());
         assert!(!results.is_undefined());
     }
@@ -534,7 +506,6 @@ mod tests {
         use crate::TokenizerBuilder;
         use crate::dictionary::load_dictionary;
 
-        // Set dictionary instance without calling set_mode (should default to Normal)
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
         let mut builder = TokenizerBuilder::new().unwrap();

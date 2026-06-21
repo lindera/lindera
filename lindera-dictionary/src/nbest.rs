@@ -80,7 +80,7 @@ impl<'a> NBestGenerator<'a> {
         let elem = QueueElement {
             byte_pos: text_len as u32,
             edge_index: eos_index,
-            fx: eos_edge.path_cost as i64,
+            fx: eos_edge.path_cost() as i64,
             gx: 0,
             prev: None,
         };
@@ -104,7 +104,7 @@ impl<'a> NBestGenerator<'a> {
             let edge = &edges[edge_index];
 
             // Check if we reached BOS (left_index == u16::MAX means no predecessor = BOS)
-            if edge.left_index == u16::MAX {
+            if edge.left_index() == u16::MAX {
                 return Some((self.reconstruct_path(&current), current.fx));
             }
 
@@ -115,12 +115,12 @@ impl<'a> NBestGenerator<'a> {
             // Expand: for each predecessor path of this edge
             let paths = self.lattice.paths_at(byte_pos);
             for path_entry in paths {
-                if path_entry.edge_index != edge_index as u16 {
+                if path_entry.edge_index() != edge_index as u16 {
                     continue; // Not a path to this edge
                 }
 
-                let left_pos = path_entry.left_pos as usize;
-                let left_index = path_entry.left_index as usize;
+                let left_pos = path_entry.left_pos() as usize;
+                let left_index = path_entry.left_index() as usize;
 
                 let left_edges = self.lattice.edges_at(left_pos);
                 if left_index >= left_edges.len() {
@@ -132,11 +132,11 @@ impl<'a> NBestGenerator<'a> {
                 // path_entry.cost = left_edge.path_cost + conn_cost + penalty
                 // conn_and_penalty = path_entry.cost - left_edge.path_cost
                 // new_gx = current.gx + conn_and_penalty + edge.word_cost
-                let conn_and_penalty = path_entry.cost as i64 - left_edge.path_cost as i64;
-                let new_gx = current.gx + conn_and_penalty + edge.word_entry.word_cost as i64;
+                let conn_and_penalty = path_entry.cost() as i64 - left_edge.path_cost() as i64;
+                let new_gx = current.gx + conn_and_penalty + edge.word_entry().word_cost() as i64;
 
                 // f(x) = h(x) + g(x), where h(x) = left_edge.path_cost
-                let new_fx = left_edge.path_cost as i64 + new_gx;
+                let new_fx = left_edge.path_cost() as i64 + new_gx;
 
                 let new_elem = QueueElement {
                     byte_pos: left_pos as u32,
@@ -164,8 +164,8 @@ impl<'a> NBestGenerator<'a> {
             let edge = &edges[elem.edge_index as usize];
 
             // Skip EOS edge (start_index == stop_index)
-            if edge.start_index != edge.stop_index {
-                path.push((edge.start_index as usize, edge.word_entry.word_id));
+            if edge.start_index() != edge.stop_index() {
+                path.push((edge.start_index() as usize, edge.word_entry().word_id()));
             }
 
             maybe_idx = elem.prev;

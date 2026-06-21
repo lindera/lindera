@@ -1,0 +1,1006 @@
+pub mod lindera_dictionary
+pub mod lindera_dictionary::builder
+pub mod lindera_dictionary::builder::character_definition
+#[non_exhaustive] pub enum lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+pub lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::UninitializedField(&'static str)
+pub lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::ValidationError(alloc::string::String)
+impl core::convert::From<alloc::string::String> for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::from(alloc::string::String) -> Self
+impl core::convert::From<derive_builder::error::UninitializedFieldError> for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::from(derive_builder::error::UninitializedFieldError) -> Self
+impl core::error::Error for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+impl core::fmt::Debug for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder
+impl lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder::build(&mut self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::character_definition::CharacterDefinition>
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder::category_id(&mut self, &str) -> lindera_dictionary::dictionary::character_definition::CategoryId
+impl core::fmt::Debug for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions
+impl lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::builder(&self) -> core::result::Result<lindera_dictionary::builder::character_definition::CharacterDefinitionBuilder, lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptionsError>
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::category_definition(&mut self, alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>) -> &mut Self
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::category_index(&mut self, std::collections::hash::map::HashMap<alloc::string::String, lindera_dictionary::dictionary::character_definition::CategoryId>) -> &mut Self
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::char_ranges(&mut self, alloc::vec::Vec<(u32, u32, alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryId>)>) -> &mut Self
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::encoding<VALUE: core::convert::Into<alloc::borrow::Cow<'static, str>>>(&mut self, VALUE) -> &mut Self
+impl core::clone::Clone for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::clone(&self) -> lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions
+impl core::default::Default for lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions
+pub fn lindera_dictionary::builder::character_definition::CharacterDefinitionBuilderOptions::default() -> Self
+pub mod lindera_dictionary::builder::connection_cost_matrix
+#[non_exhaustive] pub enum lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+pub lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::UninitializedField(&'static str)
+pub lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::ValidationError(alloc::string::String)
+impl core::convert::From<alloc::string::String> for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::from(alloc::string::String) -> Self
+impl core::convert::From<derive_builder::error::UninitializedFieldError> for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::from(derive_builder::error::UninitializedFieldError) -> Self
+impl core::error::Error for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+impl core::fmt::Debug for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder
+impl lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder::build(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+impl core::fmt::Debug for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions
+impl lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions::builder(&self) -> core::result::Result<lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilder, lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptionsError>
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions::encoding<VALUE: core::convert::Into<alloc::borrow::Cow<'static, str>>>(&mut self, VALUE) -> &mut Self
+impl core::clone::Clone for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions::clone(&self) -> lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions
+impl core::default::Default for lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions
+pub fn lindera_dictionary::builder::connection_cost_matrix::ConnectionCostMatrixBuilderOptions::default() -> Self
+pub mod lindera_dictionary::builder::metadata
+pub struct lindera_dictionary::builder::metadata::MetadataBuilder
+impl lindera_dictionary::builder::metadata::MetadataBuilder
+pub fn lindera_dictionary::builder::metadata::MetadataBuilder::build(&self, &lindera_dictionary::dictionary::metadata::Metadata, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::metadata::MetadataBuilder::new() -> Self
+impl core::default::Default for lindera_dictionary::builder::metadata::MetadataBuilder
+pub fn lindera_dictionary::builder::metadata::MetadataBuilder::default() -> Self
+pub mod lindera_dictionary::builder::prefix_dictionary
+#[non_exhaustive] pub enum lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+pub lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::UninitializedField(&'static str)
+pub lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::ValidationError(alloc::string::String)
+impl core::convert::From<alloc::string::String> for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::from(alloc::string::String) -> Self
+impl core::convert::From<derive_builder::error::UninitializedFieldError> for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::from(derive_builder::error::UninitializedFieldError) -> Self
+impl core::error::Error for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+impl core::fmt::Debug for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilder
+impl lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilder
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilder::build(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilder::new(lindera_dictionary::dictionary::schema::Schema) -> Self
+pub struct lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions
+impl lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::builder(&self) -> core::result::Result<lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilder, lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptionsError>
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::encoding<VALUE: core::convert::Into<alloc::borrow::Cow<'static, str>>>(&mut self, VALUE) -> &mut Self
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::flexible_csv(&mut self, bool) -> &mut Self
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::normalize_details(&mut self, bool) -> &mut Self
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::schema(&mut self, lindera_dictionary::dictionary::schema::Schema) -> &mut Self
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::skip_invalid_cost_or_id(&mut self, bool) -> &mut Self
+impl core::clone::Clone for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::clone(&self) -> lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions
+impl core::default::Default for lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::prefix_dictionary::PrefixDictionaryBuilderOptions::default() -> Self
+pub mod lindera_dictionary::builder::unknown_dictionary
+#[non_exhaustive] pub enum lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+pub lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::UninitializedField(&'static str)
+pub lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::ValidationError(alloc::string::String)
+impl core::convert::From<alloc::string::String> for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::from(alloc::string::String) -> Self
+impl core::convert::From<derive_builder::error::UninitializedFieldError> for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::from(derive_builder::error::UninitializedFieldError) -> Self
+impl core::error::Error for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+impl core::fmt::Debug for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder
+impl lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder::build(&self, &std::path::Path, &lindera_dictionary::dictionary::character_definition::CharacterDefinition, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+impl core::fmt::Debug for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions
+impl lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions::builder(&self) -> core::result::Result<lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilder, lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptionsError>
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions::encoding<VALUE: core::convert::Into<alloc::borrow::Cow<'static, str>>>(&mut self, VALUE) -> &mut Self
+impl core::clone::Clone for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions::clone(&self) -> lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions
+impl core::default::Default for lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::unknown_dictionary::UnknownDictionaryBuilderOptions::default() -> Self
+pub mod lindera_dictionary::builder::user_dictionary
+#[non_exhaustive] pub enum lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+pub lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::UninitializedField(&'static str)
+pub lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::ValidationError(alloc::string::String)
+impl core::convert::From<alloc::string::String> for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::from(alloc::string::String) -> Self
+impl core::convert::From<derive_builder::error::UninitializedFieldError> for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::from(derive_builder::error::UninitializedFieldError) -> Self
+impl core::error::Error for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+impl core::fmt::Debug for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::builder::user_dictionary::UserDictionaryBuilder
+impl lindera_dictionary::builder::user_dictionary::UserDictionaryBuilder
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilder::build(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::UserDictionary>
+pub struct lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions
+impl lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::builder(self) -> core::result::Result<lindera_dictionary::builder::user_dictionary::UserDictionaryBuilder, lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptionsError>
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::default_left_context_id(self, u16) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::default_right_context_id(self, u16) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::default_word_cost(self, i16) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::dictionary_fields_num(self, usize) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::flexible_csv(self, bool) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::user_dictionary_fields_num(self, usize) -> Self
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::user_dictionary_handler(self, core::option::Option<alloc::boxed::Box<dyn core::ops::function::Fn(&csv::string_record::StringRecord) -> lindera_dictionary::LinderaResult<alloc::vec::Vec<alloc::string::String>>>>) -> Self
+impl core::default::Default for lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions
+pub fn lindera_dictionary::builder::user_dictionary::UserDictionaryBuilderOptions::default() -> Self
+pub fn lindera_dictionary::builder::user_dictionary::build_user_dictionary(lindera_dictionary::dictionary::UserDictionary, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub struct lindera_dictionary::builder::DictionaryBuilder
+impl lindera_dictionary::builder::DictionaryBuilder
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_character_definition(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::character_definition::CharacterDefinition>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_connection_cost_matrix(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_dictionary(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_metadata(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_prefix_dictionary(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_unknown_dictionary(&self, &std::path::Path, &std::path::Path, &lindera_dictionary::dictionary::character_definition::CharacterDefinition) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_user_dict(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::UserDictionary>
+pub fn lindera_dictionary::builder::DictionaryBuilder::build_user_dictionary(&self, &std::path::Path, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::builder::DictionaryBuilder::new(lindera_dictionary::dictionary::metadata::Metadata) -> Self
+impl core::clone::Clone for lindera_dictionary::builder::DictionaryBuilder
+pub fn lindera_dictionary::builder::DictionaryBuilder::clone(&self) -> lindera_dictionary::builder::DictionaryBuilder
+pub mod lindera_dictionary::dictionary
+pub mod lindera_dictionary::dictionary::character_definition
+#[repr(C)] pub struct lindera_dictionary::dictionary::character_definition::ArchivedCategoryData where bool: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::character_definition::ArchivedCategoryData::group: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::character_definition::ArchivedCategoryData::invoke: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::character_definition::ArchivedCategoryData::length: <u32 as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::character_definition::ArchivedCategoryData where bool: rkyv::traits::Archive, u32: rkyv::traits::Archive, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::character_definition::ArchivedCategoryData where bool: rkyv::traits::Archive, u32: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <bool as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <u32 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::character_definition::ArchivedCategoryData::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::dictionary::character_definition::ArchivedCategoryId where usize: rkyv::traits::Archive(pub <usize as rkyv::traits::Archive>::Archived)
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::character_definition::ArchivedCategoryId where usize: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::character_definition::ArchivedCategoryId where usize: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <usize as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::character_definition::ArchivedCategoryId::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::category_definitions: <alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::category_names: <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::mapping: <lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId> as rkyv::traits::Archive>::Archived
+impl lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition
+pub fn lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::categories(&self) -> &[rkyv::string::ArchivedString]
+pub fn lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::category_name(&self, usize) -> &str
+pub fn lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::lookup_categories(&self, char) -> &[lindera_dictionary::dictionary::character_definition::ArchivedCategoryId]
+pub fn lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::lookup_definition(&self, usize) -> &lindera_dictionary::dictionary::character_definition::ArchivedCategoryData
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive, <alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T: core::marker::Copy + core::clone::Clone> where alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive
+impl<T: core::marker::Copy + core::clone::Clone + rkyv::traits::Archive> lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T>
+pub fn lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T>::eval(&self, u32) -> &[<T as rkyv::traits::Archive>::Archived]
+impl<T: core::marker::Copy + core::clone::Clone, __C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T> where alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::vec::Vec<alloc::vec::Vec<T>> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T>::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+impl<T: core::marker::Copy + core::clone::Clone> rkyv::traits::Portable for lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T> where alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::vec::Vec<alloc::vec::Vec<T>> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+pub struct lindera_dictionary::dictionary::character_definition::CategoryData
+pub lindera_dictionary::dictionary::character_definition::CategoryData::group: bool
+pub lindera_dictionary::dictionary::character_definition::CategoryData::invoke: bool
+pub lindera_dictionary::dictionary::character_definition::CategoryData::length: u32
+impl core::clone::Clone for lindera_dictionary::dictionary::character_definition::CategoryData
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::clone(&self) -> lindera_dictionary::dictionary::character_definition::CategoryData
+impl core::fmt::Debug for lindera_dictionary::dictionary::character_definition::CategoryData
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::dictionary::character_definition::CategoryData
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::character_definition::CategoryData where bool: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::character_definition::CategoryData::Archived = lindera_dictionary::dictionary::character_definition::ArchivedCategoryData
+pub type lindera_dictionary::dictionary::character_definition::CategoryData::Resolver = lindera_dictionary::dictionary::character_definition::CategoryDataResolver
+pub const lindera_dictionary::dictionary::character_definition::CategoryData::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::character_definition::CategoryData
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::character_definition::CategoryData
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::character_definition::CategoryData, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CategoryData> where bool: rkyv::traits::Archive, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<bool, __D>, u32: rkyv::traits::Archive, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u32, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CategoryData>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::character_definition::CategoryData, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::character_definition::CategoryData where bool: rkyv::traits::Serialize<__S>, u32: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::character_definition::CategoryData::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::character_definition::CategoryDataResolver where bool: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::character_definition::CategoryId(pub usize)
+impl core::clone::Clone for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::clone(&self) -> lindera_dictionary::dictionary::character_definition::CategoryId
+impl core::cmp::Eq for lindera_dictionary::dictionary::character_definition::CategoryId
+impl core::cmp::Ord for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::cmp(&self, &lindera_dictionary::dictionary::character_definition::CategoryId) -> core::cmp::Ordering
+impl core::cmp::PartialEq for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::eq(&self, &lindera_dictionary::dictionary::character_definition::CategoryId) -> bool
+impl core::cmp::PartialOrd for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::partial_cmp(&self, &lindera_dictionary::dictionary::character_definition::CategoryId) -> core::option::Option<core::cmp::Ordering>
+impl core::fmt::Debug for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::hash::Hash for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::hash<__H: core::hash::Hasher>(&self, &mut __H)
+impl core::marker::Copy for lindera_dictionary::dictionary::character_definition::CategoryId
+impl core::marker::StructuralPartialEq for lindera_dictionary::dictionary::character_definition::CategoryId
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::character_definition::CategoryId where usize: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::character_definition::CategoryId::Archived = lindera_dictionary::dictionary::character_definition::ArchivedCategoryId
+pub type lindera_dictionary::dictionary::character_definition::CategoryId::Resolver = lindera_dictionary::dictionary::character_definition::CategoryIdResolver
+pub const lindera_dictionary::dictionary::character_definition::CategoryId::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::character_definition::CategoryId
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::character_definition::CategoryId, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CategoryId> where usize: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<usize, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CategoryId>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::character_definition::CategoryId, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::character_definition::CategoryId where usize: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::character_definition::CategoryId::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::character_definition::CategoryIdResolver where usize: rkyv::traits::Archive(_)
+pub struct lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub lindera_dictionary::dictionary::character_definition::CharacterDefinition::category_definitions: alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>
+pub lindera_dictionary::dictionary::character_definition::CharacterDefinition::category_names: alloc::vec::Vec<alloc::string::String>
+pub lindera_dictionary::dictionary::character_definition::CharacterDefinition::mapping: lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>
+impl lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::categories(&self) -> &[alloc::string::String]
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::category_id_by_name(&self, &str) -> core::option::Option<lindera_dictionary::dictionary::character_definition::CategoryId>
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::category_name(&self, lindera_dictionary::dictionary::character_definition::CategoryId) -> &str
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::load(&[u8]) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::character_definition::CharacterDefinition>
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::lookup_categories(&self, char) -> &[lindera_dictionary::dictionary::character_definition::CategoryId]
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::lookup_definition(&self, lindera_dictionary::dictionary::character_definition::CategoryId) -> &lindera_dictionary::dictionary::character_definition::CategoryData
+impl core::clone::Clone for lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::clone(&self) -> lindera_dictionary::dictionary::character_definition::CharacterDefinition
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::character_definition::CharacterDefinition where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::character_definition::CharacterDefinition::Archived = lindera_dictionary::dictionary::character_definition::ArchivedCharacterDefinition
+pub type lindera_dictionary::dictionary::character_definition::CharacterDefinition::Resolver = lindera_dictionary::dictionary::character_definition::CharacterDefinitionResolver
+pub const lindera_dictionary::dictionary::character_definition::CharacterDefinition::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::character_definition::CharacterDefinition, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CharacterDefinition> where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, <alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>, __D>, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<alloc::string::String>, __D>, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive, <lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::CharacterDefinition>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::character_definition::CharacterDefinition, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::character_definition::CharacterDefinition where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Serialize<__S>, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Serialize<__S>, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::character_definition::CharacterDefinition::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::character_definition::CharacterDefinitionResolver where alloc::vec::Vec<lindera_dictionary::dictionary::character_definition::CategoryData>: rkyv::traits::Archive, alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, lindera_dictionary::dictionary::character_definition::LookupTable<lindera_dictionary::dictionary::character_definition::CategoryId>: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::character_definition::LookupTable<T: core::marker::Copy + core::clone::Clone>
+impl<T: core::marker::Copy + core::clone::Clone> lindera_dictionary::dictionary::character_definition::LookupTable<T>
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::eval(&self, u32) -> &[T]
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::from_fn(alloc::vec::Vec<u32>, &dyn core::ops::function::Fn(u32, &mut alloc::vec::Vec<T>)) -> lindera_dictionary::dictionary::character_definition::LookupTable<T>
+impl<'de, T> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::character_definition::LookupTable<T> where T: serde_core::de::Deserialize<'de> + core::marker::Copy + core::clone::Clone
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<T: core::clone::Clone + core::marker::Copy + core::clone::Clone> core::clone::Clone for lindera_dictionary::dictionary::character_definition::LookupTable<T>
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::clone(&self) -> lindera_dictionary::dictionary::character_definition::LookupTable<T>
+impl<T: core::marker::Copy + core::clone::Clone> rkyv::traits::Archive for lindera_dictionary::dictionary::character_definition::LookupTable<T> where alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::character_definition::LookupTable<T>::Archived = lindera_dictionary::dictionary::character_definition::ArchivedLookupTable<T>
+pub type lindera_dictionary::dictionary::character_definition::LookupTable<T>::Resolver = lindera_dictionary::dictionary::character_definition::LookupTableResolver<T>
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl<T> serde_core::ser::Serialize for lindera_dictionary::dictionary::character_definition::LookupTable<T> where T: serde_core::ser::Serialize + core::marker::Copy + core::clone::Clone
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<__D: rancor::Fallible + ?core::marker::Sized, T: core::marker::Copy + core::clone::Clone> rkyv::traits::Deserialize<lindera_dictionary::dictionary::character_definition::LookupTable<T>, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::LookupTable<T>> where alloc::vec::Vec<u32>: rkyv::traits::Archive, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<u32>, __D>, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::vec::Vec<T>> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<alloc::vec::Vec<T>>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::character_definition::LookupTable<T>>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::character_definition::LookupTable<T>, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized, T: core::marker::Copy + core::clone::Clone> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::character_definition::LookupTable<T> where alloc::vec::Vec<u32>: rkyv::traits::Serialize<__S>, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::character_definition::LookupTable<T>::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::character_definition::LookupTableResolver<T: core::marker::Copy + core::clone::Clone> where alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<alloc::vec::Vec<T>>: rkyv::traits::Archive
+pub mod lindera_dictionary::dictionary::connection_cost_matrix
+#[repr(C)] pub struct lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix where alloc::vec::Vec<i16>: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix::backward_size: <u32 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix::costs_data: <alloc::vec::Vec<i16> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix::forward_size: <u32 as rkyv::traits::Archive>::Archived
+impl lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix::cost(&self, u32, u32) -> i32
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix where alloc::vec::Vec<i16>: rkyv::traits::Archive, u32: rkyv::traits::Archive, <alloc::vec::Vec<i16> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix where alloc::vec::Vec<i16>: rkyv::traits::Archive, u32: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::vec::Vec<i16> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <u32 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
+pub lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::backward_size: u32
+pub lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::costs_data: alloc::vec::Vec<i16>
+pub lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::forward_size: u32
+impl lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::cost(&self, u32, u32) -> i32
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::load(impl core::convert::Into<lindera_dictionary::util::Data>) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix>
+impl core::clone::Clone for lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::clone(&self) -> lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix where alloc::vec::Vec<i16>: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::Archived = lindera_dictionary::dictionary::connection_cost_matrix::ArchivedConnectionCostMatrix
+pub type lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::Resolver = lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrixResolver
+pub const lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix> where alloc::vec::Vec<i16>: rkyv::traits::Archive, <alloc::vec::Vec<i16> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<i16>, __D>, u32: rkyv::traits::Archive, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u32, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix where alloc::vec::Vec<i16>: rkyv::traits::Serialize<__S>, u32: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrixResolver where alloc::vec::Vec<i16>: rkyv::traits::Archive, u32: rkyv::traits::Archive
+pub mod lindera_dictionary::dictionary::metadata
+#[repr(C)] pub struct lindera_dictionary::dictionary::metadata::ArchivedMetadata where alloc::string::String: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::default_field_value: <alloc::string::String as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::default_left_context_id: <u16 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::default_right_context_id: <u16 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::default_word_cost: <i16 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::dictionary_schema: <lindera_dictionary::dictionary::schema::Schema as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::encoding: <alloc::string::String as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::flexible_csv: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::model_info: <core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::name: <alloc::string::String as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::normalize_details: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::skip_invalid_cost_or_id: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedMetadata::user_dictionary_schema: <lindera_dictionary::dictionary::schema::Schema as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::metadata::ArchivedMetadata where alloc::string::String: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <i16 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <u16 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <lindera_dictionary::dictionary::schema::Schema as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::metadata::ArchivedMetadata where alloc::string::String: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::string::String as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <i16 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <u16 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <bool as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <lindera_dictionary::dictionary::schema::Schema as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::metadata::ArchivedMetadata::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::dictionary::metadata::ArchivedModelInfo where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, u64: rkyv::traits::Archive, f64: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::connection_matrix_size: <alloc::string::String as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::feature_count: <usize as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::label_count: <usize as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::max_left_context_id: <usize as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::max_right_context_id: <usize as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::regularization: <f64 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::training_iterations: <u64 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::updated_at: <u64 as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::metadata::ArchivedModelInfo::version: <alloc::string::String as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::metadata::ArchivedModelInfo where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, u64: rkyv::traits::Archive, f64: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <u64 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <f64 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::metadata::ArchivedModelInfo where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, u64: rkyv::traits::Archive, f64: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <usize as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::string::String as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <u64 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <f64 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::metadata::ArchivedModelInfo::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::metadata::Metadata
+pub lindera_dictionary::dictionary::metadata::Metadata::default_field_value: alloc::string::String
+pub lindera_dictionary::dictionary::metadata::Metadata::default_left_context_id: u16
+pub lindera_dictionary::dictionary::metadata::Metadata::default_right_context_id: u16
+pub lindera_dictionary::dictionary::metadata::Metadata::default_word_cost: i16
+pub lindera_dictionary::dictionary::metadata::Metadata::dictionary_schema: lindera_dictionary::dictionary::schema::Schema
+pub lindera_dictionary::dictionary::metadata::Metadata::encoding: alloc::string::String
+pub lindera_dictionary::dictionary::metadata::Metadata::flexible_csv: bool
+pub lindera_dictionary::dictionary::metadata::Metadata::model_info: core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>
+pub lindera_dictionary::dictionary::metadata::Metadata::name: alloc::string::String
+pub lindera_dictionary::dictionary::metadata::Metadata::normalize_details: bool
+pub lindera_dictionary::dictionary::metadata::Metadata::skip_invalid_cost_or_id: bool
+pub lindera_dictionary::dictionary::metadata::Metadata::user_dictionary_schema: lindera_dictionary::dictionary::schema::Schema
+impl lindera_dictionary::dictionary::metadata::Metadata
+pub fn lindera_dictionary::dictionary::metadata::Metadata::load(&[u8]) -> lindera_dictionary::LinderaResult<Self>
+pub fn lindera_dictionary::dictionary::metadata::Metadata::load_or_default(&[u8], fn() -> Self) -> Self
+pub fn lindera_dictionary::dictionary::metadata::Metadata::new(alloc::string::String, alloc::string::String, i16, u16, u16, alloc::string::String, bool, bool, bool, lindera_dictionary::dictionary::schema::Schema, lindera_dictionary::dictionary::schema::Schema) -> Self
+impl core::clone::Clone for lindera_dictionary::dictionary::metadata::Metadata
+pub fn lindera_dictionary::dictionary::metadata::Metadata::clone(&self) -> lindera_dictionary::dictionary::metadata::Metadata
+impl core::default::Default for lindera_dictionary::dictionary::metadata::Metadata
+pub fn lindera_dictionary::dictionary::metadata::Metadata::default() -> Self
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::metadata::Metadata where alloc::string::String: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::metadata::Metadata::Archived = lindera_dictionary::dictionary::metadata::ArchivedMetadata
+pub type lindera_dictionary::dictionary::metadata::Metadata::Resolver = lindera_dictionary::dictionary::metadata::MetadataResolver
+pub const lindera_dictionary::dictionary::metadata::Metadata::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::metadata::Metadata::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::metadata::Metadata
+pub fn lindera_dictionary::dictionary::metadata::Metadata::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::metadata::Metadata
+pub fn lindera_dictionary::dictionary::metadata::Metadata::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::metadata::Metadata, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::metadata::Metadata> where alloc::string::String: rkyv::traits::Archive, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::string::String, __D>, i16: rkyv::traits::Archive, <i16 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<i16, __D>, u16: rkyv::traits::Archive, <u16 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u16, __D>, bool: rkyv::traits::Archive, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<bool, __D>, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, <lindera_dictionary::dictionary::schema::Schema as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::dictionary::schema::Schema, __D>, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive, <core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::metadata::Metadata>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::metadata::Metadata, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::metadata::Metadata where alloc::string::String: rkyv::traits::Serialize<__S>, i16: rkyv::traits::Serialize<__S>, u16: rkyv::traits::Serialize<__S>, bool: rkyv::traits::Serialize<__S>, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Serialize<__S>, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::metadata::Metadata::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::metadata::MetadataResolver where alloc::string::String: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::Schema: rkyv::traits::Archive, core::option::Option<lindera_dictionary::dictionary::metadata::ModelInfo>: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::metadata::ModelInfo
+pub lindera_dictionary::dictionary::metadata::ModelInfo::connection_matrix_size: alloc::string::String
+pub lindera_dictionary::dictionary::metadata::ModelInfo::feature_count: usize
+pub lindera_dictionary::dictionary::metadata::ModelInfo::label_count: usize
+pub lindera_dictionary::dictionary::metadata::ModelInfo::max_left_context_id: usize
+pub lindera_dictionary::dictionary::metadata::ModelInfo::max_right_context_id: usize
+pub lindera_dictionary::dictionary::metadata::ModelInfo::regularization: f64
+pub lindera_dictionary::dictionary::metadata::ModelInfo::training_iterations: u64
+pub lindera_dictionary::dictionary::metadata::ModelInfo::updated_at: u64
+pub lindera_dictionary::dictionary::metadata::ModelInfo::version: alloc::string::String
+impl core::clone::Clone for lindera_dictionary::dictionary::metadata::ModelInfo
+pub fn lindera_dictionary::dictionary::metadata::ModelInfo::clone(&self) -> lindera_dictionary::dictionary::metadata::ModelInfo
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::metadata::ModelInfo where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, u64: rkyv::traits::Archive, f64: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::metadata::ModelInfo::Archived = lindera_dictionary::dictionary::metadata::ArchivedModelInfo
+pub type lindera_dictionary::dictionary::metadata::ModelInfo::Resolver = lindera_dictionary::dictionary::metadata::ModelInfoResolver
+pub const lindera_dictionary::dictionary::metadata::ModelInfo::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::metadata::ModelInfo::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::metadata::ModelInfo
+pub fn lindera_dictionary::dictionary::metadata::ModelInfo::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::metadata::ModelInfo
+pub fn lindera_dictionary::dictionary::metadata::ModelInfo::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::metadata::ModelInfo, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::metadata::ModelInfo> where usize: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<usize, __D>, alloc::string::String: rkyv::traits::Archive, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::string::String, __D>, u64: rkyv::traits::Archive, <u64 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u64, __D>, f64: rkyv::traits::Archive, <f64 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<f64, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::metadata::ModelInfo>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::metadata::ModelInfo, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::metadata::ModelInfo where usize: rkyv::traits::Serialize<__S>, alloc::string::String: rkyv::traits::Serialize<__S>, u64: rkyv::traits::Serialize<__S>, f64: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::metadata::ModelInfo::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::metadata::ModelInfoResolver where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, u64: rkyv::traits::Archive, f64: rkyv::traits::Archive
+pub mod lindera_dictionary::dictionary::prefix_dictionary
+#[repr(C)] pub struct lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>, lindera_dictionary::util::Data: rkyv::traits::Archive, bool: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::da: <lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver as rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>>::Archived
+pub lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::is_system: <bool as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::vals_data: <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::words_data: <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::words_idx_data: <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived
+impl lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary
+pub fn lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::find_surface(&self, &str) -> lindera_dictionary::LinderaResult<alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>>
+pub fn lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::prefix<'a>(&'a self, &'a str) -> lindera_dictionary::LinderaResult<impl core::iter::traits::iterator::Iterator<Item = (usize, lindera_dictionary::viterbi::WordEntry)> + 'a>
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>, lindera_dictionary::util::Data: rkyv::traits::Archive, bool: rkyv::traits::Archive, <lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver as rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>>::Archived: rkyv::traits::Portable, <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>, lindera_dictionary::util::Data: rkyv::traits::Archive, bool: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver as rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>>::Archived: bytecheck::CheckBytes<__C>, <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <bool as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver
+impl rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>> for lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver
+pub type lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver::Archived = rkyv::vec::ArchivedVec<u8>
+pub type lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver::Resolver = rkyv::vec::VecResolver
+pub fn lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver::resolve_with(&daachorse::bytewise::DoubleArrayAhoCorasick<u32>, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl<D: rancor::Fallible<Errorrancor::Source> + ?core::marker::Sized> rkyv::with::DeserializeWith<rkyv::vec::ArchivedVec<u8>, daachorse::bytewise::DoubleArrayAhoCorasick<u32>, D> for lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver
+pub fn lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver::deserialize_with(&rkyv::vec::ArchivedVec<u8>, &mut D) -> core::result::Result<daachorse::bytewise::DoubleArrayAhoCorasick<u32>, <D as rancor::Fallible>::Error>
+impl<S: rancor::Fallible + rkyv::ser::writer::Writer + rkyv::ser::allocator::Allocator + ?core::marker::Sized> rkyv::with::SerializeWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>, S> for lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver
+pub fn lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver::serialize_with(&daachorse::bytewise::DoubleArrayAhoCorasick<u32>, &mut S) -> core::result::Result<Self::Resolver, <S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::prefix_dictionary::Match
+pub lindera_dictionary::dictionary::prefix_dictionary::Match::end_char: usize
+pub lindera_dictionary::dictionary::prefix_dictionary::Match::word_idx: lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+impl core::clone::Clone for lindera_dictionary::dictionary::prefix_dictionary::Match
+pub fn lindera_dictionary::dictionary::prefix_dictionary::Match::clone(&self) -> lindera_dictionary::dictionary::prefix_dictionary::Match
+impl core::fmt::Debug for lindera_dictionary::dictionary::prefix_dictionary::Match
+pub fn lindera_dictionary::dictionary::prefix_dictionary::Match::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::da: daachorse::bytewise::DoubleArrayAhoCorasick<u32>
+pub lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::is_system: bool
+pub lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::vals_data: lindera_dictionary::util::Data
+pub lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::words_data: lindera_dictionary::util::Data
+pub lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::words_idx_data: lindera_dictionary::util::Data
+impl lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::common_prefix_iterator(&self, &[char]) -> alloc::vec::Vec<lindera_dictionary::dictionary::prefix_dictionary::Match>
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::find_surface(&self, &str) -> alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::find_surface_iter<'a>(&'a self, &'a str) -> impl core::iter::traits::iterator::Iterator<Item = lindera_dictionary::viterbi::WordEntry> + 'a
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::load(impl core::convert::Into<lindera_dictionary::util::Data>, impl core::convert::Into<lindera_dictionary::util::Data>, impl core::convert::Into<lindera_dictionary::util::Data>, impl core::convert::Into<lindera_dictionary::util::Data>, bool) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::prefix<'a>(&'a self, &'a str) -> impl core::iter::traits::iterator::Iterator<Item = (usize, lindera_dictionary::viterbi::WordEntry)> + 'a
+impl core::clone::Clone for lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::clone(&self) -> lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>, lindera_dictionary::util::Data: rkyv::traits::Archive, bool: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::Archived = lindera_dictionary::dictionary::prefix_dictionary::ArchivedPrefixDictionary
+pub type lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::Resolver = lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionaryResolver
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary> where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>> + rkyv::with::DeserializeWith<<lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver as rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>>::Archived, daachorse::bytewise::DoubleArrayAhoCorasick<u32>, __D>, lindera_dictionary::util::Data: rkyv::traits::Archive, <lindera_dictionary::util::Data as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::util::Data, __D>, bool: rkyv::traits::Archive, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<bool, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::SerializeWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>, __S>, lindera_dictionary::util::Data: rkyv::traits::Serialize<__S>, bool: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionaryResolver where lindera_dictionary::dictionary::prefix_dictionary::DoubleArrayArchiver: rkyv::with::ArchiveWith<daachorse::bytewise::DoubleArrayAhoCorasick<u32>>, lindera_dictionary::util::Data: rkyv::traits::Archive, bool: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+pub lindera_dictionary::dictionary::prefix_dictionary::WordIdx::word_id: u32
+impl lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::prefix_dictionary::WordIdx::new(u32) -> Self
+impl core::clone::Clone for lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::prefix_dictionary::WordIdx::clone(&self) -> lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+impl core::fmt::Debug for lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::prefix_dictionary::WordIdx::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::dictionary::prefix_dictionary::WordIdx
+pub mod lindera_dictionary::dictionary::schema
+#[repr(u8)] pub enum lindera_dictionary::dictionary::schema::ArchivedFieldType
+pub lindera_dictionary::dictionary::schema::ArchivedFieldType::Cost
+pub lindera_dictionary::dictionary::schema::ArchivedFieldType::Custom
+pub lindera_dictionary::dictionary::schema::ArchivedFieldType::LeftContextId
+pub lindera_dictionary::dictionary::schema::ArchivedFieldType::RightContextId
+pub lindera_dictionary::dictionary::schema::ArchivedFieldType::Surface
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::schema::ArchivedFieldType
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::schema::ArchivedFieldType where <__C as rancor::Fallible>::Error: rancor::Source
+pub unsafe fn lindera_dictionary::dictionary::schema::ArchivedFieldType::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub enum lindera_dictionary::dictionary::schema::FieldType
+pub lindera_dictionary::dictionary::schema::FieldType::Cost
+pub lindera_dictionary::dictionary::schema::FieldType::Custom
+pub lindera_dictionary::dictionary::schema::FieldType::LeftContextId
+pub lindera_dictionary::dictionary::schema::FieldType::RightContextId
+pub lindera_dictionary::dictionary::schema::FieldType::Surface
+impl core::clone::Clone for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::clone(&self) -> lindera_dictionary::dictionary::schema::FieldType
+impl core::cmp::PartialEq for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::eq(&self, &lindera_dictionary::dictionary::schema::FieldType) -> bool
+impl core::fmt::Debug for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera_dictionary::dictionary::schema::FieldType
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::schema::FieldType
+pub type lindera_dictionary::dictionary::schema::FieldType::Archived = lindera_dictionary::dictionary::schema::ArchivedFieldType
+pub type lindera_dictionary::dictionary::schema::FieldType::Resolver = lindera_dictionary::dictionary::schema::FieldTypeResolver
+pub fn lindera_dictionary::dictionary::schema::FieldType::resolve(&self, <Self as rkyv::traits::Archive>::Resolver, rkyv::place::Place<<Self as rkyv::traits::Archive>::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::schema::FieldType, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::schema::FieldType>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::schema::FieldType>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::schema::FieldType, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::schema::FieldType
+pub fn lindera_dictionary::dictionary::schema::FieldType::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub enum lindera_dictionary::dictionary::schema::FieldTypeResolver
+pub lindera_dictionary::dictionary::schema::FieldTypeResolver::Cost
+pub lindera_dictionary::dictionary::schema::FieldTypeResolver::Custom
+pub lindera_dictionary::dictionary::schema::FieldTypeResolver::LeftContextId
+pub lindera_dictionary::dictionary::schema::FieldTypeResolver::RightContextId
+pub lindera_dictionary::dictionary::schema::FieldTypeResolver::Surface
+#[repr(C)] pub struct lindera_dictionary::dictionary::schema::ArchivedFieldDefinition where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, core::option::Option<alloc::string::String>: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::schema::ArchivedFieldDefinition::description: <core::option::Option<alloc::string::String> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::schema::ArchivedFieldDefinition::field_type: <lindera_dictionary::dictionary::schema::FieldType as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::schema::ArchivedFieldDefinition::index: <usize as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::schema::ArchivedFieldDefinition::name: <alloc::string::String as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::schema::ArchivedFieldDefinition where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, core::option::Option<alloc::string::String>: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <lindera_dictionary::dictionary::schema::FieldType as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <core::option::Option<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::schema::ArchivedFieldDefinition where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, core::option::Option<alloc::string::String>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <usize as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::string::String as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <lindera_dictionary::dictionary::schema::FieldType as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <core::option::Option<alloc::string::String> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::schema::ArchivedFieldDefinition::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::dictionary::schema::ArchivedSchema where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::schema::ArchivedSchema::fields: <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::schema::ArchivedSchema where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::schema::ArchivedSchema where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::schema::ArchivedSchema::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::schema::FieldDefinition
+pub lindera_dictionary::dictionary::schema::FieldDefinition::description: core::option::Option<alloc::string::String>
+pub lindera_dictionary::dictionary::schema::FieldDefinition::field_type: lindera_dictionary::dictionary::schema::FieldType
+pub lindera_dictionary::dictionary::schema::FieldDefinition::index: usize
+pub lindera_dictionary::dictionary::schema::FieldDefinition::name: alloc::string::String
+impl core::clone::Clone for lindera_dictionary::dictionary::schema::FieldDefinition
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::clone(&self) -> lindera_dictionary::dictionary::schema::FieldDefinition
+impl core::fmt::Debug for lindera_dictionary::dictionary::schema::FieldDefinition
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::schema::FieldDefinition where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, core::option::Option<alloc::string::String>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::schema::FieldDefinition::Archived = lindera_dictionary::dictionary::schema::ArchivedFieldDefinition
+pub type lindera_dictionary::dictionary::schema::FieldDefinition::Resolver = lindera_dictionary::dictionary::schema::FieldDefinitionResolver
+pub const lindera_dictionary::dictionary::schema::FieldDefinition::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::schema::FieldDefinition
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::schema::FieldDefinition
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::schema::FieldDefinition, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::schema::FieldDefinition> where usize: rkyv::traits::Archive, <usize as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<usize, __D>, alloc::string::String: rkyv::traits::Archive, <alloc::string::String as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::string::String, __D>, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, <lindera_dictionary::dictionary::schema::FieldType as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::dictionary::schema::FieldType, __D>, core::option::Option<alloc::string::String>: rkyv::traits::Archive, <core::option::Option<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<core::option::Option<alloc::string::String>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::schema::FieldDefinition>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::schema::FieldDefinition, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::schema::FieldDefinition where usize: rkyv::traits::Serialize<__S>, alloc::string::String: rkyv::traits::Serialize<__S>, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Serialize<__S>, core::option::Option<alloc::string::String>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::schema::FieldDefinition::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::schema::FieldDefinitionResolver where usize: rkyv::traits::Archive, alloc::string::String: rkyv::traits::Archive, lindera_dictionary::dictionary::schema::FieldType: rkyv::traits::Archive, core::option::Option<alloc::string::String>: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::schema::Schema
+pub lindera_dictionary::dictionary::schema::Schema::fields: alloc::vec::Vec<alloc::string::String>
+impl lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::field_count(&self) -> usize
+pub fn lindera_dictionary::dictionary::schema::Schema::get_all_fields(&self) -> &[alloc::string::String]
+pub fn lindera_dictionary::dictionary::schema::Schema::get_custom_fields(&self) -> &[alloc::string::String]
+pub fn lindera_dictionary::dictionary::schema::Schema::get_field_index(&self, &str) -> core::option::Option<usize>
+pub fn lindera_dictionary::dictionary::schema::Schema::get_field_name(&self, usize) -> core::option::Option<&str>
+pub fn lindera_dictionary::dictionary::schema::Schema::new(alloc::vec::Vec<alloc::string::String>) -> Self
+pub fn lindera_dictionary::dictionary::schema::Schema::validate_fields(&self, &csv::string_record::StringRecord) -> lindera_dictionary::LinderaResult<()>
+impl lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::get_field_by_name(&self, &str) -> core::option::Option<lindera_dictionary::dictionary::schema::FieldDefinition>
+impl core::clone::Clone for lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::clone(&self) -> lindera_dictionary::dictionary::schema::Schema
+impl core::default::Default for lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::default() -> Self
+impl core::fmt::Debug for lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::schema::Schema where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::schema::Schema::Archived = lindera_dictionary::dictionary::schema::ArchivedSchema
+pub type lindera_dictionary::dictionary::schema::Schema::Resolver = lindera_dictionary::dictionary::schema::SchemaResolver
+pub const lindera_dictionary::dictionary::schema::Schema::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::schema::Schema::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::schema::Schema
+pub fn lindera_dictionary::dictionary::schema::Schema::deserialize<D>(D) -> core::result::Result<Self, <D as serde_core::de::Deserializer>::Error> where D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::schema::Schema, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::schema::Schema> where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::string::String> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<alloc::string::String>, __D>, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive, <core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::schema::Schema>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::schema::Schema, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::schema::Schema where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Serialize<__S>, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::schema::Schema::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::schema::SchemaResolver where alloc::vec::Vec<alloc::string::String>: rkyv::traits::Archive, core::option::Option<std::collections::hash::map::HashMap<alloc::string::String, usize>>: rkyv::traits::Archive
+pub mod lindera_dictionary::dictionary::unknown_dictionary
+#[repr(C)] pub struct lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<u8>: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::category_references: <alloc::vec::Vec<alloc::vec::Vec<u32>> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::costs: <alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::words_data: <alloc::vec::Vec<u8> as rkyv::traits::Archive>::Archived
+pub lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::words_idx_data: <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived
+impl lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary
+pub fn lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::lookup_word_ids(&self, lindera_dictionary::dictionary::character_definition::CategoryId) -> &[rend::u32_le]
+pub fn lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::word_details(&self, u32) -> core::option::Option<alloc::vec::Vec<&str>>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::word_entry(&self, u32) -> lindera_dictionary::LinderaResult<lindera_dictionary::viterbi::WordEntry>
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<u8>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::vec::Vec<u32>> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <alloc::vec::Vec<u8> as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<u8>: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <alloc::vec::Vec<alloc::vec::Vec<u32>> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <alloc::vec::Vec<u8> as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::unknown_dictionary::UnkWord
+pub lindera_dictionary::dictionary::unknown_dictionary::UnkWord::end_char: usize
+pub lindera_dictionary::dictionary::unknown_dictionary::UnkWord::word_idx: lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+impl lindera_dictionary::dictionary::unknown_dictionary::UnkWord
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnkWord::end_char(&self) -> usize
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnkWord::word_idx(&self) -> lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+impl core::clone::Clone for lindera_dictionary::dictionary::unknown_dictionary::UnkWord
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnkWord::clone(&self) -> lindera_dictionary::dictionary::unknown_dictionary::UnkWord
+impl core::fmt::Debug for lindera_dictionary::dictionary::unknown_dictionary::UnkWord
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnkWord::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::category_references: alloc::vec::Vec<alloc::vec::Vec<u32>>
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::costs: alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::words_data: alloc::vec::Vec<u8>
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::words_idx_data: alloc::vec::Vec<u32>
+impl lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::compatible_unk_index(&self, &str, usize, usize, &str) -> core::option::Option<lindera_dictionary::dictionary::unknown_dictionary::WordIdx>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::gen_unk_words<F>(&self, &str, usize, bool, core::option::Option<usize>, F) where F: core::ops::function::FnMut(lindera_dictionary::dictionary::unknown_dictionary::UnkWord)
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::load(&[u8]) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::lookup_word_ids(&self, lindera_dictionary::dictionary::character_definition::CategoryId) -> &[u32]
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::word_details(&self, u32) -> core::option::Option<alloc::vec::Vec<&str>>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::word_entry(&self, u32) -> lindera_dictionary::viterbi::WordEntry
+impl core::clone::Clone for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::clone(&self) -> lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<u8>: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::Archived = lindera_dictionary::dictionary::unknown_dictionary::ArchivedUnknownDictionary
+pub type lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::Resolver = lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryResolver
+pub const lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary> where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, <alloc::vec::Vec<alloc::vec::Vec<u32>> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<alloc::vec::Vec<u32>>, __D>, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, <alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>, __D>, alloc::vec::Vec<u32>: rkyv::traits::Archive, <alloc::vec::Vec<u32> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<u32>, __D>, alloc::vec::Vec<u8>: rkyv::traits::Archive, <alloc::vec::Vec<u8> as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<alloc::vec::Vec<u8>, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Serialize<__S>, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Serialize<__S>, alloc::vec::Vec<u32>: rkyv::traits::Serialize<__S>, alloc::vec::Vec<u8>: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry::left_id: u32
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry::right_id: u32
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry::surface: alloc::string::String
+pub lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry::word_cost: i32
+impl core::fmt::Debug for lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry
+pub fn lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryEntry::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionaryResolver where alloc::vec::Vec<alloc::vec::Vec<u32>>: rkyv::traits::Archive, alloc::vec::Vec<lindera_dictionary::viterbi::WordEntry>: rkyv::traits::Archive, alloc::vec::Vec<u32>: rkyv::traits::Archive, alloc::vec::Vec<u8>: rkyv::traits::Archive
+pub struct lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+pub lindera_dictionary::dictionary::unknown_dictionary::WordIdx::word_id: u32
+impl lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::unknown_dictionary::WordIdx::new(u32) -> Self
+impl core::clone::Clone for lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::unknown_dictionary::WordIdx::clone(&self) -> lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+impl core::fmt::Debug for lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::unknown_dictionary::WordIdx::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::dictionary::unknown_dictionary::WordIdx
+pub fn lindera_dictionary::dictionary::unknown_dictionary::parse_unk(&[alloc::string::String], &str) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary>
+#[repr(C)] pub struct lindera_dictionary::dictionary::ArchivedUserDictionary where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive
+pub lindera_dictionary::dictionary::ArchivedUserDictionary::dict: <lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary as rkyv::traits::Archive>::Archived
+impl rkyv::traits::Portable for lindera_dictionary::dictionary::ArchivedUserDictionary where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive, <lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::dictionary::ArchivedUserDictionary where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::dictionary::ArchivedUserDictionary::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::Dictionary
+pub lindera_dictionary::dictionary::Dictionary::character_definition: lindera_dictionary::dictionary::character_definition::CharacterDefinition
+pub lindera_dictionary::dictionary::Dictionary::connection_cost_matrix: lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix
+pub lindera_dictionary::dictionary::Dictionary::metadata: lindera_dictionary::dictionary::metadata::Metadata
+pub lindera_dictionary::dictionary::Dictionary::prefix_dictionary: lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+pub lindera_dictionary::dictionary::Dictionary::unknown_dictionary: lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary
+impl lindera_dictionary::dictionary::Dictionary
+pub fn lindera_dictionary::dictionary::Dictionary::load_from_path(&std::path::Path) -> lindera_dictionary::LinderaResult<Self>
+pub fn lindera_dictionary::dictionary::Dictionary::load_from_path_with_options(&std::path::Path, bool) -> lindera_dictionary::LinderaResult<Self>
+pub fn lindera_dictionary::dictionary::Dictionary::save_to_path(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<()>
+pub fn lindera_dictionary::dictionary::Dictionary::unknown_word_details(&self, usize) -> alloc::vec::Vec<&str>
+pub fn lindera_dictionary::dictionary::Dictionary::word_details(&self, usize) -> alloc::vec::Vec<&str>
+impl core::clone::Clone for lindera_dictionary::dictionary::Dictionary
+pub fn lindera_dictionary::dictionary::Dictionary::clone(&self) -> lindera_dictionary::dictionary::Dictionary
+pub struct lindera_dictionary::dictionary::UserDictionary
+pub lindera_dictionary::dictionary::UserDictionary::dict: lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary
+impl lindera_dictionary::dictionary::UserDictionary
+pub fn lindera_dictionary::dictionary::UserDictionary::load(&[u8]) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::UserDictionary>
+pub fn lindera_dictionary::dictionary::UserDictionary::word_details(&self, usize) -> alloc::vec::Vec<&str>
+impl core::clone::Clone for lindera_dictionary::dictionary::UserDictionary
+pub fn lindera_dictionary::dictionary::UserDictionary::clone(&self) -> lindera_dictionary::dictionary::UserDictionary
+impl rkyv::traits::Archive for lindera_dictionary::dictionary::UserDictionary where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive
+pub type lindera_dictionary::dictionary::UserDictionary::Archived = lindera_dictionary::dictionary::ArchivedUserDictionary
+pub type lindera_dictionary::dictionary::UserDictionary::Resolver = lindera_dictionary::dictionary::UserDictionaryResolver
+pub const lindera_dictionary::dictionary::UserDictionary::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::dictionary::UserDictionary::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::dictionary::UserDictionary
+pub fn lindera_dictionary::dictionary::UserDictionary::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::dictionary::UserDictionary
+pub fn lindera_dictionary::dictionary::UserDictionary::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::dictionary::UserDictionary, __D> for rkyv::alias::Archived<lindera_dictionary::dictionary::UserDictionary> where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive, <lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::dictionary::UserDictionary>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::dictionary::UserDictionary, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::dictionary::UserDictionary where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::dictionary::UserDictionary::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::dictionary::UserDictionaryResolver where lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary: rkyv::traits::Archive
+pub static lindera_dictionary::dictionary::UNK: once_cell::sync::Lazy<alloc::vec::Vec<&str>>
+pub mod lindera_dictionary::error
+pub enum lindera_dictionary::error::LinderaErrorKind
+pub lindera_dictionary::error::LinderaErrorKind::Args
+pub lindera_dictionary::error::LinderaErrorKind::Build
+pub lindera_dictionary::error::LinderaErrorKind::Content
+pub lindera_dictionary::error::LinderaErrorKind::Decode
+pub lindera_dictionary::error::LinderaErrorKind::Deserialize
+pub lindera_dictionary::error::LinderaErrorKind::Dictionary
+pub lindera_dictionary::error::LinderaErrorKind::FeatureDisabled
+pub lindera_dictionary::error::LinderaErrorKind::Io
+pub lindera_dictionary::error::LinderaErrorKind::Mode
+pub lindera_dictionary::error::LinderaErrorKind::NotFound
+pub lindera_dictionary::error::LinderaErrorKind::Parse
+pub lindera_dictionary::error::LinderaErrorKind::Serialize
+impl lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::with_error<E>(self, E) -> lindera_dictionary::error::LinderaError where anyhow::Error: core::convert::From<E>
+impl core::clone::Clone for lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::clone(&self) -> lindera_dictionary::error::LinderaErrorKind
+impl core::cmp::Eq for lindera_dictionary::error::LinderaErrorKind
+impl core::cmp::PartialEq for lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::eq(&self, &lindera_dictionary::error::LinderaErrorKind) -> bool
+impl core::fmt::Debug for lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::error::LinderaErrorKind
+impl core::marker::StructuralPartialEq for lindera_dictionary::error::LinderaErrorKind
+impl serde_core::ser::Serialize for lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::error::LinderaErrorKind
+pub fn lindera_dictionary::error::LinderaErrorKind::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub struct lindera_dictionary::error::LinderaError
+pub lindera_dictionary::error::LinderaError::kind: lindera_dictionary::error::LinderaErrorKind
+impl lindera_dictionary::error::LinderaError
+pub fn lindera_dictionary::error::LinderaError::add_context<C>(self, C) -> Self where C: core::fmt::Display + core::marker::Send + core::marker::Sync + 'static
+pub fn lindera_dictionary::error::LinderaError::kind(&self) -> lindera_dictionary::error::LinderaErrorKind
+impl core::error::Error for lindera_dictionary::error::LinderaError
+pub fn lindera_dictionary::error::LinderaError::source(&self) -> core::option::Option<&(dyn core::error::Error + 'static)>
+impl core::fmt::Debug for lindera_dictionary::error::LinderaError
+pub fn lindera_dictionary::error::LinderaError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for lindera_dictionary::error::LinderaError
+pub fn lindera_dictionary::error::LinderaError::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub mod lindera_dictionary::loader
+pub mod lindera_dictionary::loader::character_definition
+pub struct lindera_dictionary::loader::character_definition::CharacterDefinitionLoader
+impl lindera_dictionary::loader::character_definition::CharacterDefinitionLoader
+pub fn lindera_dictionary::loader::character_definition::CharacterDefinitionLoader::load(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::character_definition::CharacterDefinition>
+pub mod lindera_dictionary::loader::connection_cost_matrix
+pub struct lindera_dictionary::loader::connection_cost_matrix::ConnectionCostMatrixLoader
+impl lindera_dictionary::loader::connection_cost_matrix::ConnectionCostMatrixLoader
+pub fn lindera_dictionary::loader::connection_cost_matrix::ConnectionCostMatrixLoader::load(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix>
+pub fn lindera_dictionary::loader::connection_cost_matrix::ConnectionCostMatrixLoader::load_mmap(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix>
+pub mod lindera_dictionary::loader::metadata
+pub struct lindera_dictionary::loader::metadata::MetadataLoader
+impl lindera_dictionary::loader::metadata::MetadataLoader
+pub fn lindera_dictionary::loader::metadata::MetadataLoader::load(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::metadata::Metadata>
+pub fn lindera_dictionary::loader::metadata::MetadataLoader::load_mmap(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::metadata::Metadata>
+pub mod lindera_dictionary::loader::prefix_dictionary
+pub struct lindera_dictionary::loader::prefix_dictionary::PrefixDictionaryLoader
+impl lindera_dictionary::loader::prefix_dictionary::PrefixDictionaryLoader
+pub fn lindera_dictionary::loader::prefix_dictionary::PrefixDictionaryLoader::load(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>
+pub fn lindera_dictionary::loader::prefix_dictionary::PrefixDictionaryLoader::load_mmap(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>
+pub mod lindera_dictionary::loader::unknown_dictionary
+pub struct lindera_dictionary::loader::unknown_dictionary::UnknownDictionaryLoader
+impl lindera_dictionary::loader::unknown_dictionary::UnknownDictionaryLoader
+pub fn lindera_dictionary::loader::unknown_dictionary::UnknownDictionaryLoader::load(&std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary>
+pub mod lindera_dictionary::loader::user_dictionary
+pub struct lindera_dictionary::loader::user_dictionary::UserDictionaryLoader
+impl lindera_dictionary::loader::user_dictionary::UserDictionaryLoader
+pub fn lindera_dictionary::loader::user_dictionary::UserDictionaryLoader::load_from_bin<P: core::convert::AsRef<std::path::Path>>(P) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::UserDictionary>
+pub fn lindera_dictionary::loader::user_dictionary::UserDictionaryLoader::load_from_csv<P: core::convert::AsRef<std::path::Path>>(lindera_dictionary::builder::DictionaryBuilder, P) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::UserDictionary>
+pub struct lindera_dictionary::loader::FSDictionaryLoader
+impl lindera_dictionary::loader::FSDictionaryLoader
+pub fn lindera_dictionary::loader::FSDictionaryLoader::load_from_path<P: core::convert::AsRef<std::path::Path>>(&self, P) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub fn lindera_dictionary::loader::FSDictionaryLoader::new() -> Self
+impl core::default::Default for lindera_dictionary::loader::FSDictionaryLoader
+pub fn lindera_dictionary::loader::FSDictionaryLoader::default() -> Self
+impl lindera_dictionary::loader::DictionaryLoader for lindera_dictionary::loader::FSDictionaryLoader
+pub fn lindera_dictionary::loader::FSDictionaryLoader::load(&self) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub fn lindera_dictionary::loader::FSDictionaryLoader::load_from_path(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub trait lindera_dictionary::loader::DictionaryLoader
+pub fn lindera_dictionary::loader::DictionaryLoader::load(&self) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub fn lindera_dictionary::loader::DictionaryLoader::load_from_path(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+impl lindera_dictionary::loader::DictionaryLoader for lindera_dictionary::loader::FSDictionaryLoader
+pub fn lindera_dictionary::loader::FSDictionaryLoader::load(&self) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub fn lindera_dictionary::loader::FSDictionaryLoader::load_from_path(&self, &std::path::Path) -> lindera_dictionary::LinderaResult<lindera_dictionary::dictionary::Dictionary>
+pub mod lindera_dictionary::mode
+pub enum lindera_dictionary::mode::Mode
+pub lindera_dictionary::mode::Mode::Decompose(lindera_dictionary::mode::Penalty)
+pub lindera_dictionary::mode::Mode::Normal
+impl lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::as_str(&self) -> &str
+pub fn lindera_dictionary::mode::Mode::is_search(&self) -> bool
+pub fn lindera_dictionary::mode::Mode::penalty_cost(&self, &lindera_dictionary::viterbi::Edge) -> i32
+impl core::clone::Clone for lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::clone(&self) -> lindera_dictionary::mode::Mode
+impl core::cmp::Eq for lindera_dictionary::mode::Mode
+impl core::cmp::PartialEq for lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::eq(&self, &lindera_dictionary::mode::Mode) -> bool
+impl core::fmt::Debug for lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera_dictionary::mode::Mode
+impl core::str::traits::FromStr for lindera_dictionary::mode::Mode
+pub type lindera_dictionary::mode::Mode::Err = lindera_dictionary::error::LinderaError
+pub fn lindera_dictionary::mode::Mode::from_str(&str) -> core::result::Result<lindera_dictionary::mode::Mode, Self::Err>
+impl serde_core::ser::Serialize for lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::mode::Mode
+pub fn lindera_dictionary::mode::Mode::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub struct lindera_dictionary::mode::Penalty
+pub lindera_dictionary::mode::Penalty::kanji_penalty_length_penalty: i32
+pub lindera_dictionary::mode::Penalty::kanji_penalty_length_threshold: usize
+pub lindera_dictionary::mode::Penalty::other_penalty_length_penalty: i32
+pub lindera_dictionary::mode::Penalty::other_penalty_length_threshold: usize
+impl lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::penalty(&self, &lindera_dictionary::viterbi::Edge) -> i32
+impl core::clone::Clone for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::clone(&self) -> lindera_dictionary::mode::Penalty
+impl core::cmp::Eq for lindera_dictionary::mode::Penalty
+impl core::cmp::PartialEq for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::eq(&self, &lindera_dictionary::mode::Penalty) -> bool
+impl core::default::Default for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::default() -> Self
+impl core::fmt::Debug for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for lindera_dictionary::mode::Penalty
+impl serde_core::ser::Serialize for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::mode::Penalty
+pub fn lindera_dictionary::mode::Penalty::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub mod lindera_dictionary::nbest
+pub struct lindera_dictionary::nbest::NBestGenerator<'a>
+impl<'a> lindera_dictionary::nbest::NBestGenerator<'a>
+pub fn lindera_dictionary::nbest::NBestGenerator<'a>::new(&'a lindera_dictionary::viterbi::Lattice) -> Self
+pub fn lindera_dictionary::nbest::NBestGenerator<'a>::next(&mut self) -> core::option::Option<(alloc::vec::Vec<(usize, lindera_dictionary::viterbi::WordId)>, i64)>
+pub mod lindera_dictionary::util
+pub enum lindera_dictionary::util::Data
+pub lindera_dictionary::util::Data::Map(alloc::sync::Arc<memmap2::Mmap>)
+pub lindera_dictionary::util::Data::Static(&'static [u8])
+pub lindera_dictionary::util::Data::Vec(alloc::vec::Vec<u8>)
+impl core::clone::Clone for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::clone(&self) -> lindera_dictionary::util::Data
+impl core::convert::From<&'static [u8]> for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::from(&'static [u8]) -> Self
+impl core::convert::From<alloc::vec::Vec<u8>> for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::from(alloc::vec::Vec<u8>) -> Self
+impl core::convert::From<memmap2::Mmap> for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::from(memmap2::Mmap) -> Self
+impl core::ops::deref::Deref for lindera_dictionary::util::Data
+pub type lindera_dictionary::util::Data::Target = [u8]
+pub fn lindera_dictionary::util::Data::deref(&self) -> &Self::Target
+impl rkyv::traits::Archive for lindera_dictionary::util::Data
+pub type lindera_dictionary::util::Data::Archived = rkyv::vec::ArchivedVec<u8>
+pub type lindera_dictionary::util::Data::Resolver = rkyv::vec::VecResolver
+pub fn lindera_dictionary::util::Data::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::serialize<S>(&self, S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error> where S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::deserialize<D>(D) -> core::result::Result<Self, <D as serde_core::de::Deserializer>::Error> where D: serde_core::de::Deserializer<'de>
+impl<D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::util::Data, D> for rkyv::vec::ArchivedVec<u8>
+pub fn rkyv::vec::ArchivedVec<u8>::deserialize(&self, &mut D) -> core::result::Result<lindera_dictionary::util::Data, <D as rancor::Fallible>::Error>
+impl<S> rkyv::traits::Serialize<S> for lindera_dictionary::util::Data where S: rancor::Fallible + rkyv::ser::writer::Writer + rkyv::ser::allocator::Allocator + ?core::marker::Sized
+pub fn lindera_dictionary::util::Data::serialize(&self, &mut S) -> core::result::Result<Self::Resolver, <S as rancor::Fallible>::Error>
+impl<T: core::ops::deref::Deref<Target = [u8]>> core::convert::From<&'static T> for lindera_dictionary::util::Data
+pub fn lindera_dictionary::util::Data::from(&'static T) -> Self
+pub fn lindera_dictionary::util::mmap_file(&std::path::Path) -> lindera_dictionary::LinderaResult<memmap2::Mmap>
+pub fn lindera_dictionary::util::read_aligned_file(&std::path::Path) -> lindera_dictionary::LinderaResult<rkyv::util::alloc::aligned_vec::AlignedVec<16>>
+pub fn lindera_dictionary::util::read_file(&std::path::Path) -> lindera_dictionary::LinderaResult<alloc::vec::Vec<u8>>
+pub fn lindera_dictionary::util::read_file_with_encoding(&std::path::Path, &str) -> lindera_dictionary::LinderaResult<alloc::string::String>
+pub fn lindera_dictionary::util::write_data<W: std::io::Write>(&[u8], &mut W) -> lindera_dictionary::LinderaResult<()>
+pub mod lindera_dictionary::viterbi
+#[repr(u8)] pub enum lindera_dictionary::viterbi::ArchivedLexType
+pub lindera_dictionary::viterbi::ArchivedLexType::System
+pub lindera_dictionary::viterbi::ArchivedLexType::Unknown
+pub lindera_dictionary::viterbi::ArchivedLexType::User
+impl rkyv::traits::Portable for lindera_dictionary::viterbi::ArchivedLexType
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::viterbi::ArchivedLexType where <__C as rancor::Fallible>::Error: rancor::Source
+pub unsafe fn lindera_dictionary::viterbi::ArchivedLexType::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub enum lindera_dictionary::viterbi::LexType
+pub lindera_dictionary::viterbi::LexType::System
+pub lindera_dictionary::viterbi::LexType::Unknown
+pub lindera_dictionary::viterbi::LexType::User
+impl core::clone::Clone for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::clone(&self) -> lindera_dictionary::viterbi::LexType
+impl core::cmp::Eq for lindera_dictionary::viterbi::LexType
+impl core::cmp::PartialEq for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::eq(&self, &lindera_dictionary::viterbi::LexType) -> bool
+impl core::default::Default for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::default() -> lindera_dictionary::viterbi::LexType
+impl core::fmt::Debug for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::viterbi::LexType
+impl core::marker::StructuralPartialEq for lindera_dictionary::viterbi::LexType
+impl rkyv::traits::Archive for lindera_dictionary::viterbi::LexType
+pub type lindera_dictionary::viterbi::LexType::Archived = lindera_dictionary::viterbi::ArchivedLexType
+pub type lindera_dictionary::viterbi::LexType::Resolver = lindera_dictionary::viterbi::LexTypeResolver
+pub fn lindera_dictionary::viterbi::LexType::resolve(&self, <Self as rkyv::traits::Archive>::Resolver, rkyv::place::Place<<Self as rkyv::traits::Archive>::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::viterbi::LexType, __D> for rkyv::alias::Archived<lindera_dictionary::viterbi::LexType>
+pub fn rkyv::alias::Archived<lindera_dictionary::viterbi::LexType>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::viterbi::LexType, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::LexType::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub enum lindera_dictionary::viterbi::LexTypeResolver
+pub lindera_dictionary::viterbi::LexTypeResolver::System
+pub lindera_dictionary::viterbi::LexTypeResolver::Unknown
+pub lindera_dictionary::viterbi::LexTypeResolver::User
+#[repr(C)] pub struct lindera_dictionary::viterbi::ArchivedWordEntry where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive
+impl rkyv::traits::Portable for lindera_dictionary::viterbi::ArchivedWordEntry where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, <lindera_dictionary::viterbi::WordId as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <i16 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <u16 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::viterbi::ArchivedWordEntry where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <lindera_dictionary::viterbi::WordId as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <i16 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <u16 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::viterbi::ArchivedWordEntry::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+#[repr(C)] pub struct lindera_dictionary::viterbi::ArchivedWordId where u32: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive
+impl rkyv::traits::Portable for lindera_dictionary::viterbi::ArchivedWordId where u32: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Portable, <lindera_dictionary::viterbi::LexType as rkyv::traits::Archive>::Archived: rkyv::traits::Portable
+impl<__C: rancor::Fallible + ?core::marker::Sized> bytecheck::CheckBytes<__C> for lindera_dictionary::viterbi::ArchivedWordId where u32: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive, <__C as rancor::Fallible>::Error: rancor::Trace, <u32 as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <bool as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>, <lindera_dictionary::viterbi::LexType as rkyv::traits::Archive>::Archived: bytecheck::CheckBytes<__C>
+pub unsafe fn lindera_dictionary::viterbi::ArchivedWordId::check_bytes(*const Self, &mut __C) -> core::result::Result<(), <__C as rancor::Fallible>::Error>
+pub struct lindera_dictionary::viterbi::Edge
+impl lindera_dictionary::viterbi::Edge
+pub fn lindera_dictionary::viterbi::Edge::num_chars(&self) -> usize
+impl core::clone::Clone for lindera_dictionary::viterbi::Edge
+pub fn lindera_dictionary::viterbi::Edge::clone(&self) -> lindera_dictionary::viterbi::Edge
+impl core::default::Default for lindera_dictionary::viterbi::Edge
+pub fn lindera_dictionary::viterbi::Edge::default() -> lindera_dictionary::viterbi::Edge
+impl core::fmt::Debug for lindera_dictionary::viterbi::Edge
+pub fn lindera_dictionary::viterbi::Edge::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::viterbi::Lattice
+impl lindera_dictionary::viterbi::Lattice
+pub fn lindera_dictionary::viterbi::Lattice::clear(&mut self)
+pub fn lindera_dictionary::viterbi::Lattice::edges_at(&self, usize) -> &[lindera_dictionary::viterbi::Edge]
+pub fn lindera_dictionary::viterbi::Lattice::nbest_tokens_offset(&self, usize, bool, core::option::Option<i64>) -> alloc::vec::Vec<(alloc::vec::Vec<(usize, lindera_dictionary::viterbi::WordId)>, i64)>
+pub fn lindera_dictionary::viterbi::Lattice::paths_at(&self, usize) -> &[lindera_dictionary::viterbi::PathEntry]
+pub fn lindera_dictionary::viterbi::Lattice::set_text(&mut self, &lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary, &core::option::Option<&lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>, &lindera_dictionary::dictionary::character_definition::CharacterDefinition, &lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary, &lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix, &str, &lindera_dictionary::mode::Mode)
+pub fn lindera_dictionary::viterbi::Lattice::set_text_nbest(&mut self, &lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary, &core::option::Option<&lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary>, &lindera_dictionary::dictionary::character_definition::CharacterDefinition, &lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary, &lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix, &str, &lindera_dictionary::mode::Mode)
+pub fn lindera_dictionary::viterbi::Lattice::text_len(&self) -> usize
+pub fn lindera_dictionary::viterbi::Lattice::tokens_offset(&self) -> alloc::vec::Vec<(usize, lindera_dictionary::viterbi::WordId)>
+impl core::clone::Clone for lindera_dictionary::viterbi::Lattice
+pub fn lindera_dictionary::viterbi::Lattice::clone(&self) -> lindera_dictionary::viterbi::Lattice
+impl core::default::Default for lindera_dictionary::viterbi::Lattice
+pub fn lindera_dictionary::viterbi::Lattice::default() -> lindera_dictionary::viterbi::Lattice
+pub struct lindera_dictionary::viterbi::PathEntry
+impl core::clone::Clone for lindera_dictionary::viterbi::PathEntry
+pub fn lindera_dictionary::viterbi::PathEntry::clone(&self) -> lindera_dictionary::viterbi::PathEntry
+impl core::fmt::Debug for lindera_dictionary::viterbi::PathEntry
+pub fn lindera_dictionary::viterbi::PathEntry::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub struct lindera_dictionary::viterbi::WordEntry
+impl lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::left_id(&self) -> u32
+pub fn lindera_dictionary::viterbi::WordEntry::new(lindera_dictionary::viterbi::WordId, i16, u16, u16) -> Self
+pub fn lindera_dictionary::viterbi::WordEntry::right_id(&self) -> u32
+pub fn lindera_dictionary::viterbi::WordEntry::word_cost(&self) -> i16
+pub fn lindera_dictionary::viterbi::WordEntry::word_id(&self) -> lindera_dictionary::viterbi::WordId
+impl core::clone::Clone for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::clone(&self) -> lindera_dictionary::viterbi::WordEntry
+impl core::cmp::Eq for lindera_dictionary::viterbi::WordEntry
+impl core::cmp::PartialEq for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::eq(&self, &lindera_dictionary::viterbi::WordEntry) -> bool
+impl core::default::Default for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::default() -> lindera_dictionary::viterbi::WordEntry
+impl core::fmt::Debug for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::viterbi::WordEntry
+impl core::marker::StructuralPartialEq for lindera_dictionary::viterbi::WordEntry
+impl rkyv::traits::Archive for lindera_dictionary::viterbi::WordEntry where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive
+pub type lindera_dictionary::viterbi::WordEntry::Archived = lindera_dictionary::viterbi::ArchivedWordEntry
+pub type lindera_dictionary::viterbi::WordEntry::Resolver = lindera_dictionary::viterbi::WordEntryResolver
+pub const lindera_dictionary::viterbi::WordEntry::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::viterbi::WordEntry::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::viterbi::WordEntry
+pub fn lindera_dictionary::viterbi::WordEntry::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::viterbi::WordEntry, __D> for rkyv::alias::Archived<lindera_dictionary::viterbi::WordEntry> where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, <lindera_dictionary::viterbi::WordId as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::viterbi::WordId, __D>, i16: rkyv::traits::Archive, <i16 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<i16, __D>, u16: rkyv::traits::Archive, <u16 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u16, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::viterbi::WordEntry>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::viterbi::WordEntry, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::viterbi::WordEntry where lindera_dictionary::viterbi::WordId: rkyv::traits::Serialize<__S>, i16: rkyv::traits::Serialize<__S>, u16: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::viterbi::WordEntry::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::viterbi::WordEntryResolver where lindera_dictionary::viterbi::WordId: rkyv::traits::Archive, i16: rkyv::traits::Archive, u16: rkyv::traits::Archive
+pub struct lindera_dictionary::viterbi::WordId
+impl lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::id(&self) -> u32
+pub fn lindera_dictionary::viterbi::WordId::is_system(&self) -> bool
+pub fn lindera_dictionary::viterbi::WordId::is_unknown(&self) -> bool
+pub fn lindera_dictionary::viterbi::WordId::lex_type(&self) -> lindera_dictionary::viterbi::LexType
+pub fn lindera_dictionary::viterbi::WordId::new(lindera_dictionary::viterbi::LexType, u32) -> Self
+impl core::clone::Clone for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::clone(&self) -> lindera_dictionary::viterbi::WordId
+impl core::cmp::Eq for lindera_dictionary::viterbi::WordId
+impl core::cmp::PartialEq for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::eq(&self, &lindera_dictionary::viterbi::WordId) -> bool
+impl core::default::Default for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::default() -> Self
+impl core::fmt::Debug for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for lindera_dictionary::viterbi::WordId
+impl core::marker::StructuralPartialEq for lindera_dictionary::viterbi::WordId
+impl rkyv::traits::Archive for lindera_dictionary::viterbi::WordId where u32: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive
+pub type lindera_dictionary::viterbi::WordId::Archived = lindera_dictionary::viterbi::ArchivedWordId
+pub type lindera_dictionary::viterbi::WordId::Resolver = lindera_dictionary::viterbi::WordIdResolver
+pub const lindera_dictionary::viterbi::WordId::COPY_OPTIMIZATION: rkyv::traits::CopyOptimization<Self>
+pub fn lindera_dictionary::viterbi::WordId::resolve(&self, Self::Resolver, rkyv::place::Place<Self::Archived>)
+impl serde_core::ser::Serialize for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::serialize<__S>(&self, __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for lindera_dictionary::viterbi::WordId
+pub fn lindera_dictionary::viterbi::WordId::deserialize<__D>(__D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl<__D: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Deserialize<lindera_dictionary::viterbi::WordId, __D> for rkyv::alias::Archived<lindera_dictionary::viterbi::WordId> where u32: rkyv::traits::Archive, <u32 as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<u32, __D>, bool: rkyv::traits::Archive, <bool as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<bool, __D>, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive, <lindera_dictionary::viterbi::LexType as rkyv::traits::Archive>::Archived: rkyv::traits::Deserialize<lindera_dictionary::viterbi::LexType, __D>
+pub fn rkyv::alias::Archived<lindera_dictionary::viterbi::WordId>::deserialize(&self, &mut __D) -> core::result::Result<lindera_dictionary::viterbi::WordId, <__D as rancor::Fallible>::Error>
+impl<__S: rancor::Fallible + ?core::marker::Sized> rkyv::traits::Serialize<__S> for lindera_dictionary::viterbi::WordId where u32: rkyv::traits::Serialize<__S>, bool: rkyv::traits::Serialize<__S>, lindera_dictionary::viterbi::LexType: rkyv::traits::Serialize<__S>
+pub fn lindera_dictionary::viterbi::WordId::serialize(&self, &mut __S) -> core::result::Result<<Self as rkyv::traits::Archive>::Resolver, <__S as rancor::Fallible>::Error>
+pub struct lindera_dictionary::viterbi::WordIdResolver where u32: rkyv::traits::Archive, bool: rkyv::traits::Archive, lindera_dictionary::viterbi::LexType: rkyv::traits::Archive
+pub fn lindera_dictionary::viterbi::is_kanji(char) -> bool
+pub macro lindera_dictionary::embedded_dictionary!
+pub fn lindera_dictionary::get_version() -> &'static str
+pub type lindera_dictionary::LinderaResult<T> = core::result::Result<T, lindera_dictionary::error::LinderaError>

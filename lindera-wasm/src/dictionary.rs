@@ -35,9 +35,7 @@ impl JsDictionary {
 
     #[wasm_bindgen(getter)]
     pub fn metadata(&self) -> JsMetadata {
-        JsMetadata {
-            inner: self.inner.metadata.clone(),
-        }
+        JsMetadata::from(self.inner.metadata.clone())
     }
 }
 
@@ -64,8 +62,9 @@ pub fn load_dictionary(uri: &str) -> Result<JsDictionary, JsValue> {
 /// Loads a user dictionary from the specified URI.
 #[wasm_bindgen(js_name = "loadUserDictionary")]
 pub fn load_user_dictionary(uri: &str, metadata: JsMetadata) -> Result<JsUserDictionary, JsValue> {
-    let dict = lindera_load_user_dictionary(uri, &metadata.inner)
-        .map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let meta: Metadata = metadata.into();
+    let dict =
+        lindera_load_user_dictionary(uri, &meta).map_err(|e| JsValue::from_str(&e.to_string()))?;
     Ok(JsUserDictionary { inner: dict })
 }
 
@@ -76,7 +75,8 @@ pub fn build_dictionary(
     output_dir: &str,
     metadata: JsMetadata,
 ) -> Result<(), JsValue> {
-    let builder = DictionaryBuilder::new(metadata.inner);
+    let meta: Metadata = metadata.into();
+    let builder = DictionaryBuilder::new(meta);
     builder
         .build_dictionary(Path::new(input_dir), Path::new(output_dir))
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -151,7 +151,7 @@ pub fn build_user_dictionary(
     output_dir: &str,
     metadata: Option<JsMetadata>,
 ) -> Result<(), JsValue> {
-    let meta = metadata.map(|m| m.inner).unwrap_or_default();
+    let meta: Metadata = metadata.map(Into::into).unwrap_or_default();
     let builder = DictionaryBuilder::new(meta);
     builder
         .build_user_dictionary(Path::new(input_file), Path::new(output_dir))

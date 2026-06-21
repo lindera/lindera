@@ -139,12 +139,14 @@ impl<'a> Token<'a> {
         if self.details.is_none() {
             let tmp = if self.word_id.is_unknown() {
                 self.dictionary
-                    .unknown_word_details(self.word_id.id as usize)
+                    .unknown_word_details(self.word_id.id() as usize)
             } else if self.word_id.is_system() {
-                self.dictionary.word_details(self.word_id.id as usize)
+                self.dictionary.word_details(self.word_id.id() as usize)
             } else {
                 match self.user_dictionary {
-                    Some(user_dictionary) => user_dictionary.word_details(self.word_id.id as usize),
+                    Some(user_dictionary) => {
+                        user_dictionary.word_details(self.word_id.id() as usize)
+                    }
                     None => UNK.to_vec(),
                 }
             };
@@ -280,7 +282,7 @@ impl<'a> Token<'a> {
         let surface = self.surface.to_string();
         let byte_start = self.byte_start;
         let byte_end = self.byte_end;
-        let word_id = self.word_id.id;
+        let word_id = self.word_id.id();
 
         // Get details (requires mutable borrow)
         let details = self.details();

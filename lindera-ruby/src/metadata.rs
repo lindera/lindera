@@ -1,7 +1,9 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! character encodings and schema definitions.
+//! character encodings and schema definitions. The defaults and schema wiring are
+//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! magnus wrappers.
 
 use std::collections::HashMap;
 
@@ -9,37 +11,17 @@ use magnus::prelude::*;
 use magnus::{Error, Ruby, function, method};
 
 use lindera::dictionary::Metadata;
-
-use crate::schema::RbSchema;
+use lindera_binding_core::CoreMetadata;
 
 /// Dictionary metadata configuration.
 ///
-/// Contains all configuration parameters for building and using dictionaries.
+/// A thin magnus wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// the default values and the schema wiring.
 #[magnus::wrap(class = "Lindera::Metadata", free_immediately, size)]
 #[derive(Debug, Clone)]
 pub struct RbMetadata {
-    /// Dictionary name.
-    name: String,
-    /// Character encoding.
-    encoding: String,
-    /// Default cost for unknown words.
-    default_word_cost: i16,
-    /// Default left context ID.
-    default_left_context_id: u16,
-    /// Default right context ID.
-    default_right_context_id: u16,
-    /// Default value for missing fields.
-    default_field_value: String,
-    /// Allow flexible CSV parsing.
-    flexible_csv: bool,
-    /// Skip entries with invalid cost/ID.
-    skip_invalid_cost_or_id: bool,
-    /// Normalize morphological details.
-    normalize_details: bool,
-    /// Schema for main dictionary.
-    dictionary_schema: RbSchema,
-    /// Schema for user dictionary.
-    user_dictionary_schema: RbSchema,
+    /// The backing binding-core metadata.
+    inner: CoreMetadata,
 }
 
 impl RbMetadata {
@@ -65,21 +47,19 @@ impl RbMetadata {
         normalize_details: Option<bool>,
     ) -> Self {
         RbMetadata {
-            name: name.unwrap_or_else(|| "default".to_string()),
-            encoding: encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            default_word_cost: default_word_cost.unwrap_or(-10000),
-            default_left_context_id: default_left_context_id.unwrap_or(1288),
-            default_right_context_id: default_right_context_id.unwrap_or(1288),
-            default_field_value: default_field_value.unwrap_or_else(|| "*".to_string()),
-            flexible_csv: flexible_csv.unwrap_or(false),
-            skip_invalid_cost_or_id: skip_invalid_cost_or_id.unwrap_or(false),
-            normalize_details: normalize_details.unwrap_or(false),
-            dictionary_schema: RbSchema::create_default_internal(),
-            user_dictionary_schema: RbSchema::new_internal(vec![
-                "surface".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ]),
+            inner: CoreMetadata::new(
+                name,
+                encoding,
+                default_word_cost,
+                default_left_context_id,
+                default_right_context_id,
+                default_field_value,
+                flexible_csv,
+                skip_invalid_cost_or_id,
+                normalize_details,
+                None,
+                None,
+            ),
         }
     }
 
@@ -123,47 +103,47 @@ impl RbMetadata {
 
     /// Returns the dictionary name.
     fn name(&self) -> String {
-        self.name.clone()
+        self.inner.name.clone()
     }
 
     /// Returns the character encoding.
     fn encoding(&self) -> String {
-        self.encoding.clone()
+        self.inner.encoding.clone()
     }
 
     /// Returns the default word cost.
     fn default_word_cost(&self) -> i16 {
-        self.default_word_cost
+        self.inner.default_word_cost
     }
 
     /// Returns the default left context ID.
     fn default_left_context_id(&self) -> u16 {
-        self.default_left_context_id
+        self.inner.default_left_context_id
     }
 
     /// Returns the default right context ID.
     fn default_right_context_id(&self) -> u16 {
-        self.default_right_context_id
+        self.inner.default_right_context_id
     }
 
     /// Returns the default field value.
     fn default_field_value(&self) -> String {
-        self.default_field_value.clone()
+        self.inner.default_field_value.clone()
     }
 
     /// Returns whether flexible CSV parsing is enabled.
     fn flexible_csv(&self) -> bool {
-        self.flexible_csv
+        self.inner.flexible_csv
     }
 
     /// Returns whether invalid cost/ID entries should be skipped.
     fn skip_invalid_cost_or_id(&self) -> bool {
-        self.skip_invalid_cost_or_id
+        self.inner.skip_invalid_cost_or_id
     }
 
     /// Returns whether morphological details should be normalized.
     fn normalize_details(&self) -> bool {
-        self.normalize_details
+        self.inner.normalize_details
     }
 
     /// Converts the metadata to a Ruby hash.
@@ -173,40 +153,43 @@ impl RbMetadata {
     /// A HashMap of metadata properties.
     fn to_hash(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
-        dict.insert("name".to_string(), self.name.clone());
-        dict.insert("encoding".to_string(), self.encoding.clone());
+        dict.insert("name".to_string(), self.inner.name.clone());
+        dict.insert("encoding".to_string(), self.inner.encoding.clone());
         dict.insert(
             "default_word_cost".to_string(),
-            self.default_word_cost.to_string(),
+            self.inner.default_word_cost.to_string(),
         );
         dict.insert(
             "default_left_context_id".to_string(),
-            self.default_left_context_id.to_string(),
+            self.inner.default_left_context_id.to_string(),
         );
         dict.insert(
             "default_right_context_id".to_string(),
-            self.default_right_context_id.to_string(),
+            self.inner.default_right_context_id.to_string(),
         );
         dict.insert(
             "default_field_value".to_string(),
-            self.default_field_value.clone(),
+            self.inner.default_field_value.clone(),
         );
-        dict.insert("flexible_csv".to_string(), self.flexible_csv.to_string());
+        dict.insert(
+            "flexible_csv".to_string(),
+            self.inner.flexible_csv.to_string(),
+        );
         dict.insert(
             "skip_invalid_cost_or_id".to_string(),
-            self.skip_invalid_cost_or_id.to_string(),
+            self.inner.skip_invalid_cost_or_id.to_string(),
         );
         dict.insert(
             "normalize_details".to_string(),
-            self.normalize_details.to_string(),
+            self.inner.normalize_details.to_string(),
         );
         dict.insert(
             "dictionary_schema_fields".to_string(),
-            self.dictionary_schema.fields.join(","),
+            self.inner.dictionary_schema.fields().join(","),
         );
         dict.insert(
             "user_dictionary_schema_fields".to_string(),
-            self.user_dictionary_schema.fields.join(","),
+            self.inner.user_dictionary_schema.fields().join(","),
         );
         dict
     }
@@ -215,7 +198,7 @@ impl RbMetadata {
     fn to_s(&self) -> String {
         format!(
             "Metadata(name='{}', encoding='{}')",
-            self.name, self.encoding,
+            self.inner.name, self.inner.encoding,
         )
     }
 
@@ -223,45 +206,23 @@ impl RbMetadata {
     fn inspect(&self) -> String {
         format!(
             "#<Lindera::Metadata: name='{}', encoding='{}', schema_fields={}>",
-            self.name,
-            self.encoding,
-            self.dictionary_schema.fields.len()
+            self.inner.name,
+            self.inner.encoding,
+            self.inner.dictionary_schema.field_count()
         )
     }
 }
 
 impl From<RbMetadata> for Metadata {
     fn from(metadata: RbMetadata) -> Self {
-        Metadata::new(
-            metadata.name,
-            metadata.encoding,
-            metadata.default_word_cost,
-            metadata.default_left_context_id,
-            metadata.default_right_context_id,
-            metadata.default_field_value,
-            metadata.flexible_csv,
-            metadata.skip_invalid_cost_or_id,
-            metadata.normalize_details,
-            metadata.dictionary_schema.into(),
-            metadata.user_dictionary_schema.into(),
-        )
+        metadata.inner.into()
     }
 }
 
 impl From<Metadata> for RbMetadata {
     fn from(metadata: Metadata) -> Self {
         RbMetadata {
-            name: metadata.name,
-            encoding: metadata.encoding,
-            default_word_cost: metadata.default_word_cost,
-            default_left_context_id: metadata.default_left_context_id,
-            default_right_context_id: metadata.default_right_context_id,
-            default_field_value: metadata.default_field_value,
-            flexible_csv: metadata.flexible_csv,
-            skip_invalid_cost_or_id: metadata.skip_invalid_cost_or_id,
-            normalize_details: metadata.normalize_details,
-            dictionary_schema: metadata.dictionary_schema.into(),
-            user_dictionary_schema: metadata.user_dictionary_schema.into(),
+            inner: CoreMetadata::from(metadata),
         }
     }
 }
@@ -321,24 +282,27 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lindera_binding_core::CoreSchema;
 
     #[test]
     fn test_rb_metadata_to_lindera_metadata() {
         let rb_metadata = RbMetadata {
-            name: "test_dict".to_string(),
-            encoding: "EUC-JP".to_string(),
-            default_word_cost: -5000,
-            default_left_context_id: 100,
-            default_right_context_id: 200,
-            default_field_value: "N/A".to_string(),
-            flexible_csv: true,
-            skip_invalid_cost_or_id: true,
-            normalize_details: true,
-            dictionary_schema: RbSchema::new_internal(vec![
-                "surface".to_string(),
-                "cost".to_string(),
-            ]),
-            user_dictionary_schema: RbSchema::new_internal(vec!["surface".to_string()]),
+            inner: CoreMetadata::new(
+                Some("test_dict".to_string()),
+                Some("EUC-JP".to_string()),
+                Some(-5000),
+                Some(100),
+                Some(200),
+                Some("N/A".to_string()),
+                Some(true),
+                Some(true),
+                Some(true),
+                Some(CoreSchema::new(vec![
+                    "surface".to_string(),
+                    "cost".to_string(),
+                ])),
+                Some(CoreSchema::new(vec!["surface".to_string()])),
+            ),
         };
 
         let lindera_metadata: Metadata = rb_metadata.into();
@@ -383,51 +347,45 @@ mod tests {
         );
 
         let rb_metadata: RbMetadata = lindera_metadata.into();
-        assert_eq!(rb_metadata.name, "my_dict");
-        assert_eq!(rb_metadata.encoding, "UTF-8");
-        assert_eq!(rb_metadata.default_word_cost, -8000);
-        assert_eq!(rb_metadata.default_left_context_id, 500);
-        assert_eq!(rb_metadata.default_right_context_id, 600);
-        assert_eq!(rb_metadata.default_field_value, "?");
-        assert!(!rb_metadata.flexible_csv);
-        assert!(rb_metadata.skip_invalid_cost_or_id);
-        assert!(!rb_metadata.normalize_details);
-        assert_eq!(rb_metadata.dictionary_schema.fields.len(), 2);
-        assert_eq!(rb_metadata.user_dictionary_schema.fields.len(), 2);
+        assert_eq!(rb_metadata.name(), "my_dict");
+        assert_eq!(rb_metadata.encoding(), "UTF-8");
+        assert_eq!(rb_metadata.default_word_cost(), -8000);
+        assert_eq!(rb_metadata.default_left_context_id(), 500);
+        assert_eq!(rb_metadata.default_right_context_id(), 600);
+        assert_eq!(rb_metadata.default_field_value(), "?");
+        assert!(!rb_metadata.flexible_csv());
+        assert!(rb_metadata.skip_invalid_cost_or_id());
+        assert!(!rb_metadata.normalize_details());
+        assert_eq!(rb_metadata.inner.dictionary_schema.field_count(), 2);
+        assert_eq!(rb_metadata.inner.user_dictionary_schema.field_count(), 2);
+    }
+
+    #[test]
+    fn test_rb_metadata_defaults() {
+        let rb_metadata = RbMetadata::create_default();
+        assert_eq!(rb_metadata.name(), "default");
+        assert_eq!(rb_metadata.encoding(), "UTF-8");
+        assert_eq!(rb_metadata.default_word_cost(), -10000);
+        assert_eq!(rb_metadata.default_left_context_id(), 1288);
+        assert_eq!(rb_metadata.default_right_context_id(), 1288);
+        assert_eq!(rb_metadata.default_field_value(), "*");
+        assert!(!rb_metadata.flexible_csv());
+        assert_eq!(rb_metadata.inner.dictionary_schema.field_count(), 13);
+        assert_eq!(rb_metadata.inner.user_dictionary_schema.field_count(), 3);
     }
 
     #[test]
     fn test_rb_metadata_roundtrip() {
-        let rb_metadata = RbMetadata {
-            name: "roundtrip".to_string(),
-            encoding: "UTF-8".to_string(),
-            default_word_cost: -10000,
-            default_left_context_id: 1288,
-            default_right_context_id: 1288,
-            default_field_value: "*".to_string(),
-            flexible_csv: false,
-            skip_invalid_cost_or_id: false,
-            normalize_details: false,
-            dictionary_schema: RbSchema::create_default_internal(),
-            user_dictionary_schema: RbSchema::new_internal(vec![
-                "surface".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ]),
-        };
-
+        let rb_metadata = RbMetadata::create_default();
         let lindera: Metadata = rb_metadata.into();
         let back: RbMetadata = lindera.into();
-        assert_eq!(back.name, "roundtrip");
-        assert_eq!(back.encoding, "UTF-8");
-        assert_eq!(back.default_word_cost, -10000);
-        assert_eq!(back.default_left_context_id, 1288);
-        assert_eq!(back.default_right_context_id, 1288);
-        assert_eq!(back.default_field_value, "*");
-        assert!(!back.flexible_csv);
-        assert!(!back.skip_invalid_cost_or_id);
-        assert!(!back.normalize_details);
-        assert_eq!(back.dictionary_schema.fields.len(), 13);
-        assert_eq!(back.user_dictionary_schema.fields.len(), 3);
+        assert_eq!(back.name(), "default");
+        assert_eq!(back.encoding(), "UTF-8");
+        assert_eq!(back.default_word_cost(), -10000);
+        assert_eq!(back.default_left_context_id(), 1288);
+        assert_eq!(back.default_right_context_id(), 1288);
+        assert_eq!(back.default_field_value(), "*");
+        assert_eq!(back.inner.dictionary_schema.field_count(), 13);
+        assert_eq!(back.inner.user_dictionary_schema.field_count(), 3);
     }
 }

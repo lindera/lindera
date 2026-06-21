@@ -7,7 +7,14 @@
 //! same pure-Rust conversion logic. This crate holds that shared logic as
 //! plain Rust so it can be unit-tested without any FFI toolchain.
 
+pub mod error;
+pub mod metadata;
 pub mod schema;
 pub mod token;
+pub mod tokenizer;
 
+pub use error::{CoreError, CoreResult, ErrorKind};
+pub use metadata::CoreMetadata;
+pub use schema::{CoreFieldDefinition, CoreFieldType, CoreSchema};
 pub use token::TokenView;
+pub use tokenizer::{CoreTokenizer, CoreTokenizerBuilder};

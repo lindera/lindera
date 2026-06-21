@@ -38,7 +38,6 @@ pub mod error;
 pub mod metadata;
 pub mod mode;
 pub mod schema;
-pub mod segmenter;
 pub mod token;
 pub mod token_filter;
 pub mod tokenizer;
@@ -52,7 +51,6 @@ pub use crate::mode::{JsMode as Mode, JsPenalty as Penalty};
 pub use crate::schema::{
     JsFieldDefinition as FieldDefinition, JsFieldType as FieldType, JsSchema as Schema,
 };
-pub use crate::segmenter::JsSegmenter as Segmenter;
 pub use crate::token::JsToken as Token;
 pub use crate::tokenizer::{Tokenizer, TokenizerBuilder};
 

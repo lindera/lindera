@@ -25,7 +25,7 @@ pub struct JsToken {
     /// Whether this token is an unknown word.
     is_unknown: bool,
     /// Morphological details of the token.
-    details: Option<Vec<String>>,
+    details: Vec<String>,
 }
 
 #[napi]
@@ -68,7 +68,7 @@ impl JsToken {
 
     /// Morphological details of the token (part of speech, reading, etc.).
     #[napi(getter)]
-    pub fn details(&self) -> Option<Vec<String>> {
+    pub fn details(&self) -> Vec<String> {
         self.details.clone()
     }
 
@@ -83,9 +83,7 @@ impl JsToken {
     /// The detail string if found, or `null` if the index is out of range.
     #[napi]
     pub fn get_detail(&self, index: u32) -> Option<String> {
-        self.details
-            .as_ref()
-            .and_then(|d| d.get(index as usize).cloned())
+        self.details.get(index as usize).cloned()
     }
 }
 
@@ -100,8 +98,19 @@ impl JsToken {
     ///
     /// A new JsToken instance.
     pub fn from_token(token: Token) -> Self {
-        let view = lindera_binding_core::TokenView::from_token(token);
+        Self::from_view(lindera_binding_core::TokenView::from_token(token))
+    }
 
+    /// Creates a JsToken from a binding-core `TokenView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The token view produced by the binding-core tokenizer.
+    ///
+    /// # Returns
+    ///
+    /// A new JsToken instance.
+    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,
             byte_start: view.byte_start as u32,
@@ -109,7 +118,7 @@ impl JsToken {
             position: view.position as u32,
             word_id: view.word_id,
             is_unknown: view.is_unknown,
-            details: Some(view.details),
+            details: view.details,
         }
     }
 }

@@ -173,11 +173,7 @@ mod tests {
                 byte_end: 6,
                 position: 0,
                 position_length: 1,
-                word_id: WordId {
-                    id: 312630,
-                    is_system: true,
-                    lex_type: LexType::System,
-                },
+                word_id: WordId::new(LexType::System, 312630),
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -198,11 +194,7 @@ mod tests {
                 byte_end: 9,
                 position: 1,
                 position_length: 1,
-                word_id: WordId {
-                    id: 383791,
-                    is_system: true,
-                    lex_type: LexType::System,
-                },
+                word_id: WordId::new(LexType::System, 383791),
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![

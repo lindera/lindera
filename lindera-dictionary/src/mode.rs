@@ -31,7 +31,7 @@ impl Penalty {
         if num_chars <= self.kanji_penalty_length_threshold {
             return 0;
         }
-        if edge.kanji_only {
+        if edge.kanji_only() {
             ((num_chars - self.kanji_penalty_length_threshold) as i32)
                 * self.kanji_penalty_length_penalty
         } else if num_chars > self.other_penalty_length_threshold {

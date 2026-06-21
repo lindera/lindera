@@ -260,12 +260,12 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
             if e.left_id != e.right_id {
                 warn!("left id and right id are not same: {e:?}");
             }
-            WordEntry {
-                word_id: crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, i as u32),
-                left_id: e.left_id as u16,
-                right_id: e.right_id as u16,
-                word_cost: e.word_cost as i16,
-            }
+            WordEntry::new(
+                crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, i as u32),
+                e.word_cost as i16,
+                e.left_id as u16,
+                e.right_id as u16,
+            )
         })
         .collect()
 }

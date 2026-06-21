@@ -10,7 +10,6 @@ def test_module_structure():
     assert hasattr(lindera, "mode")
     assert hasattr(lindera, "metadata")
     assert hasattr(lindera, "schema")
-    assert hasattr(lindera, "segmenter")
     assert hasattr(lindera, "character_filter")
     assert hasattr(lindera, "token_filter")
     assert hasattr(lindera, "error")
@@ -29,7 +28,6 @@ def test_module_structure():
     assert hasattr(lindera.mode, "Penalty")
     assert hasattr(lindera.metadata, "Metadata")
     assert hasattr(lindera.schema, "Schema")
-    assert hasattr(lindera.segmenter, "Segmenter")
     assert hasattr(lindera.error, "LinderaError")
 
 

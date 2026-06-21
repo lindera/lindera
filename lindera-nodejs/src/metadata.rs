@@ -1,13 +1,14 @@
 //! Dictionary metadata configuration.
 //!
 //! This module provides structures for configuring dictionary metadata, including
-//! character encodings and schema definitions.
+//! character encodings and schema definitions. The defaults and schema wiring are
+//! delegated to [`lindera_binding_core::CoreMetadata`]; this module only adds the
+//! napi wrappers.
 
 use std::collections::HashMap;
 
 use lindera::dictionary::Metadata;
-
-use crate::schema::JsSchema;
+use lindera_binding_core::CoreMetadata;
 
 /// Options for creating a Metadata instance.
 ///
@@ -36,20 +37,12 @@ pub struct MetadataOptions {
 
 /// Dictionary metadata configuration.
 ///
-/// Contains all configuration parameters for building and using dictionaries.
+/// A thin napi wrapper over [`lindera_binding_core::CoreMetadata`], which owns
+/// the default values and the schema wiring.
 #[napi(js_name = "Metadata")]
 pub struct JsMetadata {
-    name: String,
-    encoding: String,
-    default_word_cost: i16,
-    default_left_context_id: u16,
-    default_right_context_id: u16,
-    default_field_value: String,
-    flexible_csv: bool,
-    skip_invalid_cost_or_id: bool,
-    normalize_details: bool,
-    dictionary_schema: JsSchema,
-    user_dictionary_schema: JsSchema,
+    /// The backing binding-core metadata.
+    inner: CoreMetadata,
 }
 
 #[napi]
@@ -74,21 +67,19 @@ impl JsMetadata {
         });
 
         JsMetadata {
-            name: opts.name.unwrap_or_else(|| "default".to_string()),
-            encoding: opts.encoding.unwrap_or_else(|| "UTF-8".to_string()),
-            default_word_cost: opts.default_word_cost.unwrap_or(-10000) as i16,
-            default_left_context_id: opts.default_left_context_id.unwrap_or(1288) as u16,
-            default_right_context_id: opts.default_right_context_id.unwrap_or(1288) as u16,
-            default_field_value: opts.default_field_value.unwrap_or_else(|| "*".to_string()),
-            flexible_csv: opts.flexible_csv.unwrap_or(false),
-            skip_invalid_cost_or_id: opts.skip_invalid_cost_or_id.unwrap_or(false),
-            normalize_details: opts.normalize_details.unwrap_or(false),
-            dictionary_schema: JsSchema::create_default(),
-            user_dictionary_schema: JsSchema::new(vec![
-                "surface".to_string(),
-                "reading".to_string(),
-                "pronunciation".to_string(),
-            ]),
+            inner: CoreMetadata::new(
+                opts.name,
+                opts.encoding,
+                opts.default_word_cost.map(|c| c as i16),
+                opts.default_left_context_id.map(|id| id as u16),
+                opts.default_right_context_id.map(|id| id as u16),
+                opts.default_field_value,
+                opts.flexible_csv,
+                opts.skip_invalid_cost_or_id,
+                opts.normalize_details,
+                None,
+                None,
+            ),
         }
     }
 
@@ -133,109 +124,109 @@ impl JsMetadata {
     /// Dictionary name.
     #[napi(getter)]
     pub fn name(&self) -> String {
-        self.name.clone()
+        self.inner.name.clone()
     }
 
     /// Sets the dictionary name.
     #[napi(setter)]
     pub fn set_name(&mut self, name: String) {
-        self.name = name;
+        self.inner.name = name;
     }
 
     /// Character encoding.
     #[napi(getter)]
     pub fn encoding(&self) -> String {
-        self.encoding.clone()
+        self.inner.encoding.clone()
     }
 
     /// Sets the character encoding.
     #[napi(setter)]
     pub fn set_encoding(&mut self, encoding: String) {
-        self.encoding = encoding;
+        self.inner.encoding = encoding;
     }
 
     /// Default word cost.
     #[napi(getter)]
     pub fn default_word_cost(&self) -> i32 {
-        self.default_word_cost as i32
+        self.inner.default_word_cost as i32
     }
 
     /// Sets the default word cost.
     #[napi(setter)]
     pub fn set_default_word_cost(&mut self, cost: i32) {
-        self.default_word_cost = cost as i16;
+        self.inner.default_word_cost = cost as i16;
     }
 
     /// Default left context ID.
     #[napi(getter)]
     pub fn default_left_context_id(&self) -> u32 {
-        self.default_left_context_id as u32
+        self.inner.default_left_context_id as u32
     }
 
     /// Sets the default left context ID.
     #[napi(setter)]
     pub fn set_default_left_context_id(&mut self, id: u32) {
-        self.default_left_context_id = id as u16;
+        self.inner.default_left_context_id = id as u16;
     }
 
     /// Default right context ID.
     #[napi(getter)]
     pub fn default_right_context_id(&self) -> u32 {
-        self.default_right_context_id as u32
+        self.inner.default_right_context_id as u32
     }
 
     /// Sets the default right context ID.
     #[napi(setter)]
     pub fn set_default_right_context_id(&mut self, id: u32) {
-        self.default_right_context_id = id as u16;
+        self.inner.default_right_context_id = id as u16;
     }
 
     /// Default field value for missing fields.
     #[napi(getter)]
     pub fn default_field_value(&self) -> String {
-        self.default_field_value.clone()
+        self.inner.default_field_value.clone()
     }
 
     /// Sets the default field value.
     #[napi(setter)]
     pub fn set_default_field_value(&mut self, value: String) {
-        self.default_field_value = value;
+        self.inner.default_field_value = value;
     }
 
     /// Whether flexible CSV parsing is enabled.
     #[napi(getter)]
     pub fn flexible_csv(&self) -> bool {
-        self.flexible_csv
+        self.inner.flexible_csv
     }
 
     /// Sets flexible CSV parsing.
     #[napi(setter)]
     pub fn set_flexible_csv(&mut self, value: bool) {
-        self.flexible_csv = value;
+        self.inner.flexible_csv = value;
     }
 
     /// Whether to skip entries with invalid cost or ID.
     #[napi(getter)]
     pub fn skip_invalid_cost_or_id(&self) -> bool {
-        self.skip_invalid_cost_or_id
+        self.inner.skip_invalid_cost_or_id
     }
 
     /// Sets whether to skip invalid entries.
     #[napi(setter)]
     pub fn set_skip_invalid_cost_or_id(&mut self, value: bool) {
-        self.skip_invalid_cost_or_id = value;
+        self.inner.skip_invalid_cost_or_id = value;
     }
 
     /// Whether to normalize morphological details.
     #[napi(getter)]
     pub fn normalize_details(&self) -> bool {
-        self.normalize_details
+        self.inner.normalize_details
     }
 
     /// Sets whether to normalize details.
     #[napi(setter)]
     pub fn set_normalize_details(&mut self, value: bool) {
-        self.normalize_details = value;
+        self.inner.normalize_details = value;
     }
 
     /// Returns a plain object representation of the metadata.
@@ -246,32 +237,35 @@ impl JsMetadata {
     #[napi]
     pub fn to_object(&self) -> HashMap<String, String> {
         let mut dict = HashMap::new();
-        dict.insert("name".to_string(), self.name.clone());
-        dict.insert("encoding".to_string(), self.encoding.clone());
+        dict.insert("name".to_string(), self.inner.name.clone());
+        dict.insert("encoding".to_string(), self.inner.encoding.clone());
         dict.insert(
             "defaultWordCost".to_string(),
-            self.default_word_cost.to_string(),
+            self.inner.default_word_cost.to_string(),
         );
         dict.insert(
             "defaultLeftContextId".to_string(),
-            self.default_left_context_id.to_string(),
+            self.inner.default_left_context_id.to_string(),
         );
         dict.insert(
             "defaultRightContextId".to_string(),
-            self.default_right_context_id.to_string(),
+            self.inner.default_right_context_id.to_string(),
         );
         dict.insert(
             "defaultFieldValue".to_string(),
-            self.default_field_value.clone(),
+            self.inner.default_field_value.clone(),
         );
-        dict.insert("flexibleCsv".to_string(), self.flexible_csv.to_string());
+        dict.insert(
+            "flexibleCsv".to_string(),
+            self.inner.flexible_csv.to_string(),
+        );
         dict.insert(
             "skipInvalidCostOrId".to_string(),
-            self.skip_invalid_cost_or_id.to_string(),
+            self.inner.skip_invalid_cost_or_id.to_string(),
         );
         dict.insert(
             "normalizeDetails".to_string(),
-            self.normalize_details.to_string(),
+            self.inner.normalize_details.to_string(),
         );
         dict
     }
@@ -288,54 +282,20 @@ impl JsMetadata {
     ///
     /// A lindera Metadata instance.
     pub fn to_lindera_metadata(metadata: &JsMetadata) -> Metadata {
-        Metadata::new(
-            metadata.name.clone(),
-            metadata.encoding.clone(),
-            metadata.default_word_cost,
-            metadata.default_left_context_id,
-            metadata.default_right_context_id,
-            metadata.default_field_value.clone(),
-            metadata.flexible_csv,
-            metadata.skip_invalid_cost_or_id,
-            metadata.normalize_details,
-            JsSchema::new(metadata.dictionary_schema.fields()).into(),
-            JsSchema::new(metadata.user_dictionary_schema.fields()).into(),
-        )
+        metadata.inner.clone().into()
     }
 }
 
 impl From<JsMetadata> for Metadata {
     fn from(metadata: JsMetadata) -> Self {
-        Metadata::new(
-            metadata.name,
-            metadata.encoding,
-            metadata.default_word_cost,
-            metadata.default_left_context_id,
-            metadata.default_right_context_id,
-            metadata.default_field_value,
-            metadata.flexible_csv,
-            metadata.skip_invalid_cost_or_id,
-            metadata.normalize_details,
-            metadata.dictionary_schema.into(),
-            metadata.user_dictionary_schema.into(),
-        )
+        metadata.inner.into()
     }
 }
 
 impl From<Metadata> for JsMetadata {
     fn from(metadata: Metadata) -> Self {
         JsMetadata {
-            name: metadata.name,
-            encoding: metadata.encoding,
-            default_word_cost: metadata.default_word_cost,
-            default_left_context_id: metadata.default_left_context_id,
-            default_right_context_id: metadata.default_right_context_id,
-            default_field_value: metadata.default_field_value,
-            flexible_csv: metadata.flexible_csv,
-            skip_invalid_cost_or_id: metadata.skip_invalid_cost_or_id,
-            normalize_details: metadata.normalize_details,
-            dictionary_schema: metadata.dictionary_schema.into(),
-            user_dictionary_schema: metadata.user_dictionary_schema.into(),
+            inner: CoreMetadata::from(metadata),
         }
     }
 }

@@ -26,7 +26,7 @@ impl TokenView {
             byte_start: token.byte_start,
             byte_end: token.byte_end,
             position: token.position,
-            word_id: token.word_id.id,
+            word_id: token.word_id.id(),
             is_unknown: token.word_id.is_unknown(),
             details,
         }

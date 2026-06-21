@@ -147,4 +147,3 @@ Returns a dictionary representation of the metadata:
 metadata = Metadata(name="test")
 print(metadata.to_dict())
 ```
-

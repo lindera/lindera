@@ -25,7 +25,7 @@ pub struct RbToken {
     /// Whether this token is an unknown word.
     is_unknown: bool,
     /// Morphological details of the token.
-    details: Option<Vec<String>>,
+    details: Vec<String>,
 }
 
 impl RbToken {
@@ -39,8 +39,19 @@ impl RbToken {
     ///
     /// A new `RbToken` instance.
     pub fn from_token(token: Token) -> Self {
-        let view = lindera_binding_core::TokenView::from_token(token);
+        Self::from_view(lindera_binding_core::TokenView::from_token(token))
+    }
 
+    /// Creates a new `RbToken` from a binding-core `TokenView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - Token view produced by the binding-core tokenizer.
+    ///
+    /// # Returns
+    ///
+    /// A new `RbToken` instance.
+    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,
             byte_start: view.byte_start,
@@ -48,7 +59,7 @@ impl RbToken {
             position: view.position,
             word_id: view.word_id,
             is_unknown: view.is_unknown,
-            details: Some(view.details),
+            details: view.details,
         }
     }
 
@@ -83,7 +94,7 @@ impl RbToken {
     }
 
     /// Returns the morphological details of the token.
-    fn details(&self) -> Option<Vec<String>> {
+    fn details(&self) -> Vec<String> {
         self.details.clone()
     }
 
@@ -97,7 +108,7 @@ impl RbToken {
     ///
     /// The detail string if found, otherwise nil.
     fn get_detail(&self, index: usize) -> Option<String> {
-        self.details.as_ref().and_then(|d| d.get(index).cloned())
+        self.details.get(index).cloned()
     }
 
     /// Returns the string representation of the token.

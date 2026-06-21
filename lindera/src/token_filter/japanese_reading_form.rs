@@ -112,11 +112,7 @@ mod tests {
                 byte_end: 12,
                 position: 0,
                 position_length: 1,
-                word_id: WordId {
-                    id: 321702,
-                    is_system: true,
-                    lex_type: LexType::System,
-                },
+                word_id: WordId::new(LexType::System, 321702),
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -137,11 +133,7 @@ mod tests {
                 byte_end: 18,
                 position: 1,
                 position_length: 1,
-                word_id: WordId {
-                    id: 374175,
-                    is_system: true,
-                    lex_type: LexType::System,
-                },
+                word_id: WordId::new(LexType::System, 374175),
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![
@@ -162,11 +154,7 @@ mod tests {
                 byte_end: 36,
                 position: 2,
                 position_length: 1,
-                word_id: WordId {
-                    id: 4294967295,
-                    is_system: true,
-                    lex_type: LexType::System,
-                },
+                word_id: WordId::new(LexType::System, 4294967295),
                 dictionary: &dictionary,
                 user_dictionary: None,
                 details: Some(vec![Cow::Borrowed("UNK")]),

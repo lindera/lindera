@@ -12,3 +12,4 @@ license = { workspace = true }
 
 [dependencies]
 lindera = { workspace = true }
+serde_json = { workspace = true }
