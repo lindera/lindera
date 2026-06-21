@@ -1,6 +1,6 @@
 {
   "name": "lindera-nodejs",
-  "version": "2.3.4",
+  "version": "4.0.0",
   "description": "Node.js bindings for Lindera morphological analysis engine",
   "main": "index.js",
   "types": "index.d.ts",
