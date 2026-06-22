@@ -37,7 +37,7 @@ default = ["train"] # No directories included
 lindera = { workspace = true }
 lindera-binding-core = { workspace = true }
 num_cpus = { workspace = true }
-pyo3 = { version = "0.28.3", features = [
+pyo3 = { version = "0.29.0", features = [
     "extension-module",
     "abi3-py310",
     "generate-import-lib",
