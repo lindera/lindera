@@ -41,7 +41,7 @@ num_cpus = { workspace = true }
 once_cell = { workspace = true }
 rand = { version = "0.10.1", default-features = false, optional = true }
 regex = { workspace = true }
-reqwest = { version = "0.13.2", features = [
+reqwest = { version = "0.13.3", features = [
     "rustls",
 ], default-features = false, optional = true }
 rkyv = { workspace = true }
