@@ -50,7 +50,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-tar = { version = "0.4.45", optional = true }
+tar = { version = "0.4.46", optional = true }
 thiserror = "2.0.18"
 tokio = { workspace = true, optional = true }
 
