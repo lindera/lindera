@@ -181,11 +181,21 @@
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
+<tr><td><code>analysis</code></td><td>分析チェーン: character filter・token filter・<code>Tokenizer</code></td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-crf</code> に依存）</td><td>CLI のみ</td></tr>
 </tbody></table>
 </div>
 <ul>
 <li><code>mmap</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。</li>
+<li><code>analysis</code> はメインの <code>lindera</code> クレートでデフォルトで有効です。
+<code>character_filter</code>・<code>token_filter</code>・<code>tokenizer</code> モジュールと、その依存クレート
+（kanaria、regex、serde_yaml_ng、unicode-blocks、unicode-normalization、
+unicode-segmentation、およびフィルタでの daachorse 使用）をまとめてゲートします。
+無効にする（<code>default-features = false</code>）と、<code>Segmenter</code> API を中心とした
+純粋な形態素分割ビルドになります。外部の分析パイプラインの背後で
+セグメンテーションバックエンドとして Lindera を使う場合に有用です。
+注意: v5.0 ではデフォルトが純粋なセグメンターに縮小される予定です。
+分析チェーンを使用するクレートは <code>analysis</code> を明示的に有効にしてください。</li>
 <li><code>train</code> はデフォルトでは <code>lindera-cli</code> でのみ有効です。ライブラリとして使用する場合は <code>--features train</code> で明示的に有効にしてください。</li>
 </ul>
 <h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
