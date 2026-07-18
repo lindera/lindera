@@ -37,7 +37,6 @@ glob = "0.3.3"
 log = { workspace = true }
 md5 = { version = "0.8.1", optional = true }
 memmap2 = { version = "0.9.11", optional = true }
-num_cpus = { workspace = true }
 once_cell = { workspace = true }
 rand = { version = "0.10.2", default-features = false, optional = true }
 regex = { workspace = true }

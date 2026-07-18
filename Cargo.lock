@@ -1739,9 +1739,7 @@ name = "lindera"
 version = "4.0.1"
 dependencies = [
  "anyhow",
- "byteorder",
  "criterion",
- "csv",
  "daachorse",
  "insta",
  "kanaria",
@@ -1752,7 +1750,6 @@ dependencies = [
  "lindera-jieba",
  "lindera-ko-dic",
  "lindera-unidic",
- "log",
  "once_cell",
  "percent-encoding",
  "regex",
@@ -1824,7 +1821,6 @@ dependencies = [
  "log",
  "md5",
  "memmap2",
- "num_cpus",
  "once_cell",
  "rand 0.10.2",
  "regex",
