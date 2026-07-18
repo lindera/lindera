@@ -1,7 +1,7 @@
 {
-  "ipadic": "lindera-ipadic-3.0.7.zip",
-  "unidic": "lindera-unidic-3.0.7.zip",
-  "ko-dic": "lindera-ko-dic-3.0.7.zip",
-  "cc-cedict": "lindera-cc-cedict-3.0.7.zip",
-  "jieba": "lindera-jieba-3.0.7.zip"
+  "ipadic": "lindera-ipadic-4.0.0.zip",
+  "unidic": "lindera-unidic-4.0.0.zip",
+  "ko-dic": "lindera-ko-dic-4.0.0.zip",
+  "cc-cedict": "lindera-cc-cedict-4.0.0.zip",
+  "jieba": "lindera-jieba-4.0.0.zip"
 }
