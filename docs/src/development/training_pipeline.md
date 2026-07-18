@@ -207,7 +207,7 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 
 ```rust,no_run
 use std::fs::File;
-use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 
 // Load configuration from files
 let seed_file = File::open("resources/training/seed.csv")?;

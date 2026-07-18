@@ -10,9 +10,6 @@ pub mod nbest;
 pub mod util;
 pub mod viterbi;
 
-#[cfg(feature = "train")]
-pub mod trainer;
-
 pub type LinderaResult<T> = Result<T, crate::error::LinderaError>;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

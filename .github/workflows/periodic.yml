@@ -64,7 +64,26 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --features train,build_rs --target "${{ matrix.platform.target }}"
+        run: cargo test -p lindera-dictionary --features build_rs --target "${{ matrix.platform.target }}"
+
+  test-lindera-trainer:
+    name: Test lindera-trainer (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-trainer
 
   test-lindera-ipadic:
     name: Test lindera-ipadic (${{ matrix.toolchain }})

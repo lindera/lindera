@@ -21,7 +21,6 @@ build_rs = [
     "dep:tokio",
 ]
 mmap = ["dep:memmap2"]
-train = ["dep:lindera-crf"]
 default = ["mmap"]
 
 [dependencies]
@@ -39,12 +38,10 @@ md5 = { version = "0.8.1", optional = true }
 memmap2 = { version = "0.9.11", optional = true }
 once_cell = { workspace = true }
 rand = { version = "0.10.2", default-features = false, optional = true }
-regex = { workspace = true }
 reqwest = { version = "0.13.4", features = [
     "rustls",
 ], default-features = false, optional = true }
 rkyv = { workspace = true }
-lindera-crf = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true }

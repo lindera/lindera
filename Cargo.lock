@@ -1749,6 +1749,7 @@ dependencies = [
  "lindera-ipadic-neologd",
  "lindera-jieba",
  "lindera-ko-dic",
+ "lindera-trainer",
  "lindera-unidic",
  "once_cell",
  "percent-encoding",
@@ -1817,13 +1818,11 @@ dependencies = [
  "encoding_rs_io",
  "flate2",
  "glob",
- "lindera-crf",
  "log",
  "md5",
  "memmap2",
  "once_cell",
  "rand 0.10.2",
- "regex",
  "reqwest",
  "rkyv",
  "serde",
@@ -1915,6 +1914,20 @@ dependencies = [
  "lindera-binding-core",
  "magnus",
  "num_cpus",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lindera-trainer"
+version = "4.0.1"
+dependencies = [
+ "anyhow",
+ "daachorse",
+ "lindera-crf",
+ "lindera-dictionary",
+ "regex",
+ "rkyv",
  "serde",
  "serde_json",
 ]

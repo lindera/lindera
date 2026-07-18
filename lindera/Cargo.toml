@@ -46,7 +46,7 @@ embed-cjk3 = [
     "embed-jieba",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
-train = ["lindera-dictionary/train"] # Enable training functionality
+train = ["dep:lindera-trainer"] # Enable training functionality
 analysis = [
     "dep:daachorse",
     "dep:kanaria",
@@ -68,6 +68,7 @@ lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }
 lindera-jieba = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
+lindera-trainer = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
 percent-encoding = "2.3.2"
 regex = { workspace = true, optional = true }

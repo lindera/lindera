@@ -15,8 +15,6 @@ use lindera_cc_cedict::embedded::EmbeddedCcCedictLoader;
 use lindera_dictionary::loader::DictionaryLoader;
 use lindera_dictionary::loader::FSDictionaryLoader;
 use lindera_dictionary::loader::user_dictionary::UserDictionaryLoader;
-#[cfg(feature = "train")]
-pub use lindera_dictionary::trainer;
 #[cfg(feature = "embed-ipadic")]
 use lindera_ipadic::DICTIONARY_NAME as IPADIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-ipadic")]
@@ -33,6 +31,9 @@ use lindera_jieba::embedded::EmbeddedJiebaLoader;
 use lindera_ko_dic::DICTIONARY_NAME as KO_DIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-ko-dic")]
 use lindera_ko_dic::embedded::EmbeddedKoDicLoader;
+#[cfg(feature = "train")]
+#[cfg_attr(docsrs, doc(cfg(feature = "train")))]
+pub use lindera_trainer as trainer;
 #[cfg(feature = "embed-unidic")]
 use lindera_unidic::DICTIONARY_NAME as UNIDIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-unidic")]

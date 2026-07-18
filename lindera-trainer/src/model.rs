@@ -5,8 +5,8 @@ use anyhow::Result;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::trainer::corpus::Word;
-use crate::viterbi::{LexType, WordEntry, WordId};
+use crate::corpus::Word;
+use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 
 /// Convert CRF weight to MeCab-compatible cost using cost-factor.
 ///
@@ -1186,7 +1186,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use crate::trainer::{Trainer, TrainerConfig};
+    use crate::{Trainer, TrainerConfig};
     use std::io::Cursor;
 
     #[test]

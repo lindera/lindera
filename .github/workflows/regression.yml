@@ -30,6 +30,7 @@ jobs:
     outputs:
       lindera-crf: ${{ steps.filter.outputs.lindera-crf }}
       lindera-dictionary: ${{ steps.filter.outputs.lindera-dictionary }}
+      lindera-trainer: ${{ steps.filter.outputs.lindera-trainer }}
       lindera-ipadic: ${{ steps.filter.outputs.lindera-ipadic }}
       lindera-ipadic-neologd: ${{ steps.filter.outputs.lindera-ipadic-neologd }}
       lindera-unidic: ${{ steps.filter.outputs.lindera-unidic }}
@@ -57,6 +58,10 @@ jobs:
             lindera-dictionary:
               - 'lindera-dictionary/**'
               - 'lindera-crf/**'
+            lindera-trainer:
+              - 'lindera-trainer/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-crf/**'
             lindera-ipadic:
               - 'lindera-ipadic/**'
               - 'lindera-dictionary/**'
@@ -79,6 +84,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -90,6 +96,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -101,6 +108,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -112,6 +120,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -123,6 +132,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -134,6 +144,7 @@ jobs:
               - 'lindera/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
+              - 'lindera-trainer/**'
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
@@ -176,9 +187,19 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dictionary
-      features: "--features train,build_rs"
+      features: "--features build_rs"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
+
+  test-lindera-trainer:
+    name: Test lindera-trainer
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-trainer == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-trainer
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -250,6 +271,7 @@ jobs:
     name: Test lindera (${{ matrix.platform.target }})
     needs:
       - test-lindera-dictionary
+      - test-lindera-trainer
       - test-lindera-ipadic
       - test-lindera-ipadic-neologd
       - test-lindera-unidic

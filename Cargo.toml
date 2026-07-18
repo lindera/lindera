@@ -2,6 +2,7 @@
 members = [
     "lindera-crf",
     "lindera-dictionary",
+    "lindera-trainer",
     "lindera-cc-cedict",
     "lindera-jieba",
     "lindera-ipadic",
@@ -42,6 +43,7 @@ lindera-crf = { version = "4.0.1", path = "lindera-crf" }
 lindera-cc-cedict = { version = "4.0.1", path = "lindera-cc-cedict" }
 lindera-cli = { version = "4.0.1", path = "lindera-cli" }
 lindera-dictionary = { version = "4.0.1", path = "lindera-dictionary" }
+lindera-trainer = { version = "4.0.1", path = "lindera-trainer" }
 lindera-ipadic = { version = "4.0.1", path = "lindera-ipadic" }
 lindera-ipadic-neologd = { version = "4.0.1", path = "lindera-ipadic-neologd" }
 lindera-jieba = { version = "4.0.1", path = "lindera-jieba" }

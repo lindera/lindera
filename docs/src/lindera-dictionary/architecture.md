@@ -20,12 +20,6 @@ lindera-dictionary/src/
 │   ├── unknown_dictionary.rs      # Unknown word handling
 │   ├── metadata.rs                # Dictionary metadata
 │   └── schema.rs                  # Schema definitions
-└── trainer/             # (train feature)
-    ├── config.rs        # TrainerConfig
-    ├── corpus.rs        # Corpus, Example, Word
-    ├── feature_extractor.rs  # Feature template parsing
-    ├── feature_rewriter.rs   # MeCab-compatible rewrite rules
-    └── model.rs         # Trained model, tocost()
 ```
 
 ## Key Components
@@ -57,15 +51,9 @@ Controls tokenization behavior:
 - **Normal**: Standard tokenization using the optimal Viterbi path
 - **Decompose**: Further splits compound nouns based on configurable `Penalty` thresholds
 
-### Trainer (train feature)
+### Training
 
-CRF-based dictionary training pipeline using `lindera-crf`. The training workflow includes:
-
-1. **TrainerConfig**: Parses seed dictionary, `char.def`, `feature.def`, and `rewrite.def`
-2. **Corpus**: Manages training data as labeled examples
-3. **FeatureExtractor**: Parses feature templates and assigns feature IDs
-4. **DictionaryRewriter**: Applies MeCab-compatible 3-section rewrite rules
-5. **Model**: Holds training results and exports dictionary files with cost conversion via `tocost(weight, cost_factor)`
+The CRF-based dictionary training pipeline lives in the separate `lindera-trainer` crate, which builds on this crate's runtime types. See the training pipeline documentation for details.
 
 ## Feature Flags
 
@@ -73,4 +61,3 @@ CRF-based dictionary training pipeline using `lindera-crf`. The training workflo
 | --------- | ------------- | --------- |
 | `mmap` | Memory-mapped file support | Yes |
 | `build_rs` | HTTP download for dictionary sources | No |
-| `train` | CRF-based training (depends on lindera-crf) | No |
