@@ -176,7 +176,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-dictionary
-      features: "--features train"
+      features: "--features train,build_rs"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
 
