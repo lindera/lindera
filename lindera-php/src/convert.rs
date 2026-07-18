@@ -79,6 +79,10 @@ pub fn hashtable_to_value(ht: &ZendHashTable) -> PhpResult<Value> {
                 ArrayKey::String(s) => s,
                 ArrayKey::Str(s) => s.to_string(),
                 ArrayKey::Long(i) => i.to_string(),
+                ArrayKey::ZendString(s) => s
+                    .as_str()
+                    .map_err(|_| "failed to convert zend string key")?
+                    .to_string(),
             };
             map.insert(key_str, zval_to_value(val)?);
         }

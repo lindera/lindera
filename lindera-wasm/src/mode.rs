@@ -16,9 +16,6 @@ pub enum JsMode {
     Decompose,
 }
 
-#[wasm_bindgen]
-impl JsMode {}
-
 impl FromStr for JsMode {
     type Err = String;
 
@@ -62,7 +59,7 @@ pub struct JsPenalty {
     pub other_penalty_length_penalty: i32,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Penalty")]
 impl JsPenalty {
     #[wasm_bindgen(constructor)]
     pub fn new(

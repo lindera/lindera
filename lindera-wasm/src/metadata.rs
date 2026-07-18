@@ -16,7 +16,7 @@ pub struct JsMetadata {
     pub(crate) inner: CoreMetadata,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Metadata")]
 impl JsMetadata {
     #[wasm_bindgen(constructor)]
     pub fn new(name: Option<String>, encoding: Option<String>) -> Self {

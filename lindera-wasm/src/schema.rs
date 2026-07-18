@@ -67,7 +67,7 @@ pub struct JsFieldDefinition {
     pub description: Option<String>,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "FieldDefinition")]
 impl JsFieldDefinition {
     #[wasm_bindgen(constructor)]
     pub fn new(
@@ -130,7 +130,7 @@ pub struct JsSchema {
     pub(crate) inner: CoreSchema,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Schema")]
 impl JsSchema {
     #[wasm_bindgen(constructor)]
     pub fn new(fields: Vec<String>) -> Self {
