@@ -1,0 +1,22 @@
+[package]
+name = "lindera-trainer"
+version = { workspace = true }
+edition = { workspace = true }
+description = "CRF-based dictionary training for Lindera."
+documentation = "https://docs.rs/lindera-trainer"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "dictionary", "training"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+anyhow = { workspace = true }
+daachorse = { workspace = true }
+lindera-crf = { workspace = true }
+lindera-dictionary = { workspace = true }
+regex = { workspace = true }
+rkyv = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -8,7 +8,7 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | --- | --- | --- |
 | `mmap` | Memory-mapped file support | Yes |
 | `analysis` | Analysis chain: character filters, token filters, and the `Tokenizer` | Yes |
-| `train` | CRF-based dictionary training (depends on `lindera-crf`) | CLI only |
+| `train` | CRF-based dictionary training (depends on `lindera-trainer`) | CLI only |
 
 - `mmap` is enabled by default in the main `lindera` crate.
 - `analysis` is enabled by default in the main `lindera` crate. It gates the

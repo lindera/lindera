@@ -8,6 +8,7 @@ Lindera is organized as a Cargo workspace with multiple crates.
 lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
+├── lindera-trainer/        # CRF-based dictionary training
 ├── lindera/                # Core morphological analysis library
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -33,9 +34,11 @@ Pure Rust implementation of Conditional Random Fields (CRF). Supports `no_std` e
 
 #### `lindera-dictionary`
 
-Base library for dictionary handling: loading, building, and querying dictionaries. With the `train` feature enabled, it also provides the CRF training pipeline for creating custom dictionaries.
+Base library for dictionary handling: loading, building, and querying dictionaries.
 
-Key modules under `src/trainer/`:
+#### `lindera-trainer`
+
+CRF training pipeline for creating custom dictionaries. Builds on `lindera-dictionary` runtime types and the `lindera-crf` engine. Consumed through the `lindera` facade's `train` feature (re-exported as `lindera::dictionary::trainer`).
 
 | Module | Role |
 | --- | --- |

@@ -6,12 +6,12 @@ use anyhow::Result;
 
 use super::feature_extractor::FeatureExtractor;
 use super::feature_rewriter::DictionaryRewriter;
-use crate::dictionary::Dictionary;
-use crate::dictionary::character_definition::CharacterDefinition;
-use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use crate::dictionary::metadata::Metadata;
-use crate::dictionary::prefix_dictionary::PrefixDictionary;
-use crate::dictionary::unknown_dictionary::UnknownDictionary;
+use lindera_dictionary::dictionary::Dictionary;
+use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
+use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use lindera_dictionary::dictionary::metadata::Metadata;
+use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
+use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 /// Configuration for training.
 pub struct TrainerConfig {
@@ -58,7 +58,9 @@ impl TrainerConfig {
     }
 
     /// Access unknown word handler for out-of-vocabulary processing
-    pub fn unk_handler(&self) -> &crate::dictionary::unknown_dictionary::UnknownDictionary {
+    pub fn unk_handler(
+        &self,
+    ) -> &lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary {
         &self.dict.unknown_dictionary
     }
 }
@@ -352,7 +354,9 @@ impl TrainerConfig {
     }
 
     fn build_char_def_from_content(content: &str) -> Result<CharacterDefinition> {
-        use crate::dictionary::character_definition::{CategoryData, CategoryId, LookupTable};
+        use lindera_dictionary::dictionary::character_definition::{
+            CategoryData, CategoryId, LookupTable,
+        };
         use std::collections::HashMap;
 
         let mut category_definitions = Vec::new();
@@ -493,8 +497,8 @@ impl TrainerConfig {
     }
 
     fn build_prefix_dict_from_content(_content: &str) -> Result<PrefixDictionary> {
-        use crate::util::Data;
         use daachorse::DoubleArrayAhoCorasickBuilder;
+        use lindera_dictionary::util::Data;
 
         // Create minimal prefix dictionary structure for training
         // In production, this would parse the lexicon CSV format

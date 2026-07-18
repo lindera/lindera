@@ -1,3 +1,11 @@
+//! CRF-based dictionary training for Lindera.
+//!
+//! This crate implements the training pipeline (`lindera train`), producing
+//! a serialized model that `lindera export` turns into MeCab-format
+//! dictionary source files, which `lindera build` then compiles into a
+//! binary dictionary. It builds on the runtime types of
+//! [`lindera_dictionary`] and the CRF core of [`lindera_crf`].
+
 pub mod config;
 pub mod corpus;
 pub mod feature_extractor;
@@ -36,24 +44,6 @@ pub use self::config::TrainerConfig;
 pub use self::corpus::{Corpus, Example, Word};
 pub use self::model::{Model, SerializableModel};
 
-/// Match structure for common prefix iterator
-#[derive(Debug, Clone)]
-pub struct Match {
-    pub word_idx: WordIdx,
-    pub end_char: usize,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct WordIdx {
-    pub word_id: u32,
-}
-
-impl WordIdx {
-    pub fn new(word_id: u32) -> Self {
-        Self { word_id }
-    }
-}
-
 /// CRF-based morphological analysis trainer for Japanese text
 ///
 /// This trainer implements standard CRF-based morphological analysis training,
@@ -71,7 +61,7 @@ impl WordIdx {
 ///
 /// # Example
 /// ```
-/// use lindera_dictionary::trainer::{Trainer, TrainerConfig};
+/// use lindera_trainer::{Trainer, TrainerConfig};
 /// use std::io::Cursor;
 ///
 /// // Create minimal training data for demonstration
