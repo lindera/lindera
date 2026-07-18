@@ -47,12 +47,21 @@ embed-cjk3 = [
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
 train = ["lindera-dictionary/train"] # Enable training functionality
-default = ["mmap"]
+analysis = [
+    "dep:daachorse",
+    "dep:kanaria",
+    "dep:regex",
+    "dep:serde_yaml_ng",
+    "dep:unicode-blocks",
+    "dep:unicode-normalization",
+    "dep:unicode-segmentation",
+] # Enable the analysis chain (character filters, token filters, tokenizer)
+default = ["mmap", "analysis"]
 
 [dependencies]
 anyhow = { workspace = true }
-daachorse = { workspace = true }
-kanaria = "0.2.0"
+daachorse = { workspace = true, optional = true }
+kanaria = { version = "0.2.0", optional = true }
 lindera-cc-cedict = { workspace = true, optional = true }
 lindera-dictionary = { workspace = true }
 lindera-ipadic = { workspace = true, optional = true }
@@ -61,15 +70,15 @@ lindera-jieba = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
 percent-encoding = "2.3.2"
-regex = { workspace = true }
+regex = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml_ng = "0.10.0"
+serde_yaml_ng = { version = "0.10.0", optional = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-unicode-blocks = "0.1.9"
-unicode-normalization = "0.1.25"
-unicode-segmentation = "1.13.3"
+unicode-blocks = { version = "0.1.9", optional = true }
+unicode-normalization = { version = "0.1.25", optional = true }
+unicode-segmentation = { version = "1.13.3", optional = true }
 url = "2.5.8"
 
 [dev-dependencies]
@@ -79,6 +88,25 @@ criterion = { version = "0.8.2", default-features = false, features = [
 insta = "1.48.0"
 once_cell = { workspace = true }
 serde_json = { workspace = true }
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "tokenize"
+required-features = ["analysis"]
+
+[[example]]
+name = "tokenize_with_config"
+required-features = ["analysis"]
+
+[[example]]
+name = "tokenize_with_filters"
+required-features = ["analysis"]
+
+[[example]]
+name = "tokenize_with_user_dict"
+required-features = ["analysis"]
 
 [[bench]]
 name = "bench_ipadic"
