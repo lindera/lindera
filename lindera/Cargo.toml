@@ -73,14 +73,14 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 unicode-blocks = "0.1.9"
 unicode-normalization = "0.1.25"
-unicode-segmentation = "1.13.2"
+unicode-segmentation = "1.13.3"
 url = "2.5.8"
 
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = [
     "html_reports",
 ] }
-insta = "1.43.2"
+insta = "1.48.0"
 serde_json = { workspace = true }
 
 [[bench]]

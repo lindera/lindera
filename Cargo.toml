@@ -32,10 +32,10 @@ categories = ["text-processing"]
 license = "MIT"
 
 [workspace.dependencies]
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 byteorder = "1.5.0"
 csv = "1.4.0"
-daachorse = "2.1.0"
+daachorse = "3.0.3"
 lindera = { version = "4.0.0", path = "lindera" }
 lindera-binding-core = { version = "4.0.0", path = "lindera-binding-core" }
 lindera-crf = { version = "4.0.0", path = "lindera-crf" }
@@ -52,25 +52,22 @@ lindera-ruby = { version = "4.0.0", path = "lindera-ruby" }
 lindera-unidic = { version = "4.0.0", path = "lindera-unidic" }
 lindera-php = { version = "4.0.0", path = "lindera-php" }
 lindera-wasm = { version = "4.0.0", path = "lindera-wasm" }
-log = "0.4.29"
+log = "0.4.33"
 num_cpus = "1.17.0"
 once_cell = "1.21.4"
-regex = "1.12.3"
-rkyv = { version = "0.8.16", features = ["bytecheck"] }
+regex = "1.13.1"
+rkyv = { version = "0.8.17", features = ["bytecheck"] }
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 strum = { version = "0.28.0", features = ["derive"] }
 strum_macros = "0.28.0"
-tokio = { version = "1.52.1", features = [
+tokio = { version = "1.53.0", features = [
     "rt",
     "macros",
     "time",
     "sync",
     "io-util",
 ] }
-
-[patch.crates-io]
-ext-php-rs-clang-sys = { path = "patches/ext-php-rs-clang-sys" }
 
 [profile.release]
 lto = true

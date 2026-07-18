@@ -21,7 +21,7 @@ pub struct JsDictionary {
     pub(crate) inner: Dictionary,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Dictionary")]
 impl JsDictionary {
     #[wasm_bindgen(getter)]
     pub fn name(&self) -> String {

@@ -16,7 +16,7 @@ impl fmt::Display for JsLinderaError {
     }
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "LinderaError")]
 impl JsLinderaError {
     #[wasm_bindgen(constructor)]
     pub fn new(message: String) -> Self {
