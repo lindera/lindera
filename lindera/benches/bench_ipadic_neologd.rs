@@ -1,4 +1,6 @@
 #[cfg(feature = "embed-ipadic-neologd")]
+use std::borrow::Cow;
+#[cfg(feature = "embed-ipadic-neologd")]
 use std::fs::File;
 #[cfg(feature = "embed-ipadic-neologd")]
 use std::io::{BufReader, Read};
@@ -14,16 +16,13 @@ use lindera::dictionary::{load_dictionary, load_user_dictionary};
 use lindera::mode::Mode;
 #[cfg(feature = "embed-ipadic-neologd")]
 use lindera::segmenter::Segmenter;
-#[cfg(feature = "embed-ipadic-neologd")]
-use lindera::tokenizer::Tokenizer;
 
 #[cfg(feature = "embed-ipadic-neologd")]
 fn bench_constructor_ipadic_neologd(c: &mut Criterion) {
     c.bench_function("bench-constructor-ipadic-neologd", |b| {
         b.iter(|| {
             let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
-            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
-            let _tokenizer = Tokenizer::new(segmenter);
+            let _segmenter = Segmenter::new(Mode::Normal, dictionary, None);
         })
     });
 }
@@ -56,8 +55,7 @@ fn bench_constructor_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
             let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
             let user_dictionary =
                 load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
-            let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
-            let _tokenizer = Tokenizer::new(segmenter);
+            let _segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
         })
     });
 }
@@ -66,10 +64,9 @@ fn bench_constructor_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
 fn bench_tokenize_ipadic_neologd(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
-    let tokenizer = Tokenizer::new(segmenter);
 
     c.bench_function("bench-tokenize-ipadic-neologd", |b| {
-        b.iter(|| tokenizer.tokenize("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。"))
+        b.iter(|| segmenter.segment(Cow::Borrowed("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。")))
     });
 }
 
@@ -99,10 +96,13 @@ fn bench_tokenize_with_simple_userdic_ipadic_neologd(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
     let user_dictionary = load_user_dictionary(userdic_file.to_str().unwrap(), &metadata).unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
-    let tokenizer = Tokenizer::new(segmenter);
 
     c.bench_function("bench-tokenize-with-simple-userdic-ipadic-neologd", |b| {
-        b.iter(|| tokenizer.tokenize("東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です"))
+        b.iter(|| {
+            segmenter.segment(Cow::Borrowed(
+                "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です",
+            ))
+        })
     });
 }
 
@@ -121,10 +121,9 @@ fn bench_tokenize_long_text_ipadic_neologd(c: &mut Criterion) {
 
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
-    let tokenizer = Tokenizer::new(segmenter);
 
     c.bench_function("bench-tokenize-long-text-ipadic-neologd", |b| {
-        b.iter(|| tokenizer.tokenize(long_text.as_str()));
+        b.iter(|| segmenter.segment(Cow::Borrowed(long_text.as_str())));
     });
 }
 
@@ -143,11 +142,12 @@ fn bench_tokenize_details_long_text_ipadic_neologd(c: &mut Criterion) {
 
     let dictionary = load_dictionary("embedded://ipadic-neologd").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
-    let tokenizer = Tokenizer::new(segmenter);
 
     c.bench_function("bench-tokenize-details-long-text-ipadic-neologd", |b| {
         b.iter(|| {
-            let mut tokens = tokenizer.tokenize(long_text.as_str()).unwrap();
+            let mut tokens = segmenter
+                .segment(Cow::Borrowed(long_text.as_str()))
+                .unwrap();
             for token in tokens.iter_mut() {
                 let _details = token.details();
             }

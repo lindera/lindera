@@ -3,8 +3,8 @@
 //! These tests pin the exact tokenization results (surface form, byte
 //! offsets, token positions and details) for each embedded dictionary in
 //! both `Normal` and `Decompose` modes. They serve as a safety net for
-//! refactoring: any change to the tokenizer, segmenter, Viterbi lattice,
-//! dictionary loading or filter pipeline that alters output is caught here.
+//! refactoring: any change to the segmenter, Viterbi lattice or
+//! dictionary loading that alters output is caught here.
 //!
 //! Snapshots are stored in `tests/snapshots/`. To update them after an
 //! intentional behavior change, run:
@@ -26,9 +26,10 @@
     feature = "embed-jieba",
 ))]
 
+use std::borrow::Cow;
+
 use lindera::mode::{Mode, Penalty};
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
 
 #[allow(dead_code)]
 const JAPANESE_TEXTS: &[&str] = &[
@@ -54,27 +55,27 @@ const CHINESE_TEXTS: &[&str] = &[
     "我喜欢吃苹果和香蕉。",
 ];
 
-/// Builds a tokenizer backed by an embedded dictionary.
+/// Builds a segmenter backed by an embedded dictionary.
 #[allow(dead_code)]
-fn tokenizer(uri: &str, mode: Mode) -> Tokenizer {
+fn segmenter(uri: &str, mode: Mode) -> Segmenter {
     let dictionary =
         lindera::dictionary::load_dictionary(uri).expect("embedded dictionary should load");
-    Tokenizer::new(Segmenter::new(mode, dictionary, None))
+    Segmenter::new(mode, dictionary, None)
 }
 
 /// Renders tokenization results into a stable, human-readable text form:
 /// one line per token with surface, byte range, position, position length
 /// and dictionary details.
 #[allow(dead_code)]
-fn render(tokenizer: &Tokenizer, texts: &[&str]) -> String {
+fn render(segmenter: &Segmenter, texts: &[&str]) -> String {
     let mut out = String::new();
     for text in texts {
         out.push_str("## ");
         out.push_str(text);
         out.push('\n');
-        let mut tokens = tokenizer
-            .tokenize(text)
-            .expect("tokenization should succeed");
+        let mut tokens = segmenter
+            .segment(Cow::Borrowed(text))
+            .expect("segmentation should succeed");
         for token in tokens.iter_mut() {
             let details = token.details().join(",");
             out.push_str(&format!(
@@ -100,19 +101,19 @@ macro_rules! golden_tests {
 
             #[test]
             fn normal() {
-                let tokenizer = tokenizer($uri, Mode::Normal);
+                let segmenter = segmenter($uri, Mode::Normal);
                 insta::assert_snapshot!(
                     concat!(stringify!($mod_name), "_normal"),
-                    render(&tokenizer, $texts)
+                    render(&segmenter, $texts)
                 );
             }
 
             #[test]
             fn decompose() {
-                let tokenizer = tokenizer($uri, Mode::Decompose(Penalty::default()));
+                let segmenter = segmenter($uri, Mode::Decompose(Penalty::default()));
                 insta::assert_snapshot!(
                     concat!(stringify!($mod_name), "_decompose"),
-                    render(&tokenizer, $texts)
+                    render(&segmenter, $texts)
                 );
             }
         }
@@ -147,26 +148,22 @@ fn ipadic_user_dictionary() {
     let dictionary = load_dictionary("embedded://ipadic").expect("embedded dictionary should load");
     let user_dictionary = load_user_dictionary(userdic_file.to_str().unwrap(), &metadata)
         .expect("user dictionary should load");
-    let tokenizer = Tokenizer::new(Segmenter::new(
-        Mode::Normal,
-        dictionary,
-        Some(user_dictionary),
-    ));
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary));
 
     let texts = &["東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です"];
-    insta::assert_snapshot!("ipadic_user_dictionary", render(&tokenizer, texts));
+    insta::assert_snapshot!("ipadic_user_dictionary", render(&segmenter, texts));
 }
 
 /// Pins N-best tokenization output (IPADIC).
 #[cfg(feature = "embed-ipadic")]
 #[test]
 fn ipadic_nbest() {
-    let tokenizer = tokenizer("embedded://ipadic", Mode::Normal);
+    let segmenter = segmenter("embedded://ipadic", Mode::Normal);
 
     let text = "関西国際空港限定トートバッグ";
-    let results = tokenizer
-        .tokenize_nbest(text, 3, false, None)
-        .expect("tokenization should succeed");
+    let results = segmenter
+        .segment_nbest(Cow::Borrowed(text), 3, false, None)
+        .expect("segmentation should succeed");
 
     let mut out = String::new();
     for (i, (mut tokens, cost)) in results.into_iter().enumerate() {

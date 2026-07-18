@@ -40,7 +40,7 @@ default = ["mmap", "train"]
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.6.2", features = ["derive", "cargo"] }
-lindera = { workspace = true }
+lindera = { workspace = true, features = ["analysis"] }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
 

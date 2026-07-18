@@ -6,6 +6,23 @@ A morphological analysis library in Rust. This project fork from [kuromoji-rs](h
 
 Lindera aims to build a library which is easy to install and provides concise APIs for various Rust applications.
 
+## Feature flags
+
+The analysis chain (character filters, token filters, and the `Tokenizer`) is
+gated behind the `analysis` feature, which is currently enabled by default.
+If you only need morphological segmentation, disable the default features and
+use the `Segmenter` API directly:
+
+```toml
+[dependencies]
+lindera = { version = "4.1.0", default-features = false, features = ["mmap"] }
+```
+
+> **Note:** In v5.0, `analysis` is planned to be removed from the default
+> feature set, making the pure segmenter the default build. If you use
+> character filters, token filters, or `Tokenizer`, add `analysis` to your
+> feature list explicitly.
+
 ## Tokenization examples
 
 ### Basic tokenization

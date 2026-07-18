@@ -275,6 +275,17 @@ jobs:
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
 
+  test-lindera-no-default-features:
+    name: Test lindera (no default features)
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera
+      features: "--no-default-features"
+
   test-lindera-cli:
     name: Test lindera-cli
     needs: [test-lindera, detect-changes]
