@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -45,7 +45,7 @@ jobs:
       lindera-wasm: ${{ steps.filter.outputs.lindera-wasm }}
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Detect file changes
         uses: dorny/paths-filter@v4
@@ -295,7 +295,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -319,7 +319,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -342,7 +342,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -368,7 +368,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -392,7 +392,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
