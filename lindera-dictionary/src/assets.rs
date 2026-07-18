@@ -140,6 +140,107 @@ fn rename_directory(dir: &Path, new_dir: &Path) -> LinderaResult<()> {
     Ok(())
 }
 
+/// Scaffold the dummy dictionary source files used for docs.rs documentation builds.
+///
+/// The files are created in the directory the dictionary builder actually reads
+/// from: `input_dir` itself, or `input_dir/<src_subdir>` when `src_subdir` is
+/// `Some`. Directory creation is idempotent so that repeated builds against a
+/// reused target directory (as on docs.rs) succeed.
+///
+/// # Arguments
+///
+/// * `input_dir` - Root input directory for the dictionary build.
+/// * `src_subdir` - Optional subdirectory within `input_dir` that the
+///   dictionary builder reads the source files from.
+/// * `dummy_input` - Contents of the dummy dictionary CSV file.
+///
+/// # Returns
+///
+/// `Ok(())` if all dummy files were created, or a `LinderaError` on I/O failure.
+fn create_dummy_dictionary_source(
+    input_dir: &Path,
+    src_subdir: Option<&str>,
+    dummy_input: &str,
+) -> LinderaResult<()> {
+    // The dictionary builder reads from `input_dir/<src_subdir>` when set, so
+    // the dummy files must be scaffolded there as well.
+    let dummy_src_dir = match src_subdir {
+        Some(subdir) => input_dir.join(subdir),
+        None => input_dir.to_path_buf(),
+    };
+
+    // `create_dir_all` keeps this idempotent: docs.rs reuses the target
+    // directory, so the directory may already exist from a previous run.
+    fs::create_dir_all(&dummy_src_dir).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create dummy input directory: {dummy_src_dir:?}"
+            ))
+    })?;
+
+    // Create dummy char.def
+    let mut dummy_char_def = File::create(dummy_src_dir.join("char.def")).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create dummy char.def: {:?}",
+                dummy_src_dir.join("char.def")
+            ))
+    })?;
+    dummy_char_def
+        .write_all(b"DEFAULT 0 1 0\n")
+        .map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write to dummy char.def")
+        })?;
+
+    // Create dummy CSV file
+    let mut dummy_dict_csv = File::create(dummy_src_dir.join("dummy_dict.csv")).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create dummy CSV file: {:?}",
+                dummy_src_dir.join("dummy_dict.csv")
+            ))
+    })?;
+    dummy_dict_csv
+        .write_all(dummy_input.as_bytes())
+        .map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context("Failed to write to dummy CSV file")
+        })?;
+
+    // Create dummy unk.def
+    File::create(dummy_src_dir.join("unk.def")).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create dummy unk.def: {:?}",
+                dummy_src_dir.join("unk.def")
+            ))
+    })?;
+
+    // Create dummy matrix.def
+    let mut dummy_matrix_def = File::create(dummy_src_dir.join("matrix.def")).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!(
+                "Failed to create dummy matrix.def: {:?}",
+                dummy_src_dir.join("matrix.def")
+            ))
+    })?;
+    dummy_matrix_def.write_all(b"0 1 0\n").map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context("Failed to write to dummy matrix.def")
+    })?;
+
+    Ok(())
+}
+
 async fn download_with_retry(
     client: &Client,
     download_urls: Vec<&str>,
@@ -282,71 +383,7 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
     }
 
     if std::env::var("DOCS_RS").is_ok() {
-        // Create directory for dummy input directory for build docs
-        fs::create_dir(&input_dir).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to create dummy input directory: {input_dir:?}"
-                ))
-        })?;
-
-        // Create dummy char.def
-        let mut dummy_char_def = File::create(input_dir.join("char.def")).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to create dummy char.def: {:?}",
-                    input_dir.join("char.def")
-                ))
-        })?;
-        dummy_char_def
-            .write_all(b"DEFAULT 0 1 0\n")
-            .map_err(|err| {
-                LinderaErrorKind::Io
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context("Failed to write to dummy char.def")
-            })?;
-
-        // Create dummy CSV file
-        let mut dummy_dict_csv = File::create(input_dir.join("dummy_dict.csv")).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to create dummy CSV file: {:?}",
-                    input_dir.join("dummy_dict.csv")
-                ))
-        })?;
-        dummy_dict_csv
-            .write_all(params.dummy_input.as_bytes())
-            .map_err(|err| {
-                LinderaErrorKind::Io
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context("Failed to write to dummy CSV file")
-            })?;
-
-        // Create dummy unk.def
-        File::create(input_dir.join("unk.def")).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to create dummy unk.def: {:?}",
-                    input_dir.join("unk.def")
-                ))
-        })?;
-        let mut dummy_matrix_def = File::create(input_dir.join("matrix.def")).map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context(format!(
-                    "Failed to create dummy matrix.def: {:?}",
-                    input_dir.join("matrix.def")
-                ))
-        })?;
-        dummy_matrix_def.write_all(b"0 1 0\n").map_err(|err| {
-            LinderaErrorKind::Io
-                .with_error(anyhow::anyhow!(err))
-                .add_context("Failed to write to dummy matrix.def")
-        })?;
+        create_dummy_dictionary_source(&input_dir, params.src_subdir, params.dummy_input)?;
     } else {
         // Source file path for build package
         let source_path_for_build = &build_dir.join(params.file_name);
@@ -569,4 +606,56 @@ pub async fn build_embedded_dictionary(
     fetch(params, builder).await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_dummy_dictionary_source_without_subdir() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let input_dir = temp_dir.path().join("mecab-test");
+
+        create_dummy_dictionary_source(&input_dir, None, "dummy,0,0,0\n").unwrap();
+
+        assert!(input_dir.join("char.def").is_file());
+        assert!(input_dir.join("dummy_dict.csv").is_file());
+        assert!(input_dir.join("unk.def").is_file());
+        assert!(input_dir.join("matrix.def").is_file());
+        assert_eq!(
+            fs::read_to_string(input_dir.join("dummy_dict.csv")).unwrap(),
+            "dummy,0,0,0\n"
+        );
+    }
+
+    #[test]
+    fn test_create_dummy_dictionary_source_with_subdir() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let input_dir = temp_dir.path().join("mecab-test");
+
+        create_dummy_dictionary_source(&input_dir, Some("dict-src"), "dummy,0,0,0\n").unwrap();
+
+        // Files must be scaffolded where the dictionary builder reads from:
+        // `input_dir/dict-src`, not `input_dir` itself.
+        let src_dir = input_dir.join("dict-src");
+        assert!(src_dir.join("char.def").is_file());
+        assert!(src_dir.join("dummy_dict.csv").is_file());
+        assert!(src_dir.join("unk.def").is_file());
+        assert!(src_dir.join("matrix.def").is_file());
+        assert!(!input_dir.join("char.def").exists());
+    }
+
+    #[test]
+    fn test_create_dummy_dictionary_source_is_idempotent() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let input_dir = temp_dir.path().join("mecab-test");
+
+        // A second run against the same directory must succeed because docs.rs
+        // reuses the build target directory across runs.
+        create_dummy_dictionary_source(&input_dir, Some("dict-src"), "dummy,0,0,0\n").unwrap();
+        create_dummy_dictionary_source(&input_dir, Some("dict-src"), "dummy,0,0,0\n").unwrap();
+
+        assert!(input_dir.join("dict-src").join("char.def").is_file());
+    }
 }

@@ -64,7 +64,7 @@ jobs:
           target: ${{ matrix.platform.target }}
 
       - name: Run test
-        run: cargo test -p lindera-dictionary --features train --target "${{ matrix.platform.target }}"
+        run: cargo test -p lindera-dictionary --features train,build_rs --target "${{ matrix.platform.target }}"
 
   test-lindera-ipadic:
     name: Test lindera-ipadic (${{ matrix.toolchain }})
