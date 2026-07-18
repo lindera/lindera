@@ -195,12 +195,6 @@
 │   ├── unknown_dictionary.rs      # Unknown word handling
 │   ├── metadata.rs                # Dictionary metadata
 │   └── schema.rs                  # Schema definitions
-└── trainer/             # (train feature)
-    ├── config.rs        # TrainerConfig
-    ├── corpus.rs        # Corpus, Example, Word
-    ├── feature_extractor.rs  # Feature template parsing
-    ├── feature_rewriter.rs   # MeCab-compatible rewrite rules
-    └── model.rs         # Trained model, tocost()
 </code></pre>
 <h2 id="key-components"><a class="header" href="#key-components">Key Components</a></h2>
 <h3 id="dictionary--userdictionary"><a class="header" href="#dictionary--userdictionary">Dictionary / UserDictionary</a></h3>
@@ -219,20 +213,12 @@
 <li><strong>Normal</strong>: Standard tokenization using the optimal Viterbi path</li>
 <li><strong>Decompose</strong>: Further splits compound nouns based on configurable <code>Penalty</code> thresholds</li>
 </ul>
-<h3 id="trainer-train-feature"><a class="header" href="#trainer-train-feature">Trainer (train feature)</a></h3>
-<p>CRF-based dictionary training pipeline using <code>lindera-crf</code>. The training workflow includes:</p>
-<ol>
-<li><strong>TrainerConfig</strong>: Parses seed dictionary, <code>char.def</code>, <code>feature.def</code>, and <code>rewrite.def</code></li>
-<li><strong>Corpus</strong>: Manages training data as labeled examples</li>
-<li><strong>FeatureExtractor</strong>: Parses feature templates and assigns feature IDs</li>
-<li><strong>DictionaryRewriter</strong>: Applies MeCab-compatible 3-section rewrite rules</li>
-<li><strong>Model</strong>: Holds training results and exports dictionary files with cost conversion via <code>tocost(weight, cost_factor)</code></li>
-</ol>
+<h3 id="training"><a class="header" href="#training">Training</a></h3>
+<p>The CRF-based dictionary training pipeline lives in the separate <code>lindera-trainer</code> crate, which builds on this crate's runtime types. See the training pipeline documentation for details.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>CRF-based training (depends on lindera-crf)</td><td>No</td></tr>
 </tbody></table>
 </div>
                     </main>

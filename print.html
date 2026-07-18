@@ -912,12 +912,6 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 │   ├── unknown_dictionary.rs      # Unknown word handling
 │   ├── metadata.rs                # Dictionary metadata
 │   └── schema.rs                  # Schema definitions
-└── trainer/             # (train feature)
-    ├── config.rs        # TrainerConfig
-    ├── corpus.rs        # Corpus, Example, Word
-    ├── feature_extractor.rs  # Feature template parsing
-    ├── feature_rewriter.rs   # MeCab-compatible rewrite rules
-    └── model.rs         # Trained model, tocost()
 </code></pre>
 <h2 id="key-components-1"><a class="header" href="#key-components-1">Key Components</a></h2>
 <h3 id="dictionary--userdictionary"><a class="header" href="#dictionary--userdictionary">Dictionary / UserDictionary</a></h3>
@@ -936,20 +930,12 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 <li><strong>Normal</strong>: Standard tokenization using the optimal Viterbi path</li>
 <li><strong>Decompose</strong>: Further splits compound nouns based on configurable <code>Penalty</code> thresholds</li>
 </ul>
-<h3 id="trainer-train-feature"><a class="header" href="#trainer-train-feature">Trainer (train feature)</a></h3>
-<p>CRF-based dictionary training pipeline using <code>lindera-crf</code>. The training workflow includes:</p>
-<ol>
-<li><strong>TrainerConfig</strong>: Parses seed dictionary, <code>char.def</code>, <code>feature.def</code>, and <code>rewrite.def</code></li>
-<li><strong>Corpus</strong>: Manages training data as labeled examples</li>
-<li><strong>FeatureExtractor</strong>: Parses feature templates and assigns feature IDs</li>
-<li><strong>DictionaryRewriter</strong>: Applies MeCab-compatible 3-section rewrite rules</li>
-<li><strong>Model</strong>: Holds training results and exports dictionary files with cost conversion via <code>tocost(weight, cost_factor)</code></li>
-</ol>
+<h3 id="training"><a class="header" href="#training">Training</a></h3>
+<p>The CRF-based dictionary training pipeline lives in the separate <code>lindera-trainer</code> crate, which builds on this crate's runtime types. See the training pipeline documentation for details.</p>
 <h2 id="feature-flags-2"><a class="header" href="#feature-flags-2">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>CRF-based training (depends on lindera-crf)</td><td>No</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference-1"><a class="header" href="#api-reference-1">API Reference</a></h1>
 <p>The API reference is available. Please see following URL:</p>
@@ -2685,7 +2671,7 @@ for token in tokens:
 <li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="training"><a class="header" href="#training">Training</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="training-1"><a class="header" href="#training-1">Training</a></h1>
 <p>Lindera Python supports training custom CRF-based morphological analysis models from annotated corpora. This functionality requires the <code>train</code> feature.</p>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <p>Build lindera-python with the <code>train</code> feature enabled (enabled by default):</p>
@@ -3344,7 +3330,7 @@ for (const token of tokens) {
 <li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="training-1"><a class="header" href="#training-1">Training</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="training-2"><a class="header" href="#training-2">Training</a></h1>
 <p>Lindera Node.js supports training custom CRF-based morphological analysis models from annotated corpora. This functionality requires the <code>train</code> feature.</p>
 <h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
 <p>Build lindera-nodejs with the <code>train</code> feature enabled (enabled by default):</p>
@@ -3935,7 +3921,7 @@ end
 <li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="training-2"><a class="header" href="#training-2">Training</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="training-3"><a class="header" href="#training-3">Training</a></h1>
 <p>Lindera Ruby supports training custom CRF-based morphological analysis models from annotated corpora. This functionality requires the <code>train</code> feature.</p>
 <h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
 <p>Build lindera-ruby with the <code>train</code> feature enabled:</p>
@@ -4613,7 +4599,7 @@ foreach ($tokens as $token) {
 <li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="training-3"><a class="header" href="#training-3">Training</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="training-4"><a class="header" href="#training-4">Training</a></h1>
 <p>Lindera PHP supports training custom CRF-based morphological analysis models from annotated corpora. This functionality requires the <code>train</code> feature.</p>
 <h2 id="prerequisites-6"><a class="header" href="#prerequisites-6">Prerequisites</a></h2>
 <p>Build lindera-php with the <code>train</code> feature enabled:</p>
@@ -6835,7 +6821,7 @@ the repository.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
 <tr><td><code>analysis</code></td><td>Analysis chain: character filters, token filters, and the <code>Tokenizer</code></td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>CLI only</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -6906,6 +6892,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 <pre><code class="language-text">lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
+├── lindera-trainer/        # CRF-based dictionary training
 ├── lindera/                # Core morphological analysis library
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -6925,8 +6912,9 @@ lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-crf-1"><a class="header" href="#lindera-crf-1"><code>lindera-crf</code></a></h4>
 <p>Pure Rust implementation of Conditional Random Fields (CRF). Supports <code>no_std</code> environments. Uses <code>rkyv</code> for fast zero-copy serialization. This crate provides the statistical learning engine used in dictionary training.</p>
 <h4 id="lindera-dictionary-1"><a class="header" href="#lindera-dictionary-1"><code>lindera-dictionary</code></a></h4>
-<p>Base library for dictionary handling: loading, building, and querying dictionaries. With the <code>train</code> feature enabled, it also provides the CRF training pipeline for creating custom dictionaries.</p>
-<p>Key modules under <code>src/trainer/</code>:</p>
+<p>Base library for dictionary handling: loading, building, and querying dictionaries.</p>
+<h4 id="lindera-trainer"><a class="header" href="#lindera-trainer"><code>lindera-trainer</code></a></h4>
+<p>CRF training pipeline for creating custom dictionaries. Builds on <code>lindera-dictionary</code> runtime types and the <code>lindera-crf</code> engine. Consumed through the <code>lindera</code> facade's <code>train</code> feature (re-exported as <code>lindera::dictionary::trainer</code>).</p>
 <div class="table-wrapper"><table><thead><tr><th>Module</th><th>Role</th></tr></thead><tbody>
 <tr><td><code>config.rs</code></td><td>Configuration management (seed dict, char.def, feature.def, rewrite.def)</td></tr>
 <tr><td><code>corpus.rs</code></td><td>Training corpus processing</td></tr>
@@ -7122,7 +7110,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::fs::File;
-use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 
 // Load configuration from files
 let seed_file = File::open("resources/training/seed.csv")?;

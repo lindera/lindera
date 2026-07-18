@@ -334,7 +334,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::fs::File;
-use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 
 // Load configuration from files
 let seed_file = File::open("resources/training/seed.csv")?;

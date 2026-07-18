@@ -912,12 +912,6 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 │   ├── unknown_dictionary.rs      # 未知語処理
 │   ├── metadata.rs                # 辞書メタデータ
 │   └── schema.rs                  # スキーマ定義
-└── trainer/             # (train feature)
-    ├── config.rs        # TrainerConfig
-    ├── corpus.rs        # Corpus, Example, Word
-    ├── feature_extractor.rs  # 素性テンプレート解析
-    ├── feature_rewriter.rs   # MeCab互換リライトルール
-    └── model.rs         # 学習済みモデル, tocost()
 </code></pre>
 <h2 id="主要コンポーネント-1"><a class="header" href="#主要コンポーネント-1">主要コンポーネント</a></h2>
 <h3 id="dictionary--userdictionary"><a class="header" href="#dictionary--userdictionary">Dictionary / UserDictionary</a></h3>
@@ -936,20 +930,12 @@ token: "。", details: Some(["記号", "句点", "*", "*", "*", "*", "。", "。
 <li><strong>Normal</strong>: 最適なViterbiパスを使用した標準的なトークナイゼーション</li>
 <li><strong>Decompose</strong>: 設定可能な<code>Penalty</code>閾値に基づいて複合名詞をさらに分割</li>
 </ul>
-<h3 id="trainer-train-feature"><a class="header" href="#trainer-train-feature">Trainer (train feature)</a></h3>
-<p><code>lindera-crf</code>を使用したCRFベースの辞書学習パイプラインです。学習ワークフローには以下が含まれます：</p>
-<ol>
-<li><strong>TrainerConfig</strong>: 種辞書、<code>char.def</code>、<code>feature.def</code>、<code>rewrite.def</code>を解析</li>
-<li><strong>Corpus</strong>: ラベル付き例として学習データを管理</li>
-<li><strong>FeatureExtractor</strong>: 素性テンプレートを解析し、素性IDを割り当て</li>
-<li><strong>DictionaryRewriter</strong>: MeCab互換の3セクションリライトルールを適用</li>
-<li><strong>Model</strong>: 学習結果を保持し、<code>tocost(weight, cost_factor)</code>によるコスト変換で辞書ファイルを出力</li>
-</ol>
+<h3 id="学習"><a class="header" href="#学習">学習</a></h3>
+<p>CRFベースの辞書学習パイプラインは、本クレートのランタイム型の上に構築された独立クレート <code>lindera-trainer</code> に含まれます。詳細は学習パイプラインのドキュメントを参照してください。</p>
 <h2 id="featureフラグ-1"><a class="header" href="#featureフラグ-1">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの学習（lindera-crfに依存）</td><td>No</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="apiリファレンス-1"><a class="header" href="#apiリファレンス-1">APIリファレンス</a></h1>
 <p>APIリファレンスは以下で公開されています：</p>
@@ -2686,7 +2672,7 @@ for token in tokens:
 <li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
 <li><code>lowercase</code> がアルファベットを小文字に正規化</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="学習"><a class="header" href="#学習">学習</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-1"><a class="header" href="#学習-1">学習</a></h1>
 <p>Lindera Python は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
 <h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-python をビルドします（デフォルトで有効）：</p>
@@ -3345,7 +3331,7 @@ for (const token of tokens) {
 <li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
 <li><code>lowercase</code> がアルファベットを小文字に正規化</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-1"><a class="header" href="#学習-1">学習</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-2"><a class="header" href="#学習-2">学習</a></h1>
 <p>Lindera Node.js は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
 <h2 id="前提条件-2"><a class="header" href="#前提条件-2">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-nodejs をビルドします（デフォルトで有効）：</p>
@@ -3931,7 +3917,7 @@ end
 <li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
 <li><code>lowercase</code> がアルファベットを小文字に正規化</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-2"><a class="header" href="#学習-2">学習</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-3"><a class="header" href="#学習-3">学習</a></h1>
 <p>Lindera Ruby は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
 <h2 id="前提条件-4"><a class="header" href="#前提条件-4">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-ruby をビルドします：</p>
@@ -4635,7 +4621,7 @@ foreach ($tokens as $token) {
 <li><code>japanese_stop_tags</code> が助詞、助動詞、記号を除去</li>
 <li><code>lowercase</code> がアルファベットを小文字に正規化</li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-3"><a class="header" href="#学習-3">学習</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="学習-4"><a class="header" href="#学習-4">学習</a></h1>
 <p>Lindera PHP は、アノテーション付きコーパスからカスタム CRF ベースの形態素解析モデルを学習する機能をサポートしています。この機能には <code>train</code> feature が必要です。</p>
 <h2 id="前提条件-6"><a class="header" href="#前提条件-6">前提条件</a></h2>
 <p><code>train</code> feature を有効にして lindera-php をビルドします（デフォルトで有効）：</p>
@@ -6850,7 +6836,7 @@ let cost = word_entry.word_cost();
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
 <tr><td><code>analysis</code></td><td>分析チェーン: character filter・token filter・<code>Tokenizer</code></td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-crf</code> に依存）</td><td>CLI のみ</td></tr>
+<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存）</td><td>CLI のみ</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -6921,6 +6907,7 @@ lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 <pre><code class="language-text">lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
+├── lindera-trainer/        # CRF ベースの辞書学習
 ├── lindera/                # Core morphological analysis library
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -6940,8 +6927,9 @@ lindera = { version = "2.3.2", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-crf-1"><a class="header" href="#lindera-crf-1"><code>lindera-crf</code></a></h4>
 <p>条件付き確率場（CRF）の pure Rust 実装です。<code>no_std</code> 環境をサポートします。高速なゼロコピーシリアライゼーションに <code>rkyv</code> を使用します。辞書学習で使用される統計学習エンジンを提供します。</p>
 <h4 id="lindera-dictionary-1"><a class="header" href="#lindera-dictionary-1"><code>lindera-dictionary</code></a></h4>
-<p>辞書のベースライブラリです。辞書の読み込み、ビルド、クエリ機能を提供します。<code>train</code> feature を有効にすると、カスタム辞書作成のための CRF 学習パイプラインも提供します。</p>
-<p><code>src/trainer/</code> 配下の主要モジュール：</p>
+<p>辞書のベースライブラリです。辞書の読み込み、ビルド、クエリ機能を提供します。</p>
+<h4 id="lindera-trainer"><a class="header" href="#lindera-trainer"><code>lindera-trainer</code></a></h4>
+<p>カスタム辞書作成のための CRF 学習パイプラインです。<code>lindera-dictionary</code> のランタイム型と <code>lindera-crf</code> エンジンの上に構築されています。通常は <code>lindera</code> facade の <code>train</code> feature 経由で利用します（<code>lindera::dictionary::trainer</code> として再エクスポート）。</p>
 <div class="table-wrapper"><table><thead><tr><th>モジュール</th><th>役割</th></tr></thead><tbody>
 <tr><td><code>config.rs</code></td><td>設定管理（種辞書、char.def、feature.def、rewrite.def）</td></tr>
 <tr><td><code>corpus.rs</code></td><td>学習コーパスの処理</td></tr>
@@ -7137,7 +7125,7 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use std::fs::File;
-use lindera_dictionary::trainer::{Corpus, Trainer, TrainerConfig};
+use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 
 // Load configuration from files
 let seed_file = File::open("resources/training/seed.csv")?;

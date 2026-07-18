@@ -182,6 +182,7 @@
 <pre><code class="language-text">lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
+├── lindera-trainer/        # CRF-based dictionary training
 ├── lindera/                # Core morphological analysis library
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -201,8 +202,9 @@
 <h4 id="lindera-crf"><a class="header" href="#lindera-crf"><code>lindera-crf</code></a></h4>
 <p>Pure Rust implementation of Conditional Random Fields (CRF). Supports <code>no_std</code> environments. Uses <code>rkyv</code> for fast zero-copy serialization. This crate provides the statistical learning engine used in dictionary training.</p>
 <h4 id="lindera-dictionary"><a class="header" href="#lindera-dictionary"><code>lindera-dictionary</code></a></h4>
-<p>Base library for dictionary handling: loading, building, and querying dictionaries. With the <code>train</code> feature enabled, it also provides the CRF training pipeline for creating custom dictionaries.</p>
-<p>Key modules under <code>src/trainer/</code>:</p>
+<p>Base library for dictionary handling: loading, building, and querying dictionaries.</p>
+<h4 id="lindera-trainer"><a class="header" href="#lindera-trainer"><code>lindera-trainer</code></a></h4>
+<p>CRF training pipeline for creating custom dictionaries. Builds on <code>lindera-dictionary</code> runtime types and the <code>lindera-crf</code> engine. Consumed through the <code>lindera</code> facade's <code>train</code> feature (re-exported as <code>lindera::dictionary::trainer</code>).</p>
 <div class="table-wrapper"><table><thead><tr><th>Module</th><th>Role</th></tr></thead><tbody>
 <tr><td><code>config.rs</code></td><td>Configuration management (seed dict, char.def, feature.def, rewrite.def)</td></tr>
 <tr><td><code>corpus.rs</code></td><td>Training corpus processing</td></tr>

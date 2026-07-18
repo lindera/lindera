@@ -182,6 +182,7 @@
 <pre><code class="language-text">lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
+├── lindera-trainer/        # CRF ベースの辞書学習
 ├── lindera/                # Core morphological analysis library
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
@@ -201,8 +202,9 @@
 <h4 id="lindera-crf"><a class="header" href="#lindera-crf"><code>lindera-crf</code></a></h4>
 <p>条件付き確率場（CRF）の pure Rust 実装です。<code>no_std</code> 環境をサポートします。高速なゼロコピーシリアライゼーションに <code>rkyv</code> を使用します。辞書学習で使用される統計学習エンジンを提供します。</p>
 <h4 id="lindera-dictionary"><a class="header" href="#lindera-dictionary"><code>lindera-dictionary</code></a></h4>
-<p>辞書のベースライブラリです。辞書の読み込み、ビルド、クエリ機能を提供します。<code>train</code> feature を有効にすると、カスタム辞書作成のための CRF 学習パイプラインも提供します。</p>
-<p><code>src/trainer/</code> 配下の主要モジュール：</p>
+<p>辞書のベースライブラリです。辞書の読み込み、ビルド、クエリ機能を提供します。</p>
+<h4 id="lindera-trainer"><a class="header" href="#lindera-trainer"><code>lindera-trainer</code></a></h4>
+<p>カスタム辞書作成のための CRF 学習パイプラインです。<code>lindera-dictionary</code> のランタイム型と <code>lindera-crf</code> エンジンの上に構築されています。通常は <code>lindera</code> facade の <code>train</code> feature 経由で利用します（<code>lindera::dictionary::trainer</code> として再エクスポート）。</p>
 <div class="table-wrapper"><table><thead><tr><th>モジュール</th><th>役割</th></tr></thead><tbody>
 <tr><td><code>config.rs</code></td><td>設定管理（種辞書、char.def、feature.def、rewrite.def）</td></tr>
 <tr><td><code>corpus.rs</code></td><td>学習コーパスの処理</td></tr>

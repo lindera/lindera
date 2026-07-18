@@ -195,12 +195,6 @@
 │   ├── unknown_dictionary.rs      # 未知語処理
 │   ├── metadata.rs                # 辞書メタデータ
 │   └── schema.rs                  # スキーマ定義
-└── trainer/             # (train feature)
-    ├── config.rs        # TrainerConfig
-    ├── corpus.rs        # Corpus, Example, Word
-    ├── feature_extractor.rs  # 素性テンプレート解析
-    ├── feature_rewriter.rs   # MeCab互換リライトルール
-    └── model.rs         # 学習済みモデル, tocost()
 </code></pre>
 <h2 id="主要コンポーネント"><a class="header" href="#主要コンポーネント">主要コンポーネント</a></h2>
 <h3 id="dictionary--userdictionary"><a class="header" href="#dictionary--userdictionary">Dictionary / UserDictionary</a></h3>
@@ -219,20 +213,12 @@
 <li><strong>Normal</strong>: 最適なViterbiパスを使用した標準的なトークナイゼーション</li>
 <li><strong>Decompose</strong>: 設定可能な<code>Penalty</code>閾値に基づいて複合名詞をさらに分割</li>
 </ul>
-<h3 id="trainer-train-feature"><a class="header" href="#trainer-train-feature">Trainer (train feature)</a></h3>
-<p><code>lindera-crf</code>を使用したCRFベースの辞書学習パイプラインです。学習ワークフローには以下が含まれます：</p>
-<ol>
-<li><strong>TrainerConfig</strong>: 種辞書、<code>char.def</code>、<code>feature.def</code>、<code>rewrite.def</code>を解析</li>
-<li><strong>Corpus</strong>: ラベル付き例として学習データを管理</li>
-<li><strong>FeatureExtractor</strong>: 素性テンプレートを解析し、素性IDを割り当て</li>
-<li><strong>DictionaryRewriter</strong>: MeCab互換の3セクションリライトルールを適用</li>
-<li><strong>Model</strong>: 学習結果を保持し、<code>tocost(weight, cost_factor)</code>によるコスト変換で辞書ファイルを出力</li>
-</ol>
+<h3 id="学習"><a class="header" href="#学習">学習</a></h3>
+<p>CRFベースの辞書学習パイプラインは、本クレートのランタイム型の上に構築された独立クレート <code>lindera-trainer</code> に含まれます。詳細は学習パイプラインのドキュメントを参照してください。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの学習（lindera-crfに依存）</td><td>No</td></tr>
 </tbody></table>
 </div>
                     </main>
