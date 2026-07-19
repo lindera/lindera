@@ -75,7 +75,7 @@ fn main() -> LinderaResult<()> {
 上記の例は以下のように実行できます：
 
 ```shell
-cargo run --features=embed-ipadic --example=tokenize
+cargo run --features=embed-ipadic,analysis --example=tokenize
 ```
 
 実行結果は以下のようになります：

@@ -8,33 +8,84 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ## Feature flags
 
-The analysis chain (character filters, token filters, and the `Tokenizer`) is
-gated behind the `analysis` feature, which is currently enabled by default.
-If you only need morphological segmentation, disable the default features and
-use the `Segmenter` API directly:
+As of v5.0, the default build is a pure morphological segmenter around the
+`Segmenter` API. The analysis chain (character filters, token filters, and the
+`Tokenizer`) is gated behind the `analysis` feature:
 
 ```toml
 [dependencies]
-lindera = { version = "4.1.0", default-features = false, features = ["mmap"] }
+# Pure segmenter (default)
+lindera = "5.0"
+
+# With the analysis chain (character filters, token filters, Tokenizer)
+lindera = { version = "5.0", features = ["analysis"] }
 ```
 
-> **Note:** In v5.0, `analysis` is planned to be removed from the default
-> feature set, making the pure segmenter the default build. If you use
-> character filters, token filters, or `Tokenizer`, add `analysis` to your
-> feature list explicitly.
+See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
+when upgrading from v4.
 
-## Tokenization examples
+## Segmentation example
 
-### Basic tokenization
+### Basic segmentation
 
 Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+lindera = { version = "5.0", features = ["embed-ipadic"] }
 ```
 
-This example covers the basic usage of Lindera.
+This example covers the basic usage of Lindera as a pure segmenter — no
+`analysis` feature required.
+
+It will:
+
+- Create a segmenter in normal mode
+- Segment the input text
+- Output the tokens
+
+```rust
+use std::borrow::Cow;
+
+use lindera::dictionary::load_dictionary;
+use lindera::mode::Mode;
+use lindera::segmenter::Segmenter;
+use lindera::LinderaResult;
+
+fn main() -> LinderaResult<()> {
+    let dictionary = load_dictionary("embedded://ipadic")?;
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    let text = "関西国際空港限定トートバッグ";
+    let mut tokens = segmenter.segment(Cow::Borrowed(text))?;
+    println!("text:\t{text}");
+    for token in tokens.iter_mut() {
+        let details = token.details().join(",");
+        println!("token:\t{}\t{}", token.surface.as_ref(), details);
+    }
+
+    Ok(())
+}
+```
+
+The above example can be run as follows:
+
+```shell
+% cargo run --features=embed-ipadic --example=segment
+```
+
+## Tokenization examples
+
+The `Tokenizer` and the filter chain below require the `analysis` feature:
+
+```toml
+[dependencies]
+lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
+```
+
+### Basic tokenization
+
+This example covers the basic usage of the tokenizer.
 
 It will:
 
@@ -69,7 +120,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic --example=tokenize
+% cargo run --features=embed-ipadic,analysis --example=tokenize
 ```
 
 You can see the result as follows:
@@ -93,7 +144,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
 ```
 
 For example:
@@ -160,7 +211,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run by `cargo run --example`:
 
 ```shell
-% cargo run --features=embed-ipadic --example=tokenize_with_user_dict
+% cargo run --features=embed-ipadic,analysis --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -176,7 +227,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "3.0.0", features = ["embed-ipadic"] }
+lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -291,7 +342,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic --example=tokenize_with_filters
+% cargo run --features=embed-ipadic,analysis --example=tokenize_with_filters
 ```
 
 You can see the result as follows:

@@ -13,7 +13,7 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ```toml
 [dependencies]
-lindera = "3.0.0"
+lindera = "5.0"
 ```
 
 Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
