@@ -365,18 +365,32 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <p>詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
 </blockquote>
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
-<h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
-<p><code>LINDERA_DICTIONARIES_PATH</code> 環境変数は、辞書ソースファイルをキャッシュするディレクトリを指定します。これにより以下のメリットがあります：</p>
+<h3 id="lindera_build_dictionary_cache_dir"><a class="header" href="#lindera_build_dictionary_cache_dir">LINDERA_BUILD_DICTIONARY_CACHE_DIR</a></h3>
+<p><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> 環境変数は、埋め込み辞書ビルドパイプラインのビルド時キャッシュディレクトリを指定します。辞書クレートの build script のみが読み取り、実行時の動作には影響しません。</p>
+<p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン）配下に 2 種類のファイルを保存します：</p>
 <ul>
-<li><strong>オフラインビルド</strong>: 一度ダウンロードすれば、将来のビルドのために辞書ソースファイルが保存されます</li>
-<li><strong>ビルドの高速化</strong>: 有効なキャッシュファイルが存在する場合、次回のビルドではダウンロードがスキップされます</li>
+<li>ダウンロードした配布アーカイブ（MD5 で検証。無効なファイルは自動的に再ダウンロード）</li>
+<li>クレートに埋め込まれるビルド済みバイナリ辞書</li>
+</ul>
+<p>これにより以下のメリットがあります：</p>
+<ul>
+<li><strong>オフラインビルド</strong>: 一度キャッシュされれば、以降のビルドにネットワークアクセスは不要です</li>
+<li><strong>ビルドの高速化</strong>: 有効なキャッシュがあればダウンロードと辞書ビルドがスキップされます</li>
 <li><strong>再現可能なビルド</strong>: ビルド間での辞書バージョンの一貫性を保ちます</li>
 </ul>
 <p>使用方法：</p>
-<pre><code class="language-shell">export LINDERA_DICTIONARIES_PATH=/path/to/dicts
-cargo build --features=ipadic
+<pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+cargo build --features=embed-ipadic
 </code></pre>
-<p>設定された場合、辞書ソースファイルは <code>$LINDERA_DICTIONARIES_PATH/&lt;version&gt;/</code> （<code>&lt;version&gt;</code> は lindera-dictionary クレートのバージョン）に保存されます。キャッシュはMD5チェックサムを使用してファイルを検証し、無効なファイルは自動的に再ダウンロードされます。</p>
+<p>注意点：</p>
+<ul>
+<li>このディレクトリは自動管理されており、削除しても安全です（必要に応じて再ダウンロード・再ビルドされます）</li>
+<li>バージョンごとのサブディレクトリはアップグレードのたびに蓄積され、自動削除されません。古いものは自由に削除できます</li>
+<li>この変数を設定すると、<code>embed-*</code> feature が無効でも辞書クレートはダウンロードとビルドを実行します（キャッシュの事前準備に便利です）</li>
+</ul>
+<blockquote>
+<p><strong>非推奨:</strong> 旧名 <code>LINDERA_DICTIONARIES_PATH</code> はフォールバックとして引き続き動作しますが（両方設定時は新名が優先）、v6.0.0 で削除されます。</p>
+</blockquote>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
 <p><code>LINDERA_CONFIG_PATH</code> 環境変数は、トークナイザーの設定ファイル（YAML形式）へのパスを指定します。これにより、Rustコードを変更せずにトークナイザーの動作を設定できます。</p>
 <pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
@@ -6782,6 +6796,7 @@ let cost = word_entry.word_cost();
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td>分析チェーンが新クレート <code>lindera-analysis</code> へ移動</td><td><code>Tokenizer</code>・character filter・token filter を使う Rust ユーザー</td><td><code>lindera-analysis</code> に依存し import パスを更新</td></tr>
 <tr><td><code>lindera-dictionary</code> の <code>train</code> feature 廃止</td><td><code>lindera-dictionary --features train</code> を直接使うユーザー</td><td><code>lindera-trainer</code>（または <code>lindera</code> facade の <code>train</code> feature）に依存</td></tr>
+<tr><td>ビルドキャッシュ変数の改名</td><td><code>LINDERA_DICTIONARIES_PATH</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名（旧名は v6.0.0 まで動作）</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI は影響を
@@ -6863,6 +6878,20 @@ use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 <span class="boring">}</span></code></pre></pre>
 <p>CLI の <code>lindera train</code> → <code>lindera export</code> → <code>lindera build</code> ワークフローに
 変更はありません。</p>
+<h2 id="ビルドキャッシュ環境変数の改名"><a class="header" href="#ビルドキャッシュ環境変数の改名">ビルドキャッシュ環境変数の改名</a></h2>
+<p>ビルド時の辞書キャッシュ変数 <code>LINDERA_DICTIONARIES_PATH</code> は
+<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名されました。この変数は辞書クレートの
+build script だけがビルド時に読み取るもので、ダウンロードした辞書アーカイブと
+ビルド済みバイナリ辞書を保持する自動管理のキャッシュを指定します。新しい名前は
+その契約（ビルド時専用・辞書・キャッシュ）を明示します。</p>
+<p>旧名は v5.x の間は非推奨のフォールバックとして動作し（両方設定時は新名が優先）、
+v6.0.0 で削除されます。</p>
+<pre><code class="language-shell"># v4
+export LINDERA_DICTIONARIES_PATH=/path/to/cache
+
+# v5
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="開発ガイド"><a class="header" href="#開発ガイド">開発ガイド</a></h1>
 <p>このセクションでは、Lindera のビルド、テスト、貢献に関する情報を提供します。</p>
 <ul>

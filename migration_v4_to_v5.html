@@ -185,6 +185,7 @@ breaking change and the one-line fixes for each.</p>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>
 <tr><td><code>lindera-dictionary</code> no longer has a <code>train</code> feature</td><td>Direct <code>lindera-dictionary --features train</code> users</td><td>Depend on <code>lindera-trainer</code> (or the <code>lindera</code> facade's <code>train</code> feature)</td></tr>
+<tr><td>Build cache variable renamed</td><td>Users setting <code>LINDERA_DICTIONARIES_PATH</code></td><td>Rename it to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> (the old name still works until v6.0.0)</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
@@ -264,6 +265,20 @@ use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 <span class="boring">}</span></code></pre></pre>
 <p>The <code>lindera train</code> → <code>lindera export</code> → <code>lindera build</code> CLI workflow is
 unchanged.</p>
+<h2 id="build-cache-environment-variable-renamed"><a class="header" href="#build-cache-environment-variable-renamed">Build cache environment variable renamed</a></h2>
+<p>The build-time dictionary cache variable <code>LINDERA_DICTIONARIES_PATH</code> is
+renamed to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> to make its contract explicit:
+it is read only at build time by the dictionary crates' build scripts, and it
+designates an auto-managed cache holding the downloaded dictionary archives
+and the built binary dictionaries.</p>
+<p>The old name keeps working through v5.x as a deprecated fallback (the new
+name wins when both are set) and will be removed in v6.0.0.</p>
+<pre><code class="language-shell"># v4
+export LINDERA_DICTIONARIES_PATH=/path/to/cache
+
+# v5
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
 
                     </main>
 

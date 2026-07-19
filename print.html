@@ -365,18 +365,32 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <p>See <a href="getting_started/../development/feature_flags.html">Feature Flags</a> for details.</p>
 </blockquote>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
-<h3 id="lindera_dictionaries_path"><a class="header" href="#lindera_dictionaries_path">LINDERA_DICTIONARIES_PATH</a></h3>
-<p>The <code>LINDERA_DICTIONARIES_PATH</code> environment variable specifies a directory for caching dictionary source files. This enables:</p>
+<h3 id="lindera_build_dictionary_cache_dir"><a class="header" href="#lindera_build_dictionary_cache_dir">LINDERA_BUILD_DICTIONARY_CACHE_DIR</a></h3>
+<p>The <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.</p>
+<p>When set, each build stores two kinds of files under <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;/</code> (where <code>&lt;version&gt;</code> is the dictionary crate version):</p>
 <ul>
-<li><strong>Offline builds</strong>: Once downloaded, dictionary source files are preserved for future builds</li>
-<li><strong>Faster builds</strong>: Subsequent builds skip downloading if valid cached files exist</li>
-<li><strong>Reproducible builds</strong>: Ensures consistent dictionary versions across builds</li>
+<li>the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)</li>
+<li>the built binary dictionary that gets embedded into the crate</li>
+</ul>
+<p>This enables:</p>
+<ul>
+<li><strong>Offline builds</strong>: once cached, subsequent builds need no network access</li>
+<li><strong>Faster builds</strong>: download and dictionary build are skipped when valid cached files exist</li>
+<li><strong>Reproducible builds</strong>: consistent dictionary versions across builds</li>
 </ul>
 <p>Usage:</p>
-<pre><code class="language-shell">export LINDERA_DICTIONARIES_PATH=/path/to/dicts
-cargo build --features=ipadic
+<pre><code class="language-shell">export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+cargo build --features=embed-ipadic
 </code></pre>
-<p>When set, dictionary source files are stored in <code>$LINDERA_DICTIONARIES_PATH/&lt;version&gt;/</code> where <code>&lt;version&gt;</code> is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.</p>
+<p>Notes:</p>
+<ul>
+<li>The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed</li>
+<li>Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely</li>
+<li>Setting this variable causes dictionary crates to download and build their dictionaries even when no <code>embed-*</code> feature is enabled (useful for pre-populating the cache)</li>
+</ul>
+<blockquote>
+<p><strong>Deprecated:</strong> the previous name <code>LINDERA_DICTIONARIES_PATH</code> still works as a fallback (the new name wins when both are set) and will be removed in v6.0.0.</p>
+</blockquote>
 <h3 id="lindera_config_path"><a class="header" href="#lindera_config_path">LINDERA_CONFIG_PATH</a></h3>
 <p>The <code>LINDERA_CONFIG_PATH</code> environment variable specifies the path to a YAML configuration file for the tokenizer. This allows you to configure tokenizer behavior without modifying Rust code.</p>
 <pre><code class="language-shell">export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
@@ -6771,6 +6785,7 @@ breaking change and the one-line fixes for each.</p>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>
 <tr><td><code>lindera-dictionary</code> no longer has a <code>train</code> feature</td><td>Direct <code>lindera-dictionary --features train</code> users</td><td>Depend on <code>lindera-trainer</code> (or the <code>lindera</code> facade's <code>train</code> feature)</td></tr>
+<tr><td>Build cache variable renamed</td><td>Users setting <code>LINDERA_DICTIONARIES_PATH</code></td><td>Rename it to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> (the old name still works until v6.0.0)</td></tr>
 </tbody></table>
 </div>
 <p>The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
@@ -6850,6 +6865,20 @@ use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 <span class="boring">}</span></code></pre></pre>
 <p>The <code>lindera train</code> → <code>lindera export</code> → <code>lindera build</code> CLI workflow is
 unchanged.</p>
+<h2 id="build-cache-environment-variable-renamed"><a class="header" href="#build-cache-environment-variable-renamed">Build cache environment variable renamed</a></h2>
+<p>The build-time dictionary cache variable <code>LINDERA_DICTIONARIES_PATH</code> is
+renamed to <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> to make its contract explicit:
+it is read only at build time by the dictionary crates' build scripts, and it
+designates an auto-managed cache holding the downloaded dictionary archives
+and the built binary dictionaries.</p>
+<p>The old name keeps working through v5.x as a deprecated fallback (the new
+name wins when both are set) and will be removed in v6.0.0.</p>
+<pre><code class="language-shell"># v4
+export LINDERA_DICTIONARIES_PATH=/path/to/cache
+
+# v5
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="development-guide"><a class="header" href="#development-guide">Development Guide</a></h1>
 <p>This section provides information for developers who want to build, test, or contribute to Lindera.</p>
 <ul>

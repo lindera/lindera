@@ -185,6 +185,7 @@
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td>分析チェーンが新クレート <code>lindera-analysis</code> へ移動</td><td><code>Tokenizer</code>・character filter・token filter を使う Rust ユーザー</td><td><code>lindera-analysis</code> に依存し import パスを更新</td></tr>
 <tr><td><code>lindera-dictionary</code> の <code>train</code> feature 廃止</td><td><code>lindera-dictionary --features train</code> を直接使うユーザー</td><td><code>lindera-trainer</code>（または <code>lindera</code> facade の <code>train</code> feature）に依存</td></tr>
+<tr><td>ビルドキャッシュ変数の改名</td><td><code>LINDERA_DICTIONARIES_PATH</code> を設定しているユーザー</td><td><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名（旧名は v6.0.0 まで動作）</td></tr>
 </tbody></table>
 </div>
 <p>言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI は影響を
@@ -266,6 +267,20 @@ use lindera_trainer::{Corpus, Trainer, TrainerConfig};
 <span class="boring">}</span></code></pre></pre>
 <p>CLI の <code>lindera train</code> → <code>lindera export</code> → <code>lindera build</code> ワークフローに
 変更はありません。</p>
+<h2 id="ビルドキャッシュ環境変数の改名"><a class="header" href="#ビルドキャッシュ環境変数の改名">ビルドキャッシュ環境変数の改名</a></h2>
+<p>ビルド時の辞書キャッシュ変数 <code>LINDERA_DICTIONARIES_PATH</code> は
+<code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> に改名されました。この変数は辞書クレートの
+build script だけがビルド時に読み取るもので、ダウンロードした辞書アーカイブと
+ビルド済みバイナリ辞書を保持する自動管理のキャッシュを指定します。新しい名前は
+その契約（ビルド時専用・辞書・キャッシュ）を明示します。</p>
+<p>旧名は v5.x の間は非推奨のフォールバックとして動作し（両方設定時は新名が優先）、
+v6.0.0 で削除されます。</p>
+<pre><code class="language-shell"># v4
+export LINDERA_DICTIONARIES_PATH=/path/to/cache
+
+# v5
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+</code></pre>
 
                     </main>
 
