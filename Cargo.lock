@@ -1740,9 +1740,7 @@ version = "4.0.1"
 dependencies = [
  "anyhow",
  "criterion",
- "daachorse",
  "insta",
- "kanaria",
  "lindera-cc-cedict",
  "lindera-dictionary",
  "lindera-ipadic",
@@ -1753,16 +1751,30 @@ dependencies = [
  "lindera-unidic",
  "once_cell",
  "percent-encoding",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "url",
+]
+
+[[package]]
+name = "lindera-analysis"
+version = "4.0.1"
+dependencies = [
+ "anyhow",
+ "daachorse",
+ "kanaria",
+ "lindera",
+ "lindera-dictionary",
+ "once_cell",
  "regex",
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "strum",
- "strum_macros",
  "unicode-blocks",
  "unicode-normalization",
  "unicode-segmentation",
- "url",
 ]
 
 [[package]]
@@ -1770,6 +1782,7 @@ name = "lindera-binding-core"
 version = "4.0.1"
 dependencies = [
  "lindera",
+ "lindera-analysis",
  "serde_json",
 ]
 
@@ -1789,6 +1802,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "lindera",
+ "lindera-analysis",
  "num_cpus",
  "serde_json",
 ]

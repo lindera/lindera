@@ -38,6 +38,7 @@ jobs:
       lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
       lindera-jieba: ${{ steps.filter.outputs.lindera-jieba }}
       lindera: ${{ steps.filter.outputs.lindera }}
+      lindera-analysis: ${{ steps.filter.outputs.lindera-analysis }}
       lindera-cli: ${{ steps.filter.outputs.lindera-cli }}
       lindera-python: ${{ steps.filter.outputs.lindera-python }}
       lindera-nodejs: ${{ steps.filter.outputs.lindera-nodejs }}
@@ -91,9 +92,17 @@ jobs:
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
+            lindera-analysis:
+              - 'lindera-analysis/**'
+              - 'lindera/**'
+              - 'lindera-crf/**'
+              - 'lindera-dictionary/**'
+              - 'lindera-ipadic/**'
+              - 'lindera-ko-dic/**'
             lindera-cli:
               - 'lindera-cli/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -106,6 +115,7 @@ jobs:
             lindera-python:
               - 'lindera-python/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -118,6 +128,7 @@ jobs:
             lindera-nodejs:
               - 'lindera-nodejs/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -130,6 +141,7 @@ jobs:
             lindera-ruby:
               - 'lindera-ruby/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -142,6 +154,7 @@ jobs:
             lindera-php:
               - 'lindera-php/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-trainer/**'
@@ -154,6 +167,7 @@ jobs:
             lindera-wasm:
               - 'lindera-wasm/**'
               - 'lindera/**'
+              - 'lindera-analysis/**'
               - 'lindera-crf/**'
               - 'lindera-dictionary/**'
               - 'lindera-ipadic/**'
@@ -308,9 +322,20 @@ jobs:
       crate: lindera
       features: "--no-default-features"
 
+  test-lindera-analysis:
+    name: Test lindera-analysis
+    needs: [test-lindera, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-analysis == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-analysis
+      features: "--features embed-ipadic,embed-ko-dic"
+
   test-lindera-cli:
     name: Test lindera-cli
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-cli == 'true')
@@ -321,7 +346,7 @@ jobs:
 
   test-lindera-python:
     name: Test lindera-python
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-python == 'true')
@@ -345,7 +370,7 @@ jobs:
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-nodejs == 'true')
@@ -368,7 +393,7 @@ jobs:
 
   test-lindera-ruby:
     name: Test lindera-ruby
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-ruby == 'true')
@@ -394,7 +419,7 @@ jobs:
 
   test-lindera-php:
     name: Test lindera-php
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-php == 'true')
@@ -418,7 +443,7 @@ jobs:
 
   test-lindera-wasm:
     name: Test lindera-wasm
-    needs: [test-lindera, detect-changes]
+    needs: [test-lindera, test-lindera-analysis, detect-changes]
     if: >-
       !cancelled() && !failure() &&
       (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-wasm == 'true')

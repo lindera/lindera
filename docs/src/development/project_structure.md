@@ -9,7 +9,8 @@ lindera/
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological analysis library
+├── lindera/                # Core morphological segmentation library
+├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
@@ -50,7 +51,11 @@ CRF training pipeline for creating custom dictionaries. Builds on `lindera-dicti
 
 #### `lindera`
 
-The main morphological analysis library. Integrates dictionary crates and provides the `Tokenizer`, `Segmenter`, character filters, and token filters.
+The main morphological segmentation library. Integrates dictionary crates and provides the `Segmenter` API.
+
+#### `lindera-analysis`
+
+Lucene-style analysis chain on top of `lindera`: character filters, token filters, and the `Tokenizer` that composes them around a `Segmenter`.
 
 #### `lindera-cli`
 

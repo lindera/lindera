@@ -10,6 +10,7 @@ members = [
     "lindera-ko-dic",
     "lindera-unidic",
     "lindera",
+    "lindera-analysis",
     "lindera-cli",
     "lindera-binding-core",
     "lindera-python",
@@ -38,6 +39,7 @@ byteorder = "1.5.0"
 csv = "1.4.0"
 daachorse = "3.0.3"
 lindera = { version = "4.0.1", path = "lindera" }
+lindera-analysis = { version = "4.0.1", path = "lindera-analysis" }
 lindera-binding-core = { version = "4.0.1", path = "lindera-binding-core" }
 lindera-crf = { version = "4.0.1", path = "lindera-crf" }
 lindera-cc-cedict = { version = "4.0.1", path = "lindera-cc-cedict" }

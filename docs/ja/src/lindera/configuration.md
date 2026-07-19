@@ -76,7 +76,7 @@ token_filters:
 ```rust
 use std::path::PathBuf;
 
-use lindera::tokenizer::TokenizerBuilder;
+use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {

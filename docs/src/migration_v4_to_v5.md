@@ -9,7 +9,7 @@ breaking change and the one-line fixes for each.
 
 | Change | Affects | What you do |
 | --- | --- | --- |
-| `analysis` removed from default features | Rust users of `Tokenizer`, character filters, or token filters | Add `analysis` to your lindera feature list |
+| Analysis chain moved to the new `lindera-analysis` crate | Rust users of `Tokenizer`, character filters, or token filters | Depend on `lindera-analysis` and update import paths |
 | `lindera-dictionary` no longer has a `train` feature | Direct `lindera-dictionary --features train` users | Depend on `lindera-trainer` (or the `lindera` facade's `train` feature) |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
@@ -17,14 +17,15 @@ unaffected: they enable the required features themselves, and their APIs and
 output are unchanged. Tokenization output is also unchanged — v5 produces
 byte-for-byte identical tokens to v4 for the same input and dictionary.
 
-## Pure segmenter by default
+## The analysis chain moved to lindera-analysis
 
-The `analysis` cargo feature (introduced in v4.1.0) gates the analysis chain:
-the `character_filter`, `token_filter`, and `tokenizer` modules. In v5.0 it is
-no longer part of the default feature set, so the default build provides the
-`Segmenter` API only.
+In v5.0 the `lindera` crate is a pure morphological segmenter: the
+`character_filter`, `token_filter`, and `tokenizer` modules moved to the new
+[`lindera-analysis`](https://crates.io/crates/lindera-analysis) crate
+(mirroring Lucene's split between a tokenizer core and analyzer modules).
 
-If you use `Tokenizer` or any filter, add the feature:
+If you use `Tokenizer` or any filter, depend on the new crate and update the
+import paths — the APIs themselves are unchanged:
 
 ```toml
 # v4
@@ -33,7 +34,18 @@ lindera = "4.0"
 
 # v5
 [dependencies]
-lindera = { version = "5.0", features = ["analysis"] }
+lindera = "5.0"
+lindera-analysis = "5.0"
+```
+
+```rust
+// v4
+use lindera::tokenizer::Tokenizer;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+
+// v5
+use lindera_analysis::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
 ```
 
 If you only segment text, nothing changes in your code — and your dependency

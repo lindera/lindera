@@ -66,10 +66,10 @@ Token filters can also be created and applied programmatically:
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::token_filter::BoxTokenFilter;
-use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::BoxTokenFilter;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera_analysis::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
