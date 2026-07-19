@@ -74,8 +74,10 @@ impl PrefixDictionaryBuilder {
         // Sort dictionary entries by the first column (word)
         // Change sorting method based on normalization settings
         if self.normalize_details {
-            // Sort after normalizing characters (―→—, ～→〜)
-            rows.sort_by_key(|row| normalize(&row[0]));
+            // Sort after normalizing characters (―→—, ～→〜).
+            // The cached variant computes the allocating normalize key once
+            // per row instead of once per comparison.
+            rows.sort_by_cached_key(|row| normalize(&row[0]));
         } else {
             // Sort using original strings directly
             rows.sort_by(|a, b| a[0].cmp(&b[0]))
@@ -631,6 +633,30 @@ mod tests {
 
         let right_id = builder.parse_right_id(&record).unwrap();
         assert_eq!(right_id, Some(456));
+    }
+
+    #[test]
+    fn test_sort_by_cached_key_matches_sort_by_key() {
+        // Rows whose surfaces normalize to the same key (～ -> 〜) exercise
+        // stability: equal-key rows must keep their input order, so the
+        // cached-key sort must produce exactly the same order as the
+        // per-comparison sort_by_key it replaced.
+        let mut rows_cached: Vec<StringRecord> = vec![
+            StringRecord::from(vec!["テスト～", "1", "1", "10"]),
+            StringRecord::from(vec!["テスト〜", "2", "2", "20"]),
+            StringRecord::from(vec!["あ", "3", "3", "30"]),
+            StringRecord::from(vec!["テスト～", "4", "4", "40"]),
+            StringRecord::from(vec!["―", "5", "5", "50"]),
+            StringRecord::from(vec!["—", "6", "6", "60"]),
+        ];
+        let mut rows_naive = rows_cached.clone();
+
+        rows_cached.sort_by_cached_key(|row| normalize(&row[0]));
+        rows_naive.sort_by_key(|row| normalize(&row[0]));
+
+        let order_cached: Vec<String> = rows_cached.iter().map(|r| r[1].to_string()).collect();
+        let order_naive: Vec<String> = rows_naive.iter().map(|r| r[1].to_string()).collect();
+        assert_eq!(order_cached, order_naive);
     }
 
     #[test]
