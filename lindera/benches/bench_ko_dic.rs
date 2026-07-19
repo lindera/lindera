@@ -1,4 +1,6 @@
 #[cfg(feature = "embed-ko-dic")]
+use std::borrow::Cow;
+#[cfg(feature = "embed-ko-dic")]
 use std::path::PathBuf;
 
 #[cfg(feature = "embed-ko-dic")]
