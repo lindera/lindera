@@ -183,7 +183,7 @@ dictionary-training pipeline lives in its own crate. This guide lists every
 breaking change and the one-line fixes for each.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
-<tr><td><code>analysis</code> removed from default features</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Add <code>analysis</code> to your lindera feature list</td></tr>
+<tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>
 <tr><td><code>lindera-dictionary</code> no longer has a <code>train</code> feature</td><td>Direct <code>lindera-dictionary --features train</code> users</td><td>Depend on <code>lindera-trainer</code> (or the <code>lindera</code> facade's <code>train</code> feature)</td></tr>
 </tbody></table>
 </div>
@@ -191,20 +191,32 @@ breaking change and the one-line fixes for each.</p>
 unaffected: they enable the required features themselves, and their APIs and
 output are unchanged. Tokenization output is also unchanged — v5 produces
 byte-for-byte identical tokens to v4 for the same input and dictionary.</p>
-<h2 id="pure-segmenter-by-default"><a class="header" href="#pure-segmenter-by-default">Pure segmenter by default</a></h2>
-<p>The <code>analysis</code> cargo feature (introduced in v4.1.0) gates the analysis chain:
-the <code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code> modules. In v5.0 it is
-no longer part of the default feature set, so the default build provides the
-<code>Segmenter</code> API only.</p>
-<p>If you use <code>Tokenizer</code> or any filter, add the feature:</p>
+<h2 id="the-analysis-chain-moved-to-lindera-analysis"><a class="header" href="#the-analysis-chain-moved-to-lindera-analysis">The analysis chain moved to lindera-analysis</a></h2>
+<p>In v5.0 the <code>lindera</code> crate is a pure morphological segmenter: the
+<code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code> modules moved to the new
+<a href="https://crates.io/crates/lindera-analysis"><code>lindera-analysis</code></a> crate
+(mirroring Lucene's split between a tokenizer core and analyzer modules).</p>
+<p>If you use <code>Tokenizer</code> or any filter, depend on the new crate and update the
+import paths — the APIs themselves are unchanged:</p>
 <pre><code class="language-toml"># v4
 [dependencies]
 lindera = "4.0"
 
 # v5
 [dependencies]
-lindera = { version = "5.0", features = ["analysis"] }
+lindera = "5.0"
+lindera-analysis = "5.0"
 </code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v4
+use lindera::tokenizer::Tokenizer;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+
+// v5
+use lindera_analysis::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+<span class="boring">}</span></code></pre></pre>
 <p>If you only segment text, nothing changes in your code — and your dependency
 tree shrinks (kanaria, unicode-normalization, unicode-segmentation,
 unicode-blocks, and serde_yaml_ng are no longer built):</p>

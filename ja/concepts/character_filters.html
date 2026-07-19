@@ -222,15 +222,15 @@ character_filters:
 </code></pre>
 <h2 id="rust-apiの例"><a class="header" href="#rust-apiの例">Rust APIの例</a></h2>
 <p>キャラクターフィルターはプログラムから作成して<code>Tokenizer</code>に追加できます：</p>
-<pre><pre class="playground"><code class="language-rust">use lindera::character_filter::BoxCharacterFilter;
-use lindera::character_filter::unicode_normalize::{
+<pre><pre class="playground"><code class="language-rust">use lindera_analysis::character_filter::BoxCharacterFilter;
+use lindera_analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {

@@ -221,9 +221,10 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Character filters, token filters, and the <code>Tokenizer</code> API are gated behind
-the <code>analysis</code> feature (not enabled by default as of v5.0). Add
-<code>features = ["analysis"]</code> to your dependency if you need the analysis chain.</p>
+Character filters, token filters, and the <code>Tokenizer</code> API are provided by
+the companion <code>lindera-analysis</code> crate (as of v5.0). Add
+<code>lindera-analysis = "5.0"</code> to your dependencies if you need the analysis
+chain.</p>
 </blockquote>
 
                     </main>

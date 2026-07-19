@@ -181,19 +181,15 @@
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
-<tr><td><code>analysis</code></td><td>Analysis chain: character filters, token filters, and the <code>Tokenizer</code></td><td>No</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>CLI only</td></tr>
 </tbody></table>
 </div>
 <ul>
 <li><code>mmap</code> is enabled by default in the main <code>lindera</code> crate.</li>
-<li><code>analysis</code> is NOT enabled by default (as of v5.0): the default build is a
-pure segmenter around the <code>Segmenter</code> API — useful when Lindera is used as
-a segmentation backend behind an external analysis pipeline. Enabling
-<code>analysis</code> adds the <code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code>
-modules together with their dependencies (kanaria, regex, serde_yaml_ng,
-unicode-blocks, unicode-normalization, unicode-segmentation, and the
-filter usage of daachorse).</li>
+<li>The analysis chain (character filters, token filters, and the <code>Tokenizer</code>)
+is not a feature of this crate: as of v5.0 it lives in the companion
+<code>lindera-analysis</code> crate. The <code>lindera</code> crate itself is a pure segmenter
+around the <code>Segmenter</code> API.</li>
 <li><code>train</code> is enabled by default only in <code>lindera-cli</code>. For library usage, enable it explicitly with <code>--features train</code>.</li>
 </ul>
 <h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>

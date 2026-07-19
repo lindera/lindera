@@ -220,7 +220,7 @@
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -239,7 +239,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>Run the example:</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <p>Output:</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ

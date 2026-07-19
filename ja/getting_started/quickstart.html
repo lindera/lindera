@@ -221,9 +221,9 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-character filter・token filter・<code>Tokenizer</code> API は <code>analysis</code> feature の
-配下にあります（v5.0 以降、デフォルトでは無効）。分析チェーンが必要な場合は
-依存定義に <code>features = ["analysis"]</code> を追加してください。</p>
+character filter・token filter・<code>Tokenizer</code> API は独立クレート
+<code>lindera-analysis</code> が提供します（v5.0 以降）。分析チェーンが必要な場合は
+依存定義に <code>lindera-analysis = "5.0"</code> を追加してください。</p>
 </blockquote>
 
                     </main>

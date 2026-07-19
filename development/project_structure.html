@@ -183,7 +183,8 @@
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological analysis library
+├── lindera/                # Core morphological segmentation library
+├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
@@ -214,7 +215,9 @@
 </tbody></table>
 </div>
 <h4 id="lindera"><a class="header" href="#lindera"><code>lindera</code></a></h4>
-<p>The main morphological analysis library. Integrates dictionary crates and provides the <code>Tokenizer</code>, <code>Segmenter</code>, character filters, and token filters.</p>
+<p>The main morphological segmentation library. Integrates dictionary crates and provides the <code>Segmenter</code> API.</p>
+<h4 id="lindera-analysis"><a class="header" href="#lindera-analysis"><code>lindera-analysis</code></a></h4>
+<p>Lucene-style analysis chain on top of <code>lindera</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
 <h4 id="lindera-cli"><a class="header" href="#lindera-cli"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
 <h3 id="dictionary-crates"><a class="header" href="#dictionary-crates">Dictionary Crates</a></h3>

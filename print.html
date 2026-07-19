@@ -221,7 +221,7 @@
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -240,7 +240,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
     Ok(())
 }</code></pre></pre>
 <p>Run the example:</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <p>Output:</p>
 <pre><code class="language-text">text:   関西国際空港限定トートバッグ
@@ -433,36 +433,37 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-Character filters, token filters, and the <code>Tokenizer</code> API are gated behind
-the <code>analysis</code> feature (not enabled by default as of v5.0). Add
-<code>features = ["analysis"]</code> to your dependency if you need the analysis chain.</p>
+Character filters, token filters, and the <code>Tokenizer</code> API are provided by
+the companion <code>lindera-analysis</code> crate (as of v5.0). Add
+<code>lindera-analysis = "5.0"</code> to your dependencies if you need the analysis
+chain.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
 <p>Lindera includes several example programs that demonstrate common use cases. The source code is available in the <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examples directory</a> on GitHub.</p>
-<p>The <code>tokenize*</code> examples use the <code>Tokenizer</code> and filter APIs, which are gated
-behind the <code>analysis</code> feature (not enabled by default as of v5.0).</p>
+<p>The <code>tokenize*</code> examples use the <code>Tokenizer</code> and filter APIs, which are
+provided by the <code>lindera-analysis</code> crate (as of v5.0).</p>
 <p>Before running the examples, download a pre-built IPADIC dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and extract it to a local directory.</p>
 <h2 id="available-examples"><a class="header" href="#available-examples">Available Examples</a></h2>
 <h3 id="segment"><a class="header" href="#segment">segment</a></h3>
-<p>Basic morphological segmentation with the <code>Segmenter</code> API — works with the
-default features (no <code>analysis</code> feature required).</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic --example=segment
+<p>Basic morphological segmentation with the <code>Segmenter</code> API — the <code>lindera</code>
+crate alone is enough.</p>
+<pre><code class="language-shell">cargo run -p lindera --features=embed-ipadic --example=segment
 </code></pre>
 <h3 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h3>
 <p>Basic tokenization using an external IPADIC dictionary. Segments input text and prints each token with its part-of-speech details.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 </code></pre>
 <h3 id="tokenize_with_user_dict"><a class="header" href="#tokenize_with_user_dict">tokenize_with_user_dict</a></h3>
 <p>Tokenization with a user dictionary. Shows how to supplement the dictionary with custom entries for domain-specific terms.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize_with_user_dict
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_user_dict
 </code></pre>
 <h3 id="tokenize_with_filters"><a class="header" href="#tokenize_with_filters">tokenize_with_filters</a></h3>
 <p>Tokenization with character filters and token filters. Demonstrates the text processing pipeline, including Unicode normalization, part-of-speech filtering, and other transformations.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize_with_filters
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_filters
 </code></pre>
 <h3 id="tokenize_with_config"><a class="header" href="#tokenize_with_config">tokenize_with_config</a></h3>
 <p>Tokenization using a YAML configuration file. Shows how to configure the tokenizer declaratively instead of programmatically.</p>
-<pre><code class="language-shell">cargo run --features=embed-ipadic,analysis --example=tokenize_with_config
+<pre><code class="language-shell">cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_config
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="core-concepts"><a class="header" href="#core-concepts">Core Concepts</a></h1>
 <p>This section explains the fundamental concepts behind Lindera's morphological analysis system.</p>
@@ -591,7 +592,7 @@ echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embe
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -658,7 +659,7 @@ use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
 use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -767,15 +768,15 @@ character_filters:
 </code></pre>
 <h2 id="rust-api-example-2"><a class="header" href="#rust-api-example-2">Rust API example</a></h2>
 <p>Character filters can be created and appended to a <code>Tokenizer</code> programmatically:</p>
-<pre><pre class="playground"><code class="language-rust">use lindera::character_filter::BoxCharacterFilter;
-use lindera::character_filter::unicode_normalize::{
+<pre><pre class="playground"><code class="language-rust">use lindera_analysis::character_filter::BoxCharacterFilter;
+use lindera_analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -1035,7 +1036,7 @@ token_filters:
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
 
-use lindera::tokenizer::TokenizerBuilder;
+use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -1131,7 +1132,7 @@ let dictionary = load_dictionary("/path/to/dictionary")?;
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -1204,10 +1205,10 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::token_filter::BoxTokenFilter;
-use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-use lindera::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::BoxTokenFilter;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+use lindera_analysis::token_filter::japanese_katakana_stem::JapaneseKatakanaStemTokenFilter;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -1299,7 +1300,7 @@ let error = LinderaErrorKind::Io.with_error(anyhow::anyhow!("file not found: con
 </span>use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn analyze(text: &amp;str) -&gt; LinderaResult&lt;Vec&lt;String&gt;&gt; {
@@ -5920,7 +5921,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6057,7 +6058,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6225,7 +6226,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6367,7 +6368,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6496,7 +6497,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6620,7 +6621,7 @@ EOS
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -&gt; LinderaResult&lt;()&gt; {
@@ -6768,7 +6769,7 @@ dictionary-training pipeline lives in its own crate. This guide lists every
 breaking change and the one-line fixes for each.</p>
 <h2 id="overview-2"><a class="header" href="#overview-2">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
-<tr><td><code>analysis</code> removed from default features</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Add <code>analysis</code> to your lindera feature list</td></tr>
+<tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>
 <tr><td><code>lindera-dictionary</code> no longer has a <code>train</code> feature</td><td>Direct <code>lindera-dictionary --features train</code> users</td><td>Depend on <code>lindera-trainer</code> (or the <code>lindera</code> facade's <code>train</code> feature)</td></tr>
 </tbody></table>
 </div>
@@ -6776,20 +6777,32 @@ breaking change and the one-line fixes for each.</p>
 unaffected: they enable the required features themselves, and their APIs and
 output are unchanged. Tokenization output is also unchanged — v5 produces
 byte-for-byte identical tokens to v4 for the same input and dictionary.</p>
-<h2 id="pure-segmenter-by-default"><a class="header" href="#pure-segmenter-by-default">Pure segmenter by default</a></h2>
-<p>The <code>analysis</code> cargo feature (introduced in v4.1.0) gates the analysis chain:
-the <code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code> modules. In v5.0 it is
-no longer part of the default feature set, so the default build provides the
-<code>Segmenter</code> API only.</p>
-<p>If you use <code>Tokenizer</code> or any filter, add the feature:</p>
+<h2 id="the-analysis-chain-moved-to-lindera-analysis"><a class="header" href="#the-analysis-chain-moved-to-lindera-analysis">The analysis chain moved to lindera-analysis</a></h2>
+<p>In v5.0 the <code>lindera</code> crate is a pure morphological segmenter: the
+<code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code> modules moved to the new
+<a href="https://crates.io/crates/lindera-analysis"><code>lindera-analysis</code></a> crate
+(mirroring Lucene's split between a tokenizer core and analyzer modules).</p>
+<p>If you use <code>Tokenizer</code> or any filter, depend on the new crate and update the
+import paths — the APIs themselves are unchanged:</p>
 <pre><code class="language-toml"># v4
 [dependencies]
 lindera = "4.0"
 
 # v5
 [dependencies]
-lindera = { version = "5.0", features = ["analysis"] }
+lindera = "5.0"
+lindera-analysis = "5.0"
 </code></pre>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// v4
+use lindera::tokenizer::Tokenizer;
+use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+
+// v5
+use lindera_analysis::tokenizer::Tokenizer;
+use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+<span class="boring">}</span></code></pre></pre>
 <p>If you only segment text, nothing changes in your code — and your dependency
 tree shrinks (kanaria, unicode-normalization, unicode-segmentation,
 unicode-blocks, and serde_yaml_ng are no longer built):</p>
@@ -6909,19 +6922,15 @@ unchanged.</p>
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
-<tr><td><code>analysis</code></td><td>Analysis chain: character filters, token filters, and the <code>Tokenizer</code></td><td>No</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>CLI only</td></tr>
 </tbody></table>
 </div>
 <ul>
 <li><code>mmap</code> is enabled by default in the main <code>lindera</code> crate.</li>
-<li><code>analysis</code> is NOT enabled by default (as of v5.0): the default build is a
-pure segmenter around the <code>Segmenter</code> API — useful when Lindera is used as
-a segmentation backend behind an external analysis pipeline. Enabling
-<code>analysis</code> adds the <code>character_filter</code>, <code>token_filter</code>, and <code>tokenizer</code>
-modules together with their dependencies (kanaria, regex, serde_yaml_ng,
-unicode-blocks, unicode-normalization, unicode-segmentation, and the
-filter usage of daachorse).</li>
+<li>The analysis chain (character filters, token filters, and the <code>Tokenizer</code>)
+is not a feature of this crate: as of v5.0 it lives in the companion
+<code>lindera-analysis</code> crate. The <code>lindera</code> crate itself is a pure segmenter
+around the <code>Segmenter</code> API.</li>
 <li><code>train</code> is enabled by default only in <code>lindera-cli</code>. For library usage, enable it explicitly with <code>--features train</code>.</li>
 </ul>
 <h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>
@@ -6980,7 +6989,8 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 ├── lindera-crf/            # CRF engine (pure Rust, no_std)
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF-based dictionary training
-├── lindera/                # Core morphological analysis library
+├── lindera/                # Core morphological segmentation library
+├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
@@ -7011,7 +7021,9 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 </tbody></table>
 </div>
 <h4 id="lindera-1"><a class="header" href="#lindera-1"><code>lindera</code></a></h4>
-<p>The main morphological analysis library. Integrates dictionary crates and provides the <code>Tokenizer</code>, <code>Segmenter</code>, character filters, and token filters.</p>
+<p>The main morphological segmentation library. Integrates dictionary crates and provides the <code>Segmenter</code> API.</p>
+<h4 id="lindera-analysis"><a class="header" href="#lindera-analysis"><code>lindera-analysis</code></a></h4>
+<p>Lucene-style analysis chain on top of <code>lindera</code>: character filters, token filters, and the <code>Tokenizer</code> that composes them around a <code>Segmenter</code>.</p>
 <h4 id="lindera-cli-1"><a class="header" href="#lindera-cli-1"><code>lindera-cli</code></a></h4>
 <p>Command-line interface for tokenization, dictionary training, export, and building. The <code>train</code> feature is enabled by default.</p>
 <h3 id="dictionary-crates"><a class="header" href="#dictionary-crates">Dictionary Crates</a></h3>
