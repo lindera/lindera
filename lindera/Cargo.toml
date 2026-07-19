@@ -56,7 +56,7 @@ analysis = [
     "dep:unicode-normalization",
     "dep:unicode-segmentation",
 ] # Enable the analysis chain (character filters, token filters, tokenizer)
-default = ["mmap", "analysis"]
+default = ["mmap"]
 
 [dependencies]
 anyhow = { workspace = true }

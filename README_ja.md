@@ -13,7 +13,7 @@ Lindera は、さまざまな Rust アプリケーションに対して、簡単
 
 ```toml
 [dependencies]
-lindera = "3.0.0"
+lindera = "5.0"
 ```
 
 ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードできます。
