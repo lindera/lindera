@@ -1,4 +1,6 @@
 #[cfg(feature = "embed-cc-cedict")]
+use std::borrow::Cow;
+#[cfg(feature = "embed-cc-cedict")]
 use std::path::PathBuf;
 
 #[cfg(feature = "embed-cc-cedict")]

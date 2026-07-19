@@ -1,4 +1,6 @@
 #[cfg(feature = "embed-jieba")]
+use std::borrow::Cow;
+#[cfg(feature = "embed-jieba")]
 use std::path::PathBuf;
 
 #[cfg(feature = "embed-jieba")]
