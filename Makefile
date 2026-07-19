@@ -28,9 +28,9 @@ CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| EN
 # dependency order.
 
 # Crates whose verbs are plain cargo invocations.
-CARGO_CRATES := lindera-crf lindera-dictionary lindera-ipadic lindera-ipadic-neologd \
-	lindera-unidic lindera-ko-dic lindera-cc-cedict lindera-jieba lindera lindera-cli \
-	lindera-binding-core
+CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
+	lindera-ipadic-neologd lindera-unidic lindera-ko-dic lindera-cc-cedict lindera-jieba \
+	lindera lindera-analysis lindera-cli lindera-binding-core
 
 # Language bindings with bespoke tooling (explicit targets below).
 BINDING_CRATES := lindera-python lindera-nodejs lindera-ruby lindera-php lindera-wasm
@@ -41,7 +41,7 @@ ALL_CRATES := $(CARGO_CRATES) $(BINDING_CRATES)
 # Per-crate cargo features, used by lint/test/build unless a per-target
 # override (TEST_FEATURES_* / BUILD_FEATURES_*) is set. Crates without an entry
 # are built with no extra features.
-FEATURES_lindera-dictionary     := --features train
+FEATURES_lindera-dictionary     := --features build_rs
 FEATURES_lindera-ipadic         := --features embed-ipadic
 FEATURES_lindera-ipadic-neologd := --features embed-ipadic-neologd
 FEATURES_lindera-unidic         := --features embed-unidic
@@ -49,6 +49,7 @@ FEATURES_lindera-ko-dic         := --features embed-ko-dic
 FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
 FEATURES_lindera-jieba          := --features embed-jieba
 FEATURES_lindera                := --features embed-ipadic,train
+FEATURES_lindera-analysis       := --features embed-ipadic,embed-ko-dic
 FEATURES_lindera-cli            := --features train
 
 # Per-target feature overrides (where lint/test/build differ).
@@ -284,6 +285,7 @@ endef
 publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-crf,$(call crate_version,lindera-crf))
 	$(call PUBLISH_CRATE,lindera-dictionary,$(call crate_version,lindera-dictionary))
+	$(call PUBLISH_CRATE,lindera-trainer,$(call crate_version,lindera-trainer))
 	$(call PUBLISH_CRATE,lindera-cc-cedict,$(call crate_version,lindera-cc-cedict))
 	$(call PUBLISH_CRATE,lindera-ipadic,$(call crate_version,lindera-ipadic))
 	$(call PUBLISH_CRATE,lindera-ipadic-neologd,$(call crate_version,lindera-ipadic-neologd))
@@ -291,6 +293,7 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-ko-dic,$(call crate_version,lindera-ko-dic))
 	$(call PUBLISH_CRATE,lindera-unidic,$(call crate_version,lindera-unidic))
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
+	$(call PUBLISH_CRATE,lindera-analysis,$(call crate_version,lindera-analysis))
 	$(call PUBLISH_CRATE,lindera-cli,$(call crate_version,lindera-cli))
 	$(call PUBLISH_CRATE,lindera-binding-core,$(call crate_version,lindera-binding-core))
 	$(call PUBLISH_CRATE,lindera-python,$(call crate_version,lindera-python))
