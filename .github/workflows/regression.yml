@@ -236,6 +236,7 @@ jobs:
     with:
       crate: lindera-ipadic-neologd
       features: "--features embed-ipadic-neologd"
+      free-disk-space: true
 
   test-lindera-unidic:
     name: Test lindera-unidic
@@ -247,6 +248,7 @@ jobs:
     with:
       crate: lindera-unidic
       features: "--features embed-unidic"
+      free-disk-space: true
 
   test-lindera-ko-dic:
     name: Test lindera-ko-dic

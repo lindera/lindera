@@ -36,6 +36,11 @@ on:
         required: false
         type: string
         default: ""
+      free-disk-space:
+        description: "Remove unused preinstalled tooling to free runner disk space (Linux only). Use for crates with very large build artifacts."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -43,6 +48,12 @@ jobs:
     steps:
       - name: Run checkout
         uses: actions/checkout@v7
+
+      - name: Free disk space
+        if: ${{ inputs.free-disk-space && runner.os == 'Linux' }}
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
