@@ -65,7 +65,7 @@ Since Lindera functions return `LinderaResult`, the `?` operator can propagate e
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn analyze(text: &str) -> LinderaResult<Vec<String>> {

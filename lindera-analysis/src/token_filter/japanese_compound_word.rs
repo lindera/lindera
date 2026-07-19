@@ -1,0 +1,453 @@
+use std::borrow::Cow;
+use std::{collections::HashSet, mem};
+
+use serde_json::Value;
+
+use crate::token_filter::TokenFilter;
+use lindera::LinderaResult;
+use lindera::error::LinderaErrorKind;
+use lindera::token::Token;
+
+pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
+
+pub type JapaneseCompoundWordTokenFilterConfig = Value;
+
+/// Compound consecutive tokens that have specified part-of-speech tags into a single token.
+///
+#[derive(Clone, Debug)]
+pub struct JapaneseCompoundWordTokenFilter {
+    tags: HashSet<String>,
+    #[allow(dead_code)]
+    new_tag: Option<String>,
+}
+
+impl JapaneseCompoundWordTokenFilter {
+    pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
+        let tags: HashSet<String> = tags
+            .into_iter()
+            .map(|v| {
+                let mut tag_parts: Vec<&str> = v.split(',').collect();
+                tag_parts.resize(4, "*");
+                tag_parts.join(",")
+            })
+            .collect();
+
+        let new_tag = new_tag.map(|v| {
+            let mut tag_parts: Vec<&str> = v.split(',').collect();
+            tag_parts.resize(4, "*");
+            tag_parts.join(",")
+        });
+
+        Self { tags, new_tag }
+    }
+
+    pub fn from_config(config: &JapaneseCompoundWordTokenFilterConfig) -> LinderaResult<Self> {
+        let tags: HashSet<String> = config["tags"]
+            .as_array()
+            .ok_or_else(|| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
+            })?
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("tag must be string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .collect::<LinderaResult<HashSet<String>>>()?;
+
+        let new_tag = config
+            .get("new_tag")
+            .map(|v| {
+                v.as_str()
+                    .ok_or_else(|| {
+                        LinderaErrorKind::Deserialize
+                            .with_error(anyhow::anyhow!("new_tag must be a string"))
+                    })
+                    .map(|s| s.to_string())
+            })
+            .transpose()?;
+
+        Ok(Self::new(tags, new_tag))
+    }
+
+    // Concatenate two tokens into one.
+    fn concat_token<'a>(&self, token1: &mut Token<'a>, token2: &Token<'a>) {
+        token1.surface = Cow::Owned(format!("{}{}", token1.surface, token2.surface));
+        token1.byte_end = token2.byte_end;
+        token1.position_length += token2.position_length;
+
+        // Token details field length
+        // -4 to exclude surface, left_context_id, right_context_id and cost
+        let details_field_length = token1.dictionary.metadata.dictionary_schema.field_count() - 4;
+
+        // Make details for the new token based on the new_tag.
+        let details = match &self.new_tag {
+            Some(new_tag) => {
+                let mut details = new_tag.split(',').collect::<Vec<&str>>();
+                if details.len() < details_field_length {
+                    details.resize(details_field_length, "*");
+                } else {
+                    details.truncate(details_field_length);
+                }
+                let details: Vec<Cow<'_, str>> =
+                    details.iter().map(|s| Cow::Owned(s.to_string())).collect();
+                details
+            }
+            None => {
+                let mut details = Vec::with_capacity(details_field_length);
+                details.push(Cow::Borrowed("複合語"));
+                while details.len() < details_field_length {
+                    details.push(Cow::Borrowed("*"));
+                }
+                details
+            }
+        };
+
+        // token1.details = Some(details);
+        for (i, detail) in details.iter().enumerate() {
+            token1.set_detail(i, detail.clone());
+        }
+    }
+}
+
+impl TokenFilter for JapaneseCompoundWordTokenFilter {
+    fn name(&self) -> &'static str {
+        JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
+    }
+
+    /// Merges tokens based on matching part-of-speech tags and updates the token list.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - A mutable reference to a vector of tokens. The tokens will be modified in place by merging consecutive tokens that share matching tags.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    ///
+    /// # Process
+    ///
+    /// 1. **Token Processing**:
+    ///    - The function iterates over the list of tokens, and for each token, it checks the part-of-speech tags up to 4 elements (`tags_len`).
+    ///    - If the token's tag matches one of the tags specified in the configuration (`self.config.tags`), it attempts to merge the token with the subsequent tokens.
+    ///
+    /// 2. **Token Merging**:
+    ///    - When two consecutive tokens have matching tags, they are merged by concatenating their details into a single token.
+    ///    - If no matching tag is found for the next token, the current token is finalized and added to the new token list.
+    ///
+    /// 3. **Replacing Tokens**:
+    ///    - After processing all tokens, the original token list is replaced by the new list (`new_tokens`) that contains merged tokens where applicable.
+    ///
+    /// # Special Cases:
+    ///
+    /// - If no tags match, the original tokens are retained without modification.
+    /// - If multiple tokens match, they are merged into a single token.
+    ///
+    /// # Errors
+    ///
+    /// If any issue arises during token processing, the function will return an error in the form of `LinderaResult`.
+    fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
+        // New tokens
+        let mut new_tokens = Vec::new();
+
+        // Index of the current token
+        let mut i = 0;
+
+        while i < tokens.len() {
+            // Get the current token by reference and clone it later only if needed.
+            let current = &mut tokens[i];
+            i += 1;
+
+            let current_details = current.details();
+            let current_tags_len = current_details.len().min(4);
+            let current_tag = current_details[0..current_tags_len].join(",");
+
+            // If the tag matches, merge the tokens
+            if self.tags.contains(&current_tag) {
+                // Clone the current token as it will be modified
+                let mut merged_token = current.clone();
+
+                while i < tokens.len() {
+                    let next = &mut tokens[i];
+                    let next_details = next.details();
+                    let next_tags_len = next_details.len().min(4);
+                    let next_tag = next_details[0..next_tags_len].join(",");
+
+                    // If the next tag matches, merge the tokens; otherwise, break the loop
+                    if self.tags.contains(&next_tag) {
+                        // Concatenate the current token and the next token.
+                        self.concat_token(&mut merged_token, next);
+                        i += 1; // Move to the next token
+                    } else {
+                        break; // No match, stop merging
+                    }
+                }
+                new_tokens.push(merged_token);
+            } else {
+                // No need to merge, just clone the current token
+                new_tokens.push(current.clone());
+            }
+        }
+
+        // Replace the original tokens with the new tokens after processing.
+        mem::swap(tokens, &mut new_tokens);
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "embed-ipadic")]
+    #[test]
+    fn test_japanese_compound_word_token_filter_config_ipadic() {
+        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilterConfig;
+
+        let config_str = r#"
+        {
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let result: Result<JapaneseCompoundWordTokenFilterConfig, _> =
+            serde_json::from_str(config_str);
+        assert!(result.is_ok());
+    }
+
+    #[cfg(feature = "embed-ipadic")]
+    #[test]
+    fn test_japanese_compound_word_token_filter_ipadic() {
+        use crate::token_filter::japanese_compound_word::{
+            JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+        };
+
+        let config_str = r#"
+        {
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let config: JapaneseCompoundWordTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let result = JapaneseCompoundWordTokenFilter::from_config(&config);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_compound_word_token_filter_apply_ipadic() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::japanese_compound_word::{
+            JapaneseCompoundWordTokenFilter, JapaneseCompoundWordTokenFilterConfig,
+        };
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let config_str = r#"
+        {
+            "tags": [
+                "名詞,数",
+                "名詞,接尾,助数詞"
+            ],
+            "new_tag": "複合語"
+        }
+        "#;
+        let config: JapaneseCompoundWordTokenFilterConfig =
+            serde_json::from_str(config_str).unwrap();
+        let filter = JapaneseCompoundWordTokenFilter::from_config(&config).unwrap();
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![
+            Token {
+                surface: Cow::Borrowed("１"),
+                byte_start: 0,
+                byte_end: 3,
+                position: 0,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 391174),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("数"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("１"),
+                    Cow::Borrowed("イチ"),
+                    Cow::Borrowed("イチ"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("０"),
+                byte_start: 3,
+                byte_end: 6,
+                position: 1,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 391171),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("数"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("０"),
+                    Cow::Borrowed("ゼロ"),
+                    Cow::Borrowed("ゼロ"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("０"),
+                byte_start: 6,
+                byte_end: 9,
+                position: 2,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 391171),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("数"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("０"),
+                    Cow::Borrowed("ゼロ"),
+                    Cow::Borrowed("ゼロ"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("円"),
+                byte_start: 9,
+                byte_end: 12,
+                position: 3,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 137904),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("接尾"),
+                    Cow::Borrowed("助数詞"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("円"),
+                    Cow::Borrowed("エン"),
+                    Cow::Borrowed("エン"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("玉"),
+                byte_start: 12,
+                byte_end: 15,
+                position: 4,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 287427),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("接尾"),
+                    Cow::Borrowed("一般"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("玉"),
+                    Cow::Borrowed("ダマ"),
+                    Cow::Borrowed("ダマ"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("を"),
+                byte_start: 15,
+                byte_end: 18,
+                position: 5,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 80582),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("名詞"),
+                    Cow::Borrowed("接尾"),
+                    Cow::Borrowed("一般"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("玉"),
+                    Cow::Borrowed("ダマ"),
+                    Cow::Borrowed("ダマ"),
+                ]),
+            },
+            Token {
+                surface: Cow::Borrowed("拾う"),
+                byte_start: 18,
+                byte_end: 24,
+                position: 6,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 228047),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![
+                    Cow::Borrowed("動詞"),
+                    Cow::Borrowed("自立"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("*"),
+                    Cow::Borrowed("五段・ワ行促音便"),
+                    Cow::Borrowed("基本形"),
+                    Cow::Borrowed("拾う"),
+                    Cow::Borrowed("ヒロウ"),
+                    Cow::Borrowed("ヒロウ"),
+                ]),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].surface, "１００円".to_string());
+        assert_eq!(tokens[0].byte_start, 0);
+        assert_eq!(tokens[0].byte_end, 12);
+        assert_eq!(tokens[0].position, 0);
+        assert_eq!(tokens[0].position_length, 4);
+        assert_eq!(tokens[1].surface, "玉".to_string());
+        assert_eq!(tokens[1].byte_start, 12);
+        assert_eq!(tokens[1].byte_end, 15);
+        assert_eq!(tokens[1].position, 4);
+        assert_eq!(tokens[1].position_length, 1);
+        assert_eq!(tokens[2].surface, "を".to_string());
+        assert_eq!(tokens[2].byte_start, 15);
+        assert_eq!(tokens[2].byte_end, 18);
+        assert_eq!(tokens[2].position, 5);
+        assert_eq!(tokens[2].position_length, 1);
+        assert_eq!(tokens[3].surface, "拾う".to_string());
+        assert_eq!(tokens[3].byte_start, 18);
+        assert_eq!(tokens[3].byte_end, 24);
+        assert_eq!(tokens[3].position, 6);
+        assert_eq!(tokens[3].position_length, 1);
+
+        assert_eq!(
+            tokens[0].details(),
+            vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*",]
+        );
+    }
+}

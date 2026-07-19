@@ -8,17 +8,19 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ## Feature flags
 
-As of v5.0, the default build is a pure morphological segmenter around the
+As of v5.0, this crate is a pure morphological segmenter around the
 `Segmenter` API. The analysis chain (character filters, token filters, and the
-`Tokenizer`) is gated behind the `analysis` feature:
+`Tokenizer`) lives in the companion
+[`lindera-analysis`](https://crates.io/crates/lindera-analysis) crate:
 
 ```toml
 [dependencies]
-# Pure segmenter (default)
+# Pure segmenter
 lindera = "5.0"
 
 # With the analysis chain (character filters, token filters, Tokenizer)
-lindera = { version = "5.0", features = ["analysis"] }
+lindera = "5.0"
+lindera-analysis = "5.0"
 ```
 
 See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
@@ -36,7 +38,7 @@ lindera = { version = "5.0", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera as a pure segmenter — no
-`analysis` feature required.
+additional crates required.
 
 It will:
 
@@ -71,16 +73,18 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic --example=segment
+% cargo run -p lindera --features=embed-ipadic --example=segment
 ```
 
 ## Tokenization examples
 
-The `Tokenizer` and the filter chain below require the `analysis` feature:
+The `Tokenizer` and the filter chain below are provided by the
+`lindera-analysis` crate:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
+lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera-analysis = "5.0"
 ```
 
 ### Basic tokenization
@@ -97,7 +101,7 @@ It will:
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -120,7 +124,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic,analysis --example=tokenize
+% cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize
 ```
 
 You can see the result as follows:
@@ -144,7 +148,8 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
+lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera-analysis = "5.0"
 ```
 
 For example:
@@ -164,7 +169,7 @@ use std::path::PathBuf;
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -211,7 +216,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run by `cargo run --example`:
 
 ```shell
-% cargo run --features=embed-ipadic,analysis --example=tokenize_with_user_dict
+% cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
 token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
@@ -227,7 +232,8 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "analysis"] }
+lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera-analysis = "5.0"
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.
@@ -239,19 +245,19 @@ It will:
 - Apply token filters for removing stop tags (Part-of-speech) and Japanese Katakana stem filter
 
 ```rust
-    use lindera::character_filter::BoxCharacterFilter;
-    use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
-    use lindera::character_filter::unicode_normalize::{
+    use lindera_analysis::character_filter::BoxCharacterFilter;
+    use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+    use lindera_analysis::character_filter::unicode_normalize::{
         UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
     };
     use lindera::dictionary::load_dictionary;
     use lindera::mode::Mode;
     use lindera::segmenter::Segmenter;
-    use lindera::token_filter::BoxTokenFilter;
-    use lindera::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
-    use lindera::token_filter::japanese_number::JapaneseNumberTokenFilter;
-    use lindera::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
-    use lindera::tokenizer::Tokenizer;
+    use lindera_analysis::token_filter::BoxTokenFilter;
+    use lindera_analysis::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+    use lindera_analysis::token_filter::japanese_number::JapaneseNumberTokenFilter;
+    use lindera_analysis::token_filter::japanese_stop_tags::JapaneseStopTagsTokenFilter;
+    use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
@@ -342,7 +348,7 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --features=embed-ipadic,analysis --example=tokenize_with_filters
+% cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_filters
 ```
 
 You can see the result as follows:
@@ -438,7 +444,7 @@ token_filters:
 ```rust
 use std::path::PathBuf;
 
-use lindera::tokenizer::TokenizerBuilder;
+use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {

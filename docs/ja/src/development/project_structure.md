@@ -10,6 +10,7 @@ lindera/
 ├── lindera-dictionary/     # Dictionary base library
 ├── lindera-trainer/        # CRF ベースの辞書学習
 ├── lindera/                # Core morphological analysis library
+├── lindera-analysis/       # 分析チェーン（character/token filter・tokenizer）
 ├── lindera-cli/            # CLI tool
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)

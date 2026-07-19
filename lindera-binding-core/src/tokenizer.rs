@@ -1,8 +1,8 @@
 //! Shared tokenizer build-flow orchestration for the bindings.
 //!
 //! Each binding's tokenizer wrapper reimplements the same flow: configure a
-//! [`lindera::tokenizer::TokenizerBuilder`], build a
-//! [`lindera::tokenizer::Tokenizer`], and convert the resulting tokens. This
+//! [`lindera_analysis::tokenizer::TokenizerBuilder`], build a
+//! [`lindera_analysis::tokenizer::Tokenizer`], and convert the resulting tokens. This
 //! module collects that orchestration into [`CoreTokenizerBuilder`] and
 //! [`CoreTokenizer`], leaving each binding to do only its FFI-value conversion
 //! (`serde_json::Value` ⇔ the host language's argument type) and a thin wrapper.
@@ -15,14 +15,14 @@ use serde_json::Value;
 use lindera::dictionary::{Dictionary, UserDictionary};
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::{Tokenizer, TokenizerBuilder};
+use lindera_analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 
 use crate::error::CoreResult;
 use crate::token::TokenView;
 
 /// Builder that orchestrates tokenizer configuration on behalf of the bindings.
 ///
-/// Wraps [`lindera::tokenizer::TokenizerBuilder`]; filter arguments are passed
+/// Wraps [`lindera_analysis::tokenizer::TokenizerBuilder`]; filter arguments are passed
 /// as [`serde_json::Value`] so the FFI-specific value conversion stays in each
 /// binding.
 pub struct CoreTokenizerBuilder {
@@ -92,7 +92,7 @@ impl CoreTokenizerBuilder {
 
 /// Tokenizer that orchestrates tokenization on behalf of the bindings.
 ///
-/// Wraps [`lindera::tokenizer::Tokenizer`] and returns owned [`TokenView`]s so
+/// Wraps [`lindera_analysis::tokenizer::Tokenizer`] and returns owned [`TokenView`]s so
 /// the bindings never handle borrowed `lindera` tokens directly.
 pub struct CoreTokenizer {
     /// The backing lindera tokenizer.

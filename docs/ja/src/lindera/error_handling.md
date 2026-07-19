@@ -66,7 +66,7 @@ Lindera の関数は `LinderaResult` を返すため、`?` 演算子で自然に
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn analyze(text: &str) -> LinderaResult<Vec<String>> {

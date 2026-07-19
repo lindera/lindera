@@ -1,0 +1,51 @@
+[package]
+name = "lindera-analysis"
+version = { workspace = true }
+edition = { workspace = true }
+description = "Text analysis chain (character filters, token filters, tokenizer) for Lindera."
+documentation = "https://docs.rs/lindera-analysis"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "tokenizer", "filter"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[features]
+embed-ipadic = [
+    "lindera/embed-ipadic",
+] # Embed IPADIC dictionary in the binary
+embed-ipadic-neologd = [
+    "lindera/embed-ipadic-neologd",
+] # Embed IPADIC-NEologd dictionary in the binary
+embed-unidic = [
+    "lindera/embed-unidic",
+] # Embed UniDic dictionary in the binary
+embed-ko-dic = [
+    "lindera/embed-ko-dic",
+] # Embed ko-dic dictionary in the binary
+embed-cc-cedict = [
+    "lindera/embed-cc-cedict",
+] # Embed CC-CEDICT dictionary in the binary
+embed-jieba = [
+    "lindera/embed-jieba",
+] # Embed Jieba dictionary in the binary
+default = []
+
+[dependencies]
+anyhow = { workspace = true }
+daachorse = { workspace = true }
+kanaria = "0.2.0"
+lindera = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml_ng = "0.10.0"
+unicode-blocks = "0.1.9"
+unicode-normalization = "0.1.25"
+unicode-segmentation = "1.13.3"
+
+[dev-dependencies]
+lindera-dictionary = { workspace = true }
+once_cell = { workspace = true }
+serde_json = { workspace = true }

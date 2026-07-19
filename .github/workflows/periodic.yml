@@ -231,6 +231,25 @@ jobs:
       - name: Run test
         run: cargo test -p lindera --features embed-ipadic,embed-ko-dic,train --target "${{ matrix.platform.target }}"
 
+  test-lindera-analysis:
+    name: Test lindera-analysis (${{ matrix.toolchain }})
+    needs: [test-lindera]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-analysis --features embed-ipadic,embed-ko-dic
+
   test-lindera-cli:
     name: Test lindera-cli (${{ matrix.toolchain }})
     needs: [test-lindera]

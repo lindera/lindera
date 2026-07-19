@@ -7,17 +7,13 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | Feature | Description | Default |
 | --- | --- | --- |
 | `mmap` | Memory-mapped file support | Yes |
-| `analysis` | Analysis chain: character filters, token filters, and the `Tokenizer` | No |
 | `train` | CRF-based dictionary training (depends on `lindera-trainer`) | CLI only |
 
 - `mmap` is enabled by default in the main `lindera` crate.
-- `analysis` is NOT enabled by default (as of v5.0): the default build is a
-  pure segmenter around the `Segmenter` API — useful when Lindera is used as
-  a segmentation backend behind an external analysis pipeline. Enabling
-  `analysis` adds the `character_filter`, `token_filter`, and `tokenizer`
-  modules together with their dependencies (kanaria, regex, serde_yaml_ng,
-  unicode-blocks, unicode-normalization, unicode-segmentation, and the
-  filter usage of daachorse).
+- The analysis chain (character filters, token filters, and the `Tokenizer`)
+  is not a feature of this crate: as of v5.0 it lives in the companion
+  `lindera-analysis` crate. The `lindera` crate itself is a pure segmenter
+  around the `Segmenter` API.
 - `train` is enabled by default only in `lindera-cli`. For library usage, enable it explicitly with `--features train`.
 
 ## Using External Dictionaries (Recommended)

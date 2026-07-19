@@ -63,15 +63,15 @@ character_filters:
 キャラクターフィルターはプログラムから作成して`Tokenizer`に追加できます：
 
 ```rust
-use lindera::character_filter::BoxCharacterFilter;
-use lindera::character_filter::unicode_normalize::{
+use lindera_analysis::character_filter::BoxCharacterFilter;
+use lindera_analysis::character_filter::unicode_normalize::{
     UnicodeNormalizeCharacterFilter, UnicodeNormalizeKind,
 };
-use lindera::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
+use lindera_analysis::character_filter::japanese_iteration_mark::JapaneseIterationMarkCharacterFilter;
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer;
+use lindera_analysis::tokenizer::Tokenizer;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {

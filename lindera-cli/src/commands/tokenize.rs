@@ -4,12 +4,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use lindera::LinderaResult;
-use lindera::character_filter::CharacterFilterLoader;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
-use lindera::token_filter::TokenFilterLoader;
-use lindera::tokenizer::TokenizerBuilder;
+use lindera_analysis::character_filter::CharacterFilterLoader;
+use lindera_analysis::token_filter::TokenFilterLoader;
+use lindera_analysis::tokenizer::TokenizerBuilder;
 use lindera_cli::get_version;
 
 use super::io_err;
