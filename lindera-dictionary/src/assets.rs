@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::ffi::OsString;
 use std::fs::{self, File, rename};
 use std::io::{self, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
@@ -319,19 +320,64 @@ async fn download_with_retry(
     Err("Failed to download a valid file from all sources".into())
 }
 
+/// Environment variable that designates the dictionary build cache directory.
+const CACHE_DIR_ENV: &str = "LINDERA_BUILD_DICTIONARY_CACHE_DIR";
+
+/// Deprecated alias of [`CACHE_DIR_ENV`], kept as a fallback for backward
+/// compatibility. It will be removed in v6.0.0.
+const CACHE_DIR_ENV_DEPRECATED: &str = "LINDERA_DICTIONARIES_PATH";
+
+/// Selects the cache directory from the new and deprecated variable values.
+/// The new name takes precedence when both are set.
+///
+/// # Arguments
+///
+/// * `new` - Value of [`CACHE_DIR_ENV`], if set.
+/// * `deprecated` - Value of [`CACHE_DIR_ENV_DEPRECATED`], if set.
+///
+/// # Returns
+///
+/// The cache directory to use, or `None` when neither variable is set.
+fn resolve_cache_dir(new: Option<OsString>, deprecated: Option<OsString>) -> Option<OsString> {
+    new.or(deprecated)
+}
+
+/// Reads the dictionary build cache directory from the environment,
+/// honoring the deprecated variable name as a fallback.
+///
+/// # Returns
+///
+/// The configured cache directory, or `None` when neither
+/// [`CACHE_DIR_ENV`] nor [`CACHE_DIR_ENV_DEPRECATED`] is set.
+fn dictionary_cache_dir_from_env() -> Option<OsString> {
+    resolve_cache_dir(
+        std::env::var_os(CACHE_DIR_ENV),
+        std::env::var_os(CACHE_DIR_ENV_DEPRECATED),
+    )
+}
+
 /// Fetch the necessary assets and then build the dictionary using `builder`
 pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
-    println!("cargo:rerun-if-env-changed=LINDERA_DICTIONARIES_PATH");
+    println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}");
+    println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV_DEPRECATED}");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
 
+    if std::env::var_os(CACHE_DIR_ENV).is_none()
+        && std::env::var_os(CACHE_DIR_ENV_DEPRECATED).is_some()
+    {
+        println!(
+            "cargo:warning={CACHE_DIR_ENV_DEPRECATED} is deprecated and will be removed in v6.0.0; use {CACHE_DIR_ENV} instead"
+        );
+    }
+
     // Directory path for build package
-    // if the `LINDERA_DICTS` variable is defined, behaves like a cache, where data is invalidated only:
+    // if the cache directory variable is defined, behaves like a cache, where data is invalidated only:
     // - on new lindera-assets version
-    // - if the LINDERA_DICTS dir changed
+    // - if the cache directory changed
     // otherwise, keeps behavior of always redownloading and rebuilding
-    let (build_dir, is_cache) = if let Some(path) = std::env::var_os("LINDERA_DICTIONARIES_PATH") {
+    let (build_dir, is_cache) = if let Some(path) = dictionary_cache_dir_from_env() {
         let mut cache_dir = PathBuf::from(path);
         if !cache_dir.is_absolute()
             && let Ok(current_dir) = std::env::current_dir()
@@ -589,13 +635,14 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
 /// `LINDERA_WORKDIR`.
 ///
 /// When the crate's embed feature is disabled (`embed_enabled == false`) and
-/// no cache override is set via `LINDERA_DICTIONARIES_PATH`, this is a no-op so
-/// the crate builds without downloading any data.
+/// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (or its
+/// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
+/// crate builds without downloading any data.
 pub async fn build_embedded_dictionary(
     embed_enabled: bool,
     params: FetchParams,
 ) -> Result<(), Box<dyn Error>> {
-    if std::env::var_os("LINDERA_DICTIONARIES_PATH").is_none() && !embed_enabled {
+    if dictionary_cache_dir_from_env().is_none() && !embed_enabled {
         return Ok(());
     }
 
@@ -610,6 +657,28 @@ pub async fn build_embedded_dictionary(
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsString;
+
+    #[test]
+    fn resolve_cache_dir_prefers_new_name() {
+        let result = super::resolve_cache_dir(
+            Some(OsString::from("/new")),
+            Some(OsString::from("/deprecated")),
+        );
+        assert_eq!(result, Some(OsString::from("/new")));
+    }
+
+    #[test]
+    fn resolve_cache_dir_falls_back_to_deprecated_name() {
+        let result = super::resolve_cache_dir(None, Some(OsString::from("/deprecated")));
+        assert_eq!(result, Some(OsString::from("/deprecated")));
+    }
+
+    #[test]
+    fn resolve_cache_dir_returns_none_when_unset() {
+        assert_eq!(super::resolve_cache_dir(None, None), None);
+    }
+
     use super::*;
 
     #[test]

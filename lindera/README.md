@@ -476,22 +476,35 @@ fn main() -> LinderaResult<()> {
 
 ## Environment Variables
 
-### LINDERA_DICTIONARIES_PATH
+### LINDERA_BUILD_DICTIONARY_CACHE_DIR
 
-The `LINDERA_DICTIONARIES_PATH` environment variable specifies a directory for caching dictionary source files. This enables:
+The `LINDERA_BUILD_DICTIONARY_CACHE_DIR` environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.
 
-- **Offline builds**: Once downloaded, dictionary source files are preserved for future builds
-- **Faster builds**: Subsequent builds skip downloading if valid cached files exist
-- **Reproducible builds**: Ensures consistent dictionary versions across builds
+When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>/` (where `<version>` is the dictionary crate version):
+
+- the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)
+- the built binary dictionary that gets embedded into the crate
+
+This enables:
+
+- **Offline builds**: once cached, subsequent builds need no network access
+- **Faster builds**: download and dictionary build are skipped when valid cached files exist
+- **Reproducible builds**: consistent dictionary versions across builds
 
 Usage:
 
 ```shell
-export LINDERA_DICTIONARIES_PATH=/path/to/cache
-cargo build --features=ipadic
+export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
+cargo build --features=embed-ipadic
 ```
 
-When set, dictionary source files are stored in `$LINDERA_DICTIONARIES_PATH/<version>/` where `<version>` is the lindera-dictionary crate version. The cache validates files using MD5 checksums - invalid files are automatically re-downloaded.
+Notes:
+
+- The directory is managed automatically and is safe to delete; contents are re-downloaded and rebuilt as needed
+- Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
+- Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
+
+> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in v6.0.0.
 
 ### LINDERA_CONFIG_PATH
 

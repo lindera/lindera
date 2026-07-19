@@ -328,7 +328,7 @@ jobs:
 
       - name: Build dictionary
         run: |
-          LINDERA_DICTIONARIES_PATH=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
+          LINDERA_BUILD_DICTIONARY_CACHE_DIR=dictionaries cargo build -p ${{ matrix.dictionary.name }} --features ${{ matrix.dictionary.feature }}
 
       - name: Get version
         id: get_version
