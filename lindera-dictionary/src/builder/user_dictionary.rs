@@ -69,7 +69,9 @@ impl UserDictionaryBuilder {
             })?;
             rows.push(record);
         }
-        rows.sort_by_key(|row| row[0].to_string());
+        // The cached variant computes the allocating surface key once per row
+        // instead of once per comparison.
+        rows.sort_by_cached_key(|row| row[0].to_string());
 
         let mut word_entry_map: BTreeMap<String, Vec<WordEntry>> = BTreeMap::new();
 
