@@ -69,9 +69,11 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         apply_tag_filter(tokens, &self.tags, TagPolicy::Remove, |token| {
             let details = token.details();
-            // If the length of the details is greater than or equal to 4,
-            // the tag length is 4, otherwise 1 is assigned to tags_len.
-            let tags_len = if details.len() >= 4 { 4 } else { 1 };
+            // Use up to the first 4 part-of-speech levels as the tag. When fewer
+            // details are available (e.g. a token whose details were left empty),
+            // use only what is present. `min` also keeps the slice in bounds for
+            // empty details, which would otherwise panic.
+            let tags_len = details.len().min(4);
             // Make a string of the part-of-speech tags.
             details[0..tags_len].join(",")
         });
@@ -368,5 +370,43 @@ mod tests {
         assert_eq!(&tokens[1].surface, "もも");
         assert_eq!(&tokens[2].surface, "もも");
         assert_eq!(&tokens[3].surface, "うち");
+    }
+
+    // Regression test for https://github.com/lindera/lindera/issues/438:
+    // a token with empty details must not cause an out-of-range panic when the
+    // filter builds its part-of-speech tag key.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_stop_tags_empty_details_no_panic() {
+        use std::borrow::Cow;
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = JapaneseStopTagsTokenFilter::new(HashSet::new());
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("テスト"),
+            byte_start: 0,
+            byte_end: 9,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 0),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            // Details were explicitly left empty; this is what triggered the panic.
+            details: Some(vec![]),
+        }];
+
+        // Must not panic. The empty tag matches no stop tag, so the token is kept.
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "テスト");
     }
 }
