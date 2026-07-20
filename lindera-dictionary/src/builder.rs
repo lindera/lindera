@@ -32,10 +32,50 @@ impl DictionaryBuilder {
         Self { metadata }
     }
 
+    /// Build all dictionary artifacts from `input_dir` into `output_dir`.
+    ///
+    /// The independent stages run concurrently on non-wasm targets and
+    /// sequentially on wasm (which has no OS threads). The output files are
+    /// identical regardless of the path taken.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Directory containing the source dictionary files.
+    /// * `output_dir` - Directory to write the built artifacts into.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or the first stage error in stage order.
     pub fn build_dictionary(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
         fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
+        #[cfg(not(target_family = "wasm"))]
+        {
+            self.build_dictionary_parallel(input_dir, output_dir)
+        }
+        #[cfg(target_family = "wasm")]
+        {
+            self.build_dictionary_sequential(input_dir, output_dir)
+        }
+    }
+
+    /// Build every stage sequentially.
+    ///
+    /// Used on wasm targets, and as the reference ordering: metadata,
+    /// character definition, unknown dictionary, prefix dictionary, then
+    /// connection cost matrix.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Directory containing the source dictionary files.
+    /// * `output_dir` - Directory to write the built artifacts into.
+    #[cfg(target_family = "wasm")]
+    fn build_dictionary_sequential(
+        &self,
+        input_dir: &Path,
+        output_dir: &Path,
+    ) -> LinderaResult<()> {
         self.build_metadata(output_dir)?;
         let chardef = self.build_character_definition(input_dir, output_dir)?;
         self.build_unknown_dictionary(input_dir, output_dir, &chardef)?;
@@ -43,6 +83,55 @@ impl DictionaryBuilder {
         self.build_connection_cost_matrix(input_dir, output_dir)?;
 
         Ok(())
+    }
+
+    /// Build the four independent stage chains concurrently.
+    ///
+    /// The only data dependency is `character definition -> unknown
+    /// dictionary`; the metadata, prefix dictionary, and connection cost matrix
+    /// stages are independent and write disjoint files, so each chain runs on
+    /// its own scoped thread. All threads are joined before results are
+    /// inspected, and the earliest failure in stage order is returned so the
+    /// result matches the sequential fail-fast order; a panicked stage is
+    /// re-raised rather than swallowed.
+    ///
+    /// Peak memory is higher than the sequential path, since the working sets
+    /// of the concurrent stages (most notably the prefix dictionary and
+    /// connection cost matrix) are held at the same time.
+    ///
+    /// # Arguments
+    ///
+    /// * `input_dir` - Directory containing the source dictionary files.
+    /// * `output_dir` - Directory to write the built artifacts into.
+    #[cfg(not(target_family = "wasm"))]
+    fn build_dictionary_parallel(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+        std::thread::scope(|scope| {
+            let metadata = scope.spawn(move || self.build_metadata(output_dir));
+            let unknown = scope.spawn(move || {
+                let chardef = self.build_character_definition(input_dir, output_dir)?;
+                self.build_unknown_dictionary(input_dir, output_dir, &chardef)
+            });
+            let prefix = scope.spawn(move || self.build_prefix_dictionary(input_dir, output_dir));
+            let matrix =
+                scope.spawn(move || self.build_connection_cost_matrix(input_dir, output_dir));
+
+            // Join all stages, then report the earliest failure in stage order.
+            let results = [
+                metadata.join(),
+                unknown.join(),
+                prefix.join(),
+                matrix.join(),
+            ];
+            for result in results {
+                match result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(err)) => return Err(err),
+                    Err(panic) => std::panic::resume_unwind(panic),
+                }
+            }
+
+            Ok(())
+        })
     }
 
     pub fn build_metadata(&self, output_dir: &Path) -> LinderaResult<()> {
