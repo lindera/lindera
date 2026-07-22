@@ -39,5 +39,6 @@
       "part_of_speech",
       "reading"
     ]
-  }
+  },
+  "connection_id_mapping": true
 }

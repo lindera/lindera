@@ -47,6 +47,9 @@ embed-cjk3 = [
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
 train = ["dep:lindera-trainer"] # Enable training functionality
+# Experimental: profile per-context-id connection-matrix access frequency over a
+# corpus (see the `ctxfreq-dump` example). Off by default.
+ctxfreq = ["lindera-dictionary/ctxfreq"]
 default = ["mmap"]
 
 [dependencies]

@@ -2,11 +2,13 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
+use crate::builder::context_id_remap::ContextIdRemap;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::error::LinderaErrorKind;
@@ -18,6 +20,10 @@ use crate::util::{read_file_with_encoding, write_data};
 pub struct UnknownDictionaryBuilder {
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
+    /// Optional connection-cost context-ID remap, applied to each unknown-word
+    /// entry's `left_id`/`right_id` so they match the remapped connection matrix.
+    #[builder(default = "None")]
+    context_id_remap: Option<Arc<ContextIdRemap>>,
 }
 
 impl UnknownDictionaryBuilder {
@@ -30,7 +36,11 @@ impl UnknownDictionaryBuilder {
         let unk_data_path = input_dir.join("unk.def");
         debug!("reading {unk_data_path:?}");
         let unk_data = read_file_with_encoding(&unk_data_path, &self.encoding)?;
-        let unknown_dictionary = parse_unk(chardef.categories(), &unk_data)?;
+        let unknown_dictionary = parse_unk(
+            chardef.categories(),
+            &unk_data,
+            self.context_id_remap.as_deref(),
+        )?;
 
         let mut unk_buffer = Vec::new();
         let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&unknown_dictionary).map_err(|err| {

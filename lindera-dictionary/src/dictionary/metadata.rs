@@ -25,15 +25,21 @@ pub struct ModelInfo {
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct Metadata {
-    pub name: String,                   // Name of the dictionary
-    pub encoding: String,               // Character encoding
-    pub default_word_cost: i16,         // Word cost for simple user dictionary
-    pub default_left_context_id: u16,   // Context ID for simple user dictionary
-    pub default_right_context_id: u16,  // Context ID for simple user dictionary
-    pub default_field_value: String,    // Default value for fields in simple user dictionary
-    pub flexible_csv: bool,             // Handle CSV columns flexibly
-    pub skip_invalid_cost_or_id: bool,  // Skip invalid cost or ID
-    pub normalize_details: bool,        // Normalize characters
+    pub name: String,                  // Name of the dictionary
+    pub encoding: String,              // Character encoding
+    pub default_word_cost: i16,        // Word cost for simple user dictionary
+    pub default_left_context_id: u16,  // Context ID for simple user dictionary
+    pub default_right_context_id: u16, // Context ID for simple user dictionary
+    pub default_field_value: String,   // Default value for fields in simple user dictionary
+    pub flexible_csv: bool,            // Handle CSV columns flexibly
+    pub skip_invalid_cost_or_id: bool, // Skip invalid cost or ID
+    pub normalize_details: bool,       // Normalize characters
+    /// Reorder connection-cost context IDs by frequency at build time so that
+    /// frequently-used connection-matrix cells cluster in cache. Optional and
+    /// defaults to `false`; when `false` the field is omitted from `metadata.json`
+    /// so existing files stay byte-identical, and the build output is unchanged.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub connection_id_mapping: bool,
     pub dictionary_schema: Schema,      // Schema for the dictionary
     pub user_dictionary_schema: Schema, // Schema for user dictionary
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -89,6 +95,7 @@ impl Metadata {
             flexible_csv,
             skip_invalid_cost_or_id,
             normalize_details,
+            connection_id_mapping: false,
             user_dictionary_schema: userdic_schema,
             model_info: None,
         }

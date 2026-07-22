@@ -1,5 +1,6 @@
 pub mod character_definition;
 pub mod connection_cost_matrix;
+pub mod context_id_remap;
 pub mod metadata;
 pub mod prefix_dictionary;
 pub mod unknown_dictionary;
@@ -7,11 +8,13 @@ pub mod user_dictionary;
 
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use csv::StringRecord;
 
 use self::character_definition::CharacterDefinitionBuilderOptions;
 use self::connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
+use self::context_id_remap::{ContextIdRemap, compute_context_id_remap};
 use self::metadata::MetadataBuilder;
 use self::prefix_dictionary::PrefixDictionaryBuilderOptions;
 use self::unknown_dictionary::UnknownDictionaryBuilderOptions;
@@ -25,11 +28,34 @@ use crate::error::LinderaErrorKind;
 #[derive(Clone)]
 pub struct DictionaryBuilder {
     metadata: Metadata,
+    /// Optional path to a bundled context-ID access-frequency histogram, used to
+    /// rank context IDs when `metadata.connection_id_mapping` is enabled. Shipped
+    /// alongside `metadata.json` in the dictionary crate; see
+    /// [`context_id_remap::compute_context_id_remap`] for the precedence rules.
+    context_id_freq: Option<std::path::PathBuf>,
 }
 
 impl DictionaryBuilder {
     pub fn new(metadata: Metadata) -> Self {
-        Self { metadata }
+        Self {
+            metadata,
+            context_id_freq: None,
+        }
+    }
+
+    /// Attach a bundled context-ID frequency histogram used for the connection-cost
+    /// remap ranking.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Histogram file (as produced by the `ctxfreq` instrumentation).
+    ///
+    /// # Returns
+    ///
+    /// The builder with the frequency source attached.
+    pub fn with_context_id_freq(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.context_id_freq = Some(path.into());
+        self
     }
 
     /// Build all dictionary artifacts from `input_dir` into `output_dir`.
@@ -50,13 +76,26 @@ impl DictionaryBuilder {
         fs::create_dir_all(output_dir)
             .map_err(|err| LinderaErrorKind::Io.with_error(anyhow::anyhow!(err)))?;
 
+        // Compute the connection-cost context-ID remap ONCE, serially, before the
+        // independent stages start, so the prefix / unknown / matrix stages all apply
+        // the same permutations. `None` (flag off) keeps every stage byte-identical.
+        let remap: Option<Arc<ContextIdRemap>> = if self.metadata.connection_id_mapping {
+            Some(Arc::new(compute_context_id_remap(
+                input_dir,
+                &self.metadata,
+                self.context_id_freq.as_deref(),
+            )?))
+        } else {
+            None
+        };
+
         #[cfg(not(target_family = "wasm"))]
         {
-            self.build_dictionary_parallel(input_dir, output_dir)
+            self.build_dictionary_parallel(input_dir, output_dir, remap.as_ref())
         }
         #[cfg(target_family = "wasm")]
         {
-            self.build_dictionary_sequential(input_dir, output_dir)
+            self.build_dictionary_sequential(input_dir, output_dir, remap.as_ref())
         }
     }
 
@@ -75,12 +114,13 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
+        remap: Option<&Arc<ContextIdRemap>>,
     ) -> LinderaResult<()> {
         self.build_metadata(output_dir)?;
         let chardef = self.build_character_definition(input_dir, output_dir)?;
-        self.build_unknown_dictionary(input_dir, output_dir, &chardef)?;
-        self.build_prefix_dictionary(input_dir, output_dir)?;
-        self.build_connection_cost_matrix(input_dir, output_dir)?;
+        self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())?;
+        self.build_prefix_dictionary(input_dir, output_dir, remap.cloned())?;
+        self.build_connection_cost_matrix(input_dir, output_dir, remap.cloned())?;
 
         Ok(())
     }
@@ -104,16 +144,23 @@ impl DictionaryBuilder {
     /// * `input_dir` - Directory containing the source dictionary files.
     /// * `output_dir` - Directory to write the built artifacts into.
     #[cfg(not(target_family = "wasm"))]
-    fn build_dictionary_parallel(&self, input_dir: &Path, output_dir: &Path) -> LinderaResult<()> {
+    fn build_dictionary_parallel(
+        &self,
+        input_dir: &Path,
+        output_dir: &Path,
+        remap: Option<&Arc<ContextIdRemap>>,
+    ) -> LinderaResult<()> {
         std::thread::scope(|scope| {
             let metadata = scope.spawn(move || self.build_metadata(output_dir));
             let unknown = scope.spawn(move || {
                 let chardef = self.build_character_definition(input_dir, output_dir)?;
-                self.build_unknown_dictionary(input_dir, output_dir, &chardef)
+                self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())
             });
-            let prefix = scope.spawn(move || self.build_prefix_dictionary(input_dir, output_dir));
-            let matrix =
-                scope.spawn(move || self.build_connection_cost_matrix(input_dir, output_dir));
+            let prefix = scope
+                .spawn(move || self.build_prefix_dictionary(input_dir, output_dir, remap.cloned()));
+            let matrix = scope.spawn(move || {
+                self.build_connection_cost_matrix(input_dir, output_dir, remap.cloned())
+            });
 
             // Join all stages, then report the earliest failure in stage order.
             let results = [
@@ -155,9 +202,11 @@ impl DictionaryBuilder {
         input_dir: &Path,
         output_dir: &Path,
         chardef: &CharacterDefinition,
+        remap: Option<Arc<ContextIdRemap>>,
     ) -> LinderaResult<()> {
         UnknownDictionaryBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
+            .context_id_remap(remap)
             .builder()
             .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, chardef, output_dir)
@@ -167,6 +216,7 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
+        remap: Option<Arc<ContextIdRemap>>,
     ) -> LinderaResult<()> {
         PrefixDictionaryBuilderOptions::default()
             .flexible_csv(self.metadata.flexible_csv)
@@ -174,6 +224,7 @@ impl DictionaryBuilder {
             .skip_invalid_cost_or_id(self.metadata.skip_invalid_cost_or_id)
             .normalize_details(self.metadata.normalize_details)
             .schema(self.metadata.dictionary_schema.clone())
+            .context_id_remap(remap)
             .builder()
             .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
@@ -183,9 +234,11 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
+        remap: Option<Arc<ContextIdRemap>>,
     ) -> LinderaResult<()> {
         ConnectionCostMatrixBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
+            .context_id_remap(remap)
             .builder()
             .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)

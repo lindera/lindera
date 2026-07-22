@@ -360,6 +360,11 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
 pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
+    // `metadata.json` drives build-time behavior (schema, flags such as
+    // `connection_id_mapping`), so a change to it must rebuild the dictionary.
+    println!("cargo:rerun-if-changed=metadata.json");
+    println!("cargo:rerun-if-changed={CONTEXT_ID_FREQ_FILE}");
+    println!("cargo:rerun-if-env-changed=LINDERA_CTX_FREQ_FILE");
     println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV}");
     println!("cargo:rerun-if-env-changed={CACHE_DIR_ENV_DEPRECATED}");
     println!("cargo:rerun-if-env-changed=DOCS_RS");
@@ -630,6 +635,12 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
 
 /// Shared body of every per-dictionary crate's `build.rs`.
 ///
+/// Name of the optional per-dictionary context-ID access-frequency histogram,
+/// shipped in the dictionary crate root next to `metadata.json`. Produced by the
+/// `ctxfreq` instrumentation (see the `ctxfreq_dump` example) and consumed when
+/// `connection_id_mapping` is enabled.
+const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
+
 /// Reads `metadata.json` from the crate root, fetches and builds the
 /// dictionary described by `params`, and embeds the result under
 /// `LINDERA_WORKDIR`.
@@ -648,7 +659,13 @@ pub async fn build_embedded_dictionary(
 
     let metadata_json = fs::read_to_string("metadata.json")?;
     let metadata: crate::dictionary::metadata::Metadata = serde_json::from_str(&metadata_json)?;
-    let builder = DictionaryBuilder::new(metadata);
+    let mut builder = DictionaryBuilder::new(metadata);
+
+    // A dictionary crate may ship a context-ID access-frequency histogram next to
+    // `metadata.json`; it is what makes `connection_id_mapping` actually pay off.
+    if std::path::Path::new(CONTEXT_ID_FREQ_FILE).is_file() {
+        builder = builder.with_context_id_freq(CONTEXT_ID_FREQ_FILE);
+    }
 
     fetch(params, builder).await?;
 
