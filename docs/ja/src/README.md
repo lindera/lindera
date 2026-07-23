@@ -38,13 +38,15 @@ graph LR
 | セクション | 説明 |
 | --- | --- |
 | [はじめに](./getting_started.md) | インストール、クイックスタート、サンプル |
-| [辞書](./dictionaries.md) | 利用可能な辞書とその使い方 |
-| [設定](./configuration.md) | YAMLベースのトークナイザー設定 |
-| [応用的な使い方](./advanced_usage.md) | ユーザー辞書、フィルター、CRF学習 |
-| [CLI](./cli.md) | コマンドラインインターフェースリファレンス |
+| [辞書](./concepts/dictionaries.md) | 利用可能な辞書とその使い方 |
+| [設定](./lindera-analysis/configuration.md) | YAMLベースのトークナイザー設定 |
+| [ユーザー辞書](./concepts/user_dictionary.md) | カスタムユーザー辞書の作成と利用 |
+| [フィルター](./lindera-analysis/filters.md) | キャラクターフィルターとトークンフィルターのリファレンス |
+| [CRF学習](./development/training_pipeline.md) | 辞書コスト推定モデルのカスタム学習 |
+| [CLI](./lindera-cli.md) | コマンドラインインターフェースリファレンス |
 | [アーキテクチャ](./architecture.md) | クレート構成と設計の概要 |
-| [APIリファレンス](./api_reference.md) | Rust APIドキュメント |
-| [コントリビュート](./contributing.md) | Linderaへの貢献方法 |
+| [APIリファレンス](./lindera/api_reference.md) | Rust APIドキュメント |
+| [コントリビュート](./development/contributing.md) | Linderaへの貢献方法 |
 
 ## クイック例
 

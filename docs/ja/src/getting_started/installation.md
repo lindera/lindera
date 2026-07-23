@@ -70,7 +70,7 @@ cargo build --features=embed-ipadic
 export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
-設定フォーマットの詳細は [設定](./configuration.md) セクションを参照してください。
+設定フォーマットの詳細は [設定](../lindera-analysis/configuration.md) セクションを参照してください。
 
 ### DOCS_RS
 

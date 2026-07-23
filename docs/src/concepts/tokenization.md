@@ -53,6 +53,14 @@ echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embe
 echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic --mode decompose
 ```
 
+> [!NOTE]
+> The `embedded://` scheme requires `lindera-cli` to be built with the
+> corresponding `embed-*` feature (e.g.
+> `cargo install lindera-cli --features=embed-ipadic`). A default build of
+> `lindera-cli` does not enable any `embed-*` feature, and passing
+> `--dict embedded://ipadic` without it fails with
+> `Invalid dictionary scheme: embedded`.
+
 ## N-Best tokenization
 
 N-Best tokenization enumerates the top N tokenization candidates ordered by total path cost (lower cost = better segmentation). This is useful when the best result is ambiguous, or when you want to explore alternative interpretations of the input text.
@@ -106,7 +114,7 @@ fn main() -> LinderaResult<()> {
 Output:
 
 ```text
---- NBEST 1 (cost=7546) ---
+--- NBEST 1 (cost=21245) ---
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
@@ -114,7 +122,7 @@ Output:
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
---- NBEST 2 (cost=7914) ---
+--- NBEST 2 (cost=24541) ---
 ...
 ```
 

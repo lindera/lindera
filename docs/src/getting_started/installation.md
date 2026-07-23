@@ -70,7 +70,7 @@ The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML conf
 export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
-See the [Configuration](../configuration.md) section for details on the configuration format.
+See the [Configuration](../lindera-analysis/configuration.md) section for details on the configuration format.
 
 ### DOCS_RS
 

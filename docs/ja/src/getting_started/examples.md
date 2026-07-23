@@ -2,7 +2,7 @@
 
 Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの [examplesディレクトリ](https://github.com/lindera/lindera/tree/main/lindera/examples) で確認できます。
 
-サンプルを実行する前に、[GitHub Releases](https://github.com/lindera/lindera/releases) からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリに展開してください。
+以下のサンプルはすべて `embed-ipadic` feature を有効にして実行します。この feature はビルド時にIPADIC辞書を自動的にダウンロードしてバイナリに埋め込むため、辞書を手動でダウンロードする必要はありません。
 
 ## 利用可能なサンプル
 

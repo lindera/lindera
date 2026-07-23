@@ -5,7 +5,7 @@ Lindera includes several example programs that demonstrate common use cases. The
 The `tokenize*` examples use the `Tokenizer` and filter APIs, which are
 provided by the `lindera-analysis` crate (as of v5.0).
 
-Before running the examples, download a pre-built IPADIC dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and extract it to a local directory.
+All examples below are run with the `embed-ipadic` feature enabled, which downloads the IPADIC dictionary and embeds it into the binary automatically at build time — no manual dictionary download is required.
 
 ## Available Examples
 
