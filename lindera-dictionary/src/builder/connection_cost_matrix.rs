@@ -10,7 +10,7 @@ use log::debug;
 use memchr::memchr;
 
 use crate::LinderaResult;
-use crate::builder::context_id_remap::ContextIdRemap;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file, write_data};
 
@@ -42,7 +42,7 @@ pub struct ConnectionCostMatrixBuilder {
     /// frequently-used cells cluster near the front of each row. `None` keeps the
     /// output byte-identical to the un-remapped build.
     #[builder(default = "None")]
-    context_id_remap: Option<Arc<ContextIdRemap>>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
 }
 
 impl ConnectionCostMatrixBuilder {
@@ -338,7 +338,7 @@ fn parse_data_line(
     line: &[u8],
     forward_size: u32,
     costs_len: usize,
-    remap: Option<&ContextIdRemap>,
+    remap: Option<&ContextIdMap>,
 ) -> LinderaResult<Option<(usize, i16)>> {
     let mut pos = 0;
     let Some(forward_id) = next_int(line, &mut pos) else {
@@ -391,7 +391,7 @@ fn fill_costs_sequential(
     data: &[u8],
     forward_size: u32,
     costs: &mut [i16],
-    remap: Option<&ContextIdRemap>,
+    remap: Option<&ContextIdMap>,
 ) -> LinderaResult<()> {
     let costs_len = costs.len();
     let mut pos = 0;
@@ -425,7 +425,7 @@ fn fill_costs_parallel(
     data: &[u8],
     forward_size: u32,
     costs: &mut [i16],
-    remap: Option<&ContextIdRemap>,
+    remap: Option<&ContextIdMap>,
 ) -> LinderaResult<()> {
     use rayon::prelude::*;
 
@@ -480,7 +480,7 @@ fn parse_chunk(
     chunk: &[u8],
     forward_size: u32,
     costs_len: usize,
-    remap: Option<&ContextIdRemap>,
+    remap: Option<&ContextIdMap>,
 ) -> LinderaResult<Vec<(usize, i16)>> {
     let mut out = Vec::with_capacity(chunk.len() / 8);
     let mut pos = 0;

@@ -252,7 +252,7 @@ fn make_category_references(
 
 fn make_costs_array(
     entries: &[UnknownDictionaryEntry],
-    remap: Option<&crate::builder::context_id_remap::ContextIdRemap>,
+    remap: Option<&crate::dictionary::context_id_map::ContextIdMap>,
 ) -> Vec<WordEntry> {
     entries
         .iter()
@@ -286,7 +286,7 @@ fn make_costs_array(
 pub fn parse_unk(
     categories: &[String],
     file_content: &str,
-    remap: Option<&crate::builder::context_id_remap::ContextIdRemap>,
+    remap: Option<&crate::dictionary::context_id_map::ContextIdMap>,
 ) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     let mut words_idx_data = Vec::new();

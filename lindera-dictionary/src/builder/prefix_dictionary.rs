@@ -18,7 +18,7 @@ use glob::glob;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::builder::context_id_remap::ContextIdRemap;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::write_data;
@@ -43,7 +43,7 @@ pub struct PrefixDictionaryBuilder {
     /// `left_id`/`right_id` is relabeled via `remap.left`/`remap.right` before the
     /// `WordEntry` is created, matching the remap applied to the connection matrix.
     #[builder(default = "None")]
-    context_id_remap: Option<Arc<ContextIdRemap>>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
 }
 
 impl PrefixDictionaryBuilder {

@@ -14,7 +14,7 @@ use csv::StringRecord;
 
 use self::character_definition::CharacterDefinitionBuilderOptions;
 use self::connection_cost_matrix::ConnectionCostMatrixBuilderOptions;
-use self::context_id_remap::{ContextIdRemap, compute_context_id_remap};
+use self::context_id_remap::compute_context_id_remap;
 use self::metadata::MetadataBuilder;
 use self::prefix_dictionary::PrefixDictionaryBuilderOptions;
 use self::unknown_dictionary::UnknownDictionaryBuilderOptions;
@@ -22,6 +22,7 @@ use self::user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary}
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
 
@@ -79,7 +80,7 @@ impl DictionaryBuilder {
         // Compute the connection-cost context-ID remap ONCE, serially, before the
         // independent stages start, so the prefix / unknown / matrix stages all apply
         // the same permutations. `None` (flag off) keeps every stage byte-identical.
-        let remap: Option<Arc<ContextIdRemap>> = if self.metadata.connection_id_mapping {
+        let remap: Option<Arc<ContextIdMap>> = if self.metadata.connection_id_mapping {
             Some(Arc::new(compute_context_id_remap(
                 input_dir,
                 &self.metadata,
@@ -114,9 +115,9 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-        remap: Option<&Arc<ContextIdRemap>>,
+        remap: Option<&Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
-        self.build_metadata(output_dir)?;
+        self.build_metadata(output_dir, remap)?;
         let chardef = self.build_character_definition(input_dir, output_dir)?;
         self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())?;
         self.build_prefix_dictionary(input_dir, output_dir, remap.cloned())?;
@@ -148,10 +149,10 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-        remap: Option<&Arc<ContextIdRemap>>,
+        remap: Option<&Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
         std::thread::scope(|scope| {
-            let metadata = scope.spawn(move || self.build_metadata(output_dir));
+            let metadata = scope.spawn(move || self.build_metadata(output_dir, remap));
             let unknown = scope.spawn(move || {
                 let chardef = self.build_character_definition(input_dir, output_dir)?;
                 self.build_unknown_dictionary(input_dir, output_dir, &chardef, remap.cloned())
@@ -181,8 +182,30 @@ impl DictionaryBuilder {
         })
     }
 
-    pub fn build_metadata(&self, output_dir: &Path) -> LinderaResult<()> {
-        MetadataBuilder::new().build(&self.metadata, output_dir)
+    /// Write `metadata.json`, embedding the context-ID permutation when one was applied.
+    ///
+    /// Persisting the permutation is what lets a user dictionary compiled later be
+    /// relabeled into the same ID space (see
+    /// [`crate::dictionary::UserDictionary::remap_context_ids`]). With no remap the
+    /// metadata is written unchanged, so the artifact stays byte-identical.
+    ///
+    /// # Arguments
+    ///
+    /// * `output_dir` - Directory to write `metadata.json` into.
+    /// * `remap` - The permutation applied by this build, if any.
+    pub fn build_metadata(
+        &self,
+        output_dir: &Path,
+        remap: Option<&Arc<ContextIdMap>>,
+    ) -> LinderaResult<()> {
+        match remap {
+            Some(map) => {
+                let mut metadata = self.metadata.clone();
+                metadata.context_id_map = Some(ContextIdMap::clone(map));
+                MetadataBuilder::new().build(&metadata, output_dir)
+            }
+            None => MetadataBuilder::new().build(&self.metadata, output_dir),
+        }
     }
 
     pub fn build_character_definition(
@@ -202,7 +225,7 @@ impl DictionaryBuilder {
         input_dir: &Path,
         output_dir: &Path,
         chardef: &CharacterDefinition,
-        remap: Option<Arc<ContextIdRemap>>,
+        remap: Option<Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
         UnknownDictionaryBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
@@ -216,7 +239,7 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-        remap: Option<Arc<ContextIdRemap>>,
+        remap: Option<Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
         PrefixDictionaryBuilderOptions::default()
             .flexible_csv(self.metadata.flexible_csv)
@@ -234,7 +257,7 @@ impl DictionaryBuilder {
         &self,
         input_dir: &Path,
         output_dir: &Path,
-        remap: Option<Arc<ContextIdRemap>>,
+        remap: Option<Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
         ConnectionCostMatrixBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
