@@ -31,7 +31,7 @@ User dictionaries add custom vocabulary on top of a system dictionary.
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $metadata = $dictionary->metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
+$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
 ```
 
 Pass the user dictionary when creating a tokenizer directly:
@@ -41,7 +41,7 @@ Pass the user dictionary when creating a tokenizer directly:
 
 $dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 $metadata = $dictionary->metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
+$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
 ```
@@ -52,10 +52,9 @@ Or via the builder:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder
-    ->setDictionary('/path/to/ipadic')
-    ->setUserDictionary('/path/to/user_dictionary')
-    ->build();
+$builder->setDictionary('/path/to/ipadic');
+$builder->setUserDictionary('/path/to/user_dictionary.csv');
+$tokenizer = $builder->build();
 ```
 
 ## Building Dictionaries
@@ -72,6 +71,28 @@ Lindera\Dictionary::build('/path/to/input_dir', '/path/to/output_dir', $metadata
 ```
 
 The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).
+
+Here is an example that downloads and builds the IPADIC dictionary:
+
+```php
+<?php
+
+$url = 'https://lindera.dev/mecab-ipadic-2.7.0-20070801.tar.gz';
+$filename = '/tmp/mecab-ipadic-2.7.0-20070801.tar.gz';
+
+// Download and extract dictionary source
+file_put_contents($filename, file_get_contents($url));
+$phar = new PharData($filename);
+$phar->extractTo('/tmp/', null, true);
+
+// Load metadata and build
+$metadata = Lindera\Metadata::fromJsonFile('resources/ipadic_metadata.json');
+Lindera\Dictionary::build(
+    '/tmp/mecab-ipadic-2.7.0-20070801',
+    '/tmp/lindera-ipadic',
+    $metadata
+);
+```
 
 ### User Dictionary
 
@@ -174,3 +195,35 @@ Retrieve the Lindera library version:
 
 echo Lindera\Dictionary::version();
 ```
+
+## Schema
+
+The `Lindera\Schema` class defines the field layout of a dictionary.
+
+### Creating a Schema
+
+```php
+<?php
+
+// Default schema (IPADIC-compatible)
+$schema = Lindera\Schema::createDefault();
+
+// Custom schema
+$schema = new Lindera\Schema(['surface', 'pos']);
+```
+
+### Schema Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `fieldCount()` | `int` | Returns the number of fields |
+| `getFieldIndex($name)` | `int` | Returns the field's index (`-1` if not found) |
+| `getFieldByName($name)` | `FieldDefinition\|null` | Returns the field's definition |
+| `getCustomFields()` | `array<string>` | Returns the custom field names |
+| `validateRecord($record)` | `void` | Validates that a record conforms to the schema |
+
+### Schema Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `$fields` | `array<string>` | The field names |

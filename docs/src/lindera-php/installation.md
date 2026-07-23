@@ -34,7 +34,7 @@ cargo build -p lindera-php
 Or use the project Makefile:
 
 ```bash
-make php-build
+make build-lindera-php
 ```
 
 ### Build with Training Support
@@ -49,7 +49,7 @@ cargo build -p lindera-php --features train
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `train` | CRF training functionality | Disabled |
+| `train` | CRF training functionality | Enabled (default) |
 | `embed-ipadic` | Embed Japanese dictionary (IPADIC) into the binary | Disabled |
 | `embed-unidic` | Embed Japanese dictionary (UniDic) into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed Japanese dictionary (IPADIC NEologd) into the binary | Disabled |

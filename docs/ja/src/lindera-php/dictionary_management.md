@@ -53,7 +53,7 @@ $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('/path/to/ipadic');
-$builder->setUserDictionary('/path/to/user_dictionary');
+$builder->setUserDictionary('/path/to/user_dictionary.csv');
 $tokenizer = $builder->build();
 ```
 
@@ -158,7 +158,7 @@ $schema = new Lindera\Schema(['surface', 'pos']);
 | --- | --- | --- |
 | `fieldCount()` | `int` | フィールド数を返す |
 | `getFieldIndex($name)` | `int` | フィールドのインデックスを返す（見つからない場合は `-1`） |
-| `getFieldByName($name)` | `Field` または `null` | フィールド情報を返す |
+| `getFieldByName($name)` | `FieldDefinition` または `null` | フィールド情報を返す |
 | `getCustomFields()` | `array<string>` | カスタムフィールド名の配列を返す |
 | `validateRecord($record)` | `void` | レコードがスキーマに適合するか検証する |
 

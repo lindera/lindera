@@ -18,8 +18,6 @@ $builder = new Lindera\TokenizerBuilder();
 
 ### 設定メソッド
 
-すべてのセッターメソッドはメソッドチェーンのために `$this` を返します。
-
 #### `setMode($mode)`
 
 トークナイズモードを設定します。
@@ -48,7 +46,7 @@ $builder->setDictionary('/path/to/dictionary');
 ユーザー辞書の URI を設定します。
 
 ```php
-$builder->setUserDictionary('/path/to/user_dictionary');
+$builder->setUserDictionary('/path/to/user_dictionary.csv');
 ```
 
 #### `setKeepWhitespace($keep)`
@@ -110,7 +108,7 @@ $tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $metadata = $dictionary->metadata();
-$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
+$userDictionary = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
 
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 ```
@@ -236,3 +234,30 @@ $mode = new Lindera\Mode();  // デフォルト: 'normal'
 | --- | --- | --- |
 | `isNormal()` | `bool` | Normal モードの場合 `true` |
 | `isDecompose()` | `bool` | Decompose モードの場合 `true` |
+
+## Penalty
+
+`Penalty` は、文字種と長さのしきい値に基づいて、decompose モードが複合語をどの程度積極的に分割するかを設定します。
+
+> **注意:** `Penalty` は現時点で `TokenizerBuilder` や `Tokenizer` のコンストラクタには接続されていません。これを受け取るセッターは存在しないため、インスタンスを作成してもトークナイズには影響しません。decompose モードは常に以下のデフォルト値を使用します。
+
+```php
+<?php
+
+// すべてのパラメータは省略可能で、decompose モードが使用するデフォルト値になります
+$penalty = new Lindera\Penalty(
+    kanji_penalty_length_threshold: 2,
+    kanji_penalty_length_penalty: 3000,
+    other_penalty_length_threshold: 7,
+    other_penalty_length_penalty: 1700,
+);
+```
+
+### Penalty プロパティ
+
+| プロパティ | 型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `$kanji_penalty_length_threshold` | `int` | `2` | 漢字連続のしきい値 |
+| `$kanji_penalty_length_penalty` | `int` | `3000` | しきい値を超えた漢字連続に適用されるペナルティ |
+| `$other_penalty_length_threshold` | `int` | `7` | その他の文字連続のしきい値 |
+| `$other_penalty_length_penalty` | `int` | `1700` | しきい値を超えたその他の文字連続に適用されるペナルティ |

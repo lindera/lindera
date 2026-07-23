@@ -4,16 +4,18 @@ This guide shows how to tokenize text using lindera-php.
 
 ## Basic Tokenization
 
-The recommended way to create a tokenizer is through `TokenizerBuilder`:
+Load a dictionary, create a tokenizer, and tokenize text:
 
 ```php
 <?php
 
-$builder = new Lindera\TokenizerBuilder();
-$builder->setMode('normal');
-$builder->setDictionary('/path/to/ipadic');
-$tokenizer = $builder->build();
+// Load the dictionary
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
 
+// Create a tokenizer
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+
+// Tokenize the text
 $tokens = $tokenizer->tokenize('関西国際空港限定トートバッグ');
 foreach ($tokens as $token) {
     echo $token->surface . "\t" . implode(',', $token->details) . "\n";
@@ -27,21 +29,20 @@ Expected output:
 ```text
 関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
-## Method Chaining
+## Using TokenizerBuilder
 
-`TokenizerBuilder` supports method chaining for concise configuration:
+`TokenizerBuilder` gives you more flexible configuration options:
 
 ```php
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder
-    ->setMode('normal')
-    ->setDictionary('/path/to/ipadic')
-    ->build();
+$builder->setMode('normal');
+$builder->setDictionary('/path/to/ipadic');
+$tokenizer = $builder->build();
 
 $tokens = $tokenizer->tokenize('すもももももももものうち');
 foreach ($tokens as $token) {
@@ -57,7 +58,8 @@ Each token exposes the following properties:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder->setDictionary('/path/to/ipadic')->build();
+$builder->setDictionary('/path/to/ipadic');
+$tokenizer = $builder->build();
 $tokens = $tokenizer->tokenize('東京タワー');
 
 foreach ($tokens as $token) {
@@ -79,7 +81,8 @@ Retrieve multiple tokenization candidates ranked by cost:
 <?php
 
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder->setDictionary('/path/to/ipadic')->build();
+$builder->setDictionary('/path/to/ipadic');
+$tokenizer = $builder->build();
 $results = $tokenizer->tokenizeNbest('すもももももももものうち', 3);
 
 foreach ($results as $result) {
