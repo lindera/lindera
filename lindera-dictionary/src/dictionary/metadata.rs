@@ -1,6 +1,7 @@
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::schema::Schema;
 
 const DEFAULT_WORD_COST: i16 = -10000;
@@ -40,6 +41,15 @@ pub struct Metadata {
     /// so existing files stay byte-identical, and the build output is unchanged.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub connection_id_mapping: bool,
+    /// The context-ID permutation that was applied when this dictionary was built.
+    ///
+    /// Written into the *built* `metadata.json` when `connection_id_mapping` is on, so
+    /// that anything compiled later against this dictionary — most importantly a
+    /// detailed user dictionary — can be relabeled into the same ID space. Absent (and
+    /// omitted from the file) for an un-remapped dictionary, which keeps those builds
+    /// byte-identical. Source `metadata.json` files carry only the boolean flag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_id_map: Option<ContextIdMap>,
     pub dictionary_schema: Schema,      // Schema for the dictionary
     pub user_dictionary_schema: Schema, // Schema for user dictionary
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -96,6 +106,7 @@ impl Metadata {
             skip_invalid_cost_or_id,
             normalize_details,
             connection_id_mapping: false,
+            context_id_map: None,
             user_dictionary_schema: userdic_schema,
             model_info: None,
         }

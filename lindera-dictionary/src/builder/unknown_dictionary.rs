@@ -8,8 +8,8 @@ use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
-use crate::builder::context_id_remap::ContextIdRemap;
 use crate::dictionary::character_definition::CharacterDefinition;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file_with_encoding, write_data};
@@ -23,7 +23,7 @@ pub struct UnknownDictionaryBuilder {
     /// Optional connection-cost context-ID remap, applied to each unknown-word
     /// entry's `left_id`/`right_id` so they match the remapped connection matrix.
     #[builder(default = "None")]
-    context_id_remap: Option<Arc<ContextIdRemap>>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
 }
 
 impl UnknownDictionaryBuilder {

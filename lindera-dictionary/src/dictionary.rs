@@ -1,5 +1,6 @@
 pub mod character_definition;
 pub mod connection_cost_matrix;
+pub mod context_id_map;
 pub mod metadata;
 pub mod prefix_dictionary;
 pub mod schema;
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::dictionary::prefix_dictionary::PrefixDictionary;
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
@@ -26,6 +28,8 @@ use crate::loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use crate::loader::metadata::MetadataLoader;
 use crate::loader::prefix_dictionary::PrefixDictionaryLoader;
 use crate::loader::unknown_dictionary::UnknownDictionaryLoader;
+use crate::util::Data;
+use crate::viterbi::WordEntry;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
@@ -157,6 +161,37 @@ pub struct UserDictionary {
 }
 
 impl UserDictionary {
+    /// Relabel this dictionary's context IDs with a system dictionary's permutation.
+    ///
+    /// User dictionaries are always compiled in the *original* context-ID space, which
+    /// keeps a built `.bin` portable across remapped and un-remapped system
+    /// dictionaries. When one is attached to a system dictionary built with
+    /// `connection_id_mapping`, its `left_id`/`right_id` must be moved into the same
+    /// space, or every connection cost it participates in would address the wrong
+    /// matrix cell — silently, since the IDs stay in range.
+    ///
+    /// Entries live in `vals_data` as a flat [`WordEntry::SERIALIZED_LEN`]-byte stride
+    /// with `left_id` at offset 6 and `right_id` at offset 8 (little endian), so this
+    /// rewrites those two `u16`s in place. IDs outside the permutation are left
+    /// untouched, matching the builder's behaviour for malformed IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `map` - The permutation persisted in the system dictionary's metadata.
+    pub fn remap_context_ids(&mut self, map: &ContextIdMap) {
+        const LEFT_ID_OFFSET: usize = 6;
+        const RIGHT_ID_OFFSET: usize = 8;
+
+        let mut vals = self.dict.vals_data.to_vec();
+        for entry in vals.chunks_exact_mut(WordEntry::SERIALIZED_LEN) {
+            let left = LittleEndian::read_u16(&entry[LEFT_ID_OFFSET..][..2]);
+            let right = LittleEndian::read_u16(&entry[RIGHT_ID_OFFSET..][..2]);
+            LittleEndian::write_u16(&mut entry[LEFT_ID_OFFSET..][..2], map.map_left(left));
+            LittleEndian::write_u16(&mut entry[RIGHT_ID_OFFSET..][..2], map.map_right(right));
+        }
+        self.dict.vals_data = Data::Vec(vals);
+    }
+
     pub fn load(user_dict_data: &[u8]) -> LinderaResult<UserDictionary> {
         let mut aligned = rkyv::util::AlignedVec::<16>::new();
         aligned.extend_from_slice(user_dict_data);

@@ -67,6 +67,20 @@ impl Segmenter {
         // Get SPACE category ID for MeCab compatibility (ignore whitespace by default)
         let space_category_id = dictionary.character_definition.category_id_by_name("SPACE");
 
+        // A user dictionary is always compiled in the original context-ID space. If the
+        // system dictionary was built with `connection_id_mapping`, relabel the user
+        // entries into the same space; otherwise their connection costs would address
+        // the wrong matrix cells. This is the single point where both dictionaries are
+        // available, and `user_dictionary` is taken by value so it cannot be remapped
+        // twice.
+        let user_dictionary = match (user_dictionary, dictionary.metadata.context_id_map.as_ref()) {
+            (Some(mut user_dictionary), Some(map)) => {
+                user_dictionary.remap_context_ids(map);
+                Some(user_dictionary)
+            }
+            (user_dictionary, _) => user_dictionary,
+        };
+
         Self {
             mode,
             dictionary,
@@ -174,8 +188,8 @@ impl Segmenter {
             .and_then(Value::as_bool)
             .unwrap_or(false); // Default: false (ignore whitespace)
 
-        // Get the SPACE category ID if whitespace should be ignored
-        let space_category_id = if !keep_whitespace {
+        // Ignoring whitespace requires a SPACE category to detect it by.
+        if !keep_whitespace {
             dictionary
                 .character_definition
                 .category_id_by_name("SPACE")
@@ -184,23 +198,13 @@ impl Segmenter {
                         "SPACE category is not defined in the dictionary (char.def)"
                     ))
                 })?;
-            Some(
-                dictionary
-                    .character_definition
-                    .category_id_by_name("SPACE")
-                    .unwrap(),
-            )
-        } else {
-            None
-        };
+        }
 
-        Ok(Self {
-            mode,
-            dictionary,
-            user_dictionary,
-            keep_whitespace,
-            space_category_id,
-        })
+        // Go through `new` so the user-dictionary context-ID remap has a single
+        // application point. `space_category_id` is only read when `keep_whitespace` is
+        // false, so letting `new` always resolve it is equivalent to the previous
+        // conditional.
+        Ok(Self::new(mode, dictionary, user_dictionary).keep_whitespace(keep_whitespace))
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.

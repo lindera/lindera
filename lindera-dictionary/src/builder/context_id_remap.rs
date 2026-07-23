@@ -20,21 +20,9 @@ use glob::glob;
 
 use crate::LinderaResult;
 use crate::builder::connection_cost_matrix::read_matrix_header;
+use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
 use crate::error::LinderaErrorKind;
-
-/// A pair of context-ID permutations, `perm[old_id] = new_id`.
-///
-/// `left` permutes left-context IDs (the matrix backward/row axis, length
-/// `backward_size`) and `right` permutes right-context IDs (the matrix
-/// forward/column axis, length `forward_size`).
-#[derive(Debug, Clone)]
-pub struct ContextIdRemap {
-    /// Permutation of left-context IDs (`WordEntry.left_id`, matrix backward axis).
-    pub left: Vec<u16>,
-    /// Permutation of right-context IDs (`WordEntry.right_id`, matrix forward axis).
-    pub right: Vec<u16>,
-}
 
 /// Compute the two frequency-ordered context-ID permutations for a dictionary.
 ///
@@ -60,14 +48,14 @@ pub struct ContextIdRemap {
 ///
 /// # Returns
 ///
-/// A [`ContextIdRemap`] whose axes match the `matrix.def` header sizes, or an error
+/// A [`ContextIdMap`] whose axes match the `matrix.def` header sizes, or an error
 /// if the header is unreadable, the schema lacks the context-ID columns, or an axis
 /// exceeds the `u16` ID range.
 pub fn compute_context_id_remap(
     input_dir: &Path,
     metadata: &Metadata,
     freq_file: Option<&Path>,
-) -> LinderaResult<ContextIdRemap> {
+) -> LinderaResult<ContextIdMap> {
     let (forward_size, backward_size) = read_matrix_header(input_dir, &metadata.encoding)?;
 
     // Context IDs are stored as u16; a larger axis cannot be represented.
@@ -86,7 +74,7 @@ pub fn compute_context_id_remap(
     if let Some(freq_path) = corpus_freq {
         let (hist_left, hist_right) =
             load_freq_file(freq_path, backward_size as usize, forward_size as usize)?;
-        return Ok(ContextIdRemap {
+        return Ok(ContextIdMap {
             left: build_perm(&hist_left),
             right: build_perm(&hist_right),
         });
@@ -173,7 +161,7 @@ pub fn compute_context_id_remap(
         }
     }
 
-    Ok(ContextIdRemap {
+    Ok(ContextIdMap {
         left: build_perm(&hist_left),
         right: build_perm(&hist_right),
     })
