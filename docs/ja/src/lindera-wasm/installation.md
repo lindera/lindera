@@ -81,6 +81,9 @@ lindera-wasm-{target}-{dict}
 
 公開前にパッケージ名を設定するには、生成された `pkg/package.json` の `name` フィールドを編集します。
 
+> [!NOTE]
+> 本プロジェクトのリリースワークフロー（`.github/workflows/release.yml`）が実際にビルドして npm に公開しているのは、`embed-*` feature を一切使わずにビルドした `lindera-wasm-web` と `lindera-wasm-bundler` という 2 つの汎用パッケージのみです。`lindera-wasm-web-ipadic` のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する `embed-*` feature（上記の[利用可能な Feature フラグ](#利用可能な-feature-フラグ上級者向け)を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。
+
 ## npm からのインストール
 
 ビルド済みパッケージが npm で公開されています：

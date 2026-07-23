@@ -28,6 +28,7 @@ The archive should be a zip file containing the 8 required dictionary files, opt
   - `name` (string) -- Name to store the dictionary under (e.g., `"ipadic"`)
   - `options` (object, optional):
     - `onProgress` (function) -- Progress callback
+    - `fetchInit` (`RequestInit`, optional) -- Additional options passed through to `fetch()` (e.g., custom headers, credentials, an `AbortSignal`)
 - **Returns**: `Promise<void>`
 
 ```javascript

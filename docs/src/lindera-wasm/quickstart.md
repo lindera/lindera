@@ -55,6 +55,9 @@ Expected output:
 
 If you built with an `embed-*` feature flag, you can use embedded dictionaries:
 
+> [!NOTE]
+> `lindera-wasm-web-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
+
 ```javascript
 import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 

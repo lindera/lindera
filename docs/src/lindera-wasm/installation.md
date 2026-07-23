@@ -81,6 +81,9 @@ Examples:
 
 To set the package name before publishing, edit the `name` field in the generated `pkg/package.json`.
 
+> [!NOTE]
+> This project's own release workflow (`.github/workflows/release.yml`) only builds and publishes two packages to npm -- `lindera-wasm-web` and `lindera-wasm-bundler` -- built without any `embed-*` feature. Dictionary-suffixed names such as `lindera-wasm-web-ipadic` are not published anywhere; they only illustrate what a local build with an `embed-*` feature (see [Available Feature Flags](#available-feature-flags-advanced) above) would produce after you rename the package yourself.
+
 ## Installing from npm
 
 Pre-built packages are available on npm:
