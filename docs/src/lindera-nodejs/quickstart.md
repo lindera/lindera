@@ -94,7 +94,14 @@ for (const { tokens, cost } of results) {
 Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:
 
 ```typescript
-import { TokenizerBuilder, Token } from "lindera-nodejs";
+import type { Token } from "lindera-nodejs";
+import { createRequire } from "node:module";
+
+// `lindera-nodejs` only exposes a CommonJS `require` entry point (see Installation),
+// so ESM projects load the runtime values through `createRequire` while still getting
+// full type information via `import type`.
+const require = createRequire(import.meta.url);
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -103,6 +110,6 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
 for (const token of tokens) {
-  console.log(`${token.surface}: ${token.details?.join(",")}`);
+  console.log(`${token.surface}: ${token.details.join(",")}`);
 }
 ```

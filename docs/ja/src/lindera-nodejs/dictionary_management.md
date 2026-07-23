@@ -20,6 +20,16 @@ const dictionary = loadDictionary("/path/to/ipadic");
 const dictionary = loadDictionary("embedded://ipadic");
 ```
 
+`Dictionary` には、読み込んだ辞書のメタデータを参照するための読み取り専用アクセサがいくつか用意されています：
+
+```javascript
+console.log(dictionary.metadataName());     // 例: "ipadic"
+console.log(dictionary.metadataEncoding()); // 例: "UTF-8"
+
+const metadata = dictionary.metadata(); // Metadata オブジェクト全体
+console.log(metadata.defaultWordCost);
+```
+
 ### ユーザー辞書
 
 ユーザー辞書はシステム辞書にカスタム語彙を追加します。
@@ -86,6 +96,10 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
 ```
 
+> [!NOTE]
+> 第一引数（`kind`）は現状未使用です -- 将来の拡張のために予約されており、ビルド結果には
+> 影響しません。現時点では任意の文字列を渡しても問題ありません。
+
 ## Metadata
 
 `Metadata` クラスは辞書のパラメータを設定します。
@@ -125,8 +139,11 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | `flexibleCsv` | `boolean` | `false` | 柔軟な CSV パースを許可 |
 | `skipInvalidCostOrId` | `boolean` | `false` | 無効なコストまたは ID のエントリーをスキップ |
 | `normalizeDetails` | `boolean` | `false` | 形態素の詳細情報を正規化 |
-| `dictionarySchema` | `Schema` | IPADIC スキーマ | メイン辞書のスキーマ |
-| `userDictionarySchema` | `Schema` | 最小スキーマ | ユーザー辞書のスキーマ |
+
+> [!NOTE]
+> このバインディングの `Metadata` オブジェクトには、スキーマ情報（辞書/ユーザー辞書の
+> フィールド構成）は公開されていません -- `dictionarySchema` / `userDictionarySchema`
+> プロパティは存在しません。代わりに独立した [`Schema`](#schema) クラスを使用してください。
 
 すべてのプロパティは取得と設定の両方をサポートしています：
 

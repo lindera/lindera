@@ -12,6 +12,13 @@ npm run build -- --features train
 
 ## Training a Model
 
+> [!NOTE]
+> The file paths below (`resources/training/*.csv`, `*.def`) are illustrative placeholders —
+> this repository does not ship those exact files. For a complete, runnable example that
+> generates a seed lexicon, corpus, and definition files on the fly and then trains/exports/builds
+> a real dictionary, see
+> [`lindera-nodejs/examples/train_and_export.js`](https://github.com/lindera/lindera/blob/main/lindera-nodejs/examples/train_and_export.js).
+
 Use `train()` to train a CRF model from a seed lexicon and annotated corpus:
 
 ```javascript

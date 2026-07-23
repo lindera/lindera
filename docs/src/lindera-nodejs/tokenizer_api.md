@@ -18,11 +18,13 @@ const builder = new TokenizerBuilder();
 
 #### `new TokenizerBuilder().fromFile(filePath)`
 
-Loads configuration from a JSON file and returns a new builder.
+Loads configuration from a YAML file and returns a new builder.
 
 ```javascript
-const builder = new TokenizerBuilder().fromFile("config.json");
+const builder = new TokenizerBuilder().fromFile("lindera.yml");
 ```
+
+See [`lindera-nodejs/resources/lindera.yml`](https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml) for a complete example configuration file, including dictionary, character filter, and token filter settings.
 
 ### Configuration Methods
 
@@ -164,7 +166,7 @@ for (const { tokens, cost } of results) {
 | `position` | `number` | Token position index |
 | `wordId` | `number` | Dictionary word ID |
 | `isUnknown` | `boolean` | `true` if the word is not in the dictionary |
-| `details` | `string[] \| null` | Morphological details (part of speech, reading, etc.) |
+| `details` | `string[]` | Morphological details (part of speech, reading, etc.) |
 
 ### Token Methods
 
@@ -192,3 +194,29 @@ The structure of `details` depends on the dictionary:
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: Detailed morphological features following the UniDic specification
 - **ko-dic / CC-CEDICT / Jieba**: Dictionary-specific detail formats
+
+## Mode and Penalty
+
+`Mode` and `Penalty` are exported from `lindera-nodejs`, but they are **not currently wired into
+any public API**: `TokenizerBuilder.setMode()` / `Tokenizer`'s constructor accept only a plain
+mode string (`"normal"` or `"decompose"`), and decompose mode always uses the default penalty
+configuration internally. These types are documented here for completeness; they cannot yet be
+used to customize penalty behavior from JavaScript.
+
+### `Mode`
+
+A string enum with two values:
+
+- `Mode.Normal` -- standard dictionary-cost-based tokenization
+- `Mode.Decompose` -- penalty-based decomposition of compound words
+
+### `Penalty`
+
+An object shape describing the penalty parameters used by decompose mode:
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `kanjiPenaltyLengthThreshold` | `number` | Length threshold for kanji sequences before a penalty is applied (default: `2`) |
+| `kanjiPenaltyLengthPenalty` | `number` | Penalty value for long kanji sequences (default: `3000`) |
+| `otherPenaltyLengthThreshold` | `number` | Length threshold for other character sequences before a penalty is applied (default: `7`) |
+| `otherPenaltyLengthPenalty` | `number` | Penalty value for long other-character sequences (default: `1700`) |

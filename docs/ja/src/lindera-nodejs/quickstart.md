@@ -94,7 +94,14 @@ for (const { tokens, cost } of results) {
 Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：
 
 ```typescript
-import { TokenizerBuilder, Token } from "lindera-nodejs";
+import type { Token } from "lindera-nodejs";
+import { createRequire } from "node:module";
+
+// lindera-nodejs は CommonJS の require エントリポイントのみを公開しているため
+// （「インストール」を参照）、ESM プロジェクトでは createRequire で実行時の値を
+// 読み込みつつ、import type で型情報を取得します。
+const require = createRequire(import.meta.url);
+const { TokenizerBuilder } = require("lindera-nodejs");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -103,6 +110,6 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
 for (const token of tokens) {
-  console.log(`${token.surface}: ${token.details?.join(",")}`);
+  console.log(`${token.surface}: ${token.details.join(",")}`);
 }
 ```
