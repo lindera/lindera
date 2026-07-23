@@ -5,6 +5,7 @@ use std::io::Write;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
@@ -17,6 +18,7 @@ use glob::glob;
 use log::debug;
 
 use crate::LinderaResult;
+use crate::builder::context_id_remap::ContextIdRemap;
 use crate::dictionary::schema::Schema;
 use crate::error::LinderaErrorKind;
 use crate::util::write_data;
@@ -37,6 +39,11 @@ pub struct PrefixDictionaryBuilder {
     skip_invalid_cost_or_id: bool,
     #[builder(default = "Schema::default()")]
     schema: Schema,
+    /// Optional connection-cost context-ID remap. When present, each entry's
+    /// `left_id`/`right_id` is relabeled via `remap.left`/`remap.right` before the
+    /// `WordEntry` is created, matching the remap applied to the connection matrix.
+    #[builder(default = "None")]
+    context_id_remap: Option<Arc<ContextIdRemap>>,
 }
 
 impl PrefixDictionaryBuilder {
@@ -48,6 +55,7 @@ impl PrefixDictionaryBuilder {
             normalize_details: false,
             skip_invalid_cost_or_id: false,
             schema,
+            context_id_remap: None,
         }
     }
 
@@ -207,6 +215,17 @@ impl PrefixDictionaryBuilder {
                 surface
             } else {
                 continue;
+            };
+
+            // Relabel context IDs to match the connection matrix when remapping is
+            // enabled. `get().unwrap_or` leaves any out-of-range id untouched (a
+            // malformed id fails the matrix build instead of panicking here).
+            let (left_id, right_id) = match &self.context_id_remap {
+                Some(m) => (
+                    m.left.get(left_id as usize).copied().unwrap_or(left_id),
+                    m.right.get(right_id as usize).copied().unwrap_or(right_id),
+                ),
+                None => (left_id, right_id),
             };
 
             word_entry_map.entry(key).or_default().push(WordEntry::new(

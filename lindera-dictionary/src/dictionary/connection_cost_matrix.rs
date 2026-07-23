@@ -83,6 +83,10 @@ impl ConnectionCostMatrix {
 
     #[inline]
     pub fn cost(&self, forward_id: u32, backward_id: u32) -> i32 {
+        // Context-id access profiling (feature `ctxfreq`); compiled out by default.
+        #[cfg(feature = "ctxfreq")]
+        crate::builder::context_id_remap::record_access(forward_id, backward_id);
+
         let cost_id = (forward_id + backward_id * self.forward_size) as usize;
         self.costs_data[cost_id] as i32
     }

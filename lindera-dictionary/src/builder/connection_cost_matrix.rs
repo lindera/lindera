@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use derive_builder::Builder;
 use encoding_rs::{Encoding, UTF_16BE, UTF_16LE};
@@ -9,6 +10,7 @@ use log::debug;
 use memchr::memchr;
 
 use crate::LinderaResult;
+use crate::builder::context_id_remap::ContextIdRemap;
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file, write_data};
 
@@ -34,6 +36,13 @@ pub struct ConnectionCostMatrixBuilder {
     /// If set to UTF-8, files with a UTF-16 BOM are still decoded correctly.
     #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
+    /// Optional connection-cost context-ID remapping. When present, `forward_id`
+    /// (right-context id) is mapped through `remap.right` and `backward_id`
+    /// (left-context id) through `remap.left` before the cost is scattered, so
+    /// frequently-used cells cluster near the front of each row. `None` keeps the
+    /// output byte-identical to the un-remapped build.
+    #[builder(default = "None")]
+    context_id_remap: Option<Arc<ContextIdRemap>>,
 }
 
 impl ConnectionCostMatrixBuilder {
@@ -79,6 +88,22 @@ impl ConnectionCostMatrixBuilder {
                 "matrix.def header is missing backward size"
             ))
         })? as u32;
+
+        // Guard against a remap whose axis sizes diverge from the matrix header:
+        // a shifted index would scatter costs to the wrong cells and silently
+        // corrupt every connection cost.
+        if let Some(remap) = self.context_id_remap.as_deref()
+            && (remap.right.len() != forward_size as usize
+                || remap.left.len() != backward_size as usize)
+        {
+            return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                "context-id remap size mismatch: remap.right={} vs forward_size={}, remap.left={} vs backward_size={}",
+                remap.right.len(),
+                forward_size,
+                remap.left.len(),
+                backward_size
+            )));
+        }
 
         let len = 3 + (forward_size as usize) * (backward_size as usize);
         let mut costs = vec![i16::MAX; len];
@@ -156,10 +181,11 @@ impl ConnectionCostMatrixBuilder {
     /// * `costs` - Destination cost array to scatter into.
     #[cfg(not(target_family = "wasm"))]
     fn fill_costs(&self, data: &[u8], forward_size: u32, costs: &mut [i16]) -> LinderaResult<()> {
+        let remap = self.context_id_remap.as_deref();
         if data.len() >= PARALLEL_THRESHOLD {
-            fill_costs_parallel(data, forward_size, costs)
+            fill_costs_parallel(data, forward_size, costs, remap)
         } else {
-            fill_costs_sequential(data, forward_size, costs)
+            fill_costs_sequential(data, forward_size, costs, remap)
         }
     }
 
@@ -173,7 +199,7 @@ impl ConnectionCostMatrixBuilder {
     /// * `costs` - Destination cost array to scatter into.
     #[cfg(target_family = "wasm")]
     fn fill_costs(&self, data: &[u8], forward_size: u32, costs: &mut [i16]) -> LinderaResult<()> {
-        fill_costs_sequential(data, forward_size, costs)
+        fill_costs_sequential(data, forward_size, costs, self.context_id_remap.as_deref())
     }
 }
 
@@ -203,6 +229,52 @@ fn strip_utf8_bom(buffer: &[u8]) -> &[u8] {
 /// `true` when a UTF-16 BOM is present.
 fn has_utf16_bom(buffer: &[u8]) -> bool {
     buffer.starts_with(&[0xFF, 0xFE]) || buffer.starts_with(&[0xFE, 0xFF])
+}
+
+/// Read only the `<forward_size> <backward_size>` header from `matrix.def` without
+/// loading the whole (potentially huge) matrix body. `matrix.def` is ASCII in every
+/// shipped dictionary, so the first line is parsed directly; `encoding` is accepted
+/// for signature symmetry with the rest of the builder and is currently unused.
+///
+/// This is the single source of truth for the connection-matrix axis sizes used by
+/// [`super::context_id_remap::compute_context_id_remap`], so the remap permutations
+/// are always sized to the same axes the matrix build scatters into.
+///
+/// # Arguments
+///
+/// * `input_dir` - Directory containing `matrix.def`.
+/// * `_encoding` - Source encoding label (unused; `matrix.def` is ASCII).
+///
+/// # Returns
+///
+/// `(forward_size, backward_size)`, or an error if the file is missing or the header
+/// is malformed.
+pub(crate) fn read_matrix_header(input_dir: &Path, _encoding: &str) -> LinderaResult<(u32, u32)> {
+    let path = input_dir.join("matrix.def");
+    let file = File::open(&path).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context(format!("Failed to open matrix.def: {path:?}"))
+    })?;
+    let mut reader = io::BufReader::new(file);
+    let mut line = Vec::new();
+    reader.read_until(b'\n', &mut line).map_err(|err| {
+        LinderaErrorKind::Io
+            .with_error(anyhow::anyhow!(err))
+            .add_context("Failed to read matrix.def header line")
+    })?;
+    let bytes = strip_utf8_bom(&line);
+    let mut pos = 0;
+    let forward_size = next_int(bytes, &mut pos).ok_or_else(|| {
+        LinderaErrorKind::Content
+            .with_error(anyhow::anyhow!("matrix.def is missing the size header"))
+    })? as u32;
+    let backward_size = next_int(bytes, &mut pos).ok_or_else(|| {
+        LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+            "matrix.def header is missing backward size"
+        ))
+    })? as u32;
+    Ok((forward_size, backward_size))
 }
 
 /// Parse the next whitespace-delimited signed integer from `bytes`, advancing
@@ -266,6 +338,7 @@ fn parse_data_line(
     line: &[u8],
     forward_size: u32,
     costs_len: usize,
+    remap: Option<&ContextIdRemap>,
 ) -> LinderaResult<Option<(usize, i16)>> {
     let mut pos = 0;
     let Some(forward_id) = next_int(line, &mut pos) else {
@@ -282,7 +355,22 @@ fn parse_data_line(
 
     let forward_id = forward_id as u32 as usize;
     let backward_id = backward_id as u32 as usize;
-    let index = 3 + forward_id + backward_id * forward_size as usize;
+    // Apply the frequency remap (right-context id via P_right, left-context id via
+    // P_left). Sizes are guaranteed equal to the axes by the guard in `build`, so an
+    // out-of-range source id here is a malformed matrix.def, reported like the
+    // index check below.
+    let (fwd, bwd) = match remap {
+        Some(m) => {
+            if forward_id >= m.right.len() || backward_id >= m.left.len() {
+                return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
+                    "matrix.def entry ({forward_id}, {backward_id}) is out of range"
+                )));
+            }
+            (m.right[forward_id] as usize, m.left[backward_id] as usize)
+        }
+        None => (forward_id, backward_id),
+    };
+    let index = 3 + fwd + bwd * forward_size as usize;
     if index >= costs_len {
         return Err(LinderaErrorKind::Content.with_error(anyhow::anyhow!(
             "matrix.def entry ({forward_id}, {backward_id}) is out of range"
@@ -299,14 +387,20 @@ fn parse_data_line(
 /// * `data` - Bytes of the data region (after the header line).
 /// * `forward_size` - Number of forward context IDs (matrix stride).
 /// * `costs` - Destination cost array to scatter into.
-fn fill_costs_sequential(data: &[u8], forward_size: u32, costs: &mut [i16]) -> LinderaResult<()> {
+fn fill_costs_sequential(
+    data: &[u8],
+    forward_size: u32,
+    costs: &mut [i16],
+    remap: Option<&ContextIdRemap>,
+) -> LinderaResult<()> {
     let costs_len = costs.len();
     let mut pos = 0;
     while pos < data.len() {
         let line_end = memchr(b'\n', &data[pos..])
             .map(|offset| pos + offset)
             .unwrap_or(data.len());
-        if let Some((index, cost)) = parse_data_line(&data[pos..line_end], forward_size, costs_len)?
+        if let Some((index, cost)) =
+            parse_data_line(&data[pos..line_end], forward_size, costs_len, remap)?
         {
             costs[index] = cost;
         }
@@ -327,7 +421,12 @@ fn fill_costs_sequential(data: &[u8], forward_size: u32, costs: &mut [i16]) -> L
 /// * `forward_size` - Number of forward context IDs (matrix stride).
 /// * `costs` - Destination cost array to scatter into.
 #[cfg(not(target_family = "wasm"))]
-fn fill_costs_parallel(data: &[u8], forward_size: u32, costs: &mut [i16]) -> LinderaResult<()> {
+fn fill_costs_parallel(
+    data: &[u8],
+    forward_size: u32,
+    costs: &mut [i16],
+    remap: Option<&ContextIdRemap>,
+) -> LinderaResult<()> {
     use rayon::prelude::*;
 
     let costs_len = costs.len();
@@ -354,7 +453,7 @@ fn fill_costs_parallel(data: &[u8], forward_size: u32, costs: &mut [i16]) -> Lin
     let chunks: Vec<&[u8]> = bounds.windows(2).map(|w| &data[w[0]..w[1]]).collect();
     let partials: Vec<Vec<(usize, i16)>> = chunks
         .par_iter()
-        .map(|chunk| parse_chunk(chunk, forward_size, costs_len))
+        .map(|chunk| parse_chunk(chunk, forward_size, costs_len, remap))
         .collect::<LinderaResult<Vec<_>>>()?;
 
     for partial in &partials {
@@ -381,6 +480,7 @@ fn parse_chunk(
     chunk: &[u8],
     forward_size: u32,
     costs_len: usize,
+    remap: Option<&ContextIdRemap>,
 ) -> LinderaResult<Vec<(usize, i16)>> {
     let mut out = Vec::with_capacity(chunk.len() / 8);
     let mut pos = 0;
@@ -388,7 +488,8 @@ fn parse_chunk(
         let line_end = memchr(b'\n', &chunk[pos..])
             .map(|offset| pos + offset)
             .unwrap_or(chunk.len());
-        if let Some(entry) = parse_data_line(&chunk[pos..line_end], forward_size, costs_len)? {
+        if let Some(entry) = parse_data_line(&chunk[pos..line_end], forward_size, costs_len, remap)?
+        {
             out.push(entry);
         }
         pos = line_end + 1;
@@ -449,7 +550,7 @@ mod tests {
         } else {
             &[]
         };
-        fill_costs_sequential(data, forward_size, &mut costs).unwrap();
+        fill_costs_sequential(data, forward_size, &mut costs, None).unwrap();
         costs
     }
 
@@ -511,13 +612,13 @@ mod tests {
         seq[0] = -1;
         seq[1] = forward as i16;
         seq[2] = backward as i16;
-        fill_costs_sequential(data, forward, &mut seq).unwrap();
+        fill_costs_sequential(data, forward, &mut seq, None).unwrap();
 
         let mut par = vec![i16::MAX; len];
         par[0] = -1;
         par[1] = forward as i16;
         par[2] = backward as i16;
-        fill_costs_parallel(data, forward, &mut par).unwrap();
+        fill_costs_parallel(data, forward, &mut par, None).unwrap();
 
         assert_eq!(seq, par);
         assert_eq!(seq, reference_costs(&matrix));
@@ -531,7 +632,7 @@ mod tests {
         let header_end = memchr(b'\n', bytes).unwrap();
         let data = &bytes[header_end + 1..];
         let mut costs = vec![i16::MAX; 3 + 4];
-        assert!(fill_costs_sequential(data, 2, &mut costs).is_err());
+        assert!(fill_costs_sequential(data, 2, &mut costs, None).is_err());
     }
 
     #[test]

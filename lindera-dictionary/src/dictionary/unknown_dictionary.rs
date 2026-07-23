@@ -250,7 +250,10 @@ fn make_category_references(
         .collect()
 }
 
-fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
+fn make_costs_array(
+    entries: &[UnknownDictionaryEntry],
+    remap: Option<&crate::builder::context_id_remap::ContextIdRemap>,
+) -> Vec<WordEntry> {
     entries
         .iter()
         .enumerate()
@@ -260,17 +263,31 @@ fn make_costs_array(entries: &[UnknownDictionaryEntry]) -> Vec<WordEntry> {
             if e.left_id != e.right_id {
                 warn!("left id and right id are not same: {e:?}");
             }
+            let (left_id, right_id) = (e.left_id as u16, e.right_id as u16);
+            // Relabel to match the remapped connection matrix. `get().unwrap_or`
+            // leaves an out-of-range id untouched (it would fail the matrix build).
+            let (left_id, right_id) = match remap {
+                Some(m) => (
+                    m.left.get(left_id as usize).copied().unwrap_or(left_id),
+                    m.right.get(right_id as usize).copied().unwrap_or(right_id),
+                ),
+                None => (left_id, right_id),
+            };
             WordEntry::new(
                 crate::viterbi::WordId::new(crate::viterbi::LexType::Unknown, i as u32),
                 e.word_cost as i16,
-                e.left_id as u16,
-                e.right_id as u16,
+                left_id,
+                right_id,
             )
         })
         .collect()
 }
 
-pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<UnknownDictionary> {
+pub fn parse_unk(
+    categories: &[String],
+    file_content: &str,
+    remap: Option<&crate::builder::context_id_remap::ContextIdRemap>,
+) -> LinderaResult<UnknownDictionary> {
     let mut unknown_dict_entries = Vec::new();
     let mut words_idx_data = Vec::new();
     let mut words_data: Vec<u8> = Vec::new();
@@ -296,7 +313,7 @@ pub fn parse_unk(categories: &[String], file_content: &str) -> LinderaResult<Unk
     }
 
     let category_references = make_category_references(categories, &unknown_dict_entries[..]);
-    let costs = make_costs_array(&unknown_dict_entries[..]);
+    let costs = make_costs_array(&unknown_dict_entries[..], remap);
     Ok(UnknownDictionary {
         category_references,
         costs,

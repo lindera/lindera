@@ -41,13 +41,22 @@ pub struct BuildArgs {
         help = "Build user dictionary (default: system dictionary)"
     )]
     user: bool,
+    #[clap(
+        short = 'f',
+        long = "context-id-freq",
+        help = "Context-ID access-frequency file used to order connection-cost IDs (requires connection_id_mapping in metadata)"
+    )]
+    context_id_freq: Option<PathBuf>,
 }
 
 pub fn build(args: BuildArgs) -> LinderaResult<()> {
     let metadata: Metadata =
         serde_json::from_reader(File::open(&args.metadata).map_err(io_err)?).map_err(io_err)?;
 
-    let builder = DictionaryBuilder::new(metadata);
+    let mut builder = DictionaryBuilder::new(metadata);
+    if let Some(freq) = &args.context_id_freq {
+        builder = builder.with_context_id_freq(freq.clone());
+    }
 
     if args.user {
         let output_file = if let Some(filename) = args.src.file_name() {

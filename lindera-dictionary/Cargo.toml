@@ -21,6 +21,10 @@ build_rs = [
     "dep:tokio",
 ]
 mmap = ["dep:memmap2"]
+# Experimental: instrument connection-matrix accesses to profile per-context-id
+# access frequency over a corpus (used to build a corpus-frequency remap). Off by
+# default; adds a counter to the `cost()` hot path only when enabled.
+ctxfreq = []
 default = ["mmap"]
 
 [dependencies]

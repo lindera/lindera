@@ -110,7 +110,7 @@ fn bench_build_prefix_dictionary(c: &mut Criterion) {
     group.bench_function("bench-build-prefix-dictionary", |b| {
         b.iter(|| {
             builder
-                .build_prefix_dictionary(&input_dir, output_dir.path())
+                .build_prefix_dictionary(&input_dir, output_dir.path(), None)
                 .unwrap();
         })
     });
@@ -134,7 +134,7 @@ fn bench_build_connection_cost_matrix(c: &mut Criterion) {
     group.bench_function("bench-build-connection-cost-matrix", |b| {
         b.iter(|| {
             builder
-                .build_connection_cost_matrix(&input_dir, output_dir.path())
+                .build_connection_cost_matrix(&input_dir, output_dir.path(), None)
                 .unwrap();
         })
     });
