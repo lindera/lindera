@@ -7,6 +7,11 @@ Cargo.tomlに以下を追加してください：
 lindera = "5.0"
 ```
 
+> [!NOTE]
+> v5.0.0 は次期リリース予定であり、まだ crates.io には公開されていません。現時点での公開バージョンは
+> `4.0.1` です。本ガイドは `main` ブランチに既に存在する v5.0.0 の API を説明しています。詳細は
+> [v4からv5への移行](../migration_v4_to_v5.md)を参照してください。
+
 ## 辞書のセットアップ
 
 Linderaの実行にはビルド済み辞書が必要です。[GitHub Releases](https://github.com/lindera/lindera/releases) から辞書をダウンロードし、読み込み時にそのパスを指定してください：

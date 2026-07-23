@@ -29,12 +29,20 @@
     - [Architecture](./lindera-dictionary/architecture.md)
     - [API Reference](./lindera-dictionary/api_reference.md)
 
+- [Lindera Trainer](./lindera-trainer.md)
+    - [Architecture](./lindera-trainer/architecture.md)
+    - [API Reference](./lindera-trainer/api_reference.md)
+
 - [Lindera Library](./lindera.md)
-    - [Configuration](./lindera/configuration.md)
     - [Segmenter](./lindera/segmenter.md)
-    - [Token Filters](./lindera/token_filters.md)
     - [Error Handling](./lindera/error_handling.md)
     - [API Reference](./lindera/api_reference.md)
+
+- [Lindera Analysis](./lindera-analysis.md)
+    - [Configuration](./lindera-analysis/configuration.md)
+    - [Filters](./lindera-analysis/filters.md)
+    - [Architecture](./lindera-analysis/architecture.md)
+    - [API Reference](./lindera-analysis/api_reference.md)
 
 - [Lindera CLI](./lindera-cli.md)
     - [Installation](./lindera-cli/installation.md)

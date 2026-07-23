@@ -1,9 +1,9 @@
 # Lindera ライブラリ
 
-`lindera` クレートは形態素解析のコアライブラリです。このセクションでは、設定、セグメンテーション、Token Filter、エラーハンドリング、APIリファレンスについて説明します。
+`lindera` クレートは純粋な形態素セグメンターです。辞書クレートを統合し、`Segmenter` API を提供します。デフォルトでは `lindera-analysis`・`lindera-crf`・`lindera-trainer` に依存しません。このセクションでは、セグメンテーション、エラーハンドリング、APIリファレンスについて説明します。
 
-- [設定](./lindera/configuration.md) - YAMLベースの Tokenizer 設定
+`Tokenizer` や文字フィルタ・トークンフィルタ（`Segmenter` の上に構築されたLucene風の分析チェーン）が必要な場合は、別クレートの[Lindera Analysis](./lindera-analysis.md)（[設定](./lindera-analysis/configuration.md)・[フィルタ](./lindera-analysis/filters.md)ページを含む）を参照してください。
+
 - [Segmenter](./lindera/segmenter.md) - Viterbi アルゴリズムを使用するコアセグメンテーションコンポーネント
-- [Token Filter](./lindera/token_filters.md) - トークンの後処理フィルタ
 - [エラーハンドリング](./lindera/error_handling.md) - エラー型とハンドリングパターン
 - [APIリファレンス](./lindera/api_reference.md) - 生成されたAPIドキュメントへのリンク

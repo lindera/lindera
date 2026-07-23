@@ -5,6 +5,11 @@ build of the `lindera` crate is now a pure morphological segmenter, and the
 dictionary-training pipeline lives in its own crate. This guide lists every
 breaking change and the one-line fixes for each.
 
+> [!NOTE]
+> v5.0.0 is the next planned release and has not been published to crates.io yet; the current
+> published version is `4.0.1`. The changes described below already exist on the `main` branch,
+> ahead of the version bump.
+
 ## Overview
 
 | Change | Affects | What you do |

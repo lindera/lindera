@@ -205,6 +205,8 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 
 ## API Usage
 
+For the full `lindera-trainer` API surface, see [Lindera Trainer Architecture](../lindera-trainer/architecture.md) and [API Reference](../lindera-trainer/api_reference.md).
+
 ```rust,no_run
 use std::fs::File;
 use lindera_trainer::{Corpus, Trainer, TrainerConfig};

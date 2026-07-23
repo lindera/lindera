@@ -16,6 +16,9 @@ Lindera は、さまざまな Rust アプリケーションに対して、簡単
 lindera = "5.0"
 ```
 
+> **注記:** v5.0.0 は次期リリース予定であり、まだ crates.io には公開されていません。現時点での公開バージョンは
+> `4.0.1` です。詳細は[移行ガイド](https://lindera.github.io/lindera/ja/migration_v4_to_v5.html)を参照してください。
+
 ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) からダウンロードできます。
 辞書アーカイブ（例: `lindera-ipadic-*.zip`）をダウンロードし、読み込み時にパスを指定してください。
 

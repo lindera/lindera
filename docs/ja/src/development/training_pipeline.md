@@ -205,6 +205,8 @@ lindera build --input-dir ./dict-source --output-dir ./dict-compiled
 
 ## API の使用
 
+`lindera-trainer` の完全な API については、[Lindera Trainer アーキテクチャ](../lindera-trainer/architecture.md)と[APIリファレンス](../lindera-trainer/api_reference.md)を参照してください。
+
 ```rust,no_run
 use std::fs::File;
 use lindera_trainer::{Corpus, Trainer, TrainerConfig};
