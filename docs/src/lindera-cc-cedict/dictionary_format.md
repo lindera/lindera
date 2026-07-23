@@ -6,8 +6,6 @@ This repository contains [CC-CEDICT-MeCab](https://github.com/lindera/CC-CEDICT-
 
 ## Dictionary format
 
-Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf) for details on the unidic-mecab dictionary format and part-of-speech tags.
-
 | Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
@@ -27,7 +25,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 ### Simple version
 
-| Index | Name (Japanese) | Name (English) | Notes |
+| Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
 | 1 | 词类 | Part-of-speech | |
@@ -35,7 +33,7 @@ Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unid
 
 ### Detailed version
 
-| Index | Name (Japanese) | Name (English) | Notes |
+| Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
 | 1 | 左语境ID | Left context ID | |
