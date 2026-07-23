@@ -27,7 +27,7 @@ Lindera はバイナリに辞書を同梱していません。[GitHub Releases](
 CLI 使用時に辞書パスを指定します：
 
 ```shell
-% lindera tokenize --dictionary /path/to/ipadic "関西国際空港限定トートバッグ"
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
 ```
 
 ## ソースからビルド
@@ -90,7 +90,7 @@ CLI 使用時に辞書パスを指定します：
 > `embed-*` feature フラグ付きでビルドした後、`embedded://` スキームで埋め込み辞書をロードできます：
 >
 > ```shell
-> % lindera tokenize --dictionary embedded://ipadic "関西国際空港限定トートバッグ"
+> % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic
 > ```
 >
 > 詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
