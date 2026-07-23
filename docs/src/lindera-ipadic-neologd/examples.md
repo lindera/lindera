@@ -48,6 +48,42 @@ EOS
 
 NOTE: To include IPADIC NEologd dictionary in the binary, you must build with the `--features=embed-ipadic-neologd` option.
 
+## Tokenize with user dictionary (CSV format)
+
+```shell
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict embedded://ipadic-neologd \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
+## Tokenize with user dictionary (binary format)
+
+```shell
+% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
+  --dict /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
+  --user-dict ./resources/user_dict/ipadic_simple_userdic.bin
+```
+
+```text
+東京スカイツリー        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリー,*
+の      助詞,連体化,*,*,*,*,の,ノ,ノ
+最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
+は      助詞,係助詞,*,*,*,*,は,ハ,ワ
+とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリーエキ,*
+です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
+EOS
+```
+
 ## Rust API example
 
 ```rust

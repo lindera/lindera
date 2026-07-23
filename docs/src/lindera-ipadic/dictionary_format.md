@@ -34,6 +34,8 @@ Refer to the [manual](https://ja.osdn.net/projects/ipadic/docs/ipadic-2.7.0-manu
 | 1 | 品詞 | Part-of-speech | |
 | 2 | 読み | Reading | |
 
+Fields not covered by this simple schema (such as `base_form` and `pronunciation`) are filled with the dictionary's `default_field_value` (`*` for IPADIC).
+
 ### Detailed version
 
 | Index | Name (Japanese) | Name (English) | Notes |
