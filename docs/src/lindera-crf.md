@@ -8,7 +8,7 @@ Lindera CRF is a pure Rust implementation of Conditional Random Fields (CRFs), f
 - L1, L2, and Elastic Net regularization
 - Multi-threaded training
 - Zero-copy deserialization with rkyv
-- `no_std` support (without `train` feature)
+- `no_std` support via `--no-default-features --features alloc`
 
 ## Contents
 
