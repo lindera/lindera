@@ -10,6 +10,11 @@ Input Text
   --> Output Tokens
 ```
 
+> [!NOTE]
+> このページではよく使われる一部のフィルタのみを例として紹介しています。**これが全リストではありません。**
+> `lindera-analysis` は合計4種類の文字フィルタと18種類のトークンフィルタを提供しています。全フィルタ（パラメータ・使用例を含む）の
+> 正式なカタログについては[フィルタ](../lindera-analysis/filters.md)を参照してください。
+
 ## 文字フィルタ
 
 文字フィルタはトークナイズ前に入力テキストを変換します。
@@ -53,8 +58,8 @@ tokenizer = builder.build
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
 builder.append_character_filter('japanese_iteration_mark', {
-  'normalize_kanji' => 'true',
-  'normalize_kana' => 'true'
+  'normalize_kanji' => true,
+  'normalize_kana' => true
 })
 tokenizer = builder.build
 ```
@@ -136,8 +141,8 @@ builder.set_dictionary('embedded://ipadic')
 # Preprocessing
 builder.append_character_filter('unicode_normalize', { 'kind' => 'nfkc' })
 builder.append_character_filter('japanese_iteration_mark', {
-  'normalize_kanji' => 'true',
-  'normalize_kana' => 'true'
+  'normalize_kanji' => true,
+  'normalize_kana' => true
 })
 
 # Postprocessing

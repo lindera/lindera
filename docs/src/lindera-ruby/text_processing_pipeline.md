@@ -10,6 +10,12 @@ Input Text
   --> Output Tokens
 ```
 
+> [!NOTE]
+> This page shows a few commonly used filters as examples -- it is **not** the complete list.
+> `lindera-analysis` ships 4 character filters and 18 token filters in total. See
+> [Filters](../lindera-analysis/filters.md) for the full, authoritative catalogue of every
+> character and token filter, including parameters and examples.
+
 ## Character Filters
 
 Character filters transform the input text before tokenization.
@@ -53,8 +59,8 @@ Resolves Japanese iteration marks (odoriji) into their full forms.
 builder = Lindera::TokenizerBuilder.new
 builder.set_dictionary('embedded://ipadic')
 builder.append_character_filter('japanese_iteration_mark', {
-  'normalize_kanji' => 'true',
-  'normalize_kana' => 'true'
+  'normalize_kanji' => true,
+  'normalize_kana' => true
 })
 tokenizer = builder.build
 ```
@@ -136,8 +142,8 @@ builder.set_dictionary('embedded://ipadic')
 # Preprocessing
 builder.append_character_filter('unicode_normalize', { 'kind' => 'nfkc' })
 builder.append_character_filter('japanese_iteration_mark', {
-  'normalize_kanji' => 'true',
-  'normalize_kana' => 'true'
+  'normalize_kanji' => true,
+  'normalize_kana' => true
 })
 
 # Postprocessing

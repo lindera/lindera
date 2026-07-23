@@ -12,12 +12,12 @@ LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile
 
 ## Training a Model
 
-Use `Lindera::Trainer.train` to train a CRF model from a seed lexicon and annotated corpus:
+Use `Lindera.train` to train a CRF model from a seed lexicon and annotated corpus:
 
 ```ruby
 require 'lindera'
 
-Lindera::Trainer.train(
+Lindera.train(
   'resources/training/seed.csv',
   'resources/training/corpus.txt',
   'resources/training/char.def',
@@ -50,12 +50,12 @@ Parameters are passed as positional arguments in the following order:
 
 ## Exporting a Trained Model
 
-After training, export the model to dictionary source files using `Lindera::Trainer.export`:
+After training, export the model to dictionary source files using `Lindera.export`:
 
 ```ruby
 require 'lindera'
 
-Lindera::Trainer.export(
+Lindera.export(
   '/tmp/model.dat',
   '/tmp/dictionary_source',
   'resources/training/metadata.json'
@@ -86,7 +86,7 @@ The full workflow for training and using a custom dictionary:
 require 'lindera'
 
 # Step 1: Train the CRF model
-Lindera::Trainer.train(
+Lindera.train(
   'resources/training/seed.csv',
   'resources/training/corpus.txt',
   'resources/training/char.def',
@@ -100,7 +100,7 @@ Lindera::Trainer.train(
 )
 
 # Step 2: Export to dictionary source files
-Lindera::Trainer.export(
+Lindera.export(
   '/tmp/model.dat',
   '/tmp/dictionary_source',
   'resources/training/metadata.json'

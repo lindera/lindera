@@ -87,6 +87,10 @@ The `metadata` parameter is optional. When omitted, default metadata values are 
 Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
 ```
 
+> [!NOTE]
+> The first argument (`kind`, `'ipadic'` above) is currently unused -- it is reserved for
+> future use and has no effect on the build. Any string value can be passed for it today.
+
 ## Metadata
 
 The `Lindera::Metadata` class configures dictionary parameters.
@@ -96,17 +100,41 @@ The `Lindera::Metadata` class configures dictionary parameters.
 ```ruby
 require 'lindera'
 
-# Default metadata
-metadata = Lindera::Metadata.new
-
 # Create default metadata with standard settings
 metadata = Lindera::Metadata.create_default
+```
+
+`Lindera::Metadata.new` takes all nine properties as required positional
+arguments (each may be `nil` to fall back to its default) -- use it only when
+you need to override specific values:
+
+```ruby
+metadata = Lindera::Metadata.new(
+  'my_dict', # name
+  'UTF-8',   # encoding
+  -10_000,   # default_word_cost
+  1288,      # default_left_context_id
+  1288,      # default_right_context_id
+  '*',       # default_field_value
+  false,     # flexible_csv
+  false,     # skip_invalid_cost_or_id
+  false      # normalize_details
+)
 ```
 
 ### Loading from JSON
 
 ```ruby
 metadata = Lindera::Metadata.from_json_file('metadata.json')
+```
+
+### Getting Metadata from a Dictionary
+
+A loaded dictionary's metadata can be retrieved directly:
+
+```ruby
+dictionary = Lindera.load_dictionary('/path/to/ipadic')
+metadata = dictionary.metadata
 ```
 
 ### Properties
