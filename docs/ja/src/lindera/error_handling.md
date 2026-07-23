@@ -40,12 +40,10 @@ let error = error.add_context("failed to load dictionary from /path/to/dict");
 | `Content` | 無効なコンテンツまたはデータのエラー |
 | `Args` | 無効な引数のエラー |
 | `Decode` | デコードエラー |
-| `Compression` | 圧縮・解凍エラー |
 | `NotFound` | リソースが見つからない（例: 辞書ファイルの欠落） |
 | `Build` | 辞書ビルドエラー |
 | `Dictionary` | 辞書関連のエラー |
 | `Mode` | 無効なトークナイズモードのエラー |
-| `Algorithm` | アルゴリズムエラー（例: Viterbi の失敗） |
 | `FeatureDisabled` | 有効化されていない機能を使用しようとした |
 
 ## エラーの作成

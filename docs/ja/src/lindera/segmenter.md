@@ -35,7 +35,7 @@ let mode = Mode::Normal;
 
 複合名詞を構成要素に分解します。このモードでは、長い複合語にペナルティを適用し、Segmenter がより短い構成要素に分割するよう促します。
 
-例えば、`Mode::Normal` では複合語「関西国際空港」は1つのトークンのままですが、`Mode::Decompose` では「関西」「国際」「空港」に分割されます。
+例えば、「関西国際空港限定トートバッグ」という文中の複合語「関西国際空港」は、`Mode::Normal` では1つのトークンの一部のままですが、`Mode::Decompose` では「関西」「国際」「空港」に分割されます（分割されるかどうかは前後の文脈にも依存し、同じ文字列単独では同じ結果にならない場合があります）。
 
 ```rust
 use lindera::mode::Mode;
@@ -95,7 +95,7 @@ fn main() -> LinderaResult<()> {
     let text = "日本語の形態素解析を行うことができます。";
     let tokens = tokenizer.tokenize(text)?;
 
-    for token in tokens {
+    for mut token in tokens {
         let details = token.details().join(",");
         println!("{}\t{}", token.surface.as_ref(), details);
     }
@@ -103,3 +103,44 @@ fn main() -> LinderaResult<()> {
     Ok(())
 }
 ```
+
+`token` を `mut` で束縛している点に注意してください。`Token::details` は `&mut self` を取るため、単純な `for token in tokens` ではコンパイルエラー（`E0596`: 可変として借用できません）になります。
+
+## Config からの構築
+
+`Segmenter::from_config` は、`Tokenizer`/`TokenizerBuilder` と同じ設定フォーマット（[設定](../lindera-analysis/configuration.md)を参照）のうち `segmenter:` セクション相当を受け取り、`SegmenterConfig`（`serde_json::Value`）から `Segmenter` を構築します：
+
+```rust
+use serde_json::json;
+use lindera::segmenter::{Segmenter, SegmenterConfig};
+
+let config: SegmenterConfig = json!({
+    "mode": "normal",
+    "dictionary": "embedded://ipadic"
+});
+let segmenter = Segmenter::from_config(&config)?;
+```
+
+## 空白文字の扱い
+
+デフォルトでは、MeCab互換のため空白のみのトークンは出力から除外されます。`Segmenter` に対して `keep_whitespace(true)` を呼び出すと、これらを保持できます：
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
+```
+
+## N-Best セグメンテーション
+
+`segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：
+
+```rust
+let results = segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 3, false, None)?;
+for (tokens, cost) in results {
+    println!("cost={cost}");
+    for token in tokens {
+        println!("  {}", token.surface.as_ref());
+    }
+}
+```
+
+`segment_nbest_with_lattice` は同じ処理を行いますが、呼び出しごとの `Lattice` バッファの再確保を避けるために、再利用可能な `Lattice` を自分で渡すことができます。
