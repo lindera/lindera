@@ -39,7 +39,7 @@ cargo test -p <crate> <test_name>
 ### Training Feature Tests
 
 ```bash
-cargo test -p lindera-dictionary --features train
+cargo test -p lindera-trainer
 ```
 
 ### All Features for a Crate

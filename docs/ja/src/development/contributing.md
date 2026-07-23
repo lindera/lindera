@@ -49,10 +49,10 @@ Lindera への貢献に興味をお持ちいただきありがとうございま
     cargo test -p <crate> <test_name>
     ```
 
-- `train` feature に関連する作業では、feature フラグを含めてください：
+- 学習パイプライン機能に関連する作業では、`lindera-trainer` クレートのテストを実行してください：
 
     ```bash
-    cargo test -p lindera-dictionary --features train
+    cargo test -p lindera-trainer
     ```
 
 ## コミットメッセージ

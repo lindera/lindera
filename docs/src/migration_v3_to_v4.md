@@ -5,7 +5,7 @@ deliberately deferred during the v3 series. Each change is small on its own; thi
 guide lists every one so you can upgrade with confidence.
 
 The breaking changes were verified mechanically against a `cargo public-api` diff of
-the v3.0.7 and v4 public surfaces (committed under `public-api/` in the repository).
+the v3.0.7 and v4 public surfaces.
 
 ## Overview
 
@@ -146,8 +146,8 @@ Other changes in `lindera_dictionary::viterbi`:
   no longer public.
 - `util::read_aligned_file` and the `embedded_dictionary!` macro were added.
 
-The complete machine-generated diff lives in `public-api/lindera-dictionary.diff` in
-the repository.
+This list was derived from the complete machine-generated `cargo public-api` diff
+for the `lindera-dictionary` crate between the v3.0.7 and v4 releases.
 
 ## Upgrade checklist
 
