@@ -39,7 +39,7 @@ default = ["mmap", "train"]
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { version = "4.6.2", features = ["derive", "cargo"] }
+clap = { version = "4.6.4", features = ["derive", "cargo"] }
 lindera = { workspace = true }
 lindera-analysis = { workspace = true }
 num_cpus = { workspace = true }
