@@ -1,11 +1,32 @@
 # Commands
 
-The Lindera CLI provides four main commands:
+The Lindera CLI provides five main commands:
 
+- **list** - List the morphological analysis dictionaries embedded in the binary
 - **tokenize** - Perform morphological analysis on text
 - **build** - Build a dictionary from source CSV files
 - **train** - Train a CRF model from annotated corpus data
 - **export** - Export a trained model to dictionary format
+
+## list
+
+List the morphological analysis dictionaries that were embedded in the binary at build time (via the `embed-*` feature flags).
+
+### List parameters
+
+This command takes no arguments.
+
+### List usage
+
+```shell
+% lindera list
+```
+
+```text
+ipadic
+```
+
+The output contains one dictionary name per line, limited to whichever `embed-*` features were enabled when the binary was built (e.g. `--features=embed-ipadic`). If no `embed-*` feature was enabled, the command produces no output.
 
 ## tokenize
 
@@ -26,6 +47,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
   - `decompose`: Decompose compound words
 - `--char-filter` / `-c`: Character filter configuration (JSON)
 - `--token-filter` / `-t`: Token filter configuration (JSON)
+- `--keep-whitespace`: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.
 - `--nbest-cost-threshold`: Maximum cost difference from the best path. Only paths with cost within `best_cost + threshold` are returned.
@@ -560,6 +582,7 @@ Build (compile) a morphological analysis dictionary from source CSV files for us
 - `--dest` / `-d`: Destination directory for compiled dictionary output
 - `--metadata` / `-m`: Metadata configuration file (metadata.json) that defines dictionary structure
 - `--user` / `-u`: Build user dictionary instead of system dictionary (optional flag)
+- `--context-id-freq` / `-f`: Context-ID access-frequency file used to reorder connection-cost IDs (optional; only meaningful when the dictionary's `metadata.json` sets `connection_id_mapping: true`)
 
 ### Dictionary types
 
@@ -737,9 +760,11 @@ Train a new morphological analysis model from annotated corpus data. To use this
 - `--feature-def` / `-f`: Feature definition file (feature.def)
 - `--rewrite-def` / `-r`: Rewrite rule definition file (rewrite.def)
 - `--output` / `-o`: Output model file
-- `--lambda` / `-l`: L1 regularization (0.0-1.0) (default: 0.01)
+- `--lambda` / `-l`: Regularization coefficient (0.0-1.0) (default: 0.01)
+- `--regularization` / `-R`: Regularization type: `l1`, `l2`, or `elasticnet` (default: `l1`)
+- `--elastic-net-l1-ratio`: L1 ratio for Elastic Net regularization (0.0-1.0), only used with `--regularization elasticnet` (default: 0.5)
 - `--max-iterations` / `-i`: Maximum number of iterations for training (default: 100)
-- `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count, auto-adjusted based on dataset size)
+- `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count)
 
 ### Basic workflow
 
@@ -781,7 +806,7 @@ The training corpus file contains annotated text data used to train the CRF mode
 EOS
 ```
 
-For detailed information about file formats and advanced features, see [TRAINER_README.md](../TRAINER_README.md).
+For detailed information about file formats and advanced features, see [Training Pipeline](../development/training_pipeline.md).
 
 #### 2. Train model
 

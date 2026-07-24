@@ -39,7 +39,7 @@ cargo test -p <crate> <test_name>
 ### 学習機能のテスト
 
 ```bash
-cargo test -p lindera-dictionary --features train
+cargo test -p lindera-trainer
 ```
 
 ### クレート単位の全機能テスト

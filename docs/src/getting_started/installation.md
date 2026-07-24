@@ -7,6 +7,11 @@ Put the following in Cargo.toml:
 lindera = "5.0"
 ```
 
+> [!NOTE]
+> v5.0.0 is the next planned release and has not been published to crates.io yet; the current
+> published version is `4.0.1`. This guide describes the v5.0.0 API, which already exists on the
+> `main` branch. See [Migration v4 to v5](../migration_v4_to_v5.md) for details.
+
 ## Dictionary Setup
 
 Lindera requires a pre-built dictionary at runtime. Download a dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and specify its path when loading:
@@ -65,7 +70,7 @@ The `LINDERA_CONFIG_PATH` environment variable specifies the path to a YAML conf
 export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 ```
 
-See the [Configuration](../configuration.md) section for details on the configuration format.
+See the [Configuration](../lindera-analysis/configuration.md) section for details on the configuration format.
 
 ### DOCS_RS
 

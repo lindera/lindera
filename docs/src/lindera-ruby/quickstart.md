@@ -27,7 +27,7 @@ Expected output:
 ```text
 関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
 ## Sequential Configuration
@@ -66,7 +66,7 @@ tokens.each do |token|
   puts "Byte range: #{token.byte_start}..#{token.byte_end}"
   puts "Position: #{token.position}"
   puts "Word ID: #{token.word_id}"
-  puts "Unknown: #{token.is_unknown}"
+  puts "Unknown: #{token.unknown?}"
   puts "Details: #{token.details}"
   puts
 end

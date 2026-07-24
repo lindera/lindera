@@ -29,12 +29,20 @@
     - [アーキテクチャ](./lindera-dictionary/architecture.md)
     - [APIリファレンス](./lindera-dictionary/api_reference.md)
 
+- [Lindera Trainer](./lindera-trainer.md)
+    - [アーキテクチャ](./lindera-trainer/architecture.md)
+    - [APIリファレンス](./lindera-trainer/api_reference.md)
+
 - [Lindera ライブラリ](./lindera.md)
-    - [設定](./lindera/configuration.md)
     - [セグメンタ](./lindera/segmenter.md)
-    - [トークンフィルタ](./lindera/token_filters.md)
     - [エラーハンドリング](./lindera/error_handling.md)
     - [APIリファレンス](./lindera/api_reference.md)
+
+- [Lindera Analysis](./lindera-analysis.md)
+    - [設定](./lindera-analysis/configuration.md)
+    - [フィルタ](./lindera-analysis/filters.md)
+    - [アーキテクチャ](./lindera-analysis/architecture.md)
+    - [APIリファレンス](./lindera-analysis/api_reference.md)
 
 - [Lindera CLI](./lindera-cli.md)
     - [インストール](./lindera-cli/installation.md)

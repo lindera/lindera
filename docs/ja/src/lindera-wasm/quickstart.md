@@ -55,6 +55,9 @@ main();
 
 `embed-*` feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：
 
+> [!NOTE]
+> ここでの `lindera-wasm-web-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
+
 ```javascript
 import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
 

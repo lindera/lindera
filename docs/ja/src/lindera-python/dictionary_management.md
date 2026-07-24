@@ -20,6 +20,29 @@ dictionary = load_dictionary("/path/to/ipadic")
 dictionary = load_dictionary("embedded://ipadic")
 ```
 
+読み込んだ `Dictionary` は、自身のメタデータも公開しています：
+
+```python
+print(dictionary.metadata_name())      # 例: "ipadic"
+print(dictionary.metadata_encoding())  # 例: "UTF-8"
+metadata = dictionary.metadata()       # Metadata オブジェクト全体
+```
+
+これは、システム辞書と同じメタデータ（スキーマ、エンコーディングなど）を
+共有する必要があるユーザー辞書を読み込む際に便利です。
+[`lindera-python/examples/tokenize_with_userdict.py`](https://github.com/lindera/lindera/blob/main/lindera-python/examples/tokenize_with_userdict.py)
+を参照してください：
+
+```python
+from lindera import Tokenizer, load_dictionary, load_user_dictionary
+
+dictionary = load_dictionary("embedded://ipadic")
+metadata = dictionary.metadata()
+user_dictionary = load_user_dictionary("/path/to/user_dictionary.csv", metadata)
+
+tokenizer = Tokenizer(dictionary, mode="normal", user_dictionary=user_dictionary)
+```
+
 ### ユーザー辞書
 
 ユーザー辞書はシステム辞書にカスタム語彙を追加します。
@@ -88,6 +111,11 @@ build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadat
 build_user_dictionary("ipadic", "user_words.csv", "/path/to/output_dir")
 ```
 
+**注意:** 最初の引数（上記の `"ipadic"`）は現在未使用で、将来のために予約されて
+いるものです -- ビルドの選択や設定には一切影響しません。ビルドの挙動は
+`metadata`（特に `metadata.user_dictionary_schema`）によってのみ制御されます。
+現時点では任意の文字列を渡すことができます。
+
 ## Metadata
 
 `Metadata` クラスは辞書のパラメータを設定します。
@@ -146,4 +174,107 @@ print(metadata.name)  # "custom_dict"
 ```python
 metadata = Metadata(name="test")
 print(metadata.to_dict())
+```
+
+## Schema
+
+`Schema`、`FieldDefinition`、`FieldType` は、辞書エントリーのフィールド構成を
+表します。スキーマは `Metadata.dictionary_schema` と
+`Metadata.user_dictionary_schema`（上記の表を参照）で使用されます。
+
+### FieldType
+
+`FieldType` は単一フィールドの種別を列挙します：
+
+- `FieldType.Surface` -- 表層形（単語のテキスト）
+- `FieldType.LeftContextId` -- 左文脈 ID
+- `FieldType.RightContextId` -- 右文脈 ID
+- `FieldType.Cost` -- 単語コスト
+- `FieldType.Custom` -- その他の辞書固有フィールド
+
+### FieldDefinition
+
+`FieldDefinition` はスキーマ内の単一フィールドを表します。
+
+#### `FieldDefinition(index, name, field_type, description=None)`
+
+```python
+from lindera import FieldDefinition, FieldType
+
+field = FieldDefinition(0, "surface", FieldType.Surface, "Surface form")
+```
+
+**プロパティ**（読み取り専用）：
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `index` | `int` | スキーマ内でのフィールドの位置（0 始まり） |
+| `name` | `str` | フィールド名 |
+| `field_type` | `FieldType` | フィールドの種別 |
+| `description` | `str` または `None` | 任意の説明文 |
+
+### Schema の作成
+
+`Schema` はフィールド名の順序付きリストを保持し、フィールド名とインデックス間の
+相互参照を提供します。
+
+#### `Schema(fields)`
+
+フィールド名のリストからスキーマを作成します。
+
+```python
+from lindera import Schema
+
+schema = Schema([
+    "surface",
+    "left_context_id",
+    "right_context_id",
+    "cost",
+    "major_pos",
+    "reading",
+])
+```
+
+#### `Schema.create_default()`
+
+組み込みのデフォルトスキーマを返す静的メソッドです。13 個のフィールドから成り、
+IPADIC 形式のレイアウトに対応します（`surface`, `left_context_id`,
+`right_context_id`, `cost`, `major_pos`, `pos_detail_1`, `pos_detail_2`,
+`pos_detail_3`, `conjugation_type`, `conjugation_form`, `base_form`, `reading`,
+`pronunciation`）。
+
+```python
+schema = Schema.create_default()
+```
+
+### Schema のメソッドとプロパティ
+
+| メンバー | 戻り値 | 説明 |
+| --- | --- | --- |
+| `fields`（プロパティ） | `list[str]` | すべてのフィールド名（順序どおり） |
+| `field_count()` | `int` | フィールドの総数 |
+| `get_field_index(name)` | `int` または `None` | `name` という名前のフィールドのインデックス |
+| `get_field_name(index)` | `str` または `None` | `index` のフィールド名 |
+| `get_custom_fields()` | `list[str]` | 4 つの固定フィールド（`surface`, `left_context_id`, `right_context_id`, `cost`）以降のフィールド名 |
+| `get_field_by_name(name)` | `FieldDefinition` または `None` | `name` の完全なフィールド定義 |
+| `validate_record(record)` | `None` | `record` がスキーマと一致しない場合 `ValueError` を送出 |
+| `__len__()` | `int` | `field_count()` と同じ |
+
+```python
+schema = Schema.create_default()
+
+schema.field_count()               # 13
+schema.get_field_index("cost")     # 3
+schema.get_field_name(0)           # "surface"
+schema.get_custom_fields()         # ["major_pos", "pos_detail_1", ..., "pronunciation"]
+len(schema)                        # 13
+
+field = schema.get_field_by_name("surface")
+print(field.index, field.name, field.field_type)  # 0 surface FieldType.Surface
+
+schema.validate_record([
+    "東京", "1288", "1288", "100",
+    "名詞", "固有名詞", "地域", "一般", "*", "*",
+    "東京", "トウキョウ", "トーキョー",
+])
 ```

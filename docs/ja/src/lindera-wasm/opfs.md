@@ -28,6 +28,7 @@ import { downloadDictionary, loadDictionaryFiles, removeDictionary,
   - `name` (string) -- 辞書の保存名（例: `"ipadic"`）
   - `options` (object, 省略可):
     - `onProgress` (function) -- 進捗コールバック
+    - `fetchInit` (`RequestInit`, 省略可) -- `fetch()` にそのまま渡す追加オプション（カスタムヘッダー、認証情報、`AbortSignal` など）
 - **戻り値**: `Promise<void>`
 
 ```javascript

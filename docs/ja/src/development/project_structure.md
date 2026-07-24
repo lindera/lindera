@@ -12,6 +12,7 @@ lindera/
 ├── lindera/                # Core morphological analysis library
 ├── lindera-analysis/       # 分析チェーン（character/token filter・tokenizer）
 ├── lindera-cli/            # CLI tool
+├── lindera-binding-core/   # 言語バインディングが共有するFFI非依存のヘルパー
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
@@ -19,6 +20,9 @@ lindera/
 ├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
 ├── lindera-jieba/          # Jieba dictionary (Chinese)
 ├── lindera-python/         # Python bindings (PyO3)
+├── lindera-nodejs/         # Node.js bindings (NAPI-RS)
+├── lindera-ruby/           # Ruby bindings (Magnus + rb-sys)
+├── lindera-php/            # PHP bindings (ext-php-rs)
 ├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
 ├── resources/              # Test resources and sample data
 ├── docs/                   # Documentation (mdBook)
@@ -51,11 +55,19 @@ lindera/
 
 #### `lindera`
 
-メインの形態素解析ライブラリです。辞書クレートを統合し、`Tokenizer`、`Segmenter`、文字フィルタ、トークンフィルタを提供します。
+純粋な形態素セグメンターです。辞書クレートを統合し、`Segmenter` API を提供します。
+
+#### `lindera-analysis`
+
+`lindera` の上に構築されたLucene風の分析チェーンです。文字フィルタ、トークンフィルタ、およびそれらを `Segmenter` の周りで組み合わせる `Tokenizer` を提供します。
 
 #### `lindera-cli`
 
 トークナイズ、辞書学習、エクスポート、ビルドのためのコマンドラインインターフェースです。デフォルトで `train` feature が有効です。
+
+#### `lindera-binding-core`
+
+5つの言語バインディング（`lindera-python`、`lindera-nodejs`、`lindera-ruby`、`lindera-php`、`lindera-wasm`）すべてが共有するFFI非依存のヘルパーです。各バインディングがそれぞれの言語のネイティブAPIでラップするコアのトークナイザー・スキーマ・メタデータ層を提供します。
 
 ### 辞書クレート
 
@@ -75,6 +87,18 @@ lindera/
 #### `lindera-python`
 
 [PyO3](https://pyo3.rs/) で構築された Python バインディングです。Lindera のトークナイザー API を Python アプリケーションに公開します。
+
+#### `lindera-nodejs`
+
+[NAPI-RS](https://napi.rs/) で構築された Node.js バインディングです。Lindera のトークナイザー API を Node.js アプリケーションに公開します。
+
+#### `lindera-ruby`
+
+[Magnus](https://github.com/matsadler/magnus) と `rb-sys` で構築された Ruby バインディングです。Lindera のトークナイザー API を Ruby gem として公開します。
+
+#### `lindera-php`
+
+[ext-php-rs](https://github.com/davidcole1340/ext-php-rs) で構築された PHP バインディングです。Lindera のトークナイザー API を PHP 拡張として公開します。
 
 #### `lindera-wasm`
 

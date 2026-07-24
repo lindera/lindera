@@ -38,13 +38,15 @@ graph LR
 | Section | Description |
 | --- | --- |
 | [Getting Started](./getting_started.md) | Installation, quick start, and examples |
-| [Dictionaries](./dictionaries.md) | Available dictionaries and how to use them |
-| [Configuration](./configuration.md) | YAML-based tokenizer configuration |
-| [Advanced Usage](./advanced_usage.md) | User dictionaries, filters, and CRF training |
-| [CLI](./cli.md) | Command-line interface reference |
+| [Dictionaries](./concepts/dictionaries.md) | Available dictionaries and how to use them |
+| [Configuration](./lindera-analysis/configuration.md) | YAML-based tokenizer configuration |
+| [User Dictionary](./concepts/user_dictionary.md) | Building and using custom user dictionaries |
+| [Filters](./lindera-analysis/filters.md) | Character filters and token filters reference |
+| [CRF Training](./development/training_pipeline.md) | Training custom dictionary cost models |
+| [CLI](./lindera-cli.md) | Command-line interface reference |
 | [Architecture](./architecture.md) | Crate structure and design overview |
-| [API Reference](./api_reference.md) | Rust API documentation |
-| [Contributing](./contributing.md) | How to contribute to Lindera |
+| [API Reference](./lindera/api_reference.md) | Rust API documentation |
+| [Contributing](./development/contributing.md) | How to contribute to Lindera |
 
 ## Quick Example
 

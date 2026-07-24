@@ -8,7 +8,7 @@ It will:
 - Segment the input text
 - Output the tokens
 
-First, download a pre-built IPADIC dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases) and extract it to a local directory (e.g., `/path/to/ipadic`).
+This example uses the `embed-ipadic` feature, which downloads the IPADIC dictionary and embeds it into the binary automatically at build time — no manual dictionary download is required.
 
 ```rust
 use std::borrow::Cow;
@@ -19,7 +19,7 @@ use lindera::segmenter::Segmenter;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary("/path/to/ipadic")?;
+    let dictionary = load_dictionary("embedded://ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
     let text = "関西国際空港限定トートバッグ";
@@ -37,11 +37,11 @@ fn main() -> LinderaResult<()> {
 The above example can be run as follows:
 
 ```shell
-% cargo run --example=segment
+% cargo run --features embed-ipadic --example=segment
 ```
 
 > [!TIP]
-> If you embed the dictionary into the binary using the `embed-ipadic` feature (advanced usage), you can use `load_dictionary("embedded://ipadic")` instead of specifying a file path. See [Feature Flags](../development/feature_flags.md) for details.
+> If you prefer not to embed the dictionary into the binary, download a pre-built IPADIC dictionary from [GitHub Releases](https://github.com/lindera/lindera/releases), extract it to a local directory (e.g., `/path/to/ipadic`), and call `load_dictionary("/path/to/ipadic")` instead — no `embed-ipadic` feature needed in that case. See [Feature Flags](../development/feature_flags.md) for details.
 
 You can see the result as follows:
 

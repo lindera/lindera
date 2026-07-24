@@ -12,6 +12,7 @@ lindera-crf/src/
 ├── errors.rs             # エラー型
 ├── forward_backward.rs   # 前向き・後向きアルゴリズム
 ├── math.rs               # 数学ユーティリティ (logsumexp)
+├── optimizers.rs         # optimizersモジュールの宣言
 ├── optimizers/
 │   └── lbfgs.rs          # L-BFGS最適化
 └── utils.rs              # ユーティリティtrait
@@ -21,7 +22,7 @@ lindera-crf/src/
 
 ### FeatureProvider / FeatureSet
 
-ラベルごとの素性セットを管理します。各`FeatureSet`は、指定されたラベルのユニグラム素性と左右のバイグラム素性を保持します。`FeatureProvider`は`FeatureSet`インスタンスを集約し、素性IDから重みへのマッピングを行います。
+ラベルごとの素性セットを管理します。各`FeatureSet`は、指定されたラベルのユニグラム素性と左右のバイグラム素性を保持します（保持するのは素性IDのみで、重みは持ちません）。`FeatureProvider`はラベルIDを`FeatureSet`インスタンスにマッピングします。重みは`RawModel`側で別途保持されます（`weights`、`unigram_weight_indices`、`bigram_weight_indices`）。
 
 ### Lattice / Edge / Node
 
@@ -44,7 +45,9 @@ lindera-crf/src/
 ラティスを通じて最適パスを探索するためのインターフェースです。2つの実装が提供されています：
 
 - **RawModel**: 素性IDでインデックスされたフラットベクトルに重みを格納
-- **MergedModel**: 推論に最適化され、素性の重みをrkyvでシリアライズ可能なコンパクトな表現にマージ
+- **MergedModel**: 推論に最適化され、素性の重みをrkyvでシリアライズ可能なコンパクトな表現にマージ。ラベルごとの要素型として`MergedFeatureSet`を使用
+
+`MergedFeatureSet`は、ラベルの事前合計済みユニグラム`weight`と、`MergedModel`のバイグラム重み行列を参照する`left_id`/`right_id`接続IDを保持します。
 
 ### 前向き・後向きアルゴリズム
 

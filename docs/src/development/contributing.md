@@ -49,10 +49,10 @@ Thank you for your interest in contributing to Lindera! This page provides guide
     cargo test -p <crate> <test_name>
     ```
 
-- When working with the `train` feature, include the feature flag:
+- When working on training pipeline functionality, run the `lindera-trainer` crate's tests:
 
     ```bash
-    cargo test -p lindera-dictionary --features train
+    cargo test -p lindera-trainer
     ```
 
 ## Commit Messages

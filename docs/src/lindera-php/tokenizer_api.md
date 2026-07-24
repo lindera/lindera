@@ -29,8 +29,6 @@ $builder->fromFile('config.json');
 
 ### Configuration Methods
 
-All setter methods return `$this` for method chaining.
-
 #### `setMode($mode)`
 
 Sets the tokenization mode.
@@ -65,7 +63,7 @@ Sets the user dictionary URI.
 ```php
 <?php
 
-$builder->setUserDictionary('/path/to/user_dictionary');
+$builder->setUserDictionary('/path/to/user_dictionary.csv');
 ```
 
 #### `setKeepWhitespace($keep)`
@@ -134,7 +132,7 @@ With a user dictionary:
 
 $dictionary = Lindera\Dictionary::load('embedded://ipadic');
 $metadata = $dictionary->metadata();
-$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary', $metadata);
+$userDict = Lindera\Dictionary::loadUser('/path/to/user_dictionary.csv', $metadata);
 $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDict);
 ```
 
@@ -240,3 +238,57 @@ The structure of `details` depends on the dictionary:
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: Detailed morphological features following the UniDic specification
 - **ko-dic / CC-CEDICT / Jieba**: Dictionary-specific detail formats
+
+## Mode
+
+`Lindera\Mode` represents the tokenization mode.
+
+### Creating a Mode
+
+```php
+<?php
+
+$mode = new Lindera\Mode('normal');
+$mode = new Lindera\Mode('decompose');
+$mode = new Lindera\Mode();  // default: 'normal'
+```
+
+### Mode Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `$name` | `string` | The mode name (`"normal"` or `"decompose"`) |
+
+### Mode Methods
+
+| Method | Return Type | Description |
+| --- | --- | --- |
+| `isNormal()` | `bool` | `true` if the mode is normal |
+| `isDecompose()` | `bool` | `true` if the mode is decompose |
+
+## Penalty
+
+`Lindera\Penalty` configures how aggressively `decompose` mode splits compound words, based on character type and length thresholds.
+
+> **Note:** `Penalty` is not currently wired into `TokenizerBuilder` or the `Tokenizer` constructor -- there is no setter that accepts it, so constructing one has no effect on tokenization yet. `decompose` mode always uses the default penalty values shown below.
+
+```php
+<?php
+
+// All parameters are optional and default to the values used by decompose mode
+$penalty = new Lindera\Penalty(
+    kanji_penalty_length_threshold: 2,
+    kanji_penalty_length_penalty: 3000,
+    other_penalty_length_threshold: 7,
+    other_penalty_length_penalty: 1700,
+);
+```
+
+### Penalty Properties
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `$kanji_penalty_length_threshold` | `int` | `2` | Length threshold for kanji sequences |
+| `$kanji_penalty_length_penalty` | `int` | `3000` | Penalty applied to kanji sequences exceeding the threshold |
+| `$other_penalty_length_threshold` | `int` | `7` | Length threshold for other character sequences |
+| `$other_penalty_length_penalty` | `int` | `1700` | Penalty applied to other character sequences exceeding the threshold |

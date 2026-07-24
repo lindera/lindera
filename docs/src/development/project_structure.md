@@ -12,6 +12,7 @@ lindera/
 ├── lindera/                # Core morphological segmentation library
 ├── lindera-analysis/       # Analysis chain (character/token filters, tokenizer)
 ├── lindera-cli/            # CLI tool
+├── lindera-binding-core/   # FFI-independent helpers shared by the language bindings
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
@@ -19,6 +20,9 @@ lindera/
 ├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
 ├── lindera-jieba/          # Jieba dictionary (Chinese)
 ├── lindera-python/         # Python bindings (PyO3)
+├── lindera-nodejs/         # Node.js bindings (NAPI-RS)
+├── lindera-ruby/           # Ruby bindings (Magnus + rb-sys)
+├── lindera-php/            # PHP bindings (ext-php-rs)
 ├── lindera-wasm/           # WebAssembly bindings (wasm-bindgen)
 ├── resources/              # Test resources and sample data
 ├── docs/                   # Documentation (mdBook)
@@ -61,6 +65,10 @@ Lucene-style analysis chain on top of `lindera`: character filters, token filter
 
 Command-line interface for tokenization, dictionary training, export, and building. The `train` feature is enabled by default.
 
+#### `lindera-binding-core`
+
+FFI-independent helpers shared by all five language bindings (`lindera-python`, `lindera-nodejs`, `lindera-ruby`, `lindera-php`, `lindera-wasm`): a core tokenizer/schema/metadata layer that each binding wraps in its own language-native API.
+
 ### Dictionary Crates
 
 Each dictionary crate contains pre-built dictionary data for a specific language and dictionary source.
@@ -79,6 +87,18 @@ Each dictionary crate contains pre-built dictionary data for a specific language
 #### `lindera-python`
 
 Python bindings built with [PyO3](https://pyo3.rs/). Exposes the Lindera tokenizer API to Python applications.
+
+#### `lindera-nodejs`
+
+Node.js bindings built with [NAPI-RS](https://napi.rs/). Exposes the Lindera tokenizer API to Node.js applications.
+
+#### `lindera-ruby`
+
+Ruby bindings built with [Magnus](https://github.com/matsadler/magnus) and `rb-sys`. Exposes the Lindera tokenizer API as a Ruby gem.
+
+#### `lindera-php`
+
+PHP bindings built with [ext-php-rs](https://github.com/davidcole1340/ext-php-rs). Exposes the Lindera tokenizer API as a PHP extension.
 
 #### `lindera-wasm`
 

@@ -102,10 +102,17 @@ const lindera = require("lindera-nodejs");
 console.log(lindera.version());
 ```
 
-Or with ES modules:
+> [!NOTE]
+> `lindera-nodejs`'s `package.json` currently declares only a `require` condition in its
+> `exports` map (no `import` condition), so `import { version } from "lindera-nodejs"` fails
+> with `ERR_PACKAGE_PATH_NOT_EXPORTED`. From an ES module, load it with Node's `createRequire`
+> instead:
 
 ```javascript
-import { version } from "lindera-nodejs";
+import { createRequire } from "node:module";
 
-console.log(version());
+const require = createRequire(import.meta.url);
+const lindera = require("lindera-nodejs");
+
+console.log(lindera.version());
 ```

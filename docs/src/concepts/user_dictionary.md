@@ -80,13 +80,19 @@ Output:
 
 ```text
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
-token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
 token:  最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
 token:  は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリーエキ,*
 token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 ```
+
+Note that the `base_form` field (the 7th CSV/detail field) is `*` rather than the
+surface form. The simple three-column user-dictionary schema only supplies
+`surface`, `part_of_speech`, and `reading` — every other field, including
+`base_form`, is filled with the dictionary's `metadata.default_field_value`
+(`*` for IPADIC).
 
 ## Building a user dictionary with CLI
 

@@ -8,7 +8,7 @@
 - 入力テキストを分割（形態素解析）
 - トークンを出力
 
-まず、[GitHub Releases](https://github.com/lindera/lindera/releases) からビルド済みIPADIC辞書をダウンロードし、ローカルディレクトリ（例: `/path/to/ipadic`）に展開してください。
+この例では `embed-ipadic` feature を使用します。この feature はビルド時にIPADIC辞書を自動的にダウンロードしてバイナリに埋め込むため、辞書を手動でダウンロードする必要はありません。
 
 ```rust
 use std::borrow::Cow;
@@ -19,7 +19,7 @@ use lindera::segmenter::Segmenter;
 use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
-    let dictionary = load_dictionary("/path/to/ipadic")?;
+    let dictionary = load_dictionary("embedded://ipadic")?;
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
 
     let text = "関西国際空港限定トートバッグ";
@@ -37,11 +37,11 @@ fn main() -> LinderaResult<()> {
 上記の例は以下のように実行できます：
 
 ```shell
-% cargo run --example=segment
+% cargo run --features embed-ipadic --example=segment
 ```
 
 > [!TIP]
-> `embed-ipadic` feature を使って辞書をバイナリに埋め込む場合（上級者向け）は、ファイルパスの代わりに `load_dictionary("embedded://ipadic")` を使用できます。詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
+> 辞書をバイナリに埋め込みたくない場合は、[GitHub Releases](https://github.com/lindera/lindera/releases) からビルド済みIPADIC辞書をダウンロードしてローカルディレクトリ（例: `/path/to/ipadic`）に展開し、代わりに `load_dictionary("/path/to/ipadic")` を呼び出してください。この場合、`embed-ipadic` feature は不要です。詳細は [Feature フラグ](../development/feature_flags.md) を参照してください。
 
 実行結果は以下のようになります：
 

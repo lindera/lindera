@@ -53,6 +53,9 @@ See [OPFS Dictionary Storage](./opfs.md) for the full OPFS workflow including do
 
 If you built with an `embed-*` feature flag, you can load embedded dictionaries via the `embedded://` URI scheme. This increases the WASM binary size significantly.
 
+> [!NOTE]
+> `lindera-wasm-web-ipadic` in the examples below is an illustrative package name for a local build with the `embed-ipadic` feature, not something published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
+
 ### Loading an Embedded Dictionary
 
 ```javascript
@@ -151,14 +154,14 @@ You can build compiled dictionaries from source files using the JavaScript API.
 
 ### Building a System Dictionary
 
-```javascript
-import { buildDictionary } from 'lindera-wasm-web';
+`metadata` must be an actual `Metadata` instance, not a plain object literal -- the generated binding asserts the argument is a `Metadata` and throws otherwise. Create one with `Metadata.createDefault()` and set the fields you need:
 
-const metadata = {
-    name: "custom-dict",
-    encoding: "utf-8",
-    // ... other metadata fields
-};
+```javascript
+import { buildDictionary, Metadata } from 'lindera-wasm-web';
+
+const metadata = Metadata.createDefault();
+metadata.name = "custom-dict";
+metadata.encoding = "utf-8";
 
 buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
 ```
@@ -215,6 +218,9 @@ metadata.encoding = "EUC-JP";
 console.log(metadata.name); // "custom_dict"
 ```
 
+> [!NOTE]
+> Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM `Metadata` class does not expose `default_word_cost`, `default_left_context_id`, `default_right_context_id`, `default_field_value`, `flexible_csv`, `skip_invalid_cost_or_id`, or `normalize_details` as gettable/settable properties (see `lindera-wasm/src/metadata.rs`). These always fall back to the shared binding defaults (word cost `-10000`, context IDs `1288`, field value `"*"`, flags `false`) and cannot be customized from JavaScript.
+
 You can also access the metadata from a loaded dictionary via `dictionary.metadata`.
 
 ### Schema
@@ -229,7 +235,7 @@ const schema = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 
 #### Schema Static Methods
 
-- `Schema.create_default()` -- Creates a default IPADIC-like schema
+- `Schema.create_default()` -- Creates a built-in 13-field schema loosely modeled on IPADIC's layout: the four system fields (`surface`, `left_context_id`, `right_context_id`, `cost`) followed by nine generic feature fields (`major_pos`, `pos_detail_1`-`pos_detail_3`, `conjugation_type`, `conjugation_form`, `base_form`, `reading`, `pronunciation`). These names -- and the `conjugation_type`/`conjugation_form` order -- differ from the real `lindera-ipadic` dictionary schema (`part_of_speech`, `part_of_speech_subcategory_1`-`_3`, `conjugation_form`, `conjugation_type`, ...). To match an actual IPADIC dictionary's schema, use `dictionary.metadata.dictionary_schema` from a loaded dictionary instead
 
 #### Schema Methods
 

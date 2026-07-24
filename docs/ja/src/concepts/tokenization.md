@@ -53,6 +53,14 @@ echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embe
 echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic --mode decompose
 ```
 
+> [!NOTE]
+> `embedded://` スキームを使用するには、`lindera-cli` を対応する `embed-*`
+> feature 付きでビルドする必要があります（例:
+> `cargo install lindera-cli --features=embed-ipadic`）。デフォルトビルドの
+> `lindera-cli` はどの `embed-*` feature も有効化していないため、
+> `embed-*` feature なしで `--dict embedded://ipadic` を指定すると
+> `Invalid dictionary scheme: embedded` エラーになります。
+
 ## N-Bestトークナイズ
 
 N-Bestトークナイズは、総パスコスト順（低コスト = より良い分割）に上位N件のトークナイズ候補を列挙します。最良の結果が曖昧な場合や、入力テキストの代替解釈を探索したい場合に有用です。
@@ -106,7 +114,7 @@ fn main() -> LinderaResult<()> {
 実行結果は以下のようになります：
 
 ```text
---- NBEST 1 (cost=7546) ---
+--- NBEST 1 (cost=21245) ---
 すもも  名詞,一般,*,*,*,*,すもも,スモモ,スモモ
 も      助詞,係助詞,*,*,*,*,も,モ,モ
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
@@ -114,7 +122,7 @@ fn main() -> LinderaResult<()> {
 もも    名詞,一般,*,*,*,*,もも,モモ,モモ
 の      助詞,連体化,*,*,*,*,の,ノ,ノ
 うち    名詞,非自立,副詞可能,*,*,*,うち,ウチ,ウチ
---- NBEST 2 (cost=7914) ---
+--- NBEST 2 (cost=24541) ---
 ...
 ```
 

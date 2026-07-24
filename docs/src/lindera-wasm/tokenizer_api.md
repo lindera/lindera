@@ -162,11 +162,14 @@ Returns N-best tokenization results ordered by total path cost.
   - `text` (string) -- Text to tokenize
   - `n` (number) -- Number of results to return
   - `unique` (boolean, optional) -- Deduplicate results with identical segmentation (default: `false`)
-  - `costThreshold` (number, optional) -- Only return paths within `bestCost + threshold`
+  - `costThreshold` (bigint, optional) -- Only return paths within `bestCost + threshold`
 - **Returns**: Array of `{ tokens: object[], cost: number }`
 
 ```javascript
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
+
+// With a cost threshold -- note that it must be passed as a bigint literal
+const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 ```
 
 ## Token
@@ -178,12 +181,15 @@ Represents a single token produced by the tokenizer.
 | Property | Type | Description |
 | --- | --- | --- |
 | `surface` | `string` | Surface form of the token |
-| `byteStart` | `number` | Start byte offset in the original text |
-| `byteEnd` | `number` | End byte offset in the original text |
+| `byte_start` | `number` | Start byte offset in the original text |
+| `byte_end` | `number` | End byte offset in the original text |
 | `position` | `number` | Position index of the token |
-| `wordId` | `number` | Word ID in the dictionary |
-| `isUnknown` | `boolean` | Whether the token is an unknown word |
+| `word_id` | `number` | Word ID in the dictionary |
+| `is_unknown` | `boolean` | Whether the token is an unknown word |
 | `details` | `string[]` | Morphological detail fields |
+
+> [!NOTE]
+> These are the real field names exposed on the `Token` object -- `lindera-wasm/src/token.rs` does not apply any `js_name` rename, so the fields stay snake_case in JavaScript. Only `toJSON()` (below) renames them to camelCase for JSON-friendly output.
 
 ### Token Methods
 
@@ -210,6 +216,9 @@ console.log(JSON.stringify(token.toJSON(), null, 2));
 ```
 
 ## Helper Functions
+
+> [!NOTE]
+> The examples below import from `lindera-wasm-web-ipadic`, an illustrative package name for a local build with the `embed-ipadic` feature -- it is not published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
 
 ### `loadDictionary(uri)`
 
@@ -262,7 +271,7 @@ Returns the version string of the lindera-wasm package.
 ```javascript
 import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // e.g., "2.1.1"
+console.log(version()); // e.g., "4.0.1"
 ```
 
 ## Enums and Utility Classes
@@ -310,6 +319,9 @@ console.log(error.toString()); // "message"
 | --- | --- | --- |
 | `message` | `string` | Error message |
 | `toString()` | `string` | Returns the error message |
+
+> [!NOTE]
+> `LinderaError` is exported as a utility class, but the current error paths in `TokenizerBuilder`, `Tokenizer`, and the dictionary-loading functions (`lindera-wasm/src/tokenizer.rs`, `lindera-wasm/src/dictionary.rs`) all reject with `JsValue::from_str(...)`, not a `JsLinderaError`/`LinderaError` instance. In practice, failures thrown by these APIs surface in JavaScript as plain strings, so catch them with `catch (e) { ... }` and treat `e` as a `string`, not as a `LinderaError` instance.
 
 ## Snake-Case Aliases
 

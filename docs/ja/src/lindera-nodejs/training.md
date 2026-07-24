@@ -12,6 +12,13 @@ npm run build -- --features train
 
 ## モデルの学習
 
+> [!NOTE]
+> 以下で示すファイルパス（`resources/training/*.csv`、`*.def`）はあくまで例示用のプレースホルダーであり、
+> このリポジトリにこれらのファイルが実際に同梱されているわけではありません。種辞書・コーパス・各種定義ファイルを
+> その場で生成し、実際に学習・エクスポート・辞書ビルドまで一気通貫で行う完全な実行可能サンプルは
+> [`lindera-nodejs/examples/train_and_export.js`](https://github.com/lindera/lindera/blob/main/lindera-nodejs/examples/train_and_export.js)
+> を参照してください。
+
 `train()` を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：
 
 ```javascript

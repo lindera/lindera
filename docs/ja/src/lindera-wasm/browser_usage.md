@@ -11,7 +11,7 @@ import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-w
 import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
 
 async function main() {
-    // Initialize the WASM module (must be called once before using any API)
+    // WASM モジュールを初期化する（いずれかの API を使用する前に一度だけ呼び出す必要がある）
     await __wbg_init();
 
     // キャッシュされていない場合は辞書をダウンロード
@@ -46,6 +46,9 @@ main();
 ## 埋め込み辞書の使用（上級者向け）
 
 `embed-*` feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：
+
+> [!NOTE]
+> ここでの `lindera-wasm-web-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ```javascript
 import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';

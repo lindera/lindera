@@ -162,11 +162,14 @@ const tokens = tokenizer.tokenize("関西国際空港");
   - `text` (string) -- トークナイズするテキスト
   - `n` (number) -- 返す結果の数
   - `unique` (boolean, 省略可) -- 同一のセグメンテーション結果を重複排除（デフォルト: `false`）
-  - `costThreshold` (number, 省略可) -- `bestCost + threshold` 以内のパスのみ返す
+  - `costThreshold` (bigint, 省略可) -- `bestCost + threshold` 以内のパスのみ返す
 - **戻り値**: `{ tokens: object[], cost: number }` の配列
 
 ```javascript
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
+
+// コスト閾値を指定する場合 -- bigint リテラルとして渡す必要がある点に注意
+const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 ```
 
 ## Token
@@ -178,12 +181,15 @@ const results = tokenizer.tokenizeNbest("すもももももももものうち", 
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |
 | `surface` | `string` | トークンの表層形 |
-| `byteStart` | `number` | 元テキストでの開始バイトオフセット |
-| `byteEnd` | `number` | 元テキストでの終了バイトオフセット |
+| `byte_start` | `number` | 元テキストでの開始バイトオフセット |
+| `byte_end` | `number` | 元テキストでの終了バイトオフセット |
 | `position` | `number` | トークンの位置インデックス |
-| `wordId` | `number` | 辞書内の単語 ID |
-| `isUnknown` | `boolean` | 未知語かどうか |
+| `word_id` | `number` | 辞書内の単語 ID |
+| `is_unknown` | `boolean` | 未知語かどうか |
 | `details` | `string[]` | 形態素の詳細フィールド |
+
+> [!NOTE]
+> これらが `Token` オブジェクトの実際のフィールド名です -- `lindera-wasm/src/token.rs` は `js_name` によるリネームを一切行っていないため、JavaScript 側でも snake_case のままになります。camelCase にリネームされるのは、下記の `toJSON()` が返す JSON 用オブジェクトのみです。
 
 ### Token メソッド
 
@@ -210,6 +216,9 @@ console.log(JSON.stringify(token.toJSON(), null, 2));
 ```
 
 ## ヘルパー関数
+
+> [!NOTE]
+> 以下の例は `lindera-wasm-web-ipadic` からインポートしていますが、これは `embed-ipadic` feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。詳細は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ### `loadDictionary(uri)`
 
@@ -262,7 +271,7 @@ lindera-wasm パッケージのバージョン文字列を返します。
 ```javascript
 import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // 例: "2.1.1"
+console.log(version()); // 例: "4.0.1"
 ```
 
 ## 列挙型とユーティリティクラス
@@ -310,6 +319,9 @@ console.log(error.toString()); // "message"
 | --- | --- | --- |
 | `message` | `string` | エラーメッセージ |
 | `toString()` | `string` | エラーメッセージを返す |
+
+> [!NOTE]
+> `LinderaError` はユーティリティクラスとしてエクスポートされていますが、`TokenizerBuilder`・`Tokenizer`・辞書読み込み関数（`lindera-wasm/src/tokenizer.rs`、`lindera-wasm/src/dictionary.rs`）の実際のエラーパスはすべて `JsValue::from_str(...)` で reject しており、`JsLinderaError`/`LinderaError` のインスタンスではありません。そのため、これらの API が投げるエラーは JavaScript 側では単なる文字列として現れます。`catch (e) { ... }` で捕捉する際は、`e` を `LinderaError` インスタンスではなく `string` として扱ってください。
 
 ## snake\_case エイリアス
 

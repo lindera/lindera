@@ -38,6 +38,8 @@ export interface DownloadProgress {
 export interface DownloadDictionaryOptions {
   /** Progress callback. */
   onProgress?: (progress: DownloadProgress) => void;
+  /** Additional options passed to `fetch()` (e.g. headers, credentials, signal). */
+  fetchInit?: RequestInit;
 }
 
 /**

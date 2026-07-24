@@ -77,9 +77,19 @@ CSV ファイルからユーザー辞書をビルドします：
 ```ruby
 require 'lindera'
 
-metadata = Lindera::Metadata.new
+metadata = Lindera::Metadata.from_json_file('metadata.json')
 Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', metadata)
 ```
+
+`metadata` パラメータは省略可能です。省略した場合はデフォルトのメタデータ値が使用されます：
+
+```ruby
+Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir', nil)
+```
+
+> [!NOTE]
+> 第一引数（`kind`、上の例では `'ipadic'`）は現時点では未使用です -- 将来の利用のために予約
+> されているだけで、ビルドには影響しません。現時点では任意の文字列を渡すことができます。
 
 ## Metadata
 
@@ -90,10 +100,31 @@ Lindera.build_user_dictionary('ipadic', 'user_words.csv', '/path/to/output_dir',
 ```ruby
 require 'lindera'
 
-# デフォルトのメタデータ
-metadata = Lindera::Metadata.new
+# 標準設定でデフォルトのメタデータを作成
+metadata = Lindera::Metadata.create_default
+```
 
-# JSON ファイルからの読み込み
+`Lindera::Metadata.new` は9つのプロパティすべてを必須の位置引数として受け取ります
+（それぞれ `nil` を渡すとデフォルト値にフォールバックします）。特定の値を上書きしたい
+場合にのみ使用してください：
+
+```ruby
+metadata = Lindera::Metadata.new(
+  'my_dict', # name
+  'UTF-8',   # encoding
+  -10_000,   # default_word_cost
+  1288,      # default_left_context_id
+  1288,      # default_right_context_id
+  '*',       # default_field_value
+  false,     # flexible_csv
+  false,     # skip_invalid_cost_or_id
+  false      # normalize_details
+)
+```
+
+### JSON ファイルからの読み込み
+
+```ruby
 metadata = Lindera::Metadata.from_json_file('metadata.json')
 ```
 

@@ -1,6 +1,6 @@
 # Lindera Dictionary
 
-Lindera Dictionary is the base library for morphological analysis dictionaries. It provides dictionary loading, building, Viterbi-based segmentation, and CRF-based training functionality.
+Lindera Dictionary is the base library for morphological analysis dictionaries. It provides dictionary loading, building, and Viterbi-based segmentation. CRF-based dictionary training lives in the separate [`lindera-trainer`](./lindera-trainer.md) crate.
 
 ## Key Features
 
@@ -9,7 +9,6 @@ Lindera Dictionary is the base library for morphological analysis dictionaries. 
 - Viterbi algorithm for optimal segmentation
 - N-best path generation (Forward-DP Backward-A*)
 - Memory-mapped file support
-- CRF-based dictionary training (with `train` feature)
 
 ## Contents
 

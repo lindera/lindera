@@ -18,11 +18,15 @@ const builder = new TokenizerBuilder();
 
 #### `new TokenizerBuilder().fromFile(filePath)`
 
-JSON ファイルから設定を読み込み、新しいビルダーを返します。
+YAML ファイルから設定を読み込み、新しいビルダーを返します。
 
 ```javascript
-const builder = new TokenizerBuilder().fromFile("config.json");
+const builder = new TokenizerBuilder().fromFile("lindera.yml");
 ```
+
+辞書、文字フィルタ、トークンフィルタの設定を含む完全な設定ファイルの例は
+[`lindera-nodejs/resources/lindera.yml`](https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml)
+を参照してください。
 
 ### 設定メソッド
 
@@ -164,7 +168,7 @@ for (const { tokens, cost } of results) {
 | `position` | `number` | トークンの位置インデックス |
 | `wordId` | `number` | 辞書の単語 ID |
 | `isUnknown` | `boolean` | 辞書に登録されていない単語の場合 `true` |
-| `details` | `string[] \| null` | 形態素の詳細情報（品詞、読みなど） |
+| `details` | `string[]` | 形態素の詳細情報（品詞、読みなど） |
 
 ### Token メソッド
 
@@ -192,3 +196,29 @@ const reading = token.getDetail(7);  // 例: "トウキョウ"
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`
 - **UniDic**: UniDic 仕様に準拠した詳細な形態素情報
 - **ko-dic / CC-CEDICT / Jieba**: 各辞書固有の詳細フォーマット
+
+## Mode と Penalty
+
+`Mode` と `Penalty` は `lindera-nodejs` からエクスポートされていますが、**現状どの公開 API
+にも接続されていません**： `TokenizerBuilder.setMode()` / `Tokenizer` のコンストラクタは
+単純なモード文字列（`"normal"` または `"decompose"`）のみを受け取り、decompose モードは
+内部的に常にデフォルトのペナルティ設定を使用します。これらの型は完全性のためにここで
+説明していますが、JavaScript からペナルティの挙動をカスタマイズする用途にはまだ使用できません。
+
+### `Mode`
+
+2つの値を持つ文字列列挙型です：
+
+- `Mode.Normal` -- 辞書コストに基づく標準的なトークナイズ
+- `Mode.Decompose` -- ペナルティベースの複合語分解
+
+### `Penalty`
+
+decompose モードで使用されるペナルティパラメータを表すオブジェクトです：
+
+| プロパティ | 型 | 説明 |
+| --- | --- | --- |
+| `kanjiPenaltyLengthThreshold` | `number` | ペナルティを適用する前の漢字列の長さの閾値（デフォルト: `2`） |
+| `kanjiPenaltyLengthPenalty` | `number` | 長い漢字列に対するペナルティ値（デフォルト: `3000`） |
+| `otherPenaltyLengthThreshold` | `number` | ペナルティを適用する前のその他の文字列の長さの閾値（デフォルト: `7`） |
+| `otherPenaltyLengthPenalty` | `number` | 長いその他の文字列に対するペナルティ値（デフォルト: `1700`） |

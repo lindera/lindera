@@ -44,7 +44,6 @@ let error = error.add_context("failed to load dictionary from /path/to/dict");
 | `Build` | Dictionary build errors |
 | `Dictionary` | Dictionary-related errors |
 | `Mode` | Invalid tokenization mode errors |
-| `Algorithm` | Algorithm errors (e.g., Viterbi failure) |
 | `FeatureDisabled` | Attempted to use a feature that is not enabled |
 
 ## Creating Errors

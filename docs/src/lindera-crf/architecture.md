@@ -12,6 +12,7 @@ lindera-crf/src/
 ├── errors.rs             # Error types
 ├── forward_backward.rs   # Forward-backward algorithm
 ├── math.rs               # Mathematical utilities (logsumexp)
+├── optimizers.rs         # Declares the optimizers module
 ├── optimizers/
 │   └── lbfgs.rs          # L-BFGS optimization
 └── utils.rs              # Utility traits
@@ -21,7 +22,7 @@ lindera-crf/src/
 
 ### FeatureProvider / FeatureSet
 
-Manage per-label feature sets. Each `FeatureSet` holds unigram features and left/right bigram features for a given label. `FeatureProvider` aggregates `FeatureSet` instances and maps feature IDs to weights.
+Manage per-label feature sets. Each `FeatureSet` holds unigram features and left/right bigram features for a given label (feature IDs only, no weights). `FeatureProvider` maps label IDs to `FeatureSet` instances. Weights are held separately, on `RawModel` (`weights`, `unigram_weight_indices`, `bigram_weight_indices`).
 
 ### Lattice / Edge / Node
 
@@ -44,7 +45,9 @@ Configurable regularization strategies:
 Interface for searching the best path through a lattice. Two implementations are provided:
 
 - **RawModel**: Stores weights in a flat vector indexed by feature ID
-- **MergedModel**: Optimized for inference; merges feature weights into a compact representation serializable with rkyv
+- **MergedModel**: Optimized for inference; merges feature weights into a compact representation serializable with rkyv, using `MergedFeatureSet` as its per-label element type
+
+`MergedFeatureSet` holds the pre-summed unigram `weight` for a label, along with its `left_id`/`right_id` bigram connection IDs into `MergedModel`'s bigram weight matrix.
 
 ### Forward-backward Algorithm
 

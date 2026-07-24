@@ -15,7 +15,7 @@ Lindera はパッケージに辞書を同梱していません。ビルド済み
 
 ### GitHub Releases からのダウンロード
 
-ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) ページから入手で���ます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：
+ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) ページから入手できます。辞書アーカイブをダウンロードしてローカルディレクトリに展開してください：
 
 ```bash
 # 例: IPADIC 辞書のダウンロードと展開
@@ -34,7 +34,7 @@ cargo build -p lindera-php
 または、プロジェクトの Makefile を使用します：
 
 ```bash
-make php-build
+make build-lindera-php
 ```
 
 ### 学習機能付きビルド

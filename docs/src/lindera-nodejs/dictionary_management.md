@@ -20,6 +20,16 @@ const dictionary = loadDictionary("/path/to/ipadic");
 const dictionary = loadDictionary("embedded://ipadic");
 ```
 
+`Dictionary` exposes a few read-only accessors for inspecting the loaded dictionary's metadata:
+
+```javascript
+console.log(dictionary.metadataName());     // e.g. "ipadic"
+console.log(dictionary.metadataEncoding()); // e.g. "UTF-8"
+
+const metadata = dictionary.metadata(); // full Metadata object
+console.log(metadata.defaultWordCost);
+```
+
 ### User Dictionaries
 
 User dictionaries add custom vocabulary on top of a system dictionary.
@@ -86,6 +96,10 @@ The `metadata` parameter is optional. When omitted, default metadata values are 
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
 ```
 
+> [!NOTE]
+> The first argument (`kind`) is currently unused -- it is reserved for future use and has no
+> effect on the build. Any string value can be passed for it today.
+
 ## Metadata
 
 The `Metadata` class configures dictionary parameters.
@@ -125,8 +139,11 @@ const metadata = Metadata.fromJsonFile("metadata.json");
 | `flexibleCsv` | `boolean` | `false` | Allow flexible CSV parsing |
 | `skipInvalidCostOrId` | `boolean` | `false` | Skip entries with invalid cost or ID |
 | `normalizeDetails` | `boolean` | `false` | Normalize morphological details |
-| `dictionarySchema` | `Schema` | IPADIC schema | Schema for the main dictionary |
-| `userDictionarySchema` | `Schema` | Minimal schema | Schema for user dictionaries |
+
+> [!NOTE]
+> Schema information (dictionary/user-dictionary field layout) is not exposed on this binding's
+> `Metadata` object -- there are no `dictionarySchema` / `userDictionarySchema` properties. Use the
+> standalone [`Schema`](#schema) class instead.
 
 All properties support both getting and setting:
 
@@ -169,7 +186,7 @@ const custom = new Schema(["surface", "left_id", "right_id", "cost", "pos", "rea
 | `getFieldIndex(name)` | `number \| null` | Get field index by name |
 | `fieldCount()` | `number` | Total number of fields |
 | `getFieldName(index)` | `string \| null` | Get field name by index |
-| `getCustomFields()` | `string[]` | Fields beyond index 4 (morphological features) |
+| `getCustomFields()` | `string[]` | Fields from index 4 onward (morphological features) |
 | `getAllFields()` | `string[]` | All field names |
 | `getFieldByName(name)` | `FieldDefinition \| null` | Get full field definition |
 | `validateRecord(record)` | `void` | Validate a CSV record against the schema |
@@ -180,7 +197,7 @@ const schema = Schema.createDefault();
 console.log(schema.fieldCount());           // 13 (IPADIC format)
 console.log(schema.getFieldIndex("pos1"));  // e.g., 4
 console.log(schema.getAllFields());          // ["surface", "left_id", ...]
-console.log(schema.getCustomFields());      // Fields after index 4
+console.log(schema.getCustomFields());      // Fields from index 4 onward
 ```
 
 ### FieldDefinition

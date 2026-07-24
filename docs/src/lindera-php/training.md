@@ -4,7 +4,7 @@ Lindera PHP supports training custom CRF-based morphological analysis models fro
 
 ## Prerequisites
 
-Build lindera-php with the `train` feature enabled:
+Build lindera-php with the `train` feature enabled (`train` is already enabled by default in `lindera-php`):
 
 ```bash
 cargo build -p lindera-php --features train,embed-ipadic
@@ -109,10 +109,9 @@ Lindera\Dictionary::build('/tmp/dictionary_source', '/tmp/dictionary', $metadata
 
 // Step 4: Use the trained dictionary
 $builder = new Lindera\TokenizerBuilder();
-$tokenizer = $builder
-    ->setDictionary('/tmp/dictionary')
-    ->setMode('normal')
-    ->build();
+$builder->setDictionary('/tmp/dictionary');
+$builder->setMode('normal');
+$tokenizer = $builder->build();
 
 $tokens = $tokenizer->tokenize('形態素解析のテスト');
 foreach ($tokens as $token) {

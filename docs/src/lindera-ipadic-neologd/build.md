@@ -16,6 +16,20 @@ Download the IPADIC NEologd source files and build the dictionary:
   --metadata ./lindera-ipadic-neologd/metadata.json
 ```
 
+## Build user dictionary
+
+Build a user dictionary from a CSV file:
+
+```shell
+% lindera build \
+  --src ./resources/user_dict/ipadic_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-ipadic-neologd/metadata.json \
+  --user
+```
+
+For more details about user dictionary format, see [Dictionary Format](./dictionary_format.md).
+
 ## Embedding in binary
 
 To embed the IPADIC NEologd dictionary directly into the binary:

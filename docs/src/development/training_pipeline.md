@@ -141,9 +141,11 @@ Each line is `pattern<TAB>replacement`. Patterns use `*` as a wildcard and are m
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `lambda` | L1 regularization coefficient (controls overfitting) | 0.01 |
+| `lambda` | Regularization coefficient (controls overfitting) | 0.01 |
+| `regularization` | Regularization type: `l1`, `l2`, or `elasticnet` | `l1` |
+| `elastic-net-l1-ratio` | L1 ratio for Elastic Net regularization (0.0-1.0, only used with `--regularization elasticnet`) | 0.5 |
 | `max-iterations` | Maximum number of training iterations | 100 |
-| `max-threads` | Number of parallel processing threads | 1 |
+| `max-threads` | Number of parallel processing threads | CPU core count |
 
 ## CLI Usage
 
@@ -158,7 +160,7 @@ lindera train \
     --feature-def feature.def \
     --rewrite-def rewrite.def \
     --lambda 0.01 \
-    --max-iter 100 \
+    --max-iterations 100 \
     --max-threads 4 \
     --output model.dat
 ```
@@ -168,7 +170,10 @@ lindera train \
 Convert the trained model into dictionary source files:
 
 ```bash
-lindera export --model model.dat --output-dir ./dict-source
+lindera export \
+    --model model.dat \
+    --metadata metadata.json \
+    --output ./dict-source
 ```
 
 This produces the following files:
@@ -190,7 +195,10 @@ This produces the following files:
 Compile the exported source files into a binary dictionary:
 
 ```bash
-lindera build --input-dir ./dict-source --output-dir ./dict-compiled
+lindera build \
+    --src ./dict-source \
+    --dest ./dict-compiled \
+    --metadata ./dict-source/metadata.json
 ```
 
 ## Output Model Format
@@ -204,6 +212,8 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 - Training metadata (regularization, iterations, feature/label counts)
 
 ## API Usage
+
+For the full `lindera-trainer` API surface, see [Lindera Trainer Architecture](../lindera-trainer/architecture.md) and [API Reference](../lindera-trainer/api_reference.md).
 
 ```rust,no_run
 use std::fs::File;

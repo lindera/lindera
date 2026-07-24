@@ -35,6 +35,13 @@ Performs character-level string replacement based on a user-defined mapping tabl
 
 For example, mapping "リンデラ" to "Lindera".
 
+> [!NOTE]
+> Lindera also provides a `regex` character filter for pattern-based text
+> replacement, along with the full parameter reference for every character
+> filter and token filter. See the
+> [Filters reference](../lindera-analysis/filters.md) for the complete,
+> up-to-date catalogue.
+
 ## YAML configuration example
 
 When using Lindera with a YAML configuration file, character filters can be specified in the `character_filters` section:

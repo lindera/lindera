@@ -27,7 +27,7 @@ Lindera does not bundle dictionaries with the binary. You need to download a pre
 Then specify the dictionary path when using the CLI:
 
 ```shell
-% lindera tokenize --dictionary /path/to/ipadic "関西国際空港限定トートバッグ"
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
 ```
 
 ## Build from Source
@@ -90,7 +90,7 @@ For advanced users who want to embed dictionaries directly into the binary, use 
 > After building with an `embed-*` feature flag, use the `embedded://` scheme to load the embedded dictionary:
 >
 > ```shell
-> % lindera tokenize --dictionary embedded://ipadic "関西国際空港限定トートバッグ"
+> % echo "関西国際空港限定トートバッグ" | lindera tokenize --dict embedded://ipadic
 > ```
 >
 > See [Feature Flags](../development/feature_flags.md) for details.

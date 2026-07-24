@@ -36,12 +36,15 @@ bundle exec rake compile
 Or use the project Makefile:
 
 ```bash
-make ruby-develop
+make build-lindera-ruby
 ```
+
+Run `make test-lindera-ruby` to run both the Rust unit tests and the Ruby
+minitest suite.
 
 ### Build with Training Support
 
-The `train` feature enables CRF-based dictionary training functionality:
+The `train` feature enables CRF-based dictionary training functionality. It is enabled by default:
 
 ```bash
 LINDERA_FEATURES="train" bundle exec rake compile
@@ -53,7 +56,7 @@ Features are specified through the `LINDERA_FEATURES` environment variable as a 
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `train` | CRF training functionality | Disabled |
+| `train` | CRF training functionality | Enabled |
 | `embed-ipadic` | Embed Japanese dictionary (IPADIC) into the binary | Disabled |
 | `embed-unidic` | Embed Japanese dictionary (UniDic) into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed Japanese dictionary (IPADIC NEologd) into the binary | Disabled |
