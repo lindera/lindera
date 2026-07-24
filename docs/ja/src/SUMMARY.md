@@ -17,7 +17,7 @@
     - [辞書](./concepts/dictionaries.md)
     - [トークナイズ](./concepts/tokenization.md)
     - [ユーザー辞書](./concepts/user_dictionary.md)
-    - [文字フィルタ](./concepts/character_filters.md)
+    - [フィルタ](./concepts/filters.md)
 
 ---
 

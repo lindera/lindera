@@ -6,4 +6,4 @@ This section explains the fundamental concepts behind Lindera's morphological an
 - [Dictionaries](./concepts/dictionaries.md) - Dictionary formats supported by Lindera.
 - [Tokenization](./concepts/tokenization.md) - Tokenization modes and N-Best analysis.
 - [User Dictionary](./concepts/user_dictionary.md) - Adding custom words with user dictionaries.
-- [Character Filters](./concepts/character_filters.md) - Pre-processing text before tokenization.
+- [Filters](./concepts/filters.md) - Pre-processing text and post-processing tokens with character and token filters.
