@@ -17,7 +17,7 @@
     - [Dictionaries](./concepts/dictionaries.md)
     - [Tokenization](./concepts/tokenization.md)
     - [User Dictionary](./concepts/user_dictionary.md)
-    - [Character Filters](./concepts/character_filters.md)
+    - [Filters](./concepts/filters.md)
 
 ---
 

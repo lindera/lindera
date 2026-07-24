@@ -6,4 +6,4 @@
 - [辞書](./concepts/dictionaries.md) - Linderaがサポートする辞書フォーマット。
 - [トークナイズ](./concepts/tokenization.md) - トークナイズモードとN-Best解析。
 - [ユーザー辞書](./concepts/user_dictionary.md) - ユーザー辞書によるカスタム単語の追加。
-- [キャラクターフィルター](./concepts/character_filters.md) - トークナイズ前のテキスト前処理。
+- [フィルタ](./concepts/filters.md) - 文字フィルタによるテキスト前処理とトークンフィルタによるトークン後処理。
