@@ -385,9 +385,6 @@ impl Lattice {
             self.capacity = text_len;
             self.ends_at.resize(text_len + 1, Vec::new());
         }
-        for vec in &mut self.ends_at {
-            vec.clear();
-        }
     }
 
     fn set_capacity_nbest(&mut self, text_len: usize) {
@@ -395,9 +392,6 @@ impl Lattice {
         if self.nbest_capacity <= text_len {
             self.nbest_capacity = text_len;
             self.all_paths.resize(text_len + 1, Vec::new());
-        }
-        for vec in &mut self.all_paths {
-            vec.clear();
         }
     }
 
