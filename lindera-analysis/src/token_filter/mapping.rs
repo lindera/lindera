@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use daachorse::DoubleArrayAhoCorasick;
 use daachorse::DoubleArrayAhoCorasickBuilder;
+use daachorse::MatchKind;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
@@ -23,7 +24,25 @@ pub struct MappingTokenFilter {
 }
 
 impl MappingTokenFilter {
+    /// Create a new `MappingTokenFilter` from a surface-to-replacement mapping.
+    ///
+    /// # Arguments
+    ///
+    /// * `mapping` - A map from surface text to its replacement text. Keys must be
+    ///   non-empty; an empty key would match at every byte position under the
+    ///   leftmost-longest search strategy used by `apply`, which is never a
+    ///   meaningful mapping and is therefore rejected.
+    ///
+    /// # Returns
+    ///
+    /// A `MappingTokenFilter`, or an error if `mapping` contains an empty key or
+    /// the underlying Aho-Corasick automaton fails to build.
     pub fn new(mapping: HashMap<String, String>) -> LinderaResult<Self> {
+        if mapping.keys().any(|key| key.is_empty()) {
+            return Err(LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("mapping key must not be empty.")));
+        }
+
         let mut keyset: Vec<(&[u8], u32)> = Vec::new();
         let mut keys = mapping.keys().collect::<Vec<_>>();
         keys.sort();
@@ -32,6 +51,7 @@ impl MappingTokenFilter {
         }
 
         let trie = DoubleArrayAhoCorasickBuilder::new()
+            .match_kind(MatchKind::LeftmostLongest)
             .build_with_values(keyset)
             .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?;
 
@@ -58,42 +78,37 @@ impl TokenFilter for MappingTokenFilter {
         MAPPING_TOKEN_FILTER_NAME
     }
 
+    /// Apply the filter to each token's surface, in place.
+    ///
+    /// Performs a single leftmost-longest pass over each token's surface with the
+    /// underlying Aho-Corasick automaton: at each position the longest configured
+    /// key wins, matches never overlap, and scanning resumes immediately after
+    /// each match.
+    ///
+    /// # Arguments
+    ///
+    /// * `tokens` - The tokens to filter; each token's `surface` is replaced in
+    ///   place with the mapped text.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            let mut result = String::new();
-            let mut start = 0_usize;
-            let len = token.surface.len();
+            let mut result = String::with_capacity(token.surface.len());
 
-            while start < len {
-                let suffix = &token.surface[start..];
-                match self
-                    .trie
-                    .find_overlapping_iter(suffix.as_bytes())
-                    .filter(|m| m.start() == 0)
-                    .last()
-                    .map(|m| m.end())
-                {
-                    Some(prefix_len) => {
-                        let surface = &token.surface[start..start + prefix_len];
-                        let replacement = &self.mapping[surface];
+            {
+                let source = token.surface.as_ref();
+                let mut cursor = 0_usize;
 
-                        result.push_str(replacement);
+                for m in self.trie.leftmost_find_iter(source) {
+                    // Keys are validated non-empty in `new`, and all keys are
+                    // valid UTF-8, so matches are non-empty, non-overlapping,
+                    // strictly ascending, and always land on char boundaries.
+                    debug_assert!(m.start() >= cursor && m.end() > m.start());
 
-                        // move start offset
-                        start += prefix_len;
-                    }
-                    None => {
-                        match suffix.chars().next() {
-                            Some(c) => {
-                                result.push(c);
-
-                                // move start offset
-                                start += c.len_utf8();
-                            }
-                            None => break,
-                        }
-                    }
+                    result.push_str(&source[cursor..m.start()]);
+                    result.push_str(&self.mapping[&source[m.start()..m.end()]]);
+                    cursor = m.end();
                 }
+
+                result.push_str(&source[cursor..]);
             }
 
             token.surface = Cow::Owned(result);
@@ -105,7 +120,20 @@ impl TokenFilter for MappingTokenFilter {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::token_filter::mapping::{MappingTokenFilter, MappingTokenFilterConfig};
+
+    #[test]
+    fn test_mapping_token_filter_empty_key_rejected() {
+        let mut mapping = HashMap::new();
+        mapping.insert(String::new(), "x".to_string());
+        assert!(MappingTokenFilter::new(mapping).is_err());
+
+        let mut mapping = HashMap::new();
+        mapping.insert("a".to_string(), "b".to_string());
+        assert!(MappingTokenFilter::new(mapping).is_ok());
+    }
 
     #[test]
     fn test_mapping_token_filter_config() {
@@ -216,5 +244,48 @@ mod tests {
         assert_eq!(tokens.len(), 2);
         assert_eq!(&tokens[0].surface, "篭原");
         assert_eq!(&tokens[1].surface, "駅");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_mapping_token_filter_apply_longest_match() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let config_str = r#"
+        {
+            "mapping": {
+                "ab": "X",
+                "abc": "YY"
+            }
+        }
+        "#;
+        let config = serde_json::from_str::<MappingTokenFilterConfig>(config_str).unwrap();
+
+        let filter = MappingTokenFilter::from_config(&config).unwrap();
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("abcab"),
+            byte_start: 0,
+            byte_end: 5,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 0),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: None,
+        }];
+
+        filter.apply(&mut tokens).unwrap();
+
+        // "abc" (longest match at 0) wins over "ab"; "ab" (longest at 3) wins.
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "YYX");
     }
 }
