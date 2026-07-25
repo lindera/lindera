@@ -324,6 +324,14 @@ pub struct Lattice {
     nbest_capacity: usize,
     /// The text length (in bytes) of the last set_text/set_text_nbest call
     last_text_len: usize,
+
+    // Scratch buffers for the Aho-Corasick match pre-scan in set_text/set_text_nbest.
+    // Reused across calls (like the fields above) instead of being reallocated per
+    // call, since set_text runs once per sentence rather than once per document.
+    /// Linked-list head table: matches_head[start_idx] -> index into matches_store.
+    matches_head: Vec<usize>,
+    /// Linked-list node pool: (match end offset, word entry, next node index).
+    matches_store: Vec<(usize, WordEntry, usize)>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -385,9 +393,6 @@ impl Lattice {
             self.capacity = text_len;
             self.ends_at.resize(text_len + 1, Vec::new());
         }
-        for vec in &mut self.ends_at {
-            vec.clear();
-        }
     }
 
     fn set_capacity_nbest(&mut self, text_len: usize) {
@@ -395,9 +400,6 @@ impl Lattice {
         if self.nbest_capacity <= text_len {
             self.nbest_capacity = text_len;
             self.all_paths.resize(text_len + 1, Vec::new());
-        }
-        for vec in &mut self.all_paths {
-            vec.clear();
         }
     }
 
@@ -492,8 +494,12 @@ impl Lattice {
         // Pre-scan text with Aho-Corasick to report all matches
         // Optimization: Use flat vectors instead of Vec<Vec<_>> to avoid many small allocations.
         // Linked list structure: matches_head[start_idx] -> index in matches_store
-        let mut matches_head = vec![usize::MAX; len + 1];
-        let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
+        // Buffers are Lattice fields reused across calls; refill matches_head (its
+        // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
+        // matches_store (a plain append-only pool).
+        self.matches_head.clear();
+        self.matches_head.resize(len + 1, usize::MAX);
+        self.matches_store.clear();
 
         // System dictionary scan
         for m in dict.da.find_overlapping_iter(text) {
@@ -508,10 +514,10 @@ impl Lattice {
                     let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
                     if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
                         let entry = WordEntry::deserialize(&data_slice[entry_offset..], true);
-                        if start < matches_head.len() {
-                            let next = matches_head[start];
-                            matches_head[start] = matches_store.len();
-                            matches_store.push((m.end(), entry, next));
+                        if start < self.matches_head.len() {
+                            let next = self.matches_head[start];
+                            self.matches_head[start] = self.matches_store.len();
+                            self.matches_store.push((m.end(), entry, next));
                         }
                     }
                 }
@@ -531,10 +537,10 @@ impl Lattice {
                         let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
                         if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
                             let entry = WordEntry::deserialize(&data_slice[entry_offset..], false);
-                            if start < matches_head.len() {
-                                let next = matches_head[start];
-                                matches_head[start] = matches_store.len();
-                                matches_store.push((m.end(), entry, next));
+                            if start < self.matches_head.len() {
+                                let next = self.matches_head[start];
+                                self.matches_head[start] = self.matches_store.len();
+                                self.matches_store.push((m.end(), entry, next));
                             }
                         }
                     }
@@ -554,10 +560,10 @@ impl Lattice {
             let mut found: bool = false;
 
             // Use cached matches
-            if start < matches_head.len() {
-                let mut match_idx = matches_head[start];
+            if start < self.matches_head.len() {
+                let mut match_idx = self.matches_head[start];
                 while match_idx != usize::MAX {
-                    let (end, word_entry, next) = matches_store[match_idx];
+                    let (end, word_entry, next) = self.matches_store[match_idx];
 
                     let prefix_len = end - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
@@ -1022,8 +1028,12 @@ impl Lattice {
         let mut unknown_word_end: Option<usize> = None;
 
         // Pre-scan text with Aho-Corasick
-        let mut matches_head = vec![usize::MAX; len + 1];
-        let mut matches_store: Vec<(usize, WordEntry, usize)> = Vec::with_capacity(len * 10);
+        // Buffers are Lattice fields reused across calls; refill matches_head (its
+        // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
+        // matches_store (a plain append-only pool).
+        self.matches_head.clear();
+        self.matches_head.resize(len + 1, usize::MAX);
+        self.matches_store.clear();
 
         // System dictionary scan
         for m in dict.da.find_overlapping_iter(text) {
@@ -1037,10 +1047,10 @@ impl Lattice {
                     let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
                     if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
                         let entry = WordEntry::deserialize(&data_slice[entry_offset..], true);
-                        if start < matches_head.len() {
-                            let next = matches_head[start];
-                            matches_head[start] = matches_store.len();
-                            matches_store.push((m.end(), entry, next));
+                        if start < self.matches_head.len() {
+                            let next = self.matches_head[start];
+                            self.matches_head[start] = self.matches_store.len();
+                            self.matches_store.push((m.end(), entry, next));
                         }
                     }
                 }
@@ -1060,10 +1070,10 @@ impl Lattice {
                         let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
                         if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
                             let entry = WordEntry::deserialize(&data_slice[entry_offset..], false);
-                            if start < matches_head.len() {
-                                let next = matches_head[start];
-                                matches_head[start] = matches_store.len();
-                                matches_store.push((m.end(), entry, next));
+                            if start < self.matches_head.len() {
+                                let next = self.matches_head[start];
+                                self.matches_head[start] = self.matches_store.len();
+                                self.matches_store.push((m.end(), entry, next));
                             }
                         }
                     }
@@ -1080,10 +1090,10 @@ impl Lattice {
 
             let mut found: bool = false;
 
-            if start < matches_head.len() {
-                let mut match_idx = matches_head[start];
+            if start < self.matches_head.len() {
+                let mut match_idx = self.matches_head[start];
                 while match_idx != usize::MAX {
-                    let (end, word_entry, next) = matches_store[match_idx];
+                    let (end, word_entry, next) = self.matches_store[match_idx];
 
                     let prefix_len = end - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
