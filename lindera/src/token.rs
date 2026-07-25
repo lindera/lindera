@@ -186,7 +186,8 @@ impl<'a> Token<'a> {
     /// - If details are available and the provided index is valid, the detail at the specified index is returned as `Some(&str)`.
     /// - If the index is out of range, `None` is returned.
     pub fn get_detail(&mut self, index: usize) -> Option<&str> {
-        self.details().get(index).copied()
+        self.ensure_details();
+        self.details.as_ref()?.get(index).map(|c| c.as_ref())
     }
 
     /// Sets the token's detail at the specified index with the provided value.
