@@ -13,7 +13,7 @@ use log::debug;
 
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
-use crate::dictionary::prefix_dictionary::PrefixDictionary;
+use crate::dictionary::prefix_dictionary::{DaTrust, PrefixDictionary};
 use crate::error::LinderaErrorKind;
 use crate::viterbi::WordEntry;
 
@@ -239,7 +239,14 @@ impl UserDictionaryBuilder {
             }
         }
 
-        let dict = PrefixDictionary::load(da_bytes, vals_data, words_idx_data, words_data, false)?;
+        let dict = PrefixDictionary::load(
+            da_bytes,
+            vals_data,
+            words_idx_data,
+            words_data,
+            false,
+            DaTrust::Untrusted,
+        )?;
 
         Ok(UserDictionary { dict })
     }

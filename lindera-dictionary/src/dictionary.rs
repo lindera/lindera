@@ -89,6 +89,20 @@ impl Dictionary {
     }
 
     /// Load dictionary from a directory with options
+    ///
+    /// `use_mmap` (when the `mmap` feature is enabled) routes
+    /// `connection_cost_matrix` and `prefix_dictionary` through memory-mapped
+    /// reads instead of plain file reads. This does **not** make either
+    /// component lazily memory-resident at runtime: `ConnectionCostMatrix`
+    /// always eagerly decodes into an owned `Vec<i16>`, and
+    /// `PrefixDictionary`'s double-array trie (`da`) is always eagerly
+    /// deserialized into owned daachorse structures (only
+    /// `PrefixDictionary`'s `vals_data`/`words_idx_data`/`words_data` remain
+    /// genuinely mmap-backed and are read lazily at lookup time). `metadata`
+    /// and `character_definition` and `unknown_dictionary` are always
+    /// plain-read regardless of this flag. In short, `use_mmap` only avoids
+    /// the initial file-read syscall/allocation for the two components it
+    /// covers — it does not provide OS-level lazy paging for tokenization.
     pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
         // Verify that the dictionary directory exists
         if !dict_path.exists() {

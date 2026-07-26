@@ -9,7 +9,7 @@ use lindera::dictionary::{
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
-use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
+use lindera_dictionary::dictionary::prefix_dictionary::{DaTrust, PrefixDictionary};
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 use crate::metadata::JsMetadata;
@@ -124,6 +124,7 @@ pub fn load_dictionary_from_bytes(
         dict_words_idx.to_vec(),
         dict_words.to_vec(),
         true,
+        DaTrust::Untrusted,
     )
     .map_err(|e| JsValue::from_str(&format!("prefix_dict: {e}")))?;
     let connection_cost_matrix = ConnectionCostMatrix::load(matrix_mtx.to_vec())

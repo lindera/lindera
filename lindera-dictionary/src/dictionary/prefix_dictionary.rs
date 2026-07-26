@@ -24,6 +24,18 @@ impl WordIdx {
     }
 }
 
+/// Whether the `da_data` passed to [`PrefixDictionary::load`] is trusted to
+/// be the exact, undamaged output of `DoubleArrayAhoCorasick::serialize()`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DaTrust {
+    /// Skip daachorse's validation pass (`deserialize_unchecked`). Only for
+    /// data this crate's own build pipeline produced and embedded verbatim.
+    Trusted,
+    /// Run daachorse's full validation pass (`deserialize`). Use for any
+    /// filesystem-, network-, or caller-supplied bytes.
+    Untrusted,
+}
+
 pub struct DoubleArrayArchiver;
 
 impl ArchiveWith<DoubleArrayAhoCorasick<u32>> for DoubleArrayArchiver {
@@ -130,6 +142,9 @@ impl PrefixDictionary {
     /// * `words_idx_data` - Word index data bytes.
     /// * `words_data` - Words data bytes.
     /// * `is_system` - Whether this is a system dictionary.
+    /// * `trust` - Whether `da_data` is trusted to be the exact output of
+    ///   `DoubleArrayAhoCorasick::serialize()`, allowing the validation pass
+    ///   to be skipped. See [`DaTrust`].
     ///
     /// # Returns
     ///
@@ -140,11 +155,39 @@ impl PrefixDictionary {
         words_idx_data: impl Into<Data>,
         words_data: impl Into<Data>,
         is_system: bool,
+        trust: DaTrust,
     ) -> LinderaResult<PrefixDictionary> {
         let da_bytes = da_data.into();
-        let (da, _) = DoubleArrayAhoCorasick::deserialize(&da_bytes[..]).map_err(|err| {
-            LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
-        })?;
+        let da = match trust {
+            DaTrust::Trusted => {
+                debug_assert!(
+                    matches!(da_bytes, Data::Static(_)),
+                    "DaTrust::Trusted should only be used for embedded (Data::Static) da_data"
+                );
+                // SAFETY: `da_bytes` must be the byte-exact output of this
+                // exact daachorse version's `DoubleArrayAhoCorasick::serialize()`.
+                // Only `embedded_dictionary!` (lindera-dictionary/src/macros.rs)
+                // passes `DaTrust::Trusted`, using `include_bytes!` data
+                // produced by this crate's own build pipeline
+                // (builder/prefix_dictionary.rs's write_double_array_file,
+                // which calls `.serialize()` directly and writes the bytes
+                // verbatim, with no re-encoding/compression step and no
+                // alternate producer). Note: the opt-in build cache
+                // (assets.rs, LINDERA_BUILD_DICTIONARY_CACHE_DIR) keys only
+                // on the dictionary crate's own version, not daachorse's, so
+                // bumping the pinned daachorse version while reusing a stale
+                // cache dir is a narrow, currently-unexploited path that
+                // could violate this invariant in the future.
+                unsafe { DoubleArrayAhoCorasick::deserialize_unchecked(&da_bytes[..]).0 }
+            }
+            DaTrust::Untrusted => {
+                DoubleArrayAhoCorasick::deserialize(&da_bytes[..])
+                    .map_err(|err| {
+                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+                    })?
+                    .0
+            }
+        };
 
         Ok(PrefixDictionary {
             da,
@@ -365,5 +408,79 @@ impl ArchivedPrefixDictionary {
                     .into_iter()
             })
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use daachorse::DoubleArrayAhoCorasickBuilder;
+
+    use super::*;
+
+    fn build_valid_da_bytes() -> Vec<u8> {
+        let keyset: Vec<(&[u8], u32)> = vec![(b"a", 0), (b"ab", 1), (b"b", 2)];
+        let da = DoubleArrayAhoCorasickBuilder::new()
+            .build_with_values(keyset)
+            .unwrap();
+        da.serialize()
+    }
+
+    #[test]
+    fn test_prefix_dictionary_load_trusted_matches_untrusted() {
+        let da_bytes = build_valid_da_bytes();
+        // `DaTrust::Trusted` asserts (debug builds) that the input is
+        // `Data::Static`, mirroring the only real caller (the
+        // `embedded_dictionary!` macro's `include_bytes!` data). Leak the
+        // buffer to get a genuine `&'static [u8]` for this test.
+        let da_bytes_static: &'static [u8] = Box::leak(da_bytes.clone().into_boxed_slice());
+
+        let trusted = PrefixDictionary::load(
+            da_bytes_static,
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            true,
+            DaTrust::Trusted,
+        )
+        .unwrap();
+        let untrusted = PrefixDictionary::load(
+            da_bytes,
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            true,
+            DaTrust::Untrusted,
+        )
+        .unwrap();
+
+        let trusted_matches: Vec<_> = trusted.da.find_overlapping_iter("ab").collect();
+        let untrusted_matches: Vec<_> = untrusted.da.find_overlapping_iter("ab").collect();
+        assert_eq!(trusted_matches.len(), untrusted_matches.len());
+        assert!(!trusted_matches.is_empty());
+        for (t, u) in trusted_matches.iter().zip(untrusted_matches.iter()) {
+            assert_eq!(t.value(), u.value());
+            assert_eq!(t.start(), u.start());
+            assert_eq!(t.end(), u.end());
+        }
+    }
+
+    #[test]
+    fn test_prefix_dictionary_load_untrusted_rejects_corrupted_da_data() {
+        let mut da_bytes = build_valid_da_bytes();
+        // Truncate to well short of a valid length-prefixed record; the
+        // checked `deserialize` path must reject this rather than panic or
+        // read out of bounds.
+        da_bytes.truncate(4);
+
+        let result = PrefixDictionary::load(
+            da_bytes,
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            true,
+            DaTrust::Untrusted,
+        );
+
+        assert!(result.is_err());
     }
 }
