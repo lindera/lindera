@@ -39,6 +39,15 @@ pub struct Segmenter {
 
     /// The category ID for space characters, used when keep_whitespace is false.
     space_category_id: Option<CategoryId>,
+
+    /// Precomputed, per-codepoint (0..256) SPACE-category membership for the
+    /// ASCII/Latin-1 range, used as a fast path for the keep_whitespace=false
+    /// skip check. Built once from the loaded dictionary's actual character
+    /// definitions (not a hardcoded byte pattern), so it stays correct for
+    /// any dictionary regardless of which characters its char.def classifies
+    /// as SPACE. Codepoints >= 256 always fall back to
+    /// `character_definition.lookup_categories`.
+    space_ascii_table: Option<[bool; 256]>,
 }
 
 impl Segmenter {
@@ -67,6 +76,21 @@ impl Segmenter {
         // Get SPACE category ID for MeCab compatibility (ignore whitespace by default)
         let space_category_id = dictionary.character_definition.category_id_by_name("SPACE");
 
+        // Precompute ASCII/Latin-1 SPACE-category membership once, from the
+        // dictionary's actual character definitions.
+        let space_ascii_table = space_category_id.map(|space_id| {
+            let mut table = [false; 256];
+            for (codepoint, is_space) in table.iter_mut().enumerate() {
+                if let Some(c) = char::from_u32(codepoint as u32) {
+                    *is_space = dictionary
+                        .character_definition
+                        .lookup_categories(c)
+                        .contains(&space_id);
+                }
+            }
+            table
+        });
+
         // A user dictionary is always compiled in the original context-ID space. If the
         // system dictionary was built with `connection_id_mapping`, relabel the user
         // entries into the same space; otherwise their connection costs would address
@@ -87,6 +111,7 @@ impl Segmenter {
             user_dictionary,
             keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
             space_category_id,
+            space_ascii_table,
         }
     }
 
@@ -356,13 +381,19 @@ impl Segmenter {
                 if !self.keep_whitespace
                     && let Some(space_category_id) = self.space_category_id
                 {
-                    // Check if this token consists only of whitespace characters
+                    // Check if this token consists only of whitespace characters.
+                    // ASCII/Latin-1 codepoints use the precomputed table (O(1));
+                    // anything else falls back to the dictionary lookup.
                     let token_text = &sentence[byte_start..byte_end];
                     let is_space = token_text.chars().all(|c| {
-                        self.dictionary
-                            .character_definition
-                            .lookup_categories(c)
-                            .contains(&space_category_id)
+                        if (c as u32) < 256 {
+                            self.space_ascii_table.unwrap()[c as usize]
+                        } else {
+                            self.dictionary
+                                .character_definition
+                                .lookup_categories(c)
+                                .contains(&space_category_id)
+                        }
                     });
 
                     if is_space {
@@ -508,12 +539,19 @@ impl Segmenter {
                     if !self.keep_whitespace
                         && let Some(space_category_id) = self.space_category_id
                     {
+                        // ASCII/Latin-1 codepoints use the precomputed table
+                        // (O(1)); anything else falls back to the dictionary
+                        // lookup.
                         let token_text = &sentence[byte_start..byte_end];
                         let is_space = token_text.chars().all(|c| {
-                            self.dictionary
-                                .character_definition
-                                .lookup_categories(c)
-                                .contains(&space_category_id)
+                            if (c as u32) < 256 {
+                                self.space_ascii_table.unwrap()[c as usize]
+                            } else {
+                                self.dictionary
+                                    .character_definition
+                                    .lookup_categories(c)
+                                    .contains(&space_category_id)
+                            }
                         });
 
                         if is_space {
