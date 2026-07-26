@@ -61,6 +61,14 @@ fn bench_constructor_with_simple_userdic_ipadic(c: &mut Criterion) {
 }
 
 #[cfg(feature = "embed-ipadic")]
+fn bench_clone_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-clone-ipadic", |b| b.iter(|| segmenter.clone()));
+}
+
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_ipadic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -173,6 +181,7 @@ criterion_group!(
     benches,
     bench_constructor_ipadic,
     bench_constructor_with_simple_userdic_ipadic,
+    bench_clone_ipadic,
     bench_tokenize_ipadic,
     bench_tokenize_with_lattice_ipadic,
     bench_tokenize_with_simple_userdic_ipadic,

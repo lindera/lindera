@@ -64,8 +64,8 @@ macro_rules! embedded_dictionary {
                 $crate::dictionary::unknown_dictionary::UnknownDictionary::load(UNKNOWN_DATA)?;
 
             Ok($crate::dictionary::Dictionary {
-                prefix_dictionary,
-                connection_cost_matrix,
+                prefix_dictionary: ::std::sync::Arc::new(prefix_dictionary),
+                connection_cost_matrix: ::std::sync::Arc::new(connection_cost_matrix),
                 character_definition,
                 unknown_dictionary,
                 metadata,
