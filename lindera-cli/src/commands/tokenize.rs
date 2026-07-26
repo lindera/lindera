@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use lindera::LinderaResult;
+use lindera::dictionary::Lattice;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
@@ -205,6 +206,10 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let nbest_unique = args.nbest_unique;
     let nbest_cost_threshold = args.nbest_cost_threshold;
 
+    // Reused across every line to avoid reallocating the lattice's internal
+    // buffers on each call.
+    let mut lattice = Lattice::default();
+
     loop {
         // read the text to be tokenized from stdin
         let mut text = String::new();
@@ -215,14 +220,19 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         }
 
         if nbest >= 2 {
-            let results =
-                tokenizer.tokenize_nbest(text.trim(), nbest, nbest_unique, nbest_cost_threshold)?;
+            let results = tokenizer.tokenize_nbest_with_lattice(
+                text.trim(),
+                &mut lattice,
+                nbest,
+                nbest_unique,
+                nbest_cost_threshold,
+            )?;
             for (rank, (tokens, cost)) in results.into_iter().enumerate() {
                 println!("NBEST {} (cost={})", rank + 1, cost);
                 write_output(output_format, tokens)?;
             }
         } else {
-            let tokens = tokenizer.tokenize(text.trim())?;
+            let tokens = tokenizer.tokenize_with_lattice(text.trim(), &mut lattice)?;
             write_output(output_format, tokens)?;
         }
     }
