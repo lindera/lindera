@@ -391,7 +391,10 @@ impl Lattice {
         self.last_text_len = text_len;
         if self.capacity <= text_len {
             self.capacity = text_len;
-            self.ends_at.resize(text_len + 1, Vec::new());
+            // Pre-size newly-grown slots (like Vibrato's reset_vec) to
+            // avoid a couple of small reallocations the first time a busy
+            // position accumulates several edges.
+            self.ends_at.resize(text_len + 1, Vec::with_capacity(16));
         }
     }
 

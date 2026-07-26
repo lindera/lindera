@@ -335,8 +335,12 @@ impl Segmenter {
                 if ch == b'\n' || ch == b'\t' {
                     break;
                 }
-                // Check for Japanese punctuation (multi-byte)
-                if sentence_end >= 3 && sentence_end <= text_len {
+                // Check for Japanese punctuation (multi-byte). "。" and "、"
+                // share the same 2-byte UTF-8 lead (E3 80) and differ only
+                // in their last byte (0x82 / 0x81, which is exactly `ch`
+                // here), so this cheap pre-check skips the 3-byte slice
+                // comparison for ~254/256 possible byte values.
+                if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
                     let last_3 = &text_bytes[sentence_end - 3..sentence_end];
                     if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
                         break;
@@ -363,6 +367,7 @@ impl Segmenter {
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
             let offsets = lattice.tokens_offset();
+            tokens.reserve(offsets.len());
 
             for i in 0..offsets.len() {
                 let (byte_start, word_id) = offsets[i];
@@ -482,7 +487,11 @@ impl Segmenter {
                 if ch == b'\n' || ch == b'\t' {
                     break;
                 }
-                if sentence_end >= 3 && sentence_end <= text_len {
+                // "。" and "、" share the same 2-byte UTF-8 lead (E3 80) and
+                // differ only in their last byte (0x82 / 0x81, exactly
+                // `ch` here), so this pre-check skips the 3-byte slice
+                // comparison for ~254/256 possible byte values.
+                if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
                     let last_3 = &text_bytes[sentence_end - 3..sentence_end];
                     if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
                         break;
