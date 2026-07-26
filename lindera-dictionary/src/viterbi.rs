@@ -373,6 +373,14 @@ impl Lattice {
         }
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
+        // `char_category_cache` is keyed only by codepoint, with no identity
+        // of the `CharacterDefinition` it was filled from. Since a `Lattice`
+        // can be reused across `Segmenter`s built from different
+        // dictionaries, the cache must be invalidated every call rather than
+        // persisting across `set_text`/`set_text_nbest` invocations -- an
+        // ASCII codepoint's `CategoryId` is not portable between
+        // dictionaries with different char.def category orderings.
+        self.char_category_cache.clear();
     }
 
     #[inline]
