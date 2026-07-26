@@ -177,6 +177,27 @@ impl Transformation {
 pub struct OffsetMapping {
     /// List of transformations applied to the text
     pub transformations: Vec<Transformation>,
+    /// Cumulative `(original_len - filtered_len)` diff after each
+    /// transformation, i.e. `cumulative_diffs[i]` is the sum of diffs for
+    /// `transformations[0..=i]`. Kept in sync with `transformations` by
+    /// `add_transformation`/`with_transformations`/`compose`, and used by
+    /// `correct_offset` to answer in O(log n) instead of rescanning the
+    /// full transformation list.
+    cumulative_diffs: Vec<i64>,
+}
+
+/// Compute the cumulative diff sums for a transformation list, in the same
+/// order as `OffsetMapping::cumulative_diffs`.
+fn compute_cumulative_diffs(transformations: &[Transformation]) -> Vec<i64> {
+    let mut cumulative_diffs = Vec::with_capacity(transformations.len());
+    let mut cumulative = 0i64;
+    for t in transformations {
+        let original_len = (t.original_end - t.original_start) as i64;
+        let filtered_len = (t.filtered_end - t.filtered_start) as i64;
+        cumulative += original_len - filtered_len;
+        cumulative_diffs.push(cumulative);
+    }
+    cumulative_diffs
 }
 
 impl OffsetMapping {
@@ -185,11 +206,20 @@ impl OffsetMapping {
     }
 
     pub fn with_transformations(transformations: Vec<Transformation>) -> Self {
-        Self { transformations }
+        let cumulative_diffs = compute_cumulative_diffs(&transformations);
+        Self {
+            transformations,
+            cumulative_diffs,
+        }
     }
 
     /// Add a transformation to the mapping
     pub fn add_transformation(&mut self, transformation: Transformation) {
+        let original_len = (transformation.original_end - transformation.original_start) as i64;
+        let filtered_len = (transformation.filtered_end - transformation.filtered_start) as i64;
+        let diff = original_len - filtered_len;
+        let cumulative = self.cumulative_diffs.last().copied().unwrap_or(0) + diff;
+        self.cumulative_diffs.push(cumulative);
         self.transformations.push(transformation);
     }
 
@@ -239,53 +269,50 @@ impl OffsetMapping {
         // Boundary check: if offset is beyond text length, clamp to text length
         let clamped_offset = offset.min(text_len);
 
-        // Find the transformation that affects this offset
-        for transformation in &self.transformations {
-            if clamped_offset >= transformation.filtered_start
-                && clamped_offset <= transformation.filtered_end
-            {
+        // transformations are non-overlapping and appended in strictly
+        // increasing filtered_start/filtered_end order (an invariant the
+        // original linear scan below also depended on). Binary search for
+        // the first transformation whose filtered_end >= clamped_offset --
+        // this is exactly the transformation the old scan would have
+        // stopped at first, whether the offset falls inside it or before it.
+        let idx = self
+            .transformations
+            .partition_point(|t| t.filtered_end < clamped_offset);
+
+        if let Some(transformation) = self.transformations.get(idx) {
+            if clamped_offset >= transformation.filtered_start {
                 // Offset is within this transformation range
                 let filtered_offset = clamped_offset - transformation.filtered_start;
                 let original_len = transformation.original_end - transformation.original_start;
                 let filtered_len = transformation.filtered_end - transformation.filtered_start;
 
-                if filtered_len == 0 {
+                return if filtered_len == 0 {
                     // Deletion case
-                    return transformation.original_start;
+                    transformation.original_start
                 } else if original_len == 0 {
                     // Insertion case
-                    return transformation.original_start;
+                    transformation.original_start
                 } else {
                     // Substitution case - proportionally map within the range
                     let ratio = filtered_offset as f64 / filtered_len as f64;
                     let original_offset = (ratio * original_len as f64).round() as usize;
-                    return transformation.original_start + original_offset;
-                }
-            } else if clamped_offset < transformation.filtered_start {
-                // Offset is before this transformation, need to account for previous transformations
-                let mut corrected = clamped_offset;
-                for prev_transform in &self.transformations {
-                    if prev_transform.filtered_start < transformation.filtered_start {
-                        let original_len =
-                            prev_transform.original_end - prev_transform.original_start;
-                        let filtered_len =
-                            prev_transform.filtered_end - prev_transform.filtered_start;
-                        let diff = original_len as i64 - filtered_len as i64;
-                        corrected = (corrected as i64 + diff) as usize;
-                    }
-                }
-                return corrected;
+                    transformation.original_start + original_offset
+                };
             }
+
+            // Offset is before this transformation: apply the cumulative
+            // diff of every transformation before it (O(1) lookup).
+            let prev_cumulative = if idx == 0 {
+                0
+            } else {
+                self.cumulative_diffs[idx - 1]
+            };
+            return (clamped_offset as i64 + prev_cumulative) as usize;
         }
 
-        // Offset is after all transformations - apply cumulative differences
-        let mut corrected = clamped_offset;
-        for transformation in &self.transformations {
-            let original_len = transformation.original_end - transformation.original_start;
-            let filtered_len = transformation.filtered_end - transformation.filtered_start;
-            let diff = original_len as i64 - filtered_len as i64;
-            corrected = (corrected as i64 + diff) as usize;
-        }
+        // Offset is after all transformations - apply the total cumulative diff.
+        let total_diff = *self.cumulative_diffs.last().unwrap();
+        let corrected = (clamped_offset as i64 + total_diff) as usize;
 
         // Handle case where original offset was beyond text length
         if offset > text_len {
@@ -306,14 +333,10 @@ impl OffsetMapping {
             return other;
         }
 
-        // For now, use a simple approach: convert both to legacy format and merge
-        // This can be optimized in the future for better performance
         let mut combined_transformations = self.transformations;
         combined_transformations.extend(other.transformations);
 
-        OffsetMapping {
-            transformations: combined_transformations,
-        }
+        OffsetMapping::with_transformations(combined_transformations)
     }
 }
 
@@ -507,6 +530,51 @@ mod tests {
         assert_eq!(0, mapping.correct_offset(0, 8)); // Start maps to start
         assert_eq!(3, mapping.correct_offset(1, 8)); // End of filtered maps to end of original
         assert_eq!(5, mapping.correct_offset(3, 8)); // After transformation, add diff
+    }
+
+    #[test]
+    fn test_offset_mapping_correct_offset_multiple_transformations_boundaries() {
+        // Locks in the binary-search rewrite's boundary conditions against
+        // three transformations covering all four cases the linear scan
+        // used to handle: inside a transformation, before a transformation
+        // (but after a previous one), after all transformations (within
+        // and beyond text_len), and exactly on a filtered_start/filtered_end
+        // boundary.
+        let mut mapping = OffsetMapping::new();
+        // T0: original[0,2) "AB" -> filtered[0,1) "X" (shrink, diff = +1)
+        mapping.add_transformation(Transformation::new(0, 2, 0, 1));
+        // T1: original[4,5) "C" -> filtered[3,6) "YYY" (expand, diff = -2)
+        mapping.add_transformation(Transformation::new(4, 5, 3, 6));
+        // T2: original[7,9) "DE" -> filtered[8,9) "Z" (shrink, diff = +1)
+        mapping.add_transformation(Transformation::new(7, 9, 8, 9));
+
+        // filtered text is longer than the last transformation's end
+        let text_len = 12;
+
+        // Inside T0 (filtered_start and filtered_end boundaries)
+        assert_eq!(0, mapping.correct_offset(0, text_len));
+        assert_eq!(2, mapping.correct_offset(1, text_len));
+
+        // Between T0 and T1 (before T1, cumulative diff of T0 only)
+        assert_eq!(3, mapping.correct_offset(2, text_len));
+
+        // Inside T1 (filtered_start and filtered_end boundaries)
+        assert_eq!(4, mapping.correct_offset(3, text_len));
+        assert_eq!(5, mapping.correct_offset(6, text_len));
+
+        // Between T1 and T2 (before T2, cumulative diff of T0+T1)
+        assert_eq!(6, mapping.correct_offset(7, text_len));
+
+        // Inside T2 (filtered_start and filtered_end boundaries)
+        assert_eq!(7, mapping.correct_offset(8, text_len));
+        assert_eq!(9, mapping.correct_offset(9, text_len));
+
+        // After all transformations, within text_len (total cumulative diff = 0)
+        assert_eq!(10, mapping.correct_offset(10, text_len));
+        assert_eq!(12, mapping.correct_offset(12, text_len));
+
+        // Beyond text_len: clamped, then overshoot preserved
+        assert_eq!(15, mapping.correct_offset(15, text_len));
     }
 
     #[test]
