@@ -77,6 +77,14 @@ impl TokenFilter for KeepWordsTokenFilter {
     ///
     /// The function will return an error in the form of `LinderaResult<()>` if any issues arise during the filtering process, though normally no errors are expected in this operation.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
+        // An empty keep-word set never matches, so every token would be
+        // removed anyway -- skip straight to clearing instead of running
+        // retain over the whole list.
+        if self.words.is_empty() {
+            tokens.clear();
+            return Ok(());
+        }
+
         tokens.retain(|token| self.words.contains(token.surface.as_ref()));
 
         Ok(())
@@ -296,5 +304,37 @@ mod tests {
         assert_eq!(&tokens[0].surface, "すもも");
         assert_eq!(&tokens[1].surface, "もも");
         assert_eq!(&tokens[2].surface, "もも");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_keep_words_token_filter_apply_empty_set_removes_all() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = KeepWordsTokenFilter::new(std::collections::HashSet::new());
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("もも"),
+            byte_start: 0,
+            byte_end: 6,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 4294967295),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: Some(vec![Cow::Borrowed("UNK")]),
+        }];
+
+        filter.apply(&mut tokens).unwrap();
+
+        // Empty keep-word set: the early-return path must remove everything.
+        assert_eq!(tokens.len(), 0);
     }
 }
