@@ -2,7 +2,9 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::{
+    IsNormalized, UnicodeNormalization, is_nfc_quick, is_nfd_quick, is_nfkc_quick, is_nfkd_quick,
+};
 use unicode_segmentation::UnicodeSegmentation;
 
 use lindera::LinderaResult;
@@ -94,6 +96,26 @@ impl CharacterFilter for UnicodeNormalizeCharacterFilter {
 
         for c in text.graphemes(true) {
             let input_len = c.len();
+
+            // Fast path: skip the allocating conversion when the grapheme is
+            // already guaranteed to be normalized. `is_*_quick` never
+            // allocates (ASCII is skipped via a cheap branch, non-ASCII via
+            // table lookups only), and `IsNormalized::Yes` is a hard
+            // guarantee per the QuickCheck algorithm (UAX #15), not a
+            // heuristic -- so skipping the conversion here cannot change the
+            // result.
+            let quick = match self.kind {
+                UnicodeNormalizeKind::NFC => is_nfc_quick(c.chars()),
+                UnicodeNormalizeKind::NFD => is_nfd_quick(c.chars()),
+                UnicodeNormalizeKind::NFKC => is_nfkc_quick(c.chars()),
+                UnicodeNormalizeKind::NFKD => is_nfkd_quick(c.chars()),
+            };
+            if quick == IsNormalized::Yes {
+                filtered_text.push_str(c);
+                input_start += input_len;
+                continue;
+            }
+
             let replacement_text = match self.kind {
                 UnicodeNormalizeKind::NFC => c.nfc().collect::<String>(),
                 UnicodeNormalizeKind::NFD => c.nfd().collect::<String>(),
@@ -286,5 +308,27 @@ mod tests {
         assert_eq!(9, transform.original_end);
         assert_eq!(2, transform.filtered_start);
         assert_eq!(3, transform.filtered_end);
+    }
+
+    #[test]
+    fn test_unicode_normalize_character_filter_apply_nfkc_already_normalized_non_ascii() {
+        let config_str = r#"
+        {
+            "kind": "nfkc"
+        }
+        "#;
+        let config =
+            serde_json::from_str::<UnicodeNormalizeCharacterFilterConfig>(config_str).unwrap();
+
+        let filter = UnicodeNormalizeCharacterFilter::from_config(&config).unwrap();
+
+        // Ordinary Japanese text (hiragana/kanji) is already NFKC-normalized,
+        // so the quick-check fast path applies here (unlike the full-width
+        // ASCII examples above, which exercise the slow/allocating path).
+        let original_text = "東京都に住んでいます";
+        let mut text = original_text.to_string();
+        let mapping = filter.apply(&mut text).unwrap();
+        assert_eq!(original_text, text.as_str());
+        assert!(mapping.is_empty());
     }
 }
