@@ -38,7 +38,11 @@ impl TokenFilter for UppercaseTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            token.surface = Cow::Owned(token.surface.to_uppercase());
+            // Skip the allocating case-fold for tokens with no lowercase
+            // characters (e.g. any CJK-only token), which is a no-op.
+            if token.surface.chars().any(|c| c.is_lowercase()) {
+                token.surface = Cow::Owned(token.surface.to_uppercase());
+            }
         }
 
         Ok(())
@@ -78,5 +82,39 @@ mod tests {
 
         assert_eq!(tokens.len(), 1);
         assert_eq!(&tokens[0].surface, "RUST");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_uppercase_token_filter_apply_cjk_no_alloc() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::uppercase::UppercaseTokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = UppercaseTokenFilter::new();
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("東京"),
+            byte_start: 0,
+            byte_end: 6,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 4294967295),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: Some(vec![Cow::Borrowed("UNK")]),
+        }];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(&tokens[0].surface, "東京");
+        // The fast path must leave CJK-only tokens untouched (no reallocation).
+        assert!(matches!(tokens[0].surface, Cow::Borrowed(_)));
     }
 }

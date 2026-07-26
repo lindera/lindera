@@ -50,6 +50,12 @@ impl TokenFilter for StopWordsTokenFilter {
     }
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
+        // An empty stop-word set never matches, so every token would be
+        // kept anyway -- skip the retain pass entirely.
+        if self.words.is_empty() {
+            return Ok(());
+        }
+
         tokens.retain(|token| !self.words.contains(token.surface.as_ref()));
 
         Ok(())
@@ -270,5 +276,38 @@ mod tests {
         assert_eq!(&tokens[1].surface, "もも");
         assert_eq!(&tokens[2].surface, "もも");
         assert_eq!(&tokens[3].surface, "うち");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_stop_words_token_filter_apply_empty_set_keeps_all() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = StopWordsTokenFilter::new(std::collections::HashSet::new());
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("もも"),
+            byte_start: 0,
+            byte_end: 6,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 4294967295),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: Some(vec![Cow::Borrowed("UNK")]),
+        }];
+
+        filter.apply(&mut tokens).unwrap();
+
+        // Empty stop-word set: the early-return path must keep everything.
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "もも");
     }
 }
