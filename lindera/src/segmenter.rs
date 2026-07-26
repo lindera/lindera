@@ -1728,6 +1728,37 @@ mod tests {
 
     #[test]
     #[cfg(feature = "embed-ipadic")]
+    fn test_dictionary_clone_shares_heavy_fields_via_arc() {
+        use std::sync::Arc;
+
+        use crate::dictionary::load_dictionary;
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        assert_eq!(Arc::strong_count(&dictionary.prefix_dictionary), 1);
+        assert_eq!(Arc::strong_count(&dictionary.connection_cost_matrix), 1);
+
+        let cloned = dictionary.clone();
+
+        // A cheap (Arc-based) clone bumps the refcount rather than
+        // allocating a new copy of the trie/cost matrix.
+        assert_eq!(Arc::strong_count(&dictionary.prefix_dictionary), 2);
+        assert_eq!(Arc::strong_count(&dictionary.connection_cost_matrix), 2);
+        assert!(Arc::ptr_eq(
+            &dictionary.prefix_dictionary,
+            &cloned.prefix_dictionary
+        ));
+        assert!(Arc::ptr_eq(
+            &dictionary.connection_cost_matrix,
+            &cloned.connection_cost_matrix
+        ));
+
+        drop(cloned);
+        assert_eq!(Arc::strong_count(&dictionary.prefix_dictionary), 1);
+        assert_eq!(Arc::strong_count(&dictionary.connection_cost_matrix), 1);
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
     fn test_segment_default_multiple_spaces() {
         use std::borrow::Cow;
 

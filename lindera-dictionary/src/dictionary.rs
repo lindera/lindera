@@ -9,6 +9,7 @@ pub mod unknown_dictionary;
 use std::fs;
 use std::path::Path;
 use std::str;
+use std::sync::Arc;
 
 use byteorder::{ByteOrder, LittleEndian};
 use once_cell::sync::Lazy;
@@ -33,10 +34,15 @@ use crate::viterbi::WordEntry;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 
+/// `prefix_dictionary` and `connection_cost_matrix` are `Arc`-wrapped so that
+/// `Dictionary::clone()` is O(1) regardless of load method (embedded, mmap,
+/// or plain filesystem read) -- these two components dominate a dictionary's
+/// memory footprint (tens to hundreds of MB), and nothing in this codebase
+/// mutates them after construction.
 #[derive(Clone)]
 pub struct Dictionary {
-    pub prefix_dictionary: PrefixDictionary,
-    pub connection_cost_matrix: ConnectionCostMatrix,
+    pub prefix_dictionary: Arc<PrefixDictionary>,
+    pub connection_cost_matrix: Arc<ConnectionCostMatrix>,
     pub character_definition: CharacterDefinition,
     pub unknown_dictionary: UnknownDictionary,
     pub metadata: Metadata,
@@ -103,6 +109,8 @@ impl Dictionary {
     /// plain-read regardless of this flag. In short, `use_mmap` only avoids
     /// the initial file-read syscall/allocation for the two components it
     /// covers — it does not provide OS-level lazy paging for tokenization.
+    /// Separately, `Dictionary::clone()` is O(1) regardless of `use_mmap`,
+    /// since `prefix_dictionary`/`connection_cost_matrix` are `Arc`-wrapped.
     pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
         // Verify that the dictionary directory exists
         if !dict_path.exists() {
@@ -148,8 +156,8 @@ impl Dictionary {
         let unknown_dictionary = UnknownDictionaryLoader::load(dict_path)?;
 
         Ok(Dictionary {
-            prefix_dictionary,
-            connection_cost_matrix,
+            prefix_dictionary: Arc::new(prefix_dictionary),
+            connection_cost_matrix: Arc::new(connection_cost_matrix),
             character_definition,
             unknown_dictionary,
             metadata,

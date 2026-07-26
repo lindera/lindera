@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use wasm_bindgen::prelude::*;
 
@@ -135,8 +136,8 @@ pub fn load_dictionary_from_bytes(
         UnknownDictionary::load(unk).map_err(|e| JsValue::from_str(&format!("unk: {e}")))?;
 
     let dict = Dictionary {
-        prefix_dictionary,
-        connection_cost_matrix,
+        prefix_dictionary: Arc::new(prefix_dictionary),
+        connection_cost_matrix: Arc::new(connection_cost_matrix),
         character_definition,
         unknown_dictionary,
         metadata: meta,

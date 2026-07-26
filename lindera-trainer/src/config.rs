@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::{BufReader, Read};
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -49,7 +50,7 @@ pub struct TrainerConfig {
 impl TrainerConfig {
     /// Access system lexicon for morphological analysis
     pub fn system_lexicon(&self) -> &PrefixDictionary {
-        &self.dict.prefix_dictionary
+        self.dict.prefix_dictionary.as_ref()
     }
 
     /// Access dictionary (for compatibility)
@@ -345,8 +346,8 @@ impl TrainerConfig {
         let conn_matrix = Self::create_minimal_connection_matrix()?;
 
         Ok(Dictionary {
-            prefix_dictionary: prefix_dict,
-            connection_cost_matrix: conn_matrix,
+            prefix_dictionary: Arc::new(prefix_dict),
+            connection_cost_matrix: Arc::new(conn_matrix),
             character_definition: char_def,
             unknown_dictionary: unknown_dict,
             metadata: Metadata::default(),
