@@ -50,6 +50,7 @@ macro_rules! embedded_dictionary {
                 WORDS_IDX_DATA,
                 WORDS_DATA,
                 true,
+                $crate::dictionary::prefix_dictionary::DaTrust::Trusted,
             )?;
             let connection_cost_matrix =
                 $crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::load(
