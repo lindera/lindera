@@ -92,14 +92,6 @@ impl ConnectionCostMatrix {
     }
 }
 
-impl ArchivedConnectionCostMatrix {
-    #[inline]
-    pub fn cost(&self, forward_id: u32, backward_id: u32) -> i32 {
-        let cost_id = (forward_id + backward_id * self.forward_size) as usize;
-        self.costs_data[cost_id].to_native() as i32
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
