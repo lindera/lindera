@@ -75,12 +75,7 @@ fn bench_segment_nbest_ipadic(c: &mut Criterion) {
 
     c.bench_function("bench-segment-nbest-ipadic", |b| {
         b.iter(|| {
-            segmenter.segment_nbest(
-                Cow::Borrowed("すもももももももものうち"),
-                5,
-                false,
-                None,
-            )
+            segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 5, false, None)
         })
     });
 }
