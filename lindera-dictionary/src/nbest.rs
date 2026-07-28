@@ -112,13 +112,22 @@ impl<'a> NBestGenerator<'a> {
             let current_idx = self.elements.len();
             self.elements.push(current.clone());
 
-            // Expand: for each predecessor path of this edge
+            // Expand: for each predecessor path of this edge.
+            //
+            // `paths_at(byte_pos)` is always partitioned into contiguous,
+            // strictly-ascending-by-`edge_index` runs: every push site
+            // (`add_edge_in_lattice_nbest`'s Normal/Decompose branches and
+            // `set_text_nbest`'s EOS-connect block, all in viterbi.rs) writes
+            // every `PathEntry` for one edge in a single loop, using
+            // `ends_at[stop_index].len()` at call time as that edge's index,
+            // before any other edge targeting the same `stop_index` can push
+            // into this same `all_paths[stop_index]` vector. So the target
+            // edge's entries form one contiguous run, locatable via binary
+            // search instead of a full linear scan.
             let paths = self.lattice.paths_at(byte_pos);
-            for path_entry in paths {
-                if path_entry.edge_index() != edge_index as u16 {
-                    continue; // Not a path to this edge
-                }
-
+            let start = paths.partition_point(|p| p.edge_index() < edge_index as u16);
+            let end = paths.partition_point(|p| p.edge_index() <= edge_index as u16);
+            for path_entry in &paths[start..end] {
                 let left_pos = path_entry.left_pos() as usize;
                 let left_index = path_entry.left_index() as usize;
 

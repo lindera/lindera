@@ -69,6 +69,18 @@ fn bench_clone_ipadic(c: &mut Criterion) {
 }
 
 #[cfg(feature = "embed-ipadic")]
+fn bench_segment_nbest_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-nbest-ipadic", |b| {
+        b.iter(|| {
+            segmenter.segment_nbest(Cow::Borrowed("すもももももももものうち"), 5, false, None)
+        })
+    });
+}
+
+#[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_ipadic(c: &mut Criterion) {
     let dictionary = load_dictionary("embedded://ipadic").unwrap();
     let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
@@ -187,6 +199,7 @@ criterion_group!(
     bench_tokenize_with_simple_userdic_ipadic,
     bench_tokenize_long_text_ipadic,
     bench_tokenize_details_long_text_ipadic,
+    bench_segment_nbest_ipadic,
 );
 
 #[cfg(feature = "embed-ipadic")]
