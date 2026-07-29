@@ -140,6 +140,21 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Set whether to route filesystem-loaded dictionaries through
+    /// memory-mapped reads. Ignored for `embedded://` dictionaries.
+    ///
+    /// # Arguments
+    ///
+    /// * `use_mmap` - Whether to request memory-mapped dictionary loading.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_use_mmap(&mut self, use_mmap: bool) -> &mut Self {
+        self.config["segmenter"]["use_mmap"] = json!(use_mmap);
+        self
+    }
+
     pub fn append_character_filter(&mut self, kind: &str, args: &Value) -> &mut Self {
         if let Some(array) = self.config["character_filters"].as_array_mut() {
             array.push(json!({ "kind": kind, "args": args }));
@@ -527,6 +542,16 @@ impl Clone for Tokenizer {
 
 #[cfg(test)]
 mod tests {
+    use super::TokenizerBuilder;
+
+    #[test]
+    fn test_set_segmenter_use_mmap_writes_flat_key_under_segmenter() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_segmenter_use_mmap(true);
+
+        assert_eq!(builder.config["segmenter"]["use_mmap"], true);
+    }
+
     #[cfg(feature = "embed-ipadic")]
     #[test]
     fn test_tokenizer_config_from_slice() {

@@ -81,4 +81,4 @@ cargo build --features embed-ipadic,embed-ko-dic
 
 - Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.
 - The `train` feature adds a dependency on `lindera-crf` and increases compile time. It is not needed for tokenization-only use cases.
-- The `mmap` feature enables memory-mapped dictionary loading, which reduces memory usage for large dictionaries loaded from disk. It has no effect on embedded dictionaries.
+- The `mmap` feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via `--mmap` (CLI) or the `use_mmap` segmenter config key. It only avoids eagerly reading the largest word-list files (`dict.vals`/`dict.wordsidx`/`dict.words`) into memory; the connection-cost matrix and the double-array trie are always fully materialized regardless. It has no effect on embedded dictionaries.

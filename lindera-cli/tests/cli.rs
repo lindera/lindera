@@ -132,4 +132,25 @@ mod with_ipadic {
         let stdout = String::from_utf8(output.stdout).unwrap();
         assert_eq!(stdout.trim(), "関西 国際 空港 限定 トートバッグ");
     }
+
+    #[test]
+    fn tokenize_with_mmap_flag_parses_and_output_is_unchanged() {
+        // --mmap has no effect on an embedded:// dictionary, but the flag
+        // must still parse and produce identical output.
+        let output = lindera()
+            .args([
+                "tokenize",
+                "--dict",
+                "embedded://ipadic",
+                "--output",
+                "wakati",
+                "--mmap",
+            ])
+            .write_stdin("関西国際空港限定トートバッグ\n")
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(stdout.trim(), "関西国際空港 限定 トートバッグ");
+    }
 }

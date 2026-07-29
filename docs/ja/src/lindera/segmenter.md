@@ -116,10 +116,23 @@ use lindera::segmenter::{Segmenter, SegmenterConfig};
 
 let config: SegmenterConfig = json!({
     "mode": "normal",
-    "dictionary": "embedded://ipadic"
+    "dictionary": "embedded://ipadic",
+    "keep_whitespace": false,
+    "use_mmap": false
 });
 let segmenter = Segmenter::from_config(&config)?;
 ```
+
+## メモリマップド読み込み
+
+ファイルシステム辞書（`embedded://` ではない辞書）に対しては、`use_mmap` を
+`true` にすると、接続コスト行列とプレフィックス辞書の読み込みが単純な
+ファイル読み込みではなくメモリマップド読み込み経由になります。この方式で
+実際に遅延読み込みされるのは辞書の最大の単語リストファイルのみで、
+接続コスト行列とダブル配列トライは常に所有メモリへ全体展開されます。
+`use_mmap` は `embedded://` 辞書に対しては無視されます（埋め込みデータは
+既に静的なゼロコピーバイトスライスであるため）。`mmap` cargo feature
+（デフォルトで有効）が必要です。
 
 ## 空白文字の扱い
 

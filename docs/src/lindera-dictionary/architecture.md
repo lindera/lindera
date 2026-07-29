@@ -69,6 +69,6 @@ The CRF-based dictionary training pipeline lives in the separate `lindera-traine
 
 | Feature | Description | Default |
 | --------- | ------------- | --------- |
-| `mmap` | Memory-mapped file support | Yes |
+| `mmap` | Memory-mapped file support for filesystem-based dictionary loading (only the word-list files stay lazily paged; the connection-cost matrix and trie are always fully materialized) | Yes |
 | `build_rs` | HTTP download for dictionary sources | No |
 | `ctxfreq` | Experimental: instruments connection-matrix access-frequency profiling, used to build the context-ID frequency remap | No |

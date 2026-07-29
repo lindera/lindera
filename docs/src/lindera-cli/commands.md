@@ -48,6 +48,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--char-filter` / `-c`: Character filter configuration (JSON)
 - `--token-filter` / `-t`: Token filter configuration (JSON)
 - `--keep-whitespace`: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)
+- `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.
 - `--nbest-cost-threshold`: Maximum cost difference from the best path. Only paths with cost within `best_cost + threshold` are returned.
