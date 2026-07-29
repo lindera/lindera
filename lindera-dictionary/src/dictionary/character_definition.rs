@@ -61,17 +61,6 @@ impl<T: Copy + Clone> LookupTable<T> {
     }
 }
 
-impl<T: Copy + Clone + Archive> ArchivedLookupTable<T> {
-    pub fn eval(&self, target: u32) -> &[T::Archived] {
-        let target_le = rkyv::rend::u32_le::from_native(target);
-        let idx = self
-            .boundaries
-            .binary_search(&target_le)
-            .unwrap_or_else(|val| val - 1);
-        self.values[idx].as_slice()
-    }
-}
-
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct CharacterDefinition {
@@ -109,24 +98,6 @@ impl CharacterDefinition {
     }
 
     pub fn lookup_categories(&self, c: char) -> &[CategoryId] {
-        self.mapping.eval(c as u32)
-    }
-}
-
-impl ArchivedCharacterDefinition {
-    pub fn categories(&self) -> &[rkyv::string::ArchivedString] {
-        &self.category_names[..]
-    }
-
-    pub fn lookup_definition(&self, category_id: usize) -> &ArchivedCategoryData {
-        &self.category_definitions[category_id]
-    }
-
-    pub fn category_name(&self, category_id: usize) -> &str {
-        self.category_names[category_id].as_str()
-    }
-
-    pub fn lookup_categories(&self, c: char) -> &[ArchivedCategoryId] {
         self.mapping.eval(c as u32)
     }
 }
