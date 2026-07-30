@@ -42,8 +42,38 @@ impl FSDictionaryLoader {
         Self
     }
 
+    /// Load a dictionary from a directory, always doing a plain file read.
+    ///
+    /// # Arguments
+    ///
+    /// * `dict_path` - Path to the directory containing dictionary files.
+    ///
+    /// # Returns
+    ///
+    /// A `Dictionary`, or an error if loading fails.
     pub fn load_from_path<P: AsRef<Path>>(&self, dict_path: P) -> LinderaResult<Dictionary> {
         Dictionary::load_from_path(dict_path.as_ref())
+    }
+
+    /// Load a dictionary from a directory, optionally via memory-mapped
+    /// reads. See [`Dictionary::load_from_path_with_options`] for exactly
+    /// which components `use_mmap` does and does not make lazy.
+    ///
+    /// # Arguments
+    ///
+    /// * `dict_path` - Path to the directory containing dictionary files.
+    /// * `use_mmap` - Whether to route the connection-cost matrix and
+    ///   prefix dictionary through memory-mapped reads.
+    ///
+    /// # Returns
+    ///
+    /// A `Dictionary`, or an error if loading fails.
+    pub fn load_from_path_with_options<P: AsRef<Path>>(
+        &self,
+        dict_path: P,
+        use_mmap: bool,
+    ) -> LinderaResult<Dictionary> {
+        Dictionary::load_from_path_with_options(dict_path.as_ref(), use_mmap)
     }
 }
 

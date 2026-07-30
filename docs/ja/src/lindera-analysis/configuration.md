@@ -8,6 +8,8 @@ segmenter:
   mode: "normal"
   dictionary: "embedded://ipadic"
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
+  # keep_whitespace: false
+  # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
 
 character_filters:
   - kind: "unicode_normalize"

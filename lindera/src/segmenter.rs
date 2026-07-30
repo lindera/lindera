@@ -9,7 +9,7 @@ use lindera_dictionary::viterbi::Lattice;
 use serde_json::Value;
 
 use crate::LinderaResult;
-use crate::dictionary::{load_dictionary, load_user_dictionary};
+use crate::dictionary::{load_dictionary_with_options, load_user_dictionary};
 use crate::error::LinderaErrorKind;
 use crate::token::Token;
 
@@ -162,8 +162,15 @@ impl Segmenter {
     /// Methods that return `LinderaResult` may produce errors related to dictionary loading,
     /// user dictionary loading, or tokenization process.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
+        // Whether to route filesystem-loaded dictionaries through memory-mapped
+        // reads. Ignored for `embedded://` dictionaries. Default is false.
+        let use_mmap = config
+            .get("use_mmap")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
         // Load the dictionary from the config
-        let dictionary = load_dictionary(
+        let dictionary = load_dictionary_with_options(
             config
                 .get("dictionary")
                 .and_then(Value::as_str)
@@ -171,6 +178,7 @@ impl Segmenter {
                     LinderaErrorKind::Parse
                         .with_error(anyhow::anyhow!("dictionary field is missing"))
                 })?,
+            use_mmap,
         )?;
 
         // Get metadata from the dictionary
@@ -1755,6 +1763,25 @@ mod tests {
         drop(cloned);
         assert_eq!(Arc::strong_count(&dictionary.prefix_dictionary), 1);
         assert_eq!(Arc::strong_count(&dictionary.connection_cost_matrix), 1);
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_from_config_use_mmap_is_ignored_for_embedded_dictionary() {
+        // `use_mmap: true` has no effect on an `embedded://` dictionary
+        // (the data is already a static, zero-copy byte slice) but must not
+        // be treated as an error either.
+        let config_str = r#"
+        {
+            "dictionary": "embedded://ipadic",
+            "mode": "normal",
+            "use_mmap": true
+        }
+        "#;
+
+        let config: SegmenterConfig = serde_json::from_str(config_str).unwrap();
+        let result = Segmenter::from_config(&config);
+        assert!(result.is_ok());
     }
 
     #[test]

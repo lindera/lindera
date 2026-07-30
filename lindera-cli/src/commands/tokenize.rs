@@ -67,6 +67,11 @@ pub struct TokenizeArgs {
     )]
     keep_whitespace: bool,
     #[clap(
+        long = "mmap",
+        help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
+    )]
+    use_mmap: bool,
+    #[clap(
         short = 'N',
         long = "nbest",
         default_value = "1",
@@ -173,6 +178,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Keep whitespace (default is to ignore whitespace for MeCab compatibility)
     if args.keep_whitespace {
         builder.set_segmenter_keep_whitespace(true);
+    }
+
+    // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)
+    if args.use_mmap {
+        builder.set_segmenter_use_mmap(true);
     }
 
     // Tokenizer

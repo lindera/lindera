@@ -209,6 +209,16 @@ impl FromStr for DictionaryKind {
     }
 }
 
+/// Resolve the embedded loader for a given dictionary kind.
+///
+/// # Arguments
+///
+/// * `dictionary_type` - Which embedded dictionary to load.
+///
+/// # Returns
+///
+/// A boxed loader for the requested dictionary kind, or an error if the
+/// corresponding `embed-*` feature was not compiled in.
 pub fn resolve_embedded_loader(
     dictionary_type: DictionaryKind,
 ) -> LinderaResult<Box<dyn DictionaryLoader>> {
@@ -228,11 +238,49 @@ pub fn resolve_embedded_loader(
     }
 }
 
+/// Load a dictionary from a filesystem directory, always doing a plain file
+/// read (no memory mapping).
+///
+/// # Arguments
+///
+/// * `path` - Path to the directory containing dictionary files.
+///
+/// # Returns
+///
+/// A `Dictionary`, or an error if loading fails.
 pub fn load_fs_dictionary(path: &Path) -> LinderaResult<Dictionary> {
-    let loader = FSDictionaryLoader::new();
-    loader.load_from_path(path)
+    load_fs_dictionary_with_options(path, false)
 }
 
+/// Load a dictionary from a filesystem directory, optionally via
+/// memory-mapped reads. See
+/// [`lindera_dictionary::dictionary::Dictionary::load_from_path_with_options`]
+/// for exactly which components `use_mmap` does and does not make lazy.
+///
+/// # Arguments
+///
+/// * `path` - Path to the directory containing dictionary files.
+/// * `use_mmap` - Whether to route the connection-cost matrix and prefix
+///   dictionary through memory-mapped reads.
+///
+/// # Returns
+///
+/// A `Dictionary`, or an error if loading fails.
+pub fn load_fs_dictionary_with_options(path: &Path, use_mmap: bool) -> LinderaResult<Dictionary> {
+    let loader = FSDictionaryLoader::new();
+    loader.load_from_path_with_options(path, use_mmap)
+}
+
+/// Load an embedded dictionary of the given kind.
+///
+/// # Arguments
+///
+/// * `kind` - Which embedded dictionary to load.
+///
+/// # Returns
+///
+/// A `Dictionary`, or an error if the corresponding `embed-*` feature was
+/// not compiled in or loading otherwise fails.
 pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionary> {
     let loader = resolve_embedded_loader(kind)?;
     loader
@@ -240,7 +288,37 @@ pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionar
         .map_err(|e| LinderaErrorKind::NotFound.with_error(e))
 }
 
+/// Load a dictionary from a URI (`embedded://<kind>`, `file://<path>`) or a
+/// bare filesystem path, always doing a plain file read for filesystem
+/// dictionaries (no memory mapping).
+///
+/// # Arguments
+///
+/// * `uri` - A dictionary URI or bare filesystem path.
+///
+/// # Returns
+///
+/// A `Dictionary`, or an error if the URI is invalid or loading fails.
 pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
+    load_dictionary_with_options(uri, false)
+}
+
+/// Load a dictionary from a URI (`embedded://<kind>`, `file://<path>`) or a
+/// bare filesystem path, optionally via memory-mapped reads for filesystem
+/// dictionaries. `use_mmap` is silently ignored for `embedded://` URIs,
+/// since embedded dictionary data is already a static, zero-copy byte slice
+/// baked into the binary.
+///
+/// # Arguments
+///
+/// * `uri` - A dictionary URI or bare filesystem path.
+/// * `use_mmap` - Whether to route filesystem-loaded dictionaries' connection
+///   cost matrix and prefix dictionary through memory-mapped reads.
+///
+/// # Returns
+///
+/// A `Dictionary`, or an error if the URI is invalid or loading fails.
+pub fn load_dictionary_with_options(uri: &str, use_mmap: bool) -> LinderaResult<Dictionary> {
     // Try to parse as URI first, but only if it looks like a URI
     // (contains "://" or starts with known schemes)
     if uri.contains("://") {
@@ -290,7 +368,7 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
                         let path = Path::new(decoded_path.as_ref());
 
                         // Load the file-based dictionary
-                        load_fs_dictionary(path)
+                        load_fs_dictionary_with_options(path, use_mmap)
                     }
                 }
             }
@@ -302,7 +380,7 @@ pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
     } else {
         // Treat it as a file path directly
         let path = Path::new(uri);
-        load_fs_dictionary(path)
+        load_fs_dictionary_with_options(path, use_mmap)
     }
 }
 
