@@ -183,6 +183,8 @@ Specify the path to the following file in the environment variable <code>LINDERA
   mode: "normal"
   dictionary: "embedded://ipadic"
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
+  # keep_whitespace: false
+  # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
 
 character_filters:
   - kind: "unicode_normalize"

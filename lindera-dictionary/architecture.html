@@ -223,7 +223,7 @@
 <p>The CRF-based dictionary training pipeline lives in the separate <code>lindera-trainer</code> crate, which builds on this crate's runtime types. See the training pipeline documentation for details.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (only the word-list files stay lazily paged; the connection-cost matrix and trie are always fully materialized)</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
 <tr><td><code>ctxfreq</code></td><td>Experimental: instruments connection-matrix access-frequency profiling, used to build the context-ID frequency remap</td><td>No</td></tr>
 </tbody></table>

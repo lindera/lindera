@@ -272,10 +272,21 @@ use lindera::segmenter::{Segmenter, SegmenterConfig};
 
 let config: SegmenterConfig = json!({
     "mode": "normal",
-    "dictionary": "embedded://ipadic"
+    "dictionary": "embedded://ipadic",
+    "keep_whitespace": false,
+    "use_mmap": false
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<h2 id="メモリマップド読み込み"><a class="header" href="#メモリマップド読み込み">メモリマップド読み込み</a></h2>
+<p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>use_mmap</code> を
+<code>true</code> にすると、接続コスト行列とプレフィックス辞書の読み込みが単純な
+ファイル読み込みではなくメモリマップド読み込み経由になります。この方式で
+実際に遅延読み込みされるのは辞書の最大の単語リストファイルのみで、
+接続コスト行列とダブル配列トライは常に所有メモリへ全体展開されます。
+<code>use_mmap</code> は <code>embedded://</code> 辞書に対しては無視されます（埋め込みデータは
+既に静的なゼロコピーバイトスライスであるため）。<code>mmap</code> cargo feature
+（デフォルトで有効）が必要です。</p>
 <h2 id="空白文字の扱い"><a class="header" href="#空白文字の扱い">空白文字の扱い</a></h2>
 <p>デフォルトでは、MeCab互換のため空白のみのトークンは出力から除外されます。<code>Segmenter</code> に対して <code>keep_whitespace(true)</code> を呼び出すと、これらを保持できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

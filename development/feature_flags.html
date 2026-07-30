@@ -239,7 +239,7 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 <ul>
 <li>Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.</li>
 <li>The <code>train</code> feature adds a dependency on <code>lindera-crf</code> and increases compile time. It is not needed for tokenization-only use cases.</li>
-<li>The <code>mmap</code> feature enables memory-mapped dictionary loading, which reduces memory usage for large dictionaries loaded from disk. It has no effect on embedded dictionaries.</li>
+<li>The <code>mmap</code> feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via <code>--mmap</code> (CLI) or the <code>use_mmap</code> segmenter config key. It only avoids eagerly reading the largest word-list files (<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>) into memory; the connection-cost matrix and the double-array trie are always fully materialized regardless. It has no effect on embedded dictionaries.</li>
 </ul>
 
                     </main>

@@ -222,6 +222,7 @@
 <li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
 <li><code>--keep-whitespace</code>: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)</li>
+<li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
 <li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
 <li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best path. Only paths with cost within <code>best_cost + threshold</code> are returned.</li>

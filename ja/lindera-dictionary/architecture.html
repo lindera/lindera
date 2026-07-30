@@ -223,7 +223,7 @@
 <p>CRFベースの辞書学習パイプラインは、本クレートのランタイム型の上に構築された独立クレート <code>lindera-trainer</code> に含まれます。詳細は学習パイプラインのドキュメントを参照してください。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（遅延読み込みされるのは単語リストファイルのみで、接続コスト行列とトライは常に全体展開される）</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
 <tr><td><code>ctxfreq</code></td><td>実験的機能: 連接行列のアクセス頻度プロファイリングを計測し、コンテキストID頻度リマップの構築に使用</td><td>No</td></tr>
 </tbody></table>

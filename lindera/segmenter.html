@@ -272,10 +272,21 @@ use lindera::segmenter::{Segmenter, SegmenterConfig};
 
 let config: SegmenterConfig = json!({
     "mode": "normal",
-    "dictionary": "embedded://ipadic"
+    "dictionary": "embedded://ipadic",
+    "keep_whitespace": false,
+    "use_mmap": false
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<h2 id="memory-mapped-loading"><a class="header" href="#memory-mapped-loading">Memory-Mapped Loading</a></h2>
+<p>For a filesystem-based (not <code>embedded://</code>) dictionary, set <code>use_mmap</code> to
+<code>true</code> to route the connection-cost matrix and prefix dictionary through
+memory-mapped reads instead of a plain file read. Only the dictionary's
+largest word-list files stay lazily paged this way; the connection-cost
+matrix and the double-array trie are always fully materialized into owned
+memory regardless. <code>use_mmap</code> is silently ignored for <code>embedded://</code>
+dictionaries, since their data is already a static, zero-copy byte slice.
+Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <h2 id="whitespace-handling"><a class="header" href="#whitespace-handling">Whitespace Handling</a></h2>
 <p>By default, whitespace-only tokens are dropped from the output for MeCab compatibility. Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to keep them:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

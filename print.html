@@ -345,7 +345,7 @@ Output Tokens
 <p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>Memory-mapped file support for dictionary loading</td><td>Enabled</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; avoids eagerly reading the largest word-list files, not the whole dictionary)</td><td>Enabled</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
@@ -968,7 +968,7 @@ tokenizer
 <p>The CRF-based dictionary training pipeline lives in the separate <code>lindera-trainer</code> crate, which builds on this crate's runtime types. See the training pipeline documentation for details.</p>
 <h2 id="feature-flags-2"><a class="header" href="#feature-flags-2">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (only the word-list files stay lazily paged; the connection-cost matrix and trie are always fully materialized)</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
 <tr><td><code>ctxfreq</code></td><td>Experimental: instruments connection-matrix access-frequency profiling, used to build the context-ID frequency remap</td><td>No</td></tr>
 </tbody></table>
@@ -1163,10 +1163,21 @@ use lindera::segmenter::{Segmenter, SegmenterConfig};
 
 let config: SegmenterConfig = json!({
     "mode": "normal",
-    "dictionary": "embedded://ipadic"
+    "dictionary": "embedded://ipadic",
+    "keep_whitespace": false,
+    "use_mmap": false
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<h2 id="memory-mapped-loading"><a class="header" href="#memory-mapped-loading">Memory-Mapped Loading</a></h2>
+<p>For a filesystem-based (not <code>embedded://</code>) dictionary, set <code>use_mmap</code> to
+<code>true</code> to route the connection-cost matrix and prefix dictionary through
+memory-mapped reads instead of a plain file read. Only the dictionary's
+largest word-list files stay lazily paged this way; the connection-cost
+matrix and the double-array trie are always fully materialized into owned
+memory regardless. <code>use_mmap</code> is silently ignored for <code>embedded://</code>
+dictionaries, since their data is already a static, zero-copy byte slice.
+Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <h2 id="whitespace-handling"><a class="header" href="#whitespace-handling">Whitespace Handling</a></h2>
 <p>By default, whitespace-only tokens are dropped from the output for MeCab compatibility. Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to keep them:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1309,6 +1320,8 @@ Specify the path to the following file in the environment variable <code>LINDERA
   mode: "normal"
   dictionary: "embedded://ipadic"
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
+  # keep_whitespace: false
+  # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
 
 character_filters:
   - kind: "unicode_normalize"
@@ -1987,6 +2000,7 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
 <li><code>--keep-whitespace</code>: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)</li>
+<li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
 <li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
 <li><code>--nbest-cost-threshold</code>: Maximum cost difference from the best path. Only paths with cost within <code>best_cost + threshold</code> are returned.</li>
@@ -8177,7 +8191,7 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 <ul>
 <li>Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.</li>
 <li>The <code>train</code> feature adds a dependency on <code>lindera-crf</code> and increases compile time. It is not needed for tokenization-only use cases.</li>
-<li>The <code>mmap</code> feature enables memory-mapped dictionary loading, which reduces memory usage for large dictionaries loaded from disk. It has no effect on embedded dictionaries.</li>
+<li>The <code>mmap</code> feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via <code>--mmap</code> (CLI) or the <code>use_mmap</code> segmenter config key. It only avoids eagerly reading the largest word-list files (<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>) into memory; the connection-cost matrix and the double-array trie are always fully materialized regardless. It has no effect on embedded dictionaries.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h1>
 <p>Lindera is organized as a Cargo workspace with multiple crates.</p>
