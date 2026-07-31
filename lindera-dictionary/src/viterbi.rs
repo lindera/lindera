@@ -401,8 +401,12 @@ impl Lattice {
             self.capacity = text_len;
             // Pre-size newly-grown slots (like Vibrato's reset_vec) to
             // avoid a couple of small reallocations the first time a busy
-            // position accumulates several edges.
-            self.ends_at.resize(text_len + 1, Vec::with_capacity(16));
+            // position accumulates several edges. `resize_with` is required
+            // here: `resize` fills new slots with clones of its template
+            // value, and cloning an empty Vec allocates capacity 0, so only
+            // the moved-in last slot would actually be pre-sized (#827).
+            self.ends_at
+                .resize_with(text_len + 1, || Vec::with_capacity(16));
         }
     }
 
@@ -1241,7 +1245,7 @@ impl Lattice {
 
 #[cfg(test)]
 mod tests {
-    use crate::viterbi::{LexType, WordEntry, WordId};
+    use crate::viterbi::{Lattice, LexType, WordEntry, WordId};
 
     #[test]
     fn test_word_entry() {
@@ -1252,5 +1256,38 @@ mod tests {
         assert_eq!(WordEntry::SERIALIZED_LEN, buffer.len());
         let word_entry2 = WordEntry::deserialize(&buffer[..], true);
         assert_eq!(word_entry, word_entry2);
+    }
+
+    /// Regression test for #827: `Vec::resize` clones its template value
+    /// into all but the last new slot, and cloning an empty Vec yields
+    /// capacity 0, so only the last slot was actually pre-sized. Every
+    /// newly-grown `ends_at` slot must get the intended pre-size, both on
+    /// the initial growth and on a later, larger growth.
+    #[test]
+    fn test_set_capacity_presizes_all_new_slots() {
+        let mut lattice = Lattice::default();
+
+        lattice.set_capacity(5);
+        assert_eq!(lattice.ends_at.len(), 6);
+        for (i, slot) in lattice.ends_at.iter().enumerate() {
+            assert!(
+                slot.capacity() >= 16,
+                "slot {} has capacity {} < 16 after initial growth",
+                i,
+                slot.capacity()
+            );
+        }
+
+        // Growing an already-used lattice must pre-size the appended slots too.
+        lattice.set_capacity(10);
+        assert_eq!(lattice.ends_at.len(), 11);
+        for (i, slot) in lattice.ends_at.iter().enumerate() {
+            assert!(
+                slot.capacity() >= 16,
+                "slot {} has capacity {} < 16 after second growth",
+                i,
+                slot.capacity()
+            );
+        }
     }
 }
