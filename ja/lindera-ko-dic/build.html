@@ -184,8 +184,19 @@
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 </code></pre>
+<blockquote>
+<p>[!TIP]
+<code>lindera-ko-dic/metadata.json</code> は <code>connection_id_mapping: true</code> を設定しているため、ビルダーは
+連接コスト行列の文脈 ID を使用頻度順に付け替え、連接コスト参照時のキャッシュ局所性を改善します。
+<code>--context-id-freq</code> / <code>-f</code> に同梱の <code>context_id_freq.txt</code> ヒストグラムを渡すことで、この付け替えに
+実際のコーパス頻度データを与えて ID をランク付けできます。このフラグを省略してもビルドは失敗せず、
+精度の低いエントリ数ベースのフォールバックに黙って切り替わるだけです。いずれの場合もトークン化の
+結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
+関わるものであって正確性には影響しません。</p>
+</blockquote>
 <h2 id="ユーザー辞書のビルド"><a class="header" href="#ユーザー辞書のビルド">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
