@@ -6,12 +6,18 @@
 //!
 //! ```text
 //! cargo run --release --example ctxfreq_dump \
-//!   --features embed-unidic,ctxfreq -- <corpus.txt> <out_freq.txt>
+//!   --features embed-unidic,ctxfreq -- embedded://unidic <corpus.txt> <out_freq.txt>
 //! ```
 //!
-//! Requires the `ctxfreq` feature (the counters are compiled out otherwise).
+//! Requires the `ctxfreq` feature (the counters are compiled out otherwise) plus
+//! the `embed-*` feature matching the dictionary URI passed as the first argument.
+//!
+//! The histogram must be collected against a dictionary built with
+//! `connection_id_mapping` **off**, so the counts are in the original
+//! context-ID space (collecting on an already-remapped dictionary would
+//! produce counts in the remapped space and double-apply the permutation).
 
-#[cfg(all(feature = "embed-unidic", feature = "ctxfreq"))]
+#[cfg(feature = "ctxfreq")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::borrow::Cow;
     use std::path::PathBuf;
@@ -20,13 +26,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use lindera::mode::Mode;
     use lindera::segmenter::Segmenter;
 
+    const USAGE: &str = "usage: ctxfreq_dump <dictionary-uri> <corpus> <out>";
+
     let mut args = std::env::args().skip(1);
-    let corpus_path = args.next().ok_or("usage: ctxfreq_dump <corpus> <out>")?;
-    let out_path = args.next().ok_or("usage: ctxfreq_dump <corpus> <out>")?;
+    let dictionary_uri = args.next().ok_or(USAGE)?;
+    let corpus_path = args.next().ok_or(USAGE)?;
+    let out_path = args.next().ok_or(USAGE)?;
 
     let text = std::fs::read_to_string(&corpus_path)?;
 
-    let dictionary = load_dictionary("embedded://unidic")?;
+    let dictionary = load_dictionary(&dictionary_uri)?;
     // Capture the matrix axis sizes before the dictionary moves into the segmenter,
     // so the dumped histograms are padded to exactly the matrix dimensions.
     let forward_size = dictionary.connection_cost_matrix.forward_size as usize;
@@ -43,13 +52,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     println!(
-        "corpus={corpus_path} tokens={} axes: forward={forward_size} backward={backward_size} -> {out_path}",
+        "dictionary={dictionary_uri} corpus={corpus_path} tokens={} axes: forward={forward_size} backward={backward_size} -> {out_path}",
         tokens.len()
     );
     Ok(())
 }
 
-#[cfg(not(all(feature = "embed-unidic", feature = "ctxfreq")))]
+#[cfg(not(feature = "ctxfreq"))]
 fn main() {
-    eprintln!("this example requires --features embed-unidic,ctxfreq");
+    eprintln!(
+        "this example requires --features ctxfreq plus the embed-* feature for the target dictionary (e.g. --features embed-unidic,ctxfreq)"
+    );
 }

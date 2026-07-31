@@ -10,8 +10,19 @@ Download and extract the mecab-ko-dic source files, then build the dictionary:
 % lindera build \
   --src /tmp/mecab-ko-dic-2.1.1-20180720 \
   --dest /tmp/lindera-ko-dic-2.1.1-20180720 \
-  --metadata ./lindera-ko-dic/metadata.json
+  --metadata ./lindera-ko-dic/metadata.json \
+  --context-id-freq ./lindera-ko-dic/context_id_freq.txt
 ```
+
+> [!TIP]
+> `lindera-ko-dic/metadata.json` sets `connection_id_mapping: true`, so the builder relabels
+> the connection-cost matrix's context IDs by access frequency to improve cache locality when
+> looking up connection costs. Passing `--context-id-freq` / `-f` with the bundled
+> `context_id_freq.txt` histogram gives this remapping real corpus frequency data to rank IDs
+> by. Omitting the flag silently falls back to a much weaker entry-count-based proxy instead of
+> failing, so the build still succeeds but without the full benefit. Either way, tokenization
+> output is unaffected -- the remap is a bijective relabeling that only changes a build-time
+> optimization, never correctness.
 
 ## Build user dictionary
 

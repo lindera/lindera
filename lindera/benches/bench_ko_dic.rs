@@ -1,6 +1,10 @@
 #[cfg(feature = "embed-ko-dic")]
 use std::borrow::Cow;
 #[cfg(feature = "embed-ko-dic")]
+use std::fs::File;
+#[cfg(feature = "embed-ko-dic")]
+use std::io::{BufReader, Read};
+#[cfg(feature = "embed-ko-dic")]
 use std::path::PathBuf;
 
 #[cfg(feature = "embed-ko-dic")]
@@ -99,12 +103,63 @@ fn bench_tokenize_with_simple_userdic_ko_dic(c: &mut Criterion) {
 }
 
 #[cfg(feature = "embed-ko-dic")]
+fn bench_tokenize_long_text_ko_dic(c: &mut Criterion) {
+    let mut long_text_file = BufReader::new(
+        File::open(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("sangnoksu.txt"),
+        )
+        .unwrap(),
+    );
+    let mut long_text = String::new();
+    let _size = long_text_file.read_to_string(&mut long_text).unwrap();
+
+    let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-tokenize-long-text-ko-dic", |b| {
+        b.iter(|| segmenter.segment(Cow::Borrowed(long_text.as_str())));
+    });
+}
+
+#[cfg(feature = "embed-ko-dic")]
+fn bench_tokenize_details_long_text_ko_dic(c: &mut Criterion) {
+    let mut long_text_file = BufReader::new(
+        File::open(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("sangnoksu.txt"),
+        )
+        .unwrap(),
+    );
+    let mut long_text = String::new();
+    let _size = long_text_file.read_to_string(&mut long_text).unwrap();
+
+    let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-tokenize-details-long-text-ko-dic", |b| {
+        b.iter(|| {
+            let mut tokens = segmenter
+                .segment(Cow::Borrowed(long_text.as_str()))
+                .unwrap();
+            for token in tokens.iter_mut() {
+                let _details = token.details();
+            }
+        });
+    });
+}
+
+#[cfg(feature = "embed-ko-dic")]
 criterion_group!(
     benches,
     bench_constructor_ko_dic,
     bench_constructor_with_simple_userdic_ko_dic,
     bench_tokenize_ko_dic,
     bench_tokenize_with_simple_userdic_ko_dic,
+    bench_tokenize_long_text_ko_dic,
+    bench_tokenize_details_long_text_ko_dic,
 );
 
 #[cfg(feature = "embed-ko-dic")]
