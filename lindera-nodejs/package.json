@@ -6,9 +6,14 @@
   "types": "index.d.ts",
   "exports": {
     ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
       "require": "./index.js",
-      "types": "./index.d.ts"
+      "default": "./index.js"
     }
+  },
+  "engines": {
+    "node": "^20.17.0 || ^22.13.0 || >= 23.5.0"
   },
   "napi": {
     "binaryName": "lindera-nodejs",
@@ -29,7 +34,7 @@
     "build": "napi build --platform --release -p lindera-nodejs",
     "build:debug": "napi build --platform -p lindera-nodejs",
     "artifacts": "napi artifacts",
-    "test": "node --test tests/test_*.js"
+    "test": "node --test tests/test_*.js tests/test_*.mjs"
   },
   "files": [
     "index.js",
