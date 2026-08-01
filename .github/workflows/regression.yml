@@ -393,6 +393,17 @@ jobs:
         run: |
           make test-lindera-nodejs
 
+      # `make test-lindera-nodejs` runs `napi build`, which regenerates the committed entry points.
+      # If a Rust API change lands without the regenerated `index.d.ts`, the published package ships
+      # types that do not match the binding — so fail here rather than at publish time.
+      - name: Verify generated entry points are up to date
+        working-directory: lindera-nodejs
+        run: |
+          if ! git diff --exit-code -- index.js index.d.ts; then
+            echo "::error::index.js / index.d.ts are out of date. Run 'make test-lindera-nodejs' and commit the result."
+            exit 1
+          fi
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera, test-lindera-analysis, detect-changes]

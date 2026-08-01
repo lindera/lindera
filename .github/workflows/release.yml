@@ -208,6 +208,16 @@ jobs:
         run: |
           make test-lindera-nodejs
 
+      # See the matching step in regression.yml: `napi build` regenerates the committed entry
+      # points, so a diff here means a Rust API change landed without them.
+      - name: Verify generated entry points are up to date
+        working-directory: lindera-nodejs
+        run: |
+          if ! git diff --exit-code -- index.js index.d.ts; then
+            echo "::error::index.js / index.d.ts are out of date. Run 'make test-lindera-nodejs' and commit the result."
+            exit 1
+          fi
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera]
@@ -935,6 +945,23 @@ jobs:
         run: |
           npx napi create-npm-dirs
           npx napi artifacts --output-dir artifacts
+
+      # The root cause of #832 was that nothing ever inspected what was being shipped: the main
+      # package published for three releases containing only package.json and README.md. Assert the
+      # entry points are actually in the tarball BEFORE publishing, so a packaging regression fails
+      # the release instead of reaching the registry.
+      - name: Verify tarball contents
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          FILES=$(npm pack --dry-run --json | jq -r '.[0].files[].path')
+          echo "${FILES}"
+          for required in index.js index.d.ts; do
+            if ! echo "${FILES}" | grep -Fxq "${required}"; then
+              echo "::error::${required} is missing from the package tarball; refusing to publish."
+              exit 1
+            fi
+          done
 
       - name: Publish to npm
         working-directory: lindera-nodejs
