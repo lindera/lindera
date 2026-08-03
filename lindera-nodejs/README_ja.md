@@ -53,7 +53,7 @@ lindera-nodejs は、Lindera 形態素解析エンジンへの包括的な Node.
 
 ## プロジェクト依存関係のインストール
 
-- Node.js 18+ : <https://nodejs.org/>
+- Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0` : <https://nodejs.org/>
 - Rust : <https://www.rust-lang.org/tools/install>
 - @napi-rs/cli : `npm install -g @napi-rs/cli`
 
@@ -76,6 +76,13 @@ npm run build
 ```
 
 ## クイックスタート
+
+以下の例では CommonJS を使用していますが、ESM からも同じ名前付きエクスポートを
+インポートできます:
+
+```javascript
+import { loadDictionary, Tokenizer } from "lindera-nodejs";
+```
 
 ### 基本的なトークナイズ
 

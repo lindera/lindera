@@ -53,7 +53,7 @@ Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the extr
 
 ## Install project dependencies
 
-- Node.js 18+ : <https://nodejs.org/>
+- Node.js `^20.17.0 || ^22.13.0 || >= 23.5.0` : <https://nodejs.org/>
 - Rust : <https://www.rust-lang.org/tools/install>
 - @napi-rs/cli : `npm install -g @napi-rs/cli`
 
@@ -76,6 +76,13 @@ npm run build
 ```
 
 ## Quick Start
+
+The examples below use CommonJS. The package is also importable from ESM — the
+same named exports are available:
+
+```javascript
+import { loadDictionary, Tokenizer } from "lindera-nodejs";
+```
 
 ### Basic Tokenization
 
