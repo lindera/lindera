@@ -24,3 +24,37 @@ impl UserDictionaryLoader {
         builder.build_user_dict(path.as_ref())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::UserDictionaryLoader;
+
+    /// Every checked-in prebuilt user dictionary fixture must stay loadable.
+    /// A serialization format change in a dependency (e.g. the daachorse 4.0
+    /// automaton format change) invalidates these binaries; this test makes
+    /// such breakage visible for all fixtures, not just the ones used by
+    /// other tests.
+    #[test]
+    fn test_load_all_prebuilt_bin_fixtures() {
+        let user_dict_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("user_dict");
+
+        for name in [
+            "ipadic_simple_userdic.bin",
+            "unidic_simple_userdic.bin",
+            "cc-cedict_simple_userdic.bin",
+            "jieba_simple_userdic.bin",
+            "ko-dic_simple_userdic.bin",
+        ] {
+            let result = UserDictionaryLoader::load_from_bin(user_dict_dir.join(name));
+            assert!(
+                result.is_ok(),
+                "failed to load prebuilt user dictionary fixture {name}: {:?}",
+                result.err()
+            );
+        }
+    }
+}

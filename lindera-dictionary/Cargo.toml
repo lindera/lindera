@@ -17,6 +17,7 @@ build_rs = [
     "dep:md5",
     "dep:rand",
     "dep:reqwest",
+    "dep:rustls",
     "dep:tar",
     "dep:tokio",
 ]
@@ -42,9 +43,17 @@ memchr = "2.8.3"
 memmap2 = { version = "0.9.11", optional = true }
 once_cell = { workspace = true }
 rand = { version = "0.10.2", default-features = false, optional = true }
+# `rustls` (rather than `rustls-no-provider`) would pin the aws-lc-rs provider, whose
+# `aws-lc-sys` C build dominates the compile time of every crate that embeds a dictionary.
+# The download only needs a working TLS client, so use the much smaller `ring` provider.
 reqwest = { version = "0.13.4", features = [
-    "rustls",
+    "rustls-no-provider",
 ], default-features = false, optional = true }
+rustls = { version = "0.23.27", default-features = false, features = [
+    "ring",
+    "std",
+    "tls12",
+], optional = true }
 rkyv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
