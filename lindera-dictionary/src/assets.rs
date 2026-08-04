@@ -499,6 +499,12 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
             let tmp_download_path =
                 Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
 
+            // reqwest is built with `rustls-no-provider`, so rustls has no compiled-in
+            // default provider and `ClientConfig::builder()` would panic without one.
+            // Installing it is idempotent across the dictionary crates that share a
+            // process, hence the ignored result: a second call returns Err.
+            let _ = rustls::crypto::ring::default_provider().install_default();
+
             // Download a tarball
             let client = Client::builder()
                 .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
