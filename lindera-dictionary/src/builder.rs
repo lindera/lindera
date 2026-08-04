@@ -216,7 +216,6 @@ impl DictionaryBuilder {
         CharacterDefinitionBuilderOptions::default()
             .encoding(self.metadata.encoding.clone())
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -231,7 +230,6 @@ impl DictionaryBuilder {
             .encoding(self.metadata.encoding.clone())
             .context_id_remap(remap)
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, chardef, output_dir)
     }
 
@@ -249,7 +247,6 @@ impl DictionaryBuilder {
             .schema(self.metadata.dictionary_schema.clone())
             .context_id_remap(remap)
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -263,7 +260,6 @@ impl DictionaryBuilder {
             .encoding(self.metadata.encoding.clone())
             .context_id_remap(remap)
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_dir, output_dir)
     }
 
@@ -310,7 +306,6 @@ impl DictionaryBuilder {
                 Ok(result)
             })))
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
             .build(input_file)
     }
 }

@@ -8,7 +8,6 @@ use std::path::Path;
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use daachorse::DoubleArrayAhoCorasickBuilder;
-use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
@@ -19,25 +18,77 @@ use crate::viterbi::WordEntry;
 
 type StringRecordProcessor = Option<Box<dyn Fn(&StringRecord) -> LinderaResult<Vec<String>>>>;
 
-#[derive(Builder)]
-#[builder(pattern = "owned")]
-#[builder(name = UserDictionaryBuilderOptions)]
-#[builder(build_fn(name = "builder"))]
 pub struct UserDictionaryBuilder {
-    #[builder(default = "3")]
     user_dictionary_fields_num: usize,
-    #[builder(default = "12")]
     dictionary_fields_num: usize,
-    #[builder(default = "-10000")]
     default_word_cost: i16,
-    #[builder(default = "0")]
     default_left_context_id: u16,
-    #[builder(default = "0")]
     default_right_context_id: u16,
-    #[builder(default = "true")]
     flexible_csv: bool,
-    #[builder(setter(strip_option), default = "None")]
     user_dictionary_handler: StringRecordProcessor,
+}
+
+/// Options for [`UserDictionaryBuilder`]. Every field has a default, so
+/// [`Self::builder`] is infallible. Setters take `self` by value to keep the
+/// original owned-builder calling style.
+#[derive(Default)]
+pub struct UserDictionaryBuilderOptions {
+    user_dictionary_fields_num: Option<usize>,
+    dictionary_fields_num: Option<usize>,
+    default_word_cost: Option<i16>,
+    default_left_context_id: Option<u16>,
+    default_right_context_id: Option<u16>,
+    flexible_csv: Option<bool>,
+    user_dictionary_handler: StringRecordProcessor,
+}
+
+impl UserDictionaryBuilderOptions {
+    pub fn user_dictionary_fields_num(mut self, value: usize) -> Self {
+        self.user_dictionary_fields_num = Some(value);
+        self
+    }
+
+    pub fn dictionary_fields_num(mut self, value: usize) -> Self {
+        self.dictionary_fields_num = Some(value);
+        self
+    }
+
+    pub fn default_word_cost(mut self, value: i16) -> Self {
+        self.default_word_cost = Some(value);
+        self
+    }
+
+    pub fn default_left_context_id(mut self, value: u16) -> Self {
+        self.default_left_context_id = Some(value);
+        self
+    }
+
+    pub fn default_right_context_id(mut self, value: u16) -> Self {
+        self.default_right_context_id = Some(value);
+        self
+    }
+
+    pub fn flexible_csv(mut self, value: bool) -> Self {
+        self.flexible_csv = Some(value);
+        self
+    }
+
+    pub fn user_dictionary_handler(mut self, value: StringRecordProcessor) -> Self {
+        self.user_dictionary_handler = value;
+        self
+    }
+
+    pub fn builder(self) -> UserDictionaryBuilder {
+        UserDictionaryBuilder {
+            user_dictionary_fields_num: self.user_dictionary_fields_num.unwrap_or(3),
+            dictionary_fields_num: self.dictionary_fields_num.unwrap_or(12),
+            default_word_cost: self.default_word_cost.unwrap_or(-10000),
+            default_left_context_id: self.default_left_context_id.unwrap_or(0),
+            default_right_context_id: self.default_right_context_id.unwrap_or(0),
+            flexible_csv: self.flexible_csv.unwrap_or(true),
+            user_dictionary_handler: self.user_dictionary_handler,
+        }
+    }
 }
 
 impl UserDictionaryBuilder {

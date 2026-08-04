@@ -11,7 +11,6 @@ use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
 use daachorse::DoubleArrayAhoCorasickBuilder;
-use derive_builder::Builder;
 use encoding_rs::{Encoding, UTF_8};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
@@ -24,26 +23,72 @@ use crate::error::LinderaErrorKind;
 use crate::util::write_data;
 use crate::viterbi::WordEntry;
 
-#[derive(Builder)]
-#[builder(name = PrefixDictionaryBuilderOptions)]
-#[builder(build_fn(name = "builder"))]
 pub struct PrefixDictionaryBuilder {
-    #[builder(default = "true")]
     flexible_csv: bool,
     /* If set to UTF-8, it can also read UTF-16 files with BOM. */
-    #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "false")]
     normalize_details: bool,
-    #[builder(default = "false")]
     skip_invalid_cost_or_id: bool,
-    #[builder(default = "Schema::default()")]
     schema: Schema,
     /// Optional connection-cost context-ID remap. When present, each entry's
     /// `left_id`/`right_id` is relabeled via `remap.left`/`remap.right` before the
     /// `WordEntry` is created, matching the remap applied to the connection matrix.
-    #[builder(default = "None")]
     context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+/// Options for [`PrefixDictionaryBuilder`]. Every field has a default, so
+/// [`Self::builder`] is infallible.
+#[derive(Default)]
+pub struct PrefixDictionaryBuilderOptions {
+    flexible_csv: Option<bool>,
+    encoding: Option<Cow<'static, str>>,
+    normalize_details: Option<bool>,
+    skip_invalid_cost_or_id: Option<bool>,
+    schema: Option<Schema>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+impl PrefixDictionaryBuilderOptions {
+    pub fn flexible_csv(&mut self, value: bool) -> &mut Self {
+        self.flexible_csv = Some(value);
+        self
+    }
+
+    pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
+        self.encoding = Some(value.into());
+        self
+    }
+
+    pub fn normalize_details(&mut self, value: bool) -> &mut Self {
+        self.normalize_details = Some(value);
+        self
+    }
+
+    pub fn skip_invalid_cost_or_id(&mut self, value: bool) -> &mut Self {
+        self.skip_invalid_cost_or_id = Some(value);
+        self
+    }
+
+    pub fn schema(&mut self, value: Schema) -> &mut Self {
+        self.schema = Some(value);
+        self
+    }
+
+    pub fn context_id_remap(&mut self, value: Option<Arc<ContextIdMap>>) -> &mut Self {
+        self.context_id_remap = value;
+        self
+    }
+
+    pub fn builder(&self) -> PrefixDictionaryBuilder {
+        PrefixDictionaryBuilder {
+            flexible_csv: self.flexible_csv.unwrap_or(true),
+            encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
+            normalize_details: self.normalize_details.unwrap_or(false),
+            skip_invalid_cost_or_id: self.skip_invalid_cost_or_id.unwrap_or(false),
+            schema: self.schema.clone().unwrap_or_default(),
+            context_id_remap: self.context_id_remap.clone(),
+        }
+    }
 }
 
 impl PrefixDictionaryBuilder {

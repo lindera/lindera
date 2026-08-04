@@ -4,7 +4,6 @@ use std::io::{self, BufRead, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use derive_builder::Builder;
 use encoding_rs::{Encoding, UTF_16BE, UTF_16LE};
 use log::debug;
 use memchr::memchr;
@@ -27,22 +26,45 @@ const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
 const PARALLEL_THRESHOLD: usize = 1 << 20; // 1 MiB
 
 /// Builder for the connection cost matrix (`matrix.mtx`).
-#[derive(Builder, Debug)]
-#[builder(name = ConnectionCostMatrixBuilderOptions)]
-#[builder(build_fn(name = "builder"))]
+#[derive(Debug)]
 pub struct ConnectionCostMatrixBuilder {
     /// Character encoding of the source `matrix.def` file.
     ///
     /// If set to UTF-8, files with a UTF-16 BOM are still decoded correctly.
-    #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
     /// Optional connection-cost context-ID remapping. When present, `forward_id`
     /// (right-context id) is mapped through `remap.right` and `backward_id`
     /// (left-context id) through `remap.left` before the cost is scattered, so
     /// frequently-used cells cluster near the front of each row. `None` keeps the
     /// output byte-identical to the un-remapped build.
-    #[builder(default = "None")]
     context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+/// Options for [`ConnectionCostMatrixBuilder`]. Every field has a default, so
+/// [`Self::builder`] is infallible.
+#[derive(Debug, Default)]
+pub struct ConnectionCostMatrixBuilderOptions {
+    encoding: Option<Cow<'static, str>>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+impl ConnectionCostMatrixBuilderOptions {
+    pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
+        self.encoding = Some(value.into());
+        self
+    }
+
+    pub fn context_id_remap(&mut self, value: Option<Arc<ContextIdMap>>) -> &mut Self {
+        self.context_id_remap = value;
+        self
+    }
+
+    pub fn builder(&self) -> ConnectionCostMatrixBuilder {
+        ConnectionCostMatrixBuilder {
+            encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
+            context_id_remap: self.context_id_remap.clone(),
+        }
+    }
 }
 
 impl ConnectionCostMatrixBuilder {
