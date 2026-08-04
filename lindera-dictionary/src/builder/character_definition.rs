@@ -5,7 +5,6 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use byteorder::{ByteOrder, LittleEndian};
-use derive_builder::Builder;
 use encoding_rs::UTF_16LE;
 use log::debug;
 
@@ -48,18 +47,53 @@ fn parse_hex_codepoint(s: &str) -> LinderaResult<u32> {
     ucs2_to_unicode(ucs2_codepoint)
 }
 
-#[derive(Builder, Debug)]
-#[builder(name = CharacterDefinitionBuilderOptions)]
-#[builder(build_fn(name = "builder"))]
+#[derive(Debug)]
 pub struct CharacterDefinitionBuilder {
-    #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
-    #[builder(default = "Vec::new()")]
     category_definition: Vec<CategoryData>,
-    #[builder(default = "HashMap::new()")]
     category_index: HashMap<String, CategoryId>,
-    #[builder(default = "Vec::new()")]
     char_ranges: Vec<(u32, u32, Vec<CategoryId>)>,
+}
+
+/// Options for [`CharacterDefinitionBuilder`]. Every field has a default, so
+/// [`Self::builder`] is infallible.
+#[derive(Debug, Default)]
+pub struct CharacterDefinitionBuilderOptions {
+    encoding: Option<Cow<'static, str>>,
+    category_definition: Option<Vec<CategoryData>>,
+    category_index: Option<HashMap<String, CategoryId>>,
+    char_ranges: Option<Vec<(u32, u32, Vec<CategoryId>)>>,
+}
+
+impl CharacterDefinitionBuilderOptions {
+    pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
+        self.encoding = Some(value.into());
+        self
+    }
+
+    pub fn category_definition(&mut self, value: Vec<CategoryData>) -> &mut Self {
+        self.category_definition = Some(value);
+        self
+    }
+
+    pub fn category_index(&mut self, value: HashMap<String, CategoryId>) -> &mut Self {
+        self.category_index = Some(value);
+        self
+    }
+
+    pub fn char_ranges(&mut self, value: Vec<(u32, u32, Vec<CategoryId>)>) -> &mut Self {
+        self.char_ranges = Some(value);
+        self
+    }
+
+    pub fn builder(&self) -> CharacterDefinitionBuilder {
+        CharacterDefinitionBuilder {
+            encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
+            category_definition: self.category_definition.clone().unwrap_or_default(),
+            category_index: self.category_index.clone().unwrap_or_default(),
+            char_ranges: self.char_ranges.clone().unwrap_or_default(),
+        }
+    }
 }
 
 impl CharacterDefinitionBuilder {

@@ -4,7 +4,6 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use derive_builder::Builder;
 use log::debug;
 
 use crate::LinderaResult;
@@ -14,16 +13,39 @@ use crate::dictionary::unknown_dictionary::parse_unk;
 use crate::error::LinderaErrorKind;
 use crate::util::{read_file_with_encoding, write_data};
 
-#[derive(Builder, Debug)]
-#[builder(name = UnknownDictionaryBuilderOptions)]
-#[builder(build_fn(name = "builder"))]
+#[derive(Debug)]
 pub struct UnknownDictionaryBuilder {
-    #[builder(default = "\"UTF-8\".into()", setter(into))]
     encoding: Cow<'static, str>,
     /// Optional connection-cost context-ID remap, applied to each unknown-word
     /// entry's `left_id`/`right_id` so they match the remapped connection matrix.
-    #[builder(default = "None")]
     context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+/// Options for [`UnknownDictionaryBuilder`]. Every field has a default, so
+/// [`Self::builder`] is infallible.
+#[derive(Debug, Default)]
+pub struct UnknownDictionaryBuilderOptions {
+    encoding: Option<Cow<'static, str>>,
+    context_id_remap: Option<Arc<ContextIdMap>>,
+}
+
+impl UnknownDictionaryBuilderOptions {
+    pub fn encoding(&mut self, value: impl Into<Cow<'static, str>>) -> &mut Self {
+        self.encoding = Some(value.into());
+        self
+    }
+
+    pub fn context_id_remap(&mut self, value: Option<Arc<ContextIdMap>>) -> &mut Self {
+        self.context_id_remap = value;
+        self
+    }
+
+    pub fn builder(&self) -> UnknownDictionaryBuilder {
+        UnknownDictionaryBuilder {
+            encoding: self.encoding.clone().unwrap_or_else(|| "UTF-8".into()),
+            context_id_remap: self.context_id_remap.clone(),
+        }
+    }
 }
 
 impl UnknownDictionaryBuilder {
