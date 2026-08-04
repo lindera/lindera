@@ -41,20 +41,36 @@ pub struct UserDictionaryBuilder {
 }
 
 impl UserDictionaryBuilder {
+    /// Build a user dictionary from a CSV file.
+    ///
+    /// This is a thin wrapper around [`UserDictionaryBuilder::build_from_reader`]
+    /// that opens `input_file` and annotates any error with its path.
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {input_file:?}");
 
+        let file = File::open(input_file).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to open user dictionary CSV file: {input_file:?}"
+                ))
+        })?;
+
+        self.build_from_reader(file)
+            .map_err(|err| err.add_context(format!("In user dictionary file: {input_file:?}")))
+    }
+
+    /// Build a user dictionary from any reader yielding CSV data.
+    ///
+    /// Unlike [`UserDictionaryBuilder::build`], this needs no filesystem access,
+    /// so callers holding the CSV in memory (WASM, sandboxed hosts that mediate
+    /// file reads through a capability layer, dictionaries fetched over the
+    /// network, tests using inline fixtures) can build without a temporary file.
+    pub fn build_from_reader<R: io::Read>(&self, reader: R) -> LinderaResult<UserDictionary> {
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .flexible(self.flexible_csv)
-            .from_path(input_file)
-            .map_err(|err| {
-                LinderaErrorKind::Io
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context(format!(
-                        "Failed to open user dictionary CSV file: {input_file:?}"
-                    ))
-            })?;
+            .from_reader(reader);
 
         let mut rows: Vec<StringRecord> = vec![];
         for (line_num, result) in rdr.records().enumerate() {
@@ -62,9 +78,8 @@ impl UserDictionaryBuilder {
                 LinderaErrorKind::Content
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to parse CSV record at line {} in file: {:?}",
-                        line_num + 1,
-                        input_file
+                        "Failed to parse CSV record at line {}",
+                        line_num + 1
                     ))
             })?;
             rows.push(record);
@@ -299,4 +314,74 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
     })?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SIMPLE_CSV: &str = "東京スカイツリー,カスタム名詞,トウキョウスカイツリー\n\
+                              とうきょうスカイツリー,カスタム名詞,トウキョウスカイツリー\n";
+
+    fn builder() -> UserDictionaryBuilder {
+        UserDictionaryBuilderOptions::default()
+            .builder()
+            .expect("default user dictionary builder options are valid")
+    }
+
+    /// `build_from_reader` accepts in-memory CSV, so callers without filesystem
+    /// access (WASM, capability-mediated hosts) do not need a temporary file.
+    #[test]
+    fn build_from_reader_accepts_in_memory_csv() {
+        let user_dict = builder()
+            .build_from_reader(SIMPLE_CSV.as_bytes())
+            .expect("building from an in-memory reader should succeed");
+
+        // Both surfaces made it into the trie.
+        assert!(
+            user_dict.dict.prefix("東京スカイツリー").next().is_some(),
+            "surface from the in-memory CSV should be present in the built dictionary"
+        );
+    }
+
+    /// The reader path and the file path must produce identical dictionaries;
+    /// otherwise `build` would silently diverge from its own extracted core.
+    #[test]
+    fn build_from_reader_matches_build_from_path() {
+        let dir = std::env::temp_dir().join(format!(
+            "lindera_user_dict_reader_parity_{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        let csv_path = dir.join("user_dict.csv");
+        fs::write(&csv_path, SIMPLE_CSV).expect("write temp csv");
+
+        let from_path = builder().build(&csv_path).expect("build from path");
+        let from_reader = builder()
+            .build_from_reader(SIMPLE_CSV.as_bytes())
+            .expect("build from reader");
+
+        assert_eq!(
+            from_path.dict.vals_data.as_ref(),
+            from_reader.dict.vals_data.as_ref(),
+            "reader and path paths must build byte-identical value data"
+        );
+        assert_eq!(
+            from_path.dict.words_data.as_ref(),
+            from_reader.dict.words_data.as_ref(),
+            "reader and path paths must build byte-identical word data"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// A row that is neither the short user form nor the full dictionary form
+    /// is rejected identically through the reader path.
+    #[test]
+    fn build_from_reader_rejects_wrong_field_count() {
+        match builder().build_from_reader("surface,1,2,3,4\n".as_bytes()) {
+            Ok(_) => panic!("a row with an unsupported field count must be rejected"),
+            Err(err) => assert_eq!(err.kind(), LinderaErrorKind::Content),
+        }
+    }
 }

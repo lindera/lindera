@@ -277,6 +277,23 @@ impl DictionaryBuilder {
     }
 
     pub fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
+        self.user_dictionary_builder()?.build(input_file)
+    }
+
+    /// Build a user dictionary from any reader yielding CSV data.
+    ///
+    /// Same as [`DictionaryBuilder::build_user_dict`] but without filesystem
+    /// access; see [`UserDictionaryBuilder::build_from_reader`].
+    pub fn build_user_dict_from_reader<R: std::io::Read>(
+        &self,
+        reader: R,
+    ) -> LinderaResult<UserDictionary> {
+        self.user_dictionary_builder()?.build_from_reader(reader)
+    }
+
+    fn user_dictionary_builder(
+        &self,
+    ) -> LinderaResult<crate::builder::user_dictionary::UserDictionaryBuilder> {
         let userdic_schema = self.metadata.user_dictionary_schema.clone();
         let dict_schema = self.metadata.dictionary_schema.clone();
         let default_field_value = self.metadata.default_field_value.clone();
@@ -310,7 +327,6 @@ impl DictionaryBuilder {
                 Ok(result)
             })))
             .builder()
-            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))?
-            .build(input_file)
+            .map_err(|err| LinderaErrorKind::Build.with_error(anyhow::anyhow!(err)))
     }
 }
