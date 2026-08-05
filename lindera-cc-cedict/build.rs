@@ -2,8 +2,7 @@ use std::error::Error;
 
 use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary};
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let fetch_params = FetchParams {
         file_name: "CC-CEDICT-MeCab-0.1.0-20200409.tar.gz",
         input_dir: "CC-CEDICT-MeCab-0.1.0-20200409",
@@ -14,5 +13,5 @@ async fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "aba9748b70f37feede97b70c5d37f8a0",
     };
 
-    build_embedded_dictionary(cfg!(feature = "embed-cc-cedict"), fetch_params).await
+    build_embedded_dictionary(cfg!(feature = "embed-cc-cedict"), fetch_params)
 }
