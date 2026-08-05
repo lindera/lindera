@@ -16,8 +16,7 @@ Lindera aims to build a library which is easy to install and provides concise AP
 lindera = "5.0"
 ```
 
-> **Note:** v5.0.0 is the next planned release and has not been published to crates.io yet; the
-> current published version is `4.0.1`. See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
+> **Note:** Upgrading from v4? See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
 > for details.
 
 Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
