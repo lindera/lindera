@@ -12,15 +12,7 @@ categories = { workspace = true }
 license = { workspace = true }
 
 [features]
-build_rs = [
-    "dep:flate2",
-    "dep:md5",
-    "dep:rand",
-    "dep:reqwest",
-    "dep:rustls",
-    "dep:tar",
-    "dep:tokio",
-]
+build_rs = ["dep:flate2", "dep:md5", "dep:rand", "dep:tar", "dep:ureq"]
 mmap = ["dep:memmap2"]
 # Experimental: instrument connection-matrix accesses to profile per-context-id
 # access frequency over a corpus (used to build a corpus-frequency remap). Off by
@@ -43,17 +35,6 @@ memchr = "2.8.3"
 memmap2 = { version = "0.9.11", optional = true }
 once_cell = { workspace = true }
 rand = { version = "0.10.2", default-features = false, optional = true }
-# `rustls` (rather than `rustls-no-provider`) would pin the aws-lc-rs provider, whose
-# `aws-lc-sys` C build dominates the compile time of every crate that embeds a dictionary.
-# The download only needs a working TLS client, so use the much smaller `ring` provider.
-reqwest = { version = "0.13.4", features = [
-    "rustls-no-provider",
-], default-features = false, optional = true }
-rustls = { version = "0.23.27", default-features = false, features = [
-    "ring",
-    "std",
-    "tls12",
-], optional = true }
 rkyv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -61,7 +42,13 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 tar = { version = "0.4.46", optional = true }
 thiserror = "2.0.19"
-tokio = { workspace = true, optional = true }
+# The dictionary download needs nothing more than a blocking HTTPS GET. `ureq`
+# provides that without an async runtime; the `rustls` feature selects the `ring`
+# provider, keeping `aws-lc-sys` (whose C build dominates the compile time of
+# every crate that embeds a dictionary) out of the graph.
+ureq = { version = "3.3.0", default-features = false, features = [
+    "rustls",
+], optional = true }
 
 # rayon does not support wasm32-unknown-unknown (no OS threads); the connection
 # cost matrix parser falls back to a sequential path there.

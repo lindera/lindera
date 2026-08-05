@@ -3,14 +3,15 @@ use std::ffi::OsString;
 use std::fs::{self, File, rename};
 use std::io::{self, Cursor, Read, Write};
 use std::path::{Path, PathBuf};
+use std::thread::sleep;
+use std::time::Duration;
 
 use flate2::read::GzDecoder;
 use log::{debug, error, info, warn};
 use md5::Context;
 use rand::{SeedableRng, rngs::SmallRng, seq::SliceRandom};
-use reqwest::Client;
 use tar::Archive;
-use tokio::time::{Duration, sleep};
+use ureq::Agent;
 
 use crate::LinderaResult;
 use crate::builder::DictionaryBuilder;
@@ -242,8 +243,13 @@ fn create_dummy_dictionary_source(
     Ok(())
 }
 
-async fn download_with_retry(
-    client: &Client,
+/// Dictionary archives run to hundreds of megabytes, so the 10 MB default body
+/// limit does not apply here. The MD5 check below is what guards against a
+/// truncated or substituted download.
+const BODY_LIMIT: u64 = u64::MAX;
+
+fn download_with_retry(
+    agent: &Agent,
     download_urls: Vec<&str>,
     max_rounds: usize,
     expected_md5: &str,
@@ -272,11 +278,16 @@ async fn download_with_retry(
 
         for url in urls {
             debug!("Attempting to download from {url}");
-            match client.get(url).send().await {
+            match agent.get(url).call() {
                 Ok(resp) if resp.status().is_success() => {
                     debug!("HTTP download successful from {url}");
 
-                    match resp.bytes().await {
+                    match resp
+                        .into_body()
+                        .with_config()
+                        .limit(BODY_LIMIT)
+                        .read_to_vec()
+                    {
                         Ok(content) => {
                             // Calculate MD5 hash
                             let mut context = Context::new();
@@ -288,7 +299,7 @@ async fn download_with_retry(
 
                             if actual_md5 == expected_md5 {
                                 debug!("MD5 check passed from {url}");
-                                return Ok(content.to_vec());
+                                return Ok(content);
                             } else {
                                 warn!(
                                     "MD5 mismatch from {url}, Expected {expected_md5}, got {actual_md5}"
@@ -313,7 +324,7 @@ async fn download_with_retry(
             }
         }
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(1));
     }
 
     error!("All {max_rounds} attempts failed");
@@ -356,8 +367,22 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
     )
 }
 
-/// Fetch the necessary assets and then build the dictionary using `builder`
+/// Fetch the necessary assets and then build the dictionary using `builder`.
+///
+/// Deprecated in favour of [`fetch_blocking`]. The body is fully synchronous,
+/// so the returned future resolves without ever yielding: it exists only so
+/// that build scripts written against v4.0 keep compiling. It will be removed
+/// in v5.0.0.
+#[deprecated(
+    since = "4.1.0",
+    note = "the asset download is synchronous; use `fetch_blocking` instead. This will be removed in v5.0.0"
+)]
 pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
+    fetch_blocking(params, builder)
+}
+
+/// Fetch the necessary assets and then build the dictionary using `builder`
+pub fn fetch_blocking(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
     // `metadata.json` drives build-time behavior (schema, flags such as
@@ -499,21 +524,14 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
             let tmp_download_path =
                 Path::new(&build_dir).join(params.file_name.to_owned() + ".download");
 
-            // reqwest is built with `rustls-no-provider`, so rustls has no compiled-in
-            // default provider and `ClientConfig::builder()` would panic without one.
-            // Installing it is idempotent across the dictionary crates that share a
-            // process, hence the ignored result: a second call returns Err.
-            let _ = rustls::crypto::ring::default_provider().install_default();
-
-            // Download a tarball
-            let client = Client::builder()
+            // Download a tarball. `http_status_as_error` is turned off so that a
+            // non-2xx response is reported per URL and the next mirror is tried,
+            // rather than aborting the round.
+            let agent: Agent = Agent::config_builder()
                 .user_agent(format!("Lindera/{}", env!("CARGO_PKG_VERSION")))
+                .http_status_as_error(false)
                 .build()
-                .map_err(|err| {
-                    LinderaErrorKind::Io
-                        .with_error(anyhow::anyhow!(err))
-                        .add_context("Failed to build HTTP client")
-                })?;
+                .into();
 
             debug!("Downloading {:?}", params.download_urls);
             let mut dest = File::create(tmp_download_path.as_path()).map_err(|err| {
@@ -524,12 +542,11 @@ pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaRe
                     ))
             })?;
             let content = download_with_retry(
-                &client,
+                &agent,
                 params.download_urls.to_vec(),
                 MAX_ROUND,
                 params.md5_hash,
             )
-            .await
             .map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!("{err}"))
@@ -655,7 +672,31 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 /// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (or its
 /// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
 /// crate builds without downloading any data.
+///
+/// Deprecated in favour of [`build_embedded_dictionary_blocking`]. The body is
+/// fully synchronous, so the returned future resolves without ever yielding: it
+/// exists only so that build scripts written against v4.0 keep compiling. It
+/// will be removed in v5.0.0.
+#[deprecated(
+    since = "4.1.0",
+    note = "the dictionary build is synchronous; use `build_embedded_dictionary_blocking` instead. This will be removed in v5.0.0"
+)]
 pub async fn build_embedded_dictionary(
+    embed_enabled: bool,
+    params: FetchParams,
+) -> Result<(), Box<dyn Error>> {
+    build_embedded_dictionary_blocking(embed_enabled, params)
+}
+
+/// Reads `metadata.json` from the crate root, fetches and builds the
+/// dictionary described by `params`, and embeds the result under
+/// `LINDERA_WORKDIR`.
+///
+/// When the crate's embed feature is disabled (`embed_enabled == false`) and
+/// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (or its
+/// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
+/// crate builds without downloading any data.
+pub fn build_embedded_dictionary_blocking(
     embed_enabled: bool,
     params: FetchParams,
 ) -> Result<(), Box<dyn Error>> {
@@ -673,7 +714,7 @@ pub async fn build_embedded_dictionary(
         builder = builder.with_context_id_freq(CONTEXT_ID_FREQ_FILE);
     }
 
-    fetch(params, builder).await?;
+    fetch_blocking(params, builder)?;
 
     Ok(())
 }

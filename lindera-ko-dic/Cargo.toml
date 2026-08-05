@@ -19,4 +19,3 @@ lindera-dictionary = { workspace = true }
 
 [build-dependencies]
 lindera-dictionary = { workspace = true, features = ["build_rs"] }
-tokio = { workspace = true }
