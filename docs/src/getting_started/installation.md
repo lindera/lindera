@@ -8,9 +8,7 @@ lindera = "5.0"
 ```
 
 > [!NOTE]
-> v5.0.0 is the next planned release and has not been published to crates.io yet; the current
-> published version is `4.0.1`. This guide describes the v5.0.0 API, which already exists on the
-> `main` branch. See [Migration v4 to v5](../migration_v4_to_v5.md) for details.
+> Upgrading from v4? See [Migration v4 to v5](../migration_v4_to_v5.md) for details.
 
 ## Dictionary Setup
 
