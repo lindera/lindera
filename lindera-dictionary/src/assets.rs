@@ -369,20 +369,18 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
 
 /// Fetch the necessary assets and then build the dictionary using `builder`.
 ///
-/// Deprecated in favour of [`fetch_blocking`]. The body is fully synchronous,
-/// so the returned future resolves without ever yielding: it exists only so
-/// that build scripts written against v4.0 keep compiling. It will be removed
-/// in v5.0.0.
-#[deprecated(
-    since = "4.1.0",
-    note = "the asset download is synchronous; use `fetch_blocking` instead. This will be removed in v5.0.0"
-)]
-pub async fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
-    fetch_blocking(params, builder)
-}
-
-/// Fetch the necessary assets and then build the dictionary using `builder`
-pub fn fetch_blocking(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
+/// # Arguments
+///
+/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+///   and the input/output directory layout of the dictionary build.
+/// * `builder` - Dictionary builder that turns the extracted MeCab sources into
+///   the Lindera dictionary format.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary has been built into the output directory, or a
+/// `LinderaError` if the download, extraction, or build fails.
+pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
     // `metadata.json` drives build-time behavior (schema, flags such as
@@ -673,30 +671,19 @@ const CONTEXT_ID_FREQ_FILE: &str = "context_id_freq.txt";
 /// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
 /// crate builds without downloading any data.
 ///
-/// Deprecated in favour of [`build_embedded_dictionary_blocking`]. The body is
-/// fully synchronous, so the returned future resolves without ever yielding: it
-/// exists only so that build scripts written against v4.0 keep compiling. It
-/// will be removed in v5.0.0.
-#[deprecated(
-    since = "4.1.0",
-    note = "the dictionary build is synchronous; use `build_embedded_dictionary_blocking` instead. This will be removed in v5.0.0"
-)]
-pub async fn build_embedded_dictionary(
-    embed_enabled: bool,
-    params: FetchParams,
-) -> Result<(), Box<dyn Error>> {
-    build_embedded_dictionary_blocking(embed_enabled, params)
-}
-
-/// Reads `metadata.json` from the crate root, fetches and builds the
-/// dictionary described by `params`, and embeds the result under
-/// `LINDERA_WORKDIR`.
+/// # Arguments
 ///
-/// When the crate's embed feature is disabled (`embed_enabled == false`) and
-/// no cache override is set via `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (or its
-/// deprecated alias `LINDERA_DICTIONARIES_PATH`), this is a no-op so the
-/// crate builds without downloading any data.
-pub fn build_embedded_dictionary_blocking(
+/// * `embed_enabled` - Whether the calling crate's embed feature is enabled,
+///   i.e. whether the built dictionary is compiled into the binary.
+/// * `params` - Describes the asset to fetch (archive name, mirrors, MD5 hash)
+///   and the input/output directory layout of the dictionary build.
+///
+/// # Returns
+///
+/// `Ok(())` once the dictionary has been built, or when the build was skipped
+/// because neither the embed feature nor a cache override is set. Returns an
+/// error if `metadata.json` cannot be read or the dictionary build fails.
+pub fn build_embedded_dictionary(
     embed_enabled: bool,
     params: FetchParams,
 ) -> Result<(), Box<dyn Error>> {
@@ -714,7 +701,7 @@ pub fn build_embedded_dictionary_blocking(
         builder = builder.with_context_id_freq(CONTEXT_ID_FREQ_FILE);
     }
 
-    fetch_blocking(params, builder)?;
+    fetch(params, builder)?;
 
     Ok(())
 }

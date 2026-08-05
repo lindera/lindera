@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary_blocking};
+use lindera_dictionary::assets::{FetchParams, build_embedded_dictionary};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let fetch_params = FetchParams {
@@ -13,5 +13,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         md5_hash: "a95c409f12f1023fce8ef91f991ef042",
     };
 
-    build_embedded_dictionary_blocking(cfg!(feature = "embed-ipadic"), fetch_params)
+    build_embedded_dictionary(cfg!(feature = "embed-ipadic"), fetch_params)
 }
