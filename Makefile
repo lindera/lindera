@@ -93,8 +93,6 @@ clean-lindera-nodejs: ## Clean lindera-nodejs build artifacts
 	rm -rf lindera-nodejs/node_modules
 	rm -rf lindera-nodejs/npm
 	rm -f lindera-nodejs/*.node
-	rm -f lindera-nodejs/index.js
-	rm -f lindera-nodejs/index.d.ts
 	rm -f lindera-nodejs/package-lock.json
 
 clean-lindera-ruby: ## Clean lindera-ruby build artifacts
