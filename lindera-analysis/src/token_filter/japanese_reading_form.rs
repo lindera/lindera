@@ -50,8 +50,8 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
     /// # Process
     ///
     /// 1. **Token Detail Check**:
-    ///    - For each token in the vector, the function checks the first detail (`get_detail(0)`).
-    ///    - If the first detail is `"UNK"`, the token is skipped and no further processing is done for that token.
+    ///    - For each token in the vector, the function checks whether the word came from the unknown-word dictionary.
+    ///    - If it did, the token is skipped and no further processing is done for that token.
     ///
     /// 2. **Dictionary Type Handling**:
     ///    - Depending on the `config.kind` (which determines the type of dictionary used), the function selects the appropriate index in the token's details:
@@ -72,14 +72,19 @@ impl TokenFilter for JapaneseReadingFormTokenFilter {
     /// Returns a `LinderaResult<()>` if there is an issue during token processing or text conversion. However, under normal circumstances, it should process without errors.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            // Skip unknown tokens
-            if let Some(pos) = token.get_detail(0)
-                && pos == "UNK"
-            {
+            // Skip unknown tokens. Their details come from `unk.def`, so the
+            // first one is a real part of speech rather than the `UNK` sentinel
+            // this used to test for.
+            if token.word_id.is_unknown() {
                 continue;
             }
 
-            if let Some(reading) = token.get("reading") {
+            // `*` is the MeCab placeholder for an absent field, and `details` is
+            // padded with it to the schema width, so an entry that carries no
+            // reading yields `Some("*")` rather than `None`.
+            if let Some(reading) = token.get("reading")
+                && reading != "*"
+            {
                 token.surface = Cow::Owned(reading.to_string());
             }
         }
@@ -167,5 +172,72 @@ mod tests {
         assert_eq!(&tokens[0].surface, "ハネダクウコウ");
         assert_eq!(&tokens[1].surface, "ゲンテイ");
         assert_eq!(&tokens[2].surface, "トートバッグ");
+    }
+
+    // A word that is not in the dictionary takes its details from `unk.def`, so
+    // its part of speech is a real one and its reading is the placeholder `*`.
+    // Neither may be substituted into the surface form.
+    #[cfg(feature = "embed-ipadic")]
+    #[test]
+    fn test_japanese_reading_form_token_filter_keeps_surface_without_reading() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::japanese_reading_form::JapaneseReadingFormTokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = JapaneseReadingFormTokenFilter::new();
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        // The details an out-of-vocabulary word receives from `unk.def`: a real
+        // part of speech, then `*` for every remaining field.
+        let unknown_details = vec![
+            Cow::Borrowed("名詞"),
+            Cow::Borrowed("固有名詞"),
+            Cow::Borrowed("組織"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+        ];
+
+        let mut tokens: Vec<Token> = vec![
+            // Out of vocabulary, so skipped by the unknown-word guard.
+            Token {
+                surface: Cow::Borrowed("asci"),
+                byte_start: 0,
+                byte_end: 4,
+                position: 0,
+                position_length: 1,
+                word_id: WordId::new(LexType::Unknown, 3),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(unknown_details.clone()),
+            },
+            // In the dictionary, but carries no reading, so skipped by the
+            // placeholder guard.
+            Token {
+                surface: Cow::Borrowed("("),
+                byte_start: 4,
+                byte_end: 5,
+                position: 1,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 3),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(unknown_details),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(&tokens[0].surface, "asci");
+        assert_eq!(&tokens[1].surface, "(");
     }
 }

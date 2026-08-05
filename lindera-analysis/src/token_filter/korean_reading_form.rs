@@ -38,13 +38,19 @@ impl TokenFilter for KoreanReadingFormTokenFilter {
 
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
         for token in tokens.iter_mut() {
-            if let Some(pos) = token.get_detail(0)
-                && pos == "UNK"
-            {
+            // Skip unknown tokens. Their details come from `unk.def`, so the
+            // first one is a real part of speech rather than the `UNK` sentinel
+            // this used to test for.
+            if token.word_id.is_unknown() {
                 continue;
             }
 
-            if let Some(reading) = token.get("reading") {
+            // `*` is the MeCab placeholder for an absent field, and `details` is
+            // padded with it to the schema width, so an entry that carries no
+            // reading yields `Some("*")` rather than `None`.
+            if let Some(reading) = token.get("reading")
+                && reading != "*"
+            {
                 token.surface = Cow::Owned(reading.to_string());
             }
         }
@@ -265,5 +271,71 @@ mod tests {
         assert_eq!(&tokens[6].surface, "수");
         assert_eq!(&tokens[7].surface, "있");
         assert_eq!(&tokens[8].surface, "습니다");
+    }
+
+    // A word that is not in the dictionary takes its details from `unk.def`, so
+    // its part of speech is a real one and its reading is the placeholder `*`.
+    // Neither may be substituted into the surface form.
+    #[test]
+    #[cfg(feature = "embed-ko-dic")]
+    fn test_korean_reading_form_token_filter_keeps_surface_without_reading() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::korean_reading_form::KoreanReadingFormTokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let filter = KoreanReadingFormTokenFilter::new();
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+
+        // The details an out-of-vocabulary word receives from `unk.def`: a real
+        // part of speech, then `*` for every remaining field.
+        let unknown_details = vec![
+            Cow::Borrowed("SY"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+            Cow::Borrowed("*"),
+        ];
+
+        let mut tokens: Vec<Token> = vec![
+            // Out of vocabulary, so skipped by the unknown-word guard.
+            Token {
+                surface: Cow::Borrowed("!"),
+                byte_start: 0,
+                byte_end: 1,
+                position: 0,
+                position_length: 1,
+                word_id: WordId::new(LexType::Unknown, 3),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(unknown_details.clone()),
+            },
+            // In the dictionary, but carries no reading, so skipped by the
+            // placeholder guard.
+            Token {
+                surface: Cow::Borrowed("."),
+                byte_start: 1,
+                byte_end: 2,
+                position: 1,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 3),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(unknown_details),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(&tokens[0].surface, "!");
+        assert_eq!(&tokens[1].surface, ".");
     }
 }
