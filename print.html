@@ -379,9 +379,7 @@ lindera = "5.0"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v5.0.0 is the next planned release and has not been published to crates.io yet; the current
-published version is <code>4.0.1</code>. This guide describes the v5.0.0 API, which already exists on the
-<code>main</code> branch. See <a href="getting_started/../migration_v4_to_v5.html">Migration v4 to v5</a> for details.</p>
+Upgrading from v4? See <a href="getting_started/../migration_v4_to_v5.html">Migration v4 to v5</a> for details.</p>
 </blockquote>
 <h2 id="dictionary-setup"><a class="header" href="#dictionary-setup">Dictionary Setup</a></h2>
 <p>Lindera requires a pre-built dictionary at runtime. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path when loading:</p>
@@ -6262,7 +6260,7 @@ const dict = loadDictionary("embedded://ipadic");
 </ul>
 <pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // e.g., "4.0.1"
+console.log(version()); // e.g., "5.0.0"
 </code></pre>
 <h2 id="enums-and-utility-classes"><a class="header" href="#enums-and-utility-classes">Enums and Utility Classes</a></h2>
 <h3 id="mode-5"><a class="header" href="#mode-5">Mode</a></h3>
@@ -7969,12 +7967,6 @@ for the <code>lindera-dictionary</code> crate between the v3.0.7 and v4 releases
 build of the <code>lindera</code> crate is now a pure morphological segmenter, and the
 dictionary-training pipeline lives in its own crate. This guide lists every
 breaking change and the one-line fixes for each.</p>
-<blockquote>
-<p>[!NOTE]
-v5.0.0 is the next planned release and has not been published to crates.io yet; the current
-published version is <code>4.0.1</code>. The changes described below already exist on the <code>main</code> branch,
-ahead of the version bump.</p>
-</blockquote>
 <h2 id="overview-2"><a class="header" href="#overview-2">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>

@@ -181,12 +181,6 @@
 build of the <code>lindera</code> crate is now a pure morphological segmenter, and the
 dictionary-training pipeline lives in its own crate. This guide lists every
 breaking change and the one-line fixes for each.</p>
-<blockquote>
-<p>[!NOTE]
-v5.0.0 is the next planned release and has not been published to crates.io yet; the current
-published version is <code>4.0.1</code>. The changes described below already exist on the <code>main</code> branch,
-ahead of the version bump.</p>
-</blockquote>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td>Analysis chain moved to the new <code>lindera-analysis</code> crate</td><td>Rust users of <code>Tokenizer</code>, character filters, or token filters</td><td>Depend on <code>lindera-analysis</code> and update import paths</td></tr>

@@ -379,9 +379,7 @@ lindera = "5.0"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-v5.0.0 は次期リリース予定であり、まだ crates.io には公開されていません。現時点での公開バージョンは
-<code>4.0.1</code> です。本ガイドは <code>main</code> ブランチに既に存在する v5.0.0 の API を説明しています。詳細は
-<a href="getting_started/../migration_v4_to_v5.html">v4からv5への移行</a>を参照してください。</p>
+v4 からアップグレードする場合は<a href="getting_started/../migration_v4_to_v5.html">v4からv5への移行</a>を参照してください。</p>
 </blockquote>
 <h2 id="辞書のセットアップ"><a class="header" href="#辞書のセットアップ">辞書のセットアップ</a></h2>
 <p>Linderaの実行にはビルド済み辞書が必要です。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、読み込み時にそのパスを指定してください：</p>
@@ -6186,7 +6184,7 @@ const dict = loadDictionary("embedded://ipadic");
 </ul>
 <pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // 例: "4.0.1"
+console.log(version()); // 例: "5.0.0"
 </code></pre>
 <h2 id="列挙型とユーティリティクラス"><a class="header" href="#列挙型とユーティリティクラス">列挙型とユーティリティクラス</a></h2>
 <h3 id="mode-5"><a class="header" href="#mode-5">Mode</a></h3>
@@ -7887,11 +7885,6 @@ let cost = word_entry.word_cost();
 <code>lindera</code> クレートのデフォルトビルドは純粋な形態素分割器（セグメンター）となり、
 辞書学習パイプラインは独立したクレートに移動しました。このガイドでは、
 すべての破壊的変更とその対処方法を説明します。</p>
-<blockquote>
-<p>[!NOTE]
-v5.0.0 は次期リリース予定であり、まだ crates.io には公開されていません。現時点での公開バージョンは
-<code>4.0.1</code> です。以下で説明する変更は、バージョン更新に先立って <code>main</code> ブランチには既に存在します。</p>
-</blockquote>
 <h2 id="概要-2"><a class="header" href="#概要-2">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td>分析チェーンが新クレート <code>lindera-analysis</code> へ移動</td><td><code>Tokenizer</code>・character filter・token filter を使う Rust ユーザー</td><td><code>lindera-analysis</code> に依存し import パスを更新</td></tr>
