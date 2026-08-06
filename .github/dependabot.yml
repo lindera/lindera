@@ -44,6 +44,12 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # NAPI-RS platform packages in optionalDependencies are 0.0.0
+      # placeholders in the repository; the release workflow rewrites
+      # them to the actual version at publish time. They must never be
+      # bumped in-repo.
+      - dependency-name: lindera-nodejs-*
 
   # Python binding (Poetry via the pip ecosystem).
   - package-ecosystem: pip
