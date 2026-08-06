@@ -1,15 +1,73 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
+# Dependabot configuration for version updates.
 # Please see the documentation for all configuration options:
-# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 
 version: 2
 updates:
+  # Rust workspace (single Cargo.lock at the repository root).
+  # Minor and patch updates are grouped into a single PR to reduce noise;
+  # major updates still get individual PRs for careful review.
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: daily
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      cargo-minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used in .github/workflows.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: daily
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Node.js binding and WASM example (npm).
+  - package-ecosystem: npm
+    directories:
+      - /lindera-nodejs
+      - /lindera-wasm/example
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Python binding (Poetry via the pip ecosystem).
+  - package-ecosystem: pip
+    directory: /lindera-python
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # PHP binding (Composer).
+  - package-ecosystem: composer
+    directory: /lindera-php
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Ruby binding (Bundler; updates Gemfile and lindera.gemspec).
+  - package-ecosystem: bundler
+    directory: /lindera-ruby
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
