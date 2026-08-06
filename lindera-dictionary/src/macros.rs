@@ -13,6 +13,13 @@
 /// reading from the `LINDERA_WORKDIR` directory populated by the crate's
 /// build script.
 ///
+/// The data is bound to `static`s rather than `const`s deliberately. A `const`
+/// body is encoded into the crate's metadata, so a `const` here would put a copy
+/// of every dictionary byte into `lib.rmeta` at roughly 4x its size — several
+/// hundred megabytes per dictionary crate, re-read by every downstream crate.
+/// The data is private to `load()` below and never const-evaluated, so a `static`
+/// is all that is needed.
+///
 /// * `$dir` — the dictionary subdirectory inside `LINDERA_WORKDIR`
 ///   (e.g. `"/lindera-ipadic"`).
 /// * `$loader` — the public loader struct name (e.g. `EmbeddedIPADICLoader`).
@@ -25,20 +32,20 @@
 #[macro_export]
 macro_rules! embedded_dictionary {
     ($dir:literal, $loader:ident) => {
-        const CHAR_DEFINITION_DATA: &[u8] =
+        static CHAR_DEFINITION_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/char_def.bin"));
-        const CONNECTION_DATA: &[u8] =
+        static CONNECTION_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
-        const DA_DATA: &[u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.da"));
-        const VALS_DATA: &[u8] =
+        static DA_DATA: &[u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.da"));
+        static VALS_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.vals"));
-        const UNKNOWN_DATA: &[u8] =
+        static UNKNOWN_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/unk.bin"));
-        const WORDS_IDX_DATA: &[u8] =
+        static WORDS_IDX_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.wordsidx"));
-        const WORDS_DATA: &[u8] =
+        static WORDS_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.words"));
-        const METADATA_DATA: &[u8] =
+        static METADATA_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/metadata.json"));
 
         /// Loads the embedded dictionary from data baked into the binary.
