@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |spec|
   spec.name = "lindera"
-  spec.version = "5.0.0"
+  spec.version = "5.0.1"
   spec.authors = ["Lindera contributors"]
   spec.summary = "Ruby bindings for Lindera morphological analysis engine"
   spec.description = "Ruby bindings for Lindera, a morphological analysis library for CJK text (Japanese, Korean, Chinese)."
