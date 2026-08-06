@@ -43,7 +43,7 @@
   "optionalDependencies": {
     "lindera-nodejs-darwin-arm64": "0.0.0",
     "lindera-nodejs-darwin-x64": "0.0.0",
-    "lindera-nodejs-linux-arm64-gnu": "0.0.0",
+    "lindera-nodejs-linux-arm64-gnu": "4.0.1",
     "lindera-nodejs-linux-x64-gnu": "0.0.0",
     "lindera-nodejs-win32-arm64-msvc": "0.0.0",
     "lindera-nodejs-win32-x64-msvc": "0.0.0"
