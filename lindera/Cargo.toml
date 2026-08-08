@@ -62,6 +62,7 @@ lindera-jieba = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
 lindera-trainer = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
+log = { workspace = true }
 percent-encoding = "2.3.2"
 serde = { workspace = true }
 serde_json = { workspace = true }

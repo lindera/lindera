@@ -1480,6 +1480,7 @@ dependencies = [
  "lindera-ko-dic",
  "lindera-trainer",
  "lindera-unidic",
+ "log",
  "once_cell",
  "percent-encoding",
  "serde",
