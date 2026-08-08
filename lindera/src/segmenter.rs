@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use lindera_dictionary::mode::Mode;
+use log::warn;
 
 use lindera_dictionary::dictionary::character_definition::CategoryId;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
@@ -14,6 +15,66 @@ use crate::error::LinderaErrorKind;
 use crate::token::Token;
 
 pub type SegmenterConfig = Value;
+
+/// Upper bound, in bytes, on a single sentence passed to the Viterbi lattice
+/// when no real sentence delimiter (`\n`, `\t`, `。`, `、`) is found.
+///
+/// Without this bound, delimiter-free input (e.g. minified or line-joined
+/// machine-generated text) builds one ever-growing lattice for the whole
+/// input. Past a content-dependent point, the accumulated path cost
+/// saturates `i32::MAX` and the lattice silently stops accepting edges,
+/// collapsing the remainder of the input into a single giant token with no
+/// error or warning (see <https://github.com/lindera/lindera/issues/871>).
+/// 32 KiB stays well under both that saturation point and downstream
+/// consumers' own token-length limits (e.g. tantivy's `MAX_TOKEN_LEN`).
+const MAX_SENTENCE_BYTES: usize = 32 * 1024;
+
+/// Finds the end of the next sentence starting at `sentence_start`, scanning
+/// for a real sentence delimiter (`\n`, `\t`, `。`, `、`) or, failing that,
+/// forcing a cut at [`MAX_SENTENCE_BYTES`] to bound lattice size.
+///
+/// # 引数
+///
+/// * `text` - The full input text.
+/// * `sentence_start` - The byte offset to start scanning from.
+///
+/// # 戻り値
+///
+/// A tuple of the byte offset (exclusive) where the sentence ends, and
+/// whether the cut was forced (`true`) rather than a real delimiter
+/// (`false`).
+fn find_sentence_end(text: &str, sentence_start: usize) -> (usize, bool) {
+    let text_bytes = text.as_bytes();
+    let text_len = text_bytes.len();
+    let mut sentence_end = sentence_start;
+    while sentence_end < text_len {
+        let ch = text_bytes[sentence_end];
+        sentence_end += 1;
+        // Check for sentence delimiters
+        if ch == b'\n' || ch == b'\t' {
+            return (sentence_end, false);
+        }
+        // Check for Japanese punctuation (multi-byte). "。" and "、"
+        // share the same 2-byte UTF-8 lead (E3 80) and differ only
+        // in their last byte (0x82 / 0x81, which is exactly `ch`
+        // here), so this cheap pre-check skips the 3-byte slice
+        // comparison for ~254/256 possible byte values.
+        if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
+            let last_3 = &text_bytes[sentence_end - 3..sentence_end];
+            if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
+                return (sentence_end, false);
+            }
+        }
+        // No real delimiter within MAX_SENTENCE_BYTES: force a cut at the
+        // next valid char boundary to bound lattice size.
+        if sentence_end - sentence_start >= MAX_SENTENCE_BYTES
+            && text.is_char_boundary(sentence_end)
+        {
+            return (sentence_end, true);
+        }
+    }
+    (sentence_end, false)
+}
 
 /// Segmenter
 #[derive(Clone)]
@@ -329,31 +390,16 @@ impl Segmenter {
         let mut byte_position = 0_usize;
 
         // Process whole text without splitting first for better performance with borrowed text
-        let text_bytes = text.as_bytes();
         let text_len = text.len();
         let mut sentence_start = 0;
 
         while sentence_start < text_len {
             // Find the end of the current sentence
-            let mut sentence_end = sentence_start;
-            while sentence_end < text_len {
-                let ch = text_bytes[sentence_end];
-                sentence_end += 1;
-                // Check for sentence delimiters
-                if ch == b'\n' || ch == b'\t' {
-                    break;
-                }
-                // Check for Japanese punctuation (multi-byte). "。" and "、"
-                // share the same 2-byte UTF-8 lead (E3 80) and differ only
-                // in their last byte (0x82 / 0x81, which is exactly `ch`
-                // here), so this cheap pre-check skips the 3-byte slice
-                // comparison for ~254/256 possible byte values.
-                if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
-                    let last_3 = &text_bytes[sentence_end - 3..sentence_end];
-                    if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
-                        break;
-                    }
-                }
+            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
+            if forced_cut {
+                warn!(
+                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
+                );
             }
 
             let sentence = &text[sentence_start..sentence_end];
@@ -482,29 +528,16 @@ impl Segmenter {
     ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
         let mut all_results: Vec<(Vec<Token>, i64)> = Vec::with_capacity(n);
 
-        let text_bytes = text.as_bytes();
         let text_len = text.len();
         let mut sentence_start = 0;
 
         while sentence_start < text_len {
             // Find the end of the current sentence
-            let mut sentence_end = sentence_start;
-            while sentence_end < text_len {
-                let ch = text_bytes[sentence_end];
-                sentence_end += 1;
-                if ch == b'\n' || ch == b'\t' {
-                    break;
-                }
-                // "。" and "、" share the same 2-byte UTF-8 lead (E3 80) and
-                // differ only in their last byte (0x82 / 0x81, exactly
-                // `ch` here), so this pre-check skips the 3-byte slice
-                // comparison for ~254/256 possible byte values.
-                if (ch == 0x81 || ch == 0x82) && sentence_end >= 3 {
-                    let last_3 = &text_bytes[sentence_end - 3..sentence_end];
-                    if last_3 == "。".as_bytes() || last_3 == "、".as_bytes() {
-                        break;
-                    }
-                }
+            let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
+            if forced_cut {
+                warn!(
+                    "no sentence delimiter (\\n, \\t, 。, 、) found within {MAX_SENTENCE_BYTES} bytes from offset {sentence_start}; forcing a sentence boundary to bound lattice size (see https://github.com/lindera/lindera/issues/871)"
+                );
             }
 
             let sentence = &text[sentence_start..sentence_end];
@@ -616,8 +649,69 @@ mod tests {
         path::PathBuf,
     };
 
+    use crate::segmenter::{MAX_SENTENCE_BYTES, find_sentence_end};
     #[cfg(feature = "embed-ipadic")]
     use crate::segmenter::{Segmenter, SegmenterConfig};
+
+    #[test]
+    fn test_find_sentence_end_no_delimiter_short_text() {
+        let text = "hello world";
+        let (end, forced) = find_sentence_end(text, 0);
+        assert_eq!(end, text.len());
+        assert!(!forced);
+    }
+
+    #[test]
+    fn test_find_sentence_end_newline_delimiter() {
+        let text = "hello\nworld";
+        let (end, forced) = find_sentence_end(text, 0);
+        assert_eq!(end, 6); // includes the '\n'
+        assert!(!forced);
+    }
+
+    #[test]
+    fn test_find_sentence_end_japanese_period_delimiter() {
+        let text = "これはテストです。続き";
+        let expected_end = text.find('。').unwrap() + '。'.len_utf8();
+        let (end, forced) = find_sentence_end(text, 0);
+        assert_eq!(end, expected_end);
+        assert!(!forced);
+    }
+
+    #[test]
+    fn test_find_sentence_end_touten_delimiter() {
+        let text = "これは、テストです";
+        let expected_end = text.find('、').unwrap() + '、'.len_utf8();
+        let (end, forced) = find_sentence_end(text, 0);
+        assert_eq!(end, expected_end);
+        assert!(!forced);
+    }
+
+    #[test]
+    fn test_find_sentence_end_forces_cut_when_no_delimiter() {
+        // Every byte is a char boundary, so the forced cut lands exactly at
+        // MAX_SENTENCE_BYTES.
+        let text = "a".repeat(MAX_SENTENCE_BYTES * 2);
+        let (end, forced) = find_sentence_end(&text, 0);
+        assert_eq!(end, MAX_SENTENCE_BYTES);
+        assert!(forced);
+    }
+
+    #[test]
+    fn test_find_sentence_end_forced_cut_respects_char_boundary() {
+        // Place a multi-byte character straddling MAX_SENTENCE_BYTES so a
+        // naive byte-count cut would slice through it.
+        let mut text = "a".repeat(MAX_SENTENCE_BYTES - 1);
+        text.push('あ');
+        text.push_str(&"a".repeat(100));
+
+        let (end, forced) = find_sentence_end(&text, 0);
+        assert!(forced);
+        // Panics if `end` is not a valid char boundary.
+        let _ = &text[..end];
+        assert!(end >= MAX_SENTENCE_BYTES);
+        assert!(end <= MAX_SENTENCE_BYTES - 1 + 'あ'.len_utf8());
+    }
 
     #[test]
     #[cfg(feature = "embed-ipadic")]
@@ -1861,6 +1955,50 @@ mod tests {
             .segment(Cow::Borrowed(large_text.as_str()))
             .unwrap();
         assert!(!tokens.is_empty());
+    }
+
+    /// Regression test for https://github.com/lindera/lindera/issues/871:
+    /// delimiter-free (no `\n`, `\t`, `。`, `、`) mixed-script text used to
+    /// build one ever-growing Viterbi lattice whose accumulated path cost
+    /// could saturate `i32::MAX`, silently collapsing the remainder of the
+    /// input into a single giant token. This asserts that text well past
+    /// `MAX_SENTENCE_BYTES` still segments into many small tokens instead of
+    /// one oversized one.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_segment_bounds_lattice_for_delimiter_free_text() {
+        use std::borrow::Cow;
+
+        use crate::dictionary::load_dictionary;
+        use crate::mode::Mode;
+        use crate::segmenter::MAX_SENTENCE_BYTES;
+
+        // Space-joined, mixed Japanese/English words with no real sentence
+        // delimiter, comfortably longer than MAX_SENTENCE_BYTES.
+        let words = ["test", "検証", "buffer", "実装", "measure", "性能"];
+        let mut text = String::new();
+        while text.len() < MAX_SENTENCE_BYTES * 2 {
+            for w in &words {
+                text.push_str(w);
+                text.push(' ');
+            }
+        }
+
+        let dictionary = load_dictionary("embedded://ipadic").unwrap();
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let tokens = segmenter.segment(Cow::Borrowed(text.as_str())).unwrap();
+
+        assert!(!tokens.is_empty());
+        let biggest = tokens
+            .iter()
+            .map(|t| t.byte_end - t.byte_start)
+            .max()
+            .unwrap();
+        assert!(
+            biggest < 100,
+            "expected only small word tokens, got a {biggest}-byte token; \
+             the lattice was not bounded for delimiter-free input"
+        );
     }
 
     #[test]
