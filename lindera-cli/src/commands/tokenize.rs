@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -113,48 +113,105 @@ impl FromStr for Format {
     }
 }
 
-/// Writes tokens to stdout in the requested output format.
-fn write_output(format: Format, tokens: Vec<Token>) -> LinderaResult<()> {
+/// Writes tokens to the given writer in the requested output format.
+///
+/// # Arguments
+///
+/// * `writer` - The destination for the formatted output (typically a buffered stdout lock).
+/// * `format` - The output format to render the tokens in.
+/// * `tokens` - The tokens produced for one input line.
+/// * `details_buf` - A scratch buffer reused across tokens for joining detail fields.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an I/O / serialization error wrapped in `LinderaError`.
+fn write_output<W: Write>(
+    writer: &mut W,
+    format: Format,
+    tokens: Vec<Token>,
+    details_buf: &mut String,
+) -> LinderaResult<()> {
     match format {
-        Format::Mecab => mecab_output(tokens),
-        Format::Json => json_output(tokens),
-        Format::Wakati => wakati_output(tokens),
+        Format::Mecab => mecab_output(writer, tokens, details_buf),
+        Format::Json => json_output(writer, tokens),
+        Format::Wakati => wakati_output(writer, tokens),
     }
 }
 
-fn mecab_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+/// Writes tokens in the MeCab format: one `surface\tdetails` line per token,
+/// terminated by an `EOS` line.
+///
+/// # Arguments
+///
+/// * `writer` - The destination for the formatted output.
+/// * `tokens` - The tokens produced for one input line.
+/// * `details_buf` - A scratch buffer reused across tokens for joining detail fields.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an I/O error wrapped in `LinderaError`.
+fn mecab_output<W: Write>(
+    writer: &mut W,
+    mut tokens: Vec<Token>,
+    details_buf: &mut String,
+) -> LinderaResult<()> {
     for token in tokens.iter_mut() {
-        let details = token.details().join(",");
-        println!("{}\t{}", token.surface.as_ref(), details);
+        details_buf.clear();
+        for (i, detail) in token.details().iter().enumerate() {
+            if i > 0 {
+                details_buf.push(',');
+            }
+            details_buf.push_str(detail);
+        }
+        writeln!(writer, "{}\t{}", token.surface.as_ref(), details_buf).map_err(io_err)?;
     }
-    println!("EOS");
+    writeln!(writer, "EOS").map_err(io_err)?;
 
     Ok(())
 }
 
-fn json_output(mut tokens: Vec<Token>) -> LinderaResult<()> {
+/// Writes tokens as a pretty-printed JSON array of token objects.
+///
+/// # Arguments
+///
+/// * `writer` - The destination for the formatted output.
+/// * `tokens` - The tokens produced for one input line.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an I/O / serialization error wrapped in `LinderaError`.
+fn json_output<W: Write>(writer: &mut W, mut tokens: Vec<Token>) -> LinderaResult<()> {
     let mut json_tokens = Vec::new();
     for token in tokens.iter_mut() {
         let token_value = token.as_value();
         json_tokens.push(token_value);
     }
 
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&json_tokens)
-            .map_err(|err| { LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)) })?
-    );
+    serde_json::to_writer_pretty(&mut *writer, &json_tokens)
+        .map_err(|err| LinderaErrorKind::Serialize.with_error(anyhow::anyhow!(err)))?;
+    writeln!(writer).map_err(io_err)?;
 
     Ok(())
 }
 
-fn wakati_output(tokens: Vec<Token>) -> LinderaResult<()> {
+/// Writes tokens in the wakati format: surfaces separated by single spaces on
+/// one line.
+///
+/// # Arguments
+///
+/// * `writer` - The destination for the formatted output.
+/// * `tokens` - The tokens produced for one input line.
+///
+/// # Returns
+///
+/// `Ok(())` on success, or an I/O error wrapped in `LinderaError`.
+fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> LinderaResult<()> {
     let mut it = tokens.iter().peekable();
     while let Some(token) = it.next() {
         if it.peek().is_some() {
-            print!("{} ", token.surface.as_ref());
+            write!(writer, "{} ", token.surface.as_ref()).map_err(io_err)?;
         } else {
-            println!("{}", token.surface.as_ref());
+            writeln!(writer, "{}", token.surface.as_ref()).map_err(io_err)?;
         }
     }
 
@@ -220,9 +277,19 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // buffers on each call.
     let mut lattice = Lattice::default();
 
+    // Buffer all output on a locked stdout: the default line-buffered stdout
+    // would otherwise issue one write syscall per output line.
+    let stdout = io::stdout();
+    let mut writer = BufWriter::new(stdout.lock());
+
+    // Reused across every line/token to avoid per-line and per-token
+    // reallocations.
+    let mut text = String::new();
+    let mut details_buf = String::new();
+
     loop {
         // read the text to be tokenized from stdin
-        let mut text = String::new();
+        text.clear();
         let size = reader.read_line(&mut text).map_err(io_err)?;
         if size == 0 {
             // EOS
@@ -238,14 +305,18 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
                 nbest_cost_threshold,
             )?;
             for (rank, (tokens, cost)) in results.into_iter().enumerate() {
-                println!("NBEST {} (cost={})", rank + 1, cost);
-                write_output(output_format, tokens)?;
+                writeln!(writer, "NBEST {} (cost={})", rank + 1, cost).map_err(io_err)?;
+                write_output(&mut writer, output_format, tokens, &mut details_buf)?;
             }
         } else {
             let tokens = tokenizer.tokenize_with_lattice(text.trim(), &mut lattice)?;
-            write_output(output_format, tokens)?;
+            write_output(&mut writer, output_format, tokens, &mut details_buf)?;
         }
     }
+
+    // Surface write errors instead of letting the implicit flush on drop
+    // swallow them.
+    writer.flush().map_err(io_err)?;
 
     Ok(())
 }
