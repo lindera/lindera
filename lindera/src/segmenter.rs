@@ -6,7 +6,7 @@ use log::warn;
 
 use lindera_dictionary::dictionary::character_definition::CategoryId;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
-use lindera_dictionary::viterbi::Lattice;
+use lindera_dictionary::viterbi::{Lattice, WordId};
 use serde_json::Value;
 
 use crate::LinderaResult;
@@ -393,6 +393,10 @@ impl Segmenter {
         let text_len = text.len();
         let mut sentence_start = 0;
 
+        // Reused across sentences so the backtrace buffer is allocated once
+        // per call instead of once per sentence.
+        let mut offsets: Vec<(usize, WordId)> = Vec::new();
+
         while sentence_start < text_len {
             // Find the end of the current sentence
             let (sentence_end, forced_cut) = find_sentence_end(&text, sentence_start);
@@ -420,7 +424,7 @@ impl Segmenter {
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
-            let offsets = lattice.tokens_offset();
+            lattice.tokens_offset_into(&mut offsets);
             tokens.reserve(offsets.len());
 
             for i in 0..offsets.len() {

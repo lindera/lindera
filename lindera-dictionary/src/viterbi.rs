@@ -365,12 +365,29 @@ impl Lattice {
     }
 
     pub fn clear(&mut self) {
-        for edge_vec in &mut self.ends_at {
+        // Only slots up to the previous sentence's length can hold entries:
+        // every `ends_at`/`all_paths` write in set_text/set_text_nbest
+        // targets an index <= that call's text length (BOS at 0, edges at
+        // stop_index <= len, EOS at len), which `set_capacity` recorded in
+        // `last_text_len`, and every slot past it was left empty by the
+        // previous clear(). Walking only this prefix keeps clear() O(previous
+        // sentence) instead of O(historical max capacity), which matters
+        // once one long sentence has grown the lattice (#877).
+        let bound = self.last_text_len + 1;
+        for edge_vec in self.ends_at.iter_mut().take(bound) {
             edge_vec.clear();
         }
-        for path_vec in &mut self.all_paths {
+        debug_assert!(
+            self.ends_at.iter().skip(bound).all(|v| v.is_empty()),
+            "ends_at slot beyond last_text_len must be empty"
+        );
+        for path_vec in self.all_paths.iter_mut().take(bound) {
             path_vec.clear();
         }
+        debug_assert!(
+            self.all_paths.iter().skip(bound).all(|v| v.is_empty()),
+            "all_paths slot beyond last_text_len must be empty"
+        );
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         // `char_category_cache` is keyed only by codepoint, with no identity
@@ -761,27 +778,53 @@ impl Lattice {
         }
     }
 
+    /// Backtraces the best path and returns `(start_byte_offset, word_id)`
+    /// pairs for each token in reading order (BOS/EOS excluded).
+    ///
+    /// # Returns
+    ///
+    /// A freshly allocated offsets vector; empty when the lattice holds no
+    /// complete path. Prefer [`Lattice::tokens_offset_into`] in per-sentence
+    /// loops to reuse one allocation across sentences.
     pub fn tokens_offset(&self) -> Vec<(usize, WordId)> {
         let mut offsets = Vec::new();
+        self.tokens_offset_into(&mut offsets);
+        offsets
+    }
+
+    /// Backtraces the best path into a caller-provided buffer, clearing it
+    /// first, so the allocation can be reused across sentences.
+    ///
+    /// # Arguments
+    ///
+    /// * `offsets` - The buffer to fill with `(start_byte_offset, word_id)`
+    ///   pairs in reading order (BOS/EOS excluded). Cleared on entry; left
+    ///   empty when the lattice holds no complete path.
+    pub fn tokens_offset_into(&self, offsets: &mut Vec<(usize, WordId)>) {
+        offsets.clear();
 
         if self.ends_at.is_empty() {
-            return offsets;
+            return;
         }
 
-        let mut last_idx = self.ends_at.len() - 1;
+        // The EOS edge, when present, sits at `ends_at[last_text_len]`
+        // (see set_text), and every slot past it is always empty, so the
+        // backward scan starts there rather than at the historical
+        // capacity end (#877).
+        let mut last_idx = self.last_text_len.min(self.ends_at.len() - 1);
         while last_idx > 0 && self.ends_at[last_idx].is_empty() {
             last_idx -= 1;
         }
 
         if self.ends_at[last_idx].is_empty() {
-            return offsets;
+            return;
         }
 
         let idx = self.ends_at[last_idx].len() - 1;
         let mut edge = &self.ends_at[last_idx][idx];
 
         if edge.left_index == u16::MAX {
-            return offsets;
+            return;
         }
 
         loop {
@@ -799,8 +842,6 @@ impl Lattice {
 
         offsets.reverse();
         offsets.pop(); // Remove EOS
-
-        offsets
     }
 
     // --- N-Best support ---
@@ -1245,7 +1286,21 @@ impl Lattice {
 
 #[cfg(test)]
 mod tests {
-    use crate::viterbi::{Lattice, LexType, WordEntry, WordId};
+    use crate::viterbi::{Edge, Lattice, LexType, WordEntry, WordId};
+
+    /// Builds an edge whose backtrace fields are set explicitly, for
+    /// hand-assembled lattices in tests.
+    fn test_edge(word_id: u32, start: usize, stop: usize, left_index: u16) -> Edge {
+        let mut edge = Lattice::create_edge(
+            WordEntry::new(WordId::new(LexType::System, word_id), 0, 0, 0),
+            start,
+            stop,
+            false,
+        );
+        edge.left_index = left_index;
+        edge.path_cost = 0;
+        edge
+    }
 
     #[test]
     fn test_word_entry() {
@@ -1289,5 +1344,82 @@ mod tests {
                 slot.capacity()
             );
         }
+    }
+
+    /// Regression test for #877: `clear()` walks only `..=last_text_len`
+    /// instead of the historical max capacity, so it must still clear every
+    /// slot the previous sentence could have written — including the
+    /// boundary slot at exactly `last_text_len` (EOS position).
+    #[test]
+    fn test_clear_after_shrink_leaves_no_stale_edges() {
+        let mut lattice = Lattice::default();
+
+        // Long sentence: capacity grows to 101 slots, writes up to index 100.
+        lattice.set_capacity(100);
+        lattice.ends_at[0].push(test_edge(1, 0, 0, u16::MAX));
+        lattice.ends_at[57].push(test_edge(2, 0, 57, 0));
+        lattice.ends_at[100].push(test_edge(3, 57, 100, 0)); // boundary slot
+
+        // Shorter sentence: clear() runs bounded by the previous
+        // last_text_len (100), then records the new length.
+        lattice.set_capacity(10);
+        assert!(
+            lattice.ends_at.iter().all(|v| v.is_empty()),
+            "stale edges survived a bounded clear"
+        );
+
+        // A second shrink exercises the induction step: nothing past the
+        // new bound (10) may hold entries, and slots within it are cleared.
+        lattice.ends_at[10].push(test_edge(4, 0, 10, 0)); // boundary slot again
+        lattice.set_capacity(3);
+        assert!(
+            lattice.ends_at.iter().all(|v| v.is_empty()),
+            "stale edge at the previous boundary slot survived"
+        );
+    }
+
+    /// Regression test for #877: the `tokens_offset` backward scan starts at
+    /// `last_text_len`, which must still find the EOS edge at exactly that
+    /// index after the capacity has grown far beyond the current sentence.
+    #[test]
+    fn test_tokens_offset_finds_eos_at_last_text_len_after_shrink() {
+        let mut lattice = Lattice::default();
+
+        // Grow capacity well past the sentence we are about to assemble.
+        lattice.set_capacity(100);
+
+        // Hand-assembled best path for a 3-byte sentence:
+        // BOS(ends_at[0]) <- token A (0..3) <- EOS(ends_at[3]).
+        lattice.set_capacity(3);
+        lattice.ends_at[0].push(test_edge(0, 0, 0, u16::MAX)); // BOS
+        lattice.ends_at[3].push(test_edge(42, 0, 3, 0)); // token A
+        lattice.ends_at[3].push(test_edge(0, 3, 3, 0)); // EOS -> token A
+
+        let offsets = lattice.tokens_offset();
+        assert_eq!(offsets.len(), 1);
+        assert_eq!(offsets[0].0, 0);
+        assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
+    }
+
+    /// `tokens_offset_into` must clear the caller's buffer and produce the
+    /// same result as `tokens_offset`, including on a pathless lattice.
+    #[test]
+    fn test_tokens_offset_into_matches_tokens_offset() {
+        let mut lattice = Lattice::default();
+        lattice.set_capacity(3);
+        lattice.ends_at[0].push(test_edge(0, 0, 0, u16::MAX)); // BOS
+        lattice.ends_at[3].push(test_edge(7, 0, 3, 0)); // token A
+        lattice.ends_at[3].push(test_edge(0, 3, 3, 0)); // EOS -> token A
+
+        let mut reused = vec![(999usize, WordId::default())]; // stale content
+        lattice.tokens_offset_into(&mut reused);
+        assert_eq!(reused, lattice.tokens_offset());
+        assert_eq!(reused.len(), 1);
+
+        // A cleared (pathless) lattice must leave the reused buffer empty.
+        lattice.clear();
+        lattice.tokens_offset_into(&mut reused);
+        assert!(reused.is_empty());
+        assert!(lattice.tokens_offset().is_empty());
     }
 }
