@@ -477,11 +477,11 @@ impl TrainerConfig {
             buff.push(CategoryId(0));
         });
 
-        Ok(CharacterDefinition {
+        Ok(CharacterDefinition::new(
             category_definitions,
             category_names,
             mapping,
-        })
+        ))
     }
 
     fn build_unknown_dict_from_content(

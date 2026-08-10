@@ -317,14 +317,6 @@ pub struct Lattice {
     ends_at: Vec<Vec<Edge>>, // Now stores edges directly
     char_info_buffer: Vec<CharData>,
     categories_buffer: Vec<CategoryId>,
-    /// Lazily-filled per-codepoint category cache for codepoints < 256.
-    /// Entries are validated per slot against `char_category_cache_epoch`,
-    /// so invalidation is O(1) and the per-slot buffers are reused across
-    /// sentences instead of being freed and reallocated (#878).
-    char_category_cache: Vec<CharCategoryCacheSlot>,
-    /// Current generation of `char_category_cache`; bumped by `clear()` to
-    /// invalidate every slot at once.
-    char_category_cache_epoch: u64,
 
     // N-Best fields (only populated when set_text_nbest is called)
     all_paths: Vec<Vec<PathEntry>>,
@@ -339,16 +331,6 @@ pub struct Lattice {
     matches_head: Vec<usize>,
     /// Linked-list node pool: (match end offset, word entry, next node index).
     matches_store: Vec<(usize, WordEntry, usize)>,
-}
-
-/// One entry of `Lattice::char_category_cache`.
-#[derive(Clone, Default)]
-struct CharCategoryCacheSlot {
-    /// Generation this entry was filled at; the entry is stale whenever this
-    /// differs from `Lattice::char_category_cache_epoch`.
-    epoch: u64,
-    /// Cached categories for the codepoint (possibly empty).
-    categories: Vec<CategoryId>,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -407,16 +389,6 @@ impl Lattice {
         );
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
-        // `char_category_cache` is keyed only by codepoint, with no identity
-        // of the `CharacterDefinition` it was filled from. Since a `Lattice`
-        // can be reused across `Segmenter`s built from different
-        // dictionaries, the cache must be invalidated every call rather than
-        // persisting across `set_text`/`set_text_nbest` invocations -- an
-        // ASCII codepoint's `CategoryId` is not portable between
-        // dictionaries with different char.def category orderings. Bumping
-        // the generation invalidates every slot in O(1) while keeping the
-        // per-slot buffers allocated for reuse (#878).
-        self.char_category_cache_epoch += 1;
     }
 
     #[inline]
@@ -476,32 +448,15 @@ impl Lattice {
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
 
-        if self.char_category_cache.is_empty() {
-            // Allocated once per lattice lifetime; clear() only bumps the
-            // epoch, so this vector and its per-slot buffers persist.
-            self.char_category_cache
-                .resize_with(256, CharCategoryCacheSlot::default);
-        }
-
         for (byte_offset, c) in text.char_indices() {
             let categories_start = self.categories_buffer.len() as u32;
 
-            if (c as u32) < 256 {
-                let slot = &mut self.char_category_cache[c as usize];
-                if slot.epoch != self.char_category_cache_epoch {
-                    slot.categories.clear();
-                    slot.categories
-                        .extend_from_slice(char_definitions.lookup_categories(c));
-                    slot.epoch = self.char_category_cache_epoch;
-                }
-                for &category in slot.categories.iter() {
-                    self.categories_buffer.push(category);
-                }
-            } else {
-                let categories = char_definitions.lookup_categories(c);
-                for &category in categories {
-                    self.categories_buffer.push(category);
-                }
+            // Category lookup is O(1) for BMP codepoints via the flat table
+            // built at dictionary load (#878), so no per-lattice cache is
+            // needed.
+            let categories = char_definitions.lookup_categories(c);
+            for &category in categories {
+                self.categories_buffer.push(category);
             }
 
             let categories_len = (self.categories_buffer.len() as u32 - categories_start) as u16;
@@ -1040,32 +995,15 @@ impl Lattice {
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
 
-        if self.char_category_cache.is_empty() {
-            // Allocated once per lattice lifetime; clear() only bumps the
-            // epoch, so this vector and its per-slot buffers persist.
-            self.char_category_cache
-                .resize_with(256, CharCategoryCacheSlot::default);
-        }
-
         for (byte_offset, c) in text.char_indices() {
             let categories_start = self.categories_buffer.len() as u32;
 
-            if (c as u32) < 256 {
-                let slot = &mut self.char_category_cache[c as usize];
-                if slot.epoch != self.char_category_cache_epoch {
-                    slot.categories.clear();
-                    slot.categories
-                        .extend_from_slice(char_definitions.lookup_categories(c));
-                    slot.epoch = self.char_category_cache_epoch;
-                }
-                for &category in slot.categories.iter() {
-                    self.categories_buffer.push(category);
-                }
-            } else {
-                let categories = char_definitions.lookup_categories(c);
-                for &category in categories {
-                    self.categories_buffer.push(category);
-                }
+            // Category lookup is O(1) for BMP codepoints via the flat table
+            // built at dictionary load (#878), so no per-lattice cache is
+            // needed.
+            let categories = char_definitions.lookup_categories(c);
+            for &category in categories {
+                self.categories_buffer.push(category);
             }
 
             let categories_len = (self.categories_buffer.len() as u32 - categories_start) as u16;
@@ -1424,41 +1362,6 @@ mod tests {
         assert_eq!(offsets.len(), 1);
         assert_eq!(offsets[0].0, 0);
         assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
-    }
-
-    /// Regression test for #878 stage 1: `clear()` must invalidate every
-    /// `char_category_cache` slot (epoch bump) without freeing the slot
-    /// buffers or shrinking the 256-entry vector — the per-sentence
-    /// dealloc/rebuild churn is what this change removes.
-    #[test]
-    fn test_char_category_cache_epoch_invalidates_without_dealloc() {
-        use crate::dictionary::character_definition::CategoryId;
-
-        let mut lattice = Lattice::default();
-        lattice.set_capacity(3); // clear() runs -> epoch moves past slot default (0)
-        lattice
-            .char_category_cache
-            .resize_with(256, Default::default);
-
-        // Fill one slot as the preprocessing pass would.
-        let epoch = lattice.char_category_cache_epoch;
-        let slot = &mut lattice.char_category_cache[b'a' as usize];
-        slot.categories.push(CategoryId(5));
-        slot.epoch = epoch;
-        let capacity_before = slot.categories.capacity();
-        assert!(capacity_before > 0);
-
-        lattice.clear();
-
-        // Logically stale (cross-dictionary safety) ...
-        let slot = &lattice.char_category_cache[b'a' as usize];
-        assert_ne!(
-            slot.epoch, lattice.char_category_cache_epoch,
-            "slot must be stale after clear()"
-        );
-        // ... but physically intact: no dealloc, no header rewrite.
-        assert_eq!(slot.categories.capacity(), capacity_before);
-        assert_eq!(lattice.char_category_cache.len(), 256);
     }
 
     /// `tokens_offset_into` must clear the caller's buffer and produce the
