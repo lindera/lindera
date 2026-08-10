@@ -43,9 +43,9 @@ pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
 pub struct Dictionary {
     pub prefix_dictionary: Arc<PrefixDictionary>,
     pub connection_cost_matrix: Arc<ConnectionCostMatrix>,
-    pub character_definition: CharacterDefinition,
-    pub unknown_dictionary: UnknownDictionary,
-    pub metadata: Metadata,
+    pub character_definition: Arc<CharacterDefinition>,
+    pub unknown_dictionary: Arc<UnknownDictionary>,
+    pub metadata: Arc<Metadata>,
 }
 
 impl Dictionary {
@@ -89,9 +89,14 @@ impl Dictionary {
         details
     }
 
-    /// Load dictionary from a directory containing dictionary files
+    /// Load dictionary from a directory containing dictionary files.
+    ///
+    /// When the `mmap` feature is compiled in, the connection-cost matrix
+    /// and word list are routed through memory-mapped reads by default
+    /// (#879); use [`Dictionary::load_from_path_with_options`] with
+    /// `use_mmap = false` to force eager reads.
     pub fn load_from_path(dict_path: &Path) -> LinderaResult<Self> {
-        Self::load_from_path_with_options(dict_path, false)
+        Self::load_from_path_with_options(dict_path, cfg!(feature = "mmap"))
     }
 
     /// Load dictionary from a directory with options
@@ -158,9 +163,9 @@ impl Dictionary {
         Ok(Dictionary {
             prefix_dictionary: Arc::new(prefix_dictionary),
             connection_cost_matrix: Arc::new(connection_cost_matrix),
-            character_definition,
-            unknown_dictionary,
-            metadata,
+            character_definition: Arc::new(character_definition),
+            unknown_dictionary: Arc::new(unknown_dictionary),
+            metadata: Arc::new(metadata),
         })
     }
 

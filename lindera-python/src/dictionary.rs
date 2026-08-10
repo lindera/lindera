@@ -70,7 +70,7 @@ impl PyDictionary {
 
     /// Returns the full metadata object of the dictionary.
     pub fn metadata(&self) -> PyMetadata {
-        PyMetadata::from(self.inner.metadata.clone())
+        PyMetadata::from((*self.inner.metadata).clone())
     }
 
     fn __str__(&self) -> String {

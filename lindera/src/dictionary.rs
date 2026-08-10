@@ -249,7 +249,7 @@ pub fn resolve_embedded_loader(
 ///
 /// A `Dictionary`, or an error if loading fails.
 pub fn load_fs_dictionary(path: &Path) -> LinderaResult<Dictionary> {
-    load_fs_dictionary_with_options(path, false)
+    load_fs_dictionary_with_options(path, cfg!(feature = "mmap"))
 }
 
 /// Load a dictionary from a filesystem directory, optionally via
@@ -300,7 +300,7 @@ pub fn load_embedded_dictionary(kind: DictionaryKind) -> LinderaResult<Dictionar
 ///
 /// A `Dictionary`, or an error if the URI is invalid or loading fails.
 pub fn load_dictionary(uri: &str) -> LinderaResult<Dictionary> {
-    load_dictionary_with_options(uri, false)
+    load_dictionary_with_options(uri, cfg!(feature = "mmap"))
 }
 
 /// Load a dictionary from a URI (`embedded://<kind>`, `file://<path>`) or a

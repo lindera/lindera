@@ -162,7 +162,7 @@ impl PhpDictionary {
     ///
     /// A Metadata instance.
     pub fn metadata(&self) -> PhpMetadata {
-        PhpMetadata::from(self.inner.metadata.clone())
+        PhpMetadata::from((*self.inner.metadata).clone())
     }
 
     /// Returns a string representation.

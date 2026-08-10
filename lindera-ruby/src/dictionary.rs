@@ -52,7 +52,7 @@ impl RbDictionary {
     ///
     /// The dictionary metadata.
     fn metadata(&self) -> RbMetadata {
-        RbMetadata::from(self.inner.metadata.clone())
+        RbMetadata::from((*self.inner.metadata).clone())
     }
 
     /// Returns the string representation.

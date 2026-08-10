@@ -205,6 +205,7 @@ fn built_metadata_carries_the_context_id_map() {
     let map = dictionary
         .metadata
         .context_id_map
+        .clone()
         .expect("a remapped build must persist its context-ID map");
 
     // Ranked by the histogram: 3 -> 1, 2 -> 2, 1 -> 3, with 0 pinned.

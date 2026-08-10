@@ -224,11 +224,13 @@ impl Segmenter {
     /// user dictionary loading, or tokenization process.
     pub fn from_config(config: &SegmenterConfig) -> LinderaResult<Self> {
         // Whether to route filesystem-loaded dictionaries through memory-mapped
-        // reads. Ignored for `embedded://` dictionaries. Default is false.
+        // reads. Ignored for `embedded://` dictionaries. Defaults to on when
+        // the `mmap` feature is compiled in (#879); set `"use_mmap": false`
+        // to force eager reads.
         let use_mmap = config
             .get("use_mmap")
             .and_then(Value::as_bool)
-            .unwrap_or(false);
+            .unwrap_or(cfg!(feature = "mmap"));
 
         // Load the dictionary from the config
         let dictionary = load_dictionary_with_options(
