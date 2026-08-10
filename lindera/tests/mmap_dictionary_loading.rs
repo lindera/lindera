@@ -16,7 +16,9 @@ use lindera_dictionary::dictionary::metadata::Metadata;
 
 const CHAR_DEF: &str = "\
 DEFAULT 0 1 0
+SPACE 0 1 0
 KANJI 0 0 2
+0x0020 SPACE
 0x4E00..0x9FFF KANJI
 ";
 
@@ -117,4 +119,73 @@ fn mmap_loading_matches_plain_loading_via_uri() {
 fn mmap_flag_is_ignored_for_embedded_dictionaries() {
     let result = load_dictionary_with_options("embedded://ipadic", true);
     assert!(result.is_ok());
+}
+
+/// Regression test for #879: the no-option loaders default to mmap when the
+/// `mmap` feature is compiled in, and the default must produce output
+/// identical to both explicit modes.
+#[test]
+fn default_load_matches_both_explicit_modes() {
+    use lindera::dictionary::load_fs_dictionary;
+
+    let dict = build_dictionary();
+
+    let default_dictionary = load_fs_dictionary(dict.path()).expect("default load should succeed");
+    let segmenter = Segmenter::new(Mode::Normal, default_dictionary, None);
+    let mut tokens = segmenter.segment(Cow::Borrowed("東京都")).unwrap();
+    let default_result: Vec<(String, String)> = tokens
+        .iter_mut()
+        .map(|t| {
+            let pos = t.get_detail(0).unwrap_or("").to_string();
+            (t.surface.to_string(), pos)
+        })
+        .collect();
+
+    assert_eq!(default_result, segment(dict.path(), "東京都", false));
+    assert_eq!(default_result, segment(dict.path(), "東京都", true));
+}
+
+/// Regression test for #879: `Segmenter::from_config` without a `use_mmap`
+/// key must load a filesystem dictionary with the feature-dependent default.
+#[test]
+fn from_config_without_use_mmap_defaults_and_segments() {
+    let dict = build_dictionary();
+
+    let config = serde_json::json!({
+        "dictionary": dict.path().to_str().unwrap(),
+        "mode": "normal",
+    });
+    let segmenter = Segmenter::from_config(&config).expect("from_config should succeed");
+    let tokens = segmenter.segment(Cow::Borrowed("東京都")).unwrap();
+    let surfaces: Vec<_> = tokens.into_iter().map(|t| t.surface.to_string()).collect();
+    assert_eq!(surfaces, vec!["東京".to_string(), "都".to_string()]);
+}
+
+/// Regression test for #879: `Dictionary::clone` must be fully O(1) --
+/// every field is Arc-shared, not deep-copied.
+#[test]
+fn dictionary_clone_shares_all_fields() {
+    use std::sync::Arc;
+
+    let dict_dir = build_dictionary();
+    let dictionary = load_fs_dictionary_with_options(dict_dir.path(), false).unwrap();
+    let cloned = dictionary.clone();
+
+    assert!(Arc::ptr_eq(
+        &dictionary.prefix_dictionary,
+        &cloned.prefix_dictionary
+    ));
+    assert!(Arc::ptr_eq(
+        &dictionary.connection_cost_matrix,
+        &cloned.connection_cost_matrix
+    ));
+    assert!(Arc::ptr_eq(
+        &dictionary.character_definition,
+        &cloned.character_definition
+    ));
+    assert!(Arc::ptr_eq(
+        &dictionary.unknown_dictionary,
+        &cloned.unknown_dictionary
+    ));
+    assert!(Arc::ptr_eq(&dictionary.metadata, &cloned.metadata));
 }

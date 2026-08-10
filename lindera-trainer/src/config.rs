@@ -348,9 +348,9 @@ impl TrainerConfig {
         Ok(Dictionary {
             prefix_dictionary: Arc::new(prefix_dict),
             connection_cost_matrix: Arc::new(conn_matrix),
-            character_definition: char_def,
-            unknown_dictionary: unknown_dict,
-            metadata: Metadata::default(),
+            character_definition: Arc::new(char_def),
+            unknown_dictionary: Arc::new(unknown_dict),
+            metadata: Arc::new(Metadata::default()),
         })
     }
 

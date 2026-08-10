@@ -73,9 +73,9 @@ macro_rules! embedded_dictionary {
             Ok($crate::dictionary::Dictionary {
                 prefix_dictionary: ::std::sync::Arc::new(prefix_dictionary),
                 connection_cost_matrix: ::std::sync::Arc::new(connection_cost_matrix),
-                character_definition,
-                unknown_dictionary,
-                metadata,
+                character_definition: ::std::sync::Arc::new(character_definition),
+                unknown_dictionary: ::std::sync::Arc::new(unknown_dictionary),
+                metadata: ::std::sync::Arc::new(metadata),
             })
         }
 

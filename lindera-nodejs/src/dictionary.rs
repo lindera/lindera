@@ -39,7 +39,7 @@ impl JsDictionary {
     /// Returns the full metadata object of the dictionary.
     #[napi]
     pub fn metadata(&self) -> JsMetadata {
-        JsMetadata::from(self.inner.metadata.clone())
+        JsMetadata::from((*self.inner.metadata).clone())
     }
 }
 
