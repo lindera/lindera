@@ -327,11 +327,18 @@ pub struct Lattice {
     // Scratch buffers for the Aho-Corasick match pre-scan in set_text/set_text_nbest.
     // Reused across calls (like the fields above) instead of being reallocated per
     // call, since set_text runs once per sentence rather than once per document.
-    /// Linked-list head table: matches_head[start_idx] -> index into matches_store.
-    matches_head: Vec<usize>,
+    /// Linked-list head table: matches_head[start_idx] -> index into
+    /// matches_store; u32::MAX terminates a list (#880 shrank the element
+    /// widths to halve the per-sentence refill and walk traffic).
+    matches_head: Vec<u32>,
     /// Linked-list node pool: (match end offset, word entry, next node index).
-    matches_store: Vec<(usize, WordEntry, usize)>,
+    matches_store: Vec<(u32, WordEntry, u32)>,
 }
+
+/// Upper bound applied to every stored `path_cost` so the relaxation loops
+/// can use plain addition: one connection cost plus one penalty per step is
+/// at most 2 * 32,767, which cannot overflow from this clamp.
+const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct CharData {
@@ -507,51 +514,52 @@ impl Lattice {
         // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
         // matches_store (a plain append-only pool).
         self.matches_head.clear();
-        self.matches_head.resize(len + 1, usize::MAX);
+        self.matches_head.resize(len + 1, u32::MAX);
         self.matches_store.clear();
 
         // System dictionary scan
+        let vals: &[u8] = &dict.vals_data;
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
             let (offset, count) = dict.decode_val(m.value());
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
             // Bounds check for safety, though daachorse should guarantee valid ids if built correctly
-            if offset_bytes < dict.vals_data.len() {
-                let data_slice = &dict.vals_data[offset_bytes..];
-                for i in 0..count {
-                    let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
-                    if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
-                        let entry = WordEntry::deserialize(&data_slice[entry_offset..], true);
-                        if start < self.matches_head.len() {
-                            let next = self.matches_head[start];
-                            self.matches_head[start] = self.matches_store.len();
-                            self.matches_store.push((m.end(), entry, next));
-                        }
-                    }
+            if start < self.matches_head.len() {
+                // Take the valid prefix of the entry block with one bounds
+                // computation instead of a length check per entry (#880).
+                let avail = vals.len().saturating_sub(offset_bytes);
+                let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
+                let block = &vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
+                let end = m.end() as u32;
+                for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    let entry = WordEntry::deserialize(chunk, true);
+                    let next = self.matches_head[start];
+                    self.matches_head[start] = self.matches_store.len() as u32;
+                    self.matches_store.push((end, entry, next));
                 }
             }
         }
 
         // User dictionary scan
         if let Some(ud) = user_dict {
+            let ud_vals: &[u8] = &ud.vals_data;
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
                 let (offset, count) = ud.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
-                if offset_bytes < ud.vals_data.len() {
-                    let data_slice = &ud.vals_data[offset_bytes..];
-                    for i in 0..count {
-                        let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
-                        if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
-                            let entry = WordEntry::deserialize(&data_slice[entry_offset..], false);
-                            if start < self.matches_head.len() {
-                                let next = self.matches_head[start];
-                                self.matches_head[start] = self.matches_store.len();
-                                self.matches_store.push((m.end(), entry, next));
-                            }
-                        }
+                if start < self.matches_head.len() {
+                    let avail = ud_vals.len().saturating_sub(offset_bytes);
+                    let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
+                    let block =
+                        &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
+                    let end = m.end() as u32;
+                    for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                        let entry = WordEntry::deserialize(chunk, false);
+                        let next = self.matches_head[start];
+                        self.matches_head[start] = self.matches_store.len() as u32;
+                        self.matches_store.push((end, entry, next));
                     }
                 }
             }
@@ -571,14 +579,16 @@ impl Lattice {
             // Use cached matches
             if start < self.matches_head.len() {
                 let mut match_idx = self.matches_head[start];
-                while match_idx != usize::MAX {
-                    let (end, word_entry, next) = self.matches_store[match_idx];
+                while match_idx != u32::MAX {
+                    let (end, word_entry, next) = self.matches_store[match_idx as usize];
 
-                    let prefix_len = end - start;
+                    let prefix_len = end as usize - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
                     let edge = Self::create_edge(
                         word_entry, // WordEntry is Copy
-                        start, end, kanji_only,
+                        start,
+                        end as usize,
+                        kanji_only,
                     );
                     self.add_edge_in_lattice(edge, cost_matrix, search_mode);
                     found = true;
@@ -618,16 +628,15 @@ impl Lattice {
                 stop_index: len as u32,
                 ..Default::default()
             };
-            // Calculate cost for EOS
+            // Calculate cost for EOS with the row hoisted (#880).
             let left_edges = &self.ends_at[len];
             let mut best_cost = i32::MAX;
             let mut best_left = None;
-            let right_left_id = 0; // EOS default left_id
+            let cost_row = cost_matrix.row(0); // EOS default left_id
 
             for (i, left_edge) in left_edges.iter().enumerate() {
-                let left_right_id = left_edge.word_entry.right_id();
-                let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-                let path_cost = left_edge.path_cost.saturating_add(conn_cost);
+                let path_cost =
+                    left_edge.path_cost + cost_row[left_edge.word_entry.right_id() as usize] as i32;
                 if path_cost < best_cost {
                     best_cost = path_cost;
                     best_left = Some(i as u16);
@@ -709,8 +718,7 @@ impl Lattice {
         let stop_index = edge.stop_index as usize;
         let right_left_id = edge.word_entry.left_id();
 
-        let left_edges = &self.ends_at[start_index];
-        if left_edges.is_empty() {
+        if self.ends_at[start_index].is_empty() {
             return;
         }
 
@@ -719,10 +727,13 @@ impl Lattice {
 
         match mode {
             Mode::Normal => {
+                // Matrix row hoisted out of the loop; the plain additions
+                // cannot overflow thanks to PATH_COST_CLAMP (#880).
+                let left_edges = &self.ends_at[start_index];
+                let cost_row = cost_matrix.row(right_left_id);
                 for (i, left_edge) in left_edges.iter().enumerate() {
-                    let left_right_id = left_edge.word_entry.right_id();
-                    let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-                    let total_cost = left_edge.path_cost.saturating_add(conn_cost);
+                    let conn_cost = cost_row[left_edge.word_entry.right_id() as usize] as i32;
+                    let total_cost = left_edge.path_cost + conn_cost;
 
                     if total_cost < best_cost {
                         best_cost = total_cost;
@@ -731,6 +742,7 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
+                let left_edges = &self.ends_at[start_index];
                 for (i, left_edge) in left_edges.iter().enumerate() {
                     let left_right_id = left_edge.word_entry.right_id();
                     let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
@@ -749,7 +761,9 @@ impl Lattice {
         }
 
         if let Some(best_left_idx) = best_left {
-            edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
+            edge.path_cost = best_cost
+                .saturating_add(edge.word_entry.word_cost as i32)
+                .min(PATH_COST_CLAMP);
             edge.left_index = best_left_idx;
             self.ends_at[stop_index].push(edge);
         }
@@ -853,8 +867,7 @@ impl Lattice {
         let stop_index = edge.stop_index as usize;
         let right_left_id = edge.word_entry.left_id();
 
-        let left_edges = &self.ends_at[start_index];
-        if left_edges.is_empty() {
+        if self.ends_at[start_index].is_empty() {
             return;
         }
 
@@ -866,10 +879,12 @@ impl Lattice {
 
         match mode {
             Mode::Normal => {
-                for (i, left_edge) in left_edges.iter().enumerate() {
-                    let left_right_id = left_edge.word_entry.right_id();
-                    let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-                    let total_cost = left_edge.path_cost.saturating_add(conn_cost);
+                // Same hoisted-row scan as add_edge_in_lattice (#880).
+                let cost_row = cost_matrix.row(right_left_id);
+                for i in 0..self.ends_at[start_index].len() {
+                    let left_edge = &self.ends_at[start_index][i];
+                    let total_cost = left_edge.path_cost
+                        + cost_row[left_edge.word_entry.right_id() as usize] as i32;
 
                     // Record ALL transitions for N-Best
                     self.all_paths[stop_index].push(PathEntry {
@@ -886,7 +901,8 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
-                for (i, left_edge) in left_edges.iter().enumerate() {
+                for i in 0..self.ends_at[start_index].len() {
+                    let left_edge = &self.ends_at[start_index][i];
                     let left_right_id = left_edge.word_entry.right_id();
                     let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
                     let penalty_cost = penalty.penalty(left_edge);
@@ -912,7 +928,9 @@ impl Lattice {
         }
 
         if let Some(best_left_idx) = best_left {
-            edge.path_cost = best_cost.saturating_add(edge.word_entry.word_cost as i32);
+            edge.path_cost = best_cost
+                .saturating_add(edge.word_entry.word_cost as i32)
+                .min(PATH_COST_CLAMP);
             edge.left_index = best_left_idx;
             self.ends_at[stop_index].push(edge);
         }
@@ -1051,50 +1069,51 @@ impl Lattice {
         // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
         // matches_store (a plain append-only pool).
         self.matches_head.clear();
-        self.matches_head.resize(len + 1, usize::MAX);
+        self.matches_head.resize(len + 1, u32::MAX);
         self.matches_store.clear();
 
         // System dictionary scan
+        let vals: &[u8] = &dict.vals_data;
         for m in dict.da.find_overlapping_iter(text) {
             let start = m.start();
             let (offset, count) = dict.decode_val(m.value());
             let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
-            if offset_bytes < dict.vals_data.len() {
-                let data_slice = &dict.vals_data[offset_bytes..];
-                for i in 0..count {
-                    let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
-                    if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
-                        let entry = WordEntry::deserialize(&data_slice[entry_offset..], true);
-                        if start < self.matches_head.len() {
-                            let next = self.matches_head[start];
-                            self.matches_head[start] = self.matches_store.len();
-                            self.matches_store.push((m.end(), entry, next));
-                        }
-                    }
+            if start < self.matches_head.len() {
+                // Take the valid prefix of the entry block with one bounds
+                // computation instead of a length check per entry (#880).
+                let avail = vals.len().saturating_sub(offset_bytes);
+                let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
+                let block = &vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
+                let end = m.end() as u32;
+                for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    let entry = WordEntry::deserialize(chunk, true);
+                    let next = self.matches_head[start];
+                    self.matches_head[start] = self.matches_store.len() as u32;
+                    self.matches_store.push((end, entry, next));
                 }
             }
         }
 
         // User dictionary scan
         if let Some(ud) = user_dict {
+            let ud_vals: &[u8] = &ud.vals_data;
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
                 let (offset, count) = ud.decode_val(m.value());
                 let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
 
-                if offset_bytes < ud.vals_data.len() {
-                    let data_slice = &ud.vals_data[offset_bytes..];
-                    for i in 0..count {
-                        let entry_offset = WordEntry::SERIALIZED_LEN * (i as usize);
-                        if entry_offset + WordEntry::SERIALIZED_LEN <= data_slice.len() {
-                            let entry = WordEntry::deserialize(&data_slice[entry_offset..], false);
-                            if start < self.matches_head.len() {
-                                let next = self.matches_head[start];
-                                self.matches_head[start] = self.matches_store.len();
-                                self.matches_store.push((m.end(), entry, next));
-                            }
-                        }
+                if start < self.matches_head.len() {
+                    let avail = ud_vals.len().saturating_sub(offset_bytes);
+                    let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
+                    let block =
+                        &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
+                    let end = m.end() as u32;
+                    for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                        let entry = WordEntry::deserialize(chunk, false);
+                        let next = self.matches_head[start];
+                        self.matches_head[start] = self.matches_store.len() as u32;
+                        self.matches_store.push((end, entry, next));
                     }
                 }
             }
@@ -1111,12 +1130,12 @@ impl Lattice {
 
             if start < self.matches_head.len() {
                 let mut match_idx = self.matches_head[start];
-                while match_idx != usize::MAX {
-                    let (end, word_entry, next) = self.matches_store[match_idx];
+                while match_idx != u32::MAX {
+                    let (end, word_entry, next) = self.matches_store[match_idx as usize];
 
-                    let prefix_len = end - start;
+                    let prefix_len = end as usize - start;
                     let kanji_only = self.is_kanji_all(char_idx, prefix_len);
-                    let edge = Self::create_edge(word_entry, start, end, kanji_only);
+                    let edge = Self::create_edge(word_entry, start, end as usize, kanji_only);
                     self.add_edge_in_lattice_nbest(edge, cost_matrix, search_mode);
                     found = true;
 
@@ -1155,15 +1174,14 @@ impl Lattice {
                 stop_index: len as u32,
                 ..Default::default()
             };
-            let left_edges = &self.ends_at[len];
             let mut best_cost = i32::MAX;
             let mut best_left = None;
-            let right_left_id = 0; // EOS default left_id
+            let cost_row = cost_matrix.row(0); // EOS default left_id
 
-            for (i, left_edge) in left_edges.iter().enumerate() {
-                let left_right_id = left_edge.word_entry.right_id();
-                let conn_cost = cost_matrix.cost(left_right_id, right_left_id);
-                let path_cost = left_edge.path_cost.saturating_add(conn_cost);
+            for i in 0..self.ends_at[len].len() {
+                let left_edge = &self.ends_at[len][i];
+                let path_cost =
+                    left_edge.path_cost + cost_row[left_edge.word_entry.right_id() as usize] as i32;
 
                 // Record all transitions to EOS
                 self.all_paths[len].push(PathEntry {
