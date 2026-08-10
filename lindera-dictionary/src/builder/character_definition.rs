@@ -244,11 +244,7 @@ impl CharacterDefinitionBuilder {
             category_names[category_id.0] = category_name.clone();
         }
         let mapping = self.build_lookup_table();
-        CharacterDefinition {
-            category_definitions: self.category_definition.clone(),
-            category_names,
-            mapping,
-        }
+        CharacterDefinition::new(self.category_definition.clone(), category_names, mapping)
     }
 
     pub fn build(
