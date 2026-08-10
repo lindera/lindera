@@ -81,6 +81,23 @@ impl ConnectionCostMatrix {
         }
     }
 
+    /// Returns the contiguous cost row for a fixed backward (right-context)
+    /// id, so callers relaxing many forward ids against the same backward id
+    /// pay the offset computation and bounds check once.
+    ///
+    /// # Arguments
+    ///
+    /// * `backward_id` - The backward context id selecting the row.
+    ///
+    /// # Returns
+    ///
+    /// A `forward_size`-long slice indexed directly by forward context id.
+    #[inline]
+    pub fn row(&self, backward_id: u32) -> &[i16] {
+        let start = (backward_id * self.forward_size) as usize;
+        &self.costs_data[start..start + self.forward_size as usize]
+    }
+
     #[inline]
     pub fn cost(&self, forward_id: u32, backward_id: u32) -> i32 {
         // Context-id access profiling (feature `ctxfreq`); compiled out by default.
