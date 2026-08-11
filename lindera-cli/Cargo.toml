@@ -40,13 +40,28 @@ default = ["mmap", "train"]
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.6.4", features = ["derive", "cargo"] }
+dirs = "6.0.0"
+# Deflate backend for the zip crate's `deflate-flate2` feature. `rust_backend`
+# selects miniz_oxide (MIT OR Zlib OR Apache-2.0), avoiding the Zlib-only
+# zlib-rs backend that zip's default `deflate` feature would pull in.
+flate2 = { version = "1.1.9", default-features = false, features = [
+    "rust_backend",
+] }
 lindera = { workspace = true }
 lindera-analysis = { workspace = true }
 num_cpus = { workspace = true }
 serde_json = { workspace = true }
+# Same configuration as lindera-dictionary's build-time dependency: blocking
+# HTTPS GET without an async runtime; `rustls` selects the ring provider,
+# keeping aws-lc-sys out of the dependency graph.
+ureq = { version = "3.3.0", default-features = false, features = ["rustls"] }
+zip = { version = "8.6.0", default-features = false, features = [
+    "deflate-flate2",
+] }
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
+tempfile = "3.27.0"
 
 [[bin]]
 name = "lindera"

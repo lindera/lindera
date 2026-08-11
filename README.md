@@ -21,6 +21,7 @@ lindera = "5.0"
 
 Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
 Download a dictionary archive (e.g. `lindera-ipadic-*.zip`) and specify the path when loading.
+When using the CLI, `lindera download ipadic` downloads and installs a dictionary automatically.
 
 ## Python Bindings
 

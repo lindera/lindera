@@ -4,8 +4,10 @@ use lindera::LinderaResult;
 use lindera_cli::get_version;
 
 mod commands;
+mod dictionary_registry;
 
 use commands::build::BuildArgs;
+use commands::download::DownloadArgs;
 #[cfg(feature = "train")]
 use commands::export::ExportArgs;
 use commands::list::ListArgs;
@@ -30,6 +32,7 @@ enum Commands {
     List(ListArgs),
     Tokenize(TokenizeArgs),
     Build(BuildArgs),
+    Download(DownloadArgs),
     #[cfg(feature = "train")]
     Train(TrainArgs),
     #[cfg(feature = "train")]
@@ -43,6 +46,7 @@ fn main() -> LinderaResult<()> {
         Commands::List(args) => commands::list::list(args),
         Commands::Tokenize(args) => commands::tokenize::tokenize(args),
         Commands::Build(args) => commands::build::build(args),
+        Commands::Download(args) => commands::download::download(args),
         #[cfg(feature = "train")]
         Commands::Train(args) => commands::train::train(args),
         #[cfg(feature = "train")]

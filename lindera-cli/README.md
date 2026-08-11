@@ -23,7 +23,16 @@ Alternatively, you can download a binary from the following release page:
 
 ## Dictionary
 
-Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
+The easiest way to obtain a dictionary is the `download` subcommand, which installs the pre-built dictionary matching the CLI version under the OS-standard application data directory:
+
+```shell script
+% lindera download ipadic
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+```
+
+Available dictionary names: `ipadic`, `ipadic-neologd`, `unidic`, `ko-dic`, `cc-cedict`, `jieba`.
+
+Alternatively, pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
 Download a dictionary archive (e.g. `lindera-ipadic-*.zip`), extract it, and specify the path with the `--dict` option.
 
 ## License

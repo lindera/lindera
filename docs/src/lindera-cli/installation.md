@@ -16,7 +16,21 @@ Alternatively, you can download a pre-built binary from the release page:
 
 ## Obtaining Dictionaries
 
-Lindera does not bundle dictionaries with the binary. You need to download a pre-built dictionary separately from the [GitHub Releases](https://github.com/lindera/lindera/releases) page:
+Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the `download` subcommand, which fetches the pre-built dictionary matching the CLI version and installs it under the OS-standard application data directory:
+
+```shell
+% lindera download ipadic
+```
+
+After downloading, the dictionary can be referenced by name:
+
+```shell
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
+```
+
+See [Commands](commands.md#download) for the available dictionary names and storage locations.
+
+Alternatively, you can download a pre-built dictionary manually from the [GitHub Releases](https://github.com/lindera/lindera/releases) page:
 
 ```shell
 # Example: download and extract the IPADIC dictionary
@@ -24,10 +38,10 @@ Lindera does not bundle dictionaries with the binary. You need to download a pre
 % unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 ```
 
-Then specify the dictionary path when using the CLI:
+Then specify the extracted dictionary path when using the CLI (note that the archive contains a `lindera-ipadic` directory):
 
 ```shell
-% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
+% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic/lindera-ipadic
 ```
 
 ## Build from Source

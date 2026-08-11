@@ -1,6 +1,7 @@
 use lindera::error::{LinderaError, LinderaErrorKind};
 
 pub mod build;
+pub mod download;
 #[cfg(feature = "train")]
 pub mod export;
 pub mod list;

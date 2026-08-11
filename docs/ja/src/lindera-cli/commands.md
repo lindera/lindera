@@ -1,10 +1,11 @@
 # コマンド
 
-Lindera CLI は5つのメインコマンドを提供します：
+Lindera CLI は6つのメインコマンドを提供します：
 
 - **list** - バイナリに埋め込まれた形態素解析辞書の一覧を表示
 - **tokenize** - テキストに対して形態素解析を実行
 - **build** - ソースCSVファイルから辞書をビルド
+- **download** - GitHub リリースページから学習済み辞書をダウンロード
 - **train** - 注釈付きコーパスデータからCRFモデルを学習
 - **export** - 学習済みモデルを辞書フォーマットにエクスポート
 
@@ -34,9 +35,10 @@ ipadic
 
 ### パラメータ
 
-- `--dict` / `-d`: 辞書のパスまたはURI（必須）
+- `--dict` / `-d`: 辞書のパス、URI、またはダウンロード済み辞書名（必須）
   - ファイルパス: `/path/to/dictionary`
   - 埋め込み: `embedded://ipadic`, `embedded://unidic`, etc.
+  - ダウンロード済み辞書名: `ipadic`, `unidic` など。`lindera download` でインストールした辞書に解決されます。同名のファイルパスが実在する場合はパスが優先されます。
 - `--output` / `-o`: 出力形式 (デフォルト: mecab)
   - `mecab`: 品詞情報を含むMeCab互換形式
   - `wakati`: スペース区切りのトークンのみ
@@ -747,6 +749,58 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 ```
+
+## download
+
+CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リリースページ](https://github.com/lindera/lindera/releases)からダウンロードし、OS 標準のアプリケーションデータディレクトリにインストールします。
+
+### download パラメータ
+
+- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
+- `--force`: 既存の辞書を再ダウンロードして置き換える
+
+### 保存場所
+
+辞書はバージョン付きレイアウト `<データディレクトリ>/dictionaries/<バージョン>/lindera-<辞書名>/` にインストールされます。OS ごとのデフォルトのベースディレクトリ：
+
+| OS | デフォルトの場所 |
+| --- | --- |
+| Linux | `~/.local/share/lindera` |
+| macOS | `~/Library/Application Support/lindera` |
+| Windows | `%LOCALAPPDATA%\lindera` |
+
+環境変数 `LINDERA_DATA_DIR` を設定するとベースディレクトリを上書きできます。この変数はビルド時のソースキャッシュ用変数 `LINDERA_BUILD_DICTIONARY_CACHE_DIR` とは無関係です。
+
+### download の使用方法
+
+```shell
+% lindera download ipadic
+```
+
+```text
+Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+```
+
+インストール先のパスは標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで取得できます：
+
+```shell
+% DICT_DIR=$(lindera download ipadic)
+```
+
+ダウンロード後は `tokenize` で辞書名を指定して参照できます：
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+```
+
+注意事項：
+
+- アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。
+- 整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。
+- 最大の辞書（`ipadic-neologd`）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。
 
 ## train
 

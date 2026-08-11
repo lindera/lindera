@@ -1,10 +1,11 @@
 # Commands
 
-The Lindera CLI provides five main commands:
+The Lindera CLI provides six main commands:
 
 - **list** - List the morphological analysis dictionaries embedded in the binary
 - **tokenize** - Perform morphological analysis on text
 - **build** - Build a dictionary from source CSV files
+- **download** - Download a pre-built dictionary from the GitHub releases page
 - **train** - Train a CRF model from annotated corpus data
 - **export** - Export a trained model to dictionary format
 
@@ -34,9 +35,10 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 
 ### Parameters
 
-- `--dict` / `-d`: Dictionary path or URI (required)
+- `--dict` / `-d`: Dictionary path, URI, or downloaded dictionary name (required)
   - File path: `/path/to/dictionary`
   - Embedded: `embedded://ipadic`, `embedded://unidic`, etc.
+  - Downloaded dictionary name: `ipadic`, `unidic`, etc. — resolved to the dictionary installed by `lindera download`. An existing filesystem path with the same name takes precedence.
 - `--output` / `-o`: Output format (default: mecab)
   - `mecab`: MeCab-compatible format with part-of-speech info
   - `wakati`: Space-separated tokens only
@@ -747,6 +749,58 @@ For more details about user dictionary format please refer to the following URL:
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 ```
+
+## download
+
+Download the pre-built dictionary archive matching the CLI version from the [GitHub releases page](https://github.com/lindera/lindera/releases) and install it under the OS-standard application data directory.
+
+### Download parameters
+
+- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `ko-dic`, `cc-cedict`, `jieba`
+- `--force`: Re-download and replace an existing dictionary
+
+### Storage location
+
+Dictionaries are installed under a versioned layout `<data dir>/dictionaries/<version>/lindera-<name>/`. The default base directory per OS:
+
+| OS | Default location |
+| --- | --- |
+| Linux | `~/.local/share/lindera` |
+| macOS | `~/Library/Application Support/lindera` |
+| Windows | `%LOCALAPPDATA%\lindera` |
+
+Set the `LINDERA_DATA_DIR` environment variable to override the base directory. This variable is unrelated to the build-time source cache variable `LINDERA_BUILD_DICTIONARY_CACHE_DIR`.
+
+### Download usage
+
+```shell
+% lindera download ipadic
+```
+
+```text
+Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+```
+
+The installed path is printed to stdout (progress and notices go to stderr), so it can be captured in scripts:
+
+```shell
+% DICT_DIR=$(lindera download ipadic)
+```
+
+After downloading, the dictionary can be referenced by name in `tokenize`:
+
+```shell
+% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+```
+
+Notes:
+
+- The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.
+- Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.
+- The largest dictionary (`ipadic-neologd`) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.
 
 ## train
 
