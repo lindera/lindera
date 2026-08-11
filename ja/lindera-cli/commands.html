@@ -177,11 +177,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h1>
-<p>Lindera CLI は5つのメインコマンドを提供します：</p>
+<p>Lindera CLI は6つのメインコマンドを提供します：</p>
 <ul>
 <li><strong>list</strong> - バイナリに埋め込まれた形態素解析辞書の一覧を表示</li>
 <li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
 <li><strong>build</strong> - ソースCSVファイルから辞書をビルド</li>
+<li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
 </ul>
@@ -199,10 +200,11 @@
 <p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
 <ul>
-<li><code>--dict</code> / <code>-d</code>: 辞書のパスまたはURI（必須）
+<li><code>--dict</code> / <code>-d</code>: 辞書のパス、URI、またはダウンロード済み辞書名（必須）
 <ul>
 <li>ファイルパス: <code>/path/to/dictionary</code></li>
 <li>埋め込み: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+<li>ダウンロード済み辞書名: <code>ipadic</code>, <code>unidic</code> など。<code>lindera download</code> でインストールした辞書に解決されます。同名のファイルパスが実在する場合はパスが優先されます。</li>
 </ul>
 </li>
 <li><code>--output</code> / <code>-o</code>: 出力形式 (デフォルト: mecab)
@@ -741,6 +743,42 @@ EOS
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 </code></pre>
+<h2 id="download"><a class="header" href="#download">download</a></h2>
+<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、OS 標準のアプリケーションデータディレクトリにインストールします。</p>
+<h3 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h3>
+<ul>
+<li>辞書名（必須）: <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか</li>
+<li><code>--force</code>: 既存の辞書を再ダウンロードして置き換える</li>
+</ul>
+<h3 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h3>
+<p>辞書はバージョン付きレイアウト <code>&lt;データディレクトリ&gt;/dictionaries/&lt;バージョン&gt;/lindera-&lt;辞書名&gt;/</code> にインストールされます。OS ごとのデフォルトのベースディレクトリ：</p>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>デフォルトの場所</th></tr></thead><tbody>
+<tr><td>Linux</td><td><code>~/.local/share/lindera</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/lindera</code></td></tr>
+<tr><td>Windows</td><td><code>%LOCALAPPDATA%\lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>環境変数 <code>LINDERA_DATA_DIR</code> を設定するとベースディレクトリを上書きできます。この変数はビルド時のソースキャッシュ用変数 <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> とは無関係です。</p>
+<h3 id="download-の使用方法"><a class="header" href="#download-の使用方法">download の使用方法</a></h3>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+</code></pre>
+<p>インストール先のパスは標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで取得できます：</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+</code></pre>
+<p>ダウンロード後は <code>tokenize</code> で辞書名を指定して参照できます：</p>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+</code></pre>
+<p>注意事項：</p>
+<ul>
+<li>アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。</li>
+<li>整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。</li>
+<li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
+</ul>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。（<code>train</code> 機能フラグはデフォルトで有効になっています。）</p>
 <h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>

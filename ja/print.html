@@ -1904,13 +1904,20 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
-<p>Lindera はバイナリに辞書を同梱していません。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を別途ダウンロードする必要があります：</p>
+<p>Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は <code>download</code> サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して OS 標準のアプリケーションデータディレクトリにインストールします：</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>ダウンロード後は辞書名で参照できます：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
+</code></pre>
+<p>利用可能な辞書名と保存場所については<a href="lindera-cli/commands.html#download">コマンド</a>を参照してください。</p>
+<p>または、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を手動でダウンロードすることもできます：</p>
 <pre><code class="language-shell"># 例: IPADIC 辞書のダウンロードと展開
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 % unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<p>CLI 使用時に辞書パスを指定します：</p>
-<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
+<p>CLI 使用時に展開した辞書パスを指定します（アーカイブには <code>lindera-ipadic</code> ディレクトリが含まれる点に注意）：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic/lindera-ipadic
 </code></pre>
 <h2 id="ソースからビルド"><a class="header" href="#ソースからビルド">ソースからビルド</a></h2>
 <h3 id="辞書なしでビルドデフォルト"><a class="header" href="#辞書なしでビルドデフォルト">辞書なしでビルド（デフォルト）</a></h3>
@@ -1948,11 +1955,12 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>詳細は <a href="lindera-cli/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h1>
-<p>Lindera CLI は5つのメインコマンドを提供します：</p>
+<p>Lindera CLI は6つのメインコマンドを提供します：</p>
 <ul>
 <li><strong>list</strong> - バイナリに埋め込まれた形態素解析辞書の一覧を表示</li>
 <li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
 <li><strong>build</strong> - ソースCSVファイルから辞書をビルド</li>
+<li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
 <li><strong>train</strong> - 注釈付きコーパスデータからCRFモデルを学習</li>
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
 </ul>
@@ -1970,10 +1978,11 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
 <h3 id="パラメータ-1"><a class="header" href="#パラメータ-1">パラメータ</a></h3>
 <ul>
-<li><code>--dict</code> / <code>-d</code>: 辞書のパスまたはURI（必須）
+<li><code>--dict</code> / <code>-d</code>: 辞書のパス、URI、またはダウンロード済み辞書名（必須）
 <ul>
 <li>ファイルパス: <code>/path/to/dictionary</code></li>
 <li>埋め込み: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+<li>ダウンロード済み辞書名: <code>ipadic</code>, <code>unidic</code> など。<code>lindera download</code> でインストールした辞書に解決されます。同名のファイルパスが実在する場合はパスが優先されます。</li>
 </ul>
 </li>
 <li><code>--output</code> / <code>-o</code>: 出力形式 (デフォルト: mecab)
@@ -2512,6 +2521,42 @@ EOS
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 </code></pre>
+<h2 id="download"><a class="header" href="#download">download</a></h2>
+<p>CLI と同じバージョンの学習済み辞書アーカイブを <a href="https://github.com/lindera/lindera/releases">GitHub リリースページ</a>からダウンロードし、OS 標準のアプリケーションデータディレクトリにインストールします。</p>
+<h3 id="download-パラメータ"><a class="header" href="#download-パラメータ">download パラメータ</a></h3>
+<ul>
+<li>辞書名（必須）: <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code> のいずれか</li>
+<li><code>--force</code>: 既存の辞書を再ダウンロードして置き換える</li>
+</ul>
+<h3 id="保存場所"><a class="header" href="#保存場所">保存場所</a></h3>
+<p>辞書はバージョン付きレイアウト <code>&lt;データディレクトリ&gt;/dictionaries/&lt;バージョン&gt;/lindera-&lt;辞書名&gt;/</code> にインストールされます。OS ごとのデフォルトのベースディレクトリ：</p>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>デフォルトの場所</th></tr></thead><tbody>
+<tr><td>Linux</td><td><code>~/.local/share/lindera</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/lindera</code></td></tr>
+<tr><td>Windows</td><td><code>%LOCALAPPDATA%\lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>環境変数 <code>LINDERA_DATA_DIR</code> を設定するとベースディレクトリを上書きできます。この変数はビルド時のソースキャッシュ用変数 <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> とは無関係です。</p>
+<h3 id="download-の使用方法"><a class="header" href="#download-の使用方法">download の使用方法</a></h3>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+</code></pre>
+<p>インストール先のパスは標準出力に出力されるため（進捗や通知は標準エラー出力）、スクリプトで取得できます：</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+</code></pre>
+<p>ダウンロード後は <code>tokenize</code> で辞書名を指定して参照できます：</p>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+</code></pre>
+<p>注意事項：</p>
+<ul>
+<li>アーカイブのバージョンは常に CLI のバージョンと一致します。リリースが公開されていない開発版のバージョンで実行すると HTTP 404 で失敗します。</li>
+<li>整合性は HTTPS トランスポートと ZIP アーカイブ内蔵のファイルごとの CRC32 チェックサムで検証されます。</li>
+<li>最大の辞書（<code>ipadic-neologd</code>）は約 305 MB のダウンロードで、展開時にはその約 2 倍の空きディスク容量が必要です。</li>
+</ul>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>注釈付きコーパスデータから新しい形態素解析モデルを学習します。この機能を使用するには、<code>train</code> 機能フラグを有効にしてビルドする必要があります。（<code>train</code> 機能フラグはデフォルトで有効になっています。）</p>
 <h3 id="学習パラメータ"><a class="header" href="#学習パラメータ">学習パラメータ</a></h3>
@@ -2647,16 +2692,21 @@ EOS
 <div style="break-before: page; page-break-before: always;"></div><h1 id="チュートリアル"><a class="header" href="#チュートリアル">チュートリアル</a></h1>
 <p>このチュートリアルでは、Lindera CLIの基本的な使い方を、インストールから高度なテキスト処理まで順を追って説明します。</p>
 <h2 id="1-cliのインストール"><a class="header" href="#1-cliのインストール">1. CLIのインストール</a></h2>
-<p>埋め込みIPADIC辞書付きでLindera CLIをインストールします：</p>
-<pre><code class="language-shell">% cargo install lindera-cli --features=embed-ipadic
+<p>Lindera CLIをインストールします：</p>
+<pre><code class="language-shell">% cargo install lindera-cli
 </code></pre>
 <p>インストールの確認：</p>
 <pre><code class="language-shell">% lindera --help
 </code></pre>
-<h2 id="2-埋め込み辞書を使用した基本的なトークナイズ"><a class="header" href="#2-埋め込み辞書を使用した基本的なトークナイズ">2. 埋め込み辞書を使用した基本的なトークナイズ</a></h2>
-<p>埋め込みIPADIC辞書を使用して日本語テキストをトークナイズします：</p>
+<h2 id="2-辞書のダウンロード"><a class="header" href="#2-辞書のダウンロード">2. 辞書のダウンロード</a></h2>
+<p>GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は OS 標準のアプリケーションデータディレクトリにインストールされます：</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>利用可能な辞書名と保存場所については<a href="lindera-cli/commands.html#download">コマンド</a>を参照してください。</p>
+<h2 id="3-基本的なトークナイズ"><a class="header" href="#3-基本的なトークナイズ">3. 基本的なトークナイズ</a></h2>
+<p>ダウンロードした IPADIC 辞書を辞書名で参照して、日本語テキストをトークナイズします：</p>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic
+  --dict ipadic
 </code></pre>
 <p>期待される出力：</p>
 <pre><code class="language-text">東京    名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
@@ -2668,10 +2718,10 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<h2 id="3-異なる出力形式を試す"><a class="header" href="#3-異なる出力形式を試す">3. 異なる出力形式を試す</a></h2>
+<h2 id="4-異なる出力形式を試す"><a class="header" href="#4-異なる出力形式を試す">4. 異なる出力形式を試す</a></h2>
 <h3 id="wakati-形式分かち書きのみ"><a class="header" href="#wakati-形式分かち書きのみ">Wakati 形式（分かち書きのみ）</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output wakati
 </code></pre>
 <p>期待される出力：</p>
@@ -2679,14 +2729,14 @@ EOS
 </code></pre>
 <h3 id="json-形式詳細情報"><a class="header" href="#json-形式詳細情報">JSON 形式（詳細情報）</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output json
 </code></pre>
 <p>バイトオフセット、品詞タグ、読みなどの詳細なトークン情報を含むJSON配列が出力されます。</p>
-<h2 id="4-decompose-モードの使用"><a class="header" href="#4-decompose-モードの使用">4. Decompose モードの使用</a></h2>
+<h2 id="5-decompose-モードの使用"><a class="header" href="#5-decompose-モードの使用">5. Decompose モードの使用</a></h2>
 <p>Decompose モードは複合名詞を構成要素に分解します：</p>
 <pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --mode decompose
 </code></pre>
 <p>期待される出力：</p>
@@ -2698,10 +2748,10 @@ EOS
 EOS
 </code></pre>
 <p>Normal モードと比較すると、「関西国際空港」が1つのトークンのままになる点が異なります。</p>
-<h2 id="5-文字フィルタとトークンフィルタの適用"><a class="header" href="#5-文字フィルタとトークンフィルタの適用">5. 文字フィルタとトークンフィルタの適用</a></h2>
+<h2 id="6-文字フィルタとトークンフィルタの適用"><a class="header" href="#6-文字フィルタとトークンフィルタの適用">6. 文字フィルタとトークンフィルタの適用</a></h2>
 <p>Unicode正規化を行い、一般名詞のみを保持します：</p>
 <pre><code class="language-shell">% echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
 </code></pre>
@@ -2715,22 +2765,22 @@ EOS
 <p>Unicode正規化により全角文字が半角に変換され、Token Filter により指定した品詞タグに一致するトークンのみが保持されます。</p>
 <p>複数のフィルタを組み合わせることもできます：</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
 </code></pre>
-<h2 id="6-ユーザー辞書の使用"><a class="header" href="#6-ユーザー辞書の使用">6. ユーザー辞書の使用</a></h2>
+<h2 id="7-ユーザー辞書の使用"><a class="header" href="#7-ユーザー辞書の使用">7. ユーザー辞書の使用</a></h2>
 <p>カスタム単語エントリを含むCSVファイル（例: <code>my_dict.csv</code>）を作成します：</p>
 <pre><code class="language-csv">東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 </code></pre>
 <p>ユーザー辞書を使用してトークナイズします：</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./my_dict.csv
 </code></pre>
 <p>ユーザー辞書がない場合、「東京スカイツリー」は複数のトークンに分割されます。ユーザー辞書を使用すると、1つのトークンとして認識されます。</p>
 <p>ビルド済みのユーザー辞書の例については、以下を参照してください：</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 </code></pre>
 <p>期待される出力：</p>

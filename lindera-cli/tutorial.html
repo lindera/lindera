@@ -179,16 +179,21 @@
                         <h1 id="tutorial"><a class="header" href="#tutorial">Tutorial</a></h1>
 <p>This tutorial walks you through the basic usage of the Lindera CLI, from installation to advanced text processing.</p>
 <h2 id="1-install-the-cli"><a class="header" href="#1-install-the-cli">1. Install the CLI</a></h2>
-<p>Install Lindera CLI with the embedded IPADIC dictionary:</p>
-<pre><code class="language-shell">% cargo install lindera-cli --features=embed-ipadic
+<p>Install Lindera CLI:</p>
+<pre><code class="language-shell">% cargo install lindera-cli
 </code></pre>
 <p>Verify the installation:</p>
 <pre><code class="language-shell">% lindera --help
 </code></pre>
-<h2 id="2-basic-tokenization-with-embedded-dictionary"><a class="header" href="#2-basic-tokenization-with-embedded-dictionary">2. Basic tokenization with embedded dictionary</a></h2>
-<p>Tokenize Japanese text using the embedded IPADIC dictionary:</p>
+<h2 id="2-download-a-dictionary"><a class="header" href="#2-download-a-dictionary">2. Download a dictionary</a></h2>
+<p>Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed under the OS-standard application data directory:</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations.</p>
+<h2 id="3-basic-tokenization"><a class="header" href="#3-basic-tokenization">3. Basic tokenization</a></h2>
+<p>Tokenize Japanese text using the downloaded IPADIC dictionary, referencing it by name:</p>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic
+  --dict ipadic
 </code></pre>
 <p>Expected output:</p>
 <pre><code class="language-text">東京    名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
@@ -200,10 +205,10 @@
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<h2 id="3-try-different-output-formats"><a class="header" href="#3-try-different-output-formats">3. Try different output formats</a></h2>
+<h2 id="4-try-different-output-formats"><a class="header" href="#4-try-different-output-formats">4. Try different output formats</a></h2>
 <h3 id="wakati-format-word-segmentation-only"><a class="header" href="#wakati-format-word-segmentation-only">Wakati format (word segmentation only)</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output wakati
 </code></pre>
 <p>Expected output:</p>
@@ -211,14 +216,14 @@ EOS
 </code></pre>
 <h3 id="json-format-detailed-information"><a class="header" href="#json-format-detailed-information">JSON format (detailed information)</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output json
 </code></pre>
 <p>This produces a JSON array with detailed token information including byte offsets, part-of-speech tags, readings, and more.</p>
-<h2 id="4-use-decompose-mode"><a class="header" href="#4-use-decompose-mode">4. Use decompose mode</a></h2>
+<h2 id="5-use-decompose-mode"><a class="header" href="#5-use-decompose-mode">5. Use decompose mode</a></h2>
 <p>Decompose mode splits compound nouns into their constituent parts:</p>
 <pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --mode decompose
 </code></pre>
 <p>Expected output:</p>
@@ -230,10 +235,10 @@ EOS
 EOS
 </code></pre>
 <p>Compare with normal mode, where "関西国際空港" remains as a single token.</p>
-<h2 id="5-apply-character-and-token-filters"><a class="header" href="#5-apply-character-and-token-filters">5. Apply character and token filters</a></h2>
+<h2 id="6-apply-character-and-token-filters"><a class="header" href="#6-apply-character-and-token-filters">6. Apply character and token filters</a></h2>
 <p>Use Unicode normalization and keep only common nouns:</p>
 <pre><code class="language-shell">% echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
 </code></pre>
@@ -247,22 +252,22 @@ EOS
 <p>The Unicode normalization converts full-width characters to half-width, and the token filter keeps only tokens matching the specified part-of-speech tags.</p>
 <p>You can also combine multiple filters:</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
 </code></pre>
-<h2 id="6-use-user-dictionary"><a class="header" href="#6-use-user-dictionary">6. Use user dictionary</a></h2>
+<h2 id="7-use-user-dictionary"><a class="header" href="#7-use-user-dictionary">7. Use user dictionary</a></h2>
 <p>Create a CSV file with custom word entries (e.g., <code>my_dict.csv</code>):</p>
 <pre><code class="language-csv">東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 </code></pre>
 <p>Tokenize with the user dictionary:</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./my_dict.csv
 </code></pre>
 <p>Without the user dictionary, "東京スカイツリー" would be split into multiple tokens. With the user dictionary, it is recognized as a single token.</p>
 <p>For pre-built user dictionary examples, see:</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 </code></pre>
 <p>Expected output:</p>

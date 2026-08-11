@@ -187,13 +187,20 @@
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
-<p>Lindera はバイナリに辞書を同梱していません。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を別途ダウンロードする必要があります：</p>
+<p>Lindera はバイナリに辞書を同梱していません。最も簡単な入手方法は <code>download</code> サブコマンドで、CLI と同じバージョンのビルド済み辞書を取得して OS 標準のアプリケーションデータディレクトリにインストールします：</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>ダウンロード後は辞書名で参照できます：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
+</code></pre>
+<p>利用可能な辞書名と保存場所については<a href="commands.html#download">コマンド</a>を参照してください。</p>
+<p>または、<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページからビルド済み辞書を手動でダウンロードすることもできます：</p>
 <pre><code class="language-shell"># 例: IPADIC 辞書のダウンロードと展開
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 % unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<p>CLI 使用時に辞書パスを指定します：</p>
-<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
+<p>CLI 使用時に展開した辞書パスを指定します（アーカイブには <code>lindera-ipadic</code> ディレクトリが含まれる点に注意）：</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic/lindera-ipadic
 </code></pre>
 <h2 id="ソースからビルド"><a class="header" href="#ソースからビルド">ソースからビルド</a></h2>
 <h3 id="辞書なしでビルドデフォルト"><a class="header" href="#辞書なしでビルドデフォルト">辞書なしでビルド（デフォルト）</a></h3>

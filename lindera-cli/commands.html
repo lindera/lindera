@@ -177,11 +177,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
-<p>The Lindera CLI provides five main commands:</p>
+<p>The Lindera CLI provides six main commands:</p>
 <ul>
 <li><strong>list</strong> - List the morphological analysis dictionaries embedded in the binary</li>
 <li><strong>tokenize</strong> - Perform morphological analysis on text</li>
 <li><strong>build</strong> - Build a dictionary from source CSV files</li>
+<li><strong>download</strong> - Download a pre-built dictionary from the GitHub releases page</li>
 <li><strong>train</strong> - Train a CRF model from annotated corpus data</li>
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
 </ul>
@@ -199,10 +200,11 @@
 <p>Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean text using various dictionaries.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>
 <ul>
-<li><code>--dict</code> / <code>-d</code>: Dictionary path or URI (required)
+<li><code>--dict</code> / <code>-d</code>: Dictionary path, URI, or downloaded dictionary name (required)
 <ul>
 <li>File path: <code>/path/to/dictionary</code></li>
 <li>Embedded: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+<li>Downloaded dictionary name: <code>ipadic</code>, <code>unidic</code>, etc. — resolved to the dictionary installed by <code>lindera download</code>. An existing filesystem path with the same name takes precedence.</li>
 </ul>
 </li>
 <li><code>--output</code> / <code>-o</code>: Output format (default: mecab)
@@ -741,6 +743,42 @@ EOS
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 </code></pre>
+<h2 id="download"><a class="header" href="#download">download</a></h2>
+<p>Download the pre-built dictionary archive matching the CLI version from the <a href="https://github.com/lindera/lindera/releases">GitHub releases page</a> and install it under the OS-standard application data directory.</p>
+<h3 id="download-parameters"><a class="header" href="#download-parameters">Download parameters</a></h3>
+<ul>
+<li>Dictionary name (required): one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code></li>
+<li><code>--force</code>: Re-download and replace an existing dictionary</li>
+</ul>
+<h3 id="storage-location"><a class="header" href="#storage-location">Storage location</a></h3>
+<p>Dictionaries are installed under a versioned layout <code>&lt;data dir&gt;/dictionaries/&lt;version&gt;/lindera-&lt;name&gt;/</code>. The default base directory per OS:</p>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>Default location</th></tr></thead><tbody>
+<tr><td>Linux</td><td><code>~/.local/share/lindera</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/lindera</code></td></tr>
+<tr><td>Windows</td><td><code>%LOCALAPPDATA%\lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>Set the <code>LINDERA_DATA_DIR</code> environment variable to override the base directory. This variable is unrelated to the build-time source cache variable <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>.</p>
+<h3 id="download-usage"><a class="header" href="#download-usage">Download usage</a></h3>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+</code></pre>
+<p>The installed path is printed to stdout (progress and notices go to stderr), so it can be captured in scripts:</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+</code></pre>
+<p>After downloading, the dictionary can be referenced by name in <code>tokenize</code>:</p>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li>The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.</li>
+<li>Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.</li>
+<li>The largest dictionary (<code>ipadic-neologd</code>) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.</li>
+</ul>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the <code>train</code> feature flag enabled. (The <code>train</code> feature flag is enabled by default.)</p>
 <h3 id="train-parameters"><a class="header" href="#train-parameters">Train parameters</a></h3>

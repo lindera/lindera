@@ -187,13 +187,20 @@
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
-<p>Lindera does not bundle dictionaries with the binary. You need to download a pre-built dictionary separately from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
+<p>Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the <code>download</code> subcommand, which fetches the pre-built dictionary matching the CLI version and installs it under the OS-standard application data directory:</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>After downloading, the dictionary can be referenced by name:</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
+</code></pre>
+<p>See <a href="commands.html#download">Commands</a> for the available dictionary names and storage locations.</p>
+<p>Alternatively, you can download a pre-built dictionary manually from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
 <pre><code class="language-shell"># Example: download and extract the IPADIC dictionary
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 % unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<p>Then specify the dictionary path when using the CLI:</p>
-<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
+<p>Then specify the extracted dictionary path when using the CLI (note that the archive contains a <code>lindera-ipadic</code> directory):</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic/lindera-ipadic
 </code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from Source</a></h2>
 <h3 id="build-without-dictionaries-default"><a class="header" href="#build-without-dictionaries-default">Build without dictionaries (default)</a></h3>

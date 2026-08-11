@@ -179,16 +179,21 @@
                         <h1 id="チュートリアル"><a class="header" href="#チュートリアル">チュートリアル</a></h1>
 <p>このチュートリアルでは、Lindera CLIの基本的な使い方を、インストールから高度なテキスト処理まで順を追って説明します。</p>
 <h2 id="1-cliのインストール"><a class="header" href="#1-cliのインストール">1. CLIのインストール</a></h2>
-<p>埋め込みIPADIC辞書付きでLindera CLIをインストールします：</p>
-<pre><code class="language-shell">% cargo install lindera-cli --features=embed-ipadic
+<p>Lindera CLIをインストールします：</p>
+<pre><code class="language-shell">% cargo install lindera-cli
 </code></pre>
 <p>インストールの確認：</p>
 <pre><code class="language-shell">% lindera --help
 </code></pre>
-<h2 id="2-埋め込み辞書を使用した基本的なトークナイズ"><a class="header" href="#2-埋め込み辞書を使用した基本的なトークナイズ">2. 埋め込み辞書を使用した基本的なトークナイズ</a></h2>
-<p>埋め込みIPADIC辞書を使用して日本語テキストをトークナイズします：</p>
+<h2 id="2-辞書のダウンロード"><a class="header" href="#2-辞書のダウンロード">2. 辞書のダウンロード</a></h2>
+<p>GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は OS 標準のアプリケーションデータディレクトリにインストールされます：</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>利用可能な辞書名と保存場所については<a href="commands.html#download">コマンド</a>を参照してください。</p>
+<h2 id="3-基本的なトークナイズ"><a class="header" href="#3-基本的なトークナイズ">3. 基本的なトークナイズ</a></h2>
+<p>ダウンロードした IPADIC 辞書を辞書名で参照して、日本語テキストをトークナイズします：</p>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic
+  --dict ipadic
 </code></pre>
 <p>期待される出力：</p>
 <pre><code class="language-text">東京    名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
@@ -200,10 +205,10 @@
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<h2 id="3-異なる出力形式を試す"><a class="header" href="#3-異なる出力形式を試す">3. 異なる出力形式を試す</a></h2>
+<h2 id="4-異なる出力形式を試す"><a class="header" href="#4-異なる出力形式を試す">4. 異なる出力形式を試す</a></h2>
 <h3 id="wakati-形式分かち書きのみ"><a class="header" href="#wakati-形式分かち書きのみ">Wakati 形式（分かち書きのみ）</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output wakati
 </code></pre>
 <p>期待される出力：</p>
@@ -211,14 +216,14 @@ EOS
 </code></pre>
 <h3 id="json-形式詳細情報"><a class="header" href="#json-形式詳細情報">JSON 形式（詳細情報）</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output json
 </code></pre>
 <p>バイトオフセット、品詞タグ、読みなどの詳細なトークン情報を含むJSON配列が出力されます。</p>
-<h2 id="4-decompose-モードの使用"><a class="header" href="#4-decompose-モードの使用">4. Decompose モードの使用</a></h2>
+<h2 id="5-decompose-モードの使用"><a class="header" href="#5-decompose-モードの使用">5. Decompose モードの使用</a></h2>
 <p>Decompose モードは複合名詞を構成要素に分解します：</p>
 <pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --mode decompose
 </code></pre>
 <p>期待される出力：</p>
@@ -230,10 +235,10 @@ EOS
 EOS
 </code></pre>
 <p>Normal モードと比較すると、「関西国際空港」が1つのトークンのままになる点が異なります。</p>
-<h2 id="5-文字フィルタとトークンフィルタの適用"><a class="header" href="#5-文字フィルタとトークンフィルタの適用">5. 文字フィルタとトークンフィルタの適用</a></h2>
+<h2 id="6-文字フィルタとトークンフィルタの適用"><a class="header" href="#6-文字フィルタとトークンフィルタの適用">6. 文字フィルタとトークンフィルタの適用</a></h2>
 <p>Unicode正規化を行い、一般名詞のみを保持します：</p>
 <pre><code class="language-shell">% echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
 </code></pre>
@@ -247,22 +252,22 @@ EOS
 <p>Unicode正規化により全角文字が半角に変換され、Token Filter により指定した品詞タグに一致するトークンのみが保持されます。</p>
 <p>複数のフィルタを組み合わせることもできます：</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
 </code></pre>
-<h2 id="6-ユーザー辞書の使用"><a class="header" href="#6-ユーザー辞書の使用">6. ユーザー辞書の使用</a></h2>
+<h2 id="7-ユーザー辞書の使用"><a class="header" href="#7-ユーザー辞書の使用">7. ユーザー辞書の使用</a></h2>
 <p>カスタム単語エントリを含むCSVファイル（例: <code>my_dict.csv</code>）を作成します：</p>
 <pre><code class="language-csv">東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 </code></pre>
 <p>ユーザー辞書を使用してトークナイズします：</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./my_dict.csv
 </code></pre>
 <p>ユーザー辞書がない場合、「東京スカイツリー」は複数のトークンに分割されます。ユーザー辞書を使用すると、1つのトークンとして認識されます。</p>
 <p>ビルド済みのユーザー辞書の例については、以下を参照してください：</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 </code></pre>
 <p>期待される出力：</p>

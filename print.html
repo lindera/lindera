@@ -1909,13 +1909,20 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="https://github.com/lindera/lindera/releases">https://github.com/lindera/lindera/releases</a></li>
 </ul>
 <h2 id="obtaining-dictionaries-1"><a class="header" href="#obtaining-dictionaries-1">Obtaining Dictionaries</a></h2>
-<p>Lindera does not bundle dictionaries with the binary. You need to download a pre-built dictionary separately from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
+<p>Lindera does not bundle dictionaries with the binary. The easiest way to obtain one is the <code>download</code> subcommand, which fetches the pre-built dictionary matching the CLI version and installs it under the OS-standard application data directory:</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>After downloading, the dictionary can be referenced by name:</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict ipadic
+</code></pre>
+<p>See <a href="lindera-cli/commands.html#download">Commands</a> for the available dictionary names and storage locations.</p>
+<p>Alternatively, you can download a pre-built dictionary manually from the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page:</p>
 <pre><code class="language-shell"># Example: download and extract the IPADIC dictionary
 % curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 % unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<p>Then specify the dictionary path when using the CLI:</p>
-<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic
+<p>Then specify the extracted dictionary path when using the CLI (note that the archive contains a <code>lindera-ipadic</code> directory):</p>
+<pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize --dict /path/to/ipadic/lindera-ipadic
 </code></pre>
 <h2 id="build-from-source"><a class="header" href="#build-from-source">Build from Source</a></h2>
 <h3 id="build-without-dictionaries-default"><a class="header" href="#build-without-dictionaries-default">Build without dictionaries (default)</a></h3>
@@ -1953,11 +1960,12 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <p>See <a href="lindera-cli/../development/feature_flags.html">Feature Flags</a> for details.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
-<p>The Lindera CLI provides five main commands:</p>
+<p>The Lindera CLI provides six main commands:</p>
 <ul>
 <li><strong>list</strong> - List the morphological analysis dictionaries embedded in the binary</li>
 <li><strong>tokenize</strong> - Perform morphological analysis on text</li>
 <li><strong>build</strong> - Build a dictionary from source CSV files</li>
+<li><strong>download</strong> - Download a pre-built dictionary from the GitHub releases page</li>
 <li><strong>train</strong> - Train a CRF model from annotated corpus data</li>
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
 </ul>
@@ -1975,10 +1983,11 @@ After building with an <code>embed-*</code> feature flag, use the <code>embedded
 <p>Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean text using various dictionaries.</p>
 <h3 id="parameters-1"><a class="header" href="#parameters-1">Parameters</a></h3>
 <ul>
-<li><code>--dict</code> / <code>-d</code>: Dictionary path or URI (required)
+<li><code>--dict</code> / <code>-d</code>: Dictionary path, URI, or downloaded dictionary name (required)
 <ul>
 <li>File path: <code>/path/to/dictionary</code></li>
 <li>Embedded: <code>embedded://ipadic</code>, <code>embedded://unidic</code>, etc.</li>
+<li>Downloaded dictionary name: <code>ipadic</code>, <code>unidic</code>, etc. — resolved to the dictionary installed by <code>lindera download</code>. An existing filesystem path with the same name takes precedence.</li>
 </ul>
 </li>
 <li><code>--output</code> / <code>-o</code>: Output format (default: mecab)
@@ -2517,6 +2526,42 @@ EOS
   --metadata ./lindera-ko-dic/metadata.json \
   --user
 </code></pre>
+<h2 id="download"><a class="header" href="#download">download</a></h2>
+<p>Download the pre-built dictionary archive matching the CLI version from the <a href="https://github.com/lindera/lindera/releases">GitHub releases page</a> and install it under the OS-standard application data directory.</p>
+<h3 id="download-parameters"><a class="header" href="#download-parameters">Download parameters</a></h3>
+<ul>
+<li>Dictionary name (required): one of <code>ipadic</code>, <code>ipadic-neologd</code>, <code>unidic</code>, <code>ko-dic</code>, <code>cc-cedict</code>, <code>jieba</code></li>
+<li><code>--force</code>: Re-download and replace an existing dictionary</li>
+</ul>
+<h3 id="storage-location"><a class="header" href="#storage-location">Storage location</a></h3>
+<p>Dictionaries are installed under a versioned layout <code>&lt;data dir&gt;/dictionaries/&lt;version&gt;/lindera-&lt;name&gt;/</code>. The default base directory per OS:</p>
+<div class="table-wrapper"><table><thead><tr><th>OS</th><th>Default location</th></tr></thead><tbody>
+<tr><td>Linux</td><td><code>~/.local/share/lindera</code></td></tr>
+<tr><td>macOS</td><td><code>~/Library/Application Support/lindera</code></td></tr>
+<tr><td>Windows</td><td><code>%LOCALAPPDATA%\lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>Set the <code>LINDERA_DATA_DIR</code> environment variable to override the base directory. This variable is unrelated to the build-time source cache variable <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code>.</p>
+<h3 id="download-usage"><a class="header" href="#download-usage">Download usage</a></h3>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<pre><code class="language-text">Downloading https://github.com/lindera/lindera/releases/download/v5.1.0/lindera-ipadic-5.1.0.zip
+100% (15.1/15.1 MiB)
+Downloaded dictionary 'ipadic'
+/home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+</code></pre>
+<p>The installed path is printed to stdout (progress and notices go to stderr), so it can be captured in scripts:</p>
+<pre><code class="language-shell">% DICT_DIR=$(lindera download ipadic)
+</code></pre>
+<p>After downloading, the dictionary can be referenced by name in <code>tokenize</code>:</p>
+<pre><code class="language-shell">% echo "日本語の形態素解析を行うことができます。" | lindera tokenize --dict ipadic
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li>The archive version always matches the CLI version; running a development build whose version has no published release yet fails with HTTP 404.</li>
+<li>Integrity is verified via the HTTPS transport and the ZIP archive's built-in per-file CRC32 checksums.</li>
+<li>The largest dictionary (<code>ipadic-neologd</code>) is a ~305 MB download and requires roughly twice that amount of free disk space during extraction.</li>
+</ul>
 <h2 id="train"><a class="header" href="#train">train</a></h2>
 <p>Train a new morphological analysis model from annotated corpus data. To use this feature, you must build with the <code>train</code> feature flag enabled. (The <code>train</code> feature flag is enabled by default.)</p>
 <h3 id="train-parameters"><a class="header" href="#train-parameters">Train parameters</a></h3>
@@ -2652,16 +2697,21 @@ EOS
 <div style="break-before: page; page-break-before: always;"></div><h1 id="tutorial"><a class="header" href="#tutorial">Tutorial</a></h1>
 <p>This tutorial walks you through the basic usage of the Lindera CLI, from installation to advanced text processing.</p>
 <h2 id="1-install-the-cli"><a class="header" href="#1-install-the-cli">1. Install the CLI</a></h2>
-<p>Install Lindera CLI with the embedded IPADIC dictionary:</p>
-<pre><code class="language-shell">% cargo install lindera-cli --features=embed-ipadic
+<p>Install Lindera CLI:</p>
+<pre><code class="language-shell">% cargo install lindera-cli
 </code></pre>
 <p>Verify the installation:</p>
 <pre><code class="language-shell">% lindera --help
 </code></pre>
-<h2 id="2-basic-tokenization-with-embedded-dictionary"><a class="header" href="#2-basic-tokenization-with-embedded-dictionary">2. Basic tokenization with embedded dictionary</a></h2>
-<p>Tokenize Japanese text using the embedded IPADIC dictionary:</p>
+<h2 id="2-download-a-dictionary"><a class="header" href="#2-download-a-dictionary">2. Download a dictionary</a></h2>
+<p>Download the pre-built IPADIC dictionary from the GitHub releases page. It is installed under the OS-standard application data directory:</p>
+<pre><code class="language-shell">% lindera download ipadic
+</code></pre>
+<p>See <a href="lindera-cli/commands.html#download">Commands</a> for the available dictionary names and storage locations.</p>
+<h2 id="3-basic-tokenization"><a class="header" href="#3-basic-tokenization">3. Basic tokenization</a></h2>
+<p>Tokenize Japanese text using the downloaded IPADIC dictionary, referencing it by name:</p>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic
+  --dict ipadic
 </code></pre>
 <p>Expected output:</p>
 <pre><code class="language-text">東京    名詞,固有名詞,地域,一般,*,*,東京,トウキョウ,トーキョー
@@ -2673,10 +2723,10 @@ EOS
 。      記号,句点,*,*,*,*,。,。,。
 EOS
 </code></pre>
-<h2 id="3-try-different-output-formats"><a class="header" href="#3-try-different-output-formats">3. Try different output formats</a></h2>
+<h2 id="4-try-different-output-formats"><a class="header" href="#4-try-different-output-formats">4. Try different output formats</a></h2>
 <h3 id="wakati-format-word-segmentation-only"><a class="header" href="#wakati-format-word-segmentation-only">Wakati format (word segmentation only)</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output wakati
 </code></pre>
 <p>Expected output:</p>
@@ -2684,14 +2734,14 @@ EOS
 </code></pre>
 <h3 id="json-format-detailed-information"><a class="header" href="#json-format-detailed-information">JSON format (detailed information)</a></h3>
 <pre><code class="language-shell">% echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output json
 </code></pre>
 <p>This produces a JSON array with detailed token information including byte offsets, part-of-speech tags, readings, and more.</p>
-<h2 id="4-use-decompose-mode"><a class="header" href="#4-use-decompose-mode">4. Use decompose mode</a></h2>
+<h2 id="5-use-decompose-mode"><a class="header" href="#5-use-decompose-mode">5. Use decompose mode</a></h2>
 <p>Decompose mode splits compound nouns into their constituent parts:</p>
 <pre><code class="language-shell">% echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --mode decompose
 </code></pre>
 <p>Expected output:</p>
@@ -2703,10 +2753,10 @@ EOS
 EOS
 </code></pre>
 <p>Compare with normal mode, where "関西国際空港" remains as a single token.</p>
-<h2 id="5-apply-character-and-token-filters"><a class="header" href="#5-apply-character-and-token-filters">5. Apply character and token filters</a></h2>
+<h2 id="6-apply-character-and-token-filters"><a class="header" href="#6-apply-character-and-token-filters">6. Apply character and token filters</a></h2>
 <p>Use Unicode normalization and keep only common nouns:</p>
 <pre><code class="language-shell">% echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
 </code></pre>
@@ -2720,22 +2770,22 @@ EOS
 <p>The Unicode normalization converts full-width characters to half-width, and the token filter keeps only tokens matching the specified part-of-speech tags.</p>
 <p>You can also combine multiple filters:</p>
 <pre><code class="language-shell">% echo "すもももももももものうち" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
 </code></pre>
-<h2 id="6-use-user-dictionary"><a class="header" href="#6-use-user-dictionary">6. Use user dictionary</a></h2>
+<h2 id="7-use-user-dictionary"><a class="header" href="#7-use-user-dictionary">7. Use user dictionary</a></h2>
 <p>Create a CSV file with custom word entries (e.g., <code>my_dict.csv</code>):</p>
 <pre><code class="language-csv">東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 </code></pre>
 <p>Tokenize with the user dictionary:</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./my_dict.csv
 </code></pre>
 <p>Without the user dictionary, "東京スカイツリー" would be split into multiple tokens. With the user dictionary, it is recognized as a single token.</p>
 <p>For pre-built user dictionary examples, see:</p>
 <pre><code class="language-shell">% echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 </code></pre>
 <p>Expected output:</p>
