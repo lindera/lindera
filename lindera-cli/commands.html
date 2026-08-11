@@ -179,7 +179,7 @@
                         <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
 <p>The Lindera CLI provides six main commands:</p>
 <ul>
-<li><strong>list</strong> - List the morphological analysis dictionaries embedded in the binary</li>
+<li><strong>list</strong> - List the morphological analysis dictionaries and their status</li>
 <li><strong>tokenize</strong> - Perform morphological analysis on text</li>
 <li><strong>build</strong> - Build a dictionary from source CSV files</li>
 <li><strong>download</strong> - Download a pre-built dictionary from the GitHub releases page</li>
@@ -187,15 +187,26 @@
 <li><strong>export</strong> - Export a trained model to dictionary format</li>
 </ul>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
-<p>List the morphological analysis dictionaries that were embedded in the binary at build time (via the <code>embed-*</code> feature flags).</p>
+<p>List all known morphological analysis dictionaries and show, for each one, whether it is embedded in the binary (via the <code>embed-*</code> feature flags) and whether a pre-built copy has been downloaded locally with <code>lindera download</code>.</p>
 <h3 id="list-parameters"><a class="header" href="#list-parameters">List parameters</a></h3>
-<p>This command takes no arguments.</p>
+<p>This command takes no arguments. The <code>LINDERA_DATA_DIR</code> environment variable overrides the application data directory searched for downloaded dictionaries, exactly as it does for <code>lindera download</code>.</p>
 <h3 id="list-usage"><a class="header" href="#list-usage">List usage</a></h3>
 <pre><code class="language-shell">% lindera list
 </code></pre>
-<pre><code class="language-text">ipadic
+<pre><code class="language-text">NAME            EMBEDDED  DOWNLOADED  PATH
+ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+ipadic-neologd  no        no          -
+unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+ko-dic          no        no          -
+cc-cedict       no        no          -
+jieba           no        no          -
 </code></pre>
-<p>The output contains one dictionary name per line, limited to whichever <code>embed-*</code> features were enabled when the binary was built (e.g. <code>--features=embed-ipadic</code>). If no <code>embed-*</code> feature was enabled, the command produces no output.</p>
+<p>The output contains one dictionary per line:</p>
+<ul>
+<li><code>EMBEDDED</code> is <code>yes</code> when the dictionary was embedded at build time (e.g. <code>--features=embed-ipadic</code>).</li>
+<li><code>DOWNLOADED</code> is <code>yes</code> when a complete dictionary installed by <code>lindera download</code> exists for the running CLI version, and <code>incomplete</code> when the installation directory exists but required files are missing (re-download it with <code>lindera download &lt;name&gt; --force</code>).</li>
+<li><code>PATH</code> shows the installation directory when it exists, and <code>-</code> otherwise.</li>
+</ul>
 <h2 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h2>
 <p>Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean text using various dictionaries.</p>
 <h3 id="parameters"><a class="header" href="#parameters">Parameters</a></h3>

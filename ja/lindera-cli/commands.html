@@ -179,7 +179,7 @@
                         <h1 id="コマンド"><a class="header" href="#コマンド">コマンド</a></h1>
 <p>Lindera CLI は6つのメインコマンドを提供します：</p>
 <ul>
-<li><strong>list</strong> - バイナリに埋め込まれた形態素解析辞書の一覧を表示</li>
+<li><strong>list</strong> - 形態素解析辞書の一覧と状態を表示</li>
 <li><strong>tokenize</strong> - テキストに対して形態素解析を実行</li>
 <li><strong>build</strong> - ソースCSVファイルから辞書をビルド</li>
 <li><strong>download</strong> - GitHub リリースページから学習済み辞書をダウンロード</li>
@@ -187,15 +187,26 @@
 <li><strong>export</strong> - 学習済みモデルを辞書フォーマットにエクスポート</li>
 </ul>
 <h2 id="list"><a class="header" href="#list">list</a></h2>
-<p>ビルド時に（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれた形態素解析辞書の一覧を表示します。</p>
+<p>既知の形態素解析辞書の一覧を表示し、各辞書について（<code>embed-*</code> feature フラグ経由で）バイナリに埋め込まれているか、および <code>lindera download</code> で学習済み辞書がローカルにダウンロード済みかを表示します。</p>
 <h3 id="list-パラメータ"><a class="header" href="#list-パラメータ">list パラメータ</a></h3>
-<p>このコマンドは引数を取りません。</p>
+<p>このコマンドは引数を取りません。環境変数 <code>LINDERA_DATA_DIR</code> を設定すると、ダウンロード済み辞書を探すアプリケーションデータディレクトリを上書きできます（<code>lindera download</code> と同じ挙動です）。</p>
 <h3 id="list-の使用方法"><a class="header" href="#list-の使用方法">list の使用方法</a></h3>
 <pre><code class="language-shell">% lindera list
 </code></pre>
-<pre><code class="language-text">ipadic
+<pre><code class="language-text">NAME            EMBEDDED  DOWNLOADED  PATH
+ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+ipadic-neologd  no        no          -
+unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+ko-dic          no        no          -
+cc-cedict       no        no          -
+jieba           no        no          -
 </code></pre>
-<p>出力にはビルド時に有効化されていた <code>embed-*</code> feature（例: <code>--features=embed-ipadic</code>）に対応する辞書名のみが1行ずつ表示されます。<code>embed-*</code> feature が1つも有効化されていない場合、出力はありません。</p>
+<p>出力は1行につき1辞書です：</p>
+<ul>
+<li><code>EMBEDDED</code> は、ビルド時に辞書が埋め込まれている場合（例: <code>--features=embed-ipadic</code>）に <code>yes</code> になります。</li>
+<li><code>DOWNLOADED</code> は、実行中の CLI バージョンに対応する <code>lindera download</code> でインストールされた完全な辞書が存在する場合に <code>yes</code>、インストールディレクトリは存在するが必要なファイルが欠けている場合に <code>incomplete</code> になります（<code>lindera download &lt;name&gt; --force</code> で再ダウンロードしてください）。</li>
+<li><code>PATH</code> は、インストールディレクトリが存在する場合はそのパス、存在しない場合は <code>-</code> を表示します。</li>
+</ul>
 <h2 id="tokenize"><a class="header" href="#tokenize">tokenize</a></h2>
 <p>様々な辞書を使用して、日本語、中国語、または韓国語のテキストに対して形態素解析（トークナイズ）を行います。</p>
 <h3 id="パラメータ"><a class="header" href="#パラメータ">パラメータ</a></h3>
