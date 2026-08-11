@@ -2,7 +2,7 @@
 
 The Lindera CLI provides six main commands:
 
-- **list** - List the morphological analysis dictionaries embedded in the binary
+- **list** - List the morphological analysis dictionaries and their status
 - **tokenize** - Perform morphological analysis on text
 - **build** - Build a dictionary from source CSV files
 - **download** - Download a pre-built dictionary from the GitHub releases page
@@ -11,11 +11,11 @@ The Lindera CLI provides six main commands:
 
 ## list
 
-List the morphological analysis dictionaries that were embedded in the binary at build time (via the `embed-*` feature flags).
+List all known morphological analysis dictionaries and show, for each one, whether it is embedded in the binary (via the `embed-*` feature flags) and whether a pre-built copy has been downloaded locally with `lindera download`.
 
 ### List parameters
 
-This command takes no arguments.
+This command takes no arguments. The `LINDERA_DATA_DIR` environment variable overrides the application data directory searched for downloaded dictionaries, exactly as it does for `lindera download`.
 
 ### List usage
 
@@ -24,10 +24,20 @@ This command takes no arguments.
 ```
 
 ```text
-ipadic
+NAME            EMBEDDED  DOWNLOADED  PATH
+ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+ipadic-neologd  no        no          -
+unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+ko-dic          no        no          -
+cc-cedict       no        no          -
+jieba           no        no          -
 ```
 
-The output contains one dictionary name per line, limited to whichever `embed-*` features were enabled when the binary was built (e.g. `--features=embed-ipadic`). If no `embed-*` feature was enabled, the command produces no output.
+The output contains one dictionary per line:
+
+- `EMBEDDED` is `yes` when the dictionary was embedded at build time (e.g. `--features=embed-ipadic`).
+- `DOWNLOADED` is `yes` when a complete dictionary installed by `lindera download` exists for the running CLI version, and `incomplete` when the installation directory exists but required files are missing (re-download it with `lindera download <name> --force`).
+- `PATH` shows the installation directory when it exists, and `-` otherwise.
 
 ## tokenize
 

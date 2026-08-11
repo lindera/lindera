@@ -2,7 +2,7 @@
 
 Lindera CLI は6つのメインコマンドを提供します：
 
-- **list** - バイナリに埋め込まれた形態素解析辞書の一覧を表示
+- **list** - 形態素解析辞書の一覧と状態を表示
 - **tokenize** - テキストに対して形態素解析を実行
 - **build** - ソースCSVファイルから辞書をビルド
 - **download** - GitHub リリースページから学習済み辞書をダウンロード
@@ -11,11 +11,11 @@ Lindera CLI は6つのメインコマンドを提供します：
 
 ## list
 
-ビルド時に（`embed-*` feature フラグ経由で）バイナリに埋め込まれた形態素解析辞書の一覧を表示します。
+既知の形態素解析辞書の一覧を表示し、各辞書について（`embed-*` feature フラグ経由で）バイナリに埋め込まれているか、および `lindera download` で学習済み辞書がローカルにダウンロード済みかを表示します。
 
 ### list パラメータ
 
-このコマンドは引数を取りません。
+このコマンドは引数を取りません。環境変数 `LINDERA_DATA_DIR` を設定すると、ダウンロード済み辞書を探すアプリケーションデータディレクトリを上書きできます（`lindera download` と同じ挙動です）。
 
 ### list の使用方法
 
@@ -24,10 +24,20 @@ Lindera CLI は6つのメインコマンドを提供します：
 ```
 
 ```text
-ipadic
+NAME            EMBEDDED  DOWNLOADED  PATH
+ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
+ipadic-neologd  no        no          -
+unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+ko-dic          no        no          -
+cc-cedict       no        no          -
+jieba           no        no          -
 ```
 
-出力にはビルド時に有効化されていた `embed-*` feature（例: `--features=embed-ipadic`）に対応する辞書名のみが1行ずつ表示されます。`embed-*` feature が1つも有効化されていない場合、出力はありません。
+出力は1行につき1辞書です：
+
+- `EMBEDDED` は、ビルド時に辞書が埋め込まれている場合（例: `--features=embed-ipadic`）に `yes` になります。
+- `DOWNLOADED` は、実行中の CLI バージョンに対応する `lindera download` でインストールされた完全な辞書が存在する場合に `yes`、インストールディレクトリは存在するが必要なファイルが欠けている場合に `incomplete` になります（`lindera download <name> --force` で再ダウンロードしてください）。
+- `PATH` は、インストールディレクトリが存在する場合はそのパス、存在しない場合は `-` を表示します。
 
 ## tokenize
 
