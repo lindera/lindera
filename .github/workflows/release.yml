@@ -435,20 +435,31 @@ jobs:
       - name: Compile
         run: cargo build -p lindera-cli --release --target=${{ matrix.platform.target }}
 
+      # Asset file names use the bare crate version (e.g. 5.1.0) to match the
+      # dictionary archives and the ecosystem-fixed gem/wheel names, while the
+      # release tag itself stays v-prefixed. `shell: bash` keeps this step
+      # working on the Windows matrix entries.
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[] | select(.name=="lindera-cli") | .version')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Create artifact for Unix
         if: "!startsWith(matrix.platform.runner, 'windows')"
-        run: zip --junk-paths lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: zip --junk-paths lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }} target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Create artifact for Windows
         if: startsWith(matrix.platform.runner, 'windows')
-        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
+        run: powershell Compress-Archive -DestinationPath lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }} -Path target/${{ matrix.platform.target }}/release/lindera${{ matrix.platform.extension }}
 
       - name: Upload artifact
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: lindera-${{ matrix.platform.target }}-${{ github.ref_name }}${{ matrix.platform.archive }}
+          files: lindera-${{ matrix.platform.target }}-${{ steps.get_version.outputs.version }}${{ matrix.platform.archive }}
           tag_name: ${{ github.ref_name }}
 
   build-python-wheels:
