@@ -21,6 +21,7 @@ fn help_shows_subcommands() {
     assert!(stdout.contains("list"));
     assert!(stdout.contains("tokenize"));
     assert!(stdout.contains("build"));
+    assert!(stdout.contains("download"));
 }
 
 #[test]
@@ -55,6 +56,41 @@ fn tokenize_with_invalid_dictionary_fails() {
         .unwrap();
     assert!(!output.status.success());
     assert!(!output.stderr.is_empty());
+}
+
+#[test]
+fn download_help_lists_dictionary_names() {
+    let output = lindera().args(["download", "--help"]).output().unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("ipadic-neologd"), "got: {stdout}");
+    assert!(stdout.contains("cc-cedict"), "got: {stdout}");
+    assert!(stdout.contains("--force"), "got: {stdout}");
+}
+
+#[test]
+fn download_with_invalid_name_fails() {
+    let output = lindera()
+        .args(["download", "no-such-dictionary"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("ipadic"), "got: {stderr}");
+}
+
+#[test]
+fn tokenize_with_undownloaded_name_suggests_download() {
+    let data_dir = tempfile::tempdir().unwrap();
+    let output = lindera()
+        .env("LINDERA_DATA_DIR", data_dir.path())
+        .args(["tokenize", "--dict", "ipadic"])
+        .write_stdin("テスト\n")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("lindera download ipadic"), "got: {stderr}");
 }
 
 #[cfg(feature = "embed-ipadic")]

@@ -26,7 +26,7 @@ pub struct TokenizeArgs {
         short = 'd',
         long = "dict",
         required = true,
-        help = "Dictionary directory path or URI (e.g., embedded://ipadic, /path/to/dictionary)"
+        help = "Dictionary directory path, URI, or downloaded dictionary name (e.g., embedded://ipadic, /path/to/dictionary, ipadic)"
     )]
     dict: String,
     #[clap(
@@ -221,8 +221,15 @@ fn wakati_output<W: Write>(writer: &mut W, tokens: Vec<Token>) -> LinderaResult<
 pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let mut builder = TokenizerBuilder::new()?;
 
-    // Set dictionary directory URI
-    builder.set_segmenter_dictionary(args.dict.as_str());
+    // Set dictionary directory URI. A bare downloadable dictionary name
+    // (e.g. `ipadic`) resolves to its downloaded directory; URIs and
+    // existing filesystem paths are passed through unchanged.
+    let dict_uri = crate::dictionary_registry::resolve_dictionary_arg(
+        args.dict.as_str(),
+        std::env::var_os(crate::dictionary_registry::DATA_DIR_ENV).map(PathBuf::from),
+        get_version(),
+    )?;
+    builder.set_segmenter_dictionary(dict_uri.as_str());
 
     // Set user dictionary URI
     if let Some(user_dic_uri) = args.user_dict {

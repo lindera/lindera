@@ -4,10 +4,10 @@
 
 ## 1. CLIのインストール
 
-埋め込みIPADIC辞書付きでLindera CLIをインストールします：
+Lindera CLIをインストールします：
 
 ```shell
-% cargo install lindera-cli --features=embed-ipadic
+% cargo install lindera-cli
 ```
 
 インストールの確認：
@@ -16,13 +16,23 @@
 % lindera --help
 ```
 
-## 2. 埋め込み辞書を使用した基本的なトークナイズ
+## 2. 辞書のダウンロード
 
-埋め込みIPADIC辞書を使用して日本語テキストをトークナイズします：
+GitHub リリースページからビルド済みの IPADIC 辞書をダウンロードします。辞書は OS 標準のアプリケーションデータディレクトリにインストールされます：
+
+```shell
+% lindera download ipadic
+```
+
+利用可能な辞書名と保存場所については[コマンド](commands.md#download)を参照してください。
+
+## 3. 基本的なトークナイズ
+
+ダウンロードした IPADIC 辞書を辞書名で参照して、日本語テキストをトークナイズします：
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic
+  --dict ipadic
 ```
 
 期待される出力：
@@ -38,13 +48,13 @@
 EOS
 ```
 
-## 3. 異なる出力形式を試す
+## 4. 異なる出力形式を試す
 
 ### Wakati 形式（分かち書きのみ）
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output wakati
 ```
 
@@ -58,19 +68,19 @@ EOS
 
 ```shell
 % echo "東京は日本の首都です。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --output json
 ```
 
 バイトオフセット、品詞タグ、読みなどの詳細なトークン情報を含むJSON配列が出力されます。
 
-## 4. Decompose モードの使用
+## 5. Decompose モードの使用
 
 Decompose モードは複合名詞を構成要素に分解します：
 
 ```shell
 % echo "関西国際空港限定トートバッグ" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --mode decompose
 ```
 
@@ -87,13 +97,13 @@ EOS
 
 Normal モードと比較すると、「関西国際空港」が1つのトークンのままになる点が異なります。
 
-## 5. 文字フィルタとトークンフィルタの適用
+## 6. 文字フィルタとトークンフィルタの適用
 
 Unicode正規化を行い、一般名詞のみを保持します：
 
 ```shell
 % echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
   --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
 ```
@@ -114,11 +124,11 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "すもももももももものうち" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
 ```
 
-## 6. ユーザー辞書の使用
+## 7. ユーザー辞書の使用
 
 カスタム単語エントリを含むCSVファイル（例: `my_dict.csv`）を作成します：
 
@@ -130,7 +140,7 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./my_dict.csv
 ```
 
@@ -140,7 +150,7 @@ Unicode正規化により全角文字が半角に変換され、Token Filter に
 
 ```shell
 % echo "東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です" | lindera tokenize \
-  --dict embedded://ipadic \
+  --dict ipadic \
   --user-dict ./resources/user_dict/ipadic_simple_userdic.csv
 ```
 
