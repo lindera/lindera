@@ -157,3 +157,23 @@ for (tokens, cost) in results {
 ```
 
 `segment_nbest_with_lattice` is the same operation but lets you pass in a reusable `Lattice` buffer to avoid reallocating one per call.
+
+## Reusable Worker
+
+`SegmentWorker` is a reusable segmentation session that owns the Viterbi lattice and the backtrace scratch buffer, so repeated calls avoid the per-call allocations `segment` pays. Create one with `new_worker` (clones the segmenter) or `into_worker` (consumes it, avoiding a user-dictionary copy), then call `segment`/`segment_nbest` on it:
+
+```rust
+let mut worker = segmenter.new_worker();
+for line in lines {
+    let tokens = worker.segment(line)?;
+    for token in &tokens {
+        println!("{}", token.surface.as_ref());
+    }
+}
+```
+
+The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). `set_mode` and `set_keep_whitespace` switch the configuration between calls.
+
+A worker also bounds retained memory: one delimiter-free 32 KiB sentence grows the lattice to roughly 20 MB, and a plain `Lattice` keeps that forever. The worker automatically shrinks its lattice once a window of calls shows the capacity is oversized, and `shrink_to(text_len_hint)` forces a shrink immediately.
+
+The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared `Segmenter`.

@@ -134,6 +134,27 @@ impl<'a> Token<'a> {
         }
     }
 
+    /// Returns an iterator over the token's details without allocating the
+    /// intermediate `Vec<&str>` that [`Token::details`] collects on every
+    /// call.
+    ///
+    /// Details are loaded (and cached) on first access, exactly as with
+    /// [`Token::details`]; only the per-call collection is avoided. Prefer
+    /// this accessor when the details are consumed once in order (joining,
+    /// serializing, copying into an FFI buffer).
+    ///
+    /// # 戻り値
+    ///
+    /// An iterator yielding each detail field as `&str`, in schema order.
+    pub fn details_iter(&mut self) -> impl Iterator<Item = &str> {
+        self.ensure_details();
+        self.details
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|c| c.as_ref())
+    }
+
     /// Helper method to ensure details are loaded without returning them
     fn ensure_details(&mut self) {
         if self.details.is_none() {
@@ -316,5 +337,44 @@ impl<'a> Token<'a> {
         }
 
         Value::Object(obj)
+    }
+}
+
+#[cfg(all(test, feature = "embed-ipadic"))]
+mod tests {
+    use std::borrow::Cow;
+
+    use lindera_dictionary::mode::Mode;
+
+    use crate::dictionary::load_dictionary;
+    use crate::segmenter::Segmenter;
+
+    /// `details_iter` must yield exactly the same fields, in the same
+    /// order, as the `Vec`-collecting `details()` accessor, for both known
+    /// and unknown words.
+    #[test]
+    fn test_details_iter_matches_details() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+        // Mixed input: dictionary words plus an unknown (Latin) token.
+        let tokens = match segmenter.segment(Cow::Borrowed("すもももsupercalifragilisticも")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert!(!tokens.is_empty());
+
+        for mut token in tokens {
+            let expected: Vec<String> = {
+                let mut probe = token.clone();
+                probe.details().iter().map(|s| s.to_string()).collect()
+            };
+            let actual: Vec<String> = token.details_iter().map(|s| s.to_string()).collect();
+            assert_eq!(expected, actual, "surface {:?}", token.surface);
+            assert!(!actual.is_empty());
+        }
     }
 }

@@ -142,3 +142,5 @@ use lindera_dictionary::viterbi::Lattice;
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;
 ```
+
+セグメンターのレベルでは、`SegmentWorker`（`Segmenter::new_worker` で作成）がこのパターンをラティスとスクラッチバッファを所有するセッションオブジェクトとしてまとめており、さらに自動縮小ポリシーで保持メモリも制限します。詳細は [Segmenter](../lindera/segmenter.md) のページを参照してください。
