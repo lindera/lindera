@@ -225,6 +225,22 @@ impl Tokenizer {
         Ok(views.into_iter().map(JsToken::from_view).collect())
     }
 
+    /// Tokenizes the input text and returns only the token surfaces.
+    ///
+    /// This is the fast path for wakati-style use: no Token objects are
+    /// created and no morphological details are loaded, so it is
+    /// significantly faster than `tokenize` when only the surface strings
+    /// are needed. The surfaces equal `tokenize(text).map((t) => t.surface)`.
+    /// Unrelated to Web Workers.
+    #[wasm_bindgen(js_name = "tokenizeSurfaces")]
+    pub fn tokenize_surfaces(&self, input_text: &str) -> Result<Vec<String>, JsValue> {
+        let views = self
+            .inner
+            .tokenize_surfaces(input_text)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
+        Ok(views.into_iter().map(|view| view.surface).collect())
+    }
+
     /// Tokenizes the input text and returns N-best results.
     ///
     /// Returns an array of arrays, where each inner array contains Token JSON objects.
@@ -268,6 +284,12 @@ impl Tokenizer {
     ) -> Result<JsValue, JsValue> {
         self.tokenize_nbest(input_text, n, unique, cost_threshold)
     }
+
+    /// Tokenizes the input text and returns only the token surfaces (snake_case alias).
+    #[wasm_bindgen(js_name = "tokenize_surfaces")]
+    pub fn py_tokenize_surfaces(&self, input_text: &str) -> Result<Vec<String>, JsValue> {
+        self.tokenize_surfaces(input_text)
+    }
 }
 
 #[cfg(test)]
@@ -293,6 +315,36 @@ mod tests {
         assert_eq!(tokens[1].surface, "限定");
         assert_eq!(tokens[2].surface, "トートバッグ");
         assert_eq!(tokens[0].get_detail(0), Some("名詞".to_string()));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_tokenize_surfaces_matches_tokenize() {
+        use crate::TokenizerBuilder;
+
+        let mut builder = TokenizerBuilder::new().unwrap();
+        builder.set_mode("normal").unwrap();
+        builder.set_dictionary("embedded://ipadic").unwrap();
+
+        let tokenizer = builder.build().unwrap();
+
+        let text = "関西国際空港限定トートバッグ";
+        let expected: Vec<String> = tokenizer
+            .tokenize(text)
+            .unwrap()
+            .into_iter()
+            .map(|t| t.surface)
+            .collect();
+        let surfaces = tokenizer.tokenize_surfaces(text).unwrap();
+        assert_eq!(expected, surfaces);
+        assert_eq!(surfaces, vec!["関西国際空港", "限定", "トートバッグ"]);
+
+        // Repeated calls on one instance reuse the internal lattice and
+        // must stay stable; the snake_case alias must match too.
+        for _ in 0..10 {
+            assert_eq!(surfaces, tokenizer.tokenize_surfaces(text).unwrap());
+        }
+        assert_eq!(surfaces, tokenizer.py_tokenize_surfaces(text).unwrap());
     }
 
     #[cfg(target_arch = "wasm32")]

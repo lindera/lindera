@@ -156,6 +156,25 @@ $tokens = $tokenizer->tokenize('形態素解析');
 
 **Returns:** `array<Token>`
 
+#### `tokenizeSurfaces($text)`
+
+Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no `Token` objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `array_map(fn ($t) => $t->surface, $tokenizer->tokenize($text))`.
+
+```php
+<?php
+
+$surfaces = $tokenizer->tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `$text` | `string` | Text to tokenize |
+
+**Returns:** `array<string>`
+
 #### `tokenizeNbest($text, $n, $unique, $costThreshold)`
 
 Returns the N-best tokenization results as an array of `NbestResult` objects.

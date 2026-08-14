@@ -44,4 +44,28 @@ class TestTokenizeIpadic < Minitest::Test
       assert_kind_of Integer, cost
     end
   end
+
+  def test_tokenize_surfaces_matches_tokenize
+    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+
+    ['すもももももももものうち', '関西国際空港限定トートバッグ', ''].each do |text|
+      expected = tokenizer.tokenize(text).map(&:surface)
+      surfaces = tokenizer.tokenize_surfaces(text)
+
+      assert_kind_of Array, surfaces
+      assert_equal expected, surfaces
+    end
+  end
+
+  def test_tokenize_repeated_calls_are_stable
+    # The tokenizer reuses an internal lattice across calls; repeated calls
+    # on one instance must keep producing identical output.
+    tokenizer = Lindera::Tokenizer.new(@dictionary, 'normal', nil)
+    text = 'すもももももももものうち'
+    first = tokenizer.tokenize_surfaces(text)
+
+    100.times do
+      assert_equal first, tokenizer.tokenize_surfaces(text)
+    end
+  end
 end
