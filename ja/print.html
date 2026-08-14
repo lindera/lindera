@@ -4600,6 +4600,17 @@ tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Array&lt;Token&gt;</code></p>
+<h4 id="tokenize_surfacestext-1"><a class="header" href="#tokenize_surfacestext-1"><code>tokenize_surfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map(&amp;:surface)</code> と一致します。</p>
+<pre><code class="language-ruby">surfaces = tokenizer.tokenize_surfaces('形態素解析')
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;String&gt;</code></p>
 <h4 id="tokenize_nbesttext-n-unique-cost_threshold"><a class="header" href="#tokenize_nbesttext-n-unique-cost_threshold"><code>tokenize_nbest(text, n, unique, cost_threshold)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果はトータルパスコストとペアになっています。</p>
 <pre><code class="language-ruby">results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)
@@ -5358,6 +5369,19 @@ $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>array&lt;Token&gt;</code></p>
+<h4 id="tokenizesurfacestext-1"><a class="header" href="#tokenizesurfacestext-1"><code>tokenizeSurfaces($text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>array_map(fn ($t) =&gt; $t-&gt;surface, $tokenizer-&gt;tokenize($text))</code> と一致します。</p>
+<pre><code class="language-php">&lt;?php
+
+$surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>array&lt;string&gt;</code></p>
 <h4 id="tokenizenbesttext-n"><a class="header" href="#tokenizenbesttext-n"><code>tokenizeNbest($text, $n)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果は <code>NbestResult</code> オブジェクトで、トークン配列とトータルパスコストを含みます。</p>
 <pre><code class="language-php">$results = $tokenizer-&gt;tokenizeNbest('すもももももももものうち', 3);
@@ -6176,6 +6200,15 @@ builder.setDictionaryInstance(dictionary);
 </ul>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
 </code></pre>
+<h4 id="tokenizesurfacestext-2"><a class="header" href="#tokenizesurfacestext-2"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを返します。分かち書き用途の高速パスです。トークンオブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。（Web Worker とは無関係です。）</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>text</code> (string) -- トークナイズするテキスト</li>
+<li><strong>戻り値</strong>: <code>string[]</code> -- surface 文字列の配列</li>
+</ul>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+</code></pre>
 <h4 id="tokenizenbesttext-n-unique-costthreshold-1"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold-1"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>トータルパスコスト順に N-best トークナイズ結果を返します。</p>
 <ul>
@@ -6337,6 +6370,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
+<tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>

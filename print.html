@@ -4603,6 +4603,17 @@ tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Token&gt;</code></p>
+<h4 id="tokenize_surfacestext-1"><a class="header" href="#tokenize_surfacestext-1"><code>tokenize_surfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map(&amp;:surface)</code>.</p>
+<pre><code class="language-ruby">surfaces = tokenizer.tokenize_surfaces('形態素解析')
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;String&gt;</code></p>
 <h4 id="tokenize_nbesttext-n-unique-cost_threshold"><a class="header" href="#tokenize_nbesttext-n-unique-cost_threshold"><code>tokenize_nbest(text, n, unique, cost_threshold)</code></a></h4>
 <p>Returns the N-best tokenization results, each paired with its total path cost.</p>
 <pre><code class="language-ruby">results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)
@@ -5377,6 +5388,19 @@ $tokens = $tokenizer-&gt;tokenize('形態素解析');
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>array&lt;Token&gt;</code></p>
+<h4 id="tokenizesurfacestext-1"><a class="header" href="#tokenizesurfacestext-1"><code>tokenizeSurfaces($text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>array_map(fn ($t) =&gt; $t-&gt;surface, $tokenizer-&gt;tokenize($text))</code>.</p>
+<pre><code class="language-php">&lt;?php
+
+$surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>array&lt;string&gt;</code></p>
 <h4 id="tokenizenbesttext-n-unique-costthreshold-1"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold-1"><code>tokenizeNbest($text, $n, $unique, $costThreshold)</code></a></h4>
 <p>Returns the N-best tokenization results as an array of <code>NbestResult</code> objects.</p>
 <pre><code class="language-php">&lt;?php
@@ -6252,6 +6276,15 @@ builder.setDictionaryInstance(dictionary);
 </ul>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
 </code></pre>
+<h4 id="tokenizesurfacestext-2"><a class="header" href="#tokenizesurfacestext-2"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces. This is the fast path for wakati-style use: no token objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>. (Unrelated to Web Workers.)</p>
+<ul>
+<li><strong>Parameters</strong>: <code>text</code> (string) -- Text to tokenize</li>
+<li><strong>Returns</strong>: <code>string[]</code> -- Array of surface strings</li>
+</ul>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+</code></pre>
 <h4 id="tokenizenbesttext-n-unique-costthreshold-2"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold-2"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>Returns N-best tokenization results ordered by total path cost.</p>
 <ul>
@@ -6413,6 +6446,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
+<tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>

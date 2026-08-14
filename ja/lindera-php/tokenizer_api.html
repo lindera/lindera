@@ -255,6 +255,19 @@ $tokenizer = new Lindera\Tokenizer($dictionary, 'normal', $userDictionary);
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>array&lt;Token&gt;</code></p>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces($text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>array_map(fn ($t) =&gt; $t-&gt;surface, $tokenizer-&gt;tokenize($text))</code> と一致します。</p>
+<pre><code class="language-php">&lt;?php
+
+$surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>array&lt;string&gt;</code></p>
 <h4 id="tokenizenbesttext-n"><a class="header" href="#tokenizenbesttext-n"><code>tokenizeNbest($text, $n)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果は <code>NbestResult</code> オブジェクトで、トークン配列とトータルパスコストを含みます。</p>
 <pre><code class="language-php">$results = $tokenizer-&gt;tokenizeNbest('すもももももももものうち', 3);

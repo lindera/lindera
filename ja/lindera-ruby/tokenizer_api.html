@@ -255,6 +255,17 @@ tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Array&lt;Token&gt;</code></p>
+<h4 id="tokenize_surfacestext"><a class="header" href="#tokenize_surfacestext"><code>tokenize_surfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map(&amp;:surface)</code> と一致します。</p>
+<pre><code class="language-ruby">surfaces = tokenizer.tokenize_surfaces('形態素解析')
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;String&gt;</code></p>
 <h4 id="tokenize_nbesttext-n-unique-cost_threshold"><a class="header" href="#tokenize_nbesttext-n-unique-cost_threshold"><code>tokenize_nbest(text, n, unique, cost_threshold)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果はトータルパスコストとペアになっています。</p>
 <pre><code class="language-ruby">results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)

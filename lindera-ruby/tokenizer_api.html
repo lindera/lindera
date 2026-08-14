@@ -256,6 +256,17 @@ tokenizer = Lindera::Tokenizer.new(dictionary, 'normal', user_dict)
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Array&lt;Token&gt;</code></p>
+<h4 id="tokenize_surfacestext"><a class="header" href="#tokenize_surfacestext"><code>tokenize_surfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map(&amp;:surface)</code>.</p>
+<pre><code class="language-ruby">surfaces = tokenizer.tokenize_surfaces('形態素解析')
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>String</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;String&gt;</code></p>
 <h4 id="tokenize_nbesttext-n-unique-cost_threshold"><a class="header" href="#tokenize_nbesttext-n-unique-cost_threshold"><code>tokenize_nbest(text, n, unique, cost_threshold)</code></a></h4>
 <p>Returns the N-best tokenization results, each paired with its total path cost.</p>
 <pre><code class="language-ruby">results = tokenizer.tokenize_nbest('すもももももももものうち', 3, false, nil)

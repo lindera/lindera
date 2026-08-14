@@ -276,6 +276,19 @@ $tokens = $tokenizer-&gt;tokenize('形態素解析');
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>array&lt;Token&gt;</code></p>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces($text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>array_map(fn ($t) =&gt; $t-&gt;surface, $tokenizer-&gt;tokenize($text))</code>.</p>
+<pre><code class="language-php">&lt;?php
+
+$surfaces = $tokenizer-&gt;tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>$text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>array&lt;string&gt;</code></p>
 <h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest($text, $n, $unique, $costThreshold)</code></a></h4>
 <p>Returns the N-best tokenization results as an array of <code>NbestResult</code> objects.</p>
 <pre><code class="language-php">&lt;?php

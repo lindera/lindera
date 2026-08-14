@@ -299,6 +299,15 @@ builder.setDictionaryInstance(dictionary);
 </ul>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
 </code></pre>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを返します。分かち書き用途の高速パスです。トークンオブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。（Web Worker とは無関係です。）</p>
+<ul>
+<li><strong>パラメータ</strong>: <code>text</code> (string) -- トークナイズするテキスト</li>
+<li><strong>戻り値</strong>: <code>string[]</code> -- surface 文字列の配列</li>
+</ul>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+</code></pre>
 <h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>トータルパスコスト順に N-best トークナイズ結果を返します。</p>
 <ul>
@@ -460,6 +469,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
+<tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>

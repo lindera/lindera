@@ -299,6 +299,15 @@ builder.setDictionaryInstance(dictionary);
 </ul>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("関西国際空港");
 </code></pre>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces. This is the fast path for wakati-style use: no token objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>. (Unrelated to Web Workers.)</p>
+<ul>
+<li><strong>Parameters</strong>: <code>text</code> (string) -- Text to tokenize</li>
+<li><strong>Returns</strong>: <code>string[]</code> -- Array of surface strings</li>
+</ul>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+</code></pre>
 <h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>Returns N-best tokenization results ordered by total path cost.</p>
 <ul>
@@ -460,6 +469,7 @@ console.log(error.toString()); // "message"
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
 <tr><td><code>appendTokenFilter()</code></td><td><code>append_token_filter()</code></td></tr>
+<tr><td><code>tokenizeSurfaces()</code></td><td><code>tokenize_surfaces()</code></td></tr>
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
