@@ -265,6 +265,23 @@ export declare class Tokenizer {
    */
   tokenize(text: string): Array<Token>
   /**
+   * Tokenizes the given text and returns only the token surfaces.
+   *
+   * This is the fast path for wakati-style use: no Token objects are
+   * created and no morphological details are loaded, so it is
+   * significantly faster than `tokenize` when only the surface strings
+   * are needed. The surfaces equal `tokenize(text).map((t) => t.surface)`.
+   *
+   * # Arguments
+   *
+   * * `text` - Text to tokenize.
+   *
+   * # Returns
+   *
+   * An array of surface strings, in reading order.
+   */
+  tokenizeSurfaces(text: string): Array<string>
+  /**
    * Tokenizes the given text and returns N-best results.
    *
    * # Arguments

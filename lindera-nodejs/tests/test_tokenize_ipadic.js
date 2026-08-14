@@ -45,6 +45,30 @@ describe(
       assert.strictEqual(tokens[0].surface, "東京");
     });
 
+    it("should return the same surfaces from tokenizeSurfaces as tokenize", () => {
+      const dictionary = lindera.loadDictionary("embedded://ipadic");
+      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+
+      for (const text of ["すもももももももものうち", "関西国際空港限定トートバッグ", ""]) {
+        const expected = tokenizer.tokenize(text).map((t) => t.surface);
+        const surfaces = tokenizer.tokenizeSurfaces(text);
+        assert.deepStrictEqual(surfaces, expected);
+      }
+    });
+
+    it("should produce stable output across repeated calls on one instance", () => {
+      // The tokenizer reuses an internal lattice across calls; repeated
+      // calls on one instance must keep producing identical output.
+      const dictionary = lindera.loadDictionary("embedded://ipadic");
+      const tokenizer = new lindera.Tokenizer(dictionary, "normal");
+
+      const text = "すもももももももものうち";
+      const first = tokenizer.tokenizeSurfaces(text);
+      for (let i = 0; i < 100; i++) {
+        assert.deepStrictEqual(tokenizer.tokenizeSurfaces(text), first);
+      }
+    });
+
     it("should support N-best tokenization", () => {
       const dictionary = lindera.loadDictionary("embedded://ipadic");
       const tokenizer = new lindera.Tokenizer(dictionary, "normal");

@@ -19,3 +19,13 @@ embed-ipadic = ["lindera/embed-ipadic", "lindera-analysis/embed-ipadic"]
 lindera = { workspace = true }
 lindera-analysis = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.8.2", default-features = false, features = [
+    "html_reports",
+] }
+
+[[bench]]
+name = "bench_binding_core_ipadic"
+harness = false
+required-features = ["embed-ipadic"]

@@ -1612,6 +1612,7 @@ dependencies = [
 name = "lindera-binding-core"
 version = "5.1.0"
 dependencies = [
+ "criterion",
  "lindera",
  "lindera-analysis",
  "serde_json",

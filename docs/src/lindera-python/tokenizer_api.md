@@ -130,6 +130,23 @@ tokens = tokenizer.tokenize("形態素解析")
 
 **Returns:** `list[Token]`
 
+#### `tokenize_surfaces(text)`
+
+Tokenizes the input text and returns only the token surfaces, as a list of strings. This is the fast path for wakati-style use: no `Token` objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `[t.surface for t in tokenizer.tokenize(text)]`.
+
+```python
+surfaces = tokenizer.tokenize_surfaces("形態素解析")
+# ["形態素", "解析"]
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `text` | `str` | Text to tokenize |
+
+**Returns:** `list[str]`
+
 #### `tokenize_nbest(text, n, unique=False, cost_threshold=None)`
 
 Returns the N-best tokenization results, each paired with its total path cost.

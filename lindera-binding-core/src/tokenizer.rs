@@ -20,7 +20,7 @@ use lindera_analysis::tokenizer::{Tokenizer, TokenizerBuilder};
 use lindera_analysis::worker::AnalysisWorker;
 
 use crate::error::CoreResult;
-use crate::token::TokenView;
+use crate::token::{SurfaceView, TokenView};
 
 /// Builder that orchestrates tokenizer configuration on behalf of the bindings.
 ///
@@ -164,6 +164,22 @@ impl CoreTokenizer {
         Ok(tokens.into_iter().map(TokenView::from_token).collect())
     }
 
+    /// Tokenizes `text`, returning surface-only views ([`SurfaceView`])
+    /// without materializing any morphological details.
+    ///
+    /// This is the fast path for wakati-style callers: it skips the
+    /// per-token details loading and string materialization that
+    /// [`CoreTokenizer::tokenize`] pays (~14 allocations per IPADIC token
+    /// down to ~1), while reusing the internal worker's buffers like the
+    /// other methods. Token filters configured on the tokenizer still run
+    /// (some may load details internally); the saving on this path is the
+    /// FFI-side materialization.
+    pub fn tokenize_surfaces(&self, text: &str) -> CoreResult<Vec<SurfaceView>> {
+        let mut worker = lock_worker(&self.worker);
+        let tokens = worker.tokenize(text)?;
+        Ok(tokens.into_iter().map(SurfaceView::from_token).collect())
+    }
+
     /// Tokenizes `text` and returns the N-best results as `(tokens, cost)` pairs.
     ///
     /// Reuses the internal worker's buffers across calls, like
@@ -294,6 +310,36 @@ mod tests {
                 for ((a_tokens, a_cost), (b_tokens, b_cost)) in first.iter().zip(again.iter()) {
                     assert_eq!(a_cost, b_cost);
                     assert_eq!(a_tokens.len(), b_tokens.len());
+                }
+            }
+        }
+
+        /// The surface-only fast path must yield exactly the surfaces and
+        /// byte offsets of the full tokenize path, for repeated calls.
+        #[test]
+        fn tokenize_surfaces_matches_tokenize() {
+            let tokenizer = ipadic_tokenizer();
+            let texts = [
+                "すもももももももものうち",
+                "関西国際空港限定トートバッグ",
+                "",
+            ];
+            for _ in 0..3 {
+                for text in texts {
+                    let full = match tokenizer.tokenize(text) {
+                        Ok(tokens) => tokens,
+                        Err(err) => panic!("tokenize failed: {err}"),
+                    };
+                    let surfaces = match tokenizer.tokenize_surfaces(text) {
+                        Ok(views) => views,
+                        Err(err) => panic!("tokenize_surfaces failed: {err}"),
+                    };
+                    assert_eq!(full.len(), surfaces.len(), "count for {text:?}");
+                    for (a, b) in full.iter().zip(surfaces.iter()) {
+                        assert_eq!(a.surface, b.surface);
+                        assert_eq!(a.byte_start, b.byte_start);
+                        assert_eq!(a.byte_end, b.byte_end);
+                    }
                 }
             }
         }

@@ -130,6 +130,23 @@ const tokens = tokenizer.tokenize("形態素解析");
 
 **Returns:** `Token[]`
 
+#### `tokenizeSurfaces(text)`
+
+Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no `Token` objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `tokenizer.tokenize(text).map((t) => t.surface)`.
+
+```javascript
+const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
+// ["形態素", "解析"]
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `text` | `string` | Text to tokenize |
+
+**Returns:** `string[]`
+
 #### `tokenizeNbest(text, n, unique?, costThreshold?)`
 
 Returns the N-best tokenization results, each containing tokens and total path cost.

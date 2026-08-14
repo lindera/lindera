@@ -19,7 +19,9 @@ pub struct TokenView {
 impl TokenView {
     /// Extracts the binding-facing data from a `lindera` token.
     pub fn from_token(mut token: Token) -> Self {
-        let details = token.details().iter().map(|s| s.to_string()).collect();
+        // details_iter avoids the intermediate Vec<&str> that details()
+        // collects on every call.
+        let details = token.details_iter().map(|s| s.to_string()).collect();
 
         Self {
             surface: token.surface.to_string(),
@@ -29,6 +31,45 @@ impl TokenView {
             word_id: token.word_id.id(),
             is_unknown: token.word_id.is_unknown(),
             details,
+        }
+    }
+}
+
+/// Surface-only view of a [`lindera::token::Token`], for callers that do
+/// not need morphological details (wakati-style use).
+///
+/// Unlike [`TokenView::from_token`], constructing this never touches the
+/// dictionary's word details, skipping their materialization entirely
+/// (roughly one allocation per token instead of ~14 for IPADIC). Byte
+/// offsets are carried here so bindings can expose them later without a
+/// breaking change; the current language APIs return only the surfaces.
+#[derive(Debug, Clone)]
+pub struct SurfaceView {
+    /// The token's surface form.
+    pub surface: String,
+    /// Starting byte position in the original (pre-filter) text.
+    pub byte_start: usize,
+    /// Ending byte position (exclusive) in the original (pre-filter) text.
+    pub byte_end: usize,
+}
+
+impl SurfaceView {
+    /// Extracts the surface data from a `lindera` token without loading
+    /// details.
+    ///
+    /// # 引数
+    ///
+    /// * `token` - The token to consume; a borrowed surface is copied
+    ///   once, an owned surface is moved.
+    ///
+    /// # 戻り値
+    ///
+    /// The surface-only view.
+    pub fn from_token(token: Token) -> Self {
+        Self {
+            surface: token.surface.into_owned(),
+            byte_start: token.byte_start,
+            byte_end: token.byte_end,
         }
     }
 }
