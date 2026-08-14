@@ -139,6 +139,79 @@ fn bench_tokenize_with_simple_userdic_ipadic(c: &mut Criterion) {
     });
 }
 
+/// Short text matching the per-call binding workload #881 targets. All
+/// three variants below return the token count so the worker variant
+/// (whose tokens borrow the worker and cannot leave the closure) stays
+/// comparable with the fresh/lattice variants.
+#[cfg(feature = "embed-ipadic")]
+const SHORT_TEXT: &str = "すもももももももものうち";
+
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_short_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-short-ipadic", |b| {
+        b.iter(|| segmenter.segment(Cow::Borrowed(SHORT_TEXT)).unwrap().len())
+    });
+}
+
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_short_with_lattice_ipadic(c: &mut Criterion) {
+    use lindera::dictionary::Lattice;
+
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-short-with-lattice-ipadic", |b| {
+        let mut lattice = Lattice::default();
+        b.iter(|| {
+            segmenter
+                .segment_with_lattice(Cow::Borrowed(SHORT_TEXT), &mut lattice)
+                .unwrap()
+                .len()
+        })
+    });
+}
+
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_short_worker_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-short-worker-ipadic", |b| {
+        let mut worker = segmenter.new_worker();
+        b.iter(|| worker.segment(SHORT_TEXT).unwrap().len())
+    });
+}
+
+#[cfg(feature = "embed-ipadic")]
+fn bench_tokenize_with_worker_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-tokenize-with-worker-ipadic", |b| {
+        let mut worker = segmenter.new_worker();
+        b.iter(|| worker.segment("検索エンジン（けんさくエンジン、英語: search engine）は、狭義にはインターネットに存在する情報（ウェブページ、ウェブサイト、画像ファイル、ネットニュースなど）を検索する機能およびそのプログラム。").unwrap().len())
+    });
+}
+
+#[cfg(feature = "embed-ipadic")]
+fn bench_segment_nbest_worker_ipadic(c: &mut Criterion) {
+    let dictionary = load_dictionary("embedded://ipadic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+
+    c.bench_function("bench-segment-nbest-worker-ipadic", |b| {
+        let mut worker = segmenter.new_worker();
+        b.iter(|| {
+            worker
+                .segment_nbest(SHORT_TEXT, 5, false, None)
+                .unwrap()
+                .len()
+        })
+    });
+}
+
 #[cfg(feature = "embed-ipadic")]
 fn bench_tokenize_long_text_ipadic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
@@ -196,10 +269,15 @@ criterion_group!(
     bench_clone_ipadic,
     bench_tokenize_ipadic,
     bench_tokenize_with_lattice_ipadic,
+    bench_tokenize_with_worker_ipadic,
     bench_tokenize_with_simple_userdic_ipadic,
     bench_tokenize_long_text_ipadic,
     bench_tokenize_details_long_text_ipadic,
     bench_segment_nbest_ipadic,
+    bench_segment_nbest_worker_ipadic,
+    bench_segment_short_ipadic,
+    bench_segment_short_with_lattice_ipadic,
+    bench_segment_short_worker_ipadic,
 );
 
 #[cfg(feature = "embed-ipadic")]

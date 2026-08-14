@@ -3,6 +3,7 @@ pub mod error;
 pub mod mode;
 pub mod segmenter;
 pub mod token;
+pub mod worker;
 
 pub type LinderaResult<T> = lindera_dictionary::LinderaResult<T>;
 

@@ -27,7 +27,7 @@ pub type SegmenterConfig = Value;
 /// error or warning (see <https://github.com/lindera/lindera/issues/871>).
 /// 32 KiB stays well under both that saturation point and downstream
 /// consumers' own token-length limits (e.g. tantivy's `MAX_TOKEN_LEN`).
-const MAX_SENTENCE_BYTES: usize = 32 * 1024;
+pub(crate) const MAX_SENTENCE_BYTES: usize = 32 * 1024;
 
 /// Finds the end of the next sentence starting at `sentence_start`, scanning
 /// for a real sentence delimiter (`\n`, `\t`, `。`, `、`) or, failing that,
@@ -386,6 +386,36 @@ impl Segmenter {
         text: Cow<'a, str>,
         lattice: &mut Lattice,
     ) -> LinderaResult<Vec<Token<'a>>> {
+        // The backtrace buffer is allocated once per call; SegmentWorker
+        // routes through segment_with_buffers to reuse it across calls too.
+        let mut offsets: Vec<(usize, WordId)> = Vec::new();
+        self.segment_with_buffers(text, lattice, &mut offsets)
+    }
+
+    /// Segments the input text reusing both the caller's lattice and the
+    /// caller's backtrace scratch buffer.
+    ///
+    /// This is the shared body behind [`Segmenter::segment_with_lattice`]
+    /// (which passes a fresh buffer) and `SegmentWorker::segment` (which
+    /// keeps one buffer alive across calls). Output is identical to
+    /// `segment_with_lattice` for the same input.
+    ///
+    /// # 引数
+    ///
+    /// * `text` - The input text, borrowed or owned.
+    /// * `lattice` - The Viterbi lattice to reuse across sentences/calls.
+    /// * `offsets` - Backtrace scratch buffer; overwritten per sentence
+    ///   (`tokens_offset_into` clears it), so no pre-clearing is required.
+    ///
+    /// # 戻り値
+    ///
+    /// The tokens segmented from `text`, in reading order.
+    pub(crate) fn segment_with_buffers<'a>(
+        &'a self,
+        text: Cow<'a, str>,
+        lattice: &mut Lattice,
+        offsets: &mut Vec<(usize, WordId)>,
+    ) -> LinderaResult<Vec<Token<'a>>> {
         let mut tokens: Vec<Token> = Vec::new();
 
         let mut position = 0_usize;
@@ -394,10 +424,6 @@ impl Segmenter {
         // Process whole text without splitting first for better performance with borrowed text
         let text_len = text.len();
         let mut sentence_start = 0;
-
-        // Reused across sentences so the backtrace buffer is allocated once
-        // per call instead of once per sentence.
-        let mut offsets: Vec<(usize, WordId)> = Vec::new();
 
         while sentence_start < text_len {
             // Find the end of the current sentence
@@ -426,7 +452,7 @@ impl Segmenter {
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
-            lattice.tokens_offset_into(&mut offsets);
+            lattice.tokens_offset_into(offsets);
             tokens.reserve(offsets.len());
 
             for i in 0..offsets.len() {

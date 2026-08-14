@@ -142,3 +142,5 @@ use lindera_dictionary::viterbi::Lattice;
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &mut lattice, 3, false, None)?;
 ```
+
+At the segmenter level, `SegmentWorker` (created via `Segmenter::new_worker`) packages this pattern into a session object that owns the lattice and scratch buffers, and additionally bounds retained memory with an automatic shrink policy. See the [Segmenter](../lindera/segmenter.md) page for details.

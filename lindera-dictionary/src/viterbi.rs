@@ -433,6 +433,71 @@ impl Lattice {
         }
     }
 
+    /// Returns the lattice's current slot capacity: the largest sentence
+    /// length (in bytes) whose `ends_at` slots are already allocated.
+    ///
+    /// # 戻り値
+    ///
+    /// The capacity in bytes. `0` for a fresh lattice.
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Shrinks the internal buffers down to what a sentence of `text_len`
+    /// bytes needs, releasing memory retained after processing a long
+    /// sentence.
+    ///
+    /// The lattice grows monotonically (`set_capacity` never shrinks), so a
+    /// single long sentence pins its worst-case allocation for the lifetime
+    /// of the lattice. Long-lived holders (e.g. a reusable worker) can call
+    /// this to bound retention. This is never called on the hot path:
+    /// `clear()`/`set_text` stay shrink-free (#877/#884).
+    ///
+    /// Invariants preserved:
+    /// - Every remaining `ends_at` slot keeps a capacity of at least 16, the
+    ///   pre-size that avoids first-growth reallocations (#827/#841).
+    /// - `clear()` runs first, so all slots are empty and the
+    ///   `last_text_len` bound (#877) stays valid after truncation.
+    ///
+    /// # 引数
+    ///
+    /// * `text_len` - Target sentence length in bytes; buffers are reduced
+    ///   to what a sentence of this length requires. Buffers already at or
+    ///   below the target are left untouched.
+    pub fn shrink_to(&mut self, text_len: usize) {
+        self.clear();
+        let slots = text_len + 1;
+        if self.capacity > text_len {
+            self.ends_at.truncate(slots);
+            self.ends_at.shrink_to(slots);
+            for slot in &mut self.ends_at {
+                // Keep the per-slot pre-size intact (#841); only release
+                // growth beyond it.
+                slot.shrink_to(16);
+            }
+            self.capacity = text_len;
+        }
+        if self.nbest_capacity > text_len {
+            self.all_paths.truncate(slots);
+            self.all_paths.shrink_to(slots);
+            for paths in &mut self.all_paths {
+                paths.shrink_to(0);
+            }
+            self.nbest_capacity = text_len;
+        }
+        // All slots are empty after clear() + truncate, so lowering the
+        // clear()/backtrace bound is safe (its debug_asserts hold trivially).
+        self.last_text_len = self.last_text_len.min(text_len);
+        // Scratch buffers are sized per sentence content, not per slot; the
+        // bounds below are heuristics (roughly: categories per char, matches
+        // per start position), not correctness requirements — set_text
+        // regrows them on demand.
+        self.char_info_buffer.shrink_to(text_len);
+        self.categories_buffer.shrink_to(4 * text_len);
+        self.matches_head.shrink_to(slots);
+        self.matches_store.shrink_to(8 * slots);
+    }
+
     #[inline(never)]
     // Forward Viterbi implementation:
     // Constructs the lattice and calculates the path costs simultaneously.
@@ -1380,6 +1445,114 @@ mod tests {
         assert_eq!(offsets.len(), 1);
         assert_eq!(offsets[0].0, 0);
         assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
+    }
+
+    /// `shrink_to` must release slots beyond the target while preserving
+    /// the #841 per-slot pre-size on the remaining slots, and the lattice
+    /// must regrow correctly (pre-sized) afterwards.
+    #[test]
+    fn test_shrink_to_truncates_and_keeps_presize() {
+        let mut lattice = Lattice::default();
+
+        lattice.set_capacity(100);
+        lattice.ends_at[0].push(test_edge(1, 0, 0, u16::MAX));
+        lattice.ends_at[100].push(test_edge(2, 0, 100, 0));
+
+        lattice.shrink_to(10);
+        assert_eq!(lattice.capacity(), 10);
+        assert_eq!(lattice.ends_at.len(), 11);
+        assert!(
+            lattice.ends_at.iter().all(|v| v.is_empty()),
+            "shrink_to must clear all slots"
+        );
+        for (i, slot) in lattice.ends_at.iter().enumerate() {
+            assert!(
+                slot.capacity() >= 16,
+                "slot {} lost its pre-size after shrink_to (capacity {})",
+                i,
+                slot.capacity()
+            );
+        }
+
+        // Regrowth after a shrink must pre-size the appended slots again.
+        lattice.set_capacity(50);
+        assert_eq!(lattice.ends_at.len(), 51);
+        for (i, slot) in lattice.ends_at.iter().enumerate() {
+            assert!(
+                slot.capacity() >= 16,
+                "slot {} not pre-sized after regrowth (capacity {})",
+                i,
+                slot.capacity()
+            );
+        }
+    }
+
+    /// `shrink_to` with a target at or above the current capacity must be a
+    /// no-op for the slot vectors (no truncation, no capacity change).
+    #[test]
+    fn test_shrink_to_noop_when_target_not_smaller() {
+        let mut lattice = Lattice::default();
+        lattice.set_capacity(5);
+
+        lattice.shrink_to(100);
+        assert_eq!(lattice.capacity(), 5);
+        assert_eq!(lattice.ends_at.len(), 6);
+
+        lattice.shrink_to(5);
+        assert_eq!(lattice.capacity(), 5);
+        assert_eq!(lattice.ends_at.len(), 6);
+
+        // A fresh lattice tolerates shrink_to without panicking.
+        let mut fresh = Lattice::default();
+        fresh.shrink_to(0);
+        assert_eq!(fresh.capacity(), 0);
+        assert!(fresh.ends_at.is_empty());
+    }
+
+    /// A lattice must produce a correct backtrace when used again after
+    /// `shrink_to`: the `last_text_len` bound and the EOS scan start must
+    /// stay consistent (same guarantee as the #877 regression tests, with a
+    /// shrink in between).
+    #[test]
+    fn test_backtrace_works_after_shrink_to() {
+        let mut lattice = Lattice::default();
+        lattice.set_capacity(100);
+        lattice.ends_at[0].push(test_edge(1, 0, 0, u16::MAX));
+        lattice.ends_at[100].push(test_edge(2, 0, 100, 0));
+
+        lattice.shrink_to(10);
+
+        // Hand-assemble a 3-byte sentence path, as in the #877 tests.
+        lattice.set_capacity(3);
+        lattice.ends_at[0].push(test_edge(0, 0, 0, u16::MAX)); // BOS
+        lattice.ends_at[3].push(test_edge(42, 0, 3, 0)); // token A
+        lattice.ends_at[3].push(test_edge(0, 3, 3, 0)); // EOS -> token A
+
+        let offsets = lattice.tokens_offset();
+        assert_eq!(offsets.len(), 1);
+        assert_eq!(offsets[0].0, 0);
+        assert_eq!(offsets[0].1, WordId::new(LexType::System, 42));
+
+        // clear() after the shrink must leave nothing behind.
+        lattice.clear();
+        assert!(lattice.ends_at.iter().all(|v| v.is_empty()));
+    }
+
+    /// `shrink_to` must also release the N-Best `all_paths` slots.
+    #[test]
+    fn test_shrink_to_releases_nbest_paths() {
+        let mut lattice = Lattice::default();
+        lattice.set_capacity_nbest(100);
+        assert_eq!(lattice.all_paths.len(), 101);
+
+        lattice.shrink_to(10);
+        assert_eq!(lattice.all_paths.len(), 11);
+        assert_eq!(lattice.nbest_capacity, 10);
+        assert!(lattice.all_paths.iter().all(|v| v.is_empty()));
+
+        // Regrowth of the nbest side after a shrink.
+        lattice.set_capacity_nbest(20);
+        assert_eq!(lattice.all_paths.len(), 21);
     }
 
     /// `tokens_offset_into` must clear the caller's buffer and produce the
