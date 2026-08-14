@@ -183,6 +183,26 @@ impl JsTokenizer {
         Ok(views.into_iter().map(JsToken::from_view).collect())
     }
 
+    /// Tokenizes the given text and returns only the token surfaces.
+    ///
+    /// This is the fast path for wakati-style use: no Token objects are
+    /// created and no morphological details are loaded, so it is
+    /// significantly faster than `tokenize` when only the surface strings
+    /// are needed. The surfaces equal `tokenize(text).map((t) => t.surface)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// An array of surface strings, in reading order.
+    #[napi]
+    pub fn tokenize_surfaces(&self, text: String) -> napi::Result<Vec<String>> {
+        let views = self.inner.tokenize_surfaces(&text).map_err(to_napi_error)?;
+        Ok(views.into_iter().map(|view| view.surface).collect())
+    }
+
     /// Tokenizes the given text and returns N-best results.
     ///
     /// # Arguments

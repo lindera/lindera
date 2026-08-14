@@ -279,6 +279,30 @@ impl PyTokenizer {
         Ok(views.into_iter().map(PyToken::from_view).collect())
     }
 
+    /// Tokenizes the given text and returns only the token surfaces.
+    ///
+    /// This is the fast path for wakati-style use: no Token objects are
+    /// created and no morphological details are loaded, so it is
+    /// significantly faster than `tokenize` when only the surface strings
+    /// are needed. The surfaces equal `[t.surface for t in tokenize(text)]`.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// A list of surface strings, in reading order.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if tokenization fails.
+    #[pyo3(signature = (text))]
+    fn tokenize_surfaces(&self, text: &str) -> PyResult<Vec<String>> {
+        let views = self.inner.tokenize_surfaces(text).map_err(to_py_error)?;
+        Ok(views.into_iter().map(|view| view.surface).collect())
+    }
+
     /// Tokenizes the given text and returns N-best results.
     ///
     /// # Arguments
