@@ -3054,6 +3054,17 @@ tokenizer = Tokenizer(dictionary, mode="normal")
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>list[Token]</code></p>
+<h4 id="tokenize_surfacestext"><a class="header" href="#tokenize_surfacestext"><code>tokenize_surfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as a list of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>[t.surface for t in tokenizer.tokenize(text)]</code>.</p>
+<pre><code class="language-python">surfaces = tokenizer.tokenize_surfaces("形態素解析")
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>str</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>list[str]</code></p>
 <h4 id="tokenize_nbesttext-n-uniquefalse-cost_thresholdnone"><a class="header" href="#tokenize_nbesttext-n-uniquefalse-cost_thresholdnone"><code>tokenize_nbest(text, n, unique=False, cost_threshold=None)</code></a></h4>
 <p>Returns the N-best tokenization results, each paired with its total path cost.</p>
 <pre><code class="language-python">results = tokenizer.tokenize_nbest("すもももももももものうち", n=3)
@@ -3884,6 +3895,17 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Token[]</code></p>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>string[]</code></p>
 <h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>Returns the N-best tokenization results, each containing tokens and total path cost.</p>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);

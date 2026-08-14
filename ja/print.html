@@ -3050,6 +3050,17 @@ tokenizer = Tokenizer(dictionary, mode="normal")
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>list[Token]</code></p>
+<h4 id="tokenize_surfacestext"><a class="header" href="#tokenize_surfacestext"><code>tokenize_surfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列のリストとして返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>[t.surface for t in tokenizer.tokenize(text)]</code> と一致します。</p>
+<pre><code class="language-python">surfaces = tokenizer.tokenize_surfaces("形態素解析")
+# ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>str</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>list[str]</code></p>
 <h4 id="tokenize_nbesttext-n-uniquefalse-cost_thresholdnone"><a class="header" href="#tokenize_nbesttext-n-uniquefalse-cost_thresholdnone"><code>tokenize_nbest(text, n, unique=False, cost_threshold=None)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果はトータルパスコストとペアになっています。</p>
 <pre><code class="language-python">results = tokenizer.tokenize_nbest("すもももももももものうち", n=3)
@@ -3883,6 +3894,17 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Token[]</code></p>
+<h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
+<pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
+// ["形態素", "解析"]
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>string[]</code></p>
 <h4 id="tokenizenbesttext-n-unique-costthreshold"><a class="header" href="#tokenizenbesttext-n-unique-costthreshold"><code>tokenizeNbest(text, n, unique?, costThreshold?)</code></a></h4>
 <p>N-best トークナイズ結果を返します。各結果はトークン配列とトータルパスコストを含みます。</p>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
