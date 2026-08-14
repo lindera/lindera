@@ -283,7 +283,7 @@ lindera-wasm パッケージのバージョン文字列を返します。
 ```javascript
 import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // 例: "5.1.0"
+console.log(version()); // 例: "5.2.0"
 ```
 
 ## 列挙型とユーティリティクラス

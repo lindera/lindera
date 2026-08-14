@@ -283,7 +283,7 @@ Returns the version string of the lindera-wasm package.
 ```javascript
 import { version } from 'lindera-wasm-web-ipadic';
 
-console.log(version()); // e.g., "5.1.0"
+console.log(version()); // e.g., "5.2.0"
 ```
 
 ## Enums and Utility Classes
