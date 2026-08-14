@@ -13,6 +13,7 @@
 pub mod character_filter;
 pub mod token_filter;
 pub mod tokenizer;
+pub mod worker;
 
 use serde_json::Value;
 

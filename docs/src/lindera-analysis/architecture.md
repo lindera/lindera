@@ -53,6 +53,10 @@ A trait for filters that post-process the tokens produced by the segmenter. Each
 
 `TokenizerBuilder` assembles a `Tokenizer` from a `TokenizerConfig` (a `serde_json::Value`), which can be constructed programmatically, loaded from a YAML file (via `TokenizerBuilder::from_file`, or automatically from the `LINDERA_CONFIG_PATH` environment variable via `TokenizerBuilder::new`), or built up incrementally with `set_segmenter_mode`, `set_segmenter_dictionary`, `append_character_filter`, and `append_token_filter`. See [Configuration](./configuration.md) for the YAML file format and [Filters](./filters.md) for the full filter reference.
 
+### AnalysisWorker
+
+`AnalysisWorker` (created with `Tokenizer::new_worker` or `Tokenizer::into_worker`) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via `SegmentWorker`), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated `tokenize` calls avoid the per-call allocations `Tokenizer::tokenize` pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token `String`s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a `Mutex`, as `lindera-binding-core` does). See the [Segmenter](../lindera/segmenter.md) page for the underlying `SegmentWorker` and its automatic memory-shrink policy.
+
 ## Feature Flags
 
 | Feature | Description | Default |

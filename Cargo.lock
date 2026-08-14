@@ -1593,6 +1593,7 @@ name = "lindera-analysis"
 version = "5.1.0"
 dependencies = [
  "anyhow",
+ "criterion",
  "daachorse",
  "kanaria",
  "lindera",

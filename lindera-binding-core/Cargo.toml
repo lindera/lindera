@@ -10,6 +10,11 @@ keywords = ["morphological", "analysis", "binding"]
 categories = { workspace = true }
 license = { workspace = true }
 
+[features]
+# Dictionary-embedding pass-throughs, used only by feature-gated tests and
+# benches in this crate; the bindings enable embedding via their own crates.
+embed-ipadic = ["lindera/embed-ipadic", "lindera-analysis/embed-ipadic"]
+
 [dependencies]
 lindera = { workspace = true }
 lindera-analysis = { workspace = true }

@@ -234,6 +234,18 @@ impl SegmentWorker {
         self.calls_in_window = 0;
     }
 
+    /// Discards the internal buffers, replacing them with fresh ones.
+    ///
+    /// Intended for recovery paths (e.g. after a panic poisoned a mutex
+    /// holding this worker) where the buffers may hold an inconsistent
+    /// intermediate state; the segmenter configuration is preserved.
+    pub fn reset(&mut self) {
+        self.lattice = Lattice::default();
+        self.offsets = Vec::new();
+        self.window_max_needed = 0;
+        self.calls_in_window = 0;
+    }
+
     /// Records one call of `text_len` bytes and, once per shrink window,
     /// shrinks the lattice if its capacity exceeds the window's observed
     /// need by more than the hysteresis factor.
