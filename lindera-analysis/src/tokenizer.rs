@@ -413,18 +413,7 @@ impl Tokenizer {
         }
 
         // Correct token offsets if character filters are applied.
-        // Apply corrections in reverse order (last filter first)
-        if !offset_mappings.is_empty() {
-            for token in tokens.iter_mut() {
-                // Apply corrections in reverse order to undo the transformations
-                for mapping in offset_mappings.iter().rev() {
-                    // Override start.
-                    token.byte_start = mapping.correct_offset(token.byte_start, final_text_len);
-                    // Override end.
-                    token.byte_end = mapping.correct_offset(token.byte_end, final_text_len);
-                }
-            }
-        }
+        correct_offsets(&mut tokens, &offset_mappings, final_text_len);
 
         Ok(tokens)
     }
@@ -488,17 +477,41 @@ impl Tokenizer {
                 token_filter.apply(tokens)?;
             }
 
-            if !offset_mappings.is_empty() {
-                for token in tokens.iter_mut() {
-                    for mapping in offset_mappings.iter().rev() {
-                        token.byte_start = mapping.correct_offset(token.byte_start, final_text_len);
-                        token.byte_end = mapping.correct_offset(token.byte_end, final_text_len);
-                    }
-                }
-            }
+            correct_offsets(tokens, &offset_mappings, final_text_len);
         }
 
         Ok(all_results)
+    }
+}
+
+/// Corrects token byte offsets back to the original (pre-filter) text by
+/// applying the character filters' offset mappings in reverse order (last
+/// filter first). A no-op when `offset_mappings` is empty.
+///
+/// Shared by `tokenize_with_lattice`, `tokenize_nbest_with_lattice`, and
+/// `AnalysisWorker`.
+///
+/// # 引数
+///
+/// * `tokens` - The tokens whose `byte_start`/`byte_end` are corrected in
+///   place.
+/// * `offset_mappings` - Non-empty mappings recorded by the character
+///   filters, in application order.
+/// * `final_text_len` - Length in bytes of the fully filtered text.
+pub(crate) fn correct_offsets(
+    tokens: &mut [Token<'_>],
+    offset_mappings: &[OffsetMapping],
+    final_text_len: usize,
+) {
+    if offset_mappings.is_empty() {
+        return;
+    }
+    for token in tokens.iter_mut() {
+        // Apply corrections in reverse order to undo the transformations.
+        for mapping in offset_mappings.iter().rev() {
+            token.byte_start = mapping.correct_offset(token.byte_start, final_text_len);
+            token.byte_end = mapping.correct_offset(token.byte_end, final_text_len);
+        }
     }
 }
 

@@ -38,6 +38,14 @@ unicode-normalization = "0.1.25"
 unicode-segmentation = "1.13.3"
 
 [dev-dependencies]
+criterion = { version = "0.8.2", default-features = false, features = [
+    "html_reports",
+] }
 lindera-dictionary = { workspace = true }
 once_cell = { workspace = true }
 serde_json = { workspace = true }
+
+[[bench]]
+name = "bench_analysis_ipadic"
+harness = false
+required-features = ["embed-ipadic"]
