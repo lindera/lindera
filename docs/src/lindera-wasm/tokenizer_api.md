@@ -154,6 +154,18 @@ Tokenizes the input text.
 const tokens = tokenizer.tokenize("関西国際空港");
 ```
 
+#### `tokenizeSurfaces(text)`
+
+Tokenizes the input text and returns only the token surfaces. This is the fast path for wakati-style use: no token objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `tokenizer.tokenize(text).map((t) => t.surface)`. (Unrelated to Web Workers.)
+
+- **Parameters**: `text` (string) -- Text to tokenize
+- **Returns**: `string[]` -- Array of surface strings
+
+```javascript
+const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+```
+
 #### `tokenizeNbest(text, n, unique?, costThreshold?)`
 
 Returns N-best tokenization results ordered by total path cost.
@@ -337,6 +349,7 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
+| `tokenizeSurfaces()` | `tokenize_surfaces()` |
 | `tokenizeNbest()` | `tokenize_nbest()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |

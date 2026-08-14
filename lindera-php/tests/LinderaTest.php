@@ -154,6 +154,39 @@ class LinderaTest extends TestCase
         $this->assertIsArray($token->details);
     }
 
+    public function testTokenizeSurfacesMatchesTokenize(): void
+    {
+        $builder = new Lindera\TokenizerBuilder();
+        $builder->setDictionary('embedded://ipadic');
+        $tokenizer = $builder->build();
+
+        foreach (['すもももももももものうち', '関西国際空港限定トートバッグ', ''] as $text) {
+            $expected = array_map(
+                static fn ($token) => $token->surface,
+                $tokenizer->tokenize($text)
+            );
+            $surfaces = $tokenizer->tokenizeSurfaces($text);
+
+            $this->assertIsArray($surfaces);
+            $this->assertSame($expected, $surfaces);
+        }
+    }
+
+    public function testTokenizeSurfacesRepeatedCallsAreStable(): void
+    {
+        // The tokenizer reuses an internal lattice across calls; repeated
+        // calls on one instance must keep producing identical output.
+        $builder = new Lindera\TokenizerBuilder();
+        $builder->setDictionary('embedded://ipadic');
+        $tokenizer = $builder->build();
+
+        $text = 'すもももももももものうち';
+        $first = $tokenizer->tokenizeSurfaces($text);
+        for ($i = 0; $i < 100; $i++) {
+            $this->assertSame($first, $tokenizer->tokenizeSurfaces($text));
+        }
+    }
+
     public function testTokenGetDetail(): void
     {
         $builder = new Lindera\TokenizerBuilder();

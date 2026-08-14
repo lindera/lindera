@@ -217,6 +217,34 @@ impl RbTokenizer {
         Ok(arr)
     }
 
+    /// Tokenizes the given text and returns only the token surfaces.
+    ///
+    /// This is the fast path for wakati-style use: no Token objects are
+    /// created and no morphological details are loaded, so it is
+    /// significantly faster than `tokenize` when only the surface strings
+    /// are needed. The surfaces equal `tokenize(text).map(&:surface)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// An array of surface strings, in reading order.
+    fn tokenize_surfaces(&self, text: String) -> Result<RArray, Error> {
+        let ruby = Ruby::get().expect("Ruby runtime not initialized");
+        let views = self
+            .inner
+            .tokenize_surfaces(&text)
+            .map_err(|err| to_magnus_error(&ruby, err.to_string()))?;
+
+        let arr = ruby.ary_new_capa(views.len());
+        for view in views {
+            arr.push(view.surface)?;
+        }
+        Ok(arr)
+    }
+
     /// Tokenizes the given text and returns N-best results.
     ///
     /// # Arguments
@@ -299,6 +327,10 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     let tokenizer_class = module.define_class("Tokenizer", ruby.class_object())?;
     tokenizer_class.define_singleton_method("new", function!(tokenizer_new, 3))?;
     tokenizer_class.define_method("tokenize", method!(RbTokenizer::tokenize, 1))?;
+    tokenizer_class.define_method(
+        "tokenize_surfaces",
+        method!(RbTokenizer::tokenize_surfaces, 1),
+    )?;
     tokenizer_class.define_method("tokenize_nbest", method!(RbTokenizer::tokenize_nbest, 4))?;
 
     Ok(())

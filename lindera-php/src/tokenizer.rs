@@ -198,6 +198,29 @@ impl PhpTokenizer {
         Ok(views.into_iter().map(PhpToken::from_view).collect())
     }
 
+    /// Tokenizes the given text and returns only the token surfaces.
+    ///
+    /// This is the fast path for wakati-style use: no Token objects are
+    /// created and no morphological details are loaded, so it is
+    /// significantly faster than `tokenize` when only the surface strings
+    /// are needed. Exposed to PHP as `tokenizeSurfaces` (ext-php-rs
+    /// converts snake_case method names to camelCase).
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// An array of surface strings, in reading order.
+    pub fn tokenize_surfaces(&self, text: String) -> PhpResult<Vec<String>> {
+        let views = self
+            .inner
+            .tokenize_surfaces(&text)
+            .map_err(lindera_value_err)?;
+        Ok(views.into_iter().map(|view| view.surface).collect())
+    }
+
     /// Tokenizes the given text and returns N-best results.
     ///
     /// Returns an array of associative arrays, each containing:

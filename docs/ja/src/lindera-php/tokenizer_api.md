@@ -131,6 +131,25 @@ $tokens = $tokenizer->tokenize('形態素解析');
 
 **戻り値:** `array<Token>`
 
+#### `tokenizeSurfaces($text)`
+
+入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。`Token` オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は `tokenize` より大幅に高速です。結果は `array_map(fn ($t) => $t->surface, $tokenizer->tokenize($text))` と一致します。
+
+```php
+<?php
+
+$surfaces = $tokenizer->tokenizeSurfaces('形態素解析');
+// ["形態素", "解析"]
+```
+
+**パラメータ:**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `$text` | `string` | トークナイズするテキスト |
+
+**戻り値:** `array<string>`
+
 #### `tokenizeNbest($text, $n)`
 
 N-best トークナイズ結果を返します。各結果は `NbestResult` オブジェクトで、トークン配列とトータルパスコストを含みます。

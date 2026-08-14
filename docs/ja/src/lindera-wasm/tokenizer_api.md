@@ -154,6 +154,18 @@ const tokenizer = new Tokenizer(dictionary, mode, userDictionary);
 const tokens = tokenizer.tokenize("関西国際空港");
 ```
 
+#### `tokenizeSurfaces(text)`
+
+入力テキストをトークナイズし、トークンの surface のみを返します。分かち書き用途の高速パスです。トークンオブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は `tokenize` より大幅に高速です。結果は `tokenizer.tokenize(text).map((t) => t.surface)` と一致します。（Web Worker とは無関係です。）
+
+- **パラメータ**: `text` (string) -- トークナイズするテキスト
+- **戻り値**: `string[]` -- surface 文字列の配列
+
+```javascript
+const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
+// ["関西国際空港"]
+```
+
 #### `tokenizeNbest(text, n, unique?, costThreshold?)`
 
 トータルパスコスト順に N-best トークナイズ結果を返します。
@@ -337,6 +349,7 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
 | `appendTokenFilter()` | `append_token_filter()` |
+| `tokenizeSurfaces()` | `tokenize_surfaces()` |
 | `tokenizeNbest()` | `tokenize_nbest()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
