@@ -695,6 +695,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, false, None)?;
 <span class="boring">}</span></code></pre></pre>
+<p>At the segmenter level, <code>SegmentWorker</code> (created via <code>Segmenter::new_worker</code>) packages this pattern into a session object that owns the lattice and scratch buffers, and additionally bounds retained memory with an automatic shrink policy. See the <a href="concepts/../lindera/segmenter.html">Segmenter</a> page for details.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="user-dictionary"><a class="header" href="#user-dictionary">User Dictionary</a></h1>
 <p>A user dictionary is a supplementary dictionary that allows you to register custom words alongside the system dictionary. This is useful for domain-specific terms, brand names, proper nouns, or any words that are not in the default system dictionary.</p>
 <h2 id="csv-format"><a class="header" href="#csv-format">CSV format</a></h2>
@@ -1195,6 +1196,21 @@ for (tokens, cost) in results {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>segment_nbest_with_lattice</code> is the same operation but lets you pass in a reusable <code>Lattice</code> buffer to avoid reallocating one per call.</p>
+<h2 id="reusable-worker"><a class="header" href="#reusable-worker">Reusable Worker</a></h2>
+<p><code>SegmentWorker</code> is a reusable segmentation session that owns the Viterbi lattice and the backtrace scratch buffer, so repeated calls avoid the per-call allocations <code>segment</code> pays. Create one with <code>new_worker</code> (clones the segmenter) or <code>into_worker</code> (consumes it, avoiding a user-dictionary copy), then call <code>segment</code>/<code>segment_nbest</code> on it:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut worker = segmenter.new_worker();
+for line in lines {
+    let tokens = worker.segment(line)?;
+    for token in &amp;tokens {
+        println!("{}", token.surface.as_ref());
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code> and <code>set_keep_whitespace</code> switch the configuration between calls.</p>
+<p>A worker also bounds retained memory: one delimiter-free 32 KiB sentence grows the lattice to roughly 20 MB, and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately.</p>
+<p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h1>
 <p>Lindera uses a structured error system based on <code>anyhow</code> and <code>thiserror</code> for ergonomic error handling throughout the library.</p>
 <h2 id="linderaresult"><a class="header" href="#linderaresult">LinderaResult</a></h2>

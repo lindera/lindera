@@ -284,6 +284,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, false, None)?;
 <span class="boring">}</span></code></pre></pre>
+<p>セグメンターのレベルでは、<code>SegmentWorker</code>（<code>Segmenter::new_worker</code> で作成）がこのパターンをラティスとスクラッチバッファを所有するセッションオブジェクトとしてまとめており、さらに自動縮小ポリシーで保持メモリも制限します。詳細は <a href="../lindera/segmenter.html">Segmenter</a> のページを参照してください。</p>
 
                     </main>
 

@@ -284,6 +284,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 let mut lattice = Lattice::default();
 let results = tokenizer.tokenize_nbest_with_lattice(text, &amp;mut lattice, 3, false, None)?;
 <span class="boring">}</span></code></pre></pre>
+<p>At the segmenter level, <code>SegmentWorker</code> (created via <code>Segmenter::new_worker</code>) packages this pattern into a session object that owns the lattice and scratch buffers, and additionally bounds retained memory with an automatic shrink policy. See the <a href="../lindera/segmenter.html">Segmenter</a> page for details.</p>
 
                     </main>
 

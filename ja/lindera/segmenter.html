@@ -306,6 +306,21 @@ for (tokens, cost) in results {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
+<h2 id="再利用可能な-worker"><a class="header" href="#再利用可能な-worker">再利用可能な Worker</a></h2>
+<p><code>SegmentWorker</code> は、Viterbi ラティスとバックトレース用スクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut worker = segmenter.new_worker();
+for line in lines {
+    let tokens = worker.segment(line)?;
+    for token in &amp;tokens {
+        println!("{}", token.surface.as_ref());
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。</p>
+<p>Worker は保持メモリも制限します。区切り文字のない 32 KiB の文を 1 回処理するとラティスは約 20 MB まで成長し、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。</p>
+<p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 
                     </main>
 
