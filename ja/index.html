@@ -218,6 +218,8 @@
 <tr><td><a href="./development/contributing.html">コントリビュート</a></td><td>Linderaへの貢献方法</td></tr>
 </tbody></table>
 </div>
+<h2 id="パフォーマンス"><a class="header" href="#パフォーマンス">パフォーマンス</a></h2>
+<p>Linderaは日本語テキスト（IPADIC）を、シングルスレッドで概ね10〜20 MB/sの速度でトークナイズします（速度はハードウェアや、Viterbiラティスを呼び出しをまたいで再利用するかどうかに依存します）。ベンチマークスイート（<code>lindera/benches/</code>）を自分のマシンで再現するには<code>make bench</code>を実行してください。詳細な計測方法と比較データは<a href="https://github.com/lindera/lindera/issues/875">#875</a>を参照してください。</p>
 <h2 id="クイック例"><a class="header" href="#クイック例">クイック例</a></h2>
 <pre><pre class="playground"><code class="language-rust">use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
