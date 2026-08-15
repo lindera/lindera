@@ -48,6 +48,10 @@ graph LR
 | [APIリファレンス](./lindera/api_reference.md) | Rust APIドキュメント |
 | [コントリビュート](./development/contributing.md) | Linderaへの貢献方法 |
 
+## パフォーマンス
+
+Linderaは日本語テキスト（IPADIC）を、シングルスレッドで概ね10〜20 MB/sの速度でトークナイズします（速度はハードウェアや、Viterbiラティスを呼び出しをまたいで再利用するかどうかに依存します）。辞書のロードは[Vibrato](https://github.com/daac-tools/vibrato)より5倍以上高速です。ベンチマークスイート（`lindera/benches/`）を自分のマシンで再現するには`make bench`を実行してください。詳細な計測方法と比較データは[#875](https://github.com/lindera/lindera/issues/875)を参照してください。
+
 ## クイック例
 
 ```rust

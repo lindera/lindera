@@ -48,6 +48,10 @@ graph LR
 | [API Reference](./lindera/api_reference.md) | Rust API documentation |
 | [Contributing](./development/contributing.md) | How to contribute to Lindera |
 
+## Performance
+
+Lindera tokenizes Japanese text (IPADIC) at roughly 10-20 MB/s single-threaded, depending on hardware and whether the Viterbi lattice is reused across calls, with dictionary loading more than 5x faster than [Vibrato](https://github.com/daac-tools/vibrato). Run `make bench` to reproduce the benchmark suite (`lindera/benches/`) on your own machine; see [#875](https://github.com/lindera/lindera/issues/875) for detailed methodology and comparison numbers.
+
 ## Quick Example
 
 ```rust
