@@ -107,29 +107,19 @@ for (const token of tokens) {
 
 ### Plain-Object Tokenization
 
-`tokenizeObjects` returns the same token data as `tokenize`, but as plain JS
-objects instead of `Token` class instances. Class instances release their
-native memory through a finalizer that runs on the event loop, so tight
-synchronous loops that tokenize large inputs without yielding accumulate
-native memory until the next turn. Plain objects are owned entirely by the
-JS heap and are reclaimed by ordinary GC, which keeps memory flat in
-synchronous batch workloads. They also survive `JSON.stringify` and
-`structuredClone` with all fields intact.
+`tokenizeObjects` returns the same fields as `tokenize` but as plain JS objects,
+reclaimed by ordinary GC. Prefer it for large synchronous batches (`Token`
+instances free native memory via an event-loop-deferred finalizer, so loops
+that never yield accumulate memory) or when results must be serializable.
 
 ```javascript
+// Same fields as Token: surface, byteStart, byteEnd, position, wordId, isUnknown, details
 const tokens = tokenizer.tokenizeObjects(text);
 
 for (const token of tokens) {
-  // Same fields as Token: surface, byteStart, byteEnd, position,
-  // wordId, isUnknown, details
   console.log(`${token.surface}	${token.details.join(",")}`);
 }
 ```
-
-Use `tokenize` when you read only a few fields per token (class getters are
-lazy and creation is cheaper), `tokenizeObjects` when you process large
-volumes synchronously or need serializable results, and `tokenizeSurfaces`
-when you only need the surface strings.
 
 ### Using Character Filters
 

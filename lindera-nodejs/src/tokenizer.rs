@@ -185,16 +185,10 @@ impl JsTokenizer {
 
     /// Tokenizes the given text and returns tokens as plain JS objects.
     ///
-    /// The returned objects carry the same fields as [`JsToken`]
-    /// (`surface`, `byteStart`, `byteEnd`, `position`, `wordId`,
-    /// `isUnknown`, `details`) but are plain objects owned by the JS heap.
-    /// Compared to `tokenize`:
-    ///
-    /// - Memory is reclaimed by ordinary GC with no event-loop-deferred
-    ///   finalizers, so tight synchronous loops stay flat instead of
-    ///   accumulating native memory until the next event-loop turn.
-    /// - All fields are materialized eagerly; `tokenize` is faster when
-    ///   only a few fields of each token are read.
+    /// This is the predictable-memory path for high-volume use: plain
+    /// objects are reclaimed by ordinary GC, while `Token` class instances
+    /// release native memory via an event-loop-deferred finalizer, so
+    /// synchronous loops that never yield accumulate memory with `tokenize`.
     ///
     /// # Arguments
     ///

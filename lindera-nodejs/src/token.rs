@@ -167,13 +167,8 @@ impl JsNbestResult {
 
 /// Plain-object token data.
 ///
-/// Unlike the `Token` class, this converts to a plain JS object whose
-/// memory is fully owned by V8: no native box and no deferred finalizer.
-/// Class instances release their native data via a finalizer that runs on
-/// the event loop, so synchronous batch loops that never yield accumulate
-/// native memory until the next turn. Plain objects avoid that entirely,
-/// which makes this the predictable-memory path for high-volume
-/// tokenization (a novel-sized text is ~200K tokens per call).
+/// Carries the same fields as [`JsToken`] but converts to a plain JS
+/// object owned by the JS heap, with no native box or deferred finalizer.
 #[napi(object)]
 pub struct JsTokenData {
     pub surface: String,
