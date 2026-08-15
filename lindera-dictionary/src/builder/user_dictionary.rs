@@ -262,7 +262,7 @@ impl UserDictionaryBuilder {
             // matching the system dictionary encoding. The legacy 5-bit user
             // encoding (max 31 variants) was retired in v4.0.0; user dictionary
             // `.bin` files built with v3 must be rebuilt from their CSV source.
-            let val = (id << 8) | len;
+            let val = crate::builder::prefix_dictionary::pack_entry_value(key, id, len)?;
             keyset.push((key.as_bytes(), val));
             id += len;
         }

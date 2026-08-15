@@ -489,7 +489,7 @@ impl PrefixDictionaryBuilder {
 
         for (key, word_entries) in word_entry_map {
             let len = word_entries.len() as u32;
-            let val = (id << 8) | len; // 24bit for word ID, 8bit for variant count (up to 255 per surface).
+            let val = pack_entry_value(key, id, len)?;
             keyset.push((key.as_bytes(), val));
             id += len;
         }
@@ -566,6 +566,45 @@ impl PrefixDictionaryBuilder {
     }
 }
 
+/// Maximum number of word entries that can share one surface form, imposed by
+/// the 8-bit count field of the packed prefix-dictionary value.
+pub(crate) const MAX_ENTRIES_PER_SURFACE: u32 = 0xff;
+
+/// Maximum entry offset representable by the 24-bit offset field of the packed
+/// prefix-dictionary value.
+pub(crate) const MAX_ENTRY_OFFSET: u32 = (1 << 24) - 1;
+
+/// Packs a prefix-dictionary match value as `(offset << 8) | count`.
+///
+/// Both fields are bounds-checked: exceeding either silently corrupted the
+/// value before (the count overflowed into the offset bits, and the offset
+/// shifted out of the u32 entirely), producing a dictionary that built without
+/// error but tokenized incorrectly.
+///
+/// # 引数
+///
+/// * `surface` - The surface form being packed, used for error reporting.
+/// * `offset` - Entry offset into the values file, in `WordEntry` records.
+/// * `count` - Number of entries sharing this surface form.
+///
+/// # 戻り値
+///
+/// The packed value, or an error naming the surface form and the limit it
+/// exceeded.
+pub(crate) fn pack_entry_value(surface: &str, offset: u32, count: u32) -> LinderaResult<u32> {
+    if count > MAX_ENTRIES_PER_SURFACE {
+        return Err(LinderaErrorKind::Build.with_error(anyhow::anyhow!(
+            "surface form {surface:?} has {count} entries, exceeding the limit of {MAX_ENTRIES_PER_SURFACE} per surface form"
+        )));
+    }
+    if offset > MAX_ENTRY_OFFSET {
+        return Err(LinderaErrorKind::Build.with_error(anyhow::anyhow!(
+            "entry offset {offset} at surface form {surface:?} exceeds the limit of {MAX_ENTRY_OFFSET}; the dictionary has too many entries"
+        )));
+    }
+    Ok((offset << 8) | count)
+}
+
 fn normalize(text: &str) -> String {
     text.to_string().replace('―', "—").replace('～', "〜")
 }
@@ -575,6 +614,42 @@ mod tests {
     use super::*;
     use crate::dictionary::schema::Schema;
     use csv::StringRecord;
+
+    #[test]
+    fn test_pack_entry_value_within_bounds() {
+        // Round-trips through the same decoding the dictionary performs.
+        let packed = pack_entry_value("すもも", 361_708, 1).expect("within bounds");
+        assert_eq!(packed >> 8, 361_708);
+        assert_eq!(packed & 0xff, 1);
+
+        // Both fields at their maximum still pack losslessly.
+        let packed = pack_entry_value("x", MAX_ENTRY_OFFSET, MAX_ENTRIES_PER_SURFACE)
+            .expect("boundary values are valid");
+        assert_eq!(packed >> 8, MAX_ENTRY_OFFSET);
+        assert_eq!(packed & 0xff, MAX_ENTRIES_PER_SURFACE);
+    }
+
+    #[test]
+    fn test_pack_entry_value_rejects_too_many_variants() {
+        // 256 variants would overflow the 8-bit count field and corrupt the
+        // offset bits above it; this used to build a silently wrong dictionary.
+        let err = pack_entry_value("かん", 0, MAX_ENTRIES_PER_SURFACE + 1)
+            .expect_err("256 variants must be rejected");
+        let msg = err.to_string();
+        assert!(msg.contains("かん"), "error should name the surface: {msg}");
+        assert!(msg.contains("256"), "error should state the count: {msg}");
+    }
+
+    #[test]
+    fn test_pack_entry_value_rejects_offset_overflow() {
+        // An offset past 24 bits would shift out of the u32 entirely.
+        let err = pack_entry_value("x", MAX_ENTRY_OFFSET + 1, 1)
+            .expect_err("offset past 24 bits must be rejected");
+        assert!(
+            err.to_string().contains("too many entries"),
+            "error should explain the cause: {err}"
+        );
+    }
 
     #[test]
     fn test_new_with_schema() {
