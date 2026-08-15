@@ -164,3 +164,37 @@ impl JsNbestResult {
         Self { tokens, cost }
     }
 }
+
+/// Plain-object token data.
+///
+/// Unlike the `Token` class, this converts to a plain JS object whose
+/// memory is fully owned by V8: no native box and no deferred finalizer.
+/// Class instances release their native data via a finalizer that runs on
+/// the event loop, so synchronous batch loops that never yield accumulate
+/// native memory until the next turn. Plain objects avoid that entirely,
+/// which makes this the predictable-memory path for high-volume
+/// tokenization (a novel-sized text is ~200K tokens per call).
+#[napi(object)]
+pub struct JsTokenData {
+    pub surface: String,
+    pub byte_start: u32,
+    pub byte_end: u32,
+    pub position: u32,
+    pub word_id: u32,
+    pub is_unknown: bool,
+    pub details: Vec<String>,
+}
+
+impl JsTokenData {
+    pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
+        Self {
+            surface: view.surface,
+            byte_start: view.byte_start as u32,
+            byte_end: view.byte_end as u32,
+            position: view.position as u32,
+            word_id: view.word_id,
+            is_unknown: view.is_unknown,
+            details: view.details,
+        }
+    }
+}

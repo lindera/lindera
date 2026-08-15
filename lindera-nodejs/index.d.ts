@@ -265,6 +265,29 @@ export declare class Tokenizer {
    */
   tokenize(text: string): Array<Token>
   /**
+   * Tokenizes the given text and returns tokens as plain JS objects.
+   *
+   * The returned objects carry the same fields as [`JsToken`]
+   * (`surface`, `byteStart`, `byteEnd`, `position`, `wordId`,
+   * `isUnknown`, `details`) but are plain objects owned by the JS heap.
+   * Compared to `tokenize`:
+   *
+   * - Memory is reclaimed by ordinary GC with no event-loop-deferred
+   *   finalizers, so tight synchronous loops stay flat instead of
+   *   accumulating native memory until the next event-loop turn.
+   * - All fields are materialized eagerly; `tokenize` is faster when
+   *   only a few fields of each token are read.
+   *
+   * # Arguments
+   *
+   * * `text` - Text to tokenize.
+   *
+   * # Returns
+   *
+   * An array of plain token objects, in reading order.
+   */
+  tokenizeObjects(text: string): Array<JsTokenData>
+  /**
    * Tokenizes the given text and returns only the token surfaces.
    *
    * This is the fast path for wakati-style use: no Token objects are
@@ -498,6 +521,27 @@ export interface JsPenalty {
   otherPenaltyLengthThreshold: number
   /** Penalty value for long other-character sequences (default: 1700). */
   otherPenaltyLengthPenalty: number
+}
+
+/**
+ * Plain-object token data.
+ *
+ * Unlike the `Token` class, this converts to a plain JS object whose
+ * memory is fully owned by V8: no native box and no deferred finalizer.
+ * Class instances release their native data via a finalizer that runs on
+ * the event loop, so synchronous batch loops that never yield accumulate
+ * native memory until the next turn. Plain objects avoid that entirely,
+ * which makes this the predictable-memory path for high-volume
+ * tokenization (a novel-sized text is ~200K tokens per call).
+ */
+export interface JsTokenData {
+  surface: string
+  byteStart: number
+  byteEnd: number
+  position: number
+  wordId: number
+  isUnknown: boolean
+  details: Array<string>
 }
 
 /**

@@ -11,7 +11,7 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
-use crate::token::{JsNbestResult, JsToken};
+use crate::token::{JsNbestResult, JsToken, JsTokenData};
 use crate::util::js_value_to_serde_value;
 
 /// Builder for creating a Tokenizer with custom configuration.
@@ -181,6 +181,32 @@ impl JsTokenizer {
     pub fn tokenize(&self, text: String) -> napi::Result<Vec<JsToken>> {
         let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
         Ok(views.into_iter().map(JsToken::from_view).collect())
+    }
+
+    /// Tokenizes the given text and returns tokens as plain JS objects.
+    ///
+    /// The returned objects carry the same fields as [`JsToken`]
+    /// (`surface`, `byteStart`, `byteEnd`, `position`, `wordId`,
+    /// `isUnknown`, `details`) but are plain objects owned by the JS heap.
+    /// Compared to `tokenize`:
+    ///
+    /// - Memory is reclaimed by ordinary GC with no event-loop-deferred
+    ///   finalizers, so tight synchronous loops stay flat instead of
+    ///   accumulating native memory until the next event-loop turn.
+    /// - All fields are materialized eagerly; `tokenize` is faster when
+    ///   only a few fields of each token are read.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// An array of plain token objects, in reading order.
+    #[napi]
+    pub fn tokenize_objects(&self, text: String) -> napi::Result<Vec<JsTokenData>> {
+        let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
+        Ok(views.into_iter().map(JsTokenData::from_view).collect())
     }
 
     /// Tokenizes the given text and returns only the token surfaces.
