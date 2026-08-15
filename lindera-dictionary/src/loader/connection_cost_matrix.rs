@@ -27,11 +27,13 @@ impl ConnectionCostMatrixLoader {
 
     /// Load connection cost matrix using memory-mapped file.
     ///
-    /// Note: mmap only avoids the initial file-read syscall/allocation.
-    /// [`ConnectionCostMatrix::load`] always eagerly decodes the whole buffer
-    /// into an owned `Vec<i16>` regardless of source (by design, to make the
-    /// hot-path `cost()` lookup a plain array index), so this does not make
-    /// the matrix lazily memory-resident at runtime.
+    /// This is the zero-copy path: an mmap base is page-aligned and
+    /// `matrix.mtx` already stores its costs as little-endian `i16` in the
+    /// in-memory layout, so [`ConnectionCostMatrix::load`] views the payload
+    /// in place instead of decoding it into an owned `Vec<i16>`. Loading is
+    /// O(1) in the matrix size and costs no anonymous memory; the pages are
+    /// faulted in lazily as tokenization touches them. UniDic's matrix alone
+    /// is 71.5 MB, so this is the bulk of that dictionary's load cost.
     ///
     /// # Arguments
     ///

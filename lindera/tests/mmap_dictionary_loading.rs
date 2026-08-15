@@ -112,6 +112,30 @@ fn mmap_loading_matches_plain_loading_via_uri() {
     assert_eq!(mmapped_surfaces, plain_surfaces);
 }
 
+/// The mmap path must read the connection cost matrix in place rather than
+/// decoding it into an owned `Vec<i16>`: `mmap` hands back a page-aligned
+/// base and the cost payload starts at byte 6, so the `i16` view is always
+/// aligned. This is the load-time and RSS win of #926 -- UniDic's matrix
+/// alone is 71.5 MB, copied on every load before this change.
+#[test]
+#[cfg(feature = "mmap")]
+fn mmap_loading_borrows_the_connection_cost_matrix() {
+    let dict = build_dictionary();
+
+    let mmapped = load_fs_dictionary_with_options(dict.path(), true).unwrap();
+    assert!(
+        mmapped.connection_cost_matrix.is_zero_copy(),
+        "the mmap path must borrow the connection cost matrix, not copy it"
+    );
+
+    let plain = load_fs_dictionary_with_options(dict.path(), false).unwrap();
+    assert_eq!(
+        mmapped.connection_cost_matrix.costs(),
+        plain.connection_cost_matrix.costs(),
+        "borrowed and copied matrices must hold identical costs"
+    );
+}
+
 /// `use_mmap = true` on an `embedded://` URI must be silently ignored, not
 /// an error.
 #[test]

@@ -104,7 +104,7 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 
 | Feature | Description | Default |
 | --- | --- | --- |
-| `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; avoids eagerly reading the largest word-list files, not the whole dictionary) | Enabled |
+| `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; the word-list files and the connection-cost matrix stay lazily paged, the trie does not) | Enabled |
 | `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI only |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-cjk` | Embed IPADIC + ko-dic + Jieba dictionaries | Disabled |
