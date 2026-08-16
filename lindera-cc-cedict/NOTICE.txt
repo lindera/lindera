@@ -1,0 +1,24 @@
+===========================================================================
+Lindera Morphological Analyzer
+===========================================================================
+
+This software includes a binary and/or source version of data from
+
+  CC-CEDICT-MeCab-0.1.0-20200409
+
+which can be obtained from
+
+  https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz
+
+===========================================================================
+CC-CEDICT-MeCab Notice
+===========================================================================
+
+This MeCab dictionary is based on cedict.
+
+https://www.mdbg.net/chinese/dictionary?page=cedict
+
+This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License
+https://creativecommons.org/licenses/by-sa/4.0/
+
+It more or less means that you are allowed to use this data for both non-commercial and commercial purposes provided that you: mention where you got the data from (attribution) and that in case you improve / add to the data you will share these changes under the same license (share alike).

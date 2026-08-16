@@ -52,6 +52,13 @@ When embedding is enabled, you can load the dictionary with:
 let dictionary = load_dictionary("embedded://ipadic")?;
 ```
 
+> [!NOTE]
+> Dictionary data carries its own license, separate from Lindera's. When you
+> distribute a binary with an embedded dictionary (or redistribute a built
+> dictionary), reproduce the attribution from the corresponding dictionary
+> crate's `NOTICE.txt` (e.g. `lindera-unidic/NOTICE.txt`) in the
+> documentation or other materials provided with your distribution.
+
 ### Combination Features
 
 These meta-features enable multiple dictionaries at once for multilingual applications.

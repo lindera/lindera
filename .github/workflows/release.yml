@@ -348,7 +348,12 @@ jobs:
 
       - name: Create artifact
         run: |
-          cd dictionaries/${{ steps.get_version.outputs.version }}
+          # The build cache directory is keyed on the dictionary format version
+          # (see build_embedded_dictionary in lindera-dictionary/src/assets.rs),
+          # so derive the suffix from the DICTIONARY_FORMAT_VERSION constant.
+          FORMAT_VERSION=$(grep -oP 'DICTIONARY_FORMAT_VERSION: u32 = \K[0-9]+' lindera-dictionary/src/dictionary/metadata.rs)
+          cp ${{ matrix.dictionary.name }}/NOTICE.txt "dictionaries/${{ steps.get_version.outputs.version }}-fmt${FORMAT_VERSION}/${{ matrix.dictionary.name }}/"
+          cd "dictionaries/${{ steps.get_version.outputs.version }}-fmt${FORMAT_VERSION}"
           zip -r ../../${{ matrix.dictionary.name }}-${{ steps.get_version.outputs.version }}.zip ${{ matrix.dictionary.name }}
 
       - name: Upload artifact
