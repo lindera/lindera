@@ -204,11 +204,12 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
 <h3 id="lindera_build_dictionary_cache_dir"><a class="header" href="#lindera_build_dictionary_cache_dir">LINDERA_BUILD_DICTIONARY_CACHE_DIR</a></h3>
 <p>The <code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.</p>
-<p>When set, each build stores two kinds of files under <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;/</code> (where <code>&lt;version&gt;</code> is the dictionary crate version):</p>
+<p>When set, each build stores two kinds of files under <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code> (where <code>&lt;version&gt;</code> is the dictionary crate version and <code>&lt;format&gt;</code> is the dictionary format version):</p>
 <ul>
 <li>the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)</li>
 <li>the built binary dictionary that gets embedded into the crate</li>
 </ul>
+<p>The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached directory is also re-checked against its recorded format version before being reused, which covers entries left behind by an interrupted build. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.</p>
 <p>This enables:</p>
 <ul>
 <li><strong>Offline builds</strong>: once cached, subsequent builds need no network access</li>

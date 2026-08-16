@@ -204,11 +204,12 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 <h2 id="環境変数"><a class="header" href="#環境変数">環境変数</a></h2>
 <h3 id="lindera_build_dictionary_cache_dir"><a class="header" href="#lindera_build_dictionary_cache_dir">LINDERA_BUILD_DICTIONARY_CACHE_DIR</a></h3>
 <p><code>LINDERA_BUILD_DICTIONARY_CACHE_DIR</code> 環境変数は、埋め込み辞書ビルドパイプラインのビルド時キャッシュディレクトリを指定します。辞書クレートの build script のみが読み取り、実行時の動作には影響しません。</p>
-<p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン）配下に 2 種類のファイルを保存します：</p>
+<p>設定すると、各ビルドは <code>$LINDERA_BUILD_DICTIONARY_CACHE_DIR/&lt;version&gt;-fmt&lt;format&gt;/</code>（<code>&lt;version&gt;</code> は辞書クレートのバージョン、<code>&lt;format&gt;</code> は辞書フォーマットバージョン）配下に 2 種類のファイルを保存します：</p>
 <ul>
 <li>ダウンロードした配布アーカイブ（MD5 で検証。無効なファイルは自動的に再ダウンロード）</li>
 <li>クレートに埋め込まれるビルド済みバイナリ辞書</li>
 </ul>
+<p>フォーマットバージョンをパスに含めているのは、オンディスクレイアウトが異なるビルドが書いたキャッシュを「古いまま再利用」ではなく「キャッシュミス」にするためです。再利用の直前にはキャッシュディレクトリ内の記録済みフォーマットバージョンも再確認するので、中断されたビルドが残した不完全なディレクトリも弾かれます。古いフォーマットバージョンのディレクトリは自動削除されないため、キャッシュが肥大化する場合は手動で削除してください。</p>
 <p>これにより以下のメリットがあります：</p>
 <ul>
 <li><strong>オフラインビルド</strong>: 一度キャッシュされれば、以降のビルドにネットワークアクセスは不要です</li>
