@@ -274,8 +274,10 @@ reserved columns; the rest name SudachiDict's columns in order:</p>
   --dest /tmp/lindera-sudachidict \
   --metadata ./sudachidict-metadata.json
 </code></pre>
-<p>Building small + core + notcore (2026-07-23) takes about 23 seconds and
-produces a ~400MB dictionary.</p>
+<p>Building small + core + notcore (2026-07-23) with Lindera v6 takes about
+10 seconds and produces a ~570MB dictionary. Note that built dictionaries
+must be rebuilt when the on-disk dictionary format version changes across
+Lindera releases (see <a href="./migration_v5_to_v6.html">Migration v5 to v6</a>).</p>
 <pre><code class="language-shell">% echo "令和五年に始まった。推し活が楽しい。" | lindera tokenize --dict /tmp/lindera-sudachidict
 令和	令和,名詞,固有名詞,一般,*,*,*,レイワ,令和,*,A,*,*,*,*
 五	五,名詞,数詞,*,*,*,*,ゴ,五,*,A,*,*,*,017040
@@ -285,6 +287,15 @@ produces a ~400MB dictionary.</p>
 </code></pre>
 <p>Details expose SudachiDict's extra columns (normalized form, split
 references, synonym group IDs), so downstream code can use them.</p>
+<blockquote>
+<p>[!NOTE]
+Because <code>display_surface</code> sits before the part-of-speech columns,
+<code>details[0]</code> is the display surface — not the part-of-speech as in IPADIC
+or UniDic. Token filters that read the leading details positionally as
+part-of-speech tags (<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>,
+<code>japanese_compound_word</code>) will not match as expected with this dictionary.
+Schema-aware access such as <code>token.get("part_of_speech")</code> works correctly.</p>
+</blockquote>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
 <p>The lattice layer is verified equivalent: the matrix file is byte-identical
 (sha256) to the one SudachiDict's official build uses, and with Sudachi's
