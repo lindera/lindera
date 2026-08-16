@@ -120,8 +120,10 @@ reserved columns; the rest name SudachiDict's columns in order:
   --metadata ./sudachidict-metadata.json
 ```
 
-Building small + core + notcore (2026-07-23) takes about 23 seconds and
-produces a ~400MB dictionary.
+Building small + core + notcore (2026-07-23) with Lindera v6 takes about
+10 seconds and produces a ~570MB dictionary. Note that built dictionaries
+must be rebuilt when the on-disk dictionary format version changes across
+Lindera releases (see [Migration v5 to v6](./migration_v5_to_v6.md)).
 
 ```shell
 % echo "令和五年に始まった。推し活が楽しい。" | lindera tokenize --dict /tmp/lindera-sudachidict
@@ -135,6 +137,14 @@ produces a ~400MB dictionary.
 Details expose SudachiDict's extra columns (normalized form, split
 references, synonym group IDs), so downstream code can use them.
 
+> [!NOTE]
+> Because `display_surface` sits before the part-of-speech columns,
+> `details[0]` is the display surface — not the part-of-speech as in IPADIC
+> or UniDic. Token filters that read the leading details positionally as
+> part-of-speech tags (`japanese_stop_tags`, `japanese_keep_tags`,
+> `japanese_compound_word`) will not match as expected with this dictionary.
+> Schema-aware access such as `token.get("part_of_speech")` works correctly.
+
 ## Behavioral differences from Sudachi
 
 The lattice layer is verified equivalent: the matrix file is byte-identical
@@ -144,7 +154,7 @@ produces the same minimum-cost paths as this dictionary under Lindera.
 The remaining differences are Sudachi *engine plugins*, not dictionary data:
 
 | Sudachi feature | Effect | Status under Lindera |
-|---|---|---|
+| --- | --- | --- |
 | `JoinKatakanaOovPlugin` | Rewrites paths to join katakana runs (e.g. `サブスク` instead of the cheaper `サブ`+`スク` path) | Not replicated |
 | `JoinNumericPlugin` | Joins numeric sequences | Not replicated |
 | `DefaultInputTextPlugin` | NFKC + lowercase normalization before lookup (e.g. half-width `AI` hits a normalized entry) | Partially available via Lindera character filters (`unicode_normalize`) |
