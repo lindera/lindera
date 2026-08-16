@@ -8571,6 +8571,14 @@ lindera = { version = "5.0", features = ["embed-ipadic"] }
 </span><span class="boring">fn main() {
 </span>let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>[!NOTE]
+Dictionary data carries its own license, separate from Lindera's. When you
+distribute a binary with an embedded dictionary (or redistribute a built
+dictionary), reproduce the attribution from the corresponding dictionary
+crate's <code>NOTICE.txt</code> (e.g. <code>lindera-unidic/NOTICE.txt</code>) in the
+documentation or other materials provided with your distribution.</p>
+</blockquote>
 <h3 id="combination-features"><a class="header" href="#combination-features">Combination Features</a></h3>
 <p>These meta-features enable multiple dictionaries at once for multilingual applications.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Included Dictionaries</th></tr></thead><tbody>
