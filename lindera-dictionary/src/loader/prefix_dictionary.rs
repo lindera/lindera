@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::LinderaResult;
-use crate::dictionary::prefix_dictionary::{DaTrust, PrefixDictionary};
+use crate::dictionary::prefix_dictionary::PrefixDictionary;
 #[cfg(feature = "mmap")]
 use crate::util::mmap_file;
 use crate::util::read_file;
@@ -12,7 +12,7 @@ pub struct PrefixDictionaryLoader {}
 impl PrefixDictionaryLoader {
     /// Load prefix dictionary from files in the specified directory.
     ///
-    /// Reads dict.da, dict.vals, dict.wordsidx, and dict.words files
+    /// Reads dict.trie, dict.valsidx, dict.vals, dict.wordsidx and dict.words
     /// and constructs a PrefixDictionary.
     ///
     /// # Arguments
@@ -23,31 +23,21 @@ impl PrefixDictionaryLoader {
     ///
     /// A `PrefixDictionary` loaded from the files.
     pub fn load(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
-        let da_data = read_file(input_dir.join("dict.da").as_path())?;
+        let trie_data = read_file(input_dir.join("dict.trie").as_path())?;
+        let vals_idx = read_file(input_dir.join("dict.valsidx").as_path())?;
         let vals_data = read_file(input_dir.join("dict.vals").as_path())?;
         let words_idx_data = read_file(input_dir.join("dict.wordsidx").as_path())?;
         let words_data = read_file(input_dir.join("dict.words").as_path())?;
 
-        PrefixDictionary::load(
-            da_data,
-            vals_data,
-            words_idx_data,
-            words_data,
-            true,
-            DaTrust::Untrusted,
-        )
+        PrefixDictionary::load(trie_data, vals_idx, vals_data, words_idx_data, words_data)
     }
 
     /// Load prefix dictionary using memory-mapped files.
     ///
-    /// Note: only `vals_data`/`words_idx_data`/`words_data` end up genuinely
-    /// mmap-backed (read lazily at lookup time via `Data::Map`). `da_data` is
-    /// still eagerly copied into an owned `DoubleArrayAhoCorasick` by
-    /// [`PrefixDictionary::load`] — daachorse has no zero-copy deserialization
-    /// API — so mmap only avoids the initial file-read syscall/allocation for
-    /// that component, not runtime lazy paging. mmap'd bytes are passed with
-    /// [`DaTrust::Untrusted`], the same as a plain read: they can be
-    /// corrupted or tampered with just as easily as a regular file.
+    /// Every component stays genuinely mmap-backed: the trie is walked in
+    /// place over its serialized bytes, and the values/word files are read
+    /// lazily at lookup time via `Data::Map`. Loading costs an O(1) header
+    /// check, no decode and no anonymous memory.
     ///
     /// # Arguments
     ///
@@ -58,18 +48,12 @@ impl PrefixDictionaryLoader {
     /// A `PrefixDictionary` loaded via memory mapping.
     #[cfg(feature = "mmap")]
     pub fn load_mmap(input_dir: &Path) -> LinderaResult<PrefixDictionary> {
-        let da_data = mmap_file(input_dir.join("dict.da").as_path())?;
+        let trie_data = mmap_file(input_dir.join("dict.trie").as_path())?;
+        let vals_idx = mmap_file(input_dir.join("dict.valsidx").as_path())?;
         let vals_data = mmap_file(input_dir.join("dict.vals").as_path())?;
         let words_idx_data = mmap_file(input_dir.join("dict.wordsidx").as_path())?;
         let words_data = mmap_file(input_dir.join("dict.words").as_path())?;
 
-        PrefixDictionary::load(
-            da_data,
-            vals_data,
-            words_idx_data,
-            words_data,
-            true,
-            DaTrust::Untrusted,
-        )
+        PrefixDictionary::load(trie_data, vals_idx, vals_data, words_idx_data, words_data)
     }
 }

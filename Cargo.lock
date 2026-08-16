@@ -568,6 +568,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "crawdad"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87fbd1ecd2ed790e11c8fbe034f9b3e7687404818d1bdfd8218d26ec645ec7c5"
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1661,6 +1667,7 @@ version = "5.2.0"
 dependencies = [
  "anyhow",
  "byteorder",
+ "crawdad",
  "criterion",
  "csv",
  "daachorse",

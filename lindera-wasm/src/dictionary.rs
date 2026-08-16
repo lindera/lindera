@@ -10,7 +10,7 @@ use lindera::dictionary::{
 use lindera_dictionary::dictionary::character_definition::CharacterDefinition;
 use lindera_dictionary::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use lindera_dictionary::dictionary::metadata::Metadata;
-use lindera_dictionary::dictionary::prefix_dictionary::{DaTrust, PrefixDictionary};
+use lindera_dictionary::dictionary::prefix_dictionary::PrefixDictionary;
 use lindera_dictionary::dictionary::unknown_dictionary::UnknownDictionary;
 
 use crate::metadata::JsMetadata;
@@ -93,7 +93,8 @@ pub fn build_dictionary(
 /// # Arguments
 ///
 /// * `metadata` - The contents of `metadata.json`
-/// * `dict_da` - The contents of `dict.da` (Double-Array Trie)
+/// * `dict_trie` - The contents of `dict.trie` (char-wise double-array trie)
+/// * `dict_vals_idx` - The contents of `dict.valsidx` (values index)
 /// * `dict_vals` - The contents of `dict.vals` (word value data)
 /// * `dict_words_idx` - The contents of `dict.wordsidx` (word details index)
 /// * `dict_words` - The contents of `dict.words` (word details)
@@ -104,11 +105,18 @@ pub fn build_dictionary(
 /// # Returns
 ///
 /// A `Dictionary` instance constructed from the provided byte data.
+///
+/// # Breaking change (dictionary format version 2)
+///
+/// Dictionaries built before Lindera v6 shipped a byte-wise automaton as
+/// `dict.da`; that argument was replaced by `dict_trie` + `dict_vals_idx`.
+/// Rebuild the dictionary or download a matching prebuilt one.
 #[wasm_bindgen(js_name = "loadDictionaryFromBytes")]
 #[allow(clippy::too_many_arguments)]
 pub fn load_dictionary_from_bytes(
     metadata: &[u8],
-    dict_da: &[u8],
+    dict_trie: &[u8],
+    dict_vals_idx: &[u8],
     dict_vals: &[u8],
     dict_words_idx: &[u8],
     dict_words: &[u8],
@@ -125,12 +133,11 @@ pub fn load_dictionary_from_bytes(
         .map_err(|e| JsValue::from_str(&format!("metadata: {e}")))?;
 
     let prefix_dictionary = PrefixDictionary::load(
-        dict_da.to_vec(),
+        dict_trie.to_vec(),
+        dict_vals_idx.to_vec(),
         dict_vals.to_vec(),
         dict_words_idx.to_vec(),
         dict_words.to_vec(),
-        true,
-        DaTrust::Untrusted,
     )
     .map_err(|e| JsValue::from_str(&format!("prefix_dict: {e}")))?;
     let connection_cost_matrix = ConnectionCostMatrix::load(matrix_mtx.to_vec())

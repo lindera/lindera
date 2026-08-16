@@ -498,21 +498,10 @@ impl TrainerConfig {
     }
 
     fn build_prefix_dict_from_content(_content: &str) -> Result<PrefixDictionary> {
-        use daachorse::DoubleArrayAhoCorasickBuilder;
-        use lindera_dictionary::util::Data;
-
-        // Create minimal prefix dictionary structure for training
-        // In production, this would parse the lexicon CSV format
-        let keys: &[&str] = &["\0"];
-        let da = DoubleArrayAhoCorasickBuilder::new().build(keys).unwrap();
-
-        Ok(PrefixDictionary {
-            da,
-            vals_data: Data::from(vec![]),
-            words_idx_data: Data::from(vec![]),
-            words_data: Data::from(vec![]),
-            is_system: true,
-        })
+        // Create minimal (empty) prefix dictionary structure for training.
+        // In production, this would parse the lexicon CSV format.
+        PrefixDictionary::from_word_entry_map(&std::collections::BTreeMap::new())
+            .map_err(|err| anyhow::anyhow!("failed to build empty prefix dictionary: {err}"))
     }
 
     fn create_minimal_connection_matrix() -> Result<ConnectionCostMatrix> {

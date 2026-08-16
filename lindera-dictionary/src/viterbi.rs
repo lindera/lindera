@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
-use crate::dictionary::prefix_dictionary::PrefixDictionary;
+use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::mode::Mode;
 
@@ -333,6 +333,15 @@ pub struct Lattice {
     matches_head: Vec<u32>,
     /// Linked-list node pool: (match end offset, word entry, next node index).
     matches_store: Vec<(u32, WordEntry, u32)>,
+    /// The sentence's characters, materialized once per call because the
+    /// char-wise trie consumes `&[char]` (byte offsets come from
+    /// `char_info_buffer`, which is built in the same pass).
+    chars_buf: Vec<char>,
+    /// Per-position system-dictionary matches (match end byte offset, word
+    /// entry), buffered so they can be replayed in reverse discovery order --
+    /// the order the retired whole-text pre-scan's head-inserted list drained
+    /// in, which decides the winner among equal-cost edges.
+    sys_matches: Vec<(u32, WordEntry)>,
 }
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
@@ -496,6 +505,8 @@ impl Lattice {
         self.categories_buffer.shrink_to(4 * text_len);
         self.matches_head.shrink_to(slots);
         self.matches_store.shrink_to(8 * slots);
+        self.chars_buf.shrink_to(text_len);
+        self.sys_matches.shrink_to(64);
     }
 
     #[inline(never)]
@@ -506,7 +517,7 @@ impl Lattice {
     pub fn set_text(
         &mut self,
         dict: &PrefixDictionary,
-        user_dict: &Option<&PrefixDictionary>,
+        user_dict: &Option<&UserPrefixDictionary>,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
@@ -519,6 +530,7 @@ impl Lattice {
         // Pre-calculate character information for the text
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
+        self.chars_buf.clear();
 
         for (byte_offset, c) in text.char_indices() {
             let categories_start = self.categories_buffer.len() as u32;
@@ -540,6 +552,7 @@ impl Lattice {
                 categories_len,
                 kanji_run_byte_len: 0,
             });
+            self.chars_buf.push(c);
         }
         // Sentinel for end of text
         self.char_info_buffer.push(CharData {
@@ -578,36 +591,18 @@ impl Lattice {
         // Buffers are Lattice fields reused across calls; refill matches_head (its
         // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
         // matches_store (a plain append-only pool).
+        // The pool now holds only user-dictionary matches: the system
+        // dictionary is searched per lattice-reachable position instead of
+        // pre-scanned (#882). daachorse's API shape still forces a whole-text
+        // scan for the user automaton, so its matches keep the linked list;
+        // with no user dictionary the head table stays empty and the drain
+        // below is skipped by its `start < matches_head.len()` guard.
         self.matches_head.clear();
-        self.matches_head.resize(len + 1, u32::MAX);
         self.matches_store.clear();
-
-        // System dictionary scan
-        let vals: &[u8] = &dict.vals_data;
-        for m in dict.da.find_overlapping_iter(text) {
-            let start = m.start();
-            let (offset, count) = dict.decode_val(m.value());
-            let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-
-            // Bounds check for safety, though daachorse should guarantee valid ids if built correctly
-            if start < self.matches_head.len() {
-                // Take the valid prefix of the entry block with one bounds
-                // computation instead of a length check per entry (#880).
-                let avail = vals.len().saturating_sub(offset_bytes);
-                let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
-                let block = &vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
-                let end = m.end() as u32;
-                for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
-                    let entry = WordEntry::deserialize(chunk, true);
-                    let next = self.matches_head[start];
-                    self.matches_head[start] = self.matches_store.len() as u32;
-                    self.matches_store.push((end, entry, next));
-                }
-            }
-        }
 
         // User dictionary scan
         if let Some(ud) = user_dict {
+            self.matches_head.resize(len + 1, u32::MAX);
             let ud_vals: &[u8] = &ud.vals_data;
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
@@ -641,7 +636,8 @@ impl Lattice {
 
             let mut found: bool = false;
 
-            // Use cached matches
+            // Drain user-dictionary matches (reverse discovery order, from
+            // the head-inserted list).
             if start < self.matches_head.len() {
                 let mut match_idx = self.matches_head[start];
                 while match_idx != u32::MAX {
@@ -660,6 +656,34 @@ impl Lattice {
 
                     match_idx = next;
                 }
+            }
+
+            // System dictionary: per-position common-prefix search over the
+            // in-place trie, run only at lattice-reachable positions (the
+            // gate above). Matches are buffered and replayed in reverse so
+            // equal-cost tie-breaks keep choosing the same winner as the
+            // retired whole-text pre-scan; user matches were drained first
+            // for the same reason (the old shared list held them on top).
+            self.sys_matches.clear();
+            {
+                let suffix = &self.chars_buf[char_idx..];
+                for (entries, end_char_offset) in dict.common_prefix_search(suffix) {
+                    let end_char_idx = char_idx + end_char_offset;
+                    let end = self.char_info_buffer[end_char_idx].byte_offset;
+                    for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                        self.sys_matches
+                            .push((end, WordEntry::deserialize(chunk, true)));
+                    }
+                }
+            }
+            for i in (0..self.sys_matches.len()).rev() {
+                let (end, word_entry) = self.sys_matches[i];
+                let end = end as usize;
+                let prefix_len = end - start;
+                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                let edge = Self::create_edge(word_entry, start, end, kanji_only);
+                self.add_edge_in_lattice(edge, cost_matrix, search_mode);
+                found = true;
             }
 
             // In the case of normal mode, it doesn't process unknown word greedily.
@@ -1064,7 +1088,7 @@ impl Lattice {
     pub fn set_text_nbest(
         &mut self,
         dict: &PrefixDictionary,
-        user_dict: &Option<&PrefixDictionary>,
+        user_dict: &Option<&UserPrefixDictionary>,
         char_definitions: &CharacterDefinition,
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
@@ -1077,6 +1101,7 @@ impl Lattice {
         // Pre-calculate character information for the text
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
+        self.chars_buf.clear();
 
         for (byte_offset, c) in text.char_indices() {
             let categories_start = self.categories_buffer.len() as u32;
@@ -1098,6 +1123,7 @@ impl Lattice {
                 categories_len,
                 kanji_run_byte_len: 0,
             });
+            self.chars_buf.push(c);
         }
         // Sentinel for end of text
         self.char_info_buffer.push(CharData {
@@ -1133,35 +1159,13 @@ impl Lattice {
         // Buffers are Lattice fields reused across calls; refill matches_head (its
         // contents are meaningful, unlike ends_at's empty-Vec slots) and clear
         // matches_store (a plain append-only pool).
+        // The pool now holds only user-dictionary matches; see set_text.
         self.matches_head.clear();
-        self.matches_head.resize(len + 1, u32::MAX);
         self.matches_store.clear();
-
-        // System dictionary scan
-        let vals: &[u8] = &dict.vals_data;
-        for m in dict.da.find_overlapping_iter(text) {
-            let start = m.start();
-            let (offset, count) = dict.decode_val(m.value());
-            let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-
-            if start < self.matches_head.len() {
-                // Take the valid prefix of the entry block with one bounds
-                // computation instead of a length check per entry (#880).
-                let avail = vals.len().saturating_sub(offset_bytes);
-                let n = (count as usize).min(avail / WordEntry::SERIALIZED_LEN);
-                let block = &vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
-                let end = m.end() as u32;
-                for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
-                    let entry = WordEntry::deserialize(chunk, true);
-                    let next = self.matches_head[start];
-                    self.matches_head[start] = self.matches_store.len() as u32;
-                    self.matches_store.push((end, entry, next));
-                }
-            }
-        }
 
         // User dictionary scan
         if let Some(ud) = user_dict {
+            self.matches_head.resize(len + 1, u32::MAX);
             let ud_vals: &[u8] = &ud.vals_data;
             for m in ud.da.find_overlapping_iter(text) {
                 let start = m.start();
@@ -1193,6 +1197,8 @@ impl Lattice {
 
             let mut found: bool = false;
 
+            // Drain user-dictionary matches first; see set_text for why the
+            // order matters.
             if start < self.matches_head.len() {
                 let mut match_idx = self.matches_head[start];
                 while match_idx != u32::MAX {
@@ -1206,6 +1212,34 @@ impl Lattice {
 
                     match_idx = next;
                 }
+            }
+
+            // System dictionary: per-position common-prefix search over the
+            // in-place trie, run only at lattice-reachable positions (the
+            // gate above). Matches are buffered and replayed in reverse so
+            // equal-cost tie-breaks keep choosing the same winner as the
+            // retired whole-text pre-scan; user matches were drained first
+            // for the same reason (the old shared list held them on top).
+            self.sys_matches.clear();
+            {
+                let suffix = &self.chars_buf[char_idx..];
+                for (entries, end_char_offset) in dict.common_prefix_search(suffix) {
+                    let end_char_idx = char_idx + end_char_offset;
+                    let end = self.char_info_buffer[end_char_idx].byte_offset;
+                    for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                        self.sys_matches
+                            .push((end, WordEntry::deserialize(chunk, true)));
+                    }
+                }
+            }
+            for i in (0..self.sys_matches.len()).rev() {
+                let (end, word_entry) = self.sys_matches[i];
+                let end = end as usize;
+                let prefix_len = end - start;
+                let kanji_only = self.is_kanji_all(char_idx, prefix_len);
+                let edge = Self::create_edge(word_entry, start, end, kanji_only);
+                self.add_edge_in_lattice_nbest(edge, cost_matrix, search_mode);
+                found = true;
             }
 
             if (search_mode.is_search()

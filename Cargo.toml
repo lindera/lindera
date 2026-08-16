@@ -37,6 +37,11 @@ license = "MIT"
 anyhow = "1.0.104"
 byteorder = "1.5.0"
 csv = "1.4.0"
+# Pinned exactly: the runtime walks crawdad's serialized byte layout in
+# place (lindera-dictionary/src/dictionary/prefix_dictionary.rs), which the
+# crate does not document as a stable contract. A round-trip test fails
+# loudly if the layout changes; review it before moving this pin.
+crawdad = "=0.3.0"
 daachorse = "4.0.0"
 lindera = { version = "5.2.0", path = "lindera" }
 lindera-analysis = { version = "5.2.0", path = "lindera-analysis" }
