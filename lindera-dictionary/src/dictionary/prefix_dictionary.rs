@@ -1,3 +1,19 @@
+//! The prefix dictionary: surface forms mapped to their `WordEntry` records.
+//!
+//! The system dictionary ([`PrefixDictionary`]) is a char-wise double-array
+//! trie (built with crawdad) that is **walked in place** over the serialized
+//! bytes of `dict.trie` -- no deserialization, no owned node array. The trie
+//! maps a surface form to its key ordinal; `dict.valsidx` (a `u32` prefix sum)
+//! turns that ordinal into a run of records inside `dict.vals`.
+//!
+//! The user dictionary ([`UserPrefixDictionary`]) still uses a daachorse
+//! Aho-Corasick automaton, because prebuilt user-dictionary `.bin` files embed
+//! its serialized form inside an rkyv archive; changing it would invalidate
+//! every `.bin` in the wild for little gain (user dictionaries are small).
+
+use std::collections::BTreeMap;
+
+use byteorder::{ByteOrder, LittleEndian, WriteBytesExt};
 use daachorse::DoubleArrayAhoCorasick;
 use rkyv::rancor::{Fallible, Source};
 use rkyv::with::{ArchiveWith, DeserializeWith, SerializeWith};
@@ -9,39 +25,541 @@ use crate::{LinderaResult, error::LinderaErrorKind, util::Data, viterbi::WordEnt
 /// Match structure for common prefix iterator compatibility
 #[derive(Debug, Clone)]
 pub struct Match {
+    /// Which word matched.
     pub word_idx: WordIdx,
+    /// Match length in characters (the number of `chars` consumed).
     pub end_char: usize,
 }
 
+/// Identifies a word by its id within the dictionary it came from.
 #[derive(Debug, Clone, Copy)]
 pub struct WordIdx {
+    /// The word id.
     pub word_id: u32,
 }
 
 impl WordIdx {
+    /// Wraps a raw word id.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_id` - The word id to wrap.
+    ///
+    /// # Returns
+    ///
+    /// The wrapped id.
     pub fn new(word_id: u32) -> Self {
         Self { word_id }
     }
 }
 
-/// Whether the `da_data` passed to [`PrefixDictionary::load`] is trusted to
-/// be the exact, undamaged output of `DoubleArrayAhoCorasick::serialize()`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DaTrust {
-    /// Skip daachorse's validation pass (`deserialize_unchecked`). Only for
-    /// data this crate's own build pipeline produced and embedded verbatim.
-    Trusted,
-    /// Run daachorse's full validation pass (`deserialize`). Use for any
-    /// filesystem-, network-, or caller-supplied bytes.
-    Untrusted,
+/// Mask selecting the index/value bits of a crawdad node's `base`/`check`;
+/// the top bit is the leaf flag (`base`) / has-leaf flag (`check`).
+const OFFSET_MASK: u32 = 0x7fff_ffff;
+
+/// The code-mapper table value marking a character with no code assigned.
+const INVALID_CODE: u32 = u32::MAX;
+
+/// Byte offset where the code-mapper table starts inside `dict.trie`
+/// (after the `u32` table length).
+const TABLE_START: usize = 4;
+
+/// Byte length of one serialized trie node (`base: u32` + `check: u32`).
+const NODE_LEN_BYTES: usize = 8;
+
+/// The system prefix dictionary: a serialized crawdad trie walked in place.
+///
+/// Serialized trie layout (crawdad 0.3, `Trie::serialize_to_vec`):
+///
+/// ```text
+/// [table_len: u32][table: 4*table_len][alphabet_size: u32][node_len: u32][nodes: 8*node_len]
+/// ```
+///
+/// This layout is not a documented contract of the crawdad crate, so the
+/// dependency is pinned exactly and a round-trip test
+/// (`trie_view_matches_crawdad_search`) fails loudly if it ever changes.
+///
+/// All node and table reads go through checked slicing (`get`) and
+/// alignment-agnostic `u32` reads, so malformed bytes yield "no match" or a
+/// load-time error -- never a panic or undefined behaviour. That is what
+/// retired the O(n) validating pass and the `deserialize_unchecked` path the
+/// daachorse representation needed.
+#[derive(Clone)]
+pub struct PrefixDictionary {
+    /// The serialized trie (`dict.trie`), walked in place.
+    trie_data: Data,
+    /// Number of code-mapper table entries (indexable code points).
+    table_len: usize,
+    /// Byte offset of the node array inside `trie_data`.
+    nodes_start: usize,
+    /// Prefix sum over per-surface entry counts (`dict.valsidx`): `u32` LE
+    /// records, one per trie key plus a trailing sentinel, in units of
+    /// [`WordEntry::SERIALIZED_LEN`]-byte records inside `vals_data`.
+    vals_idx: Data,
+    /// The values file (`dict.vals`): `WordEntry` records back to back.
+    pub vals_data: Data,
+    /// Byte offsets into `words_data`, one `u32` per word id.
+    pub words_idx_data: Data,
+    /// Word detail records.
+    pub words_data: Data,
 }
 
+impl PrefixDictionary {
+    /// Serializes `word_entry_map` into `dict.trie` and `dict.valsidx` bytes.
+    ///
+    /// This is the build-time half of the dictionary: it is the only place
+    /// that runs crawdad itself. The caller is responsible for writing
+    /// `dict.vals` from the same map in the same iteration order (which a
+    /// `BTreeMap` fixes), so the prefix sum built here indexes it correctly.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_entry_map` - Surface form to word entries, sorted and
+    ///   deduplicated by the `BTreeMap`.
+    ///
+    /// # Returns
+    ///
+    /// `(trie_bytes, vals_idx_bytes)`, or an error if a surface is empty or
+    /// contains NUL (which crawdad reserves as its end marker), or if the
+    /// trie build fails.
+    pub fn serialize_trie(
+        word_entry_map: &BTreeMap<String, Vec<WordEntry>>,
+    ) -> LinderaResult<(Vec<u8>, Vec<u8>)> {
+        if word_entry_map.is_empty() {
+            // crawdad rejects an empty key set, so emit a minimal image the
+            // view treats as "matches nothing": an empty code table (every
+            // character maps to no code) and zero nodes.
+            let mut trie_bytes = Vec::with_capacity(12);
+            trie_bytes.extend_from_slice(&0u32.to_le_bytes()); // table_len
+            trie_bytes.extend_from_slice(&0u32.to_le_bytes()); // alphabet_size
+            trie_bytes.extend_from_slice(&0u32.to_le_bytes()); // node_len
+            return Ok((trie_bytes, 0u32.to_le_bytes().to_vec()));
+        }
+
+        let mut keys: Vec<&str> = Vec::with_capacity(word_entry_map.len());
+        let mut offsets: Vec<u32> = Vec::with_capacity(word_entry_map.len() + 1);
+        let mut acc: u32 = 0;
+
+        for (surface, entries) in word_entry_map {
+            // Skipping would silently desynchronize the prefix sum from the
+            // separately-written dict.vals, so a bad surface is an error.
+            // (An empty surface cannot get here anyway: the CSV parser drops
+            // empty fields before the map is built.)
+            if surface.is_empty() || surface.contains('\0') {
+                return Err(LinderaErrorKind::Build.with_error(anyhow::anyhow!(
+                    "surface {surface:?} cannot be stored in the trie (empty or contains NUL)"
+                )));
+            }
+            keys.push(surface.as_str());
+            offsets.push(acc);
+            acc = acc.checked_add(entries.len() as u32).ok_or_else(|| {
+                LinderaErrorKind::Build.with_error(anyhow::anyhow!("entry offset overflowed u32"))
+            })?;
+        }
+        // Sentinel so the run for the last key is `idx[n-1]..idx[n]`.
+        offsets.push(acc);
+
+        let trie = crawdad::Trie::from_keys(keys.iter().copied()).map_err(|err| {
+            LinderaErrorKind::Build.with_error(anyhow::anyhow!("crawdad trie build failed: {err}"))
+        })?;
+        let trie_bytes = trie.serialize_to_vec();
+
+        let mut idx_bytes = Vec::with_capacity(offsets.len() * 4);
+        for offset in &offsets {
+            idx_bytes
+                .write_u32::<LittleEndian>(*offset)
+                .map_err(|err| {
+                    LinderaErrorKind::Io
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to encode values index")
+                })?;
+        }
+
+        Ok((trie_bytes, idx_bytes))
+    }
+
+    /// Builds an in-memory dictionary from surface forms and entries.
+    ///
+    /// Serializes the values file alongside the trie so the result is
+    /// self-consistent. Used by the trainer and by tests; the production path
+    /// loads previously-built files via [`PrefixDictionary::load`] instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `word_entry_map` - Surface form to word entries.
+    ///
+    /// # Returns
+    ///
+    /// A dictionary answering prefix queries over the map, with empty word
+    /// detail data.
+    pub fn from_word_entry_map(
+        word_entry_map: &BTreeMap<String, Vec<WordEntry>>,
+    ) -> LinderaResult<Self> {
+        let (trie_bytes, idx_bytes) = Self::serialize_trie(word_entry_map)?;
+
+        let mut vals_bytes = Vec::with_capacity(word_entry_map.len() * WordEntry::SERIALIZED_LEN);
+        for entries in word_entry_map.values() {
+            for entry in entries {
+                entry.serialize(&mut vals_bytes).map_err(|err| {
+                    LinderaErrorKind::Serialize
+                        .with_error(anyhow::anyhow!(err))
+                        .add_context("Failed to serialize word entry")
+                })?;
+            }
+        }
+
+        Self::load(trie_bytes, idx_bytes, vals_bytes, Vec::new(), Vec::new())
+    }
+
+    /// Load a `PrefixDictionary` from raw binary data.
+    ///
+    /// Performs the O(1) structural check on the trie header: both length
+    /// headers must be consistent with the buffer, which is what stops a
+    /// crafted file from requesting an enormous allocation or walking out of
+    /// bounds. No O(n) node scan is needed -- every access during search is
+    /// bounds-checked, so a malformed node yields "no match" rather than a
+    /// panic.
+    ///
+    /// # Arguments
+    ///
+    /// * `trie_data` - Contents of `dict.trie`.
+    /// * `vals_idx` - Contents of `dict.valsidx`.
+    /// * `vals_data` - Contents of `dict.vals`.
+    /// * `words_idx_data` - Contents of `dict.wordsidx`.
+    /// * `words_data` - Contents of `dict.words`.
+    ///
+    /// # Returns
+    ///
+    /// A `PrefixDictionary`, or an error if the trie or index headers are
+    /// inconsistent with their buffers.
+    pub fn load(
+        trie_data: impl Into<Data>,
+        vals_idx: impl Into<Data>,
+        vals_data: impl Into<Data>,
+        words_idx_data: impl Into<Data>,
+        words_data: impl Into<Data>,
+    ) -> LinderaResult<PrefixDictionary> {
+        let trie_data = trie_data.into();
+        let vals_idx = vals_idx.into();
+
+        if trie_data.len() < TABLE_START {
+            return Err(LinderaErrorKind::Deserialize
+                .with_error(anyhow::anyhow!("dict.trie is too short for a trie header")));
+        }
+        let table_len = LittleEndian::read_u32(&trie_data[0..4]) as usize;
+        // TABLE_START (table_len) + table + 4 (alphabet_size) + 4 (node_len)
+        let nodes_start = table_len
+            .checked_mul(4)
+            .and_then(|table_bytes| table_bytes.checked_add(TABLE_START + 8))
+            .ok_or_else(implausible_size)?;
+        if nodes_start > trie_data.len() {
+            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                "dict.trie declares a {table_len}-entry code table that exceeds the file"
+            )));
+        }
+        let node_len = LittleEndian::read_u32(&trie_data[nodes_start - 4..nodes_start]) as usize;
+        let expected = node_len
+            .checked_mul(NODE_LEN_BYTES)
+            .and_then(|node_bytes| node_bytes.checked_add(nodes_start))
+            .ok_or_else(implausible_size)?;
+        if expected != trie_data.len() {
+            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                "dict.trie declares {node_len} nodes ({expected} bytes) but the file is {} bytes",
+                trie_data.len()
+            )));
+        }
+
+        if vals_idx.len() % 4 != 0 {
+            return Err(LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(
+                "dict.valsidx length {} is not a whole number of u32 records",
+                vals_idx.len()
+            )));
+        }
+
+        Ok(PrefixDictionary {
+            trie_data,
+            table_len,
+            nodes_start,
+            vals_idx,
+            vals_data: vals_data.into(),
+            words_idx_data: words_idx_data.into(),
+            words_data: words_data.into(),
+        })
+    }
+
+    /// Reads node `idx`'s `(base, check)` pair, raw (flag bits included).
+    ///
+    /// # Arguments
+    ///
+    /// * `idx` - Node index.
+    ///
+    /// # Returns
+    ///
+    /// The raw pair, or `None` when `idx` is out of range -- which for a
+    /// well-formed trie never happens, and for a malformed one safely ends
+    /// the search.
+    #[inline(always)]
+    fn node(&self, idx: u32) -> Option<(u32, u32)> {
+        let off = self.nodes_start + (idx as usize) * NODE_LEN_BYTES;
+        let bytes = self.trie_data.get(off..off + NODE_LEN_BYTES)?;
+        Some((
+            LittleEndian::read_u32(&bytes[0..4]),
+            LittleEndian::read_u32(&bytes[4..8]),
+        ))
+    }
+
+    /// Maps a character to its trie code.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to map.
+    ///
+    /// # Returns
+    ///
+    /// The mapped code, or `None` when the character appears in no key.
+    #[inline(always)]
+    fn map_code(&self, c: char) -> Option<u32> {
+        let ord = c as usize;
+        if ord >= self.table_len {
+            return None;
+        }
+        let off = TABLE_START + ord * 4;
+        let code = LittleEndian::read_u32(self.trie_data.get(off..off + 4)?);
+        (code != INVALID_CODE).then_some(code)
+    }
+
+    /// Looks up the values run for trie key ordinal `key_ord`.
+    ///
+    /// # Arguments
+    ///
+    /// * `key_ord` - The trie value: the key's ordinal in sorted key order.
+    ///
+    /// # Returns
+    ///
+    /// The key's serialized `WordEntry` records, or `None` if either index is
+    /// out of range (malformed input).
+    #[inline(always)]
+    fn entry_bytes(&self, key_ord: u32) -> Option<&[u8]> {
+        let i = key_ord as usize * 4;
+        let idx = self.vals_idx.get(i..i + 8)?;
+        let start = LittleEndian::read_u32(&idx[0..4]) as usize;
+        let end = LittleEndian::read_u32(&idx[4..8]) as usize;
+        self.vals_data
+            .get(start * WordEntry::SERIALIZED_LEN..end * WordEntry::SERIALIZED_LEN)
+    }
+
+    /// Returns the word entries for every key that is a prefix of `chars`.
+    ///
+    /// This is the tokenizer's hot path: one call per lattice-reachable
+    /// position, yielding matches in ascending length order.
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The sentence suffix starting at the query position.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of `(serialized WordEntry records, chars consumed)`.
+    #[inline]
+    pub fn common_prefix_search<'a, 'b>(&'a self, chars: &'b [char]) -> CommonPrefixSearch<'a, 'b> {
+        CommonPrefixSearch {
+            dict: self,
+            chars,
+            pos: 0,
+            node_idx: 0,
+        }
+    }
+
+    /// Returns the entries whose surface is a prefix of `s`, with byte-level
+    /// end offsets.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - The query string.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of `(end byte offset in s, entry)` pairs.
+    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
+        // Match lengths come back in characters; convert through the byte
+        // offset of each char boundary.
+        let boundaries: Vec<usize> = s
+            .char_indices()
+            .map(|(byte_offset, _)| byte_offset)
+            .chain(std::iter::once(s.len()))
+            .collect();
+        let chars: Vec<char> = s.chars().collect();
+        let mut results: Vec<(usize, WordEntry)> = Vec::new();
+        for (entries, end_char) in self.common_prefix_search_owned(&chars) {
+            let end_byte = boundaries[end_char];
+            for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                results.push((end_byte, WordEntry::deserialize(chunk, true)));
+            }
+        }
+        results.into_iter()
+    }
+
+    /// [`Self::common_prefix_search`] over a temporary char buffer, collecting
+    /// eagerly so the buffer does not need to outlive the iterator.
+    ///
+    /// # Arguments
+    ///
+    /// * `chars` - The query characters.
+    ///
+    /// # Returns
+    ///
+    /// The collected `(entry bytes, chars consumed)` pairs.
+    fn common_prefix_search_owned(&self, chars: &[char]) -> Vec<(&[u8], usize)> {
+        self.common_prefix_search(chars).collect()
+    }
+
+    /// Find `WordEntry`s with surface
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The exact surface form to look up.
+    ///
+    /// # Returns
+    ///
+    /// All entries whose surface equals `surface`.
+    pub fn find_surface(&self, surface: &str) -> Vec<WordEntry> {
+        self.find_surface_iter(surface).collect()
+    }
+
+    /// Find `WordEntry`s with surface using lazy evaluation
+    /// This iterator-based approach reduces memory allocations
+    ///
+    /// # Arguments
+    ///
+    /// * `surface` - The exact surface form to look up.
+    ///
+    /// # Returns
+    ///
+    /// An iterator over the matching entries.
+    pub fn find_surface_iter<'a>(
+        &'a self,
+        surface: &'a str,
+    ) -> impl Iterator<Item = WordEntry> + 'a {
+        let chars: Vec<char> = surface.chars().collect();
+        let char_count = chars.len();
+        let mut entries: Vec<WordEntry> = Vec::new();
+        for (bytes, end_char) in self.common_prefix_search_owned(&chars) {
+            if end_char == char_count {
+                for chunk in bytes.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    entries.push(WordEntry::deserialize(chunk, true));
+                }
+            }
+        }
+        entries.into_iter()
+    }
+
+    /// Common prefix iterator using character array input.
+    ///
+    /// `end_char` counts characters consumed from `suffix` -- the natural
+    /// unit for callers that index `&[char]` (the trainer's lattice does
+    /// `pos + end_char`). The retired daachorse implementation returned byte
+    /// lengths here, which silently misplaced edges for any non-ASCII text.
+    ///
+    /// # Arguments
+    ///
+    /// * `suffix` - The sentence suffix to match prefixes of.
+    ///
+    /// # Returns
+    ///
+    /// Matches for every dictionary key that is a prefix of `suffix`.
+    pub fn common_prefix_iterator(&self, suffix: &[char]) -> Vec<Match> {
+        let mut matches = Vec::new();
+        for (bytes, end_char) in self.common_prefix_search(suffix) {
+            for chunk in bytes.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                let word_entry = WordEntry::deserialize(chunk, true);
+                matches.push(Match {
+                    word_idx: WordIdx::new(word_entry.word_id().id()),
+                    end_char,
+                });
+            }
+        }
+        matches
+    }
+}
+
+/// Iterator over the dictionary keys that are prefixes of a query.
+///
+/// Mirrors crawdad 0.3's `CommonPrefixSearchIter` step for step, but walks
+/// the serialized bytes directly with bounds-checked reads.
+pub struct CommonPrefixSearch<'a, 'b> {
+    /// The dictionary being searched.
+    dict: &'a PrefixDictionary,
+    /// The query characters.
+    chars: &'b [char],
+    /// Characters consumed so far.
+    pos: usize,
+    /// Current trie node.
+    node_idx: u32,
+}
+
+impl<'a> Iterator for CommonPrefixSearch<'a, '_> {
+    type Item = (&'a [u8], usize);
+
+    /// Advances to the next key that is a prefix of the query.
+    ///
+    /// # Returns
+    ///
+    /// The key's serialized `WordEntry` records and the number of characters
+    /// consumed, or `None` when no further prefix matches.
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.pos < self.chars.len() {
+            let mc = self.dict.map_code(self.chars[self.pos])?;
+            let (base_raw, _) = self.dict.node(self.node_idx)?;
+            // A leaf stores its value in `base`, not a child offset, so it
+            // has no children and the walk ends.
+            if base_raw & !OFFSET_MASK != 0 {
+                return None;
+            }
+            let child_idx = (base_raw & OFFSET_MASK) ^ mc;
+            let (child_base, child_check) = self.dict.node(child_idx)?;
+            if child_check & OFFSET_MASK != self.node_idx {
+                return None;
+            }
+            self.node_idx = child_idx;
+            self.pos += 1;
+
+            if child_base & !OFFSET_MASK != 0 {
+                // The node itself is a leaf: its base is the value.
+                let entries = self.dict.entry_bytes(child_base & OFFSET_MASK)?;
+                return Some((entries, self.pos));
+            }
+            if child_check & !OFFSET_MASK != 0 {
+                // The node has a leaf child reached by the end marker, whose
+                // code is 0, so the child index is just the base.
+                let leaf_idx = child_base & OFFSET_MASK;
+                let (leaf_base, _) = self.dict.node(leaf_idx)?;
+                let entries = self.dict.entry_bytes(leaf_base & OFFSET_MASK)?;
+                return Some((entries, self.pos));
+            }
+        }
+        None
+    }
+}
+
+/// Builds the "declared size is implausible" load error.
+///
+/// # Returns
+///
+/// A deserialize error describing an arithmetic overflow in the headers.
+fn implausible_size() -> crate::error::LinderaError {
+    LinderaErrorKind::Deserialize
+        .with_error(anyhow::anyhow!("dict.trie declares an implausible size"))
+}
+
+/// rkyv adapter storing a daachorse automaton as its serialized bytes.
 pub struct DoubleArrayArchiver;
 
 impl ArchiveWith<DoubleArrayAhoCorasick<u32>> for DoubleArrayArchiver {
     type Archived = rkyv::vec::ArchivedVec<u8>;
     type Resolver = rkyv::vec::VecResolver;
 
+    /// Resolves the archived byte vector for the automaton.
     fn resolve_with(
         field: &DoubleArrayAhoCorasick<u32>,
         resolver: Self::Resolver,
@@ -55,6 +573,7 @@ impl ArchiveWith<DoubleArrayAhoCorasick<u32>> for DoubleArrayArchiver {
 impl<S: Fallible + rkyv::ser::Writer + rkyv::ser::Allocator + ?Sized>
     SerializeWith<DoubleArrayAhoCorasick<u32>, S> for DoubleArrayArchiver
 {
+    /// Serializes the automaton as a byte vector.
     fn serialize_with(
         field: &DoubleArrayAhoCorasick<u32>,
         serializer: &mut S,
@@ -87,10 +606,21 @@ impl<D: Fallible<Error: Source> + ?Sized>
     }
 }
 
+/// serde adapter storing a daachorse automaton as its serialized bytes.
 mod double_array_serde {
     use daachorse::DoubleArrayAhoCorasick;
     use serde::{Deserialize, Deserializer, Serializer};
 
+    /// Serializes the automaton as bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `da` - The automaton to serialize.
+    /// * `serializer` - The serde serializer.
+    ///
+    /// # Returns
+    ///
+    /// The serializer's output.
     pub fn serialize<S>(da: &DoubleArrayAhoCorasick<u32>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -99,6 +629,15 @@ mod double_array_serde {
         serializer.serialize_bytes(&bytes)
     }
 
+    /// Deserializes an automaton from bytes, validating them.
+    ///
+    /// # Arguments
+    ///
+    /// * `deserializer` - The serde deserializer.
+    ///
+    /// # Returns
+    ///
+    /// The automaton, or an error for malformed bytes.
     pub fn deserialize<'de, D>(deserializer: D) -> Result<DoubleArrayAhoCorasick<u32>, D::Error>
     where
         D: Deserializer<'de>,
@@ -110,202 +649,89 @@ mod double_array_serde {
     }
 }
 
+/// The user prefix dictionary: a daachorse Aho-Corasick automaton.
+///
+/// The field sequence is byte-for-byte the sequence the pre-v6
+/// `PrefixDictionary` archived (`da`, `vals_data`, `words_idx_data`,
+/// `words_data`, `is_system`). rkyv 0.8 archives structurally, without type
+/// names, so keeping the sequence is what lets every previously-built user
+/// dictionary `.bin` keep loading. Do not add, remove or reorder fields
+/// without bumping the dictionary format version and rebuilding the committed
+/// `.bin` fixtures.
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
-pub struct PrefixDictionary {
+pub struct UserPrefixDictionary {
+    /// The Aho-Corasick automaton over surface forms.
     #[serde(with = "self::double_array_serde")]
     #[rkyv(with = DoubleArrayArchiver)]
     pub da: DoubleArrayAhoCorasick<u32>,
+    /// The values file: `WordEntry` records back to back.
     pub vals_data: Data,
+    /// Byte offsets into `words_data`, one `u32` per word id.
     pub words_idx_data: Data,
+    /// Word detail records.
     pub words_data: Data,
+    /// Always `false`; retained because the archived field sequence must not
+    /// change (see the type-level comment).
     pub is_system: bool,
 }
 
-impl PrefixDictionary {
+impl UserPrefixDictionary {
     /// Decode the `(offset, count)` pair stored in the double-array value.
     ///
-    /// Both system and user dictionaries pack the word-id offset in the high
-    /// 24 bits and the per-surface variant count in the low 8 bits (up to 255
-    /// variants). The legacy 5-bit user-dictionary encoding was retired in
-    /// v4.0.0; user `.bin` files built with v3 must be rebuilt from CSV.
-    #[inline]
-    pub(crate) fn decode_val(&self, val: u32) -> (u32, u32) {
-        (val >> 8u32, val & ((1u32 << 8) - 1u32))
-    }
-
-    /// Load a `PrefixDictionary` from raw binary data.
+    /// The word-id offset lives in the high 24 bits and the per-surface
+    /// variant count in the low 8 bits (up to 255 variants). The legacy 5-bit
+    /// encoding was retired in v4.0.0; user `.bin` files built with v3 must
+    /// be rebuilt from CSV.
     ///
     /// # Arguments
     ///
-    /// * `da_data` - Double-array data bytes.
-    /// * `vals_data` - Values data bytes.
-    /// * `words_idx_data` - Word index data bytes.
-    /// * `words_data` - Words data bytes.
-    /// * `is_system` - Whether this is a system dictionary.
-    /// * `trust` - Whether `da_data` is trusted to be the exact output of
-    ///   `DoubleArrayAhoCorasick::serialize()`, allowing the validation pass
-    ///   to be skipped. See [`DaTrust`].
+    /// * `val` - The packed automaton value.
     ///
     /// # Returns
     ///
-    /// A `PrefixDictionary`, or an error if deserialization fails.
+    /// The `(offset, count)` pair.
+    #[inline]
+    pub fn decode_val(&self, val: u32) -> (u32, u32) {
+        (val >> 8u32, val & ((1u32 << 8) - 1u32))
+    }
+
+    /// Load a `UserPrefixDictionary` from raw binary data.
+    ///
+    /// The automaton bytes are always run through daachorse's validating
+    /// deserializer: user dictionaries come from the filesystem or from
+    /// callers, never from this crate's own build pipeline, so there is no
+    /// trusted path.
+    ///
+    /// # Arguments
+    ///
+    /// * `da_data` - Serialized automaton bytes.
+    /// * `vals_data` - Values data bytes.
+    /// * `words_idx_data` - Word index data bytes.
+    /// * `words_data` - Words data bytes.
+    ///
+    /// # Returns
+    ///
+    /// A `UserPrefixDictionary`, or an error if deserialization fails.
     pub fn load(
         da_data: impl Into<Data>,
         vals_data: impl Into<Data>,
         words_idx_data: impl Into<Data>,
         words_data: impl Into<Data>,
-        is_system: bool,
-        trust: DaTrust,
-    ) -> LinderaResult<PrefixDictionary> {
+    ) -> LinderaResult<UserPrefixDictionary> {
         let da_bytes = da_data.into();
-        let da = match trust {
-            DaTrust::Trusted => {
-                debug_assert!(
-                    matches!(da_bytes, Data::Static(_)),
-                    "DaTrust::Trusted should only be used for embedded (Data::Static) da_data"
-                );
-                // SAFETY: `da_bytes` must be the byte-exact output of this
-                // exact daachorse version's `DoubleArrayAhoCorasick::serialize()`.
-                // Only `embedded_dictionary!` (lindera-dictionary/src/macros.rs)
-                // passes `DaTrust::Trusted`, using `include_bytes!` data
-                // produced by this crate's own build pipeline
-                // (builder/prefix_dictionary.rs's write_double_array_file,
-                // which calls `.serialize()` directly and writes the bytes
-                // verbatim, with no re-encoding/compression step and no
-                // alternate producer). Note: the opt-in build cache
-                // (assets.rs, LINDERA_BUILD_DICTIONARY_CACHE_DIR) keys only
-                // on the dictionary crate's own version, not daachorse's, so
-                // bumping the pinned daachorse version while reusing a stale
-                // cache dir is a narrow, currently-unexploited path that
-                // could violate this invariant in the future.
-                unsafe { DoubleArrayAhoCorasick::deserialize_unchecked(&da_bytes[..]).0 }
-            }
-            DaTrust::Untrusted => {
-                DoubleArrayAhoCorasick::deserialize(&da_bytes[..])
-                    .map_err(|err| {
-                        LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
-                    })?
-                    .0
-            }
-        };
+        let da = DoubleArrayAhoCorasick::deserialize(&da_bytes[..])
+            .map_err(|err| {
+                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!(err.to_string()))
+            })?
+            .0;
 
-        Ok(PrefixDictionary {
+        Ok(UserPrefixDictionary {
             da,
             vals_data: vals_data.into(),
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
-            is_system,
+            is_system: false,
         })
-    }
-
-    pub fn prefix<'a>(&'a self, s: &'a str) -> impl Iterator<Item = (usize, WordEntry)> + 'a {
-        self.da
-            .find_overlapping_iter(s)
-            .filter(|m| m.start() == 0)
-            .flat_map(move |m| {
-                let (offset, len) = self.decode_val(m.value());
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data: &[u8] = &self.vals_data[offset_bytes..];
-                (0..len as usize).map(move |i| {
-                    (
-                        m.end(),
-                        WordEntry::deserialize(
-                            &data[WordEntry::SERIALIZED_LEN * i..],
-                            self.is_system,
-                        ),
-                    )
-                })
-            })
-    }
-
-    /// Find `WordEntry`s with surface
-    pub fn find_surface(&self, surface: &str) -> Vec<WordEntry> {
-        self.find_surface_iter(surface).collect()
-    }
-
-    /// Find `WordEntry`s with surface using lazy evaluation
-    /// This iterator-based approach reduces memory allocations
-    pub fn find_surface_iter<'a>(
-        &'a self,
-        surface: &'a str,
-    ) -> impl Iterator<Item = WordEntry> + 'a {
-        self.da
-            .find_overlapping_iter(surface)
-            .filter(|m| m.start() == 0 && m.end() == surface.len())
-            .flat_map(move |m| {
-                let (offset, len) = self.decode_val(m.value());
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-                let data = &self.vals_data[offset_bytes..];
-                (0..len as usize).map(move |i| {
-                    WordEntry::deserialize(&data[WordEntry::SERIALIZED_LEN * i..], self.is_system)
-                })
-            })
-    }
-
-    /// Common prefix iterator using character array input
-    pub fn common_prefix_iterator(&self, suffix: &[char]) -> Vec<Match> {
-        // Warning: This method takes &[char], but daachorse works on bytes (str).
-        // Converting char slice to string is costly but necessary if we use daachorse standard API.
-
-        if self.vals_data.is_empty() {
-            return Vec::new();
-        }
-
-        let suffix_str: String = suffix.iter().collect();
-
-        self.da
-            .find_overlapping_iter(&suffix_str)
-            .filter(|m| m.start() == 0)
-            .flat_map(|m| {
-                let (offset, len) = self.decode_val(m.value());
-                let offset_bytes = (offset as usize) * WordEntry::SERIALIZED_LEN;
-
-                // 範囲チェックを追加
-                if offset_bytes >= self.vals_data.len() {
-                    return vec![].into_iter();
-                }
-
-                let data: &[u8] = &self.vals_data[offset_bytes..];
-                (0..len as usize)
-                    .filter_map(move |i| {
-                        let required_bytes = WordEntry::SERIALIZED_LEN * (i + 1);
-                        if required_bytes <= data.len() {
-                            let word_entry = WordEntry::deserialize(
-                                &data[WordEntry::SERIALIZED_LEN * i..],
-                                self.is_system,
-                            );
-                            Some(Match {
-                                word_idx: WordIdx::new(word_entry.word_id().id()),
-                                end_char: m.end(), // prefix_len in bytes? No, m.end() is byte index.
-                                                   // Match expects char length?
-                                                   // Original code: end_char: prefix_len
-                                                   // prefix_len was number of bytes or chars?
-                                                   // yada::common_prefix_search returns (val, len) where len is length in bytes?
-                                                   // yada common_prefix_search(str) returns length in bytes.
-                                                   // But common_prefix_iterator takes &[char].
-                                                   // Match.end_char usually implies character index if used for Viterbi on chars.
-                                                   // But Viterbi usually works on bytes in Lindera?
-                                                   // Let's check typical usage.
-                                                   // NOTE: daachorse returns byte indices.
-                                                   // If input was chars converted to String, byte index != char index.
-                                                   // We need to map back to char index?
-                                                   // This function common_prefix_iterator might be inefficient or deprecated given we move to byte-based Viterbi.
-                                                   // For now, let's assume we return byte length.
-                                                   // But wait, suffix is &[char].
-                                                   // The caller likely expects char length?
-                                                   // Yes. if suffix is &[char], end_char 3 means 3 chars.
-                                                   // We have byte length from daachorse.
-                                                   // We need to count chars in suffix_str[..m.end()].
-                                                   // This is inefficient.
-                            })
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .into_iter()
-            })
-            .collect()
     }
 }
 
@@ -314,71 +740,208 @@ mod tests {
     use daachorse::DoubleArrayAhoCorasickBuilder;
 
     use super::*;
+    use crate::viterbi::{LexType, WordId};
 
-    fn build_valid_da_bytes() -> Vec<u8> {
-        let keyset: Vec<(&[u8], u32)> = vec![(b"a", 0), (b"ab", 1), (b"b", 2)];
-        let da = DoubleArrayAhoCorasickBuilder::new()
-            .build_with_values(keyset)
-            .unwrap();
-        da.serialize()
+    fn entry(word_id: u32, cost: i16) -> WordEntry {
+        WordEntry::new(WordId::new(LexType::System, word_id), cost, 0, 0)
     }
 
+    fn sample_map() -> BTreeMap<String, Vec<WordEntry>> {
+        let mut map = BTreeMap::new();
+        map.insert("世界".to_string(), vec![entry(0, 10)]);
+        map.insert("世界中".to_string(), vec![entry(1, 20), entry(2, 30)]);
+        map.insert("世論調査".to_string(), vec![entry(3, 40)]);
+        map.insert("統計調査".to_string(), vec![entry(4, 50)]);
+        map
+    }
+
+    /// The load-bearing round-trip: the in-place view must return exactly
+    /// what crawdad's own search returns on the same serialized bytes. This
+    /// is the test that fails loudly if crawdad's byte layout ever changes.
     #[test]
-    fn test_prefix_dictionary_load_trusted_matches_untrusted() {
-        let da_bytes = build_valid_da_bytes();
-        // `DaTrust::Trusted` asserts (debug builds) that the input is
-        // `Data::Static`, mirroring the only real caller (the
-        // `embedded_dictionary!` macro's `include_bytes!` data). Leak the
-        // buffer to get a genuine `&'static [u8]` for this test.
-        let da_bytes_static: &'static [u8] = Box::leak(da_bytes.clone().into_boxed_slice());
+    fn trie_view_matches_crawdad_search() {
+        let map = sample_map();
+        let keys: Vec<&str> = map.keys().map(|k| k.as_str()).collect();
+        let reference = crawdad::Trie::from_keys(keys.iter().copied()).unwrap();
 
-        let trusted = PrefixDictionary::load(
-            da_bytes_static,
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            true,
-            DaTrust::Trusted,
-        )
-        .unwrap();
-        let untrusted = PrefixDictionary::load(
-            da_bytes,
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            true,
-            DaTrust::Untrusted,
-        )
-        .unwrap();
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
 
-        let trusted_matches: Vec<_> = trusted.da.find_overlapping_iter("ab").collect();
-        let untrusted_matches: Vec<_> = untrusted.da.find_overlapping_iter("ab").collect();
-        assert_eq!(trusted_matches.len(), untrusted_matches.len());
-        assert!(!trusted_matches.is_empty());
-        for (t, u) in trusted_matches.iter().zip(untrusted_matches.iter()) {
-            assert_eq!(t.value(), u.value());
-            assert_eq!(t.start(), u.start());
-            assert_eq!(t.end(), u.end());
+        for haystack in ["世界中で世論調査", "統計調査だ", "無関係な文", "世", ""]
+        {
+            let chars: Vec<char> = haystack.chars().collect();
+            for start in 0..=chars.len() {
+                let expected: Vec<(u32, usize)> = reference
+                    .common_prefix_search(chars[start..].iter().copied())
+                    .collect();
+                let actual: Vec<(usize, usize)> = dict
+                    .common_prefix_search(&chars[start..])
+                    .map(|(bytes, end)| (bytes.len() / WordEntry::SERIALIZED_LEN, end))
+                    .collect();
+
+                assert_eq!(actual.len(), expected.len(), "at {haystack:?}[{start}..]");
+                for ((key_ord, exp_end), (n_entries, act_end)) in expected.iter().zip(actual.iter())
+                {
+                    assert_eq!(exp_end, act_end);
+                    // The run length must match the map's entry count for the
+                    // key crawdad says matched.
+                    let surface: String = chars[start..start + exp_end].iter().collect();
+                    assert_eq!(
+                        map[&surface].len(),
+                        *n_entries,
+                        "run length for key ordinal {key_ord}"
+                    );
+                }
+            }
         }
     }
 
     #[test]
-    fn test_prefix_dictionary_load_untrusted_rejects_corrupted_da_data() {
-        let mut da_bytes = build_valid_da_bytes();
-        // Truncate to well short of a valid length-prefixed record; the
-        // checked `deserialize` path must reject this rather than panic or
-        // read out of bounds.
-        da_bytes.truncate(4);
+    fn find_surface_returns_all_variants() {
+        let dict = PrefixDictionary::from_word_entry_map(&sample_map()).unwrap();
 
-        let result = PrefixDictionary::load(
-            da_bytes,
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            Vec::<u8>::new(),
-            true,
-            DaTrust::Untrusted,
+        let entries = dict.find_surface("世界中");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].word_cost(), 20);
+        assert_eq!(entries[1].word_cost(), 30);
+
+        assert!(dict.find_surface("世論").is_empty());
+        assert!(dict.find_surface("未知語").is_empty());
+    }
+
+    #[test]
+    fn prefix_returns_byte_offsets() {
+        let dict = PrefixDictionary::from_word_entry_map(&sample_map()).unwrap();
+
+        let results: Vec<(usize, WordEntry)> = dict.prefix("世界中で").collect();
+        // "世界" (6 bytes) and then "世界中" (9 bytes), three entries total.
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].0, 6);
+        assert_eq!(results[1].0, 9);
+        assert_eq!(results[2].0, 9);
+    }
+
+    #[test]
+    fn common_prefix_iterator_counts_characters() {
+        let dict = PrefixDictionary::from_word_entry_map(&sample_map()).unwrap();
+
+        let chars: Vec<char> = "世界中".chars().collect();
+        let matches = dict.common_prefix_iterator(&chars);
+        // "世界" consumes 2 chars, "世界中" consumes 3 -- in characters, not
+        // bytes (the retired implementation returned 6 and 9 here).
+        assert_eq!(matches.len(), 3);
+        assert_eq!(matches[0].end_char, 2);
+        assert_eq!(matches[1].end_char, 3);
+        assert_eq!(matches[2].end_char, 3);
+    }
+
+    #[test]
+    fn load_rejects_truncated_trie() {
+        let map = sample_map();
+        let (trie_bytes, idx_bytes) = PrefixDictionary::serialize_trie(&map).unwrap();
+
+        let mut truncated = trie_bytes.clone();
+        truncated.truncate(trie_bytes.len() - 3);
+        assert!(
+            PrefixDictionary::load(
+                truncated,
+                idx_bytes.clone(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new()
+            )
+            .is_err()
         );
 
-        assert!(result.is_err());
+        assert!(
+            PrefixDictionary::load(vec![0u8; 2], idx_bytes, Vec::new(), Vec::new(), Vec::new())
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn load_rejects_absurd_table_length() {
+        // A table length claiming more entries than the file could hold must
+        // be rejected up front, not fed to an allocator.
+        let mut data = Vec::new();
+        data.extend_from_slice(&u32::MAX.to_le_bytes());
+        data.extend_from_slice(&[0u8; 16]);
+        assert!(
+            PrefixDictionary::load(data, Vec::new(), Vec::new(), Vec::new(), Vec::new()).is_err()
+        );
+    }
+
+    #[test]
+    fn corrupted_nodes_yield_no_matches_without_panicking() {
+        let map = sample_map();
+        let (trie_bytes, idx_bytes) = PrefixDictionary::serialize_trie(&map).unwrap();
+
+        // Flip bytes throughout the node array; every lookup must stay
+        // panic-free (bounds-checked reads make garbage "no match").
+        for step in [1usize, 3, 7, 13] {
+            let mut corrupted = trie_bytes.clone();
+            let start = corrupted.len().saturating_sub(200);
+            let len = corrupted.len();
+            for i in (start..len).step_by(step) {
+                corrupted[i] ^= 0xa5;
+            }
+            if let Ok(dict) = PrefixDictionary::load(
+                corrupted,
+                idx_bytes.clone(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+            ) {
+                let chars: Vec<char> = "世界中で統計調査".chars().collect();
+                for start in 0..chars.len() {
+                    for _ in dict.common_prefix_search(&chars[start..]) {}
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn serialize_trie_rejects_nul_in_surface() {
+        let mut map = BTreeMap::new();
+        map.insert("a\0b".to_string(), vec![entry(0, 0)]);
+        assert!(PrefixDictionary::serialize_trie(&map).is_err());
+    }
+
+    #[test]
+    fn empty_dictionary_matches_nothing() {
+        let dict = PrefixDictionary::from_word_entry_map(&BTreeMap::new()).unwrap();
+        let chars: Vec<char> = "何か".chars().collect();
+        assert_eq!(dict.common_prefix_search(&chars).count(), 0);
+    }
+
+    #[test]
+    fn user_dictionary_load_validates_da_bytes() {
+        let keyset: Vec<(&[u8], u32)> = vec![(b"a", 0), (b"ab", 1), (b"b", 2)];
+        let da = DoubleArrayAhoCorasickBuilder::new()
+            .build_with_values(keyset)
+            .unwrap();
+        let da_bytes = da.serialize();
+
+        let dict = UserPrefixDictionary::load(
+            da_bytes.clone(),
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+            Vec::<u8>::new(),
+        )
+        .unwrap();
+        assert_eq!(dict.da.find_overlapping_iter("ab").count(), 3);
+
+        // Truncated bytes must be rejected by the validating deserializer,
+        // not panic or read out of bounds.
+        let mut truncated = da_bytes;
+        truncated.truncate(4);
+        assert!(
+            UserPrefixDictionary::load(
+                truncated,
+                Vec::<u8>::new(),
+                Vec::<u8>::new(),
+                Vec::<u8>::new()
+            )
+            .is_err()
+        );
     }
 }

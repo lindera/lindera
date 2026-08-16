@@ -18,7 +18,7 @@ lindera-dictionary/src/
 │   ├── character_definition.rs    # Character type definitions
 │   ├── connection_cost_matrix.rs  # Connection cost matrix
 │   ├── context_id_map.rs          # ContextIdMap: connection-cost context-ID remap
-│   ├── prefix_dictionary.rs       # Double-array trie dictionary
+│   ├── prefix_dictionary.rs       # Prefix dictionary (char-wise double-array trie)
 │   ├── unknown_dictionary.rs      # Unknown word handling
 │   ├── metadata.rs                # Dictionary metadata
 │   └── schema.rs                  # Schema definitions
@@ -28,7 +28,7 @@ lindera-dictionary/src/
 
 ### Dictionary / UserDictionary
 
-Main data structures holding the compiled dictionary data. A `Dictionary` contains the character definitions, connection cost matrix, prefix dictionary (double-array trie), and unknown word dictionary. `UserDictionary` allows users to add custom vocabulary on top of the system dictionary.
+Main data structures holding the compiled dictionary data. A `Dictionary` contains the character definitions, connection cost matrix, prefix dictionary, and unknown word dictionary. The prefix dictionary is a char-wise double-array trie, built with `crawdad` at build time and walked in place over its serialized bytes at runtime — loading it is an O(1) header check, not a deserialization pass. `UserDictionary` allows users to add custom vocabulary on top of the system dictionary; unlike the system dictionary, it still uses a `daachorse` automaton inside its rkyv-archived `.bin` files.
 
 ### DictionaryBuilder
 
@@ -63,7 +63,7 @@ A built dictionary directory records the on-disk layout it was written in, as `f
 
 The check matters because most artifacts have no header of their own: `matrix.mtx`, `dict.vals` and `dict.words` are raw arrays, so a dictionary from an older layout that happens to be a plausible length decodes into garbage rather than failing. A source `metadata.json` — the hand-written kind checked into each dictionary crate — describes build *inputs*, carries no `format_version`, and is never format-checked.
 
-Bump `DICTIONARY_FORMAT_VERSION` on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (`daachorse` for `dict.da`, `rkyv` for `char_def.bin` and `unk.bin`), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.
+Bump `DICTIONARY_FORMAT_VERSION` on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (`crawdad` for `dict.trie`, `rkyv` for `char_def.bin` and `unk.bin`), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.
 
 ### Context ID Remapping
 
@@ -77,6 +77,6 @@ The CRF-based dictionary training pipeline lives in the separate `lindera-traine
 
 | Feature | Description | Default |
 | --------- | ------------- | --------- |
-| `mmap` | Memory-mapped file support for filesystem-based dictionary loading (the word-list files and the connection-cost matrix stay lazily paged; only the trie is fully materialized) | Yes |
+| `mmap` | Memory-mapped file support for filesystem-based dictionary loading (the word-list files, the connection-cost matrix, and the trie all stay lazily paged; nothing is fully materialized at load) | Yes |
 | `build_rs` | HTTP download for dictionary sources | No |
 | `ctxfreq` | Experimental: instruments connection-matrix access-frequency profiling, used to build the context-ID frequency remap | No |

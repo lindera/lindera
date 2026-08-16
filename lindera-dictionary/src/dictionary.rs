@@ -21,7 +21,7 @@ use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::metadata::Metadata;
-use crate::dictionary::prefix_dictionary::PrefixDictionary;
+use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::error::LinderaErrorKind;
 use crate::loader::character_definition::CharacterDefinitionLoader;
@@ -193,10 +193,15 @@ impl Dictionary {
     }
 }
 
+/// `dict` archives with the exact field sequence the pre-v6
+/// `PrefixDictionary` used, which is what keeps previously-built user
+/// dictionary `.bin` files loading across the v6 system-dictionary format
+/// break -- rkyv 0.8 archives structurally, without type names. See
+/// [`UserPrefixDictionary`]'s type-level comment before touching either type.
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct UserDictionary {
-    pub dict: PrefixDictionary,
+    pub dict: UserPrefixDictionary,
 }
 
 impl UserDictionary {

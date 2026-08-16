@@ -52,8 +52,9 @@ import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+    files.unk,
 );
 
 builder.setDictionaryInstance(dictionary);

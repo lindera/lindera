@@ -467,11 +467,11 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
 
         // The dictionary format version is part of the cache key, not just the
         // crate version. Without it, bumping a dependency whose serialized
-        // form is written verbatim -- daachorse for `dict.da`, rkyv for
+        // form is written verbatim -- crawdad for `dict.trie`, rkyv for
         // `char_def.bin`/`unk.bin` -- while reusing a cache directory would
-        // serve artifacts in the old layout, and the embedded loader passes
-        // `dict.da` to `deserialize_unchecked`. Keying on the format version
-        // turns that from undefined behaviour into a cache miss.
+        // serve artifacts in the old layout to a binary that walks a
+        // different one. Keying on the format version turns that into a
+        // cache miss.
         (
             cache_dir.join(format!("{pkg_version}-fmt{DICTIONARY_FORMAT_VERSION}")),
             true,
@@ -505,9 +505,9 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
     // normally a cache miss rather than a stale hit. This re-reads the cached
     // `metadata.json` anyway, because the cheap failure mode -- an interrupted
     // build that left a half-written directory behind, or a directory copied
-    // in by hand -- is not covered by the key, and being wrong here means
-    // feeding a mislaid `dict.da` to `deserialize_unchecked`. A cache entry
-    // that fails the check is rebuilt rather than trusted.
+    // in by hand -- is not covered by the key, and a stale artifact would be
+    // embedded verbatim into the binary. A cache entry that fails the check
+    // is rebuilt rather than trusted.
     if is_cache && output_dir.is_dir() && cached_dictionary_is_current(&output_dir) {
         return Ok(());
     }

@@ -25,8 +25,9 @@ async function main() {
     // OPFS から辞書を読み込み
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+        files.unk,
     );
 
     const builder = new TokenizerBuilder();
@@ -108,8 +109,9 @@ OPFS 辞書ロードを使用した lindera-wasm の最小限の HTML ページ�
             // OPFS から辞書を読み込み
             const files = await loadDictionaryFiles("ipadic");
             const dictionary = loadDictionaryFromBytes(
-                files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-                files.dictWords, files.matrixMtx, files.charDef, files.unk,
+                files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+                files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+                files.unk,
             );
 
             const builder = new TokenizerBuilder();
@@ -166,8 +168,9 @@ import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
 // OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+    files.unk,
 );
 
 const builder = new TokenizerBuilder();

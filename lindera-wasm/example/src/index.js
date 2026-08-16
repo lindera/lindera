@@ -165,7 +165,8 @@ async function loadTokenizer(dictName) {
     const files = await loadDictionaryFiles(dictName);
     const dict = loadDictionaryFromBytes(
       files.metadata,
-      files.dictDa,
+      files.dictTrie,
+      files.dictValsIdx,
       files.dictVals,
       files.dictWordsIdx,
       files.dictWords,

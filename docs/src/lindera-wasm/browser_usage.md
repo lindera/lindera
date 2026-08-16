@@ -25,8 +25,8 @@ async function main() {
     // Load dictionary from OPFS
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
     );
 
     const builder = new TokenizerBuilder();
@@ -108,8 +108,8 @@ A minimal HTML page using lindera-wasm with OPFS dictionary loading:
             // Load dictionary from OPFS
             const files = await loadDictionaryFiles("ipadic");
             const dictionary = loadDictionaryFromBytes(
-                files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-                files.dictWords, files.matrixMtx, files.charDef, files.unk,
+                files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+                files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
             );
 
             const builder = new TokenizerBuilder();
@@ -166,8 +166,8 @@ import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
 // Load dictionary from OPFS (see OPFS Dictionary Storage for setup)
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
 );
 
 const builder = new TokenizerBuilder();

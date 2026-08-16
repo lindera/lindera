@@ -26,17 +26,24 @@ const DEFAULT_FIELD_VALUE: &str = "*";
 /// - adding, removing or renaming a file in the dictionary directory,
 /// - changing a record layout or a value encoding,
 /// - upgrading a dependency whose serialized form is written verbatim
-///   (`daachorse` for `dict.da`, `rkyv` for `char_def.bin` and `unk.bin`).
+///   (`crawdad` for `dict.trie`, `rkyv` for `char_def.bin` and `unk.bin`,
+///   `daachorse` inside user dictionary `.bin` files).
 ///
-/// That last case is easy to miss: a `daachorse` major bump changes `dict.da`
-/// without a single line of this crate changing, and the build cache keyed on
-/// this constant is what stops a stale automaton from being served to
-/// `deserialize_unchecked`.
+/// That last case is easy to miss: such a bump changes the artifact bytes
+/// without a single line of this crate changing, and the build cache keyed
+/// on this constant is what stops a stale automaton from being served to a
+/// binary that walks a different layout.
 ///
 /// # History
 ///
 /// * `1` - the layout shipped through v5.x.
-pub const DICTIONARY_FORMAT_VERSION: u32 = 1;
+/// * `2` - v6.0.0: the system prefix dictionary's daachorse automaton
+///   (`dict.da`, value-packed as `offset << 8 | count`) was replaced by a
+///   crawdad char-wise trie walked in place (`dict.trie`, keyed by ordinal)
+///   plus a `u32` prefix-sum index (`dict.valsidx`). `dict.vals`,
+///   `dict.words`, `dict.wordsidx`, `matrix.mtx`, `char_def.bin` and
+///   `unk.bin` are unchanged, as are user dictionary `.bin` files.
+pub const DICTIONARY_FORMAT_VERSION: u32 = 2;
 
 /// The format version assumed for a built dictionary whose `metadata.json`
 /// predates the `format_version` field.

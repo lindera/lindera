@@ -10,7 +10,6 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use byteorder::{LittleEndian, WriteBytesExt};
 use csv::StringRecord;
-use daachorse::DoubleArrayAhoCorasickBuilder;
 use encoding_rs::{Encoding, UTF_8};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use glob::glob;
@@ -373,8 +372,8 @@ impl PrefixDictionaryBuilder {
         // Write dict.words and dict.wordsidx
         self.write_words_files(output_dir, rows)?;
 
-        // Write dict.da
-        self.write_double_array_file(output_dir, word_entry_map)?;
+        // Write dict.trie and dict.valsidx
+        self.write_trie_files(output_dir, word_entry_map)?;
 
         // Write dict.vals
         self.write_values_file(output_dir, word_entry_map)?;
@@ -478,46 +477,45 @@ impl PrefixDictionaryBuilder {
         Ok(())
     }
 
-    /// Write double array file (dict.da)
-    fn write_double_array_file(
+    /// Write the trie files (dict.trie, dict.valsidx).
+    ///
+    /// The trie's value for a surface is its key ordinal, and dict.valsidx
+    /// maps that ordinal to a run of records inside dict.vals -- which
+    /// [`Self::write_values_file`] writes from the same map in the same
+    /// iteration order, keeping the two consistent by construction.
+    ///
+    /// # Arguments
+    ///
+    /// * `output_dir` - Directory to write the two files into.
+    /// * `word_entry_map` - Surface form to word entries.
+    ///
+    /// # Returns
+    ///
+    /// Unit on success, or an error if the trie build or a write fails.
+    fn write_trie_files(
         &self,
         output_dir: &Path,
         word_entry_map: &BTreeMap<String, Vec<WordEntry>>,
     ) -> LinderaResult<()> {
-        let mut id = 0u32;
-        let mut keyset: Vec<(&[u8], u32)> = vec![];
+        let (trie_bytes, idx_bytes) =
+            crate::dictionary::prefix_dictionary::PrefixDictionary::serialize_trie(word_entry_map)?;
 
-        for (key, word_entries) in word_entry_map {
-            let len = word_entries.len() as u32;
-            let val = pack_entry_value(key, id, len)?;
-            keyset.push((key.as_bytes(), val));
-            id += len;
-        }
-
-        let keyset_len = keyset.len();
-
-        let dict_da = DoubleArrayAhoCorasickBuilder::new()
-            .build_with_values(keyset)
-            .map_err(|err| {
-                LinderaErrorKind::Build
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context(format!(
-                        "Failed to build DoubleArray with {} keys for prefix dictionary",
-                        keyset_len
-                    ))
-            })?;
-
-        let dict_da_buffer = dict_da.serialize();
-
-        let dict_da_path = output_dir.join(Path::new("dict.da"));
-        let mut dict_da_writer =
-            io::BufWriter::new(File::create(&dict_da_path).map_err(|err| {
+        for (name, bytes) in [("dict.trie", &trie_bytes), ("dict.valsidx", &idx_bytes)] {
+            let path = output_dir.join(name);
+            let mut writer = io::BufWriter::new(File::create(&path).map_err(|err| {
                 LinderaErrorKind::Io
                     .with_error(anyhow::anyhow!(err))
-                    .add_context(format!("Failed to create dict.da file: {dict_da_path:?}"))
+                    .add_context(format!("Failed to create {name} file: {path:?}"))
             })?);
-
-        write_data(&dict_da_buffer, &mut dict_da_writer)?;
+            write_data(bytes, &mut writer)?;
+            // An explicit flush so a write error surfaces here instead of
+            // being swallowed by BufWriter's drop.
+            writer.flush().map_err(|err| {
+                LinderaErrorKind::Io
+                    .with_error(anyhow::anyhow!(err))
+                    .add_context(format!("Failed to flush {name} file: {path:?}"))
+            })?;
+        }
 
         Ok(())
     }

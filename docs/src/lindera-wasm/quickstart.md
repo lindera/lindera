@@ -22,8 +22,8 @@ async function main() {
     // Load dictionary from OPFS
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
     );
 
     // Build tokenizer
@@ -92,8 +92,8 @@ async function main() {
     // Assume dictionary is already cached in OPFS
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
     );
 
     const builder = new TokenizerBuilder();

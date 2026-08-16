@@ -78,7 +78,10 @@ macro_rules! embedded_dictionary {
         // `[i16]` in place instead of decoding it into an owned buffer.
         static CONNECTION_DATA: &[u8] =
             $crate::include_bytes_aligned!(concat!(env!("LINDERA_WORKDIR"), $dir, "/matrix.mtx"));
-        static DA_DATA: &[u8] = include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.da"));
+        static TRIE_DATA: &[u8] =
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.trie"));
+        static VALS_IDX_DATA: &[u8] =
+            include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.valsidx"));
         static VALS_DATA: &[u8] =
             include_bytes!(concat!(env!("LINDERA_WORKDIR"), $dir, "/dict.vals"));
         static UNKNOWN_DATA: &[u8] =
@@ -94,17 +97,19 @@ macro_rules! embedded_dictionary {
         pub fn load() -> $crate::LinderaResult<$crate::dictionary::Dictionary> {
             let metadata = $crate::dictionary::metadata::Metadata::load(METADATA_DATA)?;
             // Guards against a stale build cache: `include_bytes!` bakes in
-            // whatever the build script produced, and the cache is keyed on
-            // the format version precisely so that a mismatch cannot reach
-            // `DaTrust::Trusted` below.
+            // whatever the build script produced, so a cache directory left
+            // behind by another format version must be caught here.
             metadata.validate_format_version()?;
+            // The trie is walked in place over these bytes with
+            // bounds-checked reads, so unlike the retired daachorse
+            // representation there is no unchecked-deserialize fast path to
+            // guard -- embedded and filesystem data take the same safe code.
             let prefix_dictionary = $crate::dictionary::prefix_dictionary::PrefixDictionary::load(
-                DA_DATA,
+                TRIE_DATA,
+                VALS_IDX_DATA,
                 VALS_DATA,
                 WORDS_IDX_DATA,
                 WORDS_DATA,
-                true,
-                $crate::dictionary::prefix_dictionary::DaTrust::Trusted,
             )?;
             let connection_cost_matrix =
                 $crate::dictionary::connection_cost_matrix::ConnectionCostMatrix::load(

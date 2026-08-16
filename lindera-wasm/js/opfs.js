@@ -7,10 +7,15 @@
  * @module opfs
  */
 
-/** Dictionary file names that make up a built Lindera dictionary. */
+/**
+ * Dictionary file names that make up a built Lindera dictionary
+ * (dictionary format version 2: the system automaton is dict.trie +
+ * dict.valsidx).
+ */
 const DICTIONARY_FILES = [
   "metadata.json",
-  "dict.da",
+  "dict.trie",
+  "dict.valsidx",
   "dict.vals",
   "dict.wordsidx",
   "dict.words",
@@ -167,7 +172,7 @@ async function extractZip(zipBuffer) {
  * Downloads a dictionary archive, extracts it, and stores the files in OPFS.
  *
  * The archive should be a zip file containing the 8 dictionary files
- * (metadata.json, dict.da, dict.vals, dict.wordsidx, dict.words,
+ * (metadata.json, dict.trie, dict.valsidx, dict.vals, dict.wordsidx, dict.words,
  * matrix.mtx, char_def.bin, unk.bin), optionally nested in a subdirectory.
  *
  * @param {string} url - URL of the dictionary zip archive.
@@ -287,7 +292,8 @@ export async function loadDictionaryFiles(name) {
 
   return {
     metadata: await readFile("metadata.json"),
-    dictDa: await readFile("dict.da"),
+    dictTrie: await readFile("dict.trie"),
+    dictValsIdx: await readFile("dict.valsidx"),
     dictVals: await readFile("dict.vals"),
     dictWordsIdx: await readFile("dict.wordsidx"),
     dictWords: await readFile("dict.words"),

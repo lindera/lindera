@@ -21,7 +21,7 @@ import { downloadDictionary, loadDictionaryFiles, removeDictionary,
 
 辞書の zip アーカイブをダウンロードし、展開して、ファイルを OPFS に保存します。
 
-アーカイブは、必要な 8 つの辞書ファイルを含む zip ファイルである必要があります。サブディレクトリにネストされていても構いません。
+アーカイブは、必要な 9 つの辞書ファイルを含む zip ファイルである必要があります。サブディレクトリにネストされていても構いません。
 
 - **引数**:
   - `url` (string) -- 辞書 zip アーカイブの URL
@@ -84,7 +84,8 @@ const files = await loadDictionaryFiles("ipadic");
 | プロパティ | 型 | ソースファイル |
 | --- | --- | --- |
 | `metadata` | `Uint8Array` | `metadata.json` |
-| `dictDa` | `Uint8Array` | `dict.da`（Double-Array Trie） |
+| `dictTrie` | `Uint8Array` | `dict.trie`（文字単位のダブル配列トライ） |
+| `dictValsIdx` | `Uint8Array` | `dict.valsidx`（単語値インデックス） |
 | `dictVals` | `Uint8Array` | `dict.vals`（単語値データ） |
 | `dictWordsIdx` | `Uint8Array` | `dict.wordsidx`（単語詳細インデックス） |
 | `dictWords` | `Uint8Array` | `dict.words`（単語詳細） |
@@ -155,8 +156,9 @@ async function main() {
     // OPFS から辞書を読み込み
     const files = await loadDictionaryFiles(DICT_NAME);
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+        files.unk,
     );
 
     // トークナイザーを構築
@@ -177,12 +179,13 @@ main();
 
 ## 必要な辞書ファイル
 
-有効な辞書アーカイブには以下の 8 ファイルが含まれている必要があります:
+有効な辞書アーカイブには以下の 9 ファイルが含まれている必要があります:
 
 | ファイル | 説明 |
 | --- | --- |
 | `metadata.json` | 辞書メタデータ（名前、エンコーディング、スキーマなど） |
-| `dict.da` | Double-Array Trie 構造 |
+| `dict.trie` | 文字単位のダブル配列トライ構造 |
+| `dict.valsidx` | 単語値インデックス |
 | `dict.vals` | 単語値データ |
 | `dict.wordsidx` | 単語詳細インデックス |
 | `dict.words` | 単語詳細（形態素素性） |

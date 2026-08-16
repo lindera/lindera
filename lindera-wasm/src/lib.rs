@@ -64,7 +64,8 @@ pub fn py_load_dictionary(uri: &str) -> Result<Dictionary, JsValue> {
 #[allow(clippy::too_many_arguments)]
 pub fn py_load_dictionary_from_bytes(
     metadata: &[u8],
-    dict_da: &[u8],
+    dict_trie: &[u8],
+    dict_vals_idx: &[u8],
     dict_vals: &[u8],
     dict_words_idx: &[u8],
     dict_words: &[u8],
@@ -74,7 +75,8 @@ pub fn py_load_dictionary_from_bytes(
 ) -> Result<Dictionary, JsValue> {
     crate::dictionary::load_dictionary_from_bytes(
         metadata,
-        dict_da,
+        dict_trie,
+        dict_vals_idx,
         dict_vals,
         dict_words_idx,
         dict_words,

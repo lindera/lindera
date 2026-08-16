@@ -44,12 +44,14 @@ fn write_source(dir: &Path) {
     fs::write(dir.join("matrix.def"), MATRIX_DEF).unwrap();
 }
 
-/// The artifacts a completed build must produce.
+/// The artifacts a completed build must produce (dictionary format
+/// version 2: the system automaton is `dict.trie` + `dict.valsidx`).
 const EXPECTED_FILES: &[&str] = &[
     "metadata.json",
     "char_def.bin",
     "unk.bin",
-    "dict.da",
+    "dict.trie",
+    "dict.valsidx",
     "dict.vals",
     "dict.words",
     "dict.wordsidx",

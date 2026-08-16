@@ -21,7 +21,7 @@ import { downloadDictionary, loadDictionaryFiles, removeDictionary,
 
 Downloads a dictionary zip archive, extracts it, and stores the files in OPFS.
 
-The archive should be a zip file containing the 8 required dictionary files, optionally nested in a subdirectory.
+The archive should be a zip file containing the 9 required dictionary files, optionally nested in a subdirectory.
 
 - **Parameters**:
   - `url` (string) -- URL of the dictionary zip archive
@@ -84,7 +84,8 @@ const files = await loadDictionaryFiles("ipadic");
 | Property | Type | Source File |
 | --- | --- | --- |
 | `metadata` | `Uint8Array` | `metadata.json` |
-| `dictDa` | `Uint8Array` | `dict.da` (Double-Array Trie) |
+| `dictTrie` | `Uint8Array` | `dict.trie` (char-wise double-array trie) |
+| `dictValsIdx` | `Uint8Array` | `dict.valsidx` (word values index) |
 | `dictVals` | `Uint8Array` | `dict.vals` (word value data) |
 | `dictWordsIdx` | `Uint8Array` | `dict.wordsidx` (word details index) |
 | `dictWords` | `Uint8Array` | `dict.words` (word details) |
@@ -155,8 +156,8 @@ async function main() {
     // Load dictionary from OPFS
     const files = await loadDictionaryFiles(DICT_NAME);
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
     );
 
     // Build tokenizer
@@ -177,12 +178,13 @@ main();
 
 ## Required Dictionary Files
 
-A valid dictionary archive must contain these 8 files:
+A valid dictionary archive must contain these 9 files:
 
 | File | Description |
 | --- | --- |
 | `metadata.json` | Dictionary metadata (name, encoding, schema, etc.) |
-| `dict.da` | Double-Array Trie structure |
+| `dict.trie` | Char-wise double-array trie structure |
+| `dict.valsidx` | Word values index |
 | `dict.vals` | Word value data |
 | `dict.wordsidx` | Word details index |
 | `dict.words` | Word details (morphological features) |

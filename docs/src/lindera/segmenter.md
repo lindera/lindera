@@ -126,13 +126,13 @@ let segmenter = Segmenter::from_config(&config)?;
 ## Memory-Mapped Loading
 
 For a filesystem-based (not `embedded://`) dictionary, set `use_mmap` to
-`true` to route the connection-cost matrix and prefix dictionary through
-memory-mapped reads instead of a plain file read. Only the dictionary's
-largest word-list files stay lazily paged this way; the connection-cost
-matrix and the double-array trie are always fully materialized into owned
-memory regardless. `use_mmap` is silently ignored for `embedded://`
-dictionaries, since their data is already a static, zero-copy byte slice.
-Requires the `mmap` cargo feature (enabled by default).
+`true` to route the dictionary files through memory-mapped reads instead of
+a plain file read. Every large component stays lazily paged this way: the
+word-list files, the connection-cost matrix, and the prefix-dictionary
+trie, which is walked in place over its serialized bytes. `use_mmap` is
+silently ignored for `embedded://` dictionaries, since their data is
+already a static, zero-copy byte slice. Requires the `mmap` cargo feature
+(enabled by default).
 
 ## Whitespace Handling
 
