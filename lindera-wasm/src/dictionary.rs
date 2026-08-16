@@ -209,7 +209,7 @@ mod tests {
         use super::load_dictionary_from_bytes;
 
         let result =
-            load_dictionary_from_bytes(b"not valid json", &[], &[], &[], &[], &[], &[], &[]);
+            load_dictionary_from_bytes(b"not valid json", &[], &[], &[], &[], &[], &[], &[], &[]);
 
         assert!(result.is_err());
         let err = result.err().unwrap().as_string().unwrap();
@@ -226,7 +226,7 @@ mod tests {
 
         // Incomplete metadata JSON (missing required fields)
         let metadata = br#"{"name":"test","encoding":"utf-8"}"#;
-        let result = load_dictionary_from_bytes(metadata, &[], &[], &[], &[], &[], &[], &[]);
+        let result = load_dictionary_from_bytes(metadata, &[], &[], &[], &[], &[], &[], &[], &[]);
 
         assert!(result.is_err());
     }
