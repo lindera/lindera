@@ -265,6 +265,26 @@ export declare class Tokenizer {
    */
   tokenize(text: string): Array<Token>
   /**
+   * Tokenizes the given text and returns tokens as plain JS objects.
+   *
+   * This is the predictable-memory path for high-volume use: plain
+   * objects are reclaimed by ordinary GC, while `Token` class instances
+   * release native memory via an event-loop-deferred finalizer, so
+   * synchronous loops that never yield accumulate memory with `tokenize`.
+   *
+   * In 6.x, `tokenize` itself will return plain objects and this method
+   * will be removed. See <https://github.com/lindera/lindera/issues/930>.
+   *
+   * # Arguments
+   *
+   * * `text` - Text to tokenize.
+   *
+   * # Returns
+   *
+   * An array of plain token objects, in reading order.
+   */
+  tokenizeObjects(text: string): Array<JsTokenData>
+  /**
    * Tokenizes the given text and returns only the token surfaces.
    *
    * This is the fast path for wakati-style use: no Token objects are
@@ -498,6 +518,29 @@ export interface JsPenalty {
   otherPenaltyLengthThreshold: number
   /** Penalty value for long other-character sequences (default: 1700). */
   otherPenaltyLengthPenalty: number
+}
+
+/**
+ * Plain-object token data.
+ *
+ * Carries the same fields as [`JsToken`] but converts to a plain JS
+ * object owned by the JS heap, with no native box or deferred finalizer.
+ */
+export interface JsTokenData {
+  /** Surface form of the token. */
+  surface: string
+  /** Start byte position in the original text. */
+  byteStart: number
+  /** End byte position in the original text. */
+  byteEnd: number
+  /** Position index of the token. */
+  position: number
+  /** Word ID in the dictionary. */
+  wordId: number
+  /** Whether this token is an unknown word. */
+  isUnknown: boolean
+  /** Morphological details of the token. */
+  details: Array<string>
 }
 
 /**

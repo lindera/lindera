@@ -11,7 +11,7 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
-use crate::token::{JsNbestResult, JsToken};
+use crate::token::{JsNbestResult, JsToken, JsTokenData};
 use crate::util::js_value_to_serde_value;
 
 /// Builder for creating a Tokenizer with custom configuration.
@@ -181,6 +181,29 @@ impl JsTokenizer {
     pub fn tokenize(&self, text: String) -> napi::Result<Vec<JsToken>> {
         let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
         Ok(views.into_iter().map(JsToken::from_view).collect())
+    }
+
+    /// Tokenizes the given text and returns tokens as plain JS objects.
+    ///
+    /// This is the predictable-memory path for high-volume use: plain
+    /// objects are reclaimed by ordinary GC, while `Token` class instances
+    /// release native memory via an event-loop-deferred finalizer, so
+    /// synchronous loops that never yield accumulate memory with `tokenize`.
+    ///
+    /// In 6.x, `tokenize` itself will return plain objects and this method
+    /// will be removed. See <https://github.com/lindera/lindera/issues/930>.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// An array of plain token objects, in reading order.
+    #[napi]
+    pub fn tokenize_objects(&self, text: String) -> napi::Result<Vec<JsTokenData>> {
+        let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
+        Ok(views.into_iter().map(JsTokenData::from_view).collect())
     }
 
     /// Tokenizes the given text and returns only the token surfaces.

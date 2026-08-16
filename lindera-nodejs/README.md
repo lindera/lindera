@@ -105,6 +105,29 @@ for (const token of tokens) {
 }
 ```
 
+### Plain-Object Tokenization
+
+Until 6.x changes `tokenize` itself to return plain objects
+([#930](https://github.com/lindera/lindera/issues/930)), use `tokenizeObjects`
+as a 5.x-era mitigation for large synchronous batches: `Token` class instances
+free native memory via an event-loop-deferred finalizer, so loops that never
+yield accumulate memory, while plain objects are reclaimed by ordinary GC.
+It is also useful when results must be serializable.
+
+```javascript
+// Same fields as Token: surface, byteStart, byteEnd, position, wordId, isUnknown, details
+const tokens = tokenizer.tokenizeObjects(text);
+
+for (const token of tokens) {
+  console.log(`${token.surface}	${token.details.join(",")}`);
+}
+```
+
+Known limitation: `tokenizeNbest` also returns `Token` instances and has the
+same accumulation behavior in no-yield loops; it has no plain-object variant
+in 5.x and is fixed wholesale in 6.x
+([#930](https://github.com/lindera/lindera/issues/930)).
+
 ### Using Character Filters
 
 ```javascript
