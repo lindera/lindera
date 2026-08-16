@@ -8,11 +8,12 @@ WASM で辞書を使用する推奨方法は、[GitHub Releases](https://github.
 
 OPFS やその他のブラウザストレージに保存された辞書を `loadDictionaryFromBytes()` で読み込みます。
 
-#### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
+#### `loadDictionaryFromBytes(metadata, dictTrie, dictValsIdx, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
 
 - **パラメータ**:
   - `metadata` (`Uint8Array`) -- `metadata.json` の内容
-  - `dictDa` (`Uint8Array`) -- `dict.da` の内容（Double-Array Trie）
+  - `dictTrie` (`Uint8Array`) -- `dict.trie` の内容（文字単位のダブル配列トライ）
+  - `dictValsIdx` (`Uint8Array`) -- `dict.valsidx` の内容（単語値インデックス）
   - `dictVals` (`Uint8Array`) -- `dict.vals` の内容（単語値データ）
   - `dictWordsIdx` (`Uint8Array`) -- `dict.wordsidx` の内容（単語詳細インデックス）
   - `dictWords` (`Uint8Array`) -- `dict.words` の内容（単語詳細）
@@ -31,7 +32,8 @@ const files = await loadDictionaryFiles("ipadic");
 // バイトデータから Dictionary を作成
 const dictionary = loadDictionaryFromBytes(
     files.metadata,
-    files.dictDa,
+    files.dictTrie,
+    files.dictValsIdx,
     files.dictVals,
     files.dictWordsIdx,
     files.dictWords,
@@ -130,8 +132,9 @@ import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+    files.unk,
 );
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);

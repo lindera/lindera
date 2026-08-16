@@ -22,8 +22,9 @@ async function main() {
     // OPFS から辞書を読み込み
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+        files.unk,
     );
 
     // トークナイザーを構築
@@ -92,8 +93,9 @@ async function main() {
     // OPFS にキャッシュ済みの辞書を読み込み
     const files = await loadDictionaryFiles("ipadic");
     const dictionary = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-        files.dictWords, files.matrixMtx, files.charDef, files.unk,
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
+        files.unk,
     );
 
     const builder = new TokenizerBuilder();

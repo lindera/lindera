@@ -8,11 +8,12 @@ The recommended way to use dictionaries in WASM is to download them from [GitHub
 
 Use `loadDictionaryFromBytes()` to construct a `Dictionary` from raw byte arrays stored in OPFS or other browser storage.
 
-#### `loadDictionaryFromBytes(metadata, dictDa, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
+#### `loadDictionaryFromBytes(metadata, dictTrie, dictValsIdx, dictVals, dictWordsIdx, dictWords, matrixMtx, charDef, unk)`
 
 - **Parameters**:
   - `metadata` (`Uint8Array`) -- Contents of `metadata.json`
-  - `dictDa` (`Uint8Array`) -- Contents of `dict.da` (Double-Array Trie)
+  - `dictTrie` (`Uint8Array`) -- Contents of `dict.trie` (char-wise double-array trie)
+  - `dictValsIdx` (`Uint8Array`) -- Contents of `dict.valsidx` (word values index)
   - `dictVals` (`Uint8Array`) -- Contents of `dict.vals` (word value data)
   - `dictWordsIdx` (`Uint8Array`) -- Contents of `dict.wordsidx` (word details index)
   - `dictWords` (`Uint8Array`) -- Contents of `dict.words` (word details)
@@ -31,7 +32,8 @@ const files = await loadDictionaryFiles("ipadic");
 // Create a Dictionary from bytes
 const dictionary = loadDictionaryFromBytes(
     files.metadata,
-    files.dictDa,
+    files.dictTrie,
+    files.dictValsIdx,
     files.dictVals,
     files.dictWordsIdx,
     files.dictWords,
@@ -130,8 +132,8 @@ import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
+    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
 );
 const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
