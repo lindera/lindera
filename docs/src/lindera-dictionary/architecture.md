@@ -57,6 +57,14 @@ Controls tokenization behavior:
 - **Normal**: Standard tokenization using the optimal Viterbi path
 - **Decompose**: Further splits compound nouns based on configurable `Penalty` thresholds
 
+### Dictionary Format Version
+
+A built dictionary directory records the on-disk layout it was written in, as `format_version` in `metadata.json`. `DictionaryBuilder::build_metadata` stamps the value from `DICTIONARY_FORMAT_VERSION` (`lindera-dictionary/src/dictionary/metadata.rs`) — the builder is the only thing that can state truthfully what it just wrote, so a value in the *source* `metadata.json` is ignored. Loading a dictionary directory checks the recorded version and fails with an actionable message if it does not match.
+
+The check matters because most artifacts have no header of their own: `matrix.mtx`, `dict.vals` and `dict.words` are raw arrays, so a dictionary from an older layout that happens to be a plausible length decodes into garbage rather than failing. A source `metadata.json` — the hand-written kind checked into each dictionary crate — describes build *inputs*, carries no `format_version`, and is never format-checked.
+
+Bump `DICTIONARY_FORMAT_VERSION` on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (`daachorse` for `dict.da`, `rkyv` for `char_def.bin` and `unk.bin`), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.
+
 ### Context ID Remapping
 
 Dictionary metadata (`lindera-dictionary/src/dictionary/metadata.rs`) carries a `connection_id_mapping: bool` flag and an optional `context_id_map: Option<ContextIdMap>`. When a dictionary crate (e.g. `lindera-unidic`) enables `connection_id_mapping`, `DictionaryBuilder` relabels the connection matrix's left/right context IDs by access frequency at build time, so that frequently-used connection-cost cells cluster together for better cache locality; `DictionaryBuilder::with_context_id_freq` attaches an optional bundled frequency histogram used to rank the IDs, and the remap itself is computed in `lindera-dictionary/src/builder/context_id_remap.rs`. `ContextIdMap` (`lindera-dictionary/src/dictionary/context_id_map.rs`) holds the resulting `left`/`right` permutation and is persisted into the built `metadata.json` so the same mapping can be reapplied later. Because user dictionaries are always compiled in the original, un-remapped ID space, `UserDictionary::remap_context_ids` (`lindera-dictionary/src/dictionary.rs`) uses the persisted `ContextIdMap` to relabel a user dictionary's context IDs into the same space as the system dictionary it is attached to. The remap is a bijective relabeling, so it does not change tokenization output, only lookup locality.

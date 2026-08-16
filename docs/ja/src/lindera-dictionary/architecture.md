@@ -57,6 +57,14 @@ Forward-DP Backward-A*アルゴリズムを使用してN-bestセグメンテー�
 - **Normal**: 最適なViterbiパスを使用した標準的なトークナイゼーション
 - **Decompose**: 設定可能な`Penalty`閾値に基づいて複合名詞をさらに分割
 
+### 辞書フォーマットバージョン
+
+ビルド済み辞書ディレクトリは、自身が書かれたオンディスクレイアウトを `metadata.json` の `format_version` として記録します。値は `DictionaryBuilder::build_metadata` が `DICTIONARY_FORMAT_VERSION`（`lindera-dictionary/src/dictionary/metadata.rs`）から刻印します。いま何を書いたのかを正しく主張できるのはビルダだけなので、**ソース** `metadata.json` 側の値は無視されます。辞書ディレクトリのロード時には記録されたバージョンを検証し、一致しなければ対処方法を含むエラーを返します。
+
+この検証が重要なのは、ほとんどの成果物が自前のヘッダを持たないためです。`matrix.mtx`・`dict.vals`・`dict.words` は生の配列なので、古いレイアウトの辞書でも長さが辻褄の合う範囲なら**エラーにならず異常な値として解釈されます**。各辞書クレートに手書きでチェックインされている**ソース** `metadata.json` はビルドの**入力**を記述するもので、`format_version` を持たず、フォーマット検証の対象にもなりません。
+
+ビルド済み成果物のバイト列が変わる変更では必ず `DICTIONARY_FORMAT_VERSION` を上げてください。シリアライズ形式をそのまま書き出している依存クレートの更新（`dict.da` の `daachorse`、`char_def.bin` / `unk.bin` の `rkyv`）も対象で、本クレートのコードが 1 行も変わらないため見落としやすい箇所です。ビルドキャッシュがフォーマットバージョンをキーに含めているのは、まさにこのためです。
+
 ### コンテキストIDリマッピング
 
 辞書メタデータ（`lindera-dictionary/src/dictionary/metadata.rs`）は、`connection_id_mapping: bool`フラグとオプションの`context_id_map: Option<ContextIdMap>`を持ちます。辞書クレート（例: `lindera-unidic`）が`connection_id_mapping`を有効にすると、`DictionaryBuilder`はビルド時にアクセス頻度に基づいて連接行列の左右コンテキストIDを再割り当てし、頻繁に使用される連接コストのセルが近くに集まるようにしてキャッシュ局所性を高めます。`DictionaryBuilder::with_context_id_freq`は、IDのランク付けに使用するバンドル済み頻度ヒストグラムを（任意で）アタッチするためのメソッドで、再割り当て自体は`lindera-dictionary/src/builder/context_id_remap.rs`で計算されます。`ContextIdMap`（`lindera-dictionary/src/dictionary/context_id_map.rs`）は結果として得られる`left`/`right`の置換を保持し、同じマッピングを後から再適用できるようにビルド済みの`metadata.json`に永続化されます。ユーザー辞書は常に元の（再割り当てされていない）ID空間でコンパイルされるため、`UserDictionary::remap_context_ids`（`lindera-dictionary/src/dictionary.rs`）は永続化された`ContextIdMap`を使って、ユーザー辞書のコンテキストIDを、それが紐付くシステム辞書と同じ空間に再割り当てします。この再割り当ては全単射（bijective）な付け替えであるため、トークナイゼーションの出力は変わらず、ルックアップの局所性のみが変化します。

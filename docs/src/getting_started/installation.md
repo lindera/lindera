@@ -34,10 +34,12 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 
 The `LINDERA_BUILD_DICTIONARY_CACHE_DIR` environment variable designates a build-time cache directory for the embedded-dictionary build pipeline. It is read only by the dictionary crates' build scripts and has no effect at runtime.
 
-When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>/` (where `<version>` is the dictionary crate version):
+When set, each build stores two kinds of files under `$LINDERA_BUILD_DICTIONARY_CACHE_DIR/<version>-fmt<format>/` (where `<version>` is the dictionary crate version and `<format>` is the dictionary format version):
 
 - the downloaded distribution archive (validated with MD5; invalid files are re-downloaded)
 - the built binary dictionary that gets embedded into the crate
+
+The format version is part of the path so that a cache written by a build with a different on-disk dictionary layout is a miss rather than a stale hit. A cached directory is also re-checked against its recorded format version before being reused, which covers entries left behind by an interrupted build. Directories from older format versions are not deleted automatically; remove them by hand if the cache grows.
 
 This enables:
 

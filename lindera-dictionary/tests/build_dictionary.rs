@@ -8,7 +8,8 @@ use std::fs;
 use std::path::Path;
 
 use lindera_dictionary::builder::DictionaryBuilder;
-use lindera_dictionary::dictionary::metadata::Metadata;
+use lindera_dictionary::dictionary::Dictionary;
+use lindera_dictionary::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 
 /// Minimal `char.def`: the mandatory DEFAULT category plus KANJI, with the CJK
 /// range mapped to KANJI so the sample surfaces are categorized.
@@ -109,4 +110,57 @@ fn build_dictionary_reports_missing_input() {
     let builder = DictionaryBuilder::new(Metadata::default());
     let result = builder.build_dictionary(input.path(), output.path());
     assert!(result.is_err(), "expected an error for missing input files");
+}
+
+/// The builder stamps the format version it actually produced, not whatever
+/// the source metadata happened to say. A source `metadata.json` describes
+/// build inputs and has no business labelling the output.
+#[test]
+fn build_dictionary_stamps_the_current_format_version() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source(input.path());
+
+    let metadata = Metadata {
+        format_version: DICTIONARY_FORMAT_VERSION + 41,
+        ..Metadata::default()
+    };
+
+    DictionaryBuilder::new(metadata)
+        .build_dictionary(input.path(), output.path())
+        .unwrap();
+
+    let written = Metadata::load(&fs::read(output.path().join("metadata.json")).unwrap()).unwrap();
+    assert_eq!(written.format_version, DICTIONARY_FORMAT_VERSION);
+
+    // And what the builder wrote must be loadable.
+    Dictionary::load_from_path(output.path()).expect("a freshly built dictionary should load");
+}
+
+/// A dictionary from an incompatible format must be refused at load. Every
+/// other artifact is a headerless raw array, so without this check a stale
+/// directory of a plausible size decodes into garbage costs instead of
+/// failing.
+#[test]
+fn loading_rejects_a_dictionary_from_another_format_version() {
+    let input = tempfile::tempdir().unwrap();
+    let output = tempfile::tempdir().unwrap();
+    write_source(input.path());
+
+    DictionaryBuilder::new(Metadata::default())
+        .build_dictionary(input.path(), output.path())
+        .unwrap();
+
+    // Rewrite only metadata.json, exactly as an older Lindera would have left
+    // the directory.
+    let path = output.path().join("metadata.json");
+    let mut metadata = Metadata::load(&fs::read(&path).unwrap()).unwrap();
+    metadata.format_version = DICTIONARY_FORMAT_VERSION + 1;
+    fs::write(&path, serde_json::to_vec_pretty(&metadata).unwrap()).unwrap();
+
+    let err = match Dictionary::load_from_path(output.path()) {
+        Ok(_) => panic!("a dictionary from another format version must not load"),
+        Err(err) => err.to_string(),
+    };
+    assert!(err.contains("format version"), "{err}");
 }
