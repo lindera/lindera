@@ -51,6 +51,12 @@ lindera = { version = "5.0", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 ```
 
+> [!NOTE]
+> 辞書データには Lindera 本体とは別のライセンスが適用されます。辞書を埋め込んだ
+> バイナリを配布する場合（またはビルド済み辞書を再配布する場合）は、対応する
+> 辞書クレートの `NOTICE.txt`（例: `lindera-unidic/NOTICE.txt`）に記載された
+> 帰属表示を、配布物に付属するドキュメントや資料に転載してください。
+
 ### 組み合わせ Feature
 
 多言語アプリケーション向けに、複数の辞書を一度に有効にするメタ Feature です。

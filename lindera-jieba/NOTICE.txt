@@ -1,0 +1,83 @@
+===========================================================================
+Lindera Morphological Analyzer
+===========================================================================
+
+This software includes a binary and/or source version of data from
+
+  mecab-jieba-0.1.1
+
+which can be obtained from
+
+  https://lindera.dev/mecab-jieba-0.1.1.tar.gz
+
+The mecab-jieba dictionary is built from jieba's word frequency dictionary
+(dict.txt.big) and enriched with CC-CEDICT data (pinyin, traditional and
+simplified forms, English definitions).
+
+===========================================================================
+mecab-jieba Notice
+===========================================================================
+
+MIT License
+
+Copyright (c) 2026 Lindera
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+===========================================================================
+jieba Notice
+===========================================================================
+
+The word frequency dictionary (dict.txt.big) is from the jieba project
+
+  https://github.com/fxsjy/jieba
+
+The MIT License (MIT)
+
+Copyright (c) 2013 Sun Junyi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+===========================================================================
+CC-CEDICT Notice
+===========================================================================
+
+CC-CEDICT is a continuation of the CEDICT project, published by MDBG.
+
+  https://www.mdbg.net/chinese/dictionary?page=cedict
+
+This work is licensed under a Creative Commons Attribution-ShareAlike 4.0
+International License
+
+  https://creativecommons.org/licenses/by-sa/4.0/
