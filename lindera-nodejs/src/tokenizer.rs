@@ -190,6 +190,9 @@ impl JsTokenizer {
     /// release native memory via an event-loop-deferred finalizer, so
     /// synchronous loops that never yield accumulate memory with `tokenize`.
     ///
+    /// In 6.x, `tokenize` itself will return plain objects and this method
+    /// will be removed. See <https://github.com/lindera/lindera/issues/930>.
+    ///
     /// # Arguments
     ///
     /// * `text` - Text to tokenize.

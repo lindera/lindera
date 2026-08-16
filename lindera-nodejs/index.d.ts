@@ -272,6 +272,9 @@ export declare class Tokenizer {
    * release native memory via an event-loop-deferred finalizer, so
    * synchronous loops that never yield accumulate memory with `tokenize`.
    *
+   * In 6.x, `tokenize` itself will return plain objects and this method
+   * will be removed. See <https://github.com/lindera/lindera/issues/930>.
+   *
    * # Arguments
    *
    * * `text` - Text to tokenize.
@@ -524,12 +527,19 @@ export interface JsPenalty {
  * object owned by the JS heap, with no native box or deferred finalizer.
  */
 export interface JsTokenData {
+  /** Surface form of the token. */
   surface: string
+  /** Start byte position in the original text. */
   byteStart: number
+  /** End byte position in the original text. */
   byteEnd: number
+  /** Position index of the token. */
   position: number
+  /** Word ID in the dictionary. */
   wordId: number
+  /** Whether this token is an unknown word. */
   isUnknown: boolean
+  /** Morphological details of the token. */
   details: Array<string>
 }
 

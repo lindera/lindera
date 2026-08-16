@@ -171,16 +171,32 @@ impl JsNbestResult {
 /// object owned by the JS heap, with no native box or deferred finalizer.
 #[napi(object)]
 pub struct JsTokenData {
+    /// Surface form of the token.
     pub surface: String,
+    /// Start byte position in the original text.
     pub byte_start: u32,
+    /// End byte position in the original text.
     pub byte_end: u32,
+    /// Position index of the token.
     pub position: u32,
+    /// Word ID in the dictionary.
     pub word_id: u32,
+    /// Whether this token is an unknown word.
     pub is_unknown: bool,
+    /// Morphological details of the token.
     pub details: Vec<String>,
 }
 
 impl JsTokenData {
+    /// Creates a JsTokenData from a binding-core `TokenView`.
+    ///
+    /// # Arguments
+    ///
+    /// * `view` - The token view produced by the binding-core tokenizer.
+    ///
+    /// # Returns
+    ///
+    /// A new JsTokenData instance.
     pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,
