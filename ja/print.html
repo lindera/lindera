@@ -347,7 +347,7 @@ Output Tokens
 <p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。遅延読み込みされるのは最大の単語リストファイルのみで辞書全体ではない）</td><td>有効</td></tr>
+<tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。単語リストファイルと接続コスト行列は遅延読み込みされるが、トライは全体展開される）</td><td>有効</td></tr>
 <tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLIのみ</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
@@ -964,7 +964,7 @@ tokenizer
 <p>CRFベースの辞書学習パイプラインは、本クレートのランタイム型の上に構築された独立クレート <code>lindera-trainer</code> に含まれます。詳細は学習パイプラインのドキュメントを参照してください。</p>
 <h2 id="featureフラグ-1"><a class="header" href="#featureフラグ-1">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（遅延読み込みされるのは単語リストファイルのみで、接続コスト行列とトライは常に全体展開される）</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（単語リストファイルと接続コスト行列は遅延読み込みされ、全体展開されるのはトライのみ）</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>辞書ソースのHTTPダウンロード</td><td>No</td></tr>
 <tr><td><code>ctxfreq</code></td><td>実験的機能: 連接行列のアクセス頻度プロファイリングを計測し、コンテキストID頻度リマップの構築に使用</td><td>No</td></tr>
 </tbody></table>
@@ -8251,7 +8251,7 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 <ul>
 <li>辞書の埋め込みはバイナリサイズを大幅に増加させます。実際に必要な辞書のみを埋め込んでください。</li>
 <li><code>train</code> feature は <code>lindera-crf</code> への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。</li>
-<li><code>mmap</code> feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの<code>--mmap</code>または<code>segmenter</code>設定の<code>use_mmap</code>キーで要求）。実際に遅延読み込みされるのは最大の単語リストファイル（<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>）のみで、接続コスト行列とダブル配列トライは常に全体がメモリに展開されます。埋め込み辞書には影響しません。</li>
+<li><code>mmap</code> feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの<code>--mmap</code>または<code>segmenter</code>設定の<code>use_mmap</code>キーで要求）。単語リストファイル（<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>）と接続コスト行列（<code>matrix.mtx</code>）は遅延読み込みされ、匿名メモリを消費しません。常に全体がメモリに展開されるのはダブル配列トライのみです。埋め込み辞書には影響しませんが、埋め込み辞書の接続コスト行列もバイナリ内から直接参照されます。</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="プロジェクト構成"><a class="header" href="#プロジェクト構成">プロジェクト構成</a></h1>
 <p>Lindera は複数のクレートで構成される Cargo ワークスペースとして組織されています。</p>

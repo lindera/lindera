@@ -347,7 +347,7 @@ Output Tokens
 <p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; avoids eagerly reading the largest word-list files, not the whole dictionary)</td><td>Enabled</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; the word-list files and the connection-cost matrix stay lazily paged, the trie does not)</td><td>Enabled</td></tr>
 <tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
@@ -969,7 +969,7 @@ tokenizer
 <p>The CRF-based dictionary training pipeline lives in the separate <code>lindera-trainer</code> crate, which builds on this crate's runtime types. See the training pipeline documentation for details.</p>
 <h2 id="feature-flags-2"><a class="header" href="#feature-flags-2">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (only the word-list files stay lazily paged; the connection-cost matrix and trie are always fully materialized)</td><td>Yes</td></tr>
+<tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (the word-list files and the connection-cost matrix stay lazily paged; only the trie is fully materialized)</td><td>Yes</td></tr>
 <tr><td><code>build_rs</code></td><td>HTTP download for dictionary sources</td><td>No</td></tr>
 <tr><td><code>ctxfreq</code></td><td>Experimental: instruments connection-matrix access-frequency profiling, used to build the context-ID frequency remap</td><td>No</td></tr>
 </tbody></table>
@@ -8332,7 +8332,7 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 <ul>
 <li>Embedding dictionaries increases binary size significantly. Only embed dictionaries you actually need.</li>
 <li>The <code>train</code> feature adds a dependency on <code>lindera-crf</code> and increases compile time. It is not needed for tokenization-only use cases.</li>
-<li>The <code>mmap</code> feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via <code>--mmap</code> (CLI) or the <code>use_mmap</code> segmenter config key. It only avoids eagerly reading the largest word-list files (<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>) into memory; the connection-cost matrix and the double-array trie are always fully materialized regardless. It has no effect on embedded dictionaries.</li>
+<li>The <code>mmap</code> feature enables memory-mapped dictionary loading for filesystem-based dictionaries, requested via <code>--mmap</code> (CLI) or the <code>use_mmap</code> segmenter config key. The word-list files (<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>) and the connection-cost matrix (<code>matrix.mtx</code>) stay lazily paged and cost no anonymous memory; only the double-array trie is still fully materialized. It has no effect on embedded dictionaries, whose connection-cost matrix is read in place from the binary regardless.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h1>
 <p>Lindera is organized as a Cargo workspace with multiple crates.</p>

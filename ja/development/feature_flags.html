@@ -238,7 +238,7 @@ lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
 <ul>
 <li>辞書の埋め込みはバイナリサイズを大幅に増加させます。実際に必要な辞書のみを埋め込んでください。</li>
 <li><code>train</code> feature は <code>lindera-crf</code> への依存を追加し、コンパイル時間が増加します。トークナイズのみのユースケースでは不要です。</li>
-<li><code>mmap</code> feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの<code>--mmap</code>または<code>segmenter</code>設定の<code>use_mmap</code>キーで要求）。実際に遅延読み込みされるのは最大の単語リストファイル（<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>）のみで、接続コスト行列とダブル配列トライは常に全体がメモリに展開されます。埋め込み辞書には影響しません。</li>
+<li><code>mmap</code> feature はファイルシステム辞書に対するメモリマップド読み込みを有効にします（CLIの<code>--mmap</code>または<code>segmenter</code>設定の<code>use_mmap</code>キーで要求）。単語リストファイル（<code>dict.vals</code>/<code>dict.wordsidx</code>/<code>dict.words</code>）と接続コスト行列（<code>matrix.mtx</code>）は遅延読み込みされ、匿名メモリを消費しません。常に全体がメモリに展開されるのはダブル配列トライのみです。埋め込み辞書には影響しませんが、埋め込み辞書の接続コスト行列もバイナリ内から直接参照されます。</li>
 </ul>
 
                     </main>
