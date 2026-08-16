@@ -121,6 +121,8 @@
     - [ビルド](./lindera-jieba/build.md)
     - [使用例](./lindera-jieba/examples.md)
 
+- [SudachiDict（コミュニティレシピ）](./sudachidict.md)
+
 ---
 
 - [v3 から v4 への移行](./migration_v3_to_v4.md)
