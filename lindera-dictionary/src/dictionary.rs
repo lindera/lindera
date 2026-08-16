@@ -139,8 +139,13 @@ impl Dictionary {
             )));
         }
 
-        // Load each component from the dictionary directory
+        // Load each component from the dictionary directory. The format check
+        // comes first: the remaining artifacts are headerless raw arrays, so a
+        // stale dictionary decodes into garbage rather than failing, and the
+        // error would surface far from its cause.
         let metadata = MetadataLoader::load(dict_path)?;
+        metadata.validate_format_version()?;
+
         let character_definition = CharacterDefinitionLoader::load(dict_path)?;
 
         let connection_cost_matrix = {

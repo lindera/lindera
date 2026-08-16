@@ -118,6 +118,11 @@ pub fn load_dictionary_from_bytes(
 ) -> Result<JsDictionary, JsValue> {
     let meta =
         Metadata::load(metadata).map_err(|e| JsValue::from_str(&format!("metadata: {e}")))?;
+    // These bytes come from OPFS or a fetch, so they can easily be a
+    // dictionary built by an older Lindera. Every other argument below is a
+    // headerless raw array that would decode into garbage rather than fail.
+    meta.validate_format_version()
+        .map_err(|e| JsValue::from_str(&format!("metadata: {e}")))?;
 
     let prefix_dictionary = PrefixDictionary::load(
         dict_da.to_vec(),

@@ -93,6 +93,11 @@ macro_rules! embedded_dictionary {
         /// Loads the embedded dictionary from data baked into the binary.
         pub fn load() -> $crate::LinderaResult<$crate::dictionary::Dictionary> {
             let metadata = $crate::dictionary::metadata::Metadata::load(METADATA_DATA)?;
+            // Guards against a stale build cache: `include_bytes!` bakes in
+            // whatever the build script produced, and the cache is keyed on
+            // the format version precisely so that a mismatch cannot reach
+            // `DaTrust::Trusted` below.
+            metadata.validate_format_version()?;
             let prefix_dictionary = $crate::dictionary::prefix_dictionary::PrefixDictionary::load(
                 DA_DATA,
                 VALS_DATA,

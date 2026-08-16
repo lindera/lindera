@@ -23,7 +23,7 @@ use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
 use crate::dictionary::context_id_map::ContextIdMap;
-use crate::dictionary::metadata::Metadata;
+use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
 
 #[derive(Clone)]
@@ -182,12 +182,19 @@ impl DictionaryBuilder {
         })
     }
 
-    /// Write `metadata.json`, embedding the context-ID permutation when one was applied.
+    /// Write `metadata.json`, stamping the dictionary format version and
+    /// embedding the context-ID permutation when one was applied.
+    ///
+    /// The format version is taken from
+    /// [`DICTIONARY_FORMAT_VERSION`] rather than from the source metadata:
+    /// it describes the artifacts this builder just wrote, so the builder is
+    /// the only thing that can state it truthfully. A source `metadata.json`
+    /// carrying a stale (or invented) version must not be able to mislabel a
+    /// freshly built dictionary.
     ///
     /// Persisting the permutation is what lets a user dictionary compiled later be
     /// relabeled into the same ID space (see
-    /// [`crate::dictionary::UserDictionary::remap_context_ids`]). With no remap the
-    /// metadata is written unchanged, so the artifact stays byte-identical.
+    /// [`crate::dictionary::UserDictionary::remap_context_ids`]).
     ///
     /// # Arguments
     ///
@@ -198,14 +205,12 @@ impl DictionaryBuilder {
         output_dir: &Path,
         remap: Option<&Arc<ContextIdMap>>,
     ) -> LinderaResult<()> {
-        match remap {
-            Some(map) => {
-                let mut metadata = self.metadata.clone();
-                metadata.context_id_map = Some(ContextIdMap::clone(map));
-                MetadataBuilder::new().build(&metadata, output_dir)
-            }
-            None => MetadataBuilder::new().build(&self.metadata, output_dir),
+        let mut metadata = self.metadata.clone();
+        metadata.format_version = DICTIONARY_FORMAT_VERSION;
+        if let Some(map) = remap {
+            metadata.context_id_map = Some(ContextIdMap::clone(map));
         }
+        MetadataBuilder::new().build(&metadata, output_dir)
     }
 
     pub fn build_character_definition(

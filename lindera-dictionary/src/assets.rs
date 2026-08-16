@@ -15,6 +15,7 @@ use ureq::Agent;
 
 use crate::LinderaResult;
 use crate::builder::DictionaryBuilder;
+use crate::dictionary::metadata::{DICTIONARY_FORMAT_VERSION, Metadata};
 use crate::error::LinderaErrorKind;
 
 const MAX_ROUND: usize = 3;
@@ -380,6 +381,44 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
 ///
 /// `Ok(())` once the dictionary has been built into the output directory, or a
 /// `LinderaError` if the download, extraction, or build fails.
+/// Whether a cached dictionary directory was built in the format this crate
+/// reads.
+///
+/// Anything unexpected -- a missing or unreadable `metadata.json`, a version
+/// that does not match -- answers `false`, so the caller rebuilds. A cache is
+/// an optimization; refusing to use a questionable one costs a rebuild,
+/// whereas trusting one costs correctness.
+///
+/// # Arguments
+///
+/// * `output_dir` - The cached dictionary directory to inspect.
+///
+/// # Returns
+///
+/// `true` only when `metadata.json` is present, parses, and declares
+/// [`DICTIONARY_FORMAT_VERSION`].
+fn cached_dictionary_is_current(output_dir: &Path) -> bool {
+    let path = output_dir.join("metadata.json");
+    let Ok(data) = fs::read(&path) else {
+        debug!("Cache miss: cannot read {}", path.display());
+        return false;
+    };
+    let Ok(metadata) = serde_json::from_slice::<Metadata>(&data) else {
+        debug!("Cache miss: cannot parse {}", path.display());
+        return false;
+    };
+    if metadata.format_version != DICTIONARY_FORMAT_VERSION {
+        debug!(
+            "Cache miss: {} declares dictionary format version {}, expected {}",
+            path.display(),
+            metadata.format_version,
+            DICTIONARY_FORMAT_VERSION
+        );
+        return false;
+    }
+    true
+}
+
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
@@ -420,12 +459,21 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
             cache_dir = root_dir.join(cache_dir);
         }
 
+        let pkg_version = std::env::var("CARGO_PKG_VERSION").map_err(|_| {
+            LinderaErrorKind::Io.with_error(anyhow::anyhow!(
+                "CARGO_PKG_VERSION environment variable is not set"
+            ))
+        })?;
+
+        // The dictionary format version is part of the cache key, not just the
+        // crate version. Without it, bumping a dependency whose serialized
+        // form is written verbatim -- daachorse for `dict.da`, rkyv for
+        // `char_def.bin`/`unk.bin` -- while reusing a cache directory would
+        // serve artifacts in the old layout, and the embedded loader passes
+        // `dict.da` to `deserialize_unchecked`. Keying on the format version
+        // turns that from undefined behaviour into a cache miss.
         (
-            cache_dir.join(std::env::var_os("CARGO_PKG_VERSION").ok_or_else(|| {
-                LinderaErrorKind::Io.with_error(anyhow::anyhow!(
-                    "CARGO_PKG_VERSION environment variable is not set"
-                ))
-            })?),
+            cache_dir.join(format!("{pkg_version}-fmt{DICTIONARY_FORMAT_VERSION}")),
             true,
         )
     } else {
@@ -451,8 +499,16 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
 
     let output_dir = build_dir.join(params.output_dir);
 
-    // Fast path where the data is already in cache
-    if is_cache && output_dir.is_dir() {
+    // Fast path where the data is already in cache.
+    //
+    // The directory name already carries the format version, so a mismatch is
+    // normally a cache miss rather than a stale hit. This re-reads the cached
+    // `metadata.json` anyway, because the cheap failure mode -- an interrupted
+    // build that left a half-written directory behind, or a directory copied
+    // in by hand -- is not covered by the key, and being wrong here means
+    // feeding a mislaid `dict.da` to `deserialize_unchecked`. A cache entry
+    // that fails the check is rebuilt rather than trusted.
+    if is_cache && output_dir.is_dir() && cached_dictionary_is_current(&output_dir) {
         return Ok(());
     }
 
@@ -777,5 +833,51 @@ mod tests {
         create_dummy_dictionary_source(&input_dir, Some("dict-src"), "dummy,0,0,0\n").unwrap();
 
         assert!(input_dir.join("dict-src").join("char.def").is_file());
+    }
+
+    /// Writes `metadata.json` declaring `format_version` into a fresh
+    /// directory, standing in for a cached dictionary build.
+    fn cached_dir_with_format_version(version: u32) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let metadata = Metadata {
+            format_version: version,
+            ..Metadata::default()
+        };
+        fs::write(
+            dir.path().join("metadata.json"),
+            serde_json::to_vec_pretty(&metadata).unwrap(),
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn cache_hit_requires_the_current_format_version() {
+        let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION);
+        assert!(cached_dictionary_is_current(dir.path()));
+    }
+
+    #[test]
+    fn cache_from_another_format_version_is_a_miss() {
+        // The directory name normally keys on the format version, so this
+        // covers the leftovers: a hand-copied directory, or one from an
+        // interrupted build.
+        let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION + 1);
+        assert!(!cached_dictionary_is_current(dir.path()));
+    }
+
+    #[test]
+    fn cache_without_metadata_is_a_miss() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!cached_dictionary_is_current(dir.path()));
+    }
+
+    #[test]
+    fn cache_with_unparsable_metadata_is_a_miss() {
+        // A half-written metadata.json from an interrupted build must not be
+        // trusted; rebuilding is cheap, misreading a dictionary is not.
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("metadata.json"), b"{\"name\":").unwrap();
+        assert!(!cached_dictionary_is_current(dir.path()));
     }
 }
