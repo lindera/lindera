@@ -103,19 +103,26 @@ impl Dictionary {
     ///
     /// `use_mmap` (when the `mmap` feature is enabled) routes
     /// `connection_cost_matrix` and `prefix_dictionary` through memory-mapped
-    /// reads instead of plain file reads. This does **not** make either
-    /// component lazily memory-resident at runtime: `ConnectionCostMatrix`
-    /// always eagerly decodes into an owned `Vec<i16>`, and
-    /// `PrefixDictionary`'s double-array trie (`da`) is always eagerly
-    /// deserialized into owned daachorse structures (only
-    /// `PrefixDictionary`'s `vals_data`/`words_idx_data`/`words_data` remain
-    /// genuinely mmap-backed and are read lazily at lookup time). `metadata`
-    /// and `character_definition` and `unknown_dictionary` are always
-    /// plain-read regardless of this flag. In short, `use_mmap` only avoids
-    /// the initial file-read syscall/allocation for the two components it
-    /// covers — it does not provide OS-level lazy paging for tokenization.
-    /// Separately, `Dictionary::clone()` is O(1) regardless of `use_mmap`,
-    /// since `prefix_dictionary`/`connection_cost_matrix` are `Arc`-wrapped.
+    /// reads instead of plain file reads. What that buys differs per
+    /// component:
+    ///
+    /// - `ConnectionCostMatrix` reads its costs **in place**, with no copy and
+    ///   no anonymous memory: `matrix.mtx` already stores the values in the
+    ///   in-memory layout, and an mmap base is page-aligned, so the payload
+    ///   can be viewed as `[i16]` directly. Loading it is O(1) and the pages
+    ///   are faulted in lazily during tokenization. (Costs are also borrowed
+    ///   from a plain read's buffer whenever it happens to be `i16`-aligned;
+    ///   the alignment is only *guaranteed* under mmap and for embedded data.)
+    /// - `PrefixDictionary`'s `vals_data`/`words_idx_data`/`words_data` are
+    ///   likewise mmap-backed and read lazily at lookup time.
+    /// - `PrefixDictionary`'s double-array trie (`da`) is still eagerly
+    ///   deserialized into owned daachorse structures, so for that component
+    ///   `use_mmap` only avoids the initial file-read syscall/allocation.
+    ///
+    /// `metadata`, `character_definition` and `unknown_dictionary` are always
+    /// plain-read regardless of this flag. Separately, `Dictionary::clone()`
+    /// is O(1) regardless of `use_mmap`, since
+    /// `prefix_dictionary`/`connection_cost_matrix` are `Arc`-wrapped.
     pub fn load_from_path_with_options(dict_path: &Path, use_mmap: bool) -> LinderaResult<Self> {
         // Verify that the dictionary directory exists
         if !dict_path.exists() {
