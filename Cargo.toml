@@ -42,7 +42,7 @@ csv = "1.4.0"
 # crate does not document as a stable contract. A round-trip test fails
 # loudly if the layout changes; review it before moving this pin.
 crawdad = "=0.4.1"
-daachorse = "4.0.0"
+daachorse = "5.0.0"
 lindera = { version = "5.3.0", path = "lindera" }
 lindera-analysis = { version = "5.3.0", path = "lindera-analysis" }
 lindera-binding-core = { version = "5.3.0", path = "lindera-binding-core" }
