@@ -13,7 +13,6 @@ license = { workspace = true }
 
 [dependencies]
 anyhow = { workspace = true }
-daachorse = { workspace = true }
 lindera-crf = { workspace = true }
 lindera-dictionary = { workspace = true }
 regex = { workspace = true }
