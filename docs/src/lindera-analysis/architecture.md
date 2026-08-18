@@ -57,6 +57,15 @@ A trait for filters that post-process the tokens produced by the segmenter. Each
 
 `AnalysisWorker` (created with `Tokenizer::new_worker` or `Tokenizer::into_worker`) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via `SegmentWorker`), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated `tokenize` calls avoid the per-call allocations `Tokenizer::tokenize` pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token `String`s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a `Mutex`, as `lindera-binding-core` does). See the [Segmenter](../lindera/segmenter.md) page for the underlying `SegmentWorker` and its automatic memory-shrink policy.
 
+`AnalysisWorker`'s public methods:
+
+- `tokenize(&mut self, text: &str)` — tokenizes `text` through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as `Tokenizer::tokenize`.
+- `tokenize_nbest(&mut self, text: &str, n, unique, cost_threshold)` — tokenizes `text` and returns the top-N results with costs, reusing the worker's internal buffers; produces exactly the same results as `Tokenizer::tokenize_nbest`.
+- `set_mode(&mut self, mode: Mode)` — sets the segmentation mode for subsequent calls.
+- `set_keep_whitespace(&mut self, keep: bool)` — sets whether whitespace tokens are kept in the output for subsequent calls.
+- `shrink_to(&mut self, text_len_hint: usize)` — immediately shrinks the worker's internal buffers to what an input of `text_len_hint` bytes needs.
+- `reset(&mut self)` — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.
+
 ## Feature Flags
 
 | Feature | Description | Default |

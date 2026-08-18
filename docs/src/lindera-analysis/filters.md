@@ -107,7 +107,7 @@ Token filters are configured under the `token_filters` key of the YAML configura
 
 ### japanese_base_form
 
-Replaces the token's surface text with its base (dictionary) form, as registered in the `base_form` or `orthographic_base_form` field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens whose first detail is `UNK` (unknown words) are left unchanged.
+Replaces the token's surface text with its base (dictionary) form, as registered in the `base_form` or `orthographic_base_form` field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens produced by unknown-word processing (`token.word_id.is_unknown()`) are left unchanged.
 
 This filter takes no configuration parameters.
 
@@ -237,7 +237,7 @@ Converts Japanese numeral representations (kanji numerals, formal/legal kanji nu
 
 ### japanese_reading_form
 
-Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's `reading` field. Tokens whose first detail is `UNK` (unknown words) are left unchanged.
+Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's `reading` field. Tokens produced by unknown-word processing (`token.word_id.is_unknown()`) are left unchanged.
 
 This filter takes no configuration parameters.
 
@@ -323,7 +323,7 @@ Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.
 
 ### korean_reading_form
 
-Replaces the token's surface text with its reading, as registered in the dictionary's `reading` field. Tokens whose first detail is `UNK` (unknown words) are left unchanged.
+Replaces the token's surface text with its reading, as registered in the dictionary's `reading` field. Tokens produced by unknown-word processing (`token.word_id.is_unknown()`) are left unchanged.
 
 This filter takes no configuration parameters.
 

@@ -57,6 +57,15 @@ Segmenterが生成したトークンを後処理するフィルタのtraitです
 
 `AnalysisWorker`（`Tokenizer::new_worker`または`Tokenizer::into_worker`で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（`SegmentWorker`経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、`tokenize`を繰り返し呼び出しても`Tokenizer::tokenize`が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの`String`にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは`lindera-binding-core`のように`Mutex`で保護します）。基盤となる`SegmentWorker`と自動メモリ縮小ポリシーについては[Segmenter](../lindera/segmenter.md)のページを参照してください。
 
+`AnalysisWorker`の主なpublicメソッド:
+
+- `tokenize(&mut self, text: &str)` — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して`text`をトークナイズします。同じ入力・設定であれば`Tokenizer::tokenize`とまったく同じトークンを返します。
+- `tokenize_nbest(&mut self, text: &str, n, unique, cost_threshold)` — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。`Tokenizer::tokenize_nbest`とまったく同じ結果を返します。
+- `set_mode(&mut self, mode: Mode)` — 以降の呼び出しで使用するセグメンテーションモードを設定します。
+- `set_keep_whitespace(&mut self, keep: bool)` — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。
+- `shrink_to(&mut self, text_len_hint: usize)` — ワーカーの内部バッファを、`text_len_hint`バイトの入力に必要なサイズまで直ちに縮小します。
+- `reset(&mut self)` — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する`Mutex`がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。
+
 ## Feature フラグ
 
 | Feature | 説明 | デフォルト |
