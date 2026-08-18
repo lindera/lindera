@@ -4,7 +4,7 @@ Cargo.tomlに以下を追加してください：
 
 ```toml
 [dependencies]
-lindera = "5.0"
+lindera = "5"
 ```
 
 > [!NOTE]
@@ -22,7 +22,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する `embed-*` feature フラグを有効にしてビルドし、`embedded://` スキームでロードしてください：
 >
 > ```rust
-> // Cargo.toml: lindera = { version = "5.0", features = ["embed-ipadic"] }
+> // Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >

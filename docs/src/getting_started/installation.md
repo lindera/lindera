@@ -4,7 +4,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = "5.0"
+lindera = "5"
 ```
 
 > [!NOTE]
@@ -22,7 +22,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 > If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding `embed-*` feature flag and load it using the `embedded://` scheme:
 >
 > ```rust
-> // Cargo.toml: lindera = { version = "5.0", features = ["embed-ipadic"] }
+> // Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
 > let dictionary = load_dictionary("embedded://ipadic")?;
 > ```
 >

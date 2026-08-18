@@ -55,5 +55,5 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 > [!NOTE]
 > Character filters, token filters, and the `Tokenizer` API are provided by
 > the companion `lindera-analysis` crate (as of v5.0). Add
-> `lindera-analysis = "5.0"` to your dependencies if you need the analysis
+> `lindera-analysis = "5"` to your dependencies if you need the analysis
 > chain.

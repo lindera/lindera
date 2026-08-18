@@ -98,15 +98,20 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
 Output Tokens
 ```
 
-**Segmenter**がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。
+**Segmenter**がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。辞書検索は、所有権を持つ構造体へのデシリアライズを行わず、`dict.trie`のシリアライズ済みバイト列上を直接走査する文字単位のダブル配列トライ（`crawdad`でビルド）を使用します。繰り返しトークナイズを行う場合は、`Segmenter::new_worker()`が返す`SegmentWorker`がラティスとスクラッチバッファの割り当てを呼び出しをまたいで再利用し、保持メモリを自動収縮ポリシーで制限します。
 
 ## Featureフラグ
 
 | Feature | 説明 | デフォルト |
 | --- | --- | --- |
 | `mmap` | ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（`--mmap`/`use_mmap`でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる） | 有効 |
-| `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLIのみ |
+| `train` | CRFベースの辞書学習機能（`lindera-crf`に依存） | CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／`lindera`コアではデフォルト無効（オプトイン）／`lindera-wasm`では利用不可 |
 | `embed-ipadic` | IPADIC辞書をバイナリに埋め込み | 無効 |
+| `embed-ipadic-neologd` | IPADIC NEologd辞書をバイナリに埋め込み | 無効 |
+| `embed-unidic` | UniDic辞書をバイナリに埋め込み | 無効 |
+| `embed-ko-dic` | ko-dic辞書をバイナリに埋め込み | 無効 |
+| `embed-cc-cedict` | CC-CEDICT辞書をバイナリに埋め込み | 無効 |
+| `embed-jieba` | Jieba辞書をバイナリに埋め込み | 無効 |
 | `embed-cjk` | IPADIC + ko-dic + Jieba辞書を埋め込み | 無効 |
 | `embed-cjk2` | UniDic + ko-dic + Jieba辞書を埋め込み | 無効 |
 | `embed-cjk3` | IPADIC NEologd + ko-dic + Jieba辞書を埋め込み | 無効 |

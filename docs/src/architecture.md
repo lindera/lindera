@@ -98,15 +98,20 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
 Output Tokens
 ```
 
-The **Segmenter** is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation.
+The **Segmenter** is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation. Dictionary lookups walk a char-wise double-array trie (built with `crawdad`) in place over the serialized bytes of `dict.trie`, rather than deserializing into an owned structure. For repeated tokenization, `Segmenter::new_worker()` returns a `SegmentWorker` that reuses lattice and scratch-buffer allocations across calls, with an automatic shrink policy to bound retained memory.
 
 ## Feature Flags
 
 | Feature | Description | Default |
 | --- | --- | --- |
 | `mmap` | Memory-mapped file support for filesystem-based dictionary loading (opt-in via `--mmap`/`use_mmap`; the word-list files, the connection-cost matrix, and the trie all stay lazily paged) | Enabled |
-| `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI only |
+| `train` | CRF-based dictionary training functionality (depends on `lindera-crf`) | CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for `lindera` core; unavailable in `lindera-wasm` |
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
+| `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
+| `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |
+| `embed-ko-dic` | Embed the ko-dic dictionary into the binary | Disabled |
+| `embed-cc-cedict` | Embed the CC-CEDICT dictionary into the binary | Disabled |
+| `embed-jieba` | Embed the Jieba dictionary into the binary | Disabled |
 | `embed-cjk` | Embed IPADIC + ko-dic + Jieba dictionaries | Disabled |
 | `embed-cjk2` | Embed UniDic + ko-dic + Jieba dictionaries | Disabled |
 | `embed-cjk3` | Embed IPADIC NEologd + ko-dic + Jieba dictionaries | Disabled |
