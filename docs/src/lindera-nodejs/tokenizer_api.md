@@ -130,6 +130,26 @@ const tokens = tokenizer.tokenize("形態素解析");
 
 **Returns:** `Token[]`
 
+#### `tokenizeObjects(text)`
+
+Tokenizes the input text and returns tokens as plain JS objects instead of `Token` class instances.
+
+This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while `Token` class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using `tokenize`. It is also useful when results must be serializable.
+
+```javascript
+const tokens = tokenizer.tokenizeObjects("形態素解析");
+```
+
+**Parameters:**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| `text` | `string` | Text to tokenize |
+
+**Returns:** `Array<JsTokenData>`, where each `JsTokenData` has the same fields as `Token`: `surface`, `byteStart`, `byteEnd`, `position`, `wordId`, `isUnknown`, `details`.
+
+> **Note:** In 6.x, `tokenize` itself will return plain objects and `tokenizeObjects` will be removed. See [#930](https://github.com/lindera/lindera/issues/930).
+
 #### `tokenizeSurfaces(text)`
 
 Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no `Token` objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `tokenizer.tokenize(text).map((t) => t.surface)`.
