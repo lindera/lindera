@@ -246,8 +246,6 @@ ko-dic は NAIST JDIC よりも素性カラムが1つ少なく、全く異なる
 
 #### CC-CEDICT 辞書フォーマット
 
-unidic-mecab の辞書フォーマットと品詞タグの詳細は[マニュアル](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf)を参照してください。
-
 | インデックス | 名前（中国語） | 名前（英語） | 備考 |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
@@ -304,10 +302,15 @@ unidic-mecab の辞書フォーマットと品詞タグの詳細は[マニュア
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
 | 4 | 词类 | Part-of-speech | |
-| 5 | 併音 | Pinyin | |
-| 6 | 繁体字 | Traditional | |
-| 7 | 簡体字 | Simplified | |
-| 8 | 定义 | Definition | |
+| 5 | 字符类型 | Character type | |
+| 6 | 併音 | Pinyin | |
+| 7 | 繁体字 | Traditional | |
+| 8 | 簡体字 | Simplified | |
+| 9 | 定义 | Definition | |
+| 10 | 字符数 | Character count | |
+| 11 | 首字符 | First character | |
+| 12 | 末字符 | Last character | |
+| 13 | 频率等级 | Frequency band | |
 
 #### Jieba ユーザー辞書フォーマット（CSV）
 
@@ -328,11 +331,16 @@ unidic-mecab の辞書フォーマットと品詞タグの詳細は[マニュア
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
 | 4 | 词类 | Part-of-speech | |
-| 5 | 併音 | Pinyin | |
-| 6 | 繁体字 | Traditional | |
-| 7 | 簡体字 | Simplified | |
-| 8 | 定义 | Definition | |
-| 9 | - | - | 9 以降は自由に拡張可能 |
+| 5 | 字符类型 | Character type | |
+| 6 | 併音 | Pinyin | |
+| 7 | 繁体字 | Traditional | |
+| 8 | 簡体字 | Simplified | |
+| 9 | 定义 | Definition | |
+| 10 | 字符数 | Character count | |
+| 11 | 首字符 | First character | |
+| 12 | 末字符 | Last character | |
+| 13 | 频率等级 | Frequency band | |
+| 14 | - | - | 14 以降は自由に拡張可能 |
 
 ## API リファレンス
 

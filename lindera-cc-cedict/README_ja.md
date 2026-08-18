@@ -8,8 +8,6 @@
 
 ## 辞書フォーマット
 
-unidic-mecab 辞書のフォーマットと品詞タグの詳細については、[マニュアル](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf)を参照してください。
-
 | Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |

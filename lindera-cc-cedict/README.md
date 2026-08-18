@@ -8,8 +8,6 @@ This repository contains [CC-CEDICT-MeCab](https://github.com/lindera/CC-CEDICT-
 
 ## Dictionary format
 
-Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf) for details on the unidic-mecab dictionary format and part-of-speech tags.
-
 | Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
