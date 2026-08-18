@@ -13,7 +13,7 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ```toml
 [dependencies]
-lindera = "5.0"
+lindera = "5"
 ```
 
 > **Note:** Upgrading from v4? See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
@@ -37,12 +37,31 @@ pip install lindera-python
 
 For more details, see the [lindera-python](lindera-python/) directory.
 
+## Node.js Bindings
+
+Lindera also provides Node.js bindings. You can install it via npm:
+
+```bash
+npm install lindera-nodejs
+```
+
+For more details, see the [lindera-nodejs](lindera-nodejs/) directory.
+
+## Ruby Bindings
+
+Lindera also provides Ruby bindings. They are not yet published to RubyGems — build from source; see the [lindera-ruby](lindera-ruby/) directory for instructions.
+
+## PHP Bindings
+
+Lindera also provides PHP bindings. They are not yet published to Packagist — build from source; see the [lindera-php](lindera-php/) directory for instructions.
+
 ## WebAssembly Bindings
 
 Lindera also provides WebAssembly bindings. You can install it via npm:
 
 ```bash
-npm install lindera-wasm
+npm install lindera-wasm-web      # browser (native ES modules)
+npm install lindera-wasm-bundler  # bundlers (Webpack, Rollup, etc.)
 ```
 
 For more details and a demo application, see the [lindera-wasm](lindera-wasm/) directory.
