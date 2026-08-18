@@ -44,11 +44,13 @@ cargo test -p lindera-trainer
 
 ### All Features for a Crate
 
-Run the full test suite for a single crate (matches CI):
+Run the full test suite for a single crate:
 
 ```bash
 cargo test -p <crate> --all-features
 ```
+
+> Note: CI does not use `--all-features` -- it runs each crate with a curated, crate-specific feature combination (see `.github/workflows/regression.yml`). The Makefile's per-crate pattern targets (`make test-<crate>`, `make lint-<crate>`) apply the same feature combinations CI uses and are the closest local equivalent.
 
 ### Workspace-Wide Tests
 
@@ -79,6 +81,8 @@ Run Clippy with warnings treated as errors:
 ```bash
 cargo clippy -- -D warnings
 ```
+
+> Note: only `cargo fmt --all -- --check` is enforced in CI; `cargo clippy` is not currently run in CI, but should still be run locally (e.g. via `make lint`) before opening a PR.
 
 ## Documentation
 

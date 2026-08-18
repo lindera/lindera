@@ -6,8 +6,8 @@
 
 ## ドキュメント
 
-- [英語ドキュメント](https://lindera.github.io/lindera/cli.html)
-- [日本語ドキュメント](https://lindera.github.io/lindera/ja/cli.html)
+- [英語ドキュメント](https://lindera.github.io/lindera/lindera-cli.html)
+- [日本語ドキュメント](https://lindera.github.io/lindera/ja/lindera-cli.html)
 
 ## インストール
 

@@ -26,6 +26,8 @@ Thank you for your interest in contributing to Lindera! This page provides guide
     cargo test
     ```
 
+    > Note: only `cargo fmt --all -- --check` is enforced in CI; `cargo clippy` is not currently run in CI, but should still be run locally (e.g. via `make lint`) before opening a PR.
+
 5. Commit and push your changes, then open a pull request.
 
 ## Code Style

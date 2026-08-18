@@ -39,9 +39,8 @@ async function main() {
     // Load dictionary from OPFS
     const files = await loadDictionaryFiles("ipadic");
     const dict = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals,
-        files.dictWordsIdx, files.dictWords, files.matrixMtx,
-        files.charDef, files.unk
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk
     );
 
     const builder = new TokenizerBuilder();
@@ -74,6 +73,7 @@ Each token object has the following properties:
 | `byteEnd` | `number` | End byte position in the original text |
 | `position` | `number` | Position index of the token |
 | `wordId` | `number` | Word ID in the dictionary |
+| `isUnknown` | `boolean` | Whether the token is an unknown word |
 | `details` | `string[]` | Morphological details array |
 
 Methods:

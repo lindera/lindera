@@ -13,7 +13,7 @@ Lindera は、さまざまな Rust アプリケーションに対して、簡単
 
 ```toml
 [dependencies]
-lindera = "5.0"
+lindera = "5"
 ```
 
 > **注記:** v4 からアップグレードする場合は[移行ガイド](https://lindera.github.io/lindera/ja/migration_v4_to_v5.html)を参照してください。
@@ -31,12 +31,31 @@ pip install lindera-python
 
 詳細は [lindera-python](lindera-python/) ディレクトリを参照してください。
 
+## Node.js バインディング
+
+Lindera は Node.js バインディングも提供しています。npm でインストールできます:
+
+```bash
+npm install lindera-nodejs
+```
+
+詳細は [lindera-nodejs](lindera-nodejs/) ディレクトリを参照してください。
+
+## Ruby バインディング
+
+Lindera は Ruby バインディングも提供していますが、RubyGems にはまだ公開されていません。ソースからビルドしてください。詳細は [lindera-ruby](lindera-ruby/) ディレクトリを参照してください。
+
+## PHP バインディング
+
+Lindera は PHP バインディングも提供していますが、Packagist にはまだ公開されていません。ソースからビルドしてください。詳細は [lindera-php](lindera-php/) ディレクトリを参照してください。
+
 ## WebAssembly バインディング
 
 Lindera は WebAssembly バインディングも提供しています。npm でインストールできます:
 
 ```bash
-npm install lindera-wasm
+npm install lindera-wasm-web      # ブラウザ向け（ネイティブ ES モジュール）
+npm install lindera-wasm-bundler  # バンドラー向け（Webpack、Rollup など）
 ```
 
 詳細とデモアプリケーションは [lindera-wasm](lindera-wasm/) ディレクトリを参照してください。

@@ -246,8 +246,6 @@ This repository uses [CC-CEDICT-MeCab](https://github.com/lindera/CC-CEDICT-MeCa
 
 #### CC-CEDICT dictionary format
 
-Refer to the [manual](ftp://ftp.jaist.ac.jp/pub/sourceforge.jp/unidic/57618/unidic-mecab.pdf) for details on the unidic-mecab dictionary format and part-of-speech tags.
-
 | Index | Name (Chinese) | Name (English) | Notes |
 | --- | --- | --- | --- |
 | 0 | 表面形式 | Surface | |
@@ -304,10 +302,15 @@ This repository uses [mecab-jieba](https://github.com/lindera/mecab-jieba).
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
 | 4 | 词类 | Part-of-speech | |
-| 5 | 併音 | Pinyin | |
-| 6 | 繁体字 | Traditional | |
-| 7 | 簡体字 | Simplified | |
-| 8 | 定义 | Definition | |
+| 5 | 字符类型 | Character type | |
+| 6 | 併音 | Pinyin | |
+| 7 | 繁体字 | Traditional | |
+| 8 | 簡体字 | Simplified | |
+| 9 | 定义 | Definition | |
+| 10 | 字符数 | Character count | |
+| 11 | 首字符 | First character | |
+| 12 | 末字符 | Last character | |
+| 13 | 频率等级 | Frequency band | |
 
 #### Jieba user dictionary format (CSV)
 
@@ -328,11 +331,16 @@ This repository uses [mecab-jieba](https://github.com/lindera/mecab-jieba).
 | 2 | 右语境ID | Right context ID | |
 | 3 | 成本 | Cost | |
 | 4 | 词类 | Part-of-speech | |
-| 5 | 併音 | Pinyin | |
-| 6 | 繁体字 | Traditional | |
-| 7 | 簡体字 | Simplified | |
-| 8 | 定义 | Definition | |
-| 9 | - | - | After 9, it can be freely expanded. |
+| 5 | 字符类型 | Character type | |
+| 6 | 併音 | Pinyin | |
+| 7 | 繁体字 | Traditional | |
+| 8 | 簡体字 | Simplified | |
+| 9 | 定义 | Definition | |
+| 10 | 字符数 | Character count | |
+| 11 | 首字符 | First character | |
+| 12 | 末字符 | Last character | |
+| 13 | 频率等级 | Frequency band | |
+| 14 | - | - | After 14, it can be freely expanded. |
 
 ## API reference
 

@@ -6,8 +6,8 @@ A morphological analysis command-line interface for [Lindera](https://github.com
 
 ## Documentation
 
-- [English Documentation](https://lindera.github.io/lindera/cli.html)
-- [Japanese Documentation (日本語ドキュメント)](https://lindera.github.io/lindera/ja/cli.html)
+- [English Documentation](https://lindera.github.io/lindera/lindera-cli.html)
+- [Japanese Documentation (日本語ドキュメント)](https://lindera.github.io/lindera/ja/lindera-cli.html)
 
 ## Install
 

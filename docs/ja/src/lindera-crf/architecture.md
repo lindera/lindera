@@ -57,6 +57,8 @@ lindera-crf/src/
 
 | Feature | 説明 | デフォルト |
 | --------- | ------ | ----------- |
-| `alloc` | `no_std`向けのallocサポート | No |
-| `std` | 標準ライブラリサポート（`alloc`を含む） | No |
+| `alloc` | `no_std`向けのallocサポート | No* |
+| `std` | 標準ライブラリサポート（`alloc`を含む） | No* |
 | `train` | 学習機能（L-BFGS、マルチスレッド、ログ出力） | Yes |
+
+\* `default`に直接列挙されているわけではありませんが、デフォルトで有効な`train`が`std`を有効化し、`std`がさらに`alloc`を有効化するため、実際にはデフォルトビルドで`alloc`／`std`は有効になっています。

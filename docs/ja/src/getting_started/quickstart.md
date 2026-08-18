@@ -55,4 +55,4 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 > [!NOTE]
 > character filter・token filter・`Tokenizer` API は独立クレート
 > `lindera-analysis` が提供します（v5.0 以降）。分析チェーンが必要な場合は
-> 依存定義に `lindera-analysis = "5.0"` を追加してください。
+> 依存定義に `lindera-analysis = "5"` を追加してください。

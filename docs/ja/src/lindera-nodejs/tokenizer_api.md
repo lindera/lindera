@@ -132,6 +132,26 @@ const tokens = tokenizer.tokenize("形態素解析");
 
 **戻り値:** `Token[]`
 
+#### `tokenizeObjects(text)`
+
+入力テキストをトークナイズし、`Token` クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。
+
+これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、`Token` クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、`tokenize` を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。
+
+```javascript
+const tokens = tokenizer.tokenizeObjects("形態素解析");
+```
+
+**パラメータ:**
+
+| 名前 | 型 | 説明 |
+| --- | --- | --- |
+| `text` | `string` | トークナイズするテキスト |
+
+**戻り値:** `Array<JsTokenData>`。各 `JsTokenData` は `Token` と同じフィールド（`surface`、`byteStart`、`byteEnd`、`position`、`wordId`、`isUnknown`、`details`）を持ちます。
+
+> **注意:** 6.x では `tokenize` 自体がプレーンオブジェクトを返すようになり、`tokenizeObjects` は削除される予定です。詳細は [#930](https://github.com/lindera/lindera/issues/930) を参照してください。
+
 #### `tokenizeSurfaces(text)`
 
 入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。`Token` オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は `tokenize` より大幅に高速です。結果は `tokenizer.tokenize(text).map((t) => t.surface)` と一致します。

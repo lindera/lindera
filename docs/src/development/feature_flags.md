@@ -7,14 +7,14 @@ Lindera uses Cargo feature flags to control optional functionality and dictionar
 | Feature | Description | Default |
 | --- | --- | --- |
 | `mmap` | Memory-mapped file support | Yes |
-| `train` | CRF-based dictionary training (depends on `lindera-trainer`) | CLI only |
+| `train` | CRF-based dictionary training (depends on `lindera-trainer`) | See below |
 
 - `mmap` is enabled by default in the main `lindera` crate.
 - The analysis chain (character filters, token filters, and the `Tokenizer`)
   is not a feature of this crate: as of v5.0 it lives in the companion
   `lindera-analysis` crate. The `lindera` crate itself is a pure segmenter
   around the `Segmenter` API.
-- `train` is enabled by default only in `lindera-cli`. For library usage, enable it explicitly with `--features train`.
+- `train` is enabled by default in `lindera-cli`, `lindera-python`, `lindera-nodejs`, `lindera-ruby`, and `lindera-php`. It is disabled by default in the core `lindera` library crate -- enable it explicitly with `features = ["train"]` for library usage. It is not available in `lindera-wasm`.
 
 ## Using External Dictionaries (Recommended)
 
@@ -43,7 +43,7 @@ None of these are enabled by default. Enable them as needed:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 ```
 
 When embedding is enabled, you can load the dictionary with:
@@ -75,7 +75,7 @@ Multiple feature flags can be combined. For example, to embed both Japanese and 
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 Or from the command line:

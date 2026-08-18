@@ -44,11 +44,13 @@ cargo test -p lindera-trainer
 
 ### クレート単位の全機能テスト
 
-単一クレートの全テストスイートを実行します（CI と同等）：
+単一クレートの全テストスイートを実行します：
 
 ```bash
 cargo test -p <crate> --all-features
 ```
+
+> 注意: CI では `--all-features` は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（`.github/workflows/regression.yml` を参照）。Makefile のクレート別パターンターゲット（`make test-<crate>`、`make lint-<crate>`）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。
 
 ### ワークスペース全体のテスト
 
@@ -79,6 +81,8 @@ Clippy を警告をエラーとして扱うモードで実行します：
 ```bash
 cargo clippy -- -D warnings
 ```
+
+> 注意: CI で強制されているのは `cargo fmt --all -- --check` のみです。`cargo clippy` は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば `make lint` 経由で）実行することを推奨します。
 
 ## ドキュメント
 
