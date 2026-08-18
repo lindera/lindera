@@ -179,7 +179,7 @@
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = "5.0"
+lindera = "5"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -196,7 +196,7 @@ v4 からアップグレードする場合は<a href="../migration_v4_to_v5.html
 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Cargo.toml: lindera = { version = "5.0", features = ["embed-ipadic"] }
+</span>// Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
 <p>詳細は <a href="../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>

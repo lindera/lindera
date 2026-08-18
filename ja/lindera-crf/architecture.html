@@ -217,11 +217,13 @@
 <p>ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に期待素性カウントと勾配の計算に使用されます。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No</td></tr>
-<tr><td><code>std</code></td><td>標準ライブラリサポート（<code>alloc</code>を含む）</td><td>No</td></tr>
+<tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No*</td></tr>
+<tr><td><code>std</code></td><td>標準ライブラリサポート（<code>alloc</code>を含む）</td><td>No*</td></tr>
 <tr><td><code>train</code></td><td>学習機能（L-BFGS、マルチスレッド、ログ出力）</td><td>Yes</td></tr>
 </tbody></table>
 </div>
+<p>* <code>default</code>に直接列挙されているわけではありませんが、デフォルトで有効な<code>train</code>が<code>std</code>を有効化し、<code>std</code>がさらに<code>alloc</code>を有効化するため、実際にはデフォルトビルドで<code>alloc</code>／<code>std</code>は有効になっています。</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

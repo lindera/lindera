@@ -200,6 +200,9 @@ cd lindera
 cargo clippy -- -D warnings
 cargo test
 </code></pre>
+<blockquote>
+<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+</blockquote>
 </li>
 <li>
 <p>Commit and push your changes, then open a pull request.</p>

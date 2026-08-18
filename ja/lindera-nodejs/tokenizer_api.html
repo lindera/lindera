@@ -253,6 +253,20 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Token[]</code></p>
+<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
+<p>入力テキストをトークナイズし、<code>Token</code> クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。</p>
+<p>これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、<code>Token</code> クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、<code>tokenize</code> を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。</p>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;JsTokenData&gt;</code>。各 <code>JsTokenData</code> は <code>Token</code> と同じフィールド（<code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code>）を持ちます。</p>
+<blockquote>
+<p><strong>注意:</strong> 6.x では <code>tokenize</code> 自体がプレーンオブジェクトを返すようになり、<code>tokenizeObjects</code> は削除される予定です。詳細は <a href="https://github.com/lindera/lindera/issues/930">#930</a> を参照してください。</p>
+</blockquote>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
 <p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");

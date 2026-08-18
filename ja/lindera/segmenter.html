@@ -278,10 +278,13 @@ let config: SegmenterConfig = json!({
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<p>注: ここでは <code>use_mmap</code> を明示的に示すためにあえて <code>false</code> を指定していますが、省略した場合も後述のデフォルト（<code>true</code>）と同じ挙動になります。</p>
 <h2 id="メモリマップド読み込み"><a class="header" href="#メモリマップド読み込み">メモリマップド読み込み</a></h2>
-<p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>use_mmap</code> を
-<code>true</code> にすると、接続コスト行列とプレフィックス辞書の読み込みが単純な
-ファイル読み込みではなくメモリマップド読み込み経由になります。
+<p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>mmap</code> cargo
+feature がコンパイルに含まれている場合（デフォルトで含まれます）、
+<code>use_mmap</code> はデフォルトで <code>true</code> になり、メモリマップド読み込みが自動的に
+使用されます。単純なファイル読み込み（非メモリマップド）を強制したい場合は
+<code>false</code> を指定してください。
 辞書フォーマットバージョン 2 以降、トライ・単語リストファイル・接続コスト
 行列はいずれもマップしたバイト列上で直接参照されるため、大きなコンポーネント
 はすべて遅延読み込みされ、ロード時に所有メモリへ全体展開されるものは
@@ -308,6 +311,8 @@ for (tokens, cost) in results {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
+<h2 id="文分割"><a class="header" href="#文分割">文分割</a></h2>
+<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これは、その文に対して構築される Viterbi ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限するためです。通常のテキストに対してはこの挙動は意識する必要がありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
 <h2 id="再利用可能な-worker"><a class="header" href="#再利用可能な-worker">再利用可能な Worker</a></h2>
 <p><code>SegmentWorker</code> は、Viterbi ラティスとバックトレース用スクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -320,8 +325,8 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。</p>
-<p>Worker は保持メモリも制限します。区切り文字のない 32 KiB の文を 1 回処理するとラティスは約 20 MB まで成長し、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。</p>
+<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
+<p>Worker は保持メモリも制限します。区切り文字のない 32 KiB の文を 1 回処理するとラティスは約 20 MB まで成長し、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 
                     </main>

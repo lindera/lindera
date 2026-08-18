@@ -199,9 +199,12 @@
 <pre><code class="language-bash">cargo test -p lindera-trainer
 </code></pre>
 <h3 id="all-features-for-a-crate"><a class="header" href="#all-features-for-a-crate">All Features for a Crate</a></h3>
-<p>Run the full test suite for a single crate (matches CI):</p>
+<p>Run the full test suite for a single crate:</p>
 <pre><code class="language-bash">cargo test -p &lt;crate&gt; --all-features
 </code></pre>
+<blockquote>
+<p>Note: CI does not use <code>--all-features</code> -- it runs each crate with a curated, crate-specific feature combination (see <code>.github/workflows/regression.yml</code>). The Makefile's per-crate pattern targets (<code>make test-&lt;crate&gt;</code>, <code>make lint-&lt;crate&gt;</code>) apply the same feature combinations CI uses and are the closest local equivalent.</p>
+</blockquote>
 <h3 id="workspace-wide-tests"><a class="header" href="#workspace-wide-tests">Workspace-Wide Tests</a></h3>
 <pre><code class="language-bash">cargo test
 </code></pre>
@@ -217,6 +220,9 @@
 <p>Run Clippy with warnings treated as errors:</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
+<blockquote>
+<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+</blockquote>
 <h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
 <p>Generate and open Rust API documentation:</p>

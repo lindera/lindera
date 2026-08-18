@@ -254,7 +254,7 @@
 <h2 id="token-filters"><a class="header" href="#token-filters">Token Filters</a></h2>
 <p>Token filters are configured under the <code>token_filters</code> key of the YAML configuration file. Each filter is applied in order to the token list produced by the segmenter.</p>
 <h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
-<p>Replaces the token's surface text with its base (dictionary) form, as registered in the <code>base_form</code> or <code>orthographic_base_form</code> field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its base (dictionary) form, as registered in the <code>base_form</code> or <code>orthographic_base_form</code> field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{
@@ -348,7 +348,7 @@
 }
 </code></pre>
 <h3 id="japanese_reading_form"><a class="header" href="#japanese_reading_form">japanese_reading_form</a></h3>
-<p>Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's <code>reading</code> field. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's <code>reading</code> field. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{
@@ -410,7 +410,7 @@
 }
 </code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
-<p>Replaces the token's surface text with its reading, as registered in the dictionary's <code>reading</code> field. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its reading, as registered in the dictionary's <code>reading</code> field. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{

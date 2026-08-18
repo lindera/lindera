@@ -181,7 +181,7 @@
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>CLI only</td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>See below</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -190,7 +190,7 @@
 is not a feature of this crate: as of v5.0 it lives in the companion
 <code>lindera-analysis</code> crate. The <code>lindera</code> crate itself is a pure segmenter
 around the <code>Segmenter</code> API.</li>
-<li><code>train</code> is enabled by default only in <code>lindera-cli</code>. For library usage, enable it explicitly with <code>--features train</code>.</li>
+<li><code>train</code> is enabled by default in <code>lindera-cli</code>, <code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, and <code>lindera-php</code>. It is disabled by default in the core <code>lindera</code> library crate -- enable it explicitly with <code>features = ["train"]</code> for library usage. It is not available in <code>lindera-wasm</code>.</li>
 </ul>
 <h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>
 <p>The recommended approach is to use pre-built dictionaries as external files. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path at runtime:</p>
@@ -212,7 +212,7 @@ around the <code>Segmenter</code> API.</li>
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 </code></pre>
 <p>When embedding is enabled, you can load the dictionary with:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -238,7 +238,7 @@ documentation or other materials provided with your distribution.</p>
 <h3 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h3>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

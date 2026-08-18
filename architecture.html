@@ -266,12 +266,17 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
   v
 Output Tokens
 </code></pre>
-<p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation.</p>
+<p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation. Dictionary lookups walk a char-wise double-array trie (built with <code>crawdad</code>) in place over the serialized bytes of <code>dict.trie</code>, rather than deserializing into an owned structure. For repeated tokenization, <code>Segmenter::new_worker()</code> returns a <code>SegmentWorker</code> that reuses lattice and scratch-buffer allocations across calls, with an automatic shrink policy to bound retained memory.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; the word-list files, the connection-cost matrix, and the trie all stay lazily paged)</td><td>Enabled</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for <code>lindera</code> core; unavailable in <code>lindera-wasm</code></td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>Embed the IPADIC NEologd dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-unidic</code></td><td>Embed the UniDic dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>Embed the ko-dic dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>Embed the CC-CEDICT dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-jieba</code></td><td>Embed the Jieba dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk2</code></td><td>Embed UniDic + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk3</code></td><td>Embed IPADIC NEologd + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>

@@ -181,7 +181,7 @@
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存）</td><td>CLI のみ</td></tr>
+<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存）</td><td>下記参照</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -189,7 +189,7 @@
 <li>分析チェーン（character filter・token filter・<code>Tokenizer</code>）は本クレートの
 feature ではありません。v5.0 以降は独立クレート <code>lindera-analysis</code> が提供します。
 <code>lindera</code> クレート自体は <code>Segmenter</code> API を中心とした純粋な形態素分割器です。</li>
-<li><code>train</code> はデフォルトでは <code>lindera-cli</code> でのみ有効です。ライブラリとして使用する場合は <code>--features train</code> で明示的に有効にしてください。</li>
+<li><code>train</code> は <code>lindera-cli</code>・<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・<code>lindera-php</code> ではデフォルトで有効です。コアライブラリである <code>lindera</code> クレートではデフォルトで無効なので、ライブラリとして使用する場合は <code>features = ["train"]</code> で明示的に有効にしてください。<code>lindera-wasm</code> では利用できません。</li>
 </ul>
 <h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
 <p>推奨される方法は、ビルド済み辞書を外部ファイルとして使用することです。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、実行時にそのパスを指定してください：</p>
@@ -211,7 +211,7 @@ feature ではありません。v5.0 以降は独立クレート <code>lindera-a
 </div>
 <p>いずれもデフォルトでは無効です。必要に応じて有効にしてください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 </code></pre>
 <p>埋め込みを有効にした場合、以下のように辞書を読み込めます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -236,7 +236,7 @@ lindera = { version = "5.0", features = ["embed-ipadic"] }
 <h3 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h3>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>またはコマンドラインから：</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

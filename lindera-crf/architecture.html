@@ -217,11 +217,13 @@
 <p>Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No</td></tr>
-<tr><td><code>std</code></td><td>Standard library support (implies <code>alloc</code>)</td><td>No</td></tr>
+<tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No*</td></tr>
+<tr><td><code>std</code></td><td>Standard library support (implies <code>alloc</code>)</td><td>No*</td></tr>
 <tr><td><code>train</code></td><td>Training functionality (L-BFGS, multi-threading, logging)</td><td>Yes</td></tr>
 </tbody></table>
 </div>
+<p>* Not listed directly in <code>default</code>, but transitively enabled by <code>train</code> (which is on by default and enables <code>std</code>, which in turn enables <code>alloc</code>) -- so <code>alloc</code>/<code>std</code> are active in a default build.</p>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

@@ -200,6 +200,9 @@ cd lindera
 cargo clippy -- -D warnings
 cargo test
 </code></pre>
+<blockquote>
+<p>注意: CI で強制されているのは <code>cargo fmt --all -- --check</code> のみです。<code>cargo clippy</code> は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば <code>make lint</code> 経由で）実行することを推奨します。</p>
+</blockquote>
 </li>
 <li>
 <p>変更をコミットしてプッシュし、プルリクエストを開きます。</p>

@@ -344,12 +344,17 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
   v
 Output Tokens
 </code></pre>
-<p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。</p>
+<p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。辞書検索は、所有権を持つ構造体へのデシリアライズを行わず、<code>dict.trie</code>のシリアライズ済みバイト列上を直接走査する文字単位のダブル配列トライ（<code>crawdad</code>でビルド）を使用します。繰り返しトークナイズを行う場合は、<code>Segmenter::new_worker()</code>が返す<code>SegmentWorker</code>がラティスとスクラッチバッファの割り当てを呼び出しをまたいで再利用し、保持メモリを自動収縮ポリシーで制限します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる）</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLIのみ</td></tr>
+<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>コアではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>UniDic辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>ko-dic辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>CC-CEDICT辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>Jieba辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
@@ -377,7 +382,7 @@ Output Tokens
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = "5.0"
+lindera = "5"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -394,7 +399,7 @@ v4 からアップグレードする場合は<a href="getting_started/../migrati
 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Cargo.toml: lindera = { version = "5.0", features = ["embed-ipadic"] }
+</span>// Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
 <p>詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
@@ -485,7 +490,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <p>[!NOTE]
 character filter・token filter・<code>Tokenizer</code> API は独立クレート
 <code>lindera-analysis</code> が提供します（v5.0 以降）。分析チェーンが必要な場合は
-依存定義に <code>lindera-analysis = "5.0"</code> を追加してください。</p>
+依存定義に <code>lindera-analysis = "5"</code> を追加してください。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="サンプル"><a class="header" href="#サンプル">サンプル</a></h1>
 <p>Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examplesディレクトリ</a> で確認できます。</p>
@@ -527,7 +532,8 @@ character filter・token filter・<code>Tokenizer</code> API は独立クレー�
 <p>Linderaは辞書ベースの形態素解析器です。既知の単語とそのコストを含む事前コンパイル済みのシステム辞書を使用し、<strong>Viterbiアルゴリズム</strong>を適用して入力テキストの最適な分割を見つけます。</p>
 <p>解析処理は以下のように動作します：</p>
 <ol>
-<li><strong>ラティス構築</strong>: Linderaは入力テキストをスキャンし、各位置で辞書内のすべての候補単語を検索して、候補分割の有向非巡回グラフ（ラティス）を構築します。</li>
+<li><strong>文分割</strong>: ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これはラティスのメモリ・CPU コストを制限するためです。区切り文字を含まない病的な入力（minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</li>
+<li><strong>ラティス構築</strong>: Linderaは各文をスキャンし、各位置で辞書内のすべての候補単語を検索して、候補分割の有向非巡回グラフ（ラティス）を構築します。</li>
 <li><strong>コスト割り当て</strong>: 各候補単語には（辞書からの）単語コストが関連付けられており、隣接する単語のペアには（連接コスト行列からの）連接コストが関連付けられています。</li>
 <li><strong>最適パス探索</strong>: Viterbiアルゴリズムがラティスを通る最小総コストのパスを見つけ、最適な分割結果を生成します。</li>
 </ol>
@@ -894,11 +900,13 @@ tokenizer
 <p>ラティス上でアルファ（前向き）とベータ（後向き）の値を計算します。学習時に期待素性カウントと勾配の計算に使用されます。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
-<tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No</td></tr>
-<tr><td><code>std</code></td><td>標準ライブラリサポート（<code>alloc</code>を含む）</td><td>No</td></tr>
+<tr><td><code>alloc</code></td><td><code>no_std</code>向けのallocサポート</td><td>No*</td></tr>
+<tr><td><code>std</code></td><td>標準ライブラリサポート（<code>alloc</code>を含む）</td><td>No*</td></tr>
 <tr><td><code>train</code></td><td>学習機能（L-BFGS、マルチスレッド、ログ出力）</td><td>Yes</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="apiリファレンス"><a class="header" href="#apiリファレンス">APIリファレンス</a></h1>
+</div>
+<p>* <code>default</code>に直接列挙されているわけではありませんが、デフォルトで有効な<code>train</code>が<code>std</code>を有効化し、<code>std</code>がさらに<code>alloc</code>を有効化するため、実際にはデフォルトビルドで<code>alloc</code>／<code>std</code>は有効になっています。</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="apiリファレンス"><a class="header" href="#apiリファレンス">APIリファレンス</a></h1>
 <p>APIリファレンスは以下で公開されています：</p>
 <ul>
 <li><a href="https://docs.rs/lindera-crf">lindera-crf</a></li>
@@ -1009,7 +1017,7 @@ tokenizer
 </code></pre>
 <h2 id="主要コンポーネント-2"><a class="header" href="#主要コンポーネント-2">主要コンポーネント</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに同じ入力から最小限のインメモリ<code>lindera_dictionary::dictionary::Dictionary</code>（文字定義・未知語カテゴリ・システム辞書）を組み立てます。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
+<p>学習に必要な5つの入力ファイル――種辞書（<code>lex.csv</code>）、文字定義（<code>char.def</code>）、未知語定義（<code>unk.def</code>）、素性テンプレート（<code>feature.def</code>）、書き換えルール（<code>rewrite.def</code>）――をパースし、<code>Trainer</code>が利用する設定情報にまとめます。<code>TrainerConfig::from_readers</code>（またはファイルパスを直接渡せるラッパーの<code>from_paths</code>）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから<code>FeatureExtractor</code>を構築し、書き換えルールから<code>DictionaryRewriter</code>を構築し、さらに<code>char.def</code>から実際にパースした文字定義をもとに最小限のインメモリ<code>lindera_dictionary::dictionary::Dictionary</code>を組み立てます。注意: この<code>Dictionary</code>の<code>prefix_dictionary</code>（システム辞書）フィールドと<code>unknown_dictionary</code>フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この<code>Dictionary</code>オブジェクトではなく、<code>TrainerConfig</code>自身の<code>surfaces</code> / <code>features</code> / <code>unk_categories</code> / <code>unk_costs</code>フィールドに別途保持されています。また、<code>surfaces()</code>、<code>surface_features()</code>、<code>get_features()</code>に加え、<code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>によるユーザー辞書へのアクセス、<code>metadata()</code>も提供します。</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>アノテーション付き学習データを表現します。<code>Word</code>は表層形とその素性文字列（カンマ区切り）のペアです。<code>Example</code>は1つの学習用の文であり、<code>Vec&lt;Word&gt;</code>から構築され、各語の表層形を連結して元の文を復元します。<code>Corpus</code>は<code>Example</code>の集合です。<code>Corpus::from_reader</code>はタブ区切りの<code>surface&lt;TAB&gt;features</code>形式の行をパースし、空行または<code>EOS</code>のみの行を文の区切りとして扱います。</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
@@ -1017,7 +1025,7 @@ tokenizer
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
 <p>MeCabの3セクション形式<code>rewrite.def</code>（<code>[unigram rewrite]</code>、<code>[left rewrite]</code>、<code>[right rewrite]</code>）を実装します。各セクションは<code>pattern&lt;TAB&gt;replacement</code>形式のルールの並びを持ち、内部の<code>FeatureRewriterBuilder</code>によって<code>FeatureRewriter</code>というprefix trie（前方一致木）に構築されます。<code>DictionaryRewriter::from_reader</code>は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。<code>rewrite()</code>は素性文字列に3つの書き換え器すべてを適用し、<code>(ufeature, lfeature, rfeature)</code>を返します。マッチするルールがないセクションは入力をそのまま通過させます。<code>rewrite_cached()</code>は入力の素性文字列ごとに結果をメモ化します（MeCabの<code>rewrite2</code>に相当）。</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
-<p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(-weight * cost_factor, -32767, 32767)</code>）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
+<p><code>Model</code>は<code>Trainer::train</code>が生成する学習済みモデルです。学習された<code>lindera_crf::RawModel</code>、学習に用いた<code>TrainerConfig</code>、抽出済みの素性の重みとラベル、そして学習後に<code>read_user_lexicon</code>で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>、すなわち<code>[-32768, 32767]</code>の範囲にクランプされます）。この際のコストファクターは、<code>i16</code>の値域を最大限活用できるよう計算されます（<code>calculate_cost_factor</code>）。<code>Model</code>は自身をシリアライズでき（<code>write_model</code>）、辞書ソースファイルを直接エクスポートすることもできます。</p>
 <p><code>SerializableModel</code>は、<code>Model::read_model</code>がリーダーから以前学習したモデルを読み込んだ際に返される、<code>rkyv</code>でシリアライズ可能な素のデータ型です（<code>lindera export</code> CLIコマンドで使用されます）。<code>Model</code>と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、未知語カテゴリ、保存されている<code>char.def</code> / <code>feature.def</code> / <code>rewrite.def</code>の内容、コストファクター、左右文脈IDマッピング――を<code>TrainerConfig</code>を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。</p>
 <h4 id="modelのパブリックメソッド"><a class="header" href="#modelのパブリックメソッド"><code>Model</code>のパブリックメソッド</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>説明</th></tr></thead><tbody>
@@ -1171,10 +1179,13 @@ let config: SegmenterConfig = json!({
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<p>注: ここでは <code>use_mmap</code> を明示的に示すためにあえて <code>false</code> を指定していますが、省略した場合も後述のデフォルト（<code>true</code>）と同じ挙動になります。</p>
 <h2 id="メモリマップド読み込み"><a class="header" href="#メモリマップド読み込み">メモリマップド読み込み</a></h2>
-<p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>use_mmap</code> を
-<code>true</code> にすると、接続コスト行列とプレフィックス辞書の読み込みが単純な
-ファイル読み込みではなくメモリマップド読み込み経由になります。
+<p>ファイルシステム辞書（<code>embedded://</code> ではない辞書）に対しては、<code>mmap</code> cargo
+feature がコンパイルに含まれている場合（デフォルトで含まれます）、
+<code>use_mmap</code> はデフォルトで <code>true</code> になり、メモリマップド読み込みが自動的に
+使用されます。単純なファイル読み込み（非メモリマップド）を強制したい場合は
+<code>false</code> を指定してください。
 辞書フォーマットバージョン 2 以降、トライ・単語リストファイル・接続コスト
 行列はいずれもマップしたバイト列上で直接参照されるため、大きなコンポーネント
 はすべて遅延読み込みされ、ロード時に所有メモリへ全体展開されるものは
@@ -1201,6 +1212,8 @@ for (tokens, cost) in results {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>segment_nbest_with_lattice</code> は同じ処理を行いますが、呼び出しごとの <code>Lattice</code> バッファの再確保を避けるために、再利用可能な <code>Lattice</code> を自分で渡すことができます。</p>
+<h2 id="文分割"><a class="header" href="#文分割">文分割</a></h2>
+<p>ラティスを構築する前に、Linderaは入力テキストを区切り文字（<code>\n</code>、<code>\t</code>、<code>。</code>、<code>、</code>）で文単位に分割し、1文ずつ処理します。文の先頭からおよそ 32 KiB 以内に区切り文字が見つからない場合、Linderaはその位置で強制的に文の境界を区切り、警告をログに出力します。これは、その文に対して構築される Viterbi ラティスのサイズ（ひいてはメモリ・CPU コスト）を制限するためです。通常のテキストに対してはこの挙動は意識する必要がありませんが、区切り文字を含まない病的な入力（例えば minify されたテキストや base64 エンコードされたデータなど）に対しては、この人為的な分割位置でトークナイズ結果に影響が出ることがあります。</p>
 <h2 id="再利用可能な-worker"><a class="header" href="#再利用可能な-worker">再利用可能な Worker</a></h2>
 <p><code>SegmentWorker</code> は、Viterbi ラティスとバックトレース用スクラッチバッファを所有する再利用可能なセグメンテーションセッションです。呼び出しのたびに <code>segment</code> が支払うアロケーションを回避できます。<code>new_worker</code>（セグメンターを clone）または <code>into_worker</code>（セグメンターを消費し、ユーザー辞書のコピーを回避）で作成し、<code>segment</code>/<code>segment_nbest</code> を呼び出します：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1213,8 +1226,8 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。</p>
-<p>Worker は保持メモリも制限します。区切り文字のない 32 KiB の文を 1 回処理するとラティスは約 20 MB まで成長し、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。</p>
+<p>返されるトークンは worker を借用するため、次の呼び出しの前に消費する必要があります（上記のような行単位のループはそのままコンパイルできます）。<code>set_mode</code> と <code>set_keep_whitespace</code> で呼び出しごとに設定を切り替えられます。<code>segmenter()</code> は内部の Segmenter への共有参照を返します。<code>&amp;mut</code> でのアクセサは意図的に提供されていません。再利用中のラティスの下で辞書を差し替えてしまうと、この worker が保証する辞書とラティスの対応関係が壊れてしまうためです。</p>
+<p>Worker は保持メモリも制限します。区切り文字のない 32 KiB の文を 1 回処理するとラティスは約 20 MB まで成長し、素の <code>Lattice</code> はそれを保持し続けます。Worker は一定回数の呼び出し窓で容量が過大と判明した場合に自動でラティスを縮小し、<code>shrink_to(text_len_hint)</code> で即時に縮小することもできます。<code>reset()</code> は内部バッファを破棄して新しいものに置き換えます。これは、例えばパニックによって worker を保持する Mutex がポイズニングされた場合など、バッファが不整合な中間状態を保持している可能性がある回復経路のために用意されています。Segmenter の設定（mode や空白の扱いなど）自体は保持されます。</p>
 <p>Worker は作成元セグメンターの辞書に恒久的に紐付けられ、稼働中の worker の辞書を差し替える手段はありません。これにより、ラティス再利用に起因するバグの一群を構造的に排除しています。マルチスレッドで使う場合は、共有の <code>Segmenter</code> からスレッドごとに worker を 1 つ作成してください。</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="エラーハンドリング"><a class="header" href="#エラーハンドリング">エラーハンドリング</a></h1>
 <p>Lindera はライブラリ全体で使いやすいエラーハンドリングを実現するため、<code>anyhow</code> と <code>thiserror</code> に基づく構造化されたエラーシステムを使用しています。</p>
@@ -1511,7 +1524,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <h2 id="トークンフィルタ-1"><a class="header" href="#トークンフィルタ-1">トークンフィルタ</a></h2>
 <p>トークンフィルタはYAML設定ファイルの<code>token_filters</code>キーで設定します。各フィルタは、Segmenterが生成したトークンリストに対して順番に適用されます。</p>
 <h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
-<p>トークンの表層形を、辞書の<code>base_form</code>（または<code>orthographic_base_form</code>）フィールドに登録された原形（辞書形）に置き換えます。動詞・形容詞のレンマ化（見出し語化）として機能します。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層形を、辞書の<code>base_form</code>（または<code>orthographic_base_form</code>）フィールドに登録された原形（辞書形）に置き換えます。動詞・形容詞のレンマ化（見出し語化）として機能します。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{
@@ -1605,7 +1618,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }
 </code></pre>
 <h3 id="japanese_reading_form"><a class="header" href="#japanese_reading_form">japanese_reading_form</a></h3>
-<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読み（カタカナ）に置き換えます。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読み（カタカナ）に置き換えます。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{
@@ -1667,7 +1680,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }
 </code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
-<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読みに置き換えます。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読みに置き換えます。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{
@@ -1900,6 +1913,15 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>TokenizerBuilder</code>は<code>TokenizerConfig</code>（<code>serde_json::Value</code>）から<code>Tokenizer</code>を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（<code>TokenizerBuilder::from_file</code>、または環境変数<code>LINDERA_CONFIG_PATH</code>経由で自動的に読み込む<code>TokenizerBuilder::new</code>）も、<code>set_segmenter_mode</code>・<code>set_segmenter_dictionary</code>・<code>append_character_filter</code>・<code>append_token_filter</code>で段階的に組み立てることもできます。YAMLファイルの形式は<a href="lindera-analysis/./configuration.html">設定</a>を、フィルタの完全なリファレンスは<a href="lindera-analysis/./filters.html">フィルタ</a>を参照してください。</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
 <p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding-core</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
+<p><code>AnalysisWorker</code>の主なpublicメソッド:</p>
+<ul>
+<li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
+<li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。<code>Tokenizer::tokenize_nbest</code>とまったく同じ結果を返します。</li>
+<li><code>set_mode(&amp;mut self, mode: Mode)</code> — 以降の呼び出しで使用するセグメンテーションモードを設定します。</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
+<li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
+</ul>
 <h2 id="feature-フラグ-1"><a class="header" href="#feature-フラグ-1">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込む（<code>lindera/embed-ipadic</code>へ委譲）</td><td>No</td></tr>
@@ -1918,7 +1940,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>Lindera のための形態素解析コマンドラインインターフェースです。</p>
 <ul>
 <li><a href="./lindera-cli/installation.html">インストール</a> - CLIのインストールまたはビルド</li>
-<li><a href="./lindera-cli/commands.html">コマンド</a> - list、tokenize、build、train、export のコマンドリファレンス</li>
+<li><a href="./lindera-cli/commands.html">コマンド</a> - list、tokenize、build、download、train、export のコマンドリファレンス</li>
 <li><a href="./lindera-cli/tutorial.html">チュートリアル</a> - はじめの一歩のステップバイステップガイド</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-1"><a class="header" href="#インストール-1">インストール</a></h1>
@@ -3904,6 +3926,20 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Token[]</code></p>
+<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
+<p>入力テキストをトークナイズし、<code>Token</code> クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。</p>
+<p>これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、<code>Token</code> クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、<code>tokenize</code> を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。</p>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
+</code></pre>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
+</tbody></table>
+</div>
+<p><strong>戻り値:</strong> <code>Array&lt;JsTokenData&gt;</code>。各 <code>JsTokenData</code> は <code>Token</code> と同じフィールド（<code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code>）を持ちます。</p>
+<blockquote>
+<p><strong>注意:</strong> 6.x では <code>tokenize</code> 自体がプレーンオブジェクトを返すようになり、<code>tokenizeObjects</code> は削除される予定です。詳細は <a href="https://github.com/lindera/lindera/issues/930">#930</a> を参照してください。</p>
+</blockquote>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
 <p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
@@ -8416,9 +8452,12 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 <pre><code class="language-bash">cargo test -p lindera-trainer
 </code></pre>
 <h3 id="クレート単位の全機能テスト"><a class="header" href="#クレート単位の全機能テスト">クレート単位の全機能テスト</a></h3>
-<p>単一クレートの全テストスイートを実行します（CI と同等）：</p>
+<p>単一クレートの全テストスイートを実行します：</p>
 <pre><code class="language-bash">cargo test -p &lt;crate&gt; --all-features
 </code></pre>
+<blockquote>
+<p>注意: CI では <code>--all-features</code> は使用されません。各クレートに対してキュレートされた個別の feature の組み合わせでテストを実行します（<code>.github/workflows/regression.yml</code> を参照）。Makefile のクレート別パターンターゲット（<code>make test-&lt;crate&gt;</code>、<code>make lint-&lt;crate&gt;</code>）は CI と同じ feature の組み合わせを適用するため、ローカルでの実行方法としては最も近い代替手段です。</p>
+</blockquote>
 <h3 id="ワークスペース全体のテスト"><a class="header" href="#ワークスペース全体のテスト">ワークスペース全体のテスト</a></h3>
 <pre><code class="language-bash">cargo test
 </code></pre>
@@ -8434,6 +8473,9 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 <p>Clippy を警告をエラーとして扱うモードで実行します：</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
+<blockquote>
+<p>注意: CI で強制されているのは <code>cargo fmt --all -- --check</code> のみです。<code>cargo clippy</code> は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば <code>make lint</code> 経由で）実行することを推奨します。</p>
+</blockquote>
 <h2 id="ドキュメント-4"><a class="header" href="#ドキュメント-4">ドキュメント</a></h2>
 <h3 id="api-ドキュメント"><a class="header" href="#api-ドキュメント">API ドキュメント</a></h3>
 <p>Rust の API ドキュメントを生成して開きます：</p>
@@ -8456,7 +8498,7 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 <h2 id="コア-feature"><a class="header" href="#コア-feature">コア Feature</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>メモリマップドファイルサポート</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存）</td><td>CLI のみ</td></tr>
+<tr><td><code>train</code></td><td>CRF ベースの辞書学習（<code>lindera-trainer</code> に依存）</td><td>下記参照</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -8464,7 +8506,7 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 <li>分析チェーン（character filter・token filter・<code>Tokenizer</code>）は本クレートの
 feature ではありません。v5.0 以降は独立クレート <code>lindera-analysis</code> が提供します。
 <code>lindera</code> クレート自体は <code>Segmenter</code> API を中心とした純粋な形態素分割器です。</li>
-<li><code>train</code> はデフォルトでは <code>lindera-cli</code> でのみ有効です。ライブラリとして使用する場合は <code>--features train</code> で明示的に有効にしてください。</li>
+<li><code>train</code> は <code>lindera-cli</code>・<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・<code>lindera-php</code> ではデフォルトで有効です。コアライブラリである <code>lindera</code> クレートではデフォルトで無効なので、ライブラリとして使用する場合は <code>features = ["train"]</code> で明示的に有効にしてください。<code>lindera-wasm</code> では利用できません。</li>
 </ul>
 <h2 id="外部辞書の使用推奨"><a class="header" href="#外部辞書の使用推奨">外部辞書の使用（推奨）</a></h2>
 <p>推奨される方法は、ビルド済み辞書を外部ファイルとして使用することです。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> から辞書をダウンロードし、実行時にそのパスを指定してください：</p>
@@ -8486,7 +8528,7 @@ feature ではありません。v5.0 以降は独立クレート <code>lindera-a
 </div>
 <p>いずれもデフォルトでは無効です。必要に応じて有効にしてください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 </code></pre>
 <p>埋め込みを有効にした場合、以下のように辞書を読み込めます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -8511,7 +8553,7 @@ lindera = { version = "5.0", features = ["embed-ipadic"] }
 <h3 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h3>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>またはコマンドラインから：</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic
@@ -8852,6 +8894,9 @@ cd lindera
 cargo clippy -- -D warnings
 cargo test
 </code></pre>
+<blockquote>
+<p>注意: CI で強制されているのは <code>cargo fmt --all -- --check</code> のみです。<code>cargo clippy</code> は現時点で CI では実行されませんが、PR を開く前にローカルで（例えば <code>make lint</code> 経由で）実行することを推奨します。</p>
+</blockquote>
 </li>
 <li>
 <p>変更をコミットしてプッシュし、プルリクエストを開きます。</p>

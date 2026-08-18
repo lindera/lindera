@@ -254,7 +254,7 @@
 <h2 id="トークンフィルタ"><a class="header" href="#トークンフィルタ">トークンフィルタ</a></h2>
 <p>トークンフィルタはYAML設定ファイルの<code>token_filters</code>キーで設定します。各フィルタは、Segmenterが生成したトークンリストに対して順番に適用されます。</p>
 <h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
-<p>トークンの表層形を、辞書の<code>base_form</code>（または<code>orthographic_base_form</code>）フィールドに登録された原形（辞書形）に置き換えます。動詞・形容詞のレンマ化（見出し語化）として機能します。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層形を、辞書の<code>base_form</code>（または<code>orthographic_base_form</code>）フィールドに登録された原形（辞書形）に置き換えます。動詞・形容詞のレンマ化（見出し語化）として機能します。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{
@@ -348,7 +348,7 @@
 }
 </code></pre>
 <h3 id="japanese_reading_form"><a class="header" href="#japanese_reading_form">japanese_reading_form</a></h3>
-<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読み（カタカナ）に置き換えます。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読み（カタカナ）に置き換えます。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{
@@ -410,7 +410,7 @@
 }
 </code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
-<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読みに置き換えます。最初の詳細情報が<code>UNK</code>（未知語）のトークンは変更されません。</p>
+<p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読みに置き換えます。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>
 <p><strong>例:</strong></p>
 <pre><code class="language-json">{

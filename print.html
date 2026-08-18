@@ -344,12 +344,17 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
   v
 Output Tokens
 </code></pre>
-<p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation.</p>
+<p>The <strong>Segmenter</strong> is the core component. It builds a lattice of candidate tokens from the dictionary, then applies the Viterbi algorithm to find the lowest-cost path, producing the most likely segmentation. Dictionary lookups walk a char-wise double-array trie (built with <code>crawdad</code>) in place over the serialized bytes of <code>dict.trie</code>, rather than deserializing into an owned structure. For repeated tokenization, <code>Segmenter::new_worker()</code> returns a <code>SegmentWorker</code> that reuses lattice and scratch-buffer allocations across calls, with an automatic shrink policy to bound retained memory.</p>
 <h2 id="feature-flags"><a class="header" href="#feature-flags">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support for filesystem-based dictionary loading (opt-in via <code>--mmap</code>/<code>use_mmap</code>; the word-list files, the connection-cost matrix, and the trie all stay lazily paged)</td><td>Enabled</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI only</td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training functionality (depends on <code>lindera-crf</code>)</td><td>CLI + Python/Node.js/Ruby/PHP bindings (default); opt-in for <code>lindera</code> core; unavailable in <code>lindera-wasm</code></td></tr>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>Embed the IPADIC NEologd dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-unidic</code></td><td>Embed the UniDic dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>Embed the ko-dic dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>Embed the CC-CEDICT dictionary into the binary</td><td>Disabled</td></tr>
+<tr><td><code>embed-jieba</code></td><td>Embed the Jieba dictionary into the binary</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk</code></td><td>Embed IPADIC + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk2</code></td><td>Embed UniDic + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
 <tr><td><code>embed-cjk3</code></td><td>Embed IPADIC NEologd + ko-dic + Jieba dictionaries</td><td>Disabled</td></tr>
@@ -377,7 +382,7 @@ Output Tokens
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = "5.0"
+lindera = "5"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -394,7 +399,7 @@ Upgrading from v4? See <a href="getting_started/../migration_v4_to_v5.html">Migr
 If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding <code>embed-*</code> feature flag and load it using the <code>embedded://</code> scheme:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Cargo.toml: lindera = { version = "5.0", features = ["embed-ipadic"] }
+</span>// Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
 <p>See <a href="getting_started/../development/feature_flags.html">Feature Flags</a> for details.</p>
@@ -485,7 +490,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <p>[!NOTE]
 Character filters, token filters, and the <code>Tokenizer</code> API are provided by
 the companion <code>lindera-analysis</code> crate (as of v5.0). Add
-<code>lindera-analysis = "5.0"</code> to your dependencies if you need the analysis
+<code>lindera-analysis = "5"</code> to your dependencies if you need the analysis
 chain.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
@@ -531,7 +536,8 @@ crate alone is enough.</p>
 <p>Lindera is a dictionary-based morphological analyzer. It uses a pre-compiled system dictionary containing known words along with their costs, and applies the <strong>Viterbi algorithm</strong> to find the optimal segmentation of input text.</p>
 <p>The analysis process works as follows:</p>
 <ol>
-<li><strong>Lattice construction</strong>: Lindera scans the input text and looks up all possible words in the dictionary at every position, building a directed acyclic graph (lattice) of candidate segmentations.</li>
+<li><strong>Sentence splitting</strong>: Before building the lattice, Lindera splits the input text into sentences at delimiter characters (<code>\n</code>, <code>\t</code>, <code>。</code>, <code>、</code>) and processes one sentence at a time. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning, to bound the lattice's memory and CPU cost. This can affect tokenization at the artificial cut point for pathological delimiter-free input, such as minified text or base64-encoded blobs.</li>
+<li><strong>Lattice construction</strong>: Lindera scans each sentence and looks up all possible words in the dictionary at every position, building a directed acyclic graph (lattice) of candidate segmentations.</li>
 <li><strong>Cost assignment</strong>: Each candidate word has an associated word cost (from the dictionary), and each pair of adjacent words has a connection cost (from the connection cost matrix).</li>
 <li><strong>Optimal path search</strong>: The Viterbi algorithm finds the path through the lattice with the minimum total cost, producing the best segmentation.</li>
 </ol>
@@ -899,11 +905,13 @@ tokenizer
 <p>Computes alpha (forward) and beta (backward) values over the lattice. Used during training to calculate expected feature counts and gradients.</p>
 <h2 id="feature-flags-1"><a class="header" href="#feature-flags-1">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No</td></tr>
-<tr><td><code>std</code></td><td>Standard library support (implies <code>alloc</code>)</td><td>No</td></tr>
+<tr><td><code>alloc</code></td><td>Alloc support for <code>no_std</code></td><td>No*</td></tr>
+<tr><td><code>std</code></td><td>Standard library support (implies <code>alloc</code>)</td><td>No*</td></tr>
 <tr><td><code>train</code></td><td>Training functionality (L-BFGS, multi-threading, logging)</td><td>Yes</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference"><a class="header" href="#api-reference">API Reference</a></h1>
+</div>
+<p>* Not listed directly in <code>default</code>, but transitively enabled by <code>train</code> (which is on by default and enables <code>std</code>, which in turn enables <code>alloc</code>) -- so <code>alloc</code>/<code>std</code> are active in a default build.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="api-reference"><a class="header" href="#api-reference">API Reference</a></h1>
 <p>The API reference is available. Please see following URL:</p>
 <ul>
 <li><a href="https://docs.rs/lindera-crf">lindera-crf</a></li>
@@ -1013,7 +1021,7 @@ tokenizer
 </code></pre>
 <h2 id="key-components-2"><a class="header" href="#key-components-2">Key Components</a></h2>
 <h3 id="trainerconfig"><a class="header" href="#trainerconfig">TrainerConfig</a></h3>
-<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles a minimal in-memory <code>lindera_dictionary::dictionary::Dictionary</code> (character definition, unknown-word categories, and a system lexicon) from the same input. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
+<p>Parses the five training input files -- seed lexicon (<code>lex.csv</code>), character definition (<code>char.def</code>), unknown-word definition (<code>unk.def</code>), feature template (<code>feature.def</code>), and rewrite rules (<code>rewrite.def</code>) -- into the configuration consumed by <code>Trainer</code>. <code>TrainerConfig::from_readers</code> (or <code>from_paths</code>, its file-path convenience wrapper) extracts the surface/feature vocabulary from the seed lexicon, builds a <code>FeatureExtractor</code> from the parsed feature templates, builds a <code>DictionaryRewriter</code> from the rewrite rules, and assembles a minimal in-memory <code>lindera_dictionary::dictionary::Dictionary</code> from the character definition (genuinely parsed from <code>char.def</code>). Note: the <code>Dictionary</code>'s <code>prefix_dictionary</code> (system lexicon) and <code>unknown_dictionary</code> fields are built as empty/stub placeholders -- the real seed-lexicon vocabulary and unk-category features used during training are held separately in <code>TrainerConfig</code>'s own <code>surfaces</code>/<code>features</code>/<code>unk_categories</code>/<code>unk_costs</code> fields, not in this <code>Dictionary</code> object. It also exposes <code>surfaces()</code>, <code>surface_features()</code>, <code>get_features()</code>, a user lexicon accessible via <code>user_lexicon()</code> / <code>add_user_lexicon_entry()</code> / <code>load_user_lexicon_from_content()</code>, and <code>metadata()</code>.</p>
 <h3 id="corpus--example--word"><a class="header" href="#corpus--example--word">Corpus / Example / Word</a></h3>
 <p>Represent annotated training data. <code>Word</code> pairs a surface form with its (comma-joined) feature string. <code>Example</code> is one training sentence, built from a <code>Vec&lt;Word&gt;</code> whose surfaces are concatenated to reconstruct the original sentence text. <code>Corpus</code> is a collection of <code>Example</code>s; <code>Corpus::from_reader</code> parses tab-separated <code>surface&lt;TAB&gt;features</code> lines, treating blank lines or literal <code>EOS</code> lines as sentence boundaries.</p>
 <h3 id="featureextractor"><a class="header" href="#featureextractor">FeatureExtractor</a></h3>
@@ -1021,7 +1029,7 @@ tokenizer
 <h3 id="dictionaryrewriter"><a class="header" href="#dictionaryrewriter">DictionaryRewriter</a></h3>
 <p>Implements MeCab's 3-section <code>rewrite.def</code> format: <code>[unigram rewrite]</code>, <code>[left rewrite]</code>, and <code>[right rewrite]</code> sections, each holding an ordered list of <code>pattern&lt;TAB&gt;replacement</code> rules built into a <code>FeatureRewriter</code> prefix trie (via the internal <code>FeatureRewriterBuilder</code>). <code>DictionaryRewriter::from_reader</code> parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera <code>rewrite.def</code> files). <code>rewrite()</code> applies all three rewriters to a feature string and returns <code>(ufeature, lfeature, rfeature)</code>, passing a section through unchanged when no rule matches; <code>rewrite_cached()</code> memoizes results per input feature string (MeCab's <code>rewrite2</code> equivalent).</p>
 <h3 id="model--serializablemodel"><a class="header" href="#model--serializablemodel">Model / SerializableModel</a></h3>
-<p><code>Model</code> is the trained model produced by <code>Trainer::train</code>. It owns the trained <code>lindera_crf::RawModel</code>, the <code>TrainerConfig</code> used to train it, the extracted feature weights and labels, and any user lexicon entries added afterward via <code>read_user_lexicon</code>. It converts learned CRF weights into MeCab-compatible integer costs (<code>tocost(weight, cost_factor) = clamp(-weight * cost_factor, -32767, 32767)</code>), with the cost factor computed to make full use of the <code>i16</code> range (<code>calculate_cost_factor</code>). <code>Model</code> can serialize itself (<code>write_model</code>) and export dictionary source files directly.</p>
+<p><code>Model</code> is the trained model produced by <code>Trainer::train</code>. It owns the trained <code>lindera_crf::RawModel</code>, the <code>TrainerConfig</code> used to train it, the extracted feature weights and labels, and any user lexicon entries added afterward via <code>read_user_lexicon</code>. It converts learned CRF weights into MeCab-compatible integer costs (<code>tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)</code>, i.e. clamped to <code>[-32768, 32767]</code>), with the cost factor computed to make full use of the <code>i16</code> range (<code>calculate_cost_factor</code>). <code>Model</code> can serialize itself (<code>write_model</code>) and export dictionary source files directly.</p>
 <p><code>SerializableModel</code> is the plain-data, <code>rkyv</code>-serializable counterpart returned by <code>Model::read_model</code> when loading a previously trained model back from a reader (as done by the <code>lindera export</code> CLI command). It carries the same trained information as <code>Model</code> -- feature weights, labels, POS info, connection cost matrix, unknown-word categories, preserved <code>char.def</code>/<code>feature.def</code>/<code>rewrite.def</code> content, cost factor, and left/right context ID maps -- as owned data, without a <code>TrainerConfig</code>, and exposes its own writer methods for producing the dictionary export files.</p>
 <h4 id="model-public-methods"><a class="header" href="#model-public-methods"><code>Model</code> public methods</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody>
@@ -1175,15 +1183,17 @@ let config: SegmenterConfig = json!({
 });
 let segmenter = Segmenter::from_config(&amp;config)?;
 <span class="boring">}</span></code></pre></pre>
+<p>Note: <code>use_mmap</code> here is set to <code>false</code> only to illustrate the option explicitly; omitting it entirely gives the same default (<code>true</code>, see below).</p>
 <h2 id="memory-mapped-loading"><a class="header" href="#memory-mapped-loading">Memory-Mapped Loading</a></h2>
-<p>For a filesystem-based (not <code>embedded://</code>) dictionary, set <code>use_mmap</code> to
-<code>true</code> to route the dictionary files through memory-mapped reads instead of
-a plain file read. Every large component stays lazily paged this way: the
-word-list files, the connection-cost matrix, and the prefix-dictionary
-trie, which is walked in place over its serialized bytes. <code>use_mmap</code> is
-silently ignored for <code>embedded://</code> dictionaries, since their data is
-already a static, zero-copy byte slice. Requires the <code>mmap</code> cargo feature
-(enabled by default).</p>
+<p>For a filesystem-based (not <code>embedded://</code>) dictionary, <code>use_mmap</code> defaults
+to <code>true</code> whenever the <code>mmap</code> Cargo feature is compiled in (the default) —
+memory-mapped reads are used automatically. Set it to <code>false</code> to force
+eager, non-memory-mapped file reads instead. Every large component stays
+lazily paged this way: the word-list files, the connection-cost matrix,
+and the prefix-dictionary trie, which is walked in place over its
+serialized bytes. <code>use_mmap</code> is silently ignored for <code>embedded://</code>
+dictionaries, since their data is already a static, zero-copy byte slice.
+Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 <h2 id="whitespace-handling"><a class="header" href="#whitespace-handling">Whitespace Handling</a></h2>
 <p>By default, whitespace-only tokens are dropped from the output for MeCab compatibility. Call <code>keep_whitespace(true)</code> on a <code>Segmenter</code> to keep them:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1203,6 +1213,8 @@ for (tokens, cost) in results {
 }
 <span class="boring">}</span></code></pre></pre>
 <p><code>segment_nbest_with_lattice</code> is the same operation but lets you pass in a reusable <code>Lattice</code> buffer to avoid reallocating one per call.</p>
+<h2 id="sentence-splitting"><a class="header" href="#sentence-splitting">Sentence Splitting</a></h2>
+<p>Before building the lattice, Lindera splits the input into sentences at delimiter characters (<code>\n</code>, <code>\t</code>, <code>。</code>, <code>、</code>) and segments one sentence at a time. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning, to bound the size — and therefore the memory and CPU cost — of the Viterbi lattice built for that sentence. This is transparent for ordinary text, but for pathological delimiter-free input (e.g. minified text or base64-encoded blobs), it can affect tokenization at the artificial cut point.</p>
 <h2 id="reusable-worker"><a class="header" href="#reusable-worker">Reusable Worker</a></h2>
 <p><code>SegmentWorker</code> is a reusable segmentation session that owns the Viterbi lattice and the backtrace scratch buffer, so repeated calls avoid the per-call allocations <code>segment</code> pays. Create one with <code>new_worker</code> (clones the segmenter) or <code>into_worker</code> (consumes it, avoiding a user-dictionary copy), then call <code>segment</code>/<code>segment_nbest</code> on it:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1215,8 +1227,8 @@ for line in lines {
     }
 }
 <span class="boring">}</span></code></pre></pre>
-<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code> and <code>set_keep_whitespace</code> switch the configuration between calls.</p>
-<p>A worker also bounds retained memory: one delimiter-free 32 KiB sentence grows the lattice to roughly 20 MB, and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately.</p>
+<p>The returned tokens borrow the worker, so they must be consumed before the next call (the usual per-line loop above compiles as-is). <code>set_mode</code> and <code>set_keep_whitespace</code> switch the configuration between calls. <code>segmenter()</code> returns a shared reference to the underlying segmenter; no <code>&amp;mut</code> accessor is provided, since swapping the dictionary out from under the reused lattice would break the dictionary-lattice pairing the worker exists to guarantee.</p>
+<p>A worker also bounds retained memory: one delimiter-free 32 KiB sentence grows the lattice to roughly 20 MB, and a plain <code>Lattice</code> keeps that forever. The worker automatically shrinks its lattice once a window of calls shows the capacity is oversized, and <code>shrink_to(text_len_hint)</code> forces a shrink immediately. <code>reset()</code> discards the internal buffers outright and replaces them with fresh ones; it is intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker) where the buffers may hold an inconsistent intermediate state — the segmenter configuration itself is preserved.</p>
 <p>The worker is permanently bound to the dictionary of the segmenter that created it; there is no way to swap dictionaries under a live worker, which rules out a class of lattice-reuse bugs by construction. For multi-threaded use, create one worker per thread from a shared <code>Segmenter</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h1>
 <p>Lindera uses a structured error system based on <code>anyhow</code> and <code>thiserror</code> for ergonomic error handling throughout the library.</p>
@@ -1513,7 +1525,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <h2 id="token-filters-1"><a class="header" href="#token-filters-1">Token Filters</a></h2>
 <p>Token filters are configured under the <code>token_filters</code> key of the YAML configuration file. Each filter is applied in order to the token list produced by the segmenter.</p>
 <h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
-<p>Replaces the token's surface text with its base (dictionary) form, as registered in the <code>base_form</code> or <code>orthographic_base_form</code> field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its base (dictionary) form, as registered in the <code>base_form</code> or <code>orthographic_base_form</code> field of the dictionary. Acts as a lemmatizer for verbs and adjectives. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{
@@ -1607,7 +1619,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }
 </code></pre>
 <h3 id="japanese_reading_form"><a class="header" href="#japanese_reading_form">japanese_reading_form</a></h3>
-<p>Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's <code>reading</code> field. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its reading, in katakana, as registered in the dictionary's <code>reading</code> field. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{
@@ -1669,7 +1681,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 }
 </code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
-<p>Replaces the token's surface text with its reading, as registered in the dictionary's <code>reading</code> field. Tokens whose first detail is <code>UNK</code> (unknown words) are left unchanged.</p>
+<p>Replaces the token's surface text with its reading, as registered in the dictionary's <code>reading</code> field. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-json">{
@@ -1902,6 +1914,15 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p><code>TokenizerBuilder</code> assembles a <code>Tokenizer</code> from a <code>TokenizerConfig</code> (a <code>serde_json::Value</code>), which can be constructed programmatically, loaded from a YAML file (via <code>TokenizerBuilder::from_file</code>, or automatically from the <code>LINDERA_CONFIG_PATH</code> environment variable via <code>TokenizerBuilder::new</code>), or built up incrementally with <code>set_segmenter_mode</code>, <code>set_segmenter_dictionary</code>, <code>append_character_filter</code>, and <code>append_token_filter</code>. See <a href="lindera-analysis/./configuration.html">Configuration</a> for the YAML file format and <a href="lindera-analysis/./filters.html">Filters</a> for the full filter reference.</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
 <p><code>AnalysisWorker</code> (created with <code>Tokenizer::new_worker</code> or <code>Tokenizer::into_worker</code>) is a reusable session over the full analysis chain. It owns every per-call buffer — the Viterbi lattice and backtrace scratch (via <code>SegmentWorker</code>), the normalized-text buffer the character filters operate on, and the offset-mapping scratch — so repeated <code>tokenize</code> calls avoid the per-call allocations <code>Tokenizer::tokenize</code> pays. When character filters are configured, token surfaces borrow the worker's buffer instead of being copied into per-token <code>String</code>s. Returned tokens borrow the worker and must be consumed before the next call; for multi-threaded use, create one worker per thread (or guard one with a <code>Mutex</code>, as <code>lindera-binding-core</code> does). See the <a href="lindera-analysis/../lindera/segmenter.html">Segmenter</a> page for the underlying <code>SegmentWorker</code> and its automatic memory-shrink policy.</p>
+<p><code>AnalysisWorker</code>'s public methods:</p>
+<ul>
+<li><code>tokenize(&amp;mut self, text: &amp;str)</code> — tokenizes <code>text</code> through the full analysis chain, reusing the worker's internal buffers; produces exactly the same tokens as <code>Tokenizer::tokenize</code>.</li>
+<li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — tokenizes <code>text</code> and returns the top-N results with costs, reusing the worker's internal buffers; produces exactly the same results as <code>Tokenizer::tokenize_nbest</code>.</li>
+<li><code>set_mode(&amp;mut self, mode: Mode)</code> — sets the segmentation mode for subsequent calls.</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — sets whether whitespace tokens are kept in the output for subsequent calls.</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — immediately shrinks the worker's internal buffers to what an input of <code>text_len_hint</code> bytes needs.</li>
+<li><code>reset(&amp;mut self)</code> — discards all internal buffers, replacing them with fresh ones; intended for recovery paths (e.g. after a panic poisoned a mutex holding the worker), with configuration (dictionary, filters, mode) preserved.</li>
+</ul>
 <h2 id="feature-flags-3"><a class="header" href="#feature-flags-3">Feature Flags</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>Embed the IPADIC dictionary in the binary (forwards to <code>lindera/embed-ipadic</code>)</td><td>No</td></tr>
@@ -1920,7 +1941,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>A morphological analysis command-line interface for Lindera.</p>
 <ul>
 <li><a href="./lindera-cli/installation.html">Installation</a> - Install or build the CLI</li>
-<li><a href="./lindera-cli/commands.html">Commands</a> - Command reference for list, tokenize, build, train, and export</li>
+<li><a href="./lindera-cli/commands.html">Commands</a> - Command reference for list, tokenize, build, download, train, and export</li>
 <li><a href="./lindera-cli/tutorial.html">Tutorial</a> - Step-by-step guide to get started</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation-1"><a class="header" href="#installation-1">Installation</a></h1>
@@ -3902,6 +3923,20 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Token[]</code></p>
+<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
+<p>Tokenizes the input text and returns tokens as plain JS objects instead of <code>Token</code> class instances.</p>
+<p>This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while <code>Token</code> class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using <code>tokenize</code>. It is also useful when results must be serializable.</p>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;JsTokenData&gt;</code>, where each <code>JsTokenData</code> has the same fields as <code>Token</code>: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code>.</p>
+<blockquote>
+<p><strong>Note:</strong> In 6.x, <code>tokenize</code> itself will return plain objects and <code>tokenizeObjects</code> will be removed. See <a href="https://github.com/lindera/lindera/issues/930">#930</a>.</p>
+</blockquote>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
 <p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
@@ -8493,9 +8528,12 @@ re-validate.</li>
 <pre><code class="language-bash">cargo test -p lindera-trainer
 </code></pre>
 <h3 id="all-features-for-a-crate"><a class="header" href="#all-features-for-a-crate">All Features for a Crate</a></h3>
-<p>Run the full test suite for a single crate (matches CI):</p>
+<p>Run the full test suite for a single crate:</p>
 <pre><code class="language-bash">cargo test -p &lt;crate&gt; --all-features
 </code></pre>
+<blockquote>
+<p>Note: CI does not use <code>--all-features</code> -- it runs each crate with a curated, crate-specific feature combination (see <code>.github/workflows/regression.yml</code>). The Makefile's per-crate pattern targets (<code>make test-&lt;crate&gt;</code>, <code>make lint-&lt;crate&gt;</code>) apply the same feature combinations CI uses and are the closest local equivalent.</p>
+</blockquote>
 <h3 id="workspace-wide-tests"><a class="header" href="#workspace-wide-tests">Workspace-Wide Tests</a></h3>
 <pre><code class="language-bash">cargo test
 </code></pre>
@@ -8511,6 +8549,9 @@ re-validate.</li>
 <p>Run Clippy with warnings treated as errors:</p>
 <pre><code class="language-bash">cargo clippy -- -D warnings
 </code></pre>
+<blockquote>
+<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+</blockquote>
 <h2 id="documentation-4"><a class="header" href="#documentation-4">Documentation</a></h2>
 <h3 id="api-documentation"><a class="header" href="#api-documentation">API Documentation</a></h3>
 <p>Generate and open Rust API documentation:</p>
@@ -8533,7 +8574,7 @@ re-validate.</li>
 <h2 id="core-features"><a class="header" href="#core-features">Core Features</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Description</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>Memory-mapped file support</td><td>Yes</td></tr>
-<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>CLI only</td></tr>
+<tr><td><code>train</code></td><td>CRF-based dictionary training (depends on <code>lindera-trainer</code>)</td><td>See below</td></tr>
 </tbody></table>
 </div>
 <ul>
@@ -8542,7 +8583,7 @@ re-validate.</li>
 is not a feature of this crate: as of v5.0 it lives in the companion
 <code>lindera-analysis</code> crate. The <code>lindera</code> crate itself is a pure segmenter
 around the <code>Segmenter</code> API.</li>
-<li><code>train</code> is enabled by default only in <code>lindera-cli</code>. For library usage, enable it explicitly with <code>--features train</code>.</li>
+<li><code>train</code> is enabled by default in <code>lindera-cli</code>, <code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>, and <code>lindera-php</code>. It is disabled by default in the core <code>lindera</code> library crate -- enable it explicitly with <code>features = ["train"]</code> for library usage. It is not available in <code>lindera-wasm</code>.</li>
 </ul>
 <h2 id="using-external-dictionaries-recommended"><a class="header" href="#using-external-dictionaries-recommended">Using External Dictionaries (Recommended)</a></h2>
 <p>The recommended approach is to use pre-built dictionaries as external files. Download a dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify its path at runtime:</p>
@@ -8564,7 +8605,7 @@ around the <code>Segmenter</code> API.</li>
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 </code></pre>
 <p>When embedding is enabled, you can load the dictionary with:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -8590,7 +8631,7 @@ documentation or other materials provided with your distribution.</p>
 <h3 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h3>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic
@@ -8931,6 +8972,9 @@ cd lindera
 cargo clippy -- -D warnings
 cargo test
 </code></pre>
+<blockquote>
+<p>Note: only <code>cargo fmt --all -- --check</code> is enforced in CI; <code>cargo clippy</code> is not currently run in CI, but should still be run locally (e.g. via <code>make lint</code>) before opening a PR.</p>
+</blockquote>
 </li>
 <li>
 <p>Commit and push your changes, then open a pull request.</p>

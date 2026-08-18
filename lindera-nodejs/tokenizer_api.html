@@ -251,6 +251,20 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Token[]</code></p>
+<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
+<p>Tokenizes the input text and returns tokens as plain JS objects instead of <code>Token</code> class instances.</p>
+<p>This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while <code>Token</code> class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using <code>tokenize</code>. It is also useful when results must be serializable.</p>
+<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
+</code></pre>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
+</tbody></table>
+</div>
+<p><strong>Returns:</strong> <code>Array&lt;JsTokenData&gt;</code>, where each <code>JsTokenData</code> has the same fields as <code>Token</code>: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code>.</p>
+<blockquote>
+<p><strong>Note:</strong> In 6.x, <code>tokenize</code> itself will return plain objects and <code>tokenizeObjects</code> will be removed. See <a href="https://github.com/lindera/lindera/issues/930">#930</a>.</p>
+</blockquote>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
 <p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");

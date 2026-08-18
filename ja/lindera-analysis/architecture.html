@@ -220,6 +220,15 @@
 <p><code>TokenizerBuilder</code>は<code>TokenizerConfig</code>（<code>serde_json::Value</code>）から<code>Tokenizer</code>を組み立てます。この設定はプログラムから直接構築することも、YAMLファイルから読み込むこと（<code>TokenizerBuilder::from_file</code>、または環境変数<code>LINDERA_CONFIG_PATH</code>経由で自動的に読み込む<code>TokenizerBuilder::new</code>）も、<code>set_segmenter_mode</code>・<code>set_segmenter_dictionary</code>・<code>append_character_filter</code>・<code>append_token_filter</code>で段階的に組み立てることもできます。YAMLファイルの形式は<a href="./configuration.html">設定</a>を、フィルタの完全なリファレンスは<a href="./filters.html">フィルタ</a>を参照してください。</p>
 <h3 id="analysisworker"><a class="header" href="#analysisworker">AnalysisWorker</a></h3>
 <p><code>AnalysisWorker</code>（<code>Tokenizer::new_worker</code>または<code>Tokenizer::into_worker</code>で作成）は、解析チェーン全体に対する再利用可能なセッションです。呼び出しごとのバッファ — Viterbiラティスとバックトレース用スクラッチ（<code>SegmentWorker</code>経由）、文字フィルタが操作する正規化テキストバッファ、オフセットマッピング用スクラッチ — をすべて所有するため、<code>tokenize</code>を繰り返し呼び出しても<code>Tokenizer::tokenize</code>が支払う呼び出しごとのアロケーションを回避できます。文字フィルタが設定されている場合、トークンのsurfaceはトークンごとの<code>String</code>にコピーされる代わりにワーカーのバッファを借用します。返されるトークンはワーカーを借用するため、次の呼び出しの前に消費する必要があります。マルチスレッドで使う場合はスレッドごとにワーカーを作成してください（あるいは<code>lindera-binding-core</code>のように<code>Mutex</code>で保護します）。基盤となる<code>SegmentWorker</code>と自動メモリ縮小ポリシーについては<a href="../lindera/segmenter.html">Segmenter</a>のページを参照してください。</p>
+<p><code>AnalysisWorker</code>の主なpublicメソッド:</p>
+<ul>
+<li><code>tokenize(&amp;mut self, text: &amp;str)</code> — ワーカーの内部バッファを再利用しながら、解析チェーン全体を通して<code>text</code>をトークナイズします。同じ入力・設定であれば<code>Tokenizer::tokenize</code>とまったく同じトークンを返します。</li>
+<li><code>tokenize_nbest(&amp;mut self, text: &amp;str, n, unique, cost_threshold)</code> — ワーカーの内部バッファを再利用しながら、コスト付きの上位N件の結果をトークナイズして返します。<code>Tokenizer::tokenize_nbest</code>とまったく同じ結果を返します。</li>
+<li><code>set_mode(&amp;mut self, mode: Mode)</code> — 以降の呼び出しで使用するセグメンテーションモードを設定します。</li>
+<li><code>set_keep_whitespace(&amp;mut self, keep: bool)</code> — 以降の呼び出しで空白トークンを出力に残すかどうかを設定します。</li>
+<li><code>shrink_to(&amp;mut self, text_len_hint: usize)</code> — ワーカーの内部バッファを、<code>text_len_hint</code>バイトの入力に必要なサイズまで直ちに縮小します。</li>
+<li><code>reset(&amp;mut self)</code> — すべての内部バッファを破棄し、新しいバッファに置き換えます。（例えばワーカーを保持する<code>Mutex</code>がパニックでpoisonedになった場合の）リカバリ用途を想定しており、設定（辞書・フィルタ・モード）は保持されます。</li>
+</ul>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込む（<code>lindera/embed-ipadic</code>へ委譲）</td><td>No</td></tr>

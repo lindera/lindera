@@ -183,7 +183,8 @@
 <p>Lindera is a dictionary-based morphological analyzer. It uses a pre-compiled system dictionary containing known words along with their costs, and applies the <strong>Viterbi algorithm</strong> to find the optimal segmentation of input text.</p>
 <p>The analysis process works as follows:</p>
 <ol>
-<li><strong>Lattice construction</strong>: Lindera scans the input text and looks up all possible words in the dictionary at every position, building a directed acyclic graph (lattice) of candidate segmentations.</li>
+<li><strong>Sentence splitting</strong>: Before building the lattice, Lindera splits the input text into sentences at delimiter characters (<code>\n</code>, <code>\t</code>, <code>。</code>, <code>、</code>) and processes one sentence at a time. If no delimiter appears within roughly 32 KiB of a sentence's start, Lindera forces a sentence boundary there anyway and logs a warning, to bound the lattice's memory and CPU cost. This can affect tokenization at the artificial cut point for pathological delimiter-free input, such as minified text or base64-encoded blobs.</li>
+<li><strong>Lattice construction</strong>: Lindera scans each sentence and looks up all possible words in the dictionary at every position, building a directed acyclic graph (lattice) of candidate segmentations.</li>
 <li><strong>Cost assignment</strong>: Each candidate word has an associated word cost (from the dictionary), and each pair of adjacent words has a connection cost (from the connection cost matrix).</li>
 <li><strong>Optimal path search</strong>: The Viterbi algorithm finds the path through the lattice with the minimum total cost, producing the best segmentation.</li>
 </ol>

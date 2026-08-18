@@ -266,12 +266,17 @@ Token Filters        -- Transform tokens (e.g., POS filtering, stop words, stemm
   v
 Output Tokens
 </code></pre>
-<p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。</p>
+<p><strong>Segmenter</strong>がコアコンポーネントです。辞書から候補トークンのラティスを構築し、Viterbiアルゴリズムを適用して最小コストのパスを見つけ、最も適切な分割結果を生成します。辞書検索は、所有権を持つ構造体へのデシリアライズを行わず、<code>dict.trie</code>のシリアライズ済みバイト列上を直接走査する文字単位のダブル配列トライ（<code>crawdad</code>でビルド）を使用します。繰り返しトークナイズを行う場合は、<code>Segmenter::new_worker()</code>が返す<code>SegmentWorker</code>がラティスとスクラッチバッファの割り当てを呼び出しをまたいで再利用し、保持メモリを自動収縮ポリシーで制限します。</p>
 <h2 id="featureフラグ"><a class="header" href="#featureフラグ">Featureフラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>mmap</code></td><td>ファイルシステム辞書読み込みのためのメモリマップドファイルサポート（<code>--mmap</code>/<code>use_mmap</code>でオプトイン。トライ・単語リストファイル・接続コスト行列はいずれもマップしたバイト列上で直接参照され、遅延読み込みされる）</td><td>有効</td></tr>
-<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLIのみ</td></tr>
+<tr><td><code>train</code></td><td>CRFベースの辞書学習機能（<code>lindera-crf</code>に依存）</td><td>CLI + Python/Node.js/Ruby/PHPバインディング（デフォルト有効）／<code>lindera</code>コアではデフォルト無効（オプトイン）／<code>lindera-wasm</code>では利用不可</td></tr>
 <tr><td><code>embed-ipadic</code></td><td>IPADIC辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ipadic-neologd</code></td><td>IPADIC NEologd辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-unidic</code></td><td>UniDic辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-ko-dic</code></td><td>ko-dic辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-cc-cedict</code></td><td>CC-CEDICT辞書をバイナリに埋め込み</td><td>無効</td></tr>
+<tr><td><code>embed-jieba</code></td><td>Jieba辞書をバイナリに埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk</code></td><td>IPADIC + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk2</code></td><td>UniDic + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
 <tr><td><code>embed-cjk3</code></td><td>IPADIC NEologd + ko-dic + Jieba辞書を埋め込み</td><td>無効</td></tr>
