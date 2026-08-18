@@ -16,11 +16,11 @@ As of v5.0, this crate is a pure morphological segmenter around the
 ```toml
 [dependencies]
 # Pure segmenter
-lindera = "5.0"
+lindera = "5"
 
 # With the analysis chain (character filters, token filters, Tokenizer)
-lindera = "5.0"
-lindera-analysis = "5.0"
+lindera = "5"
+lindera-analysis = "5"
 ```
 
 See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
@@ -34,7 +34,7 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
+lindera = { version = "5", features = ["embed-ipadic"] }
 ```
 
 This example covers the basic usage of Lindera as a pure segmenter — no
@@ -83,8 +83,8 @@ The `Tokenizer` and the filter chain below are provided by the
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
-lindera-analysis = "5.0"
+lindera = { version = "5", features = ["embed-ipadic"] }
+lindera-analysis = "5"
 ```
 
 ### Basic tokenization
@@ -148,8 +148,8 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
-lindera-analysis = "5.0"
+lindera = { version = "5", features = ["embed-ipadic"] }
+lindera-analysis = "5"
 ```
 
 For example:
@@ -164,12 +164,15 @@ For example:
 With an user dictionary, `Tokenizer` will be created as follows:
 
 ```rust
+use std::fs::File;
 use std::path::PathBuf;
 
-use lindera::dictionary::load_dictionary;
+use lindera::dictionary::{Metadata, load_dictionary, load_user_dictionary};
+use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
 use lindera_analysis::tokenizer::Tokenizer;
+use lindera::LinderaResult;
 
 fn main() -> LinderaResult<()> {
     let user_dict_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -192,7 +195,7 @@ fn main() -> LinderaResult<()> {
     let segmenter = Segmenter::new(
         Mode::Normal,
         dictionary,
-        Some(user_dictionary), // Assuming no user dictionary is provided
+        Some(user_dictionary), // Using the loaded user dictionary
     );
 
     // Create a tokenizer.
@@ -218,11 +221,11 @@ The above example can be run by `cargo run --example`:
 ```shell
 % cargo run -p lindera-analysis --features=embed-ipadic --example=tokenize_with_user_dict
 text:   東京スカイツリーの最寄り駅はとうきょうスカイツリー駅です
-token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,東京スカイツリー,トウキョウスカイツリー,*
+token:  東京スカイツリー        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリー,*
 token:  の      助詞,連体化,*,*,*,*,の,ノ,ノ
 token:  最寄り駅        名詞,一般,*,*,*,*,最寄り駅,モヨリエキ,モヨリエキ
 token:  は      助詞,係助詞,*,*,*,*,は,ハ,ワ
-token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,とうきょうスカイツリー駅,トウキョウスカイツリーエキ,*
+token:  とうきょうスカイツリー駅        カスタム名詞,*,*,*,*,*,*,トウキョウスカイツリーエキ,*
 token:  です    助動詞,*,*,*,特殊・デス,基本形,です,デス,デス
 ```
 
@@ -232,8 +235,8 @@ Put the following in Cargo.toml:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["embed-ipadic"] }
-lindera-analysis = "5.0"
+lindera = { version = "5", features = ["embed-ipadic"] }
+lindera-analysis = "5"
 ```
 
 This example covers the basic usage of Lindera Analysis Framework.

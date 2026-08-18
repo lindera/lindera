@@ -15,8 +15,8 @@ input text → character filters → Segmenter → token filters → tokens
 
 ```toml
 [dependencies]
-lindera = "5.0"
-lindera-analysis = "5.0"
+lindera = "5"
+lindera-analysis = "5"
 ```
 
 ```rust

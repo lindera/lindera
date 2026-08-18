@@ -14,7 +14,7 @@ feature enabled, which re-exports this crate as `lindera::dictionary::trainer`:
 
 ```toml
 [dependencies]
-lindera = { version = "5.0", features = ["train"] }
+lindera = { version = "5", features = ["train"] }
 ```
 
 ## License
