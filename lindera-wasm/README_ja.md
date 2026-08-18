@@ -39,9 +39,8 @@ async function main() {
     // Load dictionary from OPFS
     const files = await loadDictionaryFiles("ipadic");
     const dict = loadDictionaryFromBytes(
-        files.metadata, files.dictDa, files.dictVals,
-        files.dictWordsIdx, files.dictWords, files.matrixMtx,
-        files.charDef, files.unk
+        files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
+        files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk
     );
 
     const builder = new TokenizerBuilder();
@@ -74,6 +73,7 @@ main();
 | `byteEnd` | `number` | 元テキスト内の終了バイト位置 |
 | `position` | `number` | トークンの位置インデックス |
 | `wordId` | `number` | 辞書内の単語 ID |
+| `isUnknown` | `boolean` | 未知語かどうか |
 | `details` | `string[]` | 形態素詳細の配列 |
 
 メソッド:
