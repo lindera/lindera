@@ -16,7 +16,7 @@ lindera-trainer/src/
 
 ### TrainerConfig
 
-学習に必要な5つの入力ファイル――種辞書（`lex.csv`）、文字定義（`char.def`）、未知語定義（`unk.def`）、素性テンプレート（`feature.def`）、書き換えルール（`rewrite.def`）――をパースし、`Trainer`が利用する設定情報にまとめます。`TrainerConfig::from_readers`（またはファイルパスを直接渡せるラッパーの`from_paths`）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから`FeatureExtractor`を構築し、書き換えルールから`DictionaryRewriter`を構築し、さらに同じ入力から最小限のインメモリ`lindera_dictionary::dictionary::Dictionary`（文字定義・未知語カテゴリ・システム辞書）を組み立てます。また、`surfaces()`、`surface_features()`、`get_features()`に加え、`user_lexicon()` / `add_user_lexicon_entry()` / `load_user_lexicon_from_content()`によるユーザー辞書へのアクセス、`metadata()`も提供します。
+学習に必要な5つの入力ファイル――種辞書（`lex.csv`）、文字定義（`char.def`）、未知語定義（`unk.def`）、素性テンプレート（`feature.def`）、書き換えルール（`rewrite.def`）――をパースし、`Trainer`が利用する設定情報にまとめます。`TrainerConfig::from_readers`（またはファイルパスを直接渡せるラッパーの`from_paths`）は、種辞書から表層形と素性の語彙を抽出し、パースした素性テンプレートから`FeatureExtractor`を構築し、書き換えルールから`DictionaryRewriter`を構築し、さらに`char.def`から実際にパースした文字定義をもとに最小限のインメモリ`lindera_dictionary::dictionary::Dictionary`を組み立てます。注意: この`Dictionary`の`prefix_dictionary`（システム辞書）フィールドと`unknown_dictionary`フィールドは、空のスタブとして構築されるだけです――学習時に実際に使われる種辞書の語彙や未知語カテゴリの素性は、この`Dictionary`オブジェクトではなく、`TrainerConfig`自身の`surfaces` / `features` / `unk_categories` / `unk_costs`フィールドに別途保持されています。また、`surfaces()`、`surface_features()`、`get_features()`に加え、`user_lexicon()` / `add_user_lexicon_entry()` / `load_user_lexicon_from_content()`によるユーザー辞書へのアクセス、`metadata()`も提供します。
 
 ### Corpus / Example / Word
 
@@ -32,7 +32,7 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 
 ### Model / SerializableModel
 
-`Model`は`Trainer::train`が生成する学習済みモデルです。学習された`lindera_crf::RawModel`、学習に用いた`TrainerConfig`、抽出済みの素性の重みとラベル、そして学習後に`read_user_lexicon`で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（`tocost(weight, cost_factor) = clamp(-weight * cost_factor, -32767, 32767)`）。この際のコストファクターは、`i16`の値域を最大限活用できるよう計算されます（`calculate_cost_factor`）。`Model`は自身をシリアライズでき（`write_model`）、辞書ソースファイルを直接エクスポートすることもできます。
+`Model`は`Trainer::train`が生成する学習済みモデルです。学習された`lindera_crf::RawModel`、学習に用いた`TrainerConfig`、抽出済みの素性の重みとラベル、そして学習後に`read_user_lexicon`で追加されたユーザー辞書エントリを保持します。学習されたCRFの重みは、MeCab互換の整数コストに変換されます（`tocost(weight, cost_factor) = clamp(round(-weight * cost_factor), i16::MIN, i16::MAX)`、すなわち`[-32768, 32767]`の範囲にクランプされます）。この際のコストファクターは、`i16`の値域を最大限活用できるよう計算されます（`calculate_cost_factor`）。`Model`は自身をシリアライズでき（`write_model`）、辞書ソースファイルを直接エクスポートすることもできます。
 
 `SerializableModel`は、`Model::read_model`がリーダーから以前学習したモデルを読み込んだ際に返される、`rkyv`でシリアライズ可能な素のデータ型です（`lindera export` CLIコマンドで使用されます）。`Model`と同じ学習結果の情報――素性の重み、ラベル、品詞情報、連接コスト行列、未知語カテゴリ、保存されている`char.def` / `feature.def` / `rewrite.def`の内容、コストファクター、左右文脈IDマッピング――を`TrainerConfig`を持たない所有データとして保持し、辞書エクスポートファイルを生成するための独自のライターメソッド群を提供します。
 

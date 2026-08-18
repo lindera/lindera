@@ -57,6 +57,8 @@ Computes alpha (forward) and beta (backward) values over the lattice. Used durin
 
 | Feature | Description | Default |
 | --------- | ------------- | --------- |
-| `alloc` | Alloc support for `no_std` | No |
-| `std` | Standard library support (implies `alloc`) | No |
+| `alloc` | Alloc support for `no_std` | No* |
+| `std` | Standard library support (implies `alloc`) | No* |
 | `train` | Training functionality (L-BFGS, multi-threading, logging) | Yes |
+
+\* Not listed directly in `default`, but transitively enabled by `train` (which is on by default and enables `std`, which in turn enables `alloc`) -- so `alloc`/`std` are active in a default build.
