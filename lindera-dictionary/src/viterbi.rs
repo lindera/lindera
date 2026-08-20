@@ -354,6 +354,13 @@ pub struct Lattice {
 /// at most 2 * 32,767, which cannot overflow from this clamp.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
+/// Flag bit on `CharData::categories_start` marking that the offset indexes
+/// the `CharacterDefinition` flat category pool instead of the lattice's
+/// `categories_buffer` (#942). Both index spaces stay far below this bit:
+/// the pool offset is at most 24 bits by construction, and the fallback
+/// buffer holds at most 255 categories per char of a 32 KiB sentence.
+const CATEGORIES_IN_POOL: u32 = 1 << 31;
+
 #[derive(Clone, Copy, Debug, Default)]
 struct CharData {
     byte_offset: u32,
@@ -417,10 +424,33 @@ impl Lattice {
         self.char_info_buffer[char_idx].kanji_run_byte_len >= byte_len as u32
     }
 
+    /// Returns the `category_ord`-th category of the char at `char_idx`,
+    /// reading the `CharacterDefinition` flat pool or the fallback
+    /// `categories_buffer` as recorded by `prepare_char_buffers`.
+    ///
+    /// # 引数
+    ///
+    /// * `char_definitions` - The definitions whose pool backs the fast path.
+    /// * `char_idx` - Character index in `char_info_buffer`.
+    /// * `category_ord` - Ordinal within that char's category set.
+    ///
+    /// # 戻り値
+    ///
+    /// The category id.
     #[inline]
-    fn get_cached_category(&self, char_idx: usize, category_ord: usize) -> CategoryId {
+    fn get_cached_category(
+        &self,
+        char_definitions: &CharacterDefinition,
+        char_idx: usize,
+        category_ord: usize,
+    ) -> CategoryId {
         let char_data = &self.char_info_buffer[char_idx];
-        self.categories_buffer[char_data.categories_start as usize + category_ord]
+        let idx = (char_data.categories_start & !CATEGORIES_IN_POOL) as usize + category_ord;
+        if char_data.categories_start & CATEGORIES_IN_POOL != 0 {
+            char_definitions.flat_category(idx)
+        } else {
+            self.categories_buffer[idx]
+        }
     }
 
     fn set_capacity(&mut self, text_len: usize) {
@@ -529,34 +559,47 @@ impl Lattice {
     ///   character into `codes_buf`.
     /// * `char_definitions` - Character category definitions.
     /// * `text` - The sentence to prepare buffers for.
+    /// * `search_mode` - The segmentation mode; the kanji-run lengths are
+    ///   only computed in Decompose mode, their sole consumer
+    ///   (`Penalty::penalty` via `kanji_only`) — in Normal mode they stay
+    ///   zero and every edge gets `kanji_only = false`, which the Normal
+    ///   relaxation arms never read (#942).
     fn prepare_char_buffers(
         &mut self,
         dict: &PrefixDictionary,
         char_definitions: &CharacterDefinition,
         text: &str,
+        search_mode: &Mode,
     ) {
         let len = text.len();
+        let needs_kanji_runs = search_mode.is_search();
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
         self.codes_buf.clear();
 
         for (byte_offset, c) in text.char_indices() {
-            let categories_start = self.categories_buffer.len() as u32;
-
             // Category lookup is O(1) for BMP codepoints via the flat table
-            // built at dictionary load (#878), so no per-lattice cache is
-            // needed.
-            let categories = char_definitions.lookup_categories(c);
-            for &category in categories {
-                self.categories_buffer.push(category);
-            }
-
-            let categories_len = (self.categories_buffer.len() as u32 - categories_start) as u16;
+            // built at dictionary load (#878). On that fast path, store the
+            // pool coordinates directly instead of copying the categories
+            // into categories_buffer (#942); non-BMP codepoints (and the
+            // never-in-practice case of an unbuilt flat table) keep the
+            // copy, discriminated by the CATEGORIES_IN_POOL flag.
+            let (categories_start, categories_len) =
+                match char_definitions.lookup_categories_packed(c) {
+                    Some((offset, len)) => (offset | CATEGORIES_IN_POOL, len),
+                    None => {
+                        let start = self.categories_buffer.len() as u32;
+                        for &category in char_definitions.lookup_categories(c) {
+                            self.categories_buffer.push(category);
+                        }
+                        (start, (self.categories_buffer.len() as u32 - start) as u16)
+                    }
+                };
 
             self.char_info_buffer.push(CharData {
                 byte_offset: byte_offset as u32,
-                is_kanji: is_kanji(c),
+                is_kanji: needs_kanji_runs && is_kanji(c),
                 categories_start,
                 categories_len,
                 kanji_run_byte_len: 0,
@@ -573,15 +616,18 @@ impl Lattice {
             kanji_run_byte_len: 0,
         });
 
-        // Pre-calculate Kanji run lengths (backwards)
-        for i in (0..self.char_info_buffer.len() - 1).rev() {
-            if self.char_info_buffer[i].is_kanji {
-                let next_byte_offset = self.char_info_buffer[i + 1].byte_offset;
-                let char_byte_len = next_byte_offset - self.char_info_buffer[i].byte_offset;
-                self.char_info_buffer[i].kanji_run_byte_len =
-                    char_byte_len + self.char_info_buffer[i + 1].kanji_run_byte_len;
-            } else {
-                self.char_info_buffer[i].kanji_run_byte_len = 0;
+        // Pre-calculate Kanji run lengths (backwards); skipped in Normal
+        // mode where no consumer reads them (see `search_mode` above).
+        if needs_kanji_runs {
+            for i in (0..self.char_info_buffer.len() - 1).rev() {
+                if self.char_info_buffer[i].is_kanji {
+                    let next_byte_offset = self.char_info_buffer[i + 1].byte_offset;
+                    let char_byte_len = next_byte_offset - self.char_info_buffer[i].byte_offset;
+                    self.char_info_buffer[i].kanji_run_byte_len =
+                        char_byte_len + self.char_info_buffer[i + 1].kanji_run_byte_len;
+                } else {
+                    self.char_info_buffer[i].kanji_run_byte_len = 0;
+                }
             }
         }
     }
@@ -605,7 +651,7 @@ impl Lattice {
         self.set_capacity(len);
 
         // Pre-calculate character information for the text
-        self.prepare_char_buffers(dict, char_definitions, text);
+        self.prepare_char_buffers(dict, char_definitions, text, search_mode);
 
         let start_edge = Edge {
             path_cost: 0,
@@ -725,7 +771,8 @@ impl Lattice {
             {
                 let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
                 for category_ord in 0..num_categories {
-                    let category = self.get_cached_category(char_idx, category_ord);
+                    let category =
+                        self.get_cached_category(char_definitions, char_idx, category_ord);
                     unknown_word_end = self.process_unknown_word(
                         char_definitions,
                         unknown_dictionary,
@@ -798,7 +845,8 @@ impl Lattice {
                     let num_categories = self.char_info_buffer[next_idx].categories_len as usize;
                     let mut found_cat = false;
                     if category_ord < num_categories {
-                        let cat = self.get_cached_category(next_idx, category_ord);
+                        let cat =
+                            self.get_cached_category(char_definitions, next_idx, category_ord);
                         if cat == category {
                             unknown_word_num_chars += 1;
                             found_cat = true;
@@ -1084,7 +1132,8 @@ impl Lattice {
                     let num_categories = self.char_info_buffer[next_idx].categories_len as usize;
                     let mut found_cat = false;
                     if category_ord < num_categories {
-                        let cat = self.get_cached_category(next_idx, category_ord);
+                        let cat =
+                            self.get_cached_category(char_definitions, next_idx, category_ord);
                         if cat == category {
                             unknown_word_num_chars += 1;
                             found_cat = true;
@@ -1131,7 +1180,7 @@ impl Lattice {
         self.set_capacity_nbest(len);
 
         // Pre-calculate character information for the text
-        self.prepare_char_buffers(dict, char_definitions, text);
+        self.prepare_char_buffers(dict, char_definitions, text, search_mode);
 
         let start_edge = Edge {
             path_cost: 0,
@@ -1235,7 +1284,8 @@ impl Lattice {
             {
                 let num_categories = self.char_info_buffer[char_idx].categories_len as usize;
                 for category_ord in 0..num_categories {
-                    let category = self.get_cached_category(char_idx, category_ord);
+                    let category =
+                        self.get_cached_category(char_definitions, char_idx, category_ord);
                     unknown_word_end = self.process_unknown_word_nbest(
                         char_definitions,
                         unknown_dictionary,
