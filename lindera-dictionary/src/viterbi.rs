@@ -337,6 +337,11 @@ pub struct Lattice {
     /// char-wise trie consumes `&[char]` (byte offsets come from
     /// `char_info_buffer`, which is built in the same pass).
     chars_buf: Vec<char>,
+    /// The sentence's characters mapped through the system trie's code
+    /// table, one code per char (`INVALID_CODE` = unmapped), filled in the
+    /// same pass as `chars_buf` so overlapping prefix walks stop re-probing
+    /// the code table for the same character (#942).
+    codes_buf: Vec<u32>,
     /// Per-position system-dictionary matches (match end byte offset, word
     /// entry), buffered so they can be replayed in reverse discovery order --
     /// the order the retired whole-text pre-scan's head-inserted list drained
@@ -506,6 +511,7 @@ impl Lattice {
         self.matches_head.shrink_to(slots);
         self.matches_store.shrink_to(8 * slots);
         self.chars_buf.shrink_to(text_len);
+        self.codes_buf.shrink_to(text_len);
         self.sys_matches.shrink_to(64);
     }
 
@@ -519,13 +525,21 @@ impl Lattice {
     ///
     /// # 引数
     ///
+    /// * `dict` - The system prefix dictionary whose code table maps each
+    ///   character into `codes_buf`.
     /// * `char_definitions` - Character category definitions.
     /// * `text` - The sentence to prepare buffers for.
-    fn prepare_char_buffers(&mut self, char_definitions: &CharacterDefinition, text: &str) {
+    fn prepare_char_buffers(
+        &mut self,
+        dict: &PrefixDictionary,
+        char_definitions: &CharacterDefinition,
+        text: &str,
+    ) {
         let len = text.len();
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
+        self.codes_buf.clear();
 
         for (byte_offset, c) in text.char_indices() {
             let categories_start = self.categories_buffer.len() as u32;
@@ -548,6 +562,7 @@ impl Lattice {
                 kanji_run_byte_len: 0,
             });
             self.chars_buf.push(c);
+            self.codes_buf.push(dict.map_code_or_invalid(c));
         }
         // Sentinel for end of text
         self.char_info_buffer.push(CharData {
@@ -590,7 +605,7 @@ impl Lattice {
         self.set_capacity(len);
 
         // Pre-calculate character information for the text
-        self.prepare_char_buffers(char_definitions, text);
+        self.prepare_char_buffers(dict, char_definitions, text);
 
         let start_edge = Edge {
             path_cost: 0,
@@ -683,8 +698,8 @@ impl Lattice {
             // for the same reason (the old shared list held them on top).
             self.sys_matches.clear();
             {
-                let suffix = &self.chars_buf[char_idx..];
-                for (entries, end_char_offset) in dict.common_prefix_search(suffix) {
+                let suffix = &self.codes_buf[char_idx..];
+                for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char_idx = char_idx + end_char_offset;
                     let end = self.char_info_buffer[end_char_idx].byte_offset;
                     for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
@@ -1116,7 +1131,7 @@ impl Lattice {
         self.set_capacity_nbest(len);
 
         // Pre-calculate character information for the text
-        self.prepare_char_buffers(char_definitions, text);
+        self.prepare_char_buffers(dict, char_definitions, text);
 
         let start_edge = Edge {
             path_cost: 0,
@@ -1194,8 +1209,8 @@ impl Lattice {
             // for the same reason (the old shared list held them on top).
             self.sys_matches.clear();
             {
-                let suffix = &self.chars_buf[char_idx..];
-                for (entries, end_char_offset) in dict.common_prefix_search(suffix) {
+                let suffix = &self.codes_buf[char_idx..];
+                for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char_idx = char_idx + end_char_offset;
                     let end = self.char_info_buffer[end_char_idx].byte_offset;
                     for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
