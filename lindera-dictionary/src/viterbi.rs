@@ -900,6 +900,7 @@ impl Lattice {
         text: &str,
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
     ) {
         // Clear the previous sentence's slots (bounded by its char count),
         // then build the per-char buffers to learn this sentence's length.
@@ -1038,6 +1039,7 @@ impl Lattice {
                         cost_matrix,
                         search_mode,
                         max_grouping_len,
+                        unknown_word_ladder,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1075,6 +1077,127 @@ impl Lattice {
         }
     }
 
+    /// Emits one unknown-word edge per dictionary entry for `category`,
+    /// spanning `num_chars` characters from `char_idx`.
+    ///
+    /// Shared by the primary-candidate emission and the length-ladder
+    /// emission (#945) in both `process_unknown_word` and its nbest twin.
+    ///
+    /// # 引数
+    ///
+    /// * `unknown_dictionary` - Source of unknown-word entries.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `search_mode` - The segmentation mode.
+    /// * `category` - The character category the edges belong to.
+    /// * `char_idx` - Start position, in characters.
+    /// * `num_chars` - Span length, in characters.
+    fn emit_unknown_word_edges(
+        &mut self,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        category: CategoryId,
+        char_idx: usize,
+        num_chars: usize,
+    ) {
+        let end_char = char_idx + num_chars;
+        let kanji_only = self.is_kanji_all(char_idx, num_chars);
+        for &word_id in unknown_dictionary.lookup_word_ids(category) {
+            let word_entry = unknown_dictionary.word_entry(word_id);
+            let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+            self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode);
+        }
+    }
+
+    /// [`Self::emit_unknown_word_edges`] for the nbest lattice.
+    ///
+    /// # 引数
+    ///
+    /// See [`Self::emit_unknown_word_edges`].
+    fn emit_unknown_word_edges_nbest(
+        &mut self,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        search_mode: &Mode,
+        category: CategoryId,
+        char_idx: usize,
+        num_chars: usize,
+    ) {
+        let end_char = char_idx + num_chars;
+        let kanji_only = self.is_kanji_all(char_idx, num_chars);
+        for &word_id in unknown_dictionary.lookup_word_ids(category) {
+            let word_entry = unknown_dictionary.word_entry(word_id);
+            let edge = Self::create_edge(word_entry, char_idx, kanji_only);
+            self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode);
+        }
+    }
+
+    /// Computes the length-ladder run length for `category_ord` at
+    /// `char_idx`: how many leading characters (from `char_idx`) belong to
+    /// the same category, capped at `category_data.length` (#945). Reuses
+    /// the group run length when one was already computed for the primary
+    /// candidate (`group_run_len`); otherwise scans forward, bounded by
+    /// `category_data.length` (at most 15, a 4-bit `char.def` field), so
+    /// this stays cheap even for categories the primary path never runs
+    /// grouping on.
+    ///
+    /// # 引数
+    ///
+    /// * `char_definitions` - Character category definitions.
+    /// * `search_mode` - The segmentation mode.
+    /// * `category` - The category to match against.
+    /// * `category_ord` - Ordinal within the char's category set.
+    /// * `char_idx` - Start position, in characters.
+    /// * `length_cap` - `category_data.length`, the ladder's upper bound.
+    /// * `group_run_len` - The raw run length already computed for
+    ///   grouping, if any.
+    ///
+    /// # 戻り値
+    ///
+    /// The number of leading same-category characters, capped at
+    /// `length_cap`.
+    #[allow(clippy::too_many_arguments)]
+    fn ladder_run_len(
+        &self,
+        char_definitions: &CharacterDefinition,
+        search_mode: &Mode,
+        category: CategoryId,
+        category_ord: usize,
+        char_idx: usize,
+        length_cap: usize,
+        group_run_len: Option<usize>,
+    ) -> usize {
+        if let Some(run) = group_run_len {
+            return run.min(length_cap);
+        }
+        if search_mode.is_search() {
+            // Decompose precomputes the exact run for every (char,
+            // ordinal) pair regardless of category_data.group (#944), so
+            // this is a single O(1) lookup here too.
+            let run = self.group_runs_buf
+                [self.group_runs_start_buf[char_idx] as usize + category_ord]
+                as usize;
+            return run.min(length_cap);
+        }
+        // Normal mode, no group scan available: scan forward, bounded by
+        // length_cap so this is at most a few iterations.
+        let mut run = 1;
+        for i in 1..length_cap {
+            let next_idx = char_idx + i;
+            if next_idx >= self.char_info_buffer.len() - 1 {
+                break;
+            }
+            let next = self.char_info_buffer[next_idx];
+            if category_ord >= next.categories_len as usize
+                || self.get_cached_category(char_definitions, next_idx, category_ord) != category
+            {
+                break;
+            }
+            run += 1;
+        }
+        run
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn process_unknown_word(
         &mut self,
@@ -1083,6 +1206,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1090,23 +1214,27 @@ impl Lattice {
         found: bool,
     ) -> Option<usize> {
         let mut unknown_word_num_chars: usize = 0;
+        // Raw (uncapped) grouping run length, captured for the length
+        // ladder before max_grouping_len can shrink unknown_word_num_chars
+        // to the fallback of 1 (#945).
+        let mut group_run_len: Option<usize> = None;
         let category_data = char_definitions.lookup_definition(category);
         if category_data.invoke || !found {
             unknown_word_num_chars = 1;
             if category_data.group {
-                if search_mode.is_search() {
+                let run_len = if search_mode.is_search() {
                     // Decompose re-enters the unknown-word logic at every
                     // position inside a run, so the forward rescan below
                     // was O(run^2) in total; read the run precomputed by
                     // prepare_char_buffers instead (#944).
-                    unknown_word_num_chars = self.group_runs_buf
-                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
-                        as usize;
+                    self.group_runs_buf[self.group_runs_start_buf[char_idx] as usize + category_ord]
+                        as usize
                 } else {
                     // Normal mode: the unknown_word_end gate makes this
                     // scan run ~once per run, so it stays O(n) without the
                     // precompute (which would cost every Normal sentence a
                     // per-ordinal pass for nothing).
+                    let mut run = 1;
                     for i in 1.. {
                         let next_idx = char_idx + i;
                         if next_idx >= self.char_info_buffer.len() - 1 {
@@ -1119,7 +1247,7 @@ impl Lattice {
                             let cat =
                                 self.get_cached_category(char_definitions, next_idx, category_ord);
                             if cat == category {
-                                unknown_word_num_chars += 1;
+                                run += 1;
                                 found_cat = true;
                             }
                         }
@@ -1127,7 +1255,10 @@ impl Lattice {
                             break;
                         }
                     }
-                }
+                    run
+                };
+                group_run_len = Some(run_len);
+                unknown_word_num_chars = run_len;
                 // MeCab-style cap (#944): a grouped candidate with more
                 // than max_grouping_len characters beyond the first is not
                 // emitted; the single-char unknown word is emitted instead,
@@ -1142,17 +1273,48 @@ impl Lattice {
             }
         }
         if unknown_word_num_chars > 0 {
-            let end_char = char_idx + unknown_word_num_chars;
+            self.emit_unknown_word_edges(
+                unknown_dictionary,
+                cost_matrix,
+                search_mode,
+                category,
+                char_idx,
+                unknown_word_num_chars,
+            );
 
-            // Check Kanji status using pre-calculated buffer
-            let kanji_only = self.is_kanji_all(char_idx, unknown_word_num_chars);
-
-            for &word_id in unknown_dictionary.lookup_word_ids(category) {
-                let word_entry = unknown_dictionary.word_entry(word_id);
-                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode);
+            // Length ladder (#945): additional shorter candidates up to
+            // category_data.length, MeCab/Vibrato-inspired (char.def's
+            // LENGTH field, otherwise unread at runtime until this
+            // feature). Purely additive: never removes the primary
+            // candidate above, which keeps the reachability guarantee.
+            if unknown_word_ladder && category_data.length > 0 {
+                let length_cap = category_data.length as usize;
+                let run_len = self.ladder_run_len(
+                    char_definitions,
+                    search_mode,
+                    category,
+                    category_ord,
+                    char_idx,
+                    length_cap,
+                    group_run_len,
+                );
+                // ladder_run_len already applies length_cap.
+                for i in 1..=run_len {
+                    if i == unknown_word_num_chars {
+                        continue; // already emitted above
+                    }
+                    self.emit_unknown_word_edges(
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        category,
+                        char_idx,
+                        i,
+                    );
+                }
             }
-            return Some(end_char);
+
+            return Some(char_idx + unknown_word_num_chars);
         }
         unknown_word_index
     }
@@ -1519,6 +1681,7 @@ impl Lattice {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)]
     fn process_unknown_word_nbest(
         &mut self,
         char_definitions: &CharacterDefinition,
@@ -1526,6 +1689,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1533,23 +1697,24 @@ impl Lattice {
         found: bool,
     ) -> Option<usize> {
         let mut unknown_word_num_chars: usize = 0;
+        let mut group_run_len: Option<usize> = None;
         let category_data = char_definitions.lookup_definition(category);
         if category_data.invoke || !found {
             unknown_word_num_chars = 1;
             if category_data.group {
-                if search_mode.is_search() {
+                let run_len = if search_mode.is_search() {
                     // Decompose re-enters the unknown-word logic at every
                     // position inside a run, so the forward rescan below
                     // was O(run^2) in total; read the run precomputed by
                     // prepare_char_buffers instead (#944).
-                    unknown_word_num_chars = self.group_runs_buf
-                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
-                        as usize;
+                    self.group_runs_buf[self.group_runs_start_buf[char_idx] as usize + category_ord]
+                        as usize
                 } else {
                     // Normal mode: the unknown_word_end gate makes this
                     // scan run ~once per run, so it stays O(n) without the
                     // precompute (which would cost every Normal sentence a
                     // per-ordinal pass for nothing).
+                    let mut run = 1;
                     for i in 1.. {
                         let next_idx = char_idx + i;
                         if next_idx >= self.char_info_buffer.len() - 1 {
@@ -1562,7 +1727,7 @@ impl Lattice {
                             let cat =
                                 self.get_cached_category(char_definitions, next_idx, category_ord);
                             if cat == category {
-                                unknown_word_num_chars += 1;
+                                run += 1;
                                 found_cat = true;
                             }
                         }
@@ -1570,7 +1735,10 @@ impl Lattice {
                             break;
                         }
                     }
-                }
+                    run
+                };
+                group_run_len = Some(run_len);
+                unknown_word_num_chars = run_len;
                 // MeCab-style cap (#944): a grouped candidate with more
                 // than max_grouping_len characters beyond the first is not
                 // emitted; the single-char unknown word is emitted instead,
@@ -1585,16 +1753,43 @@ impl Lattice {
             }
         }
         if unknown_word_num_chars > 0 {
-            let end_char = char_idx + unknown_word_num_chars;
+            self.emit_unknown_word_edges_nbest(
+                unknown_dictionary,
+                cost_matrix,
+                search_mode,
+                category,
+                char_idx,
+                unknown_word_num_chars,
+            );
 
-            let kanji_only = self.is_kanji_all(char_idx, unknown_word_num_chars);
-
-            for &word_id in unknown_dictionary.lookup_word_ids(category) {
-                let word_entry = unknown_dictionary.word_entry(word_id);
-                let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode);
+            // Length ladder (#945); see process_unknown_word.
+            if unknown_word_ladder && category_data.length > 0 {
+                let length_cap = category_data.length as usize;
+                let run_len = self.ladder_run_len(
+                    char_definitions,
+                    search_mode,
+                    category,
+                    category_ord,
+                    char_idx,
+                    length_cap,
+                    group_run_len,
+                );
+                for i in 1..=run_len {
+                    if i == unknown_word_num_chars {
+                        continue;
+                    }
+                    self.emit_unknown_word_edges_nbest(
+                        unknown_dictionary,
+                        cost_matrix,
+                        search_mode,
+                        category,
+                        char_idx,
+                        i,
+                    );
+                }
             }
-            return Some(end_char);
+
+            return Some(char_idx + unknown_word_num_chars);
         }
         unknown_word_index
     }
@@ -1613,6 +1808,7 @@ impl Lattice {
         text: &str,
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
+        unknown_word_ladder: bool,
     ) {
         // Same clear -> prepare -> grow sequence as set_text.
         self.clear();
@@ -1735,6 +1931,7 @@ impl Lattice {
                         cost_matrix,
                         search_mode,
                         max_grouping_len,
+                        unknown_word_ladder,
                         category,
                         category_ord,
                         unknown_word_end,

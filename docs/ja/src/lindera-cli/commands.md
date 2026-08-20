@@ -61,6 +61,7 @@ jieba           no        no          -
 - `--token-filter` / `-t`: トークンフィルタ設定 (JSON)
 - `--keep-whitespace`: 空白文字のトークンを出力に含める（デフォルトでは MeCab 互換のため空白は除去されます）
 - `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限を超えるランは 1 文字ずつの未知語になります。デフォルト: 無制限
+- `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する
 - `--mmap`: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。`embedded://` 辞書、および `mmap` feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。
 - `--nbest` / `-N`: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。
 - `--nbest-unique`: 同じ分割を生成するパスの重複を排除します。

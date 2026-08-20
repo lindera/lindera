@@ -71,6 +71,11 @@ pub struct TokenizeArgs {
     )]
     max_grouping_len: Option<usize>,
     #[clap(
+        long = "disable-unknown-word-ladder",
+        help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), matching pre-v6 output exactly. Enabled by default"
+    )]
+    disable_unknown_word_ladder: bool,
+    #[clap(
         long = "mmap",
         help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
     )]
@@ -253,6 +258,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Unknown-word grouping cap (default: unbounded)
     if let Some(max_grouping_len) = args.max_grouping_len {
         builder.set_segmenter_max_grouping_len(max_grouping_len);
+    }
+
+    // Unknown-word length ladder (default: enabled)
+    if args.disable_unknown_word_ladder {
+        builder.set_segmenter_unknown_word_ladder(false);
     }
 
     // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)

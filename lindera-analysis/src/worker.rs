@@ -228,6 +228,17 @@ impl AnalysisWorker {
         self.segment_worker.set_max_grouping_len(max_grouping_len);
     }
 
+    /// Enables/disables the unknown-word length ladder for subsequent
+    /// calls (see `Segmenter::unknown_word_ladder`; defaults to `true`).
+    ///
+    /// # 引数
+    ///
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
+        self.segment_worker
+            .set_unknown_word_ladder(unknown_word_ladder);
+    }
+
     /// Immediately shrinks the worker's internal buffers to what an input
     /// of `text_len_hint` bytes needs.
     ///
