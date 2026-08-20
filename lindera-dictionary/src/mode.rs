@@ -25,9 +25,22 @@ impl Default for Penalty {
 }
 
 impl Penalty {
+    /// Returns the Decompose-mode length penalty for an edge.
+    ///
+    /// # 引数
+    ///
+    /// * `edge` - The edge to penalize (read for its kanji-only flag).
+    /// * `num_chars` - The edge's exact span in characters. The packed
+    ///   edge no longer stores its end position, so the caller derives
+    ///   this from the slot the edge lives in (#943 — this also replaced
+    ///   the former byte-length/3 approximation, which was wrong for
+    ///   1-, 2-, and 4-byte UTF-8 characters).
+    ///
+    /// # 戻り値
+    ///
+    /// The penalty cost to add to the transition.
     #[inline]
-    pub fn penalty(&self, edge: &Edge) -> i32 {
-        let num_chars = edge.num_chars();
+    pub fn penalty(&self, edge: &Edge, num_chars: usize) -> i32 {
         if num_chars <= self.kanji_penalty_length_threshold {
             return 0;
         }
@@ -57,14 +70,6 @@ impl Mode {
         match self {
             Mode::Normal => false,
             Mode::Decompose(_penalty) => true,
-        }
-    }
-
-    #[inline]
-    pub fn penalty_cost(&self, edge: &Edge) -> i32 {
-        match self {
-            Mode::Normal => 0i32,
-            Mode::Decompose(penalty) => penalty.penalty(edge),
         }
     }
 

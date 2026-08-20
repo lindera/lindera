@@ -14,14 +14,18 @@ const SHRINK_WINDOW_CALLS: u32 = 64;
 
 /// Hysteresis factor for the automatic shrink: the lattice is only shrunk
 /// when its capacity exceeds the window's observed need by more than this
-/// factor, so a workload hovering around one size never thrashes.
-const SHRINK_HYSTERESIS: usize = 4;
+/// factor, so a workload hovering around one size never thrashes. Halved
+/// from 4 when the lattice became char-indexed (#943): the longest sentence
+/// the segmenter can feed is now 32 Ki slots (ASCII) but only ~10.9 Ki
+/// slots for 3-byte CJK, which a 4x margin over the 4 Ki floor would never
+/// reach.
+const SHRINK_HYSTERESIS: usize = 2;
 
-/// Floor (in bytes) below which the lattice is never shrunk. Typical
-/// line-oriented input stays under this, so the automatic policy never
-/// fires for it; worst-case retention above the floor is bounded to a few
-/// MB instead of the ~20 MB a 32 KiB sentence can pin.
-const SHRINK_FLOOR_BYTES: usize = 4 * 1024;
+/// Floor (in slots = characters) below which the lattice is never shrunk.
+/// Typical line-oriented input stays under this, so the automatic policy
+/// never fires for it; worst-case retention above the floor is bounded to
+/// a few MB instead of the ~6 MB a 32 KiB CJK sentence can pin (#943).
+const SHRINK_FLOOR_SLOTS: usize = 4 * 1024;
 
 /// A reusable segmentation session that owns the Viterbi [`Lattice`] and
 /// the backtrace scratch buffer, so repeated calls avoid the per-call
@@ -48,11 +52,12 @@ const SHRINK_FLOOR_BYTES: usize = 4 * 1024;
 /// } // tokens dropped here; the next iteration may call segment again
 /// ```
 ///
-/// The worker automatically bounds retained memory: one 32 KiB sentence
-/// grows the lattice to ~20 MB, and without intervention that stays pinned
-/// for the worker's lifetime. Every [`SHRINK_WINDOW_CALLS`] calls the
-/// worker compares the lattice capacity against the window's largest input
-/// (with a [`SHRINK_HYSTERESIS`]x margin and a [`SHRINK_FLOOR_BYTES`]
+/// The worker automatically bounds retained memory: one maximum-length
+/// sentence grows the lattice to several MB (~18 MB for 32 Ki ASCII slots,
+/// ~6 MB for a 32 KiB CJK sentence's ~10.9 Ki slots), and without
+/// intervention that stays pinned for the worker's lifetime. Every [`SHRINK_WINDOW_CALLS`] calls the
+/// worker compares the lattice capacity against the window's largest
+/// sentence (with a [`SHRINK_HYSTERESIS`]x margin and a [`SHRINK_FLOOR_SLOTS`]
 /// floor) and shrinks it when oversized. [`SegmentWorker::shrink_to`]
 /// forces a shrink immediately.
 ///
@@ -67,8 +72,8 @@ pub struct SegmentWorker {
     /// Backtrace scratch reused across calls (cleared per sentence by
     /// `tokens_offset_into`).
     offsets: Vec<(usize, WordId)>,
-    /// Largest per-call input need (bytes, capped at one sentence) observed
-    /// in the current shrink window.
+    /// Largest per-sentence character count observed in the current shrink
+    /// window (drained from the lattice's own accounting).
     window_max_needed: usize,
     /// Calls seen in the current shrink window.
     calls_in_window: u32,
@@ -137,7 +142,7 @@ impl SegmentWorker {
     ///
     /// The tokens segmented from `text`, in reading order.
     pub fn segment<'w>(&'w mut self, text: &'w str) -> LinderaResult<Vec<Token<'w>>> {
-        self.maybe_auto_shrink(text.len());
+        self.maybe_auto_shrink();
         let Self {
             segmenter,
             lattice,
@@ -170,7 +175,7 @@ impl SegmentWorker {
         unique: bool,
         cost_threshold: Option<i64>,
     ) -> LinderaResult<Vec<(Vec<Token<'w>>, i64)>> {
-        self.maybe_auto_shrink(text.len());
+        self.maybe_auto_shrink();
         let Self {
             segmenter, lattice, ..
         } = self;
@@ -223,6 +228,10 @@ impl SegmentWorker {
     /// of `text_len_hint` bytes needs, and resets the automatic-shrink
     /// window.
     ///
+    /// The lattice is slot(character)-denominated (#943); a byte length is
+    /// a valid conservative bound, since a sentence never has more
+    /// characters than bytes.
+    ///
     /// # 引数
     ///
     /// * `text_len_hint` - Expected typical input length in bytes.
@@ -246,23 +255,18 @@ impl SegmentWorker {
         self.calls_in_window = 0;
     }
 
-    /// Records one call of `text_len` bytes and, once per shrink window,
-    /// shrinks the lattice if its capacity exceeds the window's observed
-    /// need by more than the hysteresis factor.
+    /// Records one call and, once per shrink window, shrinks the lattice
+    /// if its capacity exceeds the window's observed need by more than the
+    /// hysteresis factor.
     ///
-    /// The per-call need is capped at [`MAX_SENTENCE_BYTES`] because the
-    /// segmenter never feeds the lattice a longer sentence; using the full
-    /// text length would only over-estimate (which is the safe direction —
-    /// it can at most delay a shrink, never cause one too early).
-    ///
-    /// # 引数
-    ///
-    /// * `text_len` - Length in bytes of the current call's input.
-    fn maybe_auto_shrink(&mut self, text_len: usize) {
-        self.window_max_needed = self.window_max_needed.max(text_len.min(MAX_SENTENCE_BYTES));
+    /// The per-window need is the largest per-sentence character count the
+    /// lattice actually processed ([`Lattice::take_max_char_len`]), so the
+    /// accounting stays in the lattice's own slot unit (#943).
+    fn maybe_auto_shrink(&mut self) {
+        self.window_max_needed = self.window_max_needed.max(self.lattice.take_max_char_len());
         self.calls_in_window += 1;
         if self.calls_in_window >= SHRINK_WINDOW_CALLS {
-            let target = self.window_max_needed.max(SHRINK_FLOOR_BYTES);
+            let target = self.window_max_needed.max(SHRINK_FLOOR_SLOTS);
             if self.lattice.capacity() > target.saturating_mul(SHRINK_HYSTERESIS) {
                 self.lattice.shrink_to(target);
             }
@@ -409,20 +413,22 @@ mod tests {
         /// shrink when capacity > hysteresis * target).
         #[test]
         fn test_auto_shrink_fires_after_window_of_short_inputs() {
-            use super::super::{SHRINK_FLOOR_BYTES, SHRINK_HYSTERESIS, SHRINK_WINDOW_CALLS};
+            use super::super::{SHRINK_FLOOR_SLOTS, SHRINK_HYSTERESIS, SHRINK_WINDOW_CALLS};
 
             let segmenter = ipadic_segmenter();
             let mut worker = segmenter.new_worker();
 
             // One delimiter-free sentence well above the shrink threshold
-            // (but under the 32 KiB forced-cut bound): 7000 * 3 bytes.
-            let long_text = "あ".repeat(7000);
-            assert!(long_text.len() > SHRINK_FLOOR_BYTES * SHRINK_HYSTERESIS);
+            // in slots = characters (but under the 32 KiB forced-cut
+            // bound: 9000 * 3 bytes = 27 KB).
+            let long_chars = 9000;
+            let long_text = "あ".repeat(long_chars);
+            assert!(long_chars > SHRINK_FLOOR_SLOTS * SHRINK_HYSTERESIS);
             if let Err(err) = worker.segment(&long_text) {
                 panic!("worker.segment failed: {err}");
             }
             assert!(
-                worker.lattice.capacity() >= long_text.len(),
+                worker.lattice.capacity() >= long_chars,
                 "long sentence did not grow the lattice"
             );
 
@@ -436,10 +442,10 @@ mod tests {
                 }
             }
             assert!(
-                worker.lattice.capacity() <= SHRINK_FLOOR_BYTES,
+                worker.lattice.capacity() <= SHRINK_FLOOR_SLOTS,
                 "auto shrink did not fire: capacity {} > floor {}",
                 worker.lattice.capacity(),
-                SHRINK_FLOOR_BYTES
+                SHRINK_FLOOR_SLOTS
             );
 
             // Output stays correct after the shrink.
