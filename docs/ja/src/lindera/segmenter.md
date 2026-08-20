@@ -148,6 +148,14 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
 
+## 未知語のグルーピング
+
+未知語のグルーピングはデフォルトでは無制限です。`max_grouping_len(Some(n))` で MeCab の `max-grouping-size` と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます。上限を超えるランは 1 文字ずつの未知語になります:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
+```
+
 ## N-Best セグメンテーション
 
 `segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：

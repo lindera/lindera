@@ -60,6 +60,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--char-filter` / `-c`: Character filter configuration (JSON)
 - `--token-filter` / `-t`: Token filter configuration (JSON)
 - `--keep-whitespace`: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)
+- `--max-grouping-len`: Maximum unknown-word grouping length in characters beyond the first (MeCab's `max-grouping-size`; MeCab defaults to 24). Runs longer than the cap fall back to single-character unknown words. Default: unbounded
 - `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.

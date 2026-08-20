@@ -66,6 +66,11 @@ pub struct TokenizeArgs {
     )]
     keep_whitespace: bool,
     #[clap(
+        long = "max-grouping-len",
+        help = "Maximum unknown-word grouping length in characters beyond the first (MeCab's max-grouping-size; MeCab defaults to 24). Longer runs fall back to single-character unknown words. Default: unbounded"
+    )]
+    max_grouping_len: Option<usize>,
+    #[clap(
         long = "mmap",
         help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
     )]
@@ -243,6 +248,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Keep whitespace (default is to ignore whitespace for MeCab compatibility)
     if args.keep_whitespace {
         builder.set_segmenter_keep_whitespace(true);
+    }
+
+    // Unknown-word grouping cap (default: unbounded)
+    if let Some(max_grouping_len) = args.max_grouping_len {
+        builder.set_segmenter_max_grouping_len(max_grouping_len);
     }
 
     // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)

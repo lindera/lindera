@@ -211,6 +211,16 @@ impl SegmentWorker {
         self.segmenter.keep_whitespace = keep;
     }
 
+    /// Sets the unknown-word grouping cap for subsequent calls (MeCab's
+    /// `max-grouping-size` semantics; `None` = unbounded, the default).
+    ///
+    /// # 引数
+    ///
+    /// * `max_grouping_len` - Maximum grouped characters beyond the first.
+    pub fn set_max_grouping_len(&mut self, max_grouping_len: Option<usize>) {
+        self.segmenter.max_grouping_len = max_grouping_len;
+    }
+
     /// Returns a shared reference to the underlying segmenter.
     ///
     /// No `&mut` accessor is provided on purpose: swapping the dictionary
@@ -405,6 +415,53 @@ mod tests {
                 "whitespace token missing with keep_whitespace=true"
             );
             worker.set_keep_whitespace(false);
+        }
+
+        /// #944: max_grouping_len caps unknown-word grouping with MeCab
+        /// semantics -- a run with more characters beyond the first than
+        /// the cap falls back to single-char unknown words -- while None
+        /// (the default) keeps grouping unbounded.
+        #[test]
+        fn test_max_grouping_len_caps_unknown_grouping() {
+            let segmenter = ipadic_segmenter();
+            let mut worker = segmenter.new_worker();
+
+            // An out-of-vocabulary katakana run (5 chars); IPADIC's
+            // KATAKANA category groups, so the default spans the run.
+            let text = "ヷヸヹヺヷ";
+            let surfaces = |worker: &mut super::super::SegmentWorker| -> Vec<String> {
+                match worker.segment(text) {
+                    Ok(tokens) => tokens.iter().map(|t| t.surface.to_string()).collect(),
+                    Err(err) => panic!("worker.segment failed: {err}"),
+                }
+            };
+
+            let unbounded = surfaces(&mut worker);
+            assert_eq!(
+                unbounded,
+                vec![text.to_string()],
+                "unbounded grouping must span the whole run"
+            );
+
+            // With a cap of 2: positions 0 and 1 see runs of 5 and 4
+            // chars (3+ beyond the first, over the cap) and fall back to
+            // single-char unknowns; position 2's remaining run of 3 chars
+            // (2 beyond the first) fits the cap and groups -- the exact
+            // MeCab max-grouping-size behavior.
+            worker.set_max_grouping_len(Some(2));
+            assert_eq!(
+                surfaces(&mut worker),
+                vec!["ヷ".to_string(), "ヸ".to_string(), "ヹヺヷ".to_string()],
+                "cap must reject over-long runs and admit fitting tails"
+            );
+
+            // A cap of exactly run-1 admits the grouped candidate.
+            worker.set_max_grouping_len(Some(4));
+            assert_eq!(surfaces(&mut worker), vec![text.to_string()]);
+
+            // Clearing the cap restores the default behavior.
+            worker.set_max_grouping_len(None);
+            assert_eq!(surfaces(&mut worker), unbounded);
         }
 
         /// The automatic policy must release a lattice grown by one long

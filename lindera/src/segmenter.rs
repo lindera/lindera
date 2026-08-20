@@ -98,6 +98,13 @@ pub struct Segmenter {
     /// When true, whitespace tokens are included in the output.
     pub keep_whitespace: bool,
 
+    /// Maximum number of characters beyond the first that an unknown-word
+    /// grouping may span (MeCab's `max-grouping-size`; MeCab defaults to
+    /// 24). A grouped candidate longer than this is not emitted -- the
+    /// single-char unknown word is emitted instead. `None` (default)
+    /// leaves grouping unbounded, matching previous behavior.
+    pub max_grouping_len: Option<usize>,
+
     /// The category ID for space characters, used when keep_whitespace is false.
     space_category_id: Option<CategoryId>,
 
@@ -171,6 +178,7 @@ impl Segmenter {
             dictionary,
             user_dictionary,
             keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
+            max_grouping_len: None, // Default: unbounded grouping
             space_category_id,
             space_ascii_table,
         }
@@ -204,6 +212,22 @@ impl Segmenter {
     /// ```
     pub fn keep_whitespace(mut self, keep_whitespace: bool) -> Self {
         self.keep_whitespace = keep_whitespace;
+        self
+    }
+
+    /// Builder method to cap unknown-word grouping (MeCab's
+    /// `max-grouping-size` semantics; see the `max_grouping_len` field).
+    ///
+    /// # 引数
+    ///
+    /// * `max_grouping_len` - Maximum grouped characters beyond the first,
+    ///   or `None` for unbounded grouping (the default).
+    ///
+    /// # 戻り値
+    ///
+    /// `self`, for chaining.
+    pub fn max_grouping_len(mut self, max_grouping_len: Option<usize>) -> Self {
+        self.max_grouping_len = max_grouping_len;
         self
     }
 
@@ -300,7 +324,17 @@ impl Segmenter {
         // application point. `space_category_id` is only read when `keep_whitespace` is
         // false, so letting `new` always resolve it is equivalent to the previous
         // conditional.
-        Ok(Self::new(mode, dictionary, user_dictionary).keep_whitespace(keep_whitespace))
+        // Load the max_grouping_len option from the config.
+        // Absent or 0 means unbounded grouping (the default).
+        let max_grouping_len = config
+            .get("max_grouping_len")
+            .and_then(Value::as_u64)
+            .filter(|&n| n > 0)
+            .map(|n| n as usize);
+
+        Ok(Self::new(mode, dictionary, user_dictionary)
+            .keep_whitespace(keep_whitespace)
+            .max_grouping_len(max_grouping_len))
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -461,6 +495,7 @@ impl Segmenter {
                 &self.dictionary.connection_cost_matrix,
                 sentence,
                 &self.mode,
+                self.max_grouping_len,
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
@@ -604,6 +639,7 @@ impl Segmenter {
                 &self.dictionary.connection_cost_matrix,
                 sentence,
                 &self.mode,
+                self.max_grouping_len,
             );
 
             let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);

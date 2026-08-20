@@ -8,7 +8,7 @@ use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::mode::Mode;
+use crate::mode::{Mode, Penalty};
 
 /// Type of lexicon containing the word
 #[derive(
@@ -421,6 +421,23 @@ pub struct Lattice {
     /// order -- the order the retired whole-text pre-scan's head-inserted
     /// list drained in, which decides the winner among equal-cost edges.
     sys_matches: Vec<(u32, WordEntry)>,
+    /// Per-(char, category-ordinal) grouping run lengths, precomputed in
+    /// one backward pass in Decompose mode only (#944) and indexed by
+    /// `CharData::group_runs_start + ordinal`. Normal mode keeps the gated
+    /// forward scan, which is already ~O(n) there; Decompose re-enters the
+    /// unknown-word logic at every position of a run, so re-scanning made
+    /// it O(run^2).
+    group_runs_buf: Vec<u32>,
+    /// Per-char offsets into `group_runs_buf`, filled only in Decompose
+    /// mode; kept out of `CharData` so the Normal-mode per-char buffer
+    /// stays 16 bytes (#944).
+    group_runs_start_buf: Vec<u32>,
+    /// Decompose penalty cache for the left edges of the position
+    /// currently being relaxed; see `add_edge_in_lattice` (#944).
+    penalty_cache: Vec<i32>,
+    /// The char position `penalty_cache` is valid for (`usize::MAX` =
+    /// invalid; reset at the start of every sentence).
+    penalty_cache_pos: usize,
 }
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
@@ -741,6 +758,9 @@ impl Lattice {
         self.chars_buf.shrink_to(n_chars);
         self.codes_buf.shrink_to(n_chars);
         self.sys_matches.shrink_to(64);
+        self.group_runs_buf.shrink_to(4 * n_chars);
+        self.group_runs_start_buf.shrink_to(slots);
+        self.penalty_cache.shrink_to(64);
     }
 
     /// Fills the per-sentence character buffers (`char_info_buffer`,
@@ -775,7 +795,9 @@ impl Lattice {
         self.categories_buffer.clear();
         self.chars_buf.clear();
         self.codes_buf.clear();
+        self.group_runs_start_buf.clear();
 
+        let mut group_runs_total: u32 = 0;
         for (byte_offset, c) in text.char_indices() {
             // Category lookup is O(1) for BMP codepoints via the flat table
             // built at dictionary load (#878). On that fast path, store the
@@ -794,6 +816,12 @@ impl Lattice {
                         (start, (self.categories_buffer.len() as u32 - start) as u16)
                     }
                 };
+
+            // Grouping runs are precomputed only in Decompose mode (#944).
+            if needs_kanji_runs {
+                self.group_runs_start_buf.push(group_runs_total);
+                group_runs_total += categories_len as u32;
+            }
 
             self.char_info_buffer.push(CharData {
                 byte_offset: byte_offset as u32,
@@ -814,10 +842,13 @@ impl Lattice {
             kanji_run_char_len: 0,
         });
 
-        // Pre-calculate Kanji run lengths (backwards); skipped in Normal
-        // mode where no consumer reads them (see `search_mode` above).
+        // Pre-calculate Kanji run lengths and per-ordinal grouping run
+        // lengths (backwards); both are skipped in Normal mode, where no
+        // consumer reads them (see `search_mode` above and
+        // `process_unknown_word`).
         if needs_kanji_runs {
-            for i in (0..self.char_info_buffer.len() - 1).rev() {
+            let n_chars = self.char_info_buffer.len() - 1;
+            for i in (0..n_chars).rev() {
                 if self.char_info_buffer[i].is_kanji {
                     self.char_info_buffer[i].kanji_run_char_len =
                         1 + self.char_info_buffer[i + 1].kanji_run_char_len;
@@ -825,6 +856,32 @@ impl Lattice {
                     self.char_info_buffer[i].kanji_run_char_len = 0;
                 }
             }
+
+            // Run length of category-ordinal `ord` starting at char `i`:
+            // 1 + the run at `i + 1` when the next char carries the same
+            // category at the same ordinal -- exactly the forward scan
+            // `process_unknown_word` performs, folded into one O(total
+            // ordinals) backward pass (#944).
+            let mut runs = std::mem::take(&mut self.group_runs_buf);
+            runs.clear();
+            runs.resize(group_runs_total as usize, 1);
+            for i in (0..n_chars).rev() {
+                let cd = self.char_info_buffer[i];
+                for ord in 0..cd.categories_len as usize {
+                    let cat = self.get_cached_category(char_definitions, i, ord);
+                    let mut run = 1;
+                    if i + 1 < n_chars {
+                        let next = self.char_info_buffer[i + 1];
+                        if ord < next.categories_len as usize
+                            && self.get_cached_category(char_definitions, i + 1, ord) == cat
+                        {
+                            run = runs[self.group_runs_start_buf[i + 1] as usize + ord] + 1;
+                        }
+                    }
+                    runs[self.group_runs_start_buf[i] as usize + ord] = run;
+                }
+            }
+            self.group_runs_buf = runs;
         }
     }
 
@@ -842,6 +899,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         text: &str,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
     ) {
         // Clear the previous sentence's slots (bounded by its char count),
         // then build the per-char buffers to learn this sentence's length.
@@ -857,6 +915,7 @@ impl Lattice {
              split the input into sentences (the Segmenter does this automatically)"
         );
         self.record_and_grow(n_chars);
+        self.penalty_cache_pos = usize::MAX;
 
         let start_edge = Edge {
             path_cost: 0,
@@ -978,6 +1037,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        max_grouping_len,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1022,6 +1082,7 @@ impl Lattice {
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1033,24 +1094,50 @@ impl Lattice {
         if category_data.invoke || !found {
             unknown_word_num_chars = 1;
             if category_data.group {
-                for i in 1.. {
-                    let next_idx = char_idx + i;
-                    if next_idx >= self.char_info_buffer.len() - 1 {
-                        break;
-                    }
-                    let num_categories = self.char_info_buffer[next_idx].categories_len as usize;
-                    let mut found_cat = false;
-                    if category_ord < num_categories {
-                        let cat =
-                            self.get_cached_category(char_definitions, next_idx, category_ord);
-                        if cat == category {
-                            unknown_word_num_chars += 1;
-                            found_cat = true;
+                if search_mode.is_search() {
+                    // Decompose re-enters the unknown-word logic at every
+                    // position inside a run, so the forward rescan below
+                    // was O(run^2) in total; read the run precomputed by
+                    // prepare_char_buffers instead (#944).
+                    unknown_word_num_chars = self.group_runs_buf
+                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
+                        as usize;
+                } else {
+                    // Normal mode: the unknown_word_end gate makes this
+                    // scan run ~once per run, so it stays O(n) without the
+                    // precompute (which would cost every Normal sentence a
+                    // per-ordinal pass for nothing).
+                    for i in 1.. {
+                        let next_idx = char_idx + i;
+                        if next_idx >= self.char_info_buffer.len() - 1 {
+                            break;
+                        }
+                        let num_categories =
+                            self.char_info_buffer[next_idx].categories_len as usize;
+                        let mut found_cat = false;
+                        if category_ord < num_categories {
+                            let cat =
+                                self.get_cached_category(char_definitions, next_idx, category_ord);
+                            if cat == category {
+                                unknown_word_num_chars += 1;
+                                found_cat = true;
+                            }
+                        }
+                        if !found_cat {
+                            break;
                         }
                     }
-                    if !found_cat {
-                        break;
-                    }
+                }
+                // MeCab-style cap (#944): a grouped candidate with more
+                // than max_grouping_len characters beyond the first is not
+                // emitted; the single-char unknown word is emitted instead,
+                // so progress is always guaranteed. None (default) keeps
+                // the grouping unbounded, i.e. today's output.
+                if let Some(cap) = max_grouping_len
+                    && unknown_word_num_chars > 1
+                    && unknown_word_num_chars - 1 > cap
+                {
+                    unknown_word_num_chars = 1;
                 }
             }
         }
@@ -1068,6 +1155,127 @@ impl Lattice {
             return Some(end_char);
         }
         unknown_word_index
+    }
+
+    /// Decompose-mode relaxation body of `add_edge_in_lattice`, outlined
+    /// (`inline(never)`) so the Normal-mode hot arm keeps its compact code
+    /// layout (#944 measured a ~2% Normal regression from the enlarged
+    /// in-function Decompose arm alone).
+    ///
+    /// # 引数
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `penalty` - The Decompose penalty configuration.
+    /// * `cost_matrix` - The connection cost matrix.
+    ///
+    /// # 戻り値
+    ///
+    /// The best `(cost, left index)` over the position's left edges.
+    #[inline(never)]
+    fn relax_decompose(
+        &mut self,
+        start_char: usize,
+        right_left_id: u32,
+        penalty: &Penalty,
+        cost_matrix: &ConnectionCostMatrix,
+    ) -> (i32, Option<u16>) {
+        // Penalties depend only on the left edges, and
+        // ends_at[start_char] is immutable while the main loop processes
+        // this start position (every insertion targets a later slot), so
+        // compute them once per position instead of once per (left edge,
+        // incoming edge) pair (#944).
+        let mut cache = std::mem::take(&mut self.penalty_cache);
+        if self.penalty_cache_pos != start_char {
+            cache.clear();
+            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
+                // The left edge ends where this edge starts, so its exact
+                // char span is start_char - its start (#943 fixed the
+                // former byte-length/3 approximation).
+                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+            }));
+            self.penalty_cache_pos = start_char;
+        }
+        // Matrix row hoisted like the Normal arm (#880/#944); path +
+        // connection stays a plain add (bounded by PATH_COST_CLAMP + i16),
+        // while the penalty addition keeps saturating_add because the
+        // penalty is unbounded.
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let left_edges = &self.ends_at[start_char];
+        let cost_row = cost_matrix.row(right_left_id);
+        for (i, left_edge) in left_edges.iter().enumerate() {
+            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
+
+            if total_cost < best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u16);
+            }
+        }
+        self.penalty_cache = cache;
+        (best_cost, best_left)
+    }
+
+    /// [`Self::relax_decompose`] for the nbest lattice: additionally
+    /// records every transition into `all_paths[stop_char]`.
+    ///
+    /// # 引数
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `stop_char` - The incoming edge's end position.
+    /// * `new_edge_index` - The incoming edge's index in its target slot.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `penalty` - The Decompose penalty configuration.
+    /// * `cost_matrix` - The connection cost matrix.
+    ///
+    /// # 戻り値
+    ///
+    /// The best `(cost, left index)` over the position's left edges.
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn relax_decompose_nbest(
+        &mut self,
+        start_char: usize,
+        stop_char: usize,
+        new_edge_index: u16,
+        right_left_id: u32,
+        penalty: &Penalty,
+        cost_matrix: &ConnectionCostMatrix,
+    ) -> (i32, Option<u16>) {
+        // Same per-position penalty cache and hoisted row as
+        // relax_decompose (#944).
+        let mut cache = std::mem::take(&mut self.penalty_cache);
+        if self.penalty_cache_pos != start_char {
+            cache.clear();
+            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
+                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+            }));
+            self.penalty_cache_pos = start_char;
+        }
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let cost_row = cost_matrix.row(right_left_id);
+        for (i, &penalty_cost) in cache.iter().enumerate() {
+            let left_edge = &self.ends_at[start_char][i];
+            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let total_cost = (left_edge.path_cost + conn_cost).saturating_add(penalty_cost);
+
+            // Record ALL transitions for N-Best
+            self.all_paths[stop_char].push(PathEntry {
+                edge_index: new_edge_index,
+                left_pos: start_char as u32,
+                left_index: i as u16,
+                cost: total_cost,
+            });
+
+            if total_cost < best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u16);
+            }
+        }
+        self.penalty_cache = cache;
+        (best_cost, best_left)
     }
 
     /// Adds an edge ending at char position `stop_char` to the lattice and
@@ -1114,24 +1322,8 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
-                let left_edges = &self.ends_at[start_char];
-                for (i, left_edge) in left_edges.iter().enumerate() {
-                    let conn_cost = cost_matrix.cost(left_edge.right_id as u32, right_left_id);
-                    // The left edge ends where this edge starts, so its
-                    // exact char span is start_char - its start (#943
-                    // fixed the former byte-length/3 approximation).
-                    let left_num_chars = start_char - left_edge.start_char as usize;
-                    let penalty_cost = penalty.penalty(left_edge, left_num_chars);
-                    let total_cost = left_edge
-                        .path_cost
-                        .saturating_add(conn_cost)
-                        .saturating_add(penalty_cost);
-
-                    if total_cost < best_cost {
-                        best_cost = total_cost;
-                        best_left = Some(i as u16);
-                    }
-                }
+                (best_cost, best_left) =
+                    self.relax_decompose(start_char, right_left_id, penalty, cost_matrix);
             }
         }
 
@@ -1306,31 +1498,14 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
-                for i in 0..self.ends_at[start_char].len() {
-                    let left_edge = &self.ends_at[start_char][i];
-                    let conn_cost = cost_matrix.cost(left_edge.right_id as u32, right_left_id);
-                    // See add_edge_in_lattice: the left edge's exact char
-                    // span is start_char - its start.
-                    let left_num_chars = start_char - left_edge.start_char as usize;
-                    let penalty_cost = penalty.penalty(left_edge, left_num_chars);
-                    let total_cost = left_edge
-                        .path_cost
-                        .saturating_add(conn_cost)
-                        .saturating_add(penalty_cost);
-
-                    // Record ALL transitions for N-Best
-                    self.all_paths[stop_char].push(PathEntry {
-                        edge_index: new_edge_index,
-                        left_pos: start_char as u32,
-                        left_index: i as u16,
-                        cost: total_cost,
-                    });
-
-                    if total_cost < best_cost {
-                        best_cost = total_cost;
-                        best_left = Some(i as u16);
-                    }
-                }
+                (best_cost, best_left) = self.relax_decompose_nbest(
+                    start_char,
+                    stop_char,
+                    new_edge_index,
+                    right_left_id,
+                    penalty,
+                    cost_matrix,
+                );
             }
         }
 
@@ -1350,6 +1525,7 @@ impl Lattice {
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1361,24 +1537,50 @@ impl Lattice {
         if category_data.invoke || !found {
             unknown_word_num_chars = 1;
             if category_data.group {
-                for i in 1.. {
-                    let next_idx = char_idx + i;
-                    if next_idx >= self.char_info_buffer.len() - 1 {
-                        break;
-                    }
-                    let num_categories = self.char_info_buffer[next_idx].categories_len as usize;
-                    let mut found_cat = false;
-                    if category_ord < num_categories {
-                        let cat =
-                            self.get_cached_category(char_definitions, next_idx, category_ord);
-                        if cat == category {
-                            unknown_word_num_chars += 1;
-                            found_cat = true;
+                if search_mode.is_search() {
+                    // Decompose re-enters the unknown-word logic at every
+                    // position inside a run, so the forward rescan below
+                    // was O(run^2) in total; read the run precomputed by
+                    // prepare_char_buffers instead (#944).
+                    unknown_word_num_chars = self.group_runs_buf
+                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
+                        as usize;
+                } else {
+                    // Normal mode: the unknown_word_end gate makes this
+                    // scan run ~once per run, so it stays O(n) without the
+                    // precompute (which would cost every Normal sentence a
+                    // per-ordinal pass for nothing).
+                    for i in 1.. {
+                        let next_idx = char_idx + i;
+                        if next_idx >= self.char_info_buffer.len() - 1 {
+                            break;
+                        }
+                        let num_categories =
+                            self.char_info_buffer[next_idx].categories_len as usize;
+                        let mut found_cat = false;
+                        if category_ord < num_categories {
+                            let cat =
+                                self.get_cached_category(char_definitions, next_idx, category_ord);
+                            if cat == category {
+                                unknown_word_num_chars += 1;
+                                found_cat = true;
+                            }
+                        }
+                        if !found_cat {
+                            break;
                         }
                     }
-                    if !found_cat {
-                        break;
-                    }
+                }
+                // MeCab-style cap (#944): a grouped candidate with more
+                // than max_grouping_len characters beyond the first is not
+                // emitted; the single-char unknown word is emitted instead,
+                // so progress is always guaranteed. None (default) keeps
+                // the grouping unbounded, i.e. today's output.
+                if let Some(cap) = max_grouping_len
+                    && unknown_word_num_chars > 1
+                    && unknown_word_num_chars - 1 > cap
+                {
+                    unknown_word_num_chars = 1;
                 }
             }
         }
@@ -1410,6 +1612,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         text: &str,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
     ) {
         // Same clear -> prepare -> grow sequence as set_text.
         self.clear();
@@ -1422,6 +1625,7 @@ impl Lattice {
              split the input into sentences (the Segmenter does this automatically)"
         );
         self.record_and_grow_nbest(n_chars);
+        self.penalty_cache_pos = usize::MAX;
 
         let start_edge = Edge {
             path_cost: 0,
@@ -1530,6 +1734,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        max_grouping_len,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1666,6 +1871,87 @@ mod tests {
                 byte_offset: i as u32,
                 ..Default::default()
             });
+        }
+    }
+
+    /// #944: the Decompose-mode backward precompute must reproduce the
+    /// forward grouping scan exactly for every (char, ordinal) pair,
+    /// including multi-ordinal chars, runs at the sentence end, and
+    /// ordinals present on one char but absent on the next.
+    #[test]
+    fn test_group_runs_match_forward_scan() {
+        use std::collections::BTreeMap;
+
+        use crate::dictionary::character_definition::{
+            CategoryData, CategoryId, CharacterDefinition, LookupTable,
+        };
+        use crate::dictionary::prefix_dictionary::PrefixDictionary;
+        use crate::mode::{Mode, Penalty};
+
+        // 'a'..='c' -> {A}; 'd'..='f' -> {B, A}; everything else -> {C}.
+        let mapping = LookupTable::from_fn(vec![0u32, 0x61, 0x64, 0x67], &|c,
+                                                                           buf: &mut Vec<
+            CategoryId,
+        >| {
+            if (0x61..0x64).contains(&c) {
+                buf.push(CategoryId(0));
+            } else if (0x64..0x67).contains(&c) {
+                buf.push(CategoryId(1));
+                buf.push(CategoryId(0));
+            } else {
+                buf.push(CategoryId(2));
+            }
+        });
+        let defs = vec![
+            CategoryData {
+                invoke: true,
+                group: true,
+                length: 0,
+            };
+            3
+        ];
+        let names = vec!["A".into(), "B".into(), "C".into()];
+        let chardef = CharacterDefinition::new(defs, names, mapping);
+
+        let mut map = BTreeMap::new();
+        map.insert(
+            "x".to_string(),
+            vec![WordEntry::new(WordId::new(LexType::System, 0), 0, 0, 0)],
+        );
+        let dict = PrefixDictionary::from_word_entry_map(&map).unwrap();
+
+        let mut lattice = Lattice::default();
+        let mode = Mode::Decompose(Penalty::default());
+        // Runs crossing category boundaries, a two-ordinal stretch (d-f),
+        // and a trailing single char.
+        let text = "aabdddefzza";
+        lattice.prepare_char_buffers(&dict, &chardef, text, &mode);
+
+        let n_chars = lattice.chars_buf.len();
+        assert_eq!(n_chars, text.chars().count());
+        for i in 0..n_chars {
+            let char_data = lattice.char_info_buffer[i];
+            for ord in 0..char_data.categories_len as usize {
+                let cat = lattice.get_cached_category(&chardef, i, ord);
+                // Reference: the forward scan process_unknown_word used
+                // before #944.
+                let mut expected = 1usize;
+                for j in i + 1..n_chars {
+                    let next = lattice.char_info_buffer[j];
+                    if ord < next.categories_len as usize
+                        && lattice.get_cached_category(&chardef, j, ord) == cat
+                    {
+                        expected += 1;
+                    } else {
+                        break;
+                    }
+                }
+                assert_eq!(
+                    lattice.group_runs_buf[lattice.group_runs_start_buf[i] as usize + ord] as usize,
+                    expected,
+                    "run mismatch at char {i} ordinal {ord}"
+                );
+            }
         }
     }
 
