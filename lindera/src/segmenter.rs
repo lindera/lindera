@@ -421,6 +421,18 @@ impl Segmenter {
         let mut position = 0_usize;
         let mut byte_position = 0_usize;
 
+        // Whitespace-filter configuration, hoisted out of the per-token
+        // loop: the per-char closure previously re-unwrapped the Option'd
+        // ASCII table (a by-value array copy at source level) on every
+        // character it examined (#942). `space_category_id` and
+        // `space_ascii_table` are built together, so `zip` preserves the
+        // old `keep_whitespace`/`Some` gating exactly.
+        let space_filter = if self.keep_whitespace {
+            None
+        } else {
+            self.space_category_id.zip(self.space_ascii_table.as_ref())
+        };
+
         // Process whole text without splitting first for better performance with borrowed text
         let text_len = text.len();
         let mut sentence_start = 0;
@@ -469,16 +481,14 @@ impl Segmenter {
                 let absolute_end = sentence_start + byte_end;
 
                 // Skip whitespace tokens if keep_whitespace is false (default MeCab behavior)
-                if !self.keep_whitespace
-                    && let Some(space_category_id) = self.space_category_id
-                {
+                if let Some((space_category_id, space_ascii_table)) = space_filter {
                     // Check if this token consists only of whitespace characters.
                     // ASCII/Latin-1 codepoints use the precomputed table (O(1));
                     // anything else falls back to the dictionary lookup.
                     let token_text = &sentence[byte_start..byte_end];
                     let is_space = token_text.chars().all(|c| {
                         if (c as u32) < 256 {
-                            self.space_ascii_table.unwrap()[c as usize]
+                            space_ascii_table[c as usize]
                         } else {
                             self.dictionary
                                 .character_definition
@@ -560,6 +570,13 @@ impl Segmenter {
     ) -> LinderaResult<Vec<(Vec<Token<'a>>, i64)>> {
         let mut all_results: Vec<(Vec<Token>, i64)> = Vec::with_capacity(n);
 
+        // Hoisted whitespace-filter configuration; see segment_with_buffers.
+        let space_filter = if self.keep_whitespace {
+            None
+        } else {
+            self.space_category_id.zip(self.space_ascii_table.as_ref())
+        };
+
         let text_len = text.len();
         let mut sentence_start = 0;
 
@@ -618,16 +635,14 @@ impl Segmenter {
                     let absolute_end = sentence_start + byte_end;
 
                     // Skip whitespace tokens if keep_whitespace is false
-                    if !self.keep_whitespace
-                        && let Some(space_category_id) = self.space_category_id
-                    {
+                    if let Some((space_category_id, space_ascii_table)) = space_filter {
                         // ASCII/Latin-1 codepoints use the precomputed table
                         // (O(1)); anything else falls back to the dictionary
                         // lookup.
                         let token_text = &sentence[byte_start..byte_end];
                         let is_space = token_text.chars().all(|c| {
                             if (c as u32) < 256 {
-                                self.space_ascii_table.unwrap()[c as usize]
+                                space_ascii_table[c as usize]
                             } else {
                                 self.dictionary
                                     .character_definition

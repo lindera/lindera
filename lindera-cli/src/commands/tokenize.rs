@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use lindera::LinderaResult;
-use lindera::dictionary::Lattice;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
 use lindera::token::Token;
@@ -157,7 +156,9 @@ fn mecab_output<W: Write>(
 ) -> LinderaResult<()> {
     for token in tokens.iter_mut() {
         details_buf.clear();
-        for (i, detail) in token.details().iter().enumerate() {
+        // details_iter avoids the fresh Vec<&str> that details() collects
+        // on every call (#942); the joined string reuses details_buf.
+        for (i, detail) in token.details_iter().enumerate() {
             if i > 0 {
                 details_buf.push(',');
             }
@@ -280,9 +281,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     let nbest_unique = args.nbest_unique;
     let nbest_cost_threshold = args.nbest_cost_threshold;
 
-    // Reused across every line to avoid reallocating the lattice's internal
-    // buffers on each call.
-    let mut lattice = Lattice::default();
+    // Reusable analysis session: keeps the lattice, the backtrace scratch,
+    // and the character-filtered text buffer alive across lines, so token
+    // surfaces stay borrowed (no per-token String) even when character
+    // filters are configured (#942).
+    let mut worker = tokenizer.into_worker();
 
     // Buffer all output on a locked stdout: the default line-buffered stdout
     // would otherwise issue one write syscall per output line.
@@ -304,19 +307,14 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         }
 
         if nbest >= 2 {
-            let results = tokenizer.tokenize_nbest_with_lattice(
-                text.trim(),
-                &mut lattice,
-                nbest,
-                nbest_unique,
-                nbest_cost_threshold,
-            )?;
+            let results =
+                worker.tokenize_nbest(text.trim(), nbest, nbest_unique, nbest_cost_threshold)?;
             for (rank, (tokens, cost)) in results.into_iter().enumerate() {
                 writeln!(writer, "NBEST {} (cost={})", rank + 1, cost).map_err(io_err)?;
                 write_output(&mut writer, output_format, tokens, &mut details_buf)?;
             }
         } else {
-            let tokens = tokenizer.tokenize_with_lattice(text.trim(), &mut lattice)?;
+            let tokens = worker.tokenize(text.trim())?;
             write_output(&mut writer, output_format, tokens, &mut details_buf)?;
         }
     }
