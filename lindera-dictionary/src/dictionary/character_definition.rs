@@ -197,6 +197,44 @@ impl CharacterDefinition {
             self.mapping.eval(cp)
         }
     }
+
+    /// Returns the pool coordinates of `c`'s category set when the flat BMP
+    /// fast path can serve it, so callers can store the compact
+    /// `(offset, len)` pair instead of copying the categories (#942).
+    ///
+    /// # 引数
+    ///
+    /// * `c` - The character to look up.
+    ///
+    /// # 戻り値
+    ///
+    /// `Some((offset, len))` addressing [`Self::flat_category`] (offset is
+    /// at most 24 bits by construction), or `None` when the flat table is
+    /// unavailable or `c` is outside the BMP.
+    #[inline(always)]
+    pub(crate) fn lookup_categories_packed(&self, c: char) -> Option<(u32, u16)> {
+        let cp = c as usize;
+        if cp < FLAT_TABLE_LEN && !self.flat_index.is_empty() {
+            let packed = self.flat_index[cp];
+            Some((packed >> 8, (packed & 0xFF) as u16))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the category at `idx` in the flat pool.
+    ///
+    /// # 引数
+    ///
+    /// * `idx` - Pool index derived from [`Self::lookup_categories_packed`].
+    ///
+    /// # 戻り値
+    ///
+    /// The category id stored at that pool slot.
+    #[inline(always)]
+    pub(crate) fn flat_category(&self, idx: usize) -> CategoryId {
+        self.flat_categories[idx]
+    }
 }
 
 #[cfg(test)]

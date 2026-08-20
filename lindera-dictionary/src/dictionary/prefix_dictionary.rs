@@ -58,7 +58,10 @@ impl WordIdx {
 const OFFSET_MASK: u32 = 0x7fff_ffff;
 
 /// The code-mapper table value marking a character with no code assigned.
-const INVALID_CODE: u32 = u32::MAX;
+///
+/// Also used by [`PrefixDictionary::map_code_or_invalid`] callers (the
+/// lattice's per-sentence code buffer) to mark unmapped characters.
+pub(crate) const INVALID_CODE: u32 = u32::MAX;
 
 /// Byte offset where the code-mapper table starts inside `dict.trie`
 /// (after the `u32` table length).
@@ -102,6 +105,11 @@ pub struct PrefixDictionary {
     pub words_idx_data: Data,
     /// Word detail records.
     pub words_data: Data,
+    /// The root node's raw `base`, cached at load so every common-prefix
+    /// search starts with the current node's `base` already in hand and the
+    /// walk reads exactly one node per character step (#942). A trie with no
+    /// nodes stores a leaf-flagged value that ends any walk immediately.
+    root_base: u32,
 }
 
 impl PrefixDictionary {
@@ -276,6 +284,15 @@ impl PrefixDictionary {
             )));
         }
 
+        // Cache the root node's raw base (validated above: when node_len > 0
+        // the node array starts at nodes_start and is fully inside the file).
+        let root_base = if node_len > 0 {
+            LittleEndian::read_u32(&trie_data[nodes_start..nodes_start + 4])
+        } else {
+            // Leaf-flagged poison: TrieWalk::advance ends immediately.
+            !OFFSET_MASK
+        };
+
         Ok(PrefixDictionary {
             trie_data,
             table_len,
@@ -284,6 +301,7 @@ impl PrefixDictionary {
             vals_data: vals_data.into(),
             words_idx_data: words_idx_data.into(),
             words_data: words_data.into(),
+            root_base,
         })
     }
 
@@ -328,6 +346,25 @@ impl PrefixDictionary {
         (code != INVALID_CODE).then_some(code)
     }
 
+    /// Maps a character to its trie code, using [`INVALID_CODE`] for
+    /// characters that appear in no key.
+    ///
+    /// The lattice fills a per-sentence code buffer with this once per
+    /// character, so overlapping prefix walks stop re-querying the code
+    /// table for the same character (#942).
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to map.
+    ///
+    /// # Returns
+    ///
+    /// The mapped code, or [`INVALID_CODE`].
+    #[inline(always)]
+    pub(crate) fn map_code_or_invalid(&self, c: char) -> u32 {
+        self.map_code(c).unwrap_or(INVALID_CODE)
+    }
+
     /// Looks up the values run for trie key ordinal `key_ord`.
     ///
     /// # Arguments
@@ -366,7 +403,35 @@ impl PrefixDictionary {
             dict: self,
             chars,
             pos: 0,
-            node_idx: 0,
+            walk: TrieWalk::at_root(self),
+        }
+    }
+
+    /// [`Self::common_prefix_search`] over pre-mapped trie codes.
+    ///
+    /// The lattice maps every sentence character through
+    /// [`Self::map_code_or_invalid`] once (in the same pass that fills its
+    /// other per-char buffers) and hands each start position's suffix here,
+    /// so overlapping walks skip the per-step code-table probe (#942).
+    ///
+    /// # Arguments
+    ///
+    /// * `codes` - Codes for the sentence suffix starting at the query
+    ///   position, with [`INVALID_CODE`] marking unmapped characters.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of `(serialized WordEntry records, chars consumed)`.
+    #[inline]
+    pub(crate) fn common_prefix_search_codes<'a, 'b>(
+        &'a self,
+        codes: &'b [u32],
+    ) -> CommonPrefixSearchCodes<'a, 'b> {
+        CommonPrefixSearchCodes {
+            dict: self,
+            codes,
+            pos: 0,
+            walk: TrieWalk::at_root(self),
         }
     }
 
@@ -482,6 +547,114 @@ impl PrefixDictionary {
     }
 }
 
+/// Walk state shared by the common-prefix search iterators: the current node
+/// index and its cached raw `base`, loaded when the node was entered so each
+/// step reads exactly one node (#942 removed the per-step re-read of the
+/// node the previous step had already fetched).
+struct TrieWalk {
+    /// Current trie node.
+    node_idx: u32,
+    /// The current node's raw `base` (leaf flag included).
+    node_base: u32,
+}
+
+impl TrieWalk {
+    /// Creates a walk positioned at the trie root.
+    ///
+    /// # 引数
+    ///
+    /// * `dict` - The dictionary whose root to start from.
+    ///
+    /// # 戻り値
+    ///
+    /// A walk at node 0 with the load-time-cached root `base`.
+    #[inline(always)]
+    fn at_root(dict: &PrefixDictionary) -> TrieWalk {
+        TrieWalk {
+            node_idx: 0,
+            node_base: dict.root_base,
+        }
+    }
+
+    /// Follows the transition labeled `mc` from the current node.
+    ///
+    /// # 引数
+    ///
+    /// * `dict` - The dictionary being walked.
+    /// * `mc` - The mapped code of the next character.
+    ///
+    /// # 戻り値
+    ///
+    /// The child's raw `(base, check)` pair, or `None` when the walk ends
+    /// (the current node is a leaf, the transition does not exist, or the
+    /// bytes are malformed).
+    #[inline(always)]
+    fn advance(&mut self, dict: &PrefixDictionary, mc: u32) -> Option<(u32, u32)> {
+        // A leaf stores its value in `base`, not a child offset, so it
+        // has no children and the walk ends.
+        if self.node_base & !OFFSET_MASK != 0 {
+            return None;
+        }
+        let child_idx = (self.node_base & OFFSET_MASK) ^ mc;
+        let (child_base, child_check) = dict.node(child_idx)?;
+        if child_check & OFFSET_MASK != self.node_idx {
+            return None;
+        }
+        self.node_idx = child_idx;
+        self.node_base = child_base;
+        Some((child_base, child_check))
+    }
+}
+
+/// What one walk step produced, computed from the child's raw pair.
+enum StepOutput<'a> {
+    /// No key ends here; keep walking.
+    Continue,
+    /// Malformed bytes; end the search.
+    Stop,
+    /// A key ends here with these serialized `WordEntry` records.
+    Yield(&'a [u8]),
+}
+
+/// Resolves a just-entered node's `(base, check)` pair to its step output.
+///
+/// # 引数
+///
+/// * `dict` - The dictionary being walked.
+/// * `child_base` - The entered node's raw `base`.
+/// * `child_check` - The entered node's raw `check`.
+///
+/// # 戻り値
+///
+/// Whether the step yields a key's entries, continues, or stops.
+#[inline(always)]
+fn step_output<'a>(
+    dict: &'a PrefixDictionary,
+    child_base: u32,
+    child_check: u32,
+) -> StepOutput<'a> {
+    if child_base & !OFFSET_MASK != 0 {
+        // The node itself is a leaf: its base is the value.
+        return match dict.entry_bytes(child_base & OFFSET_MASK) {
+            Some(entries) => StepOutput::Yield(entries),
+            None => StepOutput::Stop,
+        };
+    }
+    if child_check & !OFFSET_MASK != 0 {
+        // The node has a leaf child reached by the end marker, whose
+        // code is 0, so the child index is just the base.
+        let leaf_idx = child_base & OFFSET_MASK;
+        return match dict
+            .node(leaf_idx)
+            .and_then(|(leaf_base, _)| dict.entry_bytes(leaf_base & OFFSET_MASK))
+        {
+            Some(entries) => StepOutput::Yield(entries),
+            None => StepOutput::Stop,
+        };
+    }
+    StepOutput::Continue
+}
+
 /// Iterator over the dictionary keys that are prefixes of a query.
 ///
 /// Mirrors crawdad 0.3's `CommonPrefixSearchIter` step for step, but walks
@@ -493,8 +666,8 @@ pub struct CommonPrefixSearch<'a, 'b> {
     chars: &'b [char],
     /// Characters consumed so far.
     pos: usize,
-    /// Current trie node.
-    node_idx: u32,
+    /// Walk state (current node and its cached `base`).
+    walk: TrieWalk,
 }
 
 impl<'a> Iterator for CommonPrefixSearch<'a, '_> {
@@ -510,32 +683,56 @@ impl<'a> Iterator for CommonPrefixSearch<'a, '_> {
     fn next(&mut self) -> Option<Self::Item> {
         while self.pos < self.chars.len() {
             let mc = self.dict.map_code(self.chars[self.pos])?;
-            let (base_raw, _) = self.dict.node(self.node_idx)?;
-            // A leaf stores its value in `base`, not a child offset, so it
-            // has no children and the walk ends.
-            if base_raw & !OFFSET_MASK != 0 {
-                return None;
-            }
-            let child_idx = (base_raw & OFFSET_MASK) ^ mc;
-            let (child_base, child_check) = self.dict.node(child_idx)?;
-            if child_check & OFFSET_MASK != self.node_idx {
-                return None;
-            }
-            self.node_idx = child_idx;
+            let (child_base, child_check) = self.walk.advance(self.dict, mc)?;
             self.pos += 1;
 
-            if child_base & !OFFSET_MASK != 0 {
-                // The node itself is a leaf: its base is the value.
-                let entries = self.dict.entry_bytes(child_base & OFFSET_MASK)?;
-                return Some((entries, self.pos));
+            match step_output(self.dict, child_base, child_check) {
+                StepOutput::Continue => {}
+                StepOutput::Stop => return None,
+                StepOutput::Yield(entries) => return Some((entries, self.pos)),
             }
-            if child_check & !OFFSET_MASK != 0 {
-                // The node has a leaf child reached by the end marker, whose
-                // code is 0, so the child index is just the base.
-                let leaf_idx = child_base & OFFSET_MASK;
-                let (leaf_base, _) = self.dict.node(leaf_idx)?;
-                let entries = self.dict.entry_bytes(leaf_base & OFFSET_MASK)?;
-                return Some((entries, self.pos));
+        }
+        None
+    }
+}
+
+/// [`CommonPrefixSearch`] over pre-mapped trie codes instead of characters.
+///
+/// See [`PrefixDictionary::common_prefix_search_codes`].
+pub(crate) struct CommonPrefixSearchCodes<'a, 'b> {
+    /// The dictionary being searched.
+    dict: &'a PrefixDictionary,
+    /// The query's pre-mapped codes ([`INVALID_CODE`] = unmapped).
+    codes: &'b [u32],
+    /// Codes consumed so far.
+    pos: usize,
+    /// Walk state (current node and its cached `base`).
+    walk: TrieWalk,
+}
+
+impl<'a> Iterator for CommonPrefixSearchCodes<'a, '_> {
+    type Item = (&'a [u8], usize);
+
+    /// Advances to the next key that is a prefix of the query.
+    ///
+    /// # Returns
+    ///
+    /// The key's serialized `WordEntry` records and the number of codes
+    /// consumed, or `None` when no further prefix matches.
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.pos < self.codes.len() {
+            let mc = self.codes[self.pos];
+            if mc == INVALID_CODE {
+                return None;
+            }
+            let (child_base, child_check) = self.walk.advance(self.dict, mc)?;
+            self.pos += 1;
+
+            match step_output(self.dict, child_base, child_check) {
+                StepOutput::Continue => {}
+                StepOutput::Stop => return None,
+                StepOutput::Yield(entries) => return Some((entries, self.pos)),
             }
         }
         None
@@ -791,6 +988,25 @@ mod tests {
                         "run length for key ordinal {key_ord}"
                     );
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn common_prefix_search_codes_matches_chars() {
+        let dict = PrefixDictionary::from_word_entry_map(&sample_map()).unwrap();
+
+        // Includes unmapped characters (ASCII, kana absent from the keys)
+        // to exercise the INVALID_CODE early-out.
+        for haystack in ["世界中で世論調査", "統計調査だ", "a世界", "世", ""] {
+            let chars: Vec<char> = haystack.chars().collect();
+            let codes: Vec<u32> = chars.iter().map(|&c| dict.map_code_or_invalid(c)).collect();
+            for start in 0..=chars.len() {
+                let expected: Vec<(&[u8], usize)> =
+                    dict.common_prefix_search(&chars[start..]).collect();
+                let actual: Vec<(&[u8], usize)> =
+                    dict.common_prefix_search_codes(&codes[start..]).collect();
+                assert_eq!(expected, actual, "at {haystack:?}[{start}..]");
             }
         }
     }
