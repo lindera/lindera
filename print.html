@@ -9026,6 +9026,25 @@ cargo test
 <li>Use <code>unsafe</code> blocks only when necessary, and always include a <code>// SAFETY: ...</code> comment.</li>
 <li>Use file-based module style (<code>src/tokenizer.rs</code>) instead of <code>mod.rs</code> style.</li>
 </ul>
+<h2 id="language-binding-parity"><a class="header" href="#language-binding-parity">Language Binding Parity</a></h2>
+<p>Lindera ships bindings for Python, Node.js, Ruby, PHP, and WASM. When adding
+or reviewing a binding feature, apply the following policy:</p>
+<ul>
+<li><strong>Keep the feature set aligned.</strong> Capabilities — tokenization
+(<code>tokenize</code> / <code>tokenize_surfaces</code> / <code>tokenize_nbest</code>), user dictionaries,
+character filters, and token filters — should be available in every
+binding. A feature added to one binding should come with a plan (or a
+tracking issue) for the others.</li>
+<li><strong>Let representation and lifetime management follow each language.</strong>
+Whether tokens are class instances or plain data, naming conventions
+(camelCase vs. snake_case), and serialization helpers (<code>to_dict</code> / <code>to_h</code> /
+<code>toArray</code> / <code>toJSON</code>) are per-language decisions and do not need to match
+across bindings. The JS bindings return plain objects because their hosts
+defer class finalizers, while Python, Ruby, and PHP keep classes because
+their finalization is deterministic.</li>
+</ul>
+<p>Put shared logic in <code>lindera-binding-core</code> (e.g. <code>TokenView</code>) so each binding
+only maps core data into its FFI types.</p>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
 <ul>
 <li>
