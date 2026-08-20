@@ -428,6 +428,10 @@ pub struct Lattice {
     /// unknown-word logic at every position of a run, so re-scanning made
     /// it O(run^2).
     group_runs_buf: Vec<u32>,
+    /// Per-char offsets into `group_runs_buf`, filled only in Decompose
+    /// mode; kept out of `CharData` so the Normal-mode per-char buffer
+    /// stays 16 bytes (#944).
+    group_runs_start_buf: Vec<u32>,
     /// Decompose penalty cache for the left edges of the position
     /// currently being relaxed; see `add_edge_in_lattice` (#944).
     penalty_cache: Vec<i32>,
@@ -457,9 +461,6 @@ struct CharData {
     /// Length (in characters) of the all-kanji run starting here; computed
     /// only in Decompose mode (its sole consumer is the penalty).
     kanji_run_char_len: u32,
-    /// Offset of this char's category ordinals inside `group_runs_buf`;
-    /// filled only in Decompose mode (#944).
-    group_runs_start: u32,
 }
 
 #[inline]
@@ -758,6 +759,7 @@ impl Lattice {
         self.codes_buf.shrink_to(n_chars);
         self.sys_matches.shrink_to(64);
         self.group_runs_buf.shrink_to(4 * n_chars);
+        self.group_runs_start_buf.shrink_to(slots);
         self.penalty_cache.shrink_to(64);
     }
 
@@ -793,6 +795,7 @@ impl Lattice {
         self.categories_buffer.clear();
         self.chars_buf.clear();
         self.codes_buf.clear();
+        self.group_runs_start_buf.clear();
 
         let mut group_runs_total: u32 = 0;
         for (byte_offset, c) in text.char_indices() {
@@ -815,8 +818,8 @@ impl Lattice {
                 };
 
             // Grouping runs are precomputed only in Decompose mode (#944).
-            let group_runs_start = group_runs_total;
             if needs_kanji_runs {
+                self.group_runs_start_buf.push(group_runs_total);
                 group_runs_total += categories_len as u32;
             }
 
@@ -826,7 +829,6 @@ impl Lattice {
                 categories_start,
                 categories_len,
                 kanji_run_char_len: 0,
-                group_runs_start,
             });
             self.chars_buf.push(c);
             self.codes_buf.push(dict.map_code_or_invalid(c));
@@ -838,7 +840,6 @@ impl Lattice {
             categories_start: 0,
             categories_len: 0,
             kanji_run_char_len: 0,
-            group_runs_start: 0,
         });
 
         // Pre-calculate Kanji run lengths and per-ordinal grouping run
@@ -874,10 +875,10 @@ impl Lattice {
                         if ord < next.categories_len as usize
                             && self.get_cached_category(char_definitions, i + 1, ord) == cat
                         {
-                            run = runs[next.group_runs_start as usize + ord] + 1;
+                            run = runs[self.group_runs_start_buf[i + 1] as usize + ord] + 1;
                         }
                     }
-                    runs[cd.group_runs_start as usize + ord] = run;
+                    runs[self.group_runs_start_buf[i] as usize + ord] = run;
                 }
             }
             self.group_runs_buf = runs;
@@ -1098,9 +1099,8 @@ impl Lattice {
                     // position inside a run, so the forward rescan below
                     // was O(run^2) in total; read the run precomputed by
                     // prepare_char_buffers instead (#944).
-                    let char_data = &self.char_info_buffer[char_idx];
                     unknown_word_num_chars = self.group_runs_buf
-                        [char_data.group_runs_start as usize + category_ord]
+                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
                         as usize;
                 } else {
                     // Normal mode: the unknown_word_end gate makes this
@@ -1473,9 +1473,8 @@ impl Lattice {
                     // position inside a run, so the forward rescan below
                     // was O(run^2) in total; read the run precomputed by
                     // prepare_char_buffers instead (#944).
-                    let char_data = &self.char_info_buffer[char_idx];
                     unknown_word_num_chars = self.group_runs_buf
-                        [char_data.group_runs_start as usize + category_ord]
+                        [self.group_runs_start_buf[char_idx] as usize + category_ord]
                         as usize;
                 } else {
                     // Normal mode: the unknown_word_end gate makes this
