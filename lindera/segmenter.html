@@ -301,6 +301,11 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 <span class="boring">}</span></code></pre></pre>
+<p>Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's <code>char.def</code> <code>LENGTH</code> field) by default, so the Viterbi search can pick whichever length scores lowest. Call <code>unknown_word_ladder(false)</code> to disable it and match pre-v6 output exactly:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
+<span class="boring">}</span></code></pre></pre>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
 <p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags, and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

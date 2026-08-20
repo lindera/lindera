@@ -177,19 +177,22 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="migrating-from-v5-to-v6"><a class="header" href="#migrating-from-v5-to-v6">Migrating from v5 to v6</a></h1>
-<p>Lindera v6.0.0 changes the on-disk format of built dictionaries: the system
-prefix dictionary's byte-wise <code>daachorse</code> Aho-Corasick automaton (<code>dict.da</code>) is
-replaced by a char-wise double-array trie (<code>dict.trie</code>) plus a word values
-index (<code>dict.valsidx</code>), and <code>metadata.json</code> now records the format version so
-that a mismatched dictionary fails loudly at load instead of decoding into
-garbage. Tokenization output is unchanged — v6 produces byte-for-byte
-identical tokens to v5 for the same input and dictionary.</p>
+<p>Lindera v6.0.0 changes the on-disk format of built dictionaries, changes a
+few <code>lindera-dictionary</code> Rust APIs, and changes tokenization output in two
+targeted ways (a Decompose-mode accuracy fix, and a new default-on
+unknown-word feature). Most users only need to rebuild or re-download their
+dictionaries; direct users of <code>lindera_dictionary::viterbi</code>/<code>mode</code> types and
+anyone relying on exact legacy output for out-of-vocabulary text have a
+couple of extra things to check.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td>Built dictionary format is now version 2 (<code>dict.da</code> → <code>dict.trie</code> + <code>dict.valsidx</code>)</td><td>Self-built dictionaries</td><td>Rebuild with <code>lindera build</code></td></tr>
 <tr><td><code>metadata.json</code> records <code>format_version</code>; mismatches are refused at load</td><td>Anyone loading a v5-era built dictionary</td><td>Rebuild, or re-download with <code>lindera download</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code> now takes 9 arguments</td><td>WASM users loading dictionaries from bytes</td><td>Pass <code>dictTrie</code> and <code>dictValsIdx</code> instead of <code>dictDa</code></td></tr>
 <tr><td>OPFS <code>DictionaryFiles</code> replaces <code>dictDa</code> with <code>dictTrie</code> + <code>dictValsIdx</code></td><td>WASM users of the <code>opfs</code> helpers</td><td>Re-download OPFS-cached dictionaries</td></tr>
+<tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
+<tr><td>Unknown-word length ladder is on by default</td><td>Normal- and Decompose-mode output on out-of-vocabulary text</td><td>Set <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> for v5-identical output</td></tr>
+<tr><td>Several <code>lindera_dictionary::viterbi</code>/<code>mode</code> items renamed or removed</td><td>Direct users of <code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> (not the <code>lindera</code> crate's <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API)</td><td>Update call sites per the table below</td></tr>
 </tbody></table>
 </div>
 <h2 id="dictionary-format-version-2"><a class="header" href="#dictionary-format-version-2">Dictionary format version 2</a></h2>
@@ -221,61 +224,74 @@ loader checks it. Loading a dictionary built by v5 fails with an actionable
 error instead of misreading the headerless binary files:</p>
 <pre><code class="language-text">Dictionary 'ipadic' has format version 1, but this build of Lindera reads format version 2. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
 </code></pre>
-<h2 id="who-needs-to-act"><a class="header" href="#who-needs-to-act">Who needs to act</a></h2>
-<h3 id="self-built-dictionaries"><a class="header" href="#self-built-dictionaries">Self-built dictionaries</a></h3>
-<p>Rebuild any dictionary you compiled yourself from its source files with the
-v6 CLI, using the same <code>lindera build</code> invocation as before — the command-line
-interface is unchanged:</p>
-<pre><code class="language-sh">lindera build \
-  --src ./dictionary-source \
-  --dest ./dictionary \
-  --metadata ./metadata.json
+<h2 id="tokenization-output-changes"><a class="header" href="#tokenization-output-changes">Tokenization output changes</a></h2>
+<p>Unlike the format change above, these two changes can alter the <em>tokens</em>
+Lindera produces for the same input and dictionary.</p>
+<h3 id="decompose-mode-penalty-accuracy-fix"><a class="header" href="#decompose-mode-penalty-accuracy-fix">Decompose-mode penalty accuracy fix</a></h3>
+<p><code>Mode::Decompose</code>'s length penalty used to approximate a span's character
+count as <code>(stop_byte - start_byte) / 3</code>, which is exact only for text made
+entirely of 3-byte UTF-8 characters (common Japanese kanji/kana). Lindera's
+Viterbi lattice is now character-indexed internally, so the penalty uses the
+real character count. This only changes Decompose output for spans
+containing 1-byte (ASCII), 2-byte, or 4-byte (e.g. emoji, some CJK extension
+characters) UTF-8 characters; pure-Japanese Decompose output is unaffected.
+There is no option to restore the old (inexact) behavior, since it was a bug
+fix rather than a behavior choice.</p>
+<h3 id="unknown-word-length-ladder-new-on-by-default"><a class="header" href="#unknown-word-length-ladder-new-on-by-default">Unknown-word length ladder (new, on by default)</a></h3>
+<p>For a run of out-of-vocabulary characters, MeCab and Vibrato generate a
+"ladder" of candidate unknown-word lengths (<code>1..=LENGTH</code>, where <code>LENGTH</code> is
+a per-category field in the dictionary's <code>char.def</code>) and let the Viterbi
+search pick whichever length yields the lowest-cost path. Lindera parsed
+<code>LENGTH</code> from <code>char.def</code> but never used it at runtime, so it only ever
+generated a single 1-character candidate or (for grouping categories) one
+candidate spanning the whole run — never anything in between.</p>
+<p>Starting in v6.0.0, Lindera generates this candidate ladder by default. For
+IPADIC this affects the <code>KANJI</code>, <code>HIRAGANA</code>, and <code>KATAKANA</code> categories
+(<code>LENGTH=2</code>); most other categories declare <code>LENGTH=0</code> and are unaffected.
+The practical effect is that consecutive out-of-vocabulary kanji or kana
+characters can now be grouped into multi-character unknown words when that
+scores lower than splitting them one character at a time — for example, an
+unrecognized two-kanji compound is now tokenized as one word instead of two.</p>
+<p>This is additive to (and independent of) the <code>max_grouping_len</code> option
+introduced in v5.4 for capping whole-run grouping.</p>
+<p>To reproduce v5-identical output on text containing out-of-vocabulary
+kanji/kana runs, disable the ladder:</p>
+<pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
+    .unknown_word_ladder(false);</code></pre>
+<pre><code class="language-sh">lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 </code></pre>
-<p>Alternatively, re-download a matching prebuilt dictionary:</p>
-<pre><code class="language-sh">lindera download ipadic
-</code></pre>
-<p>Downloaded dictionaries are version-isolated under
-<code>&lt;data dir&gt;/lindera/dictionaries/&lt;version&gt;/</code> (for example
-<code>~/.local/share/lindera/dictionaries/6.0.0/</code> on Linux), so the v5 copies are
-neither reused nor overwritten and no cleanup is strictly needed.</p>
-<h3 id="wasm-loaddictionaryfrombytes"><a class="header" href="#wasm-loaddictionaryfrombytes">WASM: <code>loadDictionaryFromBytes()</code></a></h3>
-<p>The former <code>dictDa</code> argument is replaced by <code>dictTrie</code> and <code>dictValsIdx</code>,
-growing the signature from 8 to 9 arguments:</p>
-<pre><code class="language-javascript">// v5 — 8 arguments
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-
-// v6 — 9 arguments
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
-    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-</code></pre>
-<h3 id="wasm-opfs-helpers"><a class="header" href="#wasm-opfs-helpers">WASM: OPFS helpers</a></h3>
-<p>The <code>DictionaryFiles</code> object returned by <code>loadDictionaryFiles()</code> now carries
-<code>dictTrie</code> and <code>dictValsIdx</code> properties instead of <code>dictDa</code>, and the set of
-files stored in OPFS changed accordingly. A dictionary downloaded into OPFS
-with v5 lacks <code>dict.trie</code> and <code>dict.valsidx</code>, so remove it and download a v6
-archive:</p>
-<pre><code class="language-javascript">import { downloadDictionary, removeDictionary } from 'lindera-wasm-web/opfs';
-
-await removeDictionary("ipadic");
-await downloadDictionary(DICT_URL_V6, "ipadic");
-</code></pre>
+<p><code>AnalysisWorker</code>/<code>SegmentWorker</code> expose the same toggle via
+<code>set_unknown_word_ladder(bool)</code>, and <code>TokenizerBuilder</code> via
+<code>set_segmenter_unknown_word_ladder(bool)</code>.</p>
+<h2 id="rust-api-changes-in-lindera_dictionary"><a class="header" href="#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a></h2>
+<p>These affect only code that uses <code>lindera_dictionary::viterbi::{Lattice, Edge}</code> or <code>lindera_dictionary::mode::{Mode, Penalty}</code> directly (for example,
+custom lattice inspection or alternative tokenizer front-ends). The <code>lindera</code>
+crate's <code>Segmenter</code>, <code>Tokenizer</code>, <code>SegmentWorker</code>, and <code>AnalysisWorker</code> APIs
+are unaffected — they gained the <code>unknown_word_ladder</code>/<code>max_grouping_len</code>
+options above but no signatures changed.</p>
+<div class="table-wrapper"><table><thead><tr><th>v5</th><th>v6</th><th>Why</th></tr></thead><tbody>
+<tr><td><code>Lattice::text_len()</code></td><td><code>Lattice::char_len()</code></td><td>The lattice is now character-indexed instead of byte-indexed; the rename makes call sites that assumed bytes fail to compile instead of silently misbehaving</td></tr>
+<tr><td><code>Lattice::edges_at(pos)</code></td><td><code>Lattice::edges_at_char(pos)</code></td><td>Same reason: <code>pos</code> is now a character position</td></tr>
+<tr><td><code>Lattice::paths_at(pos)</code></td><td><code>Lattice::paths_at_char(pos)</code></td><td>Same reason</td></tr>
+<tr><td><code>Lattice::capacity()</code> / <code>shrink_to(n)</code></td><td>Same names, now denominated in characters (slots) instead of bytes</td><td>A byte length remains a valid, conservative <code>shrink_to</code> argument (a sentence never has more characters than bytes)</td></tr>
+<tr><td><code>Edge::num_chars()</code></td><td>Removed</td><td>The packed <code>Edge</code> no longer stores its end position (it always equals the lattice slot it lives in), so this can no longer be computed from the edge alone</td></tr>
+<tr><td><code>Penalty::penalty(&amp;Edge)</code></td><td><code>Penalty::penalty(&amp;Edge, num_chars: usize)</code></td><td>The caller now passes the exact character span (see the Decompose accuracy fix above)</td></tr>
+<tr><td><code>Mode::penalty_cost(&amp;Edge)</code></td><td>Removed</td><td>Had no callers in the codebase; re-implement via <code>Penalty::penalty</code> if needed</td></tr>
+</tbody></table>
+</div>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>User dictionaries</strong>: prebuilt user-dictionary <code>.bin</code> files are not
 affected. They keep using a <code>daachorse</code> automaton internally and continue to
 load without rebuilding. User dictionaries loaded from <code>.csv</code> are compiled
 at load time as before.</li>
-<li><strong>Tokenization output</strong>: unchanged. For the same input and dictionary, v6
-produces byte-for-byte identical tokens to v5.</li>
-<li><strong>Rust API</strong>: no signatures changed. Code that loads a dictionary from a
-path or URI compiles and runs unchanged once the dictionary itself is
-rebuilt or re-downloaded, and <code>embed-*</code> dictionaries are compiled by each
-dictionary crate's build script, so they always match the running version.</li>
+<li><strong><code>lindera</code> crate's public API</strong>: <code>Segmenter</code>, <code>Tokenizer</code>,
+<code>SegmentWorker</code>, and <code>AnalysisWorker</code> signatures are unchanged (aside from
+the additive <code>unknown_word_ladder</code>/<code>max_grouping_len</code> options); code that
+loads a dictionary from a path or URI compiles and runs unchanged once the
+dictionary itself is rebuilt or re-downloaded, and <code>embed-*</code> dictionaries
+are compiled by each dictionary crate's build script, so they always match
+the running version.</li>
 </ul>
 <h2 id="upgrade-checklist"><a class="header" href="#upgrade-checklist">Upgrade checklist</a></h2>
 <ul>
@@ -284,8 +300,13 @@ re-download prebuilt ones with <code>lindera download</code>.</li>
 <li>WASM: update <code>loadDictionaryFromBytes()</code> calls to the 9-argument signature
 (<code>dictTrie</code> and <code>dictValsIdx</code> in place of <code>dictDa</code>).</li>
 <li>WASM: remove v5-era dictionaries from OPFS and download v6 archives.</li>
-<li>Nothing to do for user-dictionary <code>.bin</code> files, and no output changes to
-re-validate.</li>
+<li>If you pin exact tokenization output for out-of-vocabulary or non-Japanese
+text, re-check it — the Decompose penalty fix and the unknown-word ladder
+(default on) can both change it. Set <code>unknown_word_ladder(false)</code> if you
+need v5-identical unknown-word output.</li>
+<li>If you use <code>lindera_dictionary::viterbi</code>/<code>mode</code> types directly, update
+call sites per the Rust API table above.</li>
+<li>Nothing to do for user-dictionary <code>.bin</code> files.</li>
 </ul>
 
                     </main>

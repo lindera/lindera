@@ -236,6 +236,7 @@ jieba           no        no          -
 <li><code>--token-filter</code> / <code>-t</code>: トークンフィルタ設定 (JSON)</li>
 <li><code>--keep-whitespace</code>: 空白文字のトークンを出力に含める（デフォルトでは MeCab 互換のため空白は除去されます）</li>
 <li><code>--max-grouping-len</code>: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の <code>max-grouping-size</code> に相当し、MeCab のデフォルトは 24）。上限を超えるランは 1 文字ずつの未知語になります。デフォルト: 無制限</li>
+<li><code>--disable-unknown-word-ladder</code>: MeCab/Vibrato 由来の未知語候補ラダー（<code>char.def</code> の <code>LENGTH</code> フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する</li>
 <li><code>--mmap</code>: 辞書ディレクトリの単語リストにメモリマップドファイル読み込みを使用する。<code>embedded://</code> 辞書、および <code>mmap</code> feature が無効な場合は無視される。プロセスがマップを保持している間に辞書ディレクトリを再ビルド・切り詰めると、次回のルックアップで SIGBUS を引き起こす可能性がある。</li>
 <li><code>--nbest</code> / <code>-N</code>: 返す N-best 結果の数（デフォルト: 1）。2以上に設定すると N-best 出力が有効になります。</li>
 <li><code>--nbest-unique</code>: 同じ分割を生成するパスの重複を排除します。</li>
