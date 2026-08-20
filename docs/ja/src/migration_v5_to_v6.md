@@ -19,6 +19,7 @@ Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマ�
 | Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった | 1・2・4 バイトの UTF-8 文字を含むテキストに対する `Mode::Decompose` の出力 | 対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認 |
 | 未知語の候補ラダー（length ladder）がデフォルトで有効に | 辞書外テキストに対する Normal・Decompose 両モードの出力 | v5 と同一の出力が必要な場合は `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` を設定 |
 | `lindera_dictionary::viterbi`/`mode` の一部項目が改名・削除 | `Lattice`/`Edge`/`Penalty`/`Mode` を直接利用するコード（`lindera` クレートの `Segmenter`/`Tokenizer`/`Worker` API 利用者は対象外） | 下記の表に従い呼び出し箇所を更新 |
+| JS バインディングがプレーンオブジェクトを返すようになり `Token` クラスが廃止 | Node.js・WASM ユーザー | `token.getDetail(i)` を `token.details[i]` に置換。WASM ユーザーはフィールド名の camelCase 化にも対応 |
 
 ## 辞書フォーマットバージョン 2
 
@@ -129,6 +130,80 @@ lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 | `Edge::num_chars()` | 削除 | パック済み `Edge` は終了位置を保持しなくなった（常にラティススロットの添字と一致するため）ので、エッジ単体からは計算できなくなった |
 | `Penalty::penalty(&Edge)` | `Penalty::penalty(&Edge, num_chars: usize)` | 呼び出し側が正確な文字数スパンを渡すようになった（前述の Decompose 精度修正を参照） |
 | `Mode::penalty_cost(&Edge)` | 削除 | コードベース内に呼び出し元が無かった。必要であれば `Penalty::penalty` で再実装可能 |
+
+## JavaScript バインディング: トークンがプレーンオブジェクトに
+
+これまで両 JS バインディングは `Token` クラスのインスタンスを返していました。
+これらのインスタンスは JavaScript ヒープの外にメモリを保持し、ホストが
+ファイナライザを実行して初めて解放されます。napi はそのファイナライザを
+イベントループへ遅延させ、wasm-bindgen は解放を呼び出し側に委ねるため、
+大きな入力を yield せずに同期ループでトークナイズすると、強制 GC を
+挟んでもメモリが蓄積していました。v6 では両バインディングともプレーン
+オブジェクトを返すようになり、メモリは JavaScript の GC が完全に管理します。
+
+実用上の利点: バッチループでメモリがフラットに保たれ、結果を
+`JSON.stringify`・`structuredClone`・worker への転送にそのまま使えます。
+
+### `getDetail(i)` の廃止（Node.js・WASM 共通）
+
+プレーンオブジェクトにメソッドは無いため、配列を直接参照してください:
+
+```javascript
+// v5
+const pos = token.getDetail(0);
+
+// v6
+const pos = token.details[0];
+```
+
+範囲外の読み出しは `null` ではなく `undefined` になります。
+
+### Node.js: `tokenizeObjects` の廃止
+
+`tokenizeObjects` は上記のメモリ問題に対する v5 限定の回避策としてのみ
+存在していました。`tokenize` が同じプレーンオブジェクトを返すように
+なったため、呼び出しを置き換えてください:
+
+```javascript
+// v5
+const tokens = tokenizer.tokenizeObjects(text);
+
+// v6
+const tokens = tokenizer.tokenize(text);
+```
+
+`tokenizeNbest` もプレーンオブジェクトを返すようになったため、v5 で
+既知の制約として記載していた蓄積の問題は解消されています。
+
+### WASM: フィールド名が camelCase に
+
+廃止された `Token` クラスは snake_case のフィールドを公開する一方、
+同じクラスの `toJSON()` は既に camelCase を出力しており不整合がありました。
+v6 では Node.js バインディングに揃えて camelCase に統一します:
+
+```javascript
+// v5
+token.byte_start, token.byte_end, token.word_id, token.is_unknown
+
+// v6
+token.byteStart, token.byteEnd, token.wordId, token.isUnknown
+```
+
+`surface`・`position`・`details` は変更ありません。既に `toJSON()` を
+呼んでその結果を読んでいたコードは、これらの名前を使っていたため
+そのまま動作します。ただし `toJSON()` 自体は、トークンが既にプレーン
+オブジェクトであるため廃止されました:
+
+```javascript
+// v5
+const data = token.toJSON();
+
+// v6
+const data = token; // 既にプレーンオブジェクト
+```
+
+WASM の `tokenizeNbest` は v5 の時点で既にプレーンオブジェクトを
+返していたため、変更ありません。
 
 ## 対応が不要なケース
 

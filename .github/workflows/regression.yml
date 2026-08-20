@@ -504,3 +504,9 @@ jobs:
 
       - name: Run WASM test
         run: make test-lindera-wasm
+
+      # Tokens must stay plain objects: a wasm-bindgen class instance keeps its data on the
+      # Rust heap until the JS side drops it, so returning classes accumulates memory in
+      # synchronous loops that never yield (#930). This check fails if that pattern comes back.
+      - name: Check token memory is released in synchronous loops
+        run: make memcheck-lindera-wasm
