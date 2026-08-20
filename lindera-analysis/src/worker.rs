@@ -218,6 +218,16 @@ impl AnalysisWorker {
         self.segment_worker.set_keep_whitespace(keep);
     }
 
+    /// Sets the unknown-word grouping cap for subsequent calls (MeCab's
+    /// `max-grouping-size` semantics; `None` = unbounded, the default).
+    ///
+    /// # 引数
+    ///
+    /// * `max_grouping_len` - Maximum grouped characters beyond the first.
+    pub fn set_max_grouping_len(&mut self, max_grouping_len: Option<usize>) {
+        self.segment_worker.set_max_grouping_len(max_grouping_len);
+    }
+
     /// Immediately shrinks the worker's internal buffers to what an input
     /// of `text_len_hint` bytes needs.
     ///

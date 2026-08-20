@@ -140,6 +140,21 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Caps unknown-word grouping (MeCab's `max-grouping-size` semantics);
+    /// `0` or an absent key means unbounded grouping, the default.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_grouping_len` - Maximum grouped characters beyond the first.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_max_grouping_len(&mut self, max_grouping_len: usize) -> &mut Self {
+        self.config["segmenter"]["max_grouping_len"] = json!(max_grouping_len);
+        self
+    }
+
     /// Set whether to route filesystem-loaded dictionaries through
     /// memory-mapped reads. Ignored for `embedded://` dictionaries.
     ///

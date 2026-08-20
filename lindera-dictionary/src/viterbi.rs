@@ -898,6 +898,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         text: &str,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
     ) {
         // Clear the previous sentence's slots (bounded by its char count),
         // then build the per-char buffers to learn this sentence's length.
@@ -1035,6 +1036,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        max_grouping_len,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1079,6 +1081,7 @@ impl Lattice {
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1124,6 +1127,17 @@ impl Lattice {
                             break;
                         }
                     }
+                }
+                // MeCab-style cap (#944): a grouped candidate with more
+                // than max_grouping_len characters beyond the first is not
+                // emitted; the single-char unknown word is emitted instead,
+                // so progress is always guaranteed. None (default) keeps
+                // the grouping unbounded, i.e. today's output.
+                if let Some(cap) = max_grouping_len
+                    && unknown_word_num_chars > 1
+                    && unknown_word_num_chars - 1 > cap
+                {
+                    unknown_word_num_chars = 1;
                 }
             }
         }
@@ -1442,6 +1456,7 @@ impl Lattice {
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1488,6 +1503,17 @@ impl Lattice {
                         }
                     }
                 }
+                // MeCab-style cap (#944): a grouped candidate with more
+                // than max_grouping_len characters beyond the first is not
+                // emitted; the single-char unknown word is emitted instead,
+                // so progress is always guaranteed. None (default) keeps
+                // the grouping unbounded, i.e. today's output.
+                if let Some(cap) = max_grouping_len
+                    && unknown_word_num_chars > 1
+                    && unknown_word_num_chars - 1 > cap
+                {
+                    unknown_word_num_chars = 1;
+                }
             }
         }
         if unknown_word_num_chars > 0 {
@@ -1518,6 +1544,7 @@ impl Lattice {
         cost_matrix: &ConnectionCostMatrix,
         text: &str,
         search_mode: &Mode,
+        max_grouping_len: Option<usize>,
     ) {
         // Same clear -> prepare -> grow sequence as set_text.
         self.clear();
@@ -1639,6 +1666,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        max_grouping_len,
                         category,
                         category_ord,
                         unknown_word_end,

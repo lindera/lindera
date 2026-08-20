@@ -145,6 +145,14 @@ By default, whitespace-only tokens are dropped from the output for MeCab compati
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 ```
 
+## Unknown-Word Grouping
+
+Unknown-word grouping is unbounded by default. `max_grouping_len(Some(n))` caps it with MeCab's `max-grouping-size` semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
+```
+
 ## N-Best Segmentation
 
 `segment_nbest` returns the top-`n` segmentations ordered by total path cost, each paired with its cost. Set `unique` to deduplicate results that share the same word boundaries but differ only in POS tags, and `cost_threshold` to discard paths whose cost exceeds `best_cost + threshold`:
