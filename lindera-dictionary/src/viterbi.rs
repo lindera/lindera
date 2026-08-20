@@ -8,7 +8,7 @@ use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
-use crate::mode::Mode;
+use crate::mode::{Mode, Penalty};
 
 /// Type of lexicon containing the word
 #[derive(
@@ -1157,6 +1157,127 @@ impl Lattice {
         unknown_word_index
     }
 
+    /// Decompose-mode relaxation body of `add_edge_in_lattice`, outlined
+    /// (`inline(never)`) so the Normal-mode hot arm keeps its compact code
+    /// layout (#944 measured a ~2% Normal regression from the enlarged
+    /// in-function Decompose arm alone).
+    ///
+    /// # 引数
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `penalty` - The Decompose penalty configuration.
+    /// * `cost_matrix` - The connection cost matrix.
+    ///
+    /// # 戻り値
+    ///
+    /// The best `(cost, left index)` over the position's left edges.
+    #[inline(never)]
+    fn relax_decompose(
+        &mut self,
+        start_char: usize,
+        right_left_id: u32,
+        penalty: &Penalty,
+        cost_matrix: &ConnectionCostMatrix,
+    ) -> (i32, Option<u16>) {
+        // Penalties depend only on the left edges, and
+        // ends_at[start_char] is immutable while the main loop processes
+        // this start position (every insertion targets a later slot), so
+        // compute them once per position instead of once per (left edge,
+        // incoming edge) pair (#944).
+        let mut cache = std::mem::take(&mut self.penalty_cache);
+        if self.penalty_cache_pos != start_char {
+            cache.clear();
+            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
+                // The left edge ends where this edge starts, so its exact
+                // char span is start_char - its start (#943 fixed the
+                // former byte-length/3 approximation).
+                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+            }));
+            self.penalty_cache_pos = start_char;
+        }
+        // Matrix row hoisted like the Normal arm (#880/#944); path +
+        // connection stays a plain add (bounded by PATH_COST_CLAMP + i16),
+        // while the penalty addition keeps saturating_add because the
+        // penalty is unbounded.
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let left_edges = &self.ends_at[start_char];
+        let cost_row = cost_matrix.row(right_left_id);
+        for (i, left_edge) in left_edges.iter().enumerate() {
+            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
+
+            if total_cost < best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u16);
+            }
+        }
+        self.penalty_cache = cache;
+        (best_cost, best_left)
+    }
+
+    /// [`Self::relax_decompose`] for the nbest lattice: additionally
+    /// records every transition into `all_paths[stop_char]`.
+    ///
+    /// # 引数
+    ///
+    /// * `start_char` - The incoming edge's start position.
+    /// * `stop_char` - The incoming edge's end position.
+    /// * `new_edge_index` - The incoming edge's index in its target slot.
+    /// * `right_left_id` - The incoming edge's left context id.
+    /// * `penalty` - The Decompose penalty configuration.
+    /// * `cost_matrix` - The connection cost matrix.
+    ///
+    /// # 戻り値
+    ///
+    /// The best `(cost, left index)` over the position's left edges.
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    fn relax_decompose_nbest(
+        &mut self,
+        start_char: usize,
+        stop_char: usize,
+        new_edge_index: u16,
+        right_left_id: u32,
+        penalty: &Penalty,
+        cost_matrix: &ConnectionCostMatrix,
+    ) -> (i32, Option<u16>) {
+        // Same per-position penalty cache and hoisted row as
+        // relax_decompose (#944).
+        let mut cache = std::mem::take(&mut self.penalty_cache);
+        if self.penalty_cache_pos != start_char {
+            cache.clear();
+            cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
+                penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
+            }));
+            self.penalty_cache_pos = start_char;
+        }
+        let mut best_cost = i32::MAX;
+        let mut best_left = None;
+        let cost_row = cost_matrix.row(right_left_id);
+        for (i, &penalty_cost) in cache.iter().enumerate() {
+            let left_edge = &self.ends_at[start_char][i];
+            let conn_cost = cost_row[left_edge.right_id as usize] as i32;
+            let total_cost = (left_edge.path_cost + conn_cost).saturating_add(penalty_cost);
+
+            // Record ALL transitions for N-Best
+            self.all_paths[stop_char].push(PathEntry {
+                edge_index: new_edge_index,
+                left_pos: start_char as u32,
+                left_index: i as u16,
+                cost: total_cost,
+            });
+
+            if total_cost < best_cost {
+                best_cost = total_cost;
+                best_left = Some(i as u16);
+            }
+        }
+        self.penalty_cache = cache;
+        (best_cost, best_left)
+    }
+
     /// Adds an edge ending at char position `stop_char` to the lattice and
     /// calculates the minimum cost to reach it.
     ///
@@ -1201,38 +1322,8 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
-                // Penalties depend only on the left edges, and
-                // ends_at[start_char] is immutable while the main loop
-                // processes this start position (every insertion targets a
-                // later slot), so compute them once per position instead of
-                // once per (left edge, incoming edge) pair (#944).
-                let mut cache = std::mem::take(&mut self.penalty_cache);
-                if self.penalty_cache_pos != start_char {
-                    cache.clear();
-                    cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                        // The left edge ends where this edge starts, so its
-                        // exact char span is start_char - its start (#943
-                        // fixed the former byte-length/3 approximation).
-                        penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
-                    }));
-                    self.penalty_cache_pos = start_char;
-                }
-                // Matrix row hoisted like the Normal arm (#880/#944);
-                // path + connection stays a plain add (bounded by
-                // PATH_COST_CLAMP + i16), while the penalty addition keeps
-                // saturating_add because the penalty is unbounded.
-                let left_edges = &self.ends_at[start_char];
-                let cost_row = cost_matrix.row(right_left_id);
-                for (i, left_edge) in left_edges.iter().enumerate() {
-                    let conn_cost = cost_row[left_edge.right_id as usize] as i32;
-                    let total_cost = (left_edge.path_cost + conn_cost).saturating_add(cache[i]);
-
-                    if total_cost < best_cost {
-                        best_cost = total_cost;
-                        best_left = Some(i as u16);
-                    }
-                }
-                self.penalty_cache = cache;
+                (best_cost, best_left) =
+                    self.relax_decompose(start_char, right_left_id, penalty, cost_matrix);
             }
         }
 
@@ -1407,36 +1498,14 @@ impl Lattice {
                 }
             }
             Mode::Decompose(penalty) => {
-                // Same per-position penalty cache and hoisted row as
-                // add_edge_in_lattice (#944).
-                let mut cache = std::mem::take(&mut self.penalty_cache);
-                if self.penalty_cache_pos != start_char {
-                    cache.clear();
-                    cache.extend(self.ends_at[start_char].iter().map(|left_edge| {
-                        penalty.penalty(left_edge, start_char - left_edge.start_char as usize)
-                    }));
-                    self.penalty_cache_pos = start_char;
-                }
-                let cost_row = cost_matrix.row(right_left_id);
-                for (i, &penalty_cost) in cache.iter().enumerate() {
-                    let left_edge = &self.ends_at[start_char][i];
-                    let conn_cost = cost_row[left_edge.right_id as usize] as i32;
-                    let total_cost = (left_edge.path_cost + conn_cost).saturating_add(penalty_cost);
-
-                    // Record ALL transitions for N-Best
-                    self.all_paths[stop_char].push(PathEntry {
-                        edge_index: new_edge_index,
-                        left_pos: start_char as u32,
-                        left_index: i as u16,
-                        cost: total_cost,
-                    });
-
-                    if total_cost < best_cost {
-                        best_cost = total_cost;
-                        best_left = Some(i as u16);
-                    }
-                }
-                self.penalty_cache = cache;
+                (best_cost, best_left) = self.relax_decompose_nbest(
+                    start_char,
+                    stop_char,
+                    new_edge_index,
+                    right_left_id,
+                    penalty,
+                    cost_matrix,
+                );
             }
         }
 
@@ -1878,7 +1947,7 @@ mod tests {
                     }
                 }
                 assert_eq!(
-                    lattice.group_runs_buf[char_data.group_runs_start as usize + ord] as usize,
+                    lattice.group_runs_buf[lattice.group_runs_start_buf[i] as usize + ord] as usize,
                     expected,
                     "run mismatch at char {i} ordinal {ord}"
                 );
