@@ -1,11 +1,12 @@
 # v5 から v6 への移行
 
-Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマットが変わります。システム
-前方一致辞書のバイト単位 `daachorse` Aho-Corasick オートマトン（`dict.da`）が、文字単位の
-ダブル配列トライ（`dict.trie`）と単語値インデックス（`dict.valsidx`）に置き換えられました。
-また `metadata.json` がフォーマットバージョンを記録するようになり、バージョンが一致しない
-辞書は黙って誤読される代わりに、ロード時に明確なエラーで拒否されます。トークナイズ結果は
-変わりません — 同じ入力と辞書に対して、v6 は v5 とバイト単位で同一のトークンを出力します。
+Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマットが変わり、
+`lindera-dictionary` の一部 Rust API が変わり、さらにトークナイズ結果も
+2 点（Decompose モードの精度修正と、新しいデフォルト有効な未知語機能）で
+変わります。ほとんどのユーザーは辞書の再ビルドまたは再ダウンロードだけで
+済みますが、`lindera_dictionary::viterbi`/`mode` の型を直接使っている場合や、
+未知語（辞書外の文字列）に対する厳密な旧出力に依存している場合は、追加で
+確認すべき点があります。
 
 ## 概要
 
@@ -15,6 +16,9 @@ Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマ�
 | `metadata.json` が `format_version` を記録し、不一致はロード時に拒否 | v5 世代のビルド済み辞書を読み込むすべてのユーザー | 再ビルド、または `lindera download` で再取得 |
 | `loadDictionaryFromBytes()` が 9 引数に | バイトデータから辞書を読み込む WASM ユーザー | `dictDa` の代わりに `dictTrie` と `dictValsIdx` を渡す |
 | OPFS の `DictionaryFiles` が `dictDa` を `dictTrie` + `dictValsIdx` に置き換え | `opfs` ヘルパーを使う WASM ユーザー | OPFS にキャッシュ済みの辞書を再ダウンロード |
+| Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった | 1・2・4 バイトの UTF-8 文字を含むテキストに対する `Mode::Decompose` の出力 | 対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認 |
+| 未知語の候補ラダー（length ladder）がデフォルトで有効に | 辞書外テキストに対する Normal・Decompose 両モードの出力 | v5 と同一の出力が必要な場合は `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` を設定 |
+| `lindera_dictionary::viterbi`/`mode` の一部項目が改名・削除 | `Lattice`/`Edge`/`Penalty`/`Mode` を直接利用するコード（`lindera` クレートの `Segmenter`/`Tokenizer`/`Worker` API 利用者は対象外） | 下記の表に従い呼び出し箇所を更新 |
 
 ## 辞書フォーマットバージョン 2
 
@@ -52,64 +56,79 @@ Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマ�
 Dictionary 'ipadic' has format version 1, but this build of Lindera reads format version 2. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
 ```
 
-## 対応が必要なケース
+## トークナイズ結果の変更
 
-### 自前ビルド辞書
+上記のフォーマット変更とは異なり、以下の 2 点は同じ入力・同じ辞書でも
+**Lindera が出力するトークン自体**を変える可能性があります。
 
-自分でソースファイルからコンパイルした辞書は、v6 の CLI で再ビルドしてください。
-コマンドラインインターフェースは変わっていないため、以前と同じ `lindera build` の
-呼び出しで再ビルドできます:
+### Decompose モードのペナルティ精度修正
+
+`Mode::Decompose` の長さペナルティは、スパンの文字数を
+`(終了バイト位置 - 開始バイト位置) / 3` で近似していました。これは全体が
+3 バイト UTF-8 文字（一般的な漢字・かな）で構成されたテキストに対してのみ
+正確です。Lindera の Viterbi ラティスは内部的に文字単位で索引されるように
+なったため、ペナルティは実際の文字数を使うようになりました。この変更が
+影響するのは 1 バイト（ASCII）・2 バイト・4 バイト（絵文字や一部の CJK
+拡張文字など）の UTF-8 文字を含むスパンの Decompose 出力のみで、純粋な
+日本語の Decompose 出力には影響しません。これは挙動選択ではなくバグ修正の
+ため、旧来の（不正確な）挙動に戻すオプションはありません。
+
+### 未知語の候補ラダー（新規・デフォルト有効）
+
+辞書に無い文字が連続する箇所に対して、MeCab や Vibrato は候補となる未知語の
+長さを `1..=LENGTH`（`LENGTH` は辞書の `char.def` にあるカテゴリごとの
+フィールド）まで段階的に（梯子＝ladder のように）生成し、Viterbi 探索に
+コスト最小の長さを選ばせます。Lindera は `char.def` から `LENGTH` を
+パースして保存はしていましたが、実行時には一切参照しておらず、常に
+1 文字の候補のみ（グルーピング対象カテゴリの場合はラン全体を覆う 1 候補のみ）
+しか生成していませんでした。
+
+v6.0.0 からは、このラダーがデフォルトで生成されるようになります。IPADIC で
+影響を受けるのは `KANJI`・`HIRAGANA`・`KATAKANA`（`LENGTH=2`）カテゴリで、
+それ以外の大半のカテゴリは `LENGTH=0` のため影響を受けません。実際の効果と
+しては、辞書に無い漢字・かなが連続する箇所で、1 文字ずつに分割するより
+複数文字でまとめたほうがコストが低い場合に、複数文字の未知語としてまとめて
+トークナイズされるようになります — 例えば、未知の 2 字熟語が従来は 2 つの
+未知語トークンに分かれていたのが、1 つの未知語トークンになります。
+
+これは v5.4 で導入されたラン全体のグルーピング上限オプション
+`max_grouping_len` とは独立した、加算的な機能です。
+
+辞書外の漢字・かな連続を含むテキストで v5 と同一の出力を再現するには、
+ラダーを無効化してください:
+
+```rust,ignore
+let segmenter = Segmenter::new(mode, dictionary, None)
+    .unknown_word_ladder(false);
+```
 
 ```sh
-lindera build \
-  --src ./dictionary-source \
-  --dest ./dictionary \
-  --metadata ./metadata.json
+lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 ```
 
-または、対応するビルド済み辞書を再ダウンロードしてください:
+`AnalysisWorker`/`SegmentWorker` は `set_unknown_word_ladder(bool)`、
+`TokenizerBuilder` は `set_segmenter_unknown_word_ladder(bool)` で同じ
+切り替えができます。
 
-```sh
-lindera download ipadic
-```
+## `lindera_dictionary` の Rust API 変更
 
-ダウンロード済み辞書は `<データディレクトリ>/lindera/dictionaries/<バージョン>/`
-（例: Linux では `~/.local/share/lindera/dictionaries/6.0.0/`）にバージョン単位で
-隔離されるため、v5 のコピーが再利用・上書きされることはなく、掃除も必須では
-ありません。
+以下は `lindera_dictionary::viterbi::{Lattice, Edge}` や
+`lindera_dictionary::mode::{Mode, Penalty}` を直接利用するコード（独自の
+ラティス検査や代替トークナイザーフロントエンドなど）にのみ影響します。
+`lindera` クレートの `Segmenter`・`Tokenizer`・`SegmentWorker`・
+`AnalysisWorker` API は影響を受けません — 上記の
+`unknown_word_ladder`/`max_grouping_len` オプションが追加されただけで、
+シグネチャの変更はありません。
 
-### WASM: `loadDictionaryFromBytes()`
-
-従来の `dictDa` 引数が `dictTrie` と `dictValsIdx` に置き換えられ、シグネチャが
-8 引数から 9 引数になりました:
-
-```javascript
-// v5 — 8 引数
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-
-// v6 — 9 引数
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
-    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-```
-
-### WASM: OPFS ヘルパー
-
-`loadDictionaryFiles()` が返す `DictionaryFiles` オブジェクトは、`dictDa` の代わりに
-`dictTrie` と `dictValsIdx` プロパティを持つようになり、OPFS に保存されるファイル
-一式も同様に変わりました。v5 で OPFS にダウンロードした辞書には `dict.trie` と
-`dict.valsidx` が無いため、削除して v6 のアーカイブをダウンロードしてください:
-
-```javascript
-import { downloadDictionary, removeDictionary } from 'lindera-wasm-web/opfs';
-
-await removeDictionary("ipadic");
-await downloadDictionary(DICT_URL_V6, "ipadic");
-```
+| v5 | v6 | 理由 |
+| --- | --- | --- |
+| `Lattice::text_len()` | `Lattice::char_len()` | ラティスがバイト索引から文字索引に変わったため。改名により、バイト前提のコードは黙って誤動作せずコンパイルエラーになる |
+| `Lattice::edges_at(pos)` | `Lattice::edges_at_char(pos)` | 同上（`pos` が文字位置になった） |
+| `Lattice::paths_at(pos)` | `Lattice::paths_at_char(pos)` | 同上 |
+| `Lattice::capacity()` / `shrink_to(n)` | 名前は同じだが単位がバイトから文字（スロット）に | バイト長は依然として `shrink_to` の有効な（安全側に倒れる）引数として使える（文はバイト数より文字数の方が少ないため） |
+| `Edge::num_chars()` | 削除 | パック済み `Edge` は終了位置を保持しなくなった（常にラティススロットの添字と一致するため）ので、エッジ単体からは計算できなくなった |
+| `Penalty::penalty(&Edge)` | `Penalty::penalty(&Edge, num_chars: usize)` | 呼び出し側が正確な文字数スパンを渡すようになった（前述の Decompose 精度修正を参照） |
+| `Mode::penalty_cost(&Edge)` | 削除 | コードベース内に呼び出し元が無かった。必要であれば `Penalty::penalty` で再実装可能 |
 
 ## 対応が不要なケース
 
@@ -117,12 +136,12 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
   内部では引き続き `daachorse` オートマトンを使用しており、再ビルドせずにそのまま
   ロードできます。`.csv` から読み込むユーザー辞書も、従来どおりロード時に
   コンパイルされます。
-- **トークナイズ結果**: 変わりません。同じ入力と辞書に対して、v6 は v5 とバイト
-  単位で同一のトークンを出力します。
-- **Rust API**: シグネチャの変更はありません。パスや URI から辞書をロードする
-  コードは、辞書自体を再ビルドまたは再ダウンロードすればそのままコンパイル・動作
-  します。`embed-*` の埋め込み辞書は各辞書クレートのビルドスクリプトがコンパイル
-  するため、常に実行中のバージョンと一致します。
+- **`lindera` クレートの公開 API**: `Segmenter`・`Tokenizer`・`SegmentWorker`・
+  `AnalysisWorker` のシグネチャは変わっていません（加算的な
+  `unknown_word_ladder`/`max_grouping_len` オプションを除く）。パスや URI から
+  辞書をロードするコードは、辞書自体を再ビルドまたは再ダウンロードすればそのまま
+  コンパイル・動作します。`embed-*` の埋め込み辞書は各辞書クレートのビルド
+  スクリプトがコンパイルするため、常に実行中のバージョンと一致します。
 
 ## アップグレードチェックリスト
 
@@ -131,4 +150,10 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 - WASM: `loadDictionaryFromBytes()` の呼び出しを 9 引数のシグネチャに更新する
   （`dictDa` の代わりに `dictTrie` と `dictValsIdx`）。
 - WASM: v5 世代の辞書を OPFS から削除し、v6 のアーカイブをダウンロードする。
-- ユーザー辞書の `.bin` ファイルは対応不要。出力の再検証も不要。
+- 辞書外・非日本語テキストに対するトークナイズ結果を厳密に固定している場合は
+  再確認する — Decompose ペナルティ修正と未知語ラダー（デフォルト有効）の
+  両方が結果を変える可能性がある。v5 と同一の未知語出力が必要なら
+  `unknown_word_ladder(false)` を設定する。
+- `lindera_dictionary::viterbi`/`mode` の型を直接利用している場合は、上記の
+  Rust API 表に従い呼び出し箇所を更新する。
+- ユーザー辞書の `.bin` ファイルは対応不要。

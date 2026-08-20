@@ -156,6 +156,16 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(t
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 ```
 
+グルーピングとは独立に、Lindera はデフォルトで MeCab/Vibrato 由来の
+「候補ラダー（length ladder）」も生成します。各カテゴリの `char.def` の
+`LENGTH` フィールドまでの短い未知語候補を段階的に生成し、Viterbi 探索が
+最もコストの低い長さを選べるようにします。v6 以前と同一の出力にするには
+`unknown_word_ladder(false)` で無効化してください:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
+```
+
 ## N-Best セグメンテーション
 
 `segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：

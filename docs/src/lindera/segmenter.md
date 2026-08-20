@@ -153,6 +153,12 @@ Unknown-word grouping is unbounded by default. `max_grouping_len(Some(n))` caps 
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 ```
 
+Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's `char.def` `LENGTH` field) by default, so the Viterbi search can pick whichever length scores lowest. Call `unknown_word_ladder(false)` to disable it and match pre-v6 output exactly:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
+```
+
 ## N-Best Segmentation
 
 `segment_nbest` returns the top-`n` segmentations ordered by total path cost, each paired with its cost. Set `unique` to deduplicate results that share the same word boundaries but differ only in POS tags, and `cost_threshold` to discard paths whose cost exceeds `best_cost + threshold`:

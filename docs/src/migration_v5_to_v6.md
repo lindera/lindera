@@ -1,12 +1,12 @@
 # Migrating from v5 to v6
 
-Lindera v6.0.0 changes the on-disk format of built dictionaries: the system
-prefix dictionary's byte-wise `daachorse` Aho-Corasick automaton (`dict.da`) is
-replaced by a char-wise double-array trie (`dict.trie`) plus a word values
-index (`dict.valsidx`), and `metadata.json` now records the format version so
-that a mismatched dictionary fails loudly at load instead of decoding into
-garbage. Tokenization output is unchanged — v6 produces byte-for-byte
-identical tokens to v5 for the same input and dictionary.
+Lindera v6.0.0 changes the on-disk format of built dictionaries, changes a
+few `lindera-dictionary` Rust APIs, and changes tokenization output in two
+targeted ways (a Decompose-mode accuracy fix, and a new default-on
+unknown-word feature). Most users only need to rebuild or re-download their
+dictionaries; direct users of `lindera_dictionary::viterbi`/`mode` types and
+anyone relying on exact legacy output for out-of-vocabulary text have a
+couple of extra things to check.
 
 ## Overview
 
@@ -16,6 +16,9 @@ identical tokens to v5 for the same input and dictionary.
 | `metadata.json` records `format_version`; mismatches are refused at load | Anyone loading a v5-era built dictionary | Rebuild, or re-download with `lindera download` |
 | `loadDictionaryFromBytes()` now takes 9 arguments | WASM users loading dictionaries from bytes | Pass `dictTrie` and `dictValsIdx` instead of `dictDa` |
 | OPFS `DictionaryFiles` replaces `dictDa` with `dictTrie` + `dictValsIdx` | WASM users of the `opfs` helpers | Re-download OPFS-cached dictionaries |
+| Decompose-mode length penalty is now exact for non-3-byte characters | `Mode::Decompose` output on text with 1-, 2-, or 4-byte UTF-8 characters | Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly |
+| Unknown-word length ladder is on by default | Normal- and Decompose-mode output on out-of-vocabulary text | Set `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` for v5-identical output |
+| Several `lindera_dictionary::viterbi`/`mode` items renamed or removed | Direct users of `Lattice`/`Edge`/`Penalty`/`Mode` (not the `lindera` crate's `Segmenter`/`Tokenizer`/`Worker` API) | Update call sites per the table below |
 
 ## Dictionary format version 2
 
@@ -54,65 +57,78 @@ error instead of misreading the headerless binary files:
 Dictionary 'ipadic' has format version 1, but this build of Lindera reads format version 2. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
 ```
 
-## Who needs to act
+## Tokenization output changes
 
-### Self-built dictionaries
+Unlike the format change above, these two changes can alter the *tokens*
+Lindera produces for the same input and dictionary.
 
-Rebuild any dictionary you compiled yourself from its source files with the
-v6 CLI, using the same `lindera build` invocation as before — the command-line
-interface is unchanged:
+### Decompose-mode penalty accuracy fix
+
+`Mode::Decompose`'s length penalty used to approximate a span's character
+count as `(stop_byte - start_byte) / 3`, which is exact only for text made
+entirely of 3-byte UTF-8 characters (common Japanese kanji/kana). Lindera's
+Viterbi lattice is now character-indexed internally, so the penalty uses the
+real character count. This only changes Decompose output for spans
+containing 1-byte (ASCII), 2-byte, or 4-byte (e.g. emoji, some CJK extension
+characters) UTF-8 characters; pure-Japanese Decompose output is unaffected.
+There is no option to restore the old (inexact) behavior, since it was a bug
+fix rather than a behavior choice.
+
+### Unknown-word length ladder (new, on by default)
+
+For a run of out-of-vocabulary characters, MeCab and Vibrato generate a
+"ladder" of candidate unknown-word lengths (`1..=LENGTH`, where `LENGTH` is
+a per-category field in the dictionary's `char.def`) and let the Viterbi
+search pick whichever length yields the lowest-cost path. Lindera parsed
+`LENGTH` from `char.def` but never used it at runtime, so it only ever
+generated a single 1-character candidate or (for grouping categories) one
+candidate spanning the whole run — never anything in between.
+
+Starting in v6.0.0, Lindera generates this candidate ladder by default. For
+IPADIC this affects the `KANJI`, `HIRAGANA`, and `KATAKANA` categories
+(`LENGTH=2`); most other categories declare `LENGTH=0` and are unaffected.
+The practical effect is that consecutive out-of-vocabulary kanji or kana
+characters can now be grouped into multi-character unknown words when that
+scores lower than splitting them one character at a time — for example, an
+unrecognized two-kanji compound is now tokenized as one word instead of two.
+
+This is additive to (and independent of) the `max_grouping_len` option
+introduced in v5.4 for capping whole-run grouping.
+
+To reproduce v5-identical output on text containing out-of-vocabulary
+kanji/kana runs, disable the ladder:
+
+```rust,ignore
+let segmenter = Segmenter::new(mode, dictionary, None)
+    .unknown_word_ladder(false);
+```
 
 ```sh
-lindera build \
-  --src ./dictionary-source \
-  --dest ./dictionary \
-  --metadata ./metadata.json
+lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 ```
 
-Alternatively, re-download a matching prebuilt dictionary:
+`AnalysisWorker`/`SegmentWorker` expose the same toggle via
+`set_unknown_word_ladder(bool)`, and `TokenizerBuilder` via
+`set_segmenter_unknown_word_ladder(bool)`.
 
-```sh
-lindera download ipadic
-```
+## Rust API changes in `lindera_dictionary`
 
-Downloaded dictionaries are version-isolated under
-`<data dir>/lindera/dictionaries/<version>/` (for example
-`~/.local/share/lindera/dictionaries/6.0.0/` on Linux), so the v5 copies are
-neither reused nor overwritten and no cleanup is strictly needed.
+These affect only code that uses `lindera_dictionary::viterbi::{Lattice,
+Edge}` or `lindera_dictionary::mode::{Mode, Penalty}` directly (for example,
+custom lattice inspection or alternative tokenizer front-ends). The `lindera`
+crate's `Segmenter`, `Tokenizer`, `SegmentWorker`, and `AnalysisWorker` APIs
+are unaffected — they gained the `unknown_word_ladder`/`max_grouping_len`
+options above but no signatures changed.
 
-### WASM: `loadDictionaryFromBytes()`
-
-The former `dictDa` argument is replaced by `dictTrie` and `dictValsIdx`,
-growing the signature from 8 to 9 arguments:
-
-```javascript
-// v5 — 8 arguments
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictDa, files.dictVals, files.dictWordsIdx,
-    files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-
-// v6 — 9 arguments
-const dictionary = loadDictionaryFromBytes(
-    files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
-    files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
-);
-```
-
-### WASM: OPFS helpers
-
-The `DictionaryFiles` object returned by `loadDictionaryFiles()` now carries
-`dictTrie` and `dictValsIdx` properties instead of `dictDa`, and the set of
-files stored in OPFS changed accordingly. A dictionary downloaded into OPFS
-with v5 lacks `dict.trie` and `dict.valsidx`, so remove it and download a v6
-archive:
-
-```javascript
-import { downloadDictionary, removeDictionary } from 'lindera-wasm-web/opfs';
-
-await removeDictionary("ipadic");
-await downloadDictionary(DICT_URL_V6, "ipadic");
-```
+| v5 | v6 | Why |
+| --- | --- | --- |
+| `Lattice::text_len()` | `Lattice::char_len()` | The lattice is now character-indexed instead of byte-indexed; the rename makes call sites that assumed bytes fail to compile instead of silently misbehaving |
+| `Lattice::edges_at(pos)` | `Lattice::edges_at_char(pos)` | Same reason: `pos` is now a character position |
+| `Lattice::paths_at(pos)` | `Lattice::paths_at_char(pos)` | Same reason |
+| `Lattice::capacity()` / `shrink_to(n)` | Same names, now denominated in characters (slots) instead of bytes | A byte length remains a valid, conservative `shrink_to` argument (a sentence never has more characters than bytes) |
+| `Edge::num_chars()` | Removed | The packed `Edge` no longer stores its end position (it always equals the lattice slot it lives in), so this can no longer be computed from the edge alone |
+| `Penalty::penalty(&Edge)` | `Penalty::penalty(&Edge, num_chars: usize)` | The caller now passes the exact character span (see the Decompose accuracy fix above) |
+| `Mode::penalty_cost(&Edge)` | Removed | Had no callers in the codebase; re-implement via `Penalty::penalty` if needed |
 
 ## Who does not need to act
 
@@ -120,12 +136,13 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
   affected. They keep using a `daachorse` automaton internally and continue to
   load without rebuilding. User dictionaries loaded from `.csv` are compiled
   at load time as before.
-- **Tokenization output**: unchanged. For the same input and dictionary, v6
-  produces byte-for-byte identical tokens to v5.
-- **Rust API**: no signatures changed. Code that loads a dictionary from a
-  path or URI compiles and runs unchanged once the dictionary itself is
-  rebuilt or re-downloaded, and `embed-*` dictionaries are compiled by each
-  dictionary crate's build script, so they always match the running version.
+- **`lindera` crate's public API**: `Segmenter`, `Tokenizer`,
+  `SegmentWorker`, and `AnalysisWorker` signatures are unchanged (aside from
+  the additive `unknown_word_ladder`/`max_grouping_len` options); code that
+  loads a dictionary from a path or URI compiles and runs unchanged once the
+  dictionary itself is rebuilt or re-downloaded, and `embed-*` dictionaries
+  are compiled by each dictionary crate's build script, so they always match
+  the running version.
 
 ## Upgrade checklist
 
@@ -134,5 +151,10 @@ await downloadDictionary(DICT_URL_V6, "ipadic");
 - WASM: update `loadDictionaryFromBytes()` calls to the 9-argument signature
   (`dictTrie` and `dictValsIdx` in place of `dictDa`).
 - WASM: remove v5-era dictionaries from OPFS and download v6 archives.
-- Nothing to do for user-dictionary `.bin` files, and no output changes to
-  re-validate.
+- If you pin exact tokenization output for out-of-vocabulary or non-Japanese
+  text, re-check it — the Decompose penalty fix and the unknown-word ladder
+  (default on) can both change it. Set `unknown_word_ladder(false)` if you
+  need v5-identical unknown-word output.
+- If you use `lindera_dictionary::viterbi`/`mode` types directly, update
+  call sites per the Rust API table above.
+- Nothing to do for user-dictionary `.bin` files.

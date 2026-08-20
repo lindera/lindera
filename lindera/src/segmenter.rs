@@ -105,6 +105,13 @@ pub struct Segmenter {
     /// leaves grouping unbounded, matching previous behavior.
     pub max_grouping_len: Option<usize>,
 
+    /// Whether to additionally emit MeCab/Vibrato-inspired shorter
+    /// unknown-word candidates up to each category's `char.def` `LENGTH`
+    /// field (#945). Lindera parsed but never read this field before this
+    /// option existed. Defaults to `true` starting with this release --
+    /// set to `false` to match pre-v6 output exactly.
+    pub unknown_word_ladder: bool,
+
     /// The category ID for space characters, used when keep_whitespace is false.
     space_category_id: Option<CategoryId>,
 
@@ -179,6 +186,7 @@ impl Segmenter {
             user_dictionary,
             keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
             max_grouping_len: None, // Default: unbounded grouping
+            unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
             space_category_id,
             space_ascii_table,
         }
@@ -228,6 +236,21 @@ impl Segmenter {
     /// `self`, for chaining.
     pub fn max_grouping_len(mut self, max_grouping_len: Option<usize>) -> Self {
         self.max_grouping_len = max_grouping_len;
+        self
+    }
+
+    /// Builder method to enable/disable the unknown-word length ladder
+    /// (see the `unknown_word_ladder` field; defaults to `true`).
+    ///
+    /// # 引数
+    ///
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    ///
+    /// # 戻り値
+    ///
+    /// `self`, for chaining.
+    pub fn unknown_word_ladder(mut self, unknown_word_ladder: bool) -> Self {
+        self.unknown_word_ladder = unknown_word_ladder;
         self
     }
 
@@ -332,9 +355,17 @@ impl Segmenter {
             .filter(|&n| n > 0)
             .map(|n| n as usize);
 
+        // Load the unknown_word_ladder option from the config.
+        // Absent means the default (true).
+        let unknown_word_ladder = config
+            .get("unknown_word_ladder")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
+
         Ok(Self::new(mode, dictionary, user_dictionary)
             .keep_whitespace(keep_whitespace)
-            .max_grouping_len(max_grouping_len))
+            .max_grouping_len(max_grouping_len)
+            .unknown_word_ladder(unknown_word_ladder))
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -496,6 +527,7 @@ impl Segmenter {
                 sentence,
                 &self.mode,
                 self.max_grouping_len,
+                self.unknown_word_ladder,
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
@@ -640,6 +672,7 @@ impl Segmenter {
                 sentence,
                 &self.mode,
                 self.max_grouping_len,
+                self.unknown_word_ladder,
             );
 
             let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);

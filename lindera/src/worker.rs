@@ -221,6 +221,16 @@ impl SegmentWorker {
         self.segmenter.max_grouping_len = max_grouping_len;
     }
 
+    /// Enables/disables the unknown-word length ladder for subsequent
+    /// calls (see `Segmenter::unknown_word_ladder`; defaults to `true`).
+    ///
+    /// # 引数
+    ///
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
+        self.segmenter.unknown_word_ladder = unknown_word_ladder;
+    }
+
     /// Returns a shared reference to the underlying segmenter.
     ///
     /// No `&mut` accessor is provided on purpose: swapping the dictionary
@@ -420,11 +430,104 @@ mod tests {
         /// #944: max_grouping_len caps unknown-word grouping with MeCab
         /// semantics -- a run with more characters beyond the first than
         /// the cap falls back to single-char unknown words -- while None
+        /// #945: the length ladder must be additive and switchable. Using
+        /// two out-of-vocabulary KANJI characters (char.def: invoke=0,
+        /// group=0, length=2 in IPADIC) isolates the ladder from grouping
+        /// (which is off for this category) and from max_grouping_len
+        /// (irrelevant when group=false): with the ladder on, a 2-char
+        /// candidate becomes available and the best path takes it (lower
+        /// cost than two isolated 1-char unknown words); with it off,
+        /// only 1-char candidates exist, matching pre-#945 output.
+        #[test]
+        fn test_unknown_word_ladder_toggle() {
+            let segmenter = ipadic_segmenter();
+            let mut worker = segmenter.new_worker();
+
+            // Two rare kanji absent from IPADIC's dictionary.
+            let text = "龘龍";
+
+            let with_ladder = match worker.segment(text) {
+                Ok(tokens) => tokens
+                    .iter()
+                    .map(|t| t.surface.to_string())
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("worker.segment failed: {err}"),
+            };
+            assert_eq!(
+                with_ladder,
+                vec![text.to_string()],
+                "the ladder's 2-char candidate must win the best path"
+            );
+
+            worker.set_unknown_word_ladder(false);
+            let without_ladder = match worker.segment(text) {
+                Ok(tokens) => tokens
+                    .iter()
+                    .map(|t| t.surface.to_string())
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("worker.segment failed: {err}"),
+            };
+            assert_eq!(
+                without_ladder,
+                vec!["龘".to_string(), "龍".to_string()],
+                "disabling the ladder must fall back to single-char unknowns"
+            );
+
+            worker.set_unknown_word_ladder(true);
+            assert_eq!(
+                match worker.segment(text) {
+                    Ok(tokens) => tokens
+                        .iter()
+                        .map(|t| t.surface.to_string())
+                        .collect::<Vec<_>>(),
+                    Err(err) => panic!("worker.segment failed: {err}"),
+                },
+                with_ladder,
+                "re-enabling the ladder must restore the default output"
+            );
+        }
+
+        /// #945: the length ladder must also fire on the Decompose-mode
+        /// path, which reads run lengths from the #944 precomputed buffer
+        /// instead of Normal mode's forward scan.
+        #[test]
+        fn test_unknown_word_ladder_decompose_mode() {
+            use lindera_dictionary::mode::Penalty;
+
+            let segmenter = ipadic_segmenter();
+            let mut worker = segmenter.new_worker();
+            worker.set_mode(Mode::Decompose(Penalty::default()));
+
+            let text = "龘龍";
+            let with_ladder = match worker.segment(text) {
+                Ok(tokens) => tokens
+                    .iter()
+                    .map(|t| t.surface.to_string())
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("worker.segment failed: {err}"),
+            };
+            assert_eq!(with_ladder, vec![text.to_string()]);
+
+            worker.set_unknown_word_ladder(false);
+            let without_ladder = match worker.segment(text) {
+                Ok(tokens) => tokens
+                    .iter()
+                    .map(|t| t.surface.to_string())
+                    .collect::<Vec<_>>(),
+                Err(err) => panic!("worker.segment failed: {err}"),
+            };
+            assert_eq!(without_ladder, vec!["龘".to_string(), "龍".to_string()]);
+        }
+
         /// (the default) keeps grouping unbounded.
         #[test]
         fn test_max_grouping_len_caps_unknown_grouping() {
             let segmenter = ipadic_segmenter();
             let mut worker = segmenter.new_worker();
+            // Isolate max_grouping_len from the length ladder (#945,
+            // default on), which would otherwise also contribute
+            // candidates and change the best path independently.
+            worker.set_unknown_word_ladder(false);
 
             // An out-of-vocabulary katakana run (5 chars); IPADIC's
             // KATAKANA category groups, so the default spans the run.

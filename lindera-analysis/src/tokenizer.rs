@@ -155,6 +155,21 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Enables/disables the unknown-word length ladder (see
+    /// `Segmenter::unknown_word_ladder`; defaults to `true`).
+    ///
+    /// # Arguments
+    ///
+    /// * `unknown_word_ladder` - Whether to emit the length ladder.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_unknown_word_ladder(&mut self, unknown_word_ladder: bool) -> &mut Self {
+        self.config["segmenter"]["unknown_word_ladder"] = json!(unknown_word_ladder);
+        self
+    }
+
     /// Set whether to route filesystem-loaded dictionaries through
     /// memory-mapped reads. Ignored for `embedded://` dictionaries.
     ///
