@@ -295,6 +295,12 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="unknown-word-grouping"><a class="header" href="#unknown-word-grouping">Unknown-Word Grouping</a></h2>
+<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
+<span class="boring">}</span></code></pre></pre>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
 <p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags, and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

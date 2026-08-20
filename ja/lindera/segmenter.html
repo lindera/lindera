@@ -298,6 +298,12 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
+<p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます。上限を超えるランは 1 文字ずつの未知語になります:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
+<span class="boring">}</span></code></pre></pre>
 <h2 id="n-best-セグメンテーション"><a class="header" href="#n-best-セグメンテーション">N-Best セグメンテーション</a></h2>
 <p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

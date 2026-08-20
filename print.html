@@ -1200,6 +1200,12 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="unknown-word-grouping"><a class="header" href="#unknown-word-grouping">Unknown-Word Grouping</a></h2>
+<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
+<span class="boring">}</span></code></pre></pre>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
 <p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags, and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -2064,6 +2070,7 @@ jieba           no        no          -
 <li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
 <li><code>--keep-whitespace</code>: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)</li>
+<li><code>--max-grouping-len</code>: Maximum unknown-word grouping length in characters beyond the first (MeCab's <code>max-grouping-size</code>; MeCab defaults to 24). Runs longer than the cap fall back to single-character unknown words. Default: unbounded</li>
 <li><code>--mmap</code>: Use memory-mapped file loading for the dictionary directory's word list. Ignored for <code>embedded://</code> dictionaries and when the <code>mmap</code> feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.</li>
 <li><code>--nbest</code> / <code>-N</code>: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.</li>
 <li><code>--nbest-unique</code>: Deduplicate N-best results by removing paths that produce the same segmentation.</li>
