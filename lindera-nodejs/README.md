@@ -105,28 +105,27 @@ for (const token of tokens) {
 }
 ```
 
-### Plain-Object Tokenization
+### Tokens Are Plain Objects
 
-Until 6.x changes `tokenize` itself to return plain objects
-([#930](https://github.com/lindera/lindera/issues/930)), use `tokenizeObjects`
-as a 5.x-era mitigation for large synchronous batches: `Token` class instances
-free native memory via an event-loop-deferred finalizer, so loops that never
-yield accumulate memory, while plain objects are reclaimed by ordinary GC.
-It is also useful when results must be serializable.
+`tokenize` and `tokenizeNbest` return plain JavaScript objects, not class
+instances. This keeps memory predictable in large synchronous batches: a napi
+class instance frees its native memory through a finalizer that napi defers to
+the event loop, so a loop that never yields accumulates native memory even
+under forced GC, whereas plain objects are reclaimed by ordinary GC
+([#930](https://github.com/lindera/lindera/issues/930)).
+
+They also serialize without conversion:
 
 ```javascript
-// Same fields as Token: surface, byteStart, byteEnd, position, wordId, isUnknown, details
-const tokens = tokenizer.tokenizeObjects(text);
+const tokens = tokenizer.tokenize(text);
 
-for (const token of tokens) {
-  console.log(`${token.surface}	${token.details.join(",")}`);
-}
+JSON.stringify(tokens);   // works as-is
+structuredClone(tokens);  // safe to send to a worker
 ```
 
-Known limitation: `tokenizeNbest` also returns `Token` instances and has the
-same accumulation behavior in no-yield loops; it has no plain-object variant
-in 5.x and is fixed wholesale in 6.x
-([#930](https://github.com/lindera/lindera/issues/930)).
+Read a single detail by indexing the array — `token.details[0]` — which
+replaces the `token.getDetail(0)` method that existed while tokens were class
+instances (out-of-range reads now yield `undefined` rather than `null`).
 
 ### Using Character Filters
 
