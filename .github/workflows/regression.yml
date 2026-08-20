@@ -426,6 +426,13 @@ jobs:
             exit 1
           fi
 
+      # Tokens must stay plain objects: napi defers class-instance finalizers to the event loop,
+      # so returning classes accumulates native memory in synchronous loops that never yield
+      # (#922, #930). This check fails if that accumulation pattern comes back.
+      - name: Check token memory is released in synchronous loops
+        run: |
+          make memcheck-lindera-nodejs
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]

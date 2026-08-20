@@ -98,19 +98,6 @@ export declare class Metadata {
 export type JsMetadata = Metadata
 
 /**
- * N-best tokenization result.
- *
- * Contains a list of tokens and their total path cost.
- */
-export declare class NbestResult {
-  /** Tokens in this result. */
-  get tokens(): Array<Token>
-  /** Total path cost of this tokenization. */
-  get cost(): number
-}
-export type JsNbestResult = NbestResult
-
-/**
  * Dictionary schema definition.
  *
  * A thin napi wrapper over [`lindera_binding_core::CoreSchema`], which owns the
@@ -201,42 +188,6 @@ export declare class Schema {
 export type JsSchema = Schema
 
 /**
- * A morphological token.
- *
- * Represents a single token from morphological analysis with its surface form,
- * position information, and morphological details.
- */
-export declare class Token {
-  /** Surface form of the token. */
-  get surface(): string
-  /** Start byte position in the original text. */
-  get byteStart(): number
-  /** End byte position in the original text. */
-  get byteEnd(): number
-  /** Position index of the token. */
-  get position(): number
-  /** Word ID in the dictionary. */
-  get wordId(): number
-  /** Whether this token is an unknown word (not found in the dictionary). */
-  get isUnknown(): boolean
-  /** Morphological details of the token (part of speech, reading, etc.). */
-  get details(): Array<string>
-  /**
-   * Returns the detail string at the specified index.
-   *
-   * # Arguments
-   *
-   * * `index` - Zero-based index into the details array.
-   *
-   * # Returns
-   *
-   * The detail string if found, or `null` if the index is out of range.
-   */
-  getDetail(index: number): string | null
-}
-export type JsToken = Token
-
-/**
  * Tokenizer for performing morphological analysis.
  *
  * The tokenizer processes text and returns tokens with their morphological features.
@@ -255,35 +206,20 @@ export declare class Tokenizer {
   /**
    * Tokenizes the given text.
    *
+   * Tokens are returned as plain JS objects owned by the JS heap, so
+   * they are reclaimed by ordinary GC and survive `JSON.stringify` /
+   * `structuredClone` / worker transfer without conversion.
+   *
    * # Arguments
    *
    * * `text` - Text to tokenize.
    *
    * # Returns
    *
-   * An array of Token objects containing morphological features.
+   * An array of token objects containing morphological features, in
+   * reading order.
    */
   tokenize(text: string): Array<Token>
-  /**
-   * Tokenizes the given text and returns tokens as plain JS objects.
-   *
-   * This is the predictable-memory path for high-volume use: plain
-   * objects are reclaimed by ordinary GC, while `Token` class instances
-   * release native memory via an event-loop-deferred finalizer, so
-   * synchronous loops that never yield accumulate memory with `tokenize`.
-   *
-   * In 6.x, `tokenize` itself will return plain objects and this method
-   * will be removed. See <https://github.com/lindera/lindera/issues/930>.
-   *
-   * # Arguments
-   *
-   * * `text` - Text to tokenize.
-   *
-   * # Returns
-   *
-   * An array of plain token objects, in reading order.
-   */
-  tokenizeObjects(text: string): Array<JsTokenData>
   /**
    * Tokenizes the given text and returns only the token surfaces.
    *
@@ -521,29 +457,6 @@ export interface JsPenalty {
 }
 
 /**
- * Plain-object token data.
- *
- * Carries the same fields as [`JsToken`] but converts to a plain JS
- * object owned by the JS heap, with no native box or deferred finalizer.
- */
-export interface JsTokenData {
-  /** Surface form of the token. */
-  surface: string
-  /** Start byte position in the original text. */
-  byteStart: number
-  /** End byte position in the original text. */
-  byteEnd: number
-  /** Position index of the token. */
-  position: number
-  /** Word ID in the dictionary. */
-  wordId: number
-  /** Whether this token is an unknown word. */
-  isUnknown: boolean
-  /** Morphological details of the token. */
-  details: Array<string>
-}
-
-/**
  * Loads a dictionary from the specified URI.
  *
  * # Arguments
@@ -595,6 +508,41 @@ export interface MetadataOptions {
   skipInvalidCostOrId?: boolean
   /** Normalize morphological details (default: false). */
   normalizeDetails?: boolean
+}
+
+/**
+ * N-best tokenization result.
+ *
+ * Contains a list of tokens and their total path cost.
+ */
+export interface NbestResult {
+  /** Tokens in this result. */
+  tokens: Array<JsTokenData>
+  /** Total path cost of this tokenization. */
+  cost: number
+}
+
+/**
+ * A morphological token.
+ *
+ * Represents a single token from morphological analysis with its surface
+ * form, position information, and morphological details.
+ */
+export interface Token {
+  /** Surface form of the token. */
+  surface: string
+  /** Start byte position in the original text. */
+  byteStart: number
+  /** End byte position in the original text. */
+  byteEnd: number
+  /** Position index of the token. */
+  position: number
+  /** Word ID in the dictionary. */
+  wordId: number
+  /** Whether this token is an unknown word. */
+  isUnknown: boolean
+  /** Morphological details of the token. */
+  details: Array<string>
 }
 
 /**

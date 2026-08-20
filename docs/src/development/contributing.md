@@ -42,6 +42,27 @@ Thank you for your interest in contributing to Lindera! This page provides guide
 - Use `unsafe` blocks only when necessary, and always include a `// SAFETY: ...` comment.
 - Use file-based module style (`src/tokenizer.rs`) instead of `mod.rs` style.
 
+## Language Binding Parity
+
+Lindera ships bindings for Python, Node.js, Ruby, PHP, and WASM. When adding
+or reviewing a binding feature, apply the following policy:
+
+- **Keep the feature set aligned.** Capabilities — tokenization
+  (`tokenize` / `tokenize_surfaces` / `tokenize_nbest`), user dictionaries,
+  character filters, and token filters — should be available in every
+  binding. A feature added to one binding should come with a plan (or a
+  tracking issue) for the others.
+- **Let representation and lifetime management follow each language.**
+  Whether tokens are class instances or plain data, naming conventions
+  (camelCase vs. snake_case), and serialization helpers (`to_dict` / `to_h` /
+  `toArray` / `toJSON`) are per-language decisions and do not need to match
+  across bindings. The JS bindings return plain objects because their hosts
+  defer class finalizers, while Python, Ruby, and PHP keep classes because
+  their finalization is deterministic.
+
+Put shared logic in `lindera-binding-core` (e.g. `TokenView`) so each binding
+only maps core data into its FFI types.
+
 ## Testing
 
 - Write unit tests for all new functionality.

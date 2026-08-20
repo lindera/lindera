@@ -48,16 +48,43 @@ describe(
       assert.ok(token.details.length > 0);
     });
 
-    it("should support getDetail method", () => {
+    it("should expose details by index", () => {
       const tokens = tokenizer.tokenize("東京");
       const token = tokens[0];
 
-      const firstDetail = token.getDetail(0);
-      assert.ok(firstDetail !== null);
-      assert.strictEqual(firstDetail, token.details[0]);
+      assert.ok(token.details.length > 0);
+      assert.strictEqual(typeof token.details[0], "string");
 
-      // Out of bounds
-      assert.strictEqual(token.getDetail(9999), null);
+      // Out of bounds reads yield undefined, as for any JS array.
+      assert.strictEqual(token.details[9999], undefined);
+    });
+
+    // Tokens are plain objects rather than class instances so that their
+    // memory is owned by the JS heap: napi defers class finalizers to the
+    // event loop, which accumulates native memory in synchronous loops that
+    // never yield (#922, #930).
+    it("should return plain objects, not class instances", () => {
+      const tokens = tokenizer.tokenize("テスト");
+
+      assert.ok(tokens.length > 0);
+      const token = tokens[0];
+
+      // Plain objects: data properties, not prototype getters.
+      assert.ok(Object.getOwnPropertyDescriptor(token, "surface"));
+      assert.strictEqual(Object.getPrototypeOf(token), Object.prototype);
+    });
+
+    it("should survive JSON and structuredClone round-trips", () => {
+      const token = tokenizer.tokenize("テスト")[0];
+
+      const parsed = JSON.parse(JSON.stringify(token));
+      assert.strictEqual(parsed.surface, token.surface);
+      assert.strictEqual(parsed.byteStart, token.byteStart);
+      assert.strictEqual(parsed.isUnknown, token.isUnknown);
+      assert.deepStrictEqual(parsed.details, token.details);
+
+      const cloned = structuredClone(token);
+      assert.deepStrictEqual(cloned, token);
     });
   },
 );
