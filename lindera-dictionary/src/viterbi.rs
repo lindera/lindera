@@ -509,25 +509,20 @@ impl Lattice {
         self.sys_matches.shrink_to(64);
     }
 
-    #[inline(never)]
-    // Forward Viterbi implementation:
-    // Constructs the lattice and calculates the path costs simultaneously.
-    // This improves performance by avoiding a separate lattice traversal pass.
-    #[allow(clippy::too_many_arguments)]
-    pub fn set_text(
-        &mut self,
-        dict: &PrefixDictionary,
-        user_dict: &Option<&UserPrefixDictionary>,
-        char_definitions: &CharacterDefinition,
-        unknown_dictionary: &UnknownDictionary,
-        cost_matrix: &ConnectionCostMatrix,
-        text: &str,
-        search_mode: &Mode,
-    ) {
+    /// Fills the per-sentence character buffers (`char_info_buffer`,
+    /// `categories_buffer`, `chars_buf`) from `text`, appends the
+    /// end-of-text sentinel, and precomputes the kanji run lengths consumed
+    /// by the Decompose-mode penalty.
+    ///
+    /// Shared by `set_text` and `set_text_nbest` so the two hot paths cannot
+    /// drift apart.
+    ///
+    /// # 引数
+    ///
+    /// * `char_definitions` - Character category definitions.
+    /// * `text` - The sentence to prepare buffers for.
+    fn prepare_char_buffers(&mut self, char_definitions: &CharacterDefinition, text: &str) {
         let len = text.len();
-        self.set_capacity(len);
-
-        // Pre-calculate character information for the text
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
@@ -574,6 +569,28 @@ impl Lattice {
                 self.char_info_buffer[i].kanji_run_byte_len = 0;
             }
         }
+    }
+
+    #[inline(never)]
+    // Forward Viterbi implementation:
+    // Constructs the lattice and calculates the path costs simultaneously.
+    // This improves performance by avoiding a separate lattice traversal pass.
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_text(
+        &mut self,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&UserPrefixDictionary>,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        text: &str,
+        search_mode: &Mode,
+    ) {
+        let len = text.len();
+        self.set_capacity(len);
+
+        // Pre-calculate character information for the text
+        self.prepare_char_buffers(char_definitions, text);
 
         let start_edge = Edge {
             path_cost: 0,
@@ -1099,52 +1116,7 @@ impl Lattice {
         self.set_capacity_nbest(len);
 
         // Pre-calculate character information for the text
-        self.char_info_buffer.clear();
-        self.categories_buffer.clear();
-        self.chars_buf.clear();
-
-        for (byte_offset, c) in text.char_indices() {
-            let categories_start = self.categories_buffer.len() as u32;
-
-            // Category lookup is O(1) for BMP codepoints via the flat table
-            // built at dictionary load (#878), so no per-lattice cache is
-            // needed.
-            let categories = char_definitions.lookup_categories(c);
-            for &category in categories {
-                self.categories_buffer.push(category);
-            }
-
-            let categories_len = (self.categories_buffer.len() as u32 - categories_start) as u16;
-
-            self.char_info_buffer.push(CharData {
-                byte_offset: byte_offset as u32,
-                is_kanji: is_kanji(c),
-                categories_start,
-                categories_len,
-                kanji_run_byte_len: 0,
-            });
-            self.chars_buf.push(c);
-        }
-        // Sentinel for end of text
-        self.char_info_buffer.push(CharData {
-            byte_offset: len as u32,
-            is_kanji: false,
-            categories_start: 0,
-            categories_len: 0,
-            kanji_run_byte_len: 0,
-        });
-
-        // Pre-calculate Kanji run lengths (backwards)
-        for i in (0..self.char_info_buffer.len() - 1).rev() {
-            if self.char_info_buffer[i].is_kanji {
-                let next_byte_offset = self.char_info_buffer[i + 1].byte_offset;
-                let char_byte_len = next_byte_offset - self.char_info_buffer[i].byte_offset;
-                self.char_info_buffer[i].kanji_run_byte_len =
-                    char_byte_len + self.char_info_buffer[i + 1].kanji_run_byte_len;
-            } else {
-                self.char_info_buffer[i].kanji_run_byte_len = 0;
-            }
-        }
+        self.prepare_char_buffers(char_definitions, text);
 
         let start_edge = Edge {
             path_cost: 0,
