@@ -320,7 +320,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: <code>{ tokens: object[], cost: number }</code> の配列</li>
+<li><strong>戻り値</strong>: <code>{ tokens: Token[], cost: number }</code> の配列</li>
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 
@@ -328,38 +328,30 @@ builder.setDictionaryInstance(dictionary);
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
-<p>トークナイザーが生成する単一のトークンを表します。</p>
+<p>トークナイザーが生成する単一のトークンで、プレーンな JavaScript オブジェクトです。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
-<tr><td><code>byte_start</code></td><td><code>number</code></td><td>元テキストでの開始バイトオフセット</td></tr>
-<tr><td><code>byte_end</code></td><td><code>number</code></td><td>元テキストでの終了バイトオフセット</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>元テキストでの開始バイトオフセット</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>元テキストでの終了バイトオフセット</td></tr>
 <tr><td><code>position</code></td><td><code>number</code></td><td>トークンの位置インデックス</td></tr>
-<tr><td><code>word_id</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
-<tr><td><code>is_unknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細フィールド</td></tr>
 </tbody></table>
 </div>
 <blockquote>
 <p>[!NOTE]
-これらが <code>Token</code> オブジェクトの実際のフィールド名です -- <code>lindera-wasm/src/token.rs</code> は <code>js_name</code> によるリネームを一切行っていないため、JavaScript 側でも snake_case のままになります。camelCase にリネームされるのは、下記の <code>toJSON()</code> が返す JSON 用オブジェクトのみです。</p>
+トークンは <code>wasm_bindgen</code> のクラスインスタンスではなくプレーンオブジェクトです。クラスインスタンスは JavaScript 側が解放するまでデータを Rust ヒープ上に保持するため、yield しない同期ループでトークナイズするとメモリが蓄積します。プレーンオブジェクトなら Rust 側に確保されるものが無く、結果は <code>JSON.stringify</code>、<code>structuredClone</code>、worker への転送を変換なしで通過します。フィールド名は <code>lindera-nodejs</code> バインディングと同じ camelCase です。</p>
 </blockquote>
-<h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。</p>
-<ul>
-<li><strong>パラメータ</strong>: <code>index</code> (number) -- details 配列へのゼロベースインデックス</li>
-<li><strong>戻り値</strong>: <code>string | undefined</code></li>
-</ul>
-<pre><code class="language-javascript">const pos = token.getDetail(0);   // 例: "名詞"
-const reading = token.getDetail(7); // 例: "トウキョウ"
+<h3 id="詳細情報の読み出し"><a class="header" href="#詳細情報の読み出し">詳細情報の読み出し</a></h3>
+<p><code>details</code> を直接インデックスします。範囲外のインデックスは <code>undefined</code> になります。</p>
+<pre><code class="language-javascript">const pos = token.details[0];     // 例: "名詞"
+const reading = token.details[7]; // 例: "トウキョウ"
 </code></pre>
-<h4 id="tojson"><a class="header" href="#tojson"><code>toJSON()</code></a></h4>
-<p>トークンのプレーンな JavaScript オブジェクト表現を返します。</p>
-<ul>
-<li><strong>戻り値</strong>: <code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code> をキーに持つ <code>object</code></li>
-</ul>
-<pre><code class="language-javascript">console.log(JSON.stringify(token.toJSON(), null, 2));
+<h3 id="トークンのシリアライズ"><a class="header" href="#トークンのシリアライズ">トークンのシリアライズ</a></h3>
+<p>トークンは既にプレーンオブジェクトなので、そのままシリアライズできます。</p>
+<pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>

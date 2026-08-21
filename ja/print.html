@@ -970,8 +970,8 @@ tokenizer
 <h3 id="辞書フォーマットバージョン"><a class="header" href="#辞書フォーマットバージョン">辞書フォーマットバージョン</a></h3>
 <p>ビルド済み辞書ディレクトリは、自身が書かれたオンディスクレイアウトを <code>metadata.json</code> の <code>format_version</code> として記録します。値は <code>DictionaryBuilder::build_metadata</code> が <code>DICTIONARY_FORMAT_VERSION</code>（<code>lindera-dictionary/src/dictionary/metadata.rs</code>）から刻印します。いま何を書いたのかを正しく主張できるのはビルダだけなので、<strong>ソース</strong> <code>metadata.json</code> 側の値は無視されます。辞書ディレクトリのロード時には記録されたバージョンを検証し、一致しなければ対処方法を含むエラーを返します。</p>
 <p>この検証が重要なのは、ほとんどの成果物が自前のヘッダを持たないためです。<code>matrix.mtx</code>・<code>dict.vals</code>・<code>dict.words</code> は生の配列なので、古いレイアウトの辞書でも長さが辻褄の合う範囲なら<strong>エラーにならず異常な値として解釈されます</strong>。各辞書クレートに手書きでチェックインされている<strong>ソース</strong> <code>metadata.json</code> はビルドの<strong>入力</strong>を記述するもので、<code>format_version</code> を持たず、フォーマット検証の対象にもなりません。</p>
-<p>ビルド済み成果物のバイト列が変わる変更では必ず <code>DICTIONARY_FORMAT_VERSION</code> を上げてください。シリアライズ形式をそのまま書き出している依存クレートの更新（<code>dict.trie</code> の <code>crawdad</code>、<code>char_def.bin</code> / <code>unk.bin</code> の <code>rkyv</code>）も対象で、本クレートのコードが 1 行も変わらないため見落としやすい箇所です。ビルドキャッシュがフォーマットバージョンをキーに含めているのは、まさにこのためです。</p>
-<p>現在のフォーマットバージョンは 2 です。バージョン 2 では、システム前方一致辞書のバイト単位 daachorse Aho-Corasick オートマトン（<code>dict.da</code>）が、文字単位のダブル配列トライ（<code>dict.trie</code>）と <code>u32</code> の累積和インデックス（<code>dict.valsidx</code>）に置き換えられました。バージョン 1 以前の辞書はロード時に対処方法を含むエラーで拒否されます。ユーザー辞書の <code>.bin</code> はこの変更の影響を受けません。</p>
+<p>ビルド済み成果物のバイト列が変わる変更では必ず <code>DICTIONARY_FORMAT_VERSION</code> を上げてください。シリアライズ形式をそのまま書き出している依存クレートの更新（<code>dict.trie</code> の <code>crawdad</code>、<code>char_def.bin</code> / <code>unk.bin</code> の <code>rkyv</code>、ユーザー辞書 <code>.bin</code> 内の <code>daachorse</code>）も対象で、本クレートのコードが 1 行も変わらないため見落としやすい箇所です。ビルドキャッシュがフォーマットバージョンをキーに含めているのは、まさにこのためです。</p>
+<p>現在のフォーマットバージョンは 2 です。バージョン 2 では、システム前方一致辞書のバイト単位 daachorse Aho-Corasick オートマトン（<code>dict.da</code>）が、文字単位のダブル配列トライ（<code>dict.trie</code>）と <code>u32</code> の累積和インデックス（<code>dict.valsidx</code>）に置き換えられました。バージョン 1 以前の辞書はロード時に対処方法を含むエラーで拒否されます。ユーザー辞書の <code>.bin</code> は<strong>この変更</strong>の影響を受けませんが、<code>daachorse</code> によって書き出されているため <code>daachorse</code> の更新では無効化されます。上記のリストに <code>daachorse</code> が含まれているのはそのためです。</p>
 <h3 id="コンテキストidリマッピング"><a class="header" href="#コンテキストidリマッピング">コンテキストIDリマッピング</a></h3>
 <p>辞書メタデータ（<code>lindera-dictionary/src/dictionary/metadata.rs</code>）は、<code>connection_id_mapping: bool</code>フラグとオプションの<code>context_id_map: Option&lt;ContextIdMap&gt;</code>を持ちます。辞書クレート（例: <code>lindera-unidic</code>）が<code>connection_id_mapping</code>を有効にすると、<code>DictionaryBuilder</code>はビルド時にアクセス頻度に基づいて連接行列の左右コンテキストIDを再割り当てし、頻繁に使用される連接コストのセルが近くに集まるようにしてキャッシュ局所性を高めます。<code>DictionaryBuilder::with_context_id_freq</code>は、IDのランク付けに使用するバンドル済み頻度ヒストグラムを（任意で）アタッチするためのメソッドで、再割り当て自体は<code>lindera-dictionary/src/builder/context_id_remap.rs</code>で計算されます。<code>ContextIdMap</code>（<code>lindera-dictionary/src/dictionary/context_id_map.rs</code>）は結果として得られる<code>left</code>/<code>right</code>の置換を保持し、同じマッピングを後から再適用できるようにビルド済みの<code>metadata.json</code>に永続化されます。ユーザー辞書は常に元の（再割り当てされていない）ID空間でコンパイルされるため、<code>UserDictionary::remap_context_ids</code>（<code>lindera-dictionary/src/dictionary.rs</code>）は永続化された<code>ContextIdMap</code>を使って、ユーザー辞書のコンテキストIDを、それが紐付くシステム辞書と同じ空間に再割り当てします。この再割り当ては全単射（bijective）な付け替えであるため、トークナイゼーションの出力は変わらず、ルックアップの局所性のみが変化します。</p>
 <h3 id="学習"><a class="header" href="#学習">学習</a></h3>
@@ -1369,6 +1369,8 @@ let content = std::fs::read_to_string("config.yml")
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
+  # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
+  # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
 
 character_filters:
   - kind: "unicode_normalize"
@@ -1429,6 +1431,17 @@ token_filters:
     args:
       japanese: false
 </code></pre>
+<h2 id="segmenter-のオプション"><a class="header" href="#segmenter-のオプション">Segmenter のオプション</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>キー</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>分割モード。<code>"normal"</code> または <code>"decompose"</code></td></tr>
+<tr><td><code>dictionary</code></td><td>string</td><td><em>(必須)</em></td><td>辞書 URI。例: <code>"embedded://ipadic"</code></td></tr>
+<tr><td><code>user_dictionary</code></td><td>string</td><td><em>(なし)</em></td><td>ユーザー辞書のパス</td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>空白トークンを無視せずに出力する（MeCab は無視する）</td></tr>
+<tr><td><code>use_mmap</code></td><td>bool</td><td><code>mmap</code> feature が有効なとき on（デフォルト）</td><td>辞書をメモリマップする。ファイルシステム辞書（<code>embedded://</code> ではない辞書）にのみ意味がある</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語のグルーピングが<strong>先頭の 1 文字を超えて</strong>span できる最大文字数。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
+<tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>MeCab や Vibrato と同様に、<code>char.def</code> の各カテゴリの <code>LENGTH</code> フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには <code>false</code> を指定する</td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
@@ -3215,6 +3228,19 @@ reading = token.get_detail(7)    # 例: "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>str</code> または <code>None</code></p>
+<h4 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h4>
+<p>トークンをプレーンな <code>dict</code> として返します。各フィールドは Python の自然な型を
+保つため、独自のエンコーダなしでシリアライズできます。</p>
+<pre><code class="language-python">import json
+
+data = tokenizer.tokenize("東京")[0].to_dict()
+# {'surface': '東京', 'byte_start': 0, 'byte_end': 6, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+</code></pre>
+<p><strong>戻り値:</strong> <code>surface</code>、<code>byte_start</code>、<code>byte_end</code>、<code>position</code>、<code>word_id</code>、
+<code>is_unknown</code>、<code>details</code> をキーに持つ <code>dict</code>。</p>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -3357,7 +3383,7 @@ metadata.name = "custom_dict"
 metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
-<h3 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h3>
+<h3 id="to_dict-1"><a class="header" href="#to_dict-1"><code>to_dict()</code></a></h3>
 <p>メタデータの辞書表現を返します：</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
@@ -3809,7 +3835,7 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
 for (const token of tokens) {
-  console.log(`${token.surface}\t${token.getDetail(0)}`);
+  console.log(`${token.surface}\t${token.details[0]}`);
 }
 </code></pre>
 <h2 id="トークンプロパティへのアクセス-1"><a class="header" href="#トークンプロパティへのアクセス-1">トークンプロパティへのアクセス</a></h2>
@@ -3934,7 +3960,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h3 id="tokenizer-メソッド-1"><a class="header" href="#tokenizer-メソッド-1">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
-<p>入力テキストをトークナイズし、<code>Token</code> オブジェクトの配列を返します。</p>
+<p>入力テキストをトークナイズし、プレーンなトークンオブジェクトの配列を返します。</p>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("形態素解析");
 </code></pre>
 <p><strong>パラメータ:</strong></p>
@@ -3943,22 +3969,9 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Token[]</code></p>
-<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
-<p>入力テキストをトークナイズし、<code>Token</code> クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。</p>
-<p>これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、<code>Token</code> クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、<code>tokenize</code> を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。</p>
-<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
-</code></pre>
-<p><strong>パラメータ:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
-</tbody></table>
-</div>
-<p><strong>戻り値:</strong> <code>Array&lt;JsTokenData&gt;</code>。各 <code>JsTokenData</code> は <code>Token</code> と同じフィールド（<code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code>）を持ちます。</p>
-<blockquote>
-<p><strong>注意:</strong> 6.x では <code>tokenize</code> 自体がプレーンオブジェクトを返すようになり、<code>tokenizeObjects</code> は削除される予定です。詳細は <a href="https://github.com/lindera/lindera/issues/930">#930</a> を参照してください。</p>
-</blockquote>
+<p>トークンはクラスのインスタンスではなくプレーンな JavaScript オブジェクトです。そのため通常の GC で回収され、<code>JSON.stringify</code>、<code>structuredClone</code>、worker への転送を変換なしで通過します。詳細は <a href="lindera-nodejs/tokenizer_api.html#token">Token</a> を参照してください。</p>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
-<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。トークンオブジェクトを構築せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
 // ["形態素", "解析"]
 </code></pre>
@@ -3983,9 +3996,11 @@ for (const { tokens, cost } of results) {
 <tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>最良パスからの最大コスト差（デフォルト: <code>undefined</code>）</td></tr>
 </tbody></table>
 </div>
-<p><strong>戻り値:</strong> <code>Array&lt;{ tokens: Token[], cost: number }&gt;</code></p>
+<p><strong>戻り値:</strong> <code>NbestResult[]</code>。各 <code>NbestResult</code> は <code>{ tokens: Token[], cost: number }</code> です。</p>
 <h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
-<p><code>Token</code> は単一の形態素トークンを表します。</p>
+<p><code>Token</code> は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
+TypeScript の <code>interface</code> であり、メソッドもプロトタイプも持ちません。
+各フィールドは直接読み出します。</p>
 <h3 id="プロパティ-2"><a class="header" href="#プロパティ-2">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
@@ -3997,20 +4012,13 @@ for (const { tokens, cost } of results) {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-メソッド-1"><a class="header" href="#token-メソッド-1">Token メソッド</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
+<h3 id="詳細情報の読み出し"><a class="header" href="#詳細情報の読み出し">詳細情報の読み出し</a></h3>
+<p><code>details</code> を直接インデックスします。範囲外のインデックスは <code>undefined</code> になります。</p>
 <pre><code class="language-javascript">const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // 例: "名詞"
-const subpos = token.getDetail(1);   // 例: "固有名詞"
-const reading = token.getDetail(7);  // 例: "トウキョウ"
+const pos = token.details[0];      // 例: "名詞"
+const subpos = token.details[1];   // 例: "固有名詞"
+const reading = token.details[7];  // 例: "トウキョウ"
 </code></pre>
-<p><strong>パラメータ:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>index</code></td><td><code>number</code></td><td>details 配列へのゼロベースインデックス</td></tr>
-</tbody></table>
-</div>
-<p><strong>戻り値:</strong> <code>string | null</code></p>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -4753,7 +4761,7 @@ penalty.kanji_penalty_length_threshold  # 2
 <p>さらに、述語メソッド <code>unknown?</code> は辞書に登録されていない単語の場合 <code>true</code> を返します：</p>
 <pre><code class="language-ruby">token.unknown?  # =&gt; false
 </code></pre>
-<h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
+<h3 id="token-メソッド-1"><a class="header" href="#token-メソッド-1">Token メソッド</a></h3>
 <h4 id="get_detailindex-1"><a class="header" href="#get_detailindex-1"><code>get_detail(index)</code></a></h4>
 <p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>nil</code> を返します。</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
@@ -4767,6 +4775,20 @@ reading = token.get_detail(7)    # 例: "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>String</code> または <code>nil</code></p>
+<h4 id="to_h--to_hash"><a class="header" href="#to_h--to_hash"><code>to_h</code> / <code>to_hash</code></a></h4>
+<p>トークンを Symbol をキーとするプレーンな <code>Hash</code> として返します。各フィールドは
+Ruby の自然な型を保つため、独自のエンコーダなしでシリアライズできます。
+<code>to_h</code> と <code>to_hash</code> は同一のメソッドです。</p>
+<pre><code class="language-ruby">require 'json'
+
+data = tokenizer.tokenize('東京')[0].to_h
+# {surface: "東京", byte_start: 0, byte_end: 6, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&amp;:to_h))
+</code></pre>
+<p><strong>戻り値:</strong> <code>:surface</code>、<code>:byte_start</code>、<code>:byte_end</code>、<code>:position</code>、<code>:word_id</code>、
+<code>:is_unknown</code>、<code>:details</code> をキーに持つ <code>Hash</code>。</p>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -5483,8 +5505,8 @@ foreach ($results as $result) {
 <tr><td><code>details</code></td><td><code>array&lt;string&gt;</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-メソッド-3"><a class="header" href="#token-メソッド-3">Token メソッド</a></h3>
-<h4 id="getdetailindex-1"><a class="header" href="#getdetailindex-1"><code>getDetail($index)</code></a></h4>
+<h3 id="token-メソッド-2"><a class="header" href="#token-メソッド-2">Token メソッド</a></h3>
+<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail($index)</code></a></h4>
 <p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
 <pre><code class="language-php">$token = $tokenizer-&gt;tokenize('東京')[0];
 $pos = $token-&gt;getDetail(0);        // 例: "名詞"
@@ -5497,6 +5519,25 @@ $reading = $token-&gt;getDetail(7);    // 例: "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>string</code> または <code>null</code></p>
+<h4 id="toarray"><a class="header" href="#toarray"><code>toArray()</code></a></h4>
+<p>トークンを連想配列として返します。各フィールドは PHP の自然な型を保つため、
+独自のエンコーダなしでシリアライズできます。</p>
+<pre><code class="language-php">$data = $tokenizer-&gt;tokenize('東京')[0]-&gt;toArray();
+// ['surface' =&gt; '東京', 'byte_start' =&gt; 0, 'byte_end' =&gt; 6, 'position' =&gt; 0,
+//  'word_id' =&gt; 12345, 'is_unknown' =&gt; false, 'details' =&gt; [...]]
+
+echo json_encode(array_map(fn($t) =&gt; $t-&gt;toArray(), $tokens));
+</code></pre>
+<p><strong>戻り値:</strong> <code>surface</code>、<code>byte_start</code>、<code>byte_end</code>、<code>position</code>、<code>word_id</code>、
+<code>is_unknown</code>、<code>details</code> をキーに持つ <code>array</code>。</p>
+<blockquote>
+<p>[!NOTE]
+<code>Lindera\Token</code> は <code>JsonSerializable</code> を実装していないため、トークンオブジェクトを
+そのまま <code>json_encode</code> に渡してもこれらのフィールドは出力されません。先に
+<code>toArray()</code> を呼んでください。この拡張は ext-php-rs でビルドされており、その
+<code>#[php_class]</code> はまだ実装インターフェースを宣言できません（上流の
+<a href="https://github.com/davidcole1340/ext-php-rs/issues/326">ext-php-rs#326</a>）。</p>
+</blockquote>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -6286,7 +6327,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>costThreshold</code> (bigint, 省略可) -- <code>bestCost + threshold</code> 以内のパスのみ返す</li>
 </ul>
 </li>
-<li><strong>戻り値</strong>: <code>{ tokens: object[], cost: number }</code> の配列</li>
+<li><strong>戻り値</strong>: <code>{ tokens: Token[], cost: number }</code> の配列</li>
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 
@@ -6294,38 +6335,30 @@ builder.setDictionaryInstance(dictionary);
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h2 id="token-4"><a class="header" href="#token-4">Token</a></h2>
-<p>トークナイザーが生成する単一のトークンを表します。</p>
+<p>トークナイザーが生成する単一のトークンで、プレーンな JavaScript オブジェクトです。</p>
 <h3 id="プロパティ-7"><a class="header" href="#プロパティ-7">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
-<tr><td><code>byte_start</code></td><td><code>number</code></td><td>元テキストでの開始バイトオフセット</td></tr>
-<tr><td><code>byte_end</code></td><td><code>number</code></td><td>元テキストでの終了バイトオフセット</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>元テキストでの開始バイトオフセット</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>元テキストでの終了バイトオフセット</td></tr>
 <tr><td><code>position</code></td><td><code>number</code></td><td>トークンの位置インデックス</td></tr>
-<tr><td><code>word_id</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
-<tr><td><code>is_unknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>辞書内の単語 ID</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>未知語かどうか</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細フィールド</td></tr>
 </tbody></table>
 </div>
 <blockquote>
 <p>[!NOTE]
-これらが <code>Token</code> オブジェクトの実際のフィールド名です -- <code>lindera-wasm/src/token.rs</code> は <code>js_name</code> によるリネームを一切行っていないため、JavaScript 側でも snake_case のままになります。camelCase にリネームされるのは、下記の <code>toJSON()</code> が返す JSON 用オブジェクトのみです。</p>
+トークンは <code>wasm_bindgen</code> のクラスインスタンスではなくプレーンオブジェクトです。クラスインスタンスは JavaScript 側が解放するまでデータを Rust ヒープ上に保持するため、yield しない同期ループでトークナイズするとメモリが蓄積します。プレーンオブジェクトなら Rust 側に確保されるものが無く、結果は <code>JSON.stringify</code>、<code>structuredClone</code>、worker への転送を変換なしで通過します。フィールド名は <code>lindera-nodejs</code> バインディングと同じ camelCase です。</p>
 </blockquote>
-<h3 id="token-メソッド-4"><a class="header" href="#token-メソッド-4">Token メソッド</a></h3>
-<h4 id="getdetailindex-2"><a class="header" href="#getdetailindex-2"><code>getDetail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。</p>
-<ul>
-<li><strong>パラメータ</strong>: <code>index</code> (number) -- details 配列へのゼロベースインデックス</li>
-<li><strong>戻り値</strong>: <code>string | undefined</code></li>
-</ul>
-<pre><code class="language-javascript">const pos = token.getDetail(0);   // 例: "名詞"
-const reading = token.getDetail(7); // 例: "トウキョウ"
+<h3 id="詳細情報の読み出し-1"><a class="header" href="#詳細情報の読み出し-1">詳細情報の読み出し</a></h3>
+<p><code>details</code> を直接インデックスします。範囲外のインデックスは <code>undefined</code> になります。</p>
+<pre><code class="language-javascript">const pos = token.details[0];     // 例: "名詞"
+const reading = token.details[7]; // 例: "トウキョウ"
 </code></pre>
-<h4 id="tojson"><a class="header" href="#tojson"><code>toJSON()</code></a></h4>
-<p>トークンのプレーンな JavaScript オブジェクト表現を返します。</p>
-<ul>
-<li><strong>戻り値</strong>: <code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code> をキーに持つ <code>object</code></li>
-</ul>
-<pre><code class="language-javascript">console.log(JSON.stringify(token.toJSON(), null, 2));
+<h3 id="トークンのシリアライズ"><a class="header" href="#トークンのシリアライズ">トークンのシリアライズ</a></h3>
+<p>トークンは既にプレーンオブジェクトなので、そのままシリアライズできます。</p>
+<pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>

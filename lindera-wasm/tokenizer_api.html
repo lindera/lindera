@@ -319,7 +319,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>costThreshold</code> (bigint, optional) -- Only return paths within <code>bestCost + threshold</code></li>
 </ul>
 </li>
-<li><strong>Returns</strong>: Array of <code>{ tokens: object[], cost: number }</code></li>
+<li><strong>Returns</strong>: Array of <code>{ tokens: Token[], cost: number }</code></li>
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 
@@ -327,38 +327,30 @@ builder.setDictionaryInstance(dictionary);
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
-<p>Represents a single token produced by the tokenizer.</p>
+<p>A single token produced by the tokenizer, as a plain JavaScript object.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
-<tr><td><code>byte_start</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
-<tr><td><code>byte_end</code></td><td><code>number</code></td><td>End byte offset in the original text</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>End byte offset in the original text</td></tr>
 <tr><td><code>position</code></td><td><code>number</code></td><td>Position index of the token</td></tr>
-<tr><td><code>word_id</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
-<tr><td><code>is_unknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
 </tbody></table>
 </div>
 <blockquote>
 <p>[!NOTE]
-These are the real field names exposed on the <code>Token</code> object -- <code>lindera-wasm/src/token.rs</code> does not apply any <code>js_name</code> rename, so the fields stay snake_case in JavaScript. Only <code>toJSON()</code> (below) renames them to camelCase for JSON-friendly output.</p>
+Tokens are plain objects, not <code>wasm_bindgen</code> class instances. A class instance keeps its data on the Rust heap until the JavaScript side drops it, so a synchronous loop that tokenizes without yielding accumulates memory; nothing is allocated on the Rust side for a plain object, and the result passes through <code>JSON.stringify</code>, <code>structuredClone</code>, and worker transfer without conversion. Field names are camelCase, matching the <code>lindera-nodejs</code> binding.</p>
 </blockquote>
-<h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>Returns the detail string at the specified index.</p>
-<ul>
-<li><strong>Parameters</strong>: <code>index</code> (number) -- Zero-based index into the details array</li>
-<li><strong>Returns</strong>: <code>string | undefined</code></li>
-</ul>
-<pre><code class="language-javascript">const pos = token.getDetail(0);   // e.g., "名詞"
-const reading = token.getDetail(7); // e.g., "トウキョウ"
+<h3 id="reading-details"><a class="header" href="#reading-details">Reading Details</a></h3>
+<p>Index <code>details</code> directly. Out-of-range indexes yield <code>undefined</code>.</p>
+<pre><code class="language-javascript">const pos = token.details[0];     // e.g., "名詞"
+const reading = token.details[7]; // e.g., "トウキョウ"
 </code></pre>
-<h4 id="tojson"><a class="header" href="#tojson"><code>toJSON()</code></a></h4>
-<p>Returns a plain JavaScript object representation of the token.</p>
-<ul>
-<li><strong>Returns</strong>: <code>object</code> with keys: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code></li>
-</ul>
-<pre><code class="language-javascript">console.log(JSON.stringify(token.toJSON(), null, 2));
+<h3 id="serializing-a-token"><a class="header" href="#serializing-a-token">Serializing a Token</a></h3>
+<p>A token is already a plain object, so it serializes as-is.</p>
+<pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>

@@ -320,6 +320,25 @@ $reading = $token-&gt;getDetail(7);    // 例: "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>string</code> または <code>null</code></p>
+<h4 id="toarray"><a class="header" href="#toarray"><code>toArray()</code></a></h4>
+<p>トークンを連想配列として返します。各フィールドは PHP の自然な型を保つため、
+独自のエンコーダなしでシリアライズできます。</p>
+<pre><code class="language-php">$data = $tokenizer-&gt;tokenize('東京')[0]-&gt;toArray();
+// ['surface' =&gt; '東京', 'byte_start' =&gt; 0, 'byte_end' =&gt; 6, 'position' =&gt; 0,
+//  'word_id' =&gt; 12345, 'is_unknown' =&gt; false, 'details' =&gt; [...]]
+
+echo json_encode(array_map(fn($t) =&gt; $t-&gt;toArray(), $tokens));
+</code></pre>
+<p><strong>戻り値:</strong> <code>surface</code>、<code>byte_start</code>、<code>byte_end</code>、<code>position</code>、<code>word_id</code>、
+<code>is_unknown</code>、<code>details</code> をキーに持つ <code>array</code>。</p>
+<blockquote>
+<p>[!NOTE]
+<code>Lindera\Token</code> は <code>JsonSerializable</code> を実装していないため、トークンオブジェクトを
+そのまま <code>json_encode</code> に渡してもこれらのフィールドは出力されません。先に
+<code>toArray()</code> を呼んでください。この拡張は ext-php-rs でビルドされており、その
+<code>#[php_class]</code> はまだ実装インターフェースを宣言できません（上流の
+<a href="https://github.com/davidcole1340/ext-php-rs/issues/326">ext-php-rs#326</a>）。</p>
+</blockquote>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>

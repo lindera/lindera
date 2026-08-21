@@ -975,7 +975,8 @@ tokenizer
 <h3 id="dictionary-format-version"><a class="header" href="#dictionary-format-version">Dictionary Format Version</a></h3>
 <p>A built dictionary directory records the on-disk layout it was written in, as <code>format_version</code> in <code>metadata.json</code>. <code>DictionaryBuilder::build_metadata</code> stamps the value from <code>DICTIONARY_FORMAT_VERSION</code> (<code>lindera-dictionary/src/dictionary/metadata.rs</code>) — the builder is the only thing that can state truthfully what it just wrote, so a value in the <em>source</em> <code>metadata.json</code> is ignored. Loading a dictionary directory checks the recorded version and fails with an actionable message if it does not match.</p>
 <p>The check matters because most artifacts have no header of their own: <code>matrix.mtx</code>, <code>dict.vals</code> and <code>dict.words</code> are raw arrays, so a dictionary from an older layout that happens to be a plausible length decodes into garbage rather than failing. A source <code>metadata.json</code> — the hand-written kind checked into each dictionary crate — describes build <em>inputs</em>, carries no <code>format_version</code>, and is never format-checked.</p>
-<p>Bump <code>DICTIONARY_FORMAT_VERSION</code> on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (<code>crawdad</code> for <code>dict.trie</code>, <code>rkyv</code> for <code>char_def.bin</code> and <code>unk.bin</code>), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.</p>
+<p>Bump <code>DICTIONARY_FORMAT_VERSION</code> on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (<code>crawdad</code> for <code>dict.trie</code>, <code>rkyv</code> for <code>char_def.bin</code> and <code>unk.bin</code>, <code>daachorse</code> inside user dictionary <code>.bin</code> files), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.</p>
+<p>The current format version is 2. Version 2 replaced the system prefix dictionary's byte-wise daachorse Aho-Corasick automaton (<code>dict.da</code>) with a char-wise double-array trie (<code>dict.trie</code>) plus a <code>u32</code> prefix-sum index (<code>dict.valsidx</code>). Dictionaries at version 1 or earlier are rejected at load time with an actionable error. User dictionary <code>.bin</code> files were not affected by <em>that</em> change — but they are written by <code>daachorse</code>, so a <code>daachorse</code> upgrade does invalidate them, which is exactly why it belongs in the list above.</p>
 <h3 id="context-id-remapping"><a class="header" href="#context-id-remapping">Context ID Remapping</a></h3>
 <p>Dictionary metadata (<code>lindera-dictionary/src/dictionary/metadata.rs</code>) carries a <code>connection_id_mapping: bool</code> flag and an optional <code>context_id_map: Option&lt;ContextIdMap&gt;</code>. When a dictionary crate (e.g. <code>lindera-unidic</code>) enables <code>connection_id_mapping</code>, <code>DictionaryBuilder</code> relabels the connection matrix's left/right context IDs by access frequency at build time, so that frequently-used connection-cost cells cluster together for better cache locality; <code>DictionaryBuilder::with_context_id_freq</code> attaches an optional bundled frequency histogram used to rank the IDs, and the remap itself is computed in <code>lindera-dictionary/src/builder/context_id_remap.rs</code>. <code>ContextIdMap</code> (<code>lindera-dictionary/src/dictionary/context_id_map.rs</code>) holds the resulting <code>left</code>/<code>right</code> permutation and is persisted into the built <code>metadata.json</code> so the same mapping can be reapplied later. Because user dictionaries are always compiled in the original, un-remapped ID space, <code>UserDictionary::remap_context_ids</code> (<code>lindera-dictionary/src/dictionary.rs</code>) uses the persisted <code>ContextIdMap</code> to relabel a user dictionary's context IDs into the same space as the system dictionary it is attached to. The remap is a bijective relabeling, so it does not change tokenization output, only lookup locality.</p>
 <h3 id="training"><a class="header" href="#training">Training</a></h3>
@@ -1366,6 +1367,8 @@ Specify the path to the following file in the environment variable <code>LINDERA
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
+  # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
+  # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
 
 character_filters:
   - kind: "unicode_normalize"
@@ -1426,6 +1429,17 @@ token_filters:
     args:
       japanese: false
 </code></pre>
+<h2 id="segmenter-options"><a class="header" href="#segmenter-options">Segmenter Options</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>Segmentation mode: <code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>dictionary</code></td><td>string</td><td><em>(required)</em></td><td>Dictionary URI, e.g. <code>"embedded://ipadic"</code></td></tr>
+<tr><td><code>user_dictionary</code></td><td>string</td><td><em>(none)</em></td><td>Path to a user dictionary</td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>Emit whitespace tokens instead of ignoring them (MeCab ignores them)</td></tr>
+<tr><td><code>use_mmap</code></td><td>bool</td><td>on when the <code>mmap</code> feature is compiled in (the default)</td><td>Memory-map the dictionary; only meaningful for filesystem (non-<code>embedded://</code>) dictionaries</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Maximum characters <strong>beyond the first</strong> that an unknown-word grouping may span, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). A grouped candidate longer than this is not emitted; the single-character unknown word is emitted instead. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
+<tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>Also emit the shorter unknown-word candidates up to each category's <code>LENGTH</code> field in <code>char.def</code>, as MeCab and Vibrato do. Set to <code>false</code> to reproduce pre-v6 output exactly</td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;
@@ -3210,6 +3224,19 @@ reading = token.get_detail(7)    # e.g., "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>str</code> or <code>None</code></p>
+<h4 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h4>
+<p>Returns the token as a plain <code>dict</code>, keeping each field's natural Python type,
+so it serializes without a custom encoder.</p>
+<pre><code class="language-python">import json
+
+data = tokenizer.tokenize("東京")[0].to_dict()
+# {'surface': '東京', 'byte_start': 0, 'byte_end': 6, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+</code></pre>
+<p><strong>Returns:</strong> <code>dict</code> with the keys <code>surface</code>, <code>byte_start</code>, <code>byte_end</code>,
+<code>position</code>, <code>word_id</code>, <code>is_unknown</code>, and <code>details</code>.</p>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -3352,7 +3379,7 @@ metadata.name = "custom_dict"
 metadata.encoding = "EUC-JP"
 print(metadata.name)  # "custom_dict"
 </code></pre>
-<h3 id="to_dict"><a class="header" href="#to_dict"><code>to_dict()</code></a></h3>
+<h3 id="to_dict-1"><a class="header" href="#to_dict-1"><code>to_dict()</code></a></h3>
 <p>Returns a dictionary representation of the metadata:</p>
 <pre><code class="language-python">metadata = Metadata(name="test")
 print(metadata.to_dict())
@@ -3804,7 +3831,7 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
 for (const token of tokens) {
-  console.log(`${token.surface}\t${token.getDetail(0)}`);
+  console.log(`${token.surface}\t${token.details[0]}`);
 }
 </code></pre>
 <h2 id="accessing-token-properties-1"><a class="header" href="#accessing-token-properties-1">Accessing Token Properties</a></h2>
@@ -3927,7 +3954,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h3 id="tokenizer-methods-1"><a class="header" href="#tokenizer-methods-1">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext-1"><a class="header" href="#tokenizetext-1"><code>tokenize(text)</code></a></h4>
-<p>Tokenizes the input text and returns an array of <code>Token</code> objects.</p>
+<p>Tokenizes the input text and returns an array of plain token objects.</p>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("形態素解析");
 </code></pre>
 <p><strong>Parameters:</strong></p>
@@ -3936,22 +3963,9 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Token[]</code></p>
-<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
-<p>Tokenizes the input text and returns tokens as plain JS objects instead of <code>Token</code> class instances.</p>
-<p>This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while <code>Token</code> class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using <code>tokenize</code>. It is also useful when results must be serializable.</p>
-<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
-</code></pre>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
-</tbody></table>
-</div>
-<p><strong>Returns:</strong> <code>Array&lt;JsTokenData&gt;</code>, where each <code>JsTokenData</code> has the same fields as <code>Token</code>: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code>.</p>
-<blockquote>
-<p><strong>Note:</strong> In 6.x, <code>tokenize</code> itself will return plain objects and <code>tokenizeObjects</code> will be removed. See <a href="https://github.com/lindera/lindera/issues/930">#930</a>.</p>
-</blockquote>
+<p>Tokens are plain JavaScript objects, not class instances, so they are reclaimed by ordinary garbage collection and pass through <code>JSON.stringify</code>, <code>structuredClone</code>, and worker transfer without conversion. See <a href="lindera-nodejs/tokenizer_api.html#token">Token</a>.</p>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
-<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no token objects are built and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
 // ["形態素", "解析"]
 </code></pre>
@@ -3976,9 +3990,11 @@ for (const { tokens, cost } of results) {
 <tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>Maximum cost difference from the best path (default: <code>undefined</code>)</td></tr>
 </tbody></table>
 </div>
-<p><strong>Returns:</strong> <code>Array&lt;{ tokens: Token[], cost: number }&gt;</code></p>
+<p><strong>Returns:</strong> <code>NbestResult[]</code>, where each <code>NbestResult</code> is <code>{ tokens: Token[], cost: number }</code></p>
 <h2 id="token-1"><a class="header" href="#token-1">Token</a></h2>
-<p><code>Token</code> represents a single morphological token.</p>
+<p><code>Token</code> is a plain object describing a single morphological token. It is a
+TypeScript <code>interface</code>, not a class: it has no methods and no prototype, and
+every field is read directly.</p>
 <h3 id="properties-2"><a class="header" href="#properties-2">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
@@ -3990,20 +4006,13 @@ for (const { tokens, cost } of results) {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-methods-1"><a class="header" href="#token-methods-1">Token Methods</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>Returns the detail string at the specified index, or <code>null</code> if the index is out of range.</p>
+<h3 id="reading-details"><a class="header" href="#reading-details">Reading Details</a></h3>
+<p>Index <code>details</code> directly. Out-of-range indexes yield <code>undefined</code>.</p>
 <pre><code class="language-javascript">const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // e.g., "名詞"
-const subpos = token.getDetail(1);   // e.g., "固有名詞"
-const reading = token.getDetail(7);  // e.g., "トウキョウ"
+const pos = token.details[0];      // e.g., "名詞"
+const subpos = token.details[1];   // e.g., "固有名詞"
+const reading = token.details[7];  // e.g., "トウキョウ"
 </code></pre>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>index</code></td><td><code>number</code></td><td>Zero-based index into the details array</td></tr>
-</tbody></table>
-</div>
-<p><strong>Returns:</strong> <code>string | null</code></p>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -4748,7 +4757,7 @@ penalty.kanji_penalty_length_threshold  # 2
 <p>Additionally, the predicate method <code>unknown?</code> returns <code>true</code> if the word is not in the dictionary:</p>
 <pre><code class="language-ruby">token.unknown?  # =&gt; false
 </code></pre>
-<h3 id="token-methods-2"><a class="header" href="#token-methods-2">Token Methods</a></h3>
+<h3 id="token-methods-1"><a class="header" href="#token-methods-1">Token Methods</a></h3>
 <h4 id="get_detailindex-1"><a class="header" href="#get_detailindex-1"><code>get_detail(index)</code></a></h4>
 <p>Returns the detail string at the specified index, or <code>nil</code> if the index is out of range.</p>
 <pre><code class="language-ruby">token = tokenizer.tokenize('東京')[0]
@@ -4762,6 +4771,20 @@ reading = token.get_detail(7)    # e.g., "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>String</code> or <code>nil</code></p>
+<h4 id="to_h--to_hash"><a class="header" href="#to_h--to_hash"><code>to_h</code> / <code>to_hash</code></a></h4>
+<p>Returns the token as a plain <code>Hash</code> keyed by Symbols, keeping each field's
+natural Ruby type, so it serializes without a custom encoder. <code>to_h</code> and
+<code>to_hash</code> are the same method.</p>
+<pre><code class="language-ruby">require 'json'
+
+data = tokenizer.tokenize('東京')[0].to_h
+# {surface: "東京", byte_start: 0, byte_end: 6, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&amp;:to_h))
+</code></pre>
+<p><strong>Returns:</strong> <code>Hash</code> with the keys <code>:surface</code>, <code>:byte_start</code>, <code>:byte_end</code>,
+<code>:position</code>, <code>:word_id</code>, <code>:is_unknown</code>, and <code>:details</code>.</p>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -5498,8 +5521,8 @@ foreach ($results as $result) {
 <tr><td><code>$details</code></td><td><code>array&lt;string&gt;</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-methods-3"><a class="header" href="#token-methods-3">Token Methods</a></h3>
-<h4 id="getdetailindex-1"><a class="header" href="#getdetailindex-1"><code>getDetail($index)</code></a></h4>
+<h3 id="token-methods-2"><a class="header" href="#token-methods-2">Token Methods</a></h3>
+<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail($index)</code></a></h4>
 <p>Returns the detail string at the specified index, or <code>null</code> if the index is out of range.</p>
 <pre><code class="language-php">&lt;?php
 
@@ -5514,6 +5537,27 @@ $reading = $token-&gt;getDetail(7);    // e.g., "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>string|null</code></p>
+<h4 id="toarray"><a class="header" href="#toarray"><code>toArray()</code></a></h4>
+<p>Returns the token as an associative array, keeping each field's natural PHP
+type, so it serializes without a custom encoder.</p>
+<pre><code class="language-php">&lt;?php
+
+$data = $tokenizer-&gt;tokenize('東京')[0]-&gt;toArray();
+// ['surface' =&gt; '東京', 'byte_start' =&gt; 0, 'byte_end' =&gt; 6, 'position' =&gt; 0,
+//  'word_id' =&gt; 12345, 'is_unknown' =&gt; false, 'details' =&gt; [...]]
+
+echo json_encode(array_map(fn($t) =&gt; $t-&gt;toArray(), $tokens));
+</code></pre>
+<p><strong>Returns:</strong> <code>array</code> with the keys <code>surface</code>, <code>byte_start</code>, <code>byte_end</code>,
+<code>position</code>, <code>word_id</code>, <code>is_unknown</code>, and <code>details</code>.</p>
+<blockquote>
+<p>[!NOTE]
+<code>Lindera\Token</code> does not implement <code>JsonSerializable</code>, so passing a token
+object straight to <code>json_encode</code> does not produce these fields -- call
+<code>toArray()</code> first. The extension is built with ext-php-rs, whose
+<code>#[php_class]</code> cannot declare implemented interfaces yet (upstream
+<a href="https://github.com/davidcole1340/ext-php-rs/issues/326">ext-php-rs#326</a>).</p>
+</blockquote>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
@@ -5681,7 +5725,7 @@ $metadata = new Lindera\Metadata(name: 'custom_dict', encoding: 'EUC-JP');
 echo $metadata-&gt;name;      // "custom_dict"
 echo $metadata-&gt;encoding;  // "EUC-JP"
 </code></pre>
-<h3 id="toarray"><a class="header" href="#toarray"><code>toArray()</code></a></h3>
+<h3 id="toarray-1"><a class="header" href="#toarray-1"><code>toArray()</code></a></h3>
 <p>Returns an associative array representation of the metadata:</p>
 <pre><code class="language-php">&lt;?php
 
@@ -6351,7 +6395,7 @@ builder.setDictionaryInstance(dictionary);
 <li><code>costThreshold</code> (bigint, optional) -- Only return paths within <code>bestCost + threshold</code></li>
 </ul>
 </li>
-<li><strong>Returns</strong>: Array of <code>{ tokens: object[], cost: number }</code></li>
+<li><strong>Returns</strong>: Array of <code>{ tokens: Token[], cost: number }</code></li>
 </ul>
 <pre><code class="language-javascript">const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 
@@ -6359,38 +6403,30 @@ builder.setDictionaryInstance(dictionary);
 const resultsWithThreshold = tokenizer.tokenizeNbest("すもももももももものうち", 3, false, 100n);
 </code></pre>
 <h2 id="token-4"><a class="header" href="#token-4">Token</a></h2>
-<p>Represents a single token produced by the tokenizer.</p>
+<p>A single token produced by the tokenizer, as a plain JavaScript object.</p>
 <h3 id="properties-7"><a class="header" href="#properties-7">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
-<tr><td><code>byte_start</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
-<tr><td><code>byte_end</code></td><td><code>number</code></td><td>End byte offset in the original text</td></tr>
+<tr><td><code>byteStart</code></td><td><code>number</code></td><td>Start byte offset in the original text</td></tr>
+<tr><td><code>byteEnd</code></td><td><code>number</code></td><td>End byte offset in the original text</td></tr>
 <tr><td><code>position</code></td><td><code>number</code></td><td>Position index of the token</td></tr>
-<tr><td><code>word_id</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
-<tr><td><code>is_unknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
+<tr><td><code>wordId</code></td><td><code>number</code></td><td>Word ID in the dictionary</td></tr>
+<tr><td><code>isUnknown</code></td><td><code>boolean</code></td><td>Whether the token is an unknown word</td></tr>
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological detail fields</td></tr>
 </tbody></table>
 </div>
 <blockquote>
 <p>[!NOTE]
-These are the real field names exposed on the <code>Token</code> object -- <code>lindera-wasm/src/token.rs</code> does not apply any <code>js_name</code> rename, so the fields stay snake_case in JavaScript. Only <code>toJSON()</code> (below) renames them to camelCase for JSON-friendly output.</p>
+Tokens are plain objects, not <code>wasm_bindgen</code> class instances. A class instance keeps its data on the Rust heap until the JavaScript side drops it, so a synchronous loop that tokenizes without yielding accumulates memory; nothing is allocated on the Rust side for a plain object, and the result passes through <code>JSON.stringify</code>, <code>structuredClone</code>, and worker transfer without conversion. Field names are camelCase, matching the <code>lindera-nodejs</code> binding.</p>
 </blockquote>
-<h3 id="token-methods-4"><a class="header" href="#token-methods-4">Token Methods</a></h3>
-<h4 id="getdetailindex-2"><a class="header" href="#getdetailindex-2"><code>getDetail(index)</code></a></h4>
-<p>Returns the detail string at the specified index.</p>
-<ul>
-<li><strong>Parameters</strong>: <code>index</code> (number) -- Zero-based index into the details array</li>
-<li><strong>Returns</strong>: <code>string | undefined</code></li>
-</ul>
-<pre><code class="language-javascript">const pos = token.getDetail(0);   // e.g., "名詞"
-const reading = token.getDetail(7); // e.g., "トウキョウ"
+<h3 id="reading-details-1"><a class="header" href="#reading-details-1">Reading Details</a></h3>
+<p>Index <code>details</code> directly. Out-of-range indexes yield <code>undefined</code>.</p>
+<pre><code class="language-javascript">const pos = token.details[0];     // e.g., "名詞"
+const reading = token.details[7]; // e.g., "トウキョウ"
 </code></pre>
-<h4 id="tojson"><a class="header" href="#tojson"><code>toJSON()</code></a></h4>
-<p>Returns a plain JavaScript object representation of the token.</p>
-<ul>
-<li><strong>Returns</strong>: <code>object</code> with keys: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code></li>
-</ul>
-<pre><code class="language-javascript">console.log(JSON.stringify(token.toJSON(), null, 2));
+<h3 id="serializing-a-token"><a class="header" href="#serializing-a-token">Serializing a Token</a></h3>
+<p>A token is already a plain object, so it serializes as-is.</p>
+<pre><code class="language-javascript">console.log(JSON.stringify(token, null, 2));
 </code></pre>
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>

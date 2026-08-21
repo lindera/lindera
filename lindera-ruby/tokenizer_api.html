@@ -360,6 +360,20 @@ reading = token.get_detail(7)    # e.g., "トウキョウ"
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>String</code> or <code>nil</code></p>
+<h4 id="to_h--to_hash"><a class="header" href="#to_h--to_hash"><code>to_h</code> / <code>to_hash</code></a></h4>
+<p>Returns the token as a plain <code>Hash</code> keyed by Symbols, keeping each field's
+natural Ruby type, so it serializes without a custom encoder. <code>to_h</code> and
+<code>to_hash</code> are the same method.</p>
+<pre><code class="language-ruby">require 'json'
+
+data = tokenizer.tokenize('東京')[0].to_h
+# {surface: "東京", byte_start: 0, byte_end: 6, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&amp;:to_h))
+</code></pre>
+<p><strong>Returns:</strong> <code>Hash</code> with the keys <code>:surface</code>, <code>:byte_start</code>, <code>:byte_end</code>,
+<code>:position</code>, <code>:word_id</code>, <code>:is_unknown</code>, and <code>:details</code>.</p>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>

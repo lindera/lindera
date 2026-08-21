@@ -211,7 +211,7 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
 for (const token of tokens) {
-  console.log(`${token.surface}\t${token.getDetail(0)}`);
+  console.log(`${token.surface}\t${token.details[0]}`);
 }
 </code></pre>
 <h2 id="accessing-token-properties"><a class="header" href="#accessing-token-properties">Accessing Token Properties</a></h2>

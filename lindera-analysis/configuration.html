@@ -185,6 +185,8 @@ Specify the path to the following file in the environment variable <code>LINDERA
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
+  # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
+  # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
 
 character_filters:
   - kind: "unicode_normalize"
@@ -245,6 +247,17 @@ token_filters:
     args:
       japanese: false
 </code></pre>
+<h2 id="segmenter-options"><a class="header" href="#segmenter-options">Segmenter Options</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>Segmentation mode: <code>"normal"</code> or <code>"decompose"</code></td></tr>
+<tr><td><code>dictionary</code></td><td>string</td><td><em>(required)</em></td><td>Dictionary URI, e.g. <code>"embedded://ipadic"</code></td></tr>
+<tr><td><code>user_dictionary</code></td><td>string</td><td><em>(none)</em></td><td>Path to a user dictionary</td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>Emit whitespace tokens instead of ignoring them (MeCab ignores them)</td></tr>
+<tr><td><code>use_mmap</code></td><td>bool</td><td>on when the <code>mmap</code> feature is compiled in (the default)</td><td>Memory-map the dictionary; only meaningful for filesystem (non-<code>embedded://</code>) dictionaries</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Maximum characters <strong>beyond the first</strong> that an unknown-word grouping may span, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). A grouped candidate longer than this is not emitted; the single-character unknown word is emitted instead. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
+<tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>Also emit the shorter unknown-word candidates up to each category's <code>LENGTH</code> field in <code>char.def</code>, as MeCab and Vibrato do. Set to <code>false</code> to reproduce pre-v6 output exactly</td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;

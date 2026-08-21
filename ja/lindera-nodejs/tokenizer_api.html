@@ -244,7 +244,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h3 id="tokenizer-メソッド"><a class="header" href="#tokenizer-メソッド">Tokenizer メソッド</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
-<p>入力テキストをトークナイズし、<code>Token</code> オブジェクトの配列を返します。</p>
+<p>入力テキストをトークナイズし、プレーンなトークンオブジェクトの配列を返します。</p>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("形態素解析");
 </code></pre>
 <p><strong>パラメータ:</strong></p>
@@ -253,22 +253,9 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>戻り値:</strong> <code>Token[]</code></p>
-<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
-<p>入力テキストをトークナイズし、<code>Token</code> クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。</p>
-<p>これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、<code>Token</code> クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、<code>tokenize</code> を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。</p>
-<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
-</code></pre>
-<p><strong>パラメータ:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>text</code></td><td><code>string</code></td><td>トークナイズするテキスト</td></tr>
-</tbody></table>
-</div>
-<p><strong>戻り値:</strong> <code>Array&lt;JsTokenData&gt;</code>。各 <code>JsTokenData</code> は <code>Token</code> と同じフィールド（<code>surface</code>、<code>byteStart</code>、<code>byteEnd</code>、<code>position</code>、<code>wordId</code>、<code>isUnknown</code>、<code>details</code>）を持ちます。</p>
-<blockquote>
-<p><strong>注意:</strong> 6.x では <code>tokenize</code> 自体がプレーンオブジェクトを返すようになり、<code>tokenizeObjects</code> は削除される予定です。詳細は <a href="https://github.com/lindera/lindera/issues/930">#930</a> を参照してください。</p>
-</blockquote>
+<p>トークンはクラスのインスタンスではなくプレーンな JavaScript オブジェクトです。そのため通常の GC で回収され、<code>JSON.stringify</code>、<code>structuredClone</code>、worker への転送を変換なしで通過します。詳細は <a href="#token">Token</a> を参照してください。</p>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
-<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。<code>Token</code> オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
+<p>入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。トークンオブジェクトを構築せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は <code>tokenize</code> より大幅に高速です。結果は <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code> と一致します。</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
 // ["形態素", "解析"]
 </code></pre>
@@ -293,9 +280,11 @@ for (const { tokens, cost } of results) {
 <tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>最良パスからの最大コスト差（デフォルト: <code>undefined</code>）</td></tr>
 </tbody></table>
 </div>
-<p><strong>戻り値:</strong> <code>Array&lt;{ tokens: Token[], cost: number }&gt;</code></p>
+<p><strong>戻り値:</strong> <code>NbestResult[]</code>。各 <code>NbestResult</code> は <code>{ tokens: Token[], cost: number }</code> です。</p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
-<p><code>Token</code> は単一の形態素トークンを表します。</p>
+<p><code>Token</code> は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
+TypeScript の <code>interface</code> であり、メソッドもプロトタイプも持ちません。
+各フィールドは直接読み出します。</p>
 <h3 id="プロパティ"><a class="header" href="#プロパティ">プロパティ</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>プロパティ</th><th>型</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>トークンの表層形</td></tr>
@@ -307,20 +296,13 @@ for (const { tokens, cost } of results) {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>形態素の詳細情報（品詞、読みなど）</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-メソッド"><a class="header" href="#token-メソッド">Token メソッド</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は <code>null</code> を返します。</p>
+<h3 id="詳細情報の読み出し"><a class="header" href="#詳細情報の読み出し">詳細情報の読み出し</a></h3>
+<p><code>details</code> を直接インデックスします。範囲外のインデックスは <code>undefined</code> になります。</p>
 <pre><code class="language-javascript">const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // 例: "名詞"
-const subpos = token.getDetail(1);   // 例: "固有名詞"
-const reading = token.getDetail(7);  // 例: "トウキョウ"
+const pos = token.details[0];      // 例: "名詞"
+const subpos = token.details[1];   // 例: "固有名詞"
+const reading = token.details[7];  // 例: "トウキョウ"
 </code></pre>
-<p><strong>パラメータ:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>名前</th><th>型</th><th>説明</th></tr></thead><tbody>
-<tr><td><code>index</code></td><td><code>number</code></td><td>details 配列へのゼロベースインデックス</td></tr>
-</tbody></table>
-</div>
-<p><strong>戻り値:</strong> <code>string | null</code></p>
 <p><code>details</code> の構造は辞書によって異なります：</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>

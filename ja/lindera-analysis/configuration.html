@@ -185,6 +185,8 @@
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
+  # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
+  # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
 
 character_filters:
   - kind: "unicode_normalize"
@@ -245,6 +247,17 @@ token_filters:
     args:
       japanese: false
 </code></pre>
+<h2 id="segmenter-のオプション"><a class="header" href="#segmenter-のオプション">Segmenter のオプション</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>キー</th><th>型</th><th>デフォルト</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>string</td><td><code>"normal"</code></td><td>分割モード。<code>"normal"</code> または <code>"decompose"</code></td></tr>
+<tr><td><code>dictionary</code></td><td>string</td><td><em>(必須)</em></td><td>辞書 URI。例: <code>"embedded://ipadic"</code></td></tr>
+<tr><td><code>user_dictionary</code></td><td>string</td><td><em>(なし)</em></td><td>ユーザー辞書のパス</td></tr>
+<tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>空白トークンを無視せずに出力する（MeCab は無視する）</td></tr>
+<tr><td><code>use_mmap</code></td><td>bool</td><td><code>mmap</code> feature が有効なとき on（デフォルト）</td><td>辞書をメモリマップする。ファイルシステム辞書（<code>embedded://</code> ではない辞書）にのみ意味がある</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語のグルーピングが<strong>先頭の 1 文字を超えて</strong>span できる最大文字数。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
+<tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>MeCab や Vibrato と同様に、<code>char.def</code> の各カテゴリの <code>LENGTH</code> フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには <code>false</code> を指定する</td></tr>
+</tbody></table>
+</div>
 <pre><code class="language-shell">% export LINDERA_CONFIG_PATH=./resources/config/lindera.yml
 </code></pre>
 <pre><pre class="playground"><code class="language-rust">use std::path::PathBuf;

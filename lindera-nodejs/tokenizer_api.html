@@ -242,7 +242,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </code></pre>
 <h3 id="tokenizer-methods"><a class="header" href="#tokenizer-methods">Tokenizer Methods</a></h3>
 <h4 id="tokenizetext"><a class="header" href="#tokenizetext"><code>tokenize(text)</code></a></h4>
-<p>Tokenizes the input text and returns an array of <code>Token</code> objects.</p>
+<p>Tokenizes the input text and returns an array of plain token objects.</p>
 <pre><code class="language-javascript">const tokens = tokenizer.tokenize("形態素解析");
 </code></pre>
 <p><strong>Parameters:</strong></p>
@@ -251,22 +251,9 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 </tbody></table>
 </div>
 <p><strong>Returns:</strong> <code>Token[]</code></p>
-<h4 id="tokenizeobjectstext"><a class="header" href="#tokenizeobjectstext"><code>tokenizeObjects(text)</code></a></h4>
-<p>Tokenizes the input text and returns tokens as plain JS objects instead of <code>Token</code> class instances.</p>
-<p>This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while <code>Token</code> class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using <code>tokenize</code>. It is also useful when results must be serializable.</p>
-<pre><code class="language-javascript">const tokens = tokenizer.tokenizeObjects("形態素解析");
-</code></pre>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>text</code></td><td><code>string</code></td><td>Text to tokenize</td></tr>
-</tbody></table>
-</div>
-<p><strong>Returns:</strong> <code>Array&lt;JsTokenData&gt;</code>, where each <code>JsTokenData</code> has the same fields as <code>Token</code>: <code>surface</code>, <code>byteStart</code>, <code>byteEnd</code>, <code>position</code>, <code>wordId</code>, <code>isUnknown</code>, <code>details</code>.</p>
-<blockquote>
-<p><strong>Note:</strong> In 6.x, <code>tokenize</code> itself will return plain objects and <code>tokenizeObjects</code> will be removed. See <a href="https://github.com/lindera/lindera/issues/930">#930</a>.</p>
-</blockquote>
+<p>Tokens are plain JavaScript objects, not class instances, so they are reclaimed by ordinary garbage collection and pass through <code>JSON.stringify</code>, <code>structuredClone</code>, and worker transfer without conversion. See <a href="#token">Token</a>.</p>
 <h4 id="tokenizesurfacestext"><a class="header" href="#tokenizesurfacestext"><code>tokenizeSurfaces(text)</code></a></h4>
-<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no <code>Token</code> objects are created and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
+<p>Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no token objects are built and no morphological details are loaded, so it is significantly faster than <code>tokenize</code> when only the surface strings are needed. The result equals <code>tokenizer.tokenize(text).map((t) =&gt; t.surface)</code>.</p>
 <pre><code class="language-javascript">const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
 // ["形態素", "解析"]
 </code></pre>
@@ -291,9 +278,11 @@ for (const { tokens, cost } of results) {
 <tr><td><code>costThreshold</code></td><td><code>number | undefined</code></td><td>Maximum cost difference from the best path (default: <code>undefined</code>)</td></tr>
 </tbody></table>
 </div>
-<p><strong>Returns:</strong> <code>Array&lt;{ tokens: Token[], cost: number }&gt;</code></p>
+<p><strong>Returns:</strong> <code>NbestResult[]</code>, where each <code>NbestResult</code> is <code>{ tokens: Token[], cost: number }</code></p>
 <h2 id="token"><a class="header" href="#token">Token</a></h2>
-<p><code>Token</code> represents a single morphological token.</p>
+<p><code>Token</code> is a plain object describing a single morphological token. It is a
+TypeScript <code>interface</code>, not a class: it has no methods and no prototype, and
+every field is read directly.</p>
 <h3 id="properties"><a class="header" href="#properties">Properties</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>surface</code></td><td><code>string</code></td><td>Surface form of the token</td></tr>
@@ -305,20 +294,13 @@ for (const { tokens, cost } of results) {
 <tr><td><code>details</code></td><td><code>string[]</code></td><td>Morphological details (part of speech, reading, etc.)</td></tr>
 </tbody></table>
 </div>
-<h3 id="token-methods"><a class="header" href="#token-methods">Token Methods</a></h3>
-<h4 id="getdetailindex"><a class="header" href="#getdetailindex"><code>getDetail(index)</code></a></h4>
-<p>Returns the detail string at the specified index, or <code>null</code> if the index is out of range.</p>
+<h3 id="reading-details"><a class="header" href="#reading-details">Reading Details</a></h3>
+<p>Index <code>details</code> directly. Out-of-range indexes yield <code>undefined</code>.</p>
 <pre><code class="language-javascript">const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // e.g., "名詞"
-const subpos = token.getDetail(1);   // e.g., "固有名詞"
-const reading = token.getDetail(7);  // e.g., "トウキョウ"
+const pos = token.details[0];      // e.g., "名詞"
+const subpos = token.details[1];   // e.g., "固有名詞"
+const reading = token.details[7];  // e.g., "トウキョウ"
 </code></pre>
-<p><strong>Parameters:</strong></p>
-<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>index</code></td><td><code>number</code></td><td>Zero-based index into the details array</td></tr>
-</tbody></table>
-</div>
-<p><strong>Returns:</strong> <code>string | null</code></p>
 <p>The structure of <code>details</code> depends on the dictionary:</p>
 <ul>
 <li><strong>IPADIC</strong>: <code>[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]</code></li>
