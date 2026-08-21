@@ -193,6 +193,7 @@ couple of extra things to check.</p>
 <tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
 <tr><td>Unknown-word length ladder is on by default</td><td>Normal- and Decompose-mode output on out-of-vocabulary text</td><td>Set <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> for v5-identical output</td></tr>
 <tr><td>Several <code>lindera_dictionary::viterbi</code>/<code>mode</code> items renamed or removed</td><td>Direct users of <code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> (not the <code>lindera</code> crate's <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API)</td><td>Update call sites per the table below</td></tr>
+<tr><td>JS bindings return plain objects; the <code>Token</code> class is gone</td><td>Node.js and WASM users</td><td>Replace <code>token.getDetail(i)</code> with <code>token.details[i]</code>; WASM users also switch to camelCase field names</td></tr>
 </tbody></table>
 </div>
 <h2 id="dictionary-format-version-2"><a class="header" href="#dictionary-format-version-2">Dictionary format version 2</a></h2>
@@ -279,6 +280,57 @@ options above but no signatures changed.</p>
 <tr><td><code>Mode::penalty_cost(&amp;Edge)</code></td><td>Removed</td><td>Had no callers in the codebase; re-implement via <code>Penalty::penalty</code> if needed</td></tr>
 </tbody></table>
 </div>
+<h2 id="javascript-bindings-tokens-are-plain-objects"><a class="header" href="#javascript-bindings-tokens-are-plain-objects">JavaScript bindings: tokens are plain objects</a></h2>
+<p>Both JS bindings previously returned <code>Token</code> class instances. Those instances
+own memory outside the JavaScript heap, released only when the host runs a
+finalizer — which napi defers to the event loop, and which wasm-bindgen leaves
+to the caller. A synchronous loop that tokenizes a large input without
+yielding therefore accumulated memory even under forced GC. In v6 both
+bindings return plain objects instead, which the JavaScript GC owns outright.</p>
+<p>Practical benefits: memory stays flat in batch loops, and results work
+directly with <code>JSON.stringify</code>, <code>structuredClone</code>, and worker transfer.</p>
+<h3 id="getdetaili-is-removed-nodejs-and-wasm"><a class="header" href="#getdetaili-is-removed-nodejs-and-wasm"><code>getDetail(i)</code> is removed (Node.js and WASM)</a></h3>
+<p>A plain object has no methods, so read the array instead:</p>
+<pre><code class="language-javascript">// v5
+const pos = token.getDetail(0);
+
+// v6
+const pos = token.details[0];
+</code></pre>
+<p>Out-of-range reads now yield <code>undefined</code> rather than <code>null</code>.</p>
+<h3 id="nodejs-tokenizeobjects-is-removed"><a class="header" href="#nodejs-tokenizeobjects-is-removed">Node.js: <code>tokenizeObjects</code> is removed</a></h3>
+<p><code>tokenizeObjects</code> existed only as a v5-era workaround for the memory problem
+above. <code>tokenize</code> now returns the same plain objects, so drop the call:</p>
+<pre><code class="language-javascript">// v5
+const tokens = tokenizer.tokenizeObjects(text);
+
+// v6
+const tokens = tokenizer.tokenize(text);
+</code></pre>
+<p><code>tokenizeNbest</code> returns plain objects too, so it no longer has the
+accumulation behavior documented as a known limitation in v5.</p>
+<h3 id="wasm-field-names-are-now-camelcase"><a class="header" href="#wasm-field-names-are-now-camelcase">WASM: field names are now camelCase</a></h3>
+<p>The removed <code>Token</code> class exposed snake_case fields while its own <code>toJSON()</code>
+already emitted camelCase. v6 settles on camelCase, matching the Node.js
+binding:</p>
+<pre><code class="language-javascript">// v5
+token.byte_start, token.byte_end, token.word_id, token.is_unknown
+
+// v6
+token.byteStart, token.byteEnd, token.wordId, token.isUnknown
+</code></pre>
+<p><code>surface</code>, <code>position</code>, and <code>details</code> are unchanged. Code that already called
+<code>toJSON()</code> and read the result was using these names, and keeps working —
+except that <code>toJSON()</code> itself is gone, since the token is already a plain
+object:</p>
+<pre><code class="language-javascript">// v5
+const data = token.toJSON();
+
+// v6
+const data = token; // already plain
+</code></pre>
+<p><code>tokenizeNbest</code> in WASM already returned plain objects in v5 and is
+unchanged.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
 <li><strong>User dictionaries</strong>: prebuilt user-dictionary <code>.bin</code> files are not

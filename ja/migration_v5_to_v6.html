@@ -193,6 +193,7 @@
 <tr><td>Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった</td><td>1・2・4 バイトの UTF-8 文字を含むテキストに対する <code>Mode::Decompose</code> の出力</td><td>対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認</td></tr>
 <tr><td>未知語の候補ラダー（length ladder）がデフォルトで有効に</td><td>辞書外テキストに対する Normal・Decompose 両モードの出力</td><td>v5 と同一の出力が必要な場合は <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> を設定</td></tr>
 <tr><td><code>lindera_dictionary::viterbi</code>/<code>mode</code> の一部項目が改名・削除</td><td><code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> を直接利用するコード（<code>lindera</code> クレートの <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API 利用者は対象外）</td><td>下記の表に従い呼び出し箇所を更新</td></tr>
+<tr><td>JS バインディングがプレーンオブジェクトを返すようになり <code>Token</code> クラスが廃止</td><td>Node.js・WASM ユーザー</td><td><code>token.getDetail(i)</code> を <code>token.details[i]</code> に置換。WASM ユーザーはフィールド名の camelCase 化にも対応</td></tr>
 </tbody></table>
 </div>
 <h2 id="辞書フォーマットバージョン-2"><a class="header" href="#辞書フォーマットバージョン-2">辞書フォーマットバージョン 2</a></h2>
@@ -280,6 +281,59 @@
 <tr><td><code>Mode::penalty_cost(&amp;Edge)</code></td><td>削除</td><td>コードベース内に呼び出し元が無かった。必要であれば <code>Penalty::penalty</code> で再実装可能</td></tr>
 </tbody></table>
 </div>
+<h2 id="javascript-バインディング-トークンがプレーンオブジェクトに"><a class="header" href="#javascript-バインディング-トークンがプレーンオブジェクトに">JavaScript バインディング: トークンがプレーンオブジェクトに</a></h2>
+<p>これまで両 JS バインディングは <code>Token</code> クラスのインスタンスを返していました。
+これらのインスタンスは JavaScript ヒープの外にメモリを保持し、ホストが
+ファイナライザを実行して初めて解放されます。napi はそのファイナライザを
+イベントループへ遅延させ、wasm-bindgen は解放を呼び出し側に委ねるため、
+大きな入力を yield せずに同期ループでトークナイズすると、強制 GC を
+挟んでもメモリが蓄積していました。v6 では両バインディングともプレーン
+オブジェクトを返すようになり、メモリは JavaScript の GC が完全に管理します。</p>
+<p>実用上の利点: バッチループでメモリがフラットに保たれ、結果を
+<code>JSON.stringify</code>・<code>structuredClone</code>・worker への転送にそのまま使えます。</p>
+<h3 id="getdetaili-の廃止nodejswasm-共通"><a class="header" href="#getdetaili-の廃止nodejswasm-共通"><code>getDetail(i)</code> の廃止（Node.js・WASM 共通）</a></h3>
+<p>プレーンオブジェクトにメソッドは無いため、配列を直接参照してください:</p>
+<pre><code class="language-javascript">// v5
+const pos = token.getDetail(0);
+
+// v6
+const pos = token.details[0];
+</code></pre>
+<p>範囲外の読み出しは <code>null</code> ではなく <code>undefined</code> になります。</p>
+<h3 id="nodejs-tokenizeobjects-の廃止"><a class="header" href="#nodejs-tokenizeobjects-の廃止">Node.js: <code>tokenizeObjects</code> の廃止</a></h3>
+<p><code>tokenizeObjects</code> は上記のメモリ問題に対する v5 限定の回避策としてのみ
+存在していました。<code>tokenize</code> が同じプレーンオブジェクトを返すように
+なったため、呼び出しを置き換えてください:</p>
+<pre><code class="language-javascript">// v5
+const tokens = tokenizer.tokenizeObjects(text);
+
+// v6
+const tokens = tokenizer.tokenize(text);
+</code></pre>
+<p><code>tokenizeNbest</code> もプレーンオブジェクトを返すようになったため、v5 で
+既知の制約として記載していた蓄積の問題は解消されています。</p>
+<h3 id="wasm-フィールド名が-camelcase-に"><a class="header" href="#wasm-フィールド名が-camelcase-に">WASM: フィールド名が camelCase に</a></h3>
+<p>廃止された <code>Token</code> クラスは snake_case のフィールドを公開する一方、
+同じクラスの <code>toJSON()</code> は既に camelCase を出力しており不整合がありました。
+v6 では Node.js バインディングに揃えて camelCase に統一します:</p>
+<pre><code class="language-javascript">// v5
+token.byte_start, token.byte_end, token.word_id, token.is_unknown
+
+// v6
+token.byteStart, token.byteEnd, token.wordId, token.isUnknown
+</code></pre>
+<p><code>surface</code>・<code>position</code>・<code>details</code> は変更ありません。既に <code>toJSON()</code> を
+呼んでその結果を読んでいたコードは、これらの名前を使っていたため
+そのまま動作します。ただし <code>toJSON()</code> 自体は、トークンが既にプレーン
+オブジェクトであるため廃止されました:</p>
+<pre><code class="language-javascript">// v5
+const data = token.toJSON();
+
+// v6
+const data = token; // 既にプレーンオブジェクト
+</code></pre>
+<p>WASM の <code>tokenizeNbest</code> は v5 の時点で既にプレーンオブジェクトを
+返していたため、変更ありません。</p>
 <h2 id="対応が不要なケース"><a class="header" href="#対応が不要なケース">対応が不要なケース</a></h2>
 <ul>
 <li><strong>ユーザー辞書</strong>: ビルド済みユーザー辞書の <code>.bin</code> ファイルは影響を受けません。
