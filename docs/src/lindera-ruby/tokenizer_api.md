@@ -287,6 +287,25 @@ reading = token.get_detail(7)    # e.g., "トウキョウ"
 
 **Returns:** `String` or `nil`
 
+#### `to_h` / `to_hash`
+
+Returns the token as a plain `Hash` keyed by Symbols, keeping each field's
+natural Ruby type, so it serializes without a custom encoder. `to_h` and
+`to_hash` are the same method.
+
+```ruby
+require 'json'
+
+data = tokenizer.tokenize('東京')[0].to_h
+# {surface: "東京", byte_start: 0, byte_end: 6, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&:to_h))
+```
+
+**Returns:** `Hash` with the keys `:surface`, `:byte_start`, `:byte_end`,
+`:position`, `:word_id`, `:is_unknown`, and `:details`.
+
 The structure of `details` depends on the dictionary:
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

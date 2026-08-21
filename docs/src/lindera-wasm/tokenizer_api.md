@@ -175,7 +175,7 @@ Returns N-best tokenization results ordered by total path cost.
   - `n` (number) -- Number of results to return
   - `unique` (boolean, optional) -- Deduplicate results with identical segmentation (default: `false`)
   - `costThreshold` (bigint, optional) -- Only return paths within `bestCost + threshold`
-- **Returns**: Array of `{ tokens: object[], cost: number }`
+- **Returns**: Array of `{ tokens: Token[], cost: number }`
 
 ```javascript
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -186,45 +186,38 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 
 ## Token
 
-Represents a single token produced by the tokenizer.
+A single token produced by the tokenizer, as a plain JavaScript object.
 
 ### Properties
 
 | Property | Type | Description |
 | --- | --- | --- |
 | `surface` | `string` | Surface form of the token |
-| `byte_start` | `number` | Start byte offset in the original text |
-| `byte_end` | `number` | End byte offset in the original text |
+| `byteStart` | `number` | Start byte offset in the original text |
+| `byteEnd` | `number` | End byte offset in the original text |
 | `position` | `number` | Position index of the token |
-| `word_id` | `number` | Word ID in the dictionary |
-| `is_unknown` | `boolean` | Whether the token is an unknown word |
+| `wordId` | `number` | Word ID in the dictionary |
+| `isUnknown` | `boolean` | Whether the token is an unknown word |
 | `details` | `string[]` | Morphological detail fields |
 
 > [!NOTE]
-> These are the real field names exposed on the `Token` object -- `lindera-wasm/src/token.rs` does not apply any `js_name` rename, so the fields stay snake_case in JavaScript. Only `toJSON()` (below) renames them to camelCase for JSON-friendly output.
+> Tokens are plain objects, not `wasm_bindgen` class instances. A class instance keeps its data on the Rust heap until the JavaScript side drops it, so a synchronous loop that tokenizes without yielding accumulates memory; nothing is allocated on the Rust side for a plain object, and the result passes through `JSON.stringify`, `structuredClone`, and worker transfer without conversion. Field names are camelCase, matching the `lindera-nodejs` binding.
 
-### Token Methods
+### Reading Details
 
-#### `getDetail(index)`
-
-Returns the detail string at the specified index.
-
-- **Parameters**: `index` (number) -- Zero-based index into the details array
-- **Returns**: `string | undefined`
+Index `details` directly. Out-of-range indexes yield `undefined`.
 
 ```javascript
-const pos = token.getDetail(0);   // e.g., "名詞"
-const reading = token.getDetail(7); // e.g., "トウキョウ"
+const pos = token.details[0];     // e.g., "名詞"
+const reading = token.details[7]; // e.g., "トウキョウ"
 ```
 
-#### `toJSON()`
+### Serializing a Token
 
-Returns a plain JavaScript object representation of the token.
-
-- **Returns**: `object` with keys: `surface`, `byteStart`, `byteEnd`, `position`, `wordId`, `isUnknown`, `details`
+A token is already a plain object, so it serializes as-is.
 
 ```javascript
-console.log(JSON.stringify(token.toJSON(), null, 2));
+console.log(JSON.stringify(token, null, 2));
 ```
 
 ## Helper Functions

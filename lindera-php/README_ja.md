@@ -48,6 +48,25 @@ foreach ($tokens as $token) {
 }
 ```
 
+### トークンをプレーンデータへ変換
+
+`toArray()` はトークンを連想配列として返します。各フィールドは PHP の
+自然な型を保つため、独自のエンコーダなしでシリアライズできます:
+
+```php
+$data = $tokens[0]->toArray();
+// ['surface' => ..., 'byte_start' => 0, 'byte_end' => 9, 'position' => 0,
+//  'word_id' => 12345, 'is_unknown' => false, 'details' => [...]]
+
+echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
+```
+
+`Lindera\Token` は `JsonSerializable` を実装していないため、トークンオブジェクトを
+そのまま `json_encode` に渡してもこれらのフィールドは出力されません。上記のように
+先に `toArray()` を呼んでください。この拡張は ext-php-rs でビルドされており、
+その `#[php_class]` はまだ実装インターフェースを宣言できません
+（上流の [ext-php-rs#326](https://github.com/davidcole1340/ext-php-rs/issues/326)）。
+
 ### 辞書の指定
 
 ```php

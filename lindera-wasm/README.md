@@ -76,10 +76,8 @@ Each token object has the following properties:
 | `isUnknown` | `boolean` | Whether the token is an unknown word |
 | `details` | `string[]` | Morphological details array |
 
-Methods:
-
-- `getDetail(index)`: Returns the detail at the specified index, or `undefined` if not found
-- `toJSON()`: Returns the token as a plain JavaScript object
+Tokens are plain JavaScript objects, not class instances, so read `details`
+directly (`token.details[0]`) and pass a token to `JSON.stringify` as-is.
 
 ### For Vite Projects
 

@@ -289,6 +289,24 @@ reading = token.get_detail(7)    # e.g., "トウキョウ"
 
 **Returns:** `str` or `None`
 
+#### `to_dict()`
+
+Returns the token as a plain `dict`, keeping each field's natural Python type,
+so it serializes without a custom encoder.
+
+```python
+import json
+
+data = tokenizer.tokenize("東京")[0].to_dict()
+# {'surface': '東京', 'byte_start': 0, 'byte_end': 6, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+```
+
+**Returns:** `dict` with the keys `surface`, `byte_start`, `byte_end`,
+`position`, `word_id`, `is_unknown`, and `details`.
+
 The structure of `details` depends on the dictionary:
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

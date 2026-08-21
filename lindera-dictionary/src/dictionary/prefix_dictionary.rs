@@ -72,7 +72,7 @@ const NODE_LEN_BYTES: usize = 8;
 
 /// The system prefix dictionary: a serialized crawdad trie walked in place.
 ///
-/// Serialized trie layout (crawdad 0.3, `Trie::serialize_to_vec`):
+/// Serialized trie layout (crawdad 0.4, `Trie::serialize_to_vec`):
 ///
 /// ```text
 /// [table_len: u32][table: 4*table_len][alphabet_size: u32][node_len: u32][nodes: 8*node_len]
@@ -657,7 +657,7 @@ fn step_output<'a>(
 
 /// Iterator over the dictionary keys that are prefixes of a query.
 ///
-/// Mirrors crawdad 0.3's `CommonPrefixSearchIter` step for step, but walks
+/// Mirrors crawdad 0.4's `CommonPrefixSearchIter` step for step, but walks
 /// the serialized bytes directly with bounds-checked reads.
 pub struct CommonPrefixSearch<'a, 'b> {
     /// The dictionary being searched.

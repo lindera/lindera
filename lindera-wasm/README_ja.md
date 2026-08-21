@@ -76,10 +76,8 @@ main();
 | `isUnknown` | `boolean` | 未知語かどうか |
 | `details` | `string[]` | 形態素詳細の配列 |
 
-メソッド:
-
-- `getDetail(index)`: 指定したインデックスの詳細を返します。見つからない場合は `undefined` を返します
-- `toJSON()`: トークンをプレーンな JavaScript オブジェクトとして返します
+トークンはクラスのインスタンスではなくプレーンな JavaScript オブジェクトです。
+`details` は直接インデックスし（`token.details[0]`）、`JSON.stringify` にはそのまま渡せます。
 
 ### Vite プロジェクトの場合
 

@@ -49,6 +49,22 @@ tokens.each do |token|
 end
 ```
 
+### トークンをプレーンデータへ変換
+
+`to_h` はトークンを Symbol をキーとするプレーンな Hash として返します。
+各フィールドは Ruby の自然な型を保つため、独自のエンコーダなしで
+シリアライズできます:
+
+```ruby
+require 'json'
+
+data = tokens.first.to_h
+# {surface: ..., byte_start: 0, byte_end: 9, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&:to_h))
+```
+
 ### TokenizerBuilder の使用
 
 ```ruby

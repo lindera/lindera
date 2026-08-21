@@ -252,6 +252,31 @@ $reading = $token->getDetail(7);    // e.g., "トウキョウ"
 
 **Returns:** `string|null`
 
+#### `toArray()`
+
+Returns the token as an associative array, keeping each field's natural PHP
+type, so it serializes without a custom encoder.
+
+```php
+<?php
+
+$data = $tokenizer->tokenize('東京')[0]->toArray();
+// ['surface' => '東京', 'byte_start' => 0, 'byte_end' => 6, 'position' => 0,
+//  'word_id' => 12345, 'is_unknown' => false, 'details' => [...]]
+
+echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
+```
+
+**Returns:** `array` with the keys `surface`, `byte_start`, `byte_end`,
+`position`, `word_id`, `is_unknown`, and `details`.
+
+> [!NOTE]
+> `Lindera\Token` does not implement `JsonSerializable`, so passing a token
+> object straight to `json_encode` does not produce these fields -- call
+> `toArray()` first. The extension is built with ext-php-rs, whose
+> `#[php_class]` cannot declare implemented interfaces yet (upstream
+> [ext-php-rs#326](https://github.com/davidcole1340/ext-php-rs/issues/326)).
+
 The structure of `details` depends on the dictionary:
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

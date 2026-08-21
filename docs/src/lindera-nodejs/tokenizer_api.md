@@ -116,7 +116,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 
 #### `tokenize(text)`
 
-Tokenizes the input text and returns an array of `Token` objects.
+Tokenizes the input text and returns an array of plain token objects.
 
 ```javascript
 const tokens = tokenizer.tokenize("形態素解析");
@@ -130,29 +130,11 @@ const tokens = tokenizer.tokenize("形態素解析");
 
 **Returns:** `Token[]`
 
-#### `tokenizeObjects(text)`
-
-Tokenizes the input text and returns tokens as plain JS objects instead of `Token` class instances.
-
-This is the predictable-memory path for high-volume use: plain objects are reclaimed by ordinary GC, while `Token` class instances release native memory via an event-loop-deferred finalizer, so synchronous loops that never yield accumulate memory when using `tokenize`. It is also useful when results must be serializable.
-
-```javascript
-const tokens = tokenizer.tokenizeObjects("形態素解析");
-```
-
-**Parameters:**
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `text` | `string` | Text to tokenize |
-
-**Returns:** `Array<JsTokenData>`, where each `JsTokenData` has the same fields as `Token`: `surface`, `byteStart`, `byteEnd`, `position`, `wordId`, `isUnknown`, `details`.
-
-> **Note:** In 6.x, `tokenize` itself will return plain objects and `tokenizeObjects` will be removed. See [#930](https://github.com/lindera/lindera/issues/930).
+Tokens are plain JavaScript objects, not class instances, so they are reclaimed by ordinary garbage collection and pass through `JSON.stringify`, `structuredClone`, and worker transfer without conversion. See [Token](#token).
 
 #### `tokenizeSurfaces(text)`
 
-Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no `Token` objects are created and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `tokenizer.tokenize(text).map((t) => t.surface)`.
+Tokenizes the input text and returns only the token surfaces, as an array of strings. This is the fast path for wakati-style use: no token objects are built and no morphological details are loaded, so it is significantly faster than `tokenize` when only the surface strings are needed. The result equals `tokenizer.tokenize(text).map((t) => t.surface)`.
 
 ```javascript
 const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
@@ -187,11 +169,13 @@ for (const { tokens, cost } of results) {
 | `unique` | `boolean` | Deduplicate results (default: `false`) |
 | `costThreshold` | `number \| undefined` | Maximum cost difference from the best path (default: `undefined`) |
 
-**Returns:** `Array<{ tokens: Token[], cost: number }>`
+**Returns:** `NbestResult[]`, where each `NbestResult` is `{ tokens: Token[], cost: number }`
 
 ## Token
 
-`Token` represents a single morphological token.
+`Token` is a plain object describing a single morphological token. It is a
+TypeScript `interface`, not a class: it has no methods and no prototype, and
+every field is read directly.
 
 ### Properties
 
@@ -205,26 +189,16 @@ for (const { tokens, cost } of results) {
 | `isUnknown` | `boolean` | `true` if the word is not in the dictionary |
 | `details` | `string[]` | Morphological details (part of speech, reading, etc.) |
 
-### Token Methods
+### Reading Details
 
-#### `getDetail(index)`
-
-Returns the detail string at the specified index, or `null` if the index is out of range.
+Index `details` directly. Out-of-range indexes yield `undefined`.
 
 ```javascript
 const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // e.g., "名詞"
-const subpos = token.getDetail(1);   // e.g., "固有名詞"
-const reading = token.getDetail(7);  // e.g., "トウキョウ"
+const pos = token.details[0];      // e.g., "名詞"
+const subpos = token.details[1];   // e.g., "固有名詞"
+const reading = token.details[7];  // e.g., "トウキョウ"
 ```
-
-**Parameters:**
-
-| Name | Type | Description |
-| --- | --- | --- |
-| `index` | `number` | Zero-based index into the details array |
-
-**Returns:** `string | null`
 
 The structure of `details` depends on the dictionary:
 
