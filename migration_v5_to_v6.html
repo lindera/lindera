@@ -177,26 +177,54 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="migrating-from-v5-to-v6"><a class="header" href="#migrating-from-v5-to-v6">Migrating from v5 to v6</a></h1>
-<p>Lindera v6.0.0 changes the on-disk format of built dictionaries, changes a
-few <code>lindera-dictionary</code> Rust APIs, and changes tokenization output in two
-targeted ways (a Decompose-mode accuracy fix, and a new default-on
-unknown-word feature). Most users only need to rebuild or re-download their
-dictionaries; direct users of <code>lindera_dictionary::viterbi</code>/<code>mode</code> types and
-anyone relying on exact legacy output for out-of-vocabulary text have a
-couple of extra things to check.</p>
+<p>Lindera v6.0.0 rebuilds prebuilt user dictionaries, changes tokenization
+output in two targeted ways (a Decompose-mode accuracy fix and a new
+default-on unknown-word feature), reshapes the JavaScript bindings' token
+type, and renames several <code>lindera-dictionary</code> Rust APIs. Most users only
+need to rebuild their dictionaries; direct users of
+<code>lindera_dictionary::viterbi</code>/<code>mode</code> types, JavaScript users, and anyone
+relying on exact legacy output for out-of-vocabulary text have more to check.</p>
+<p>If you are upgrading from <strong>v5.2 or earlier</strong>, the system-dictionary format
+change described below applies to you as well. It shipped in v5.3.0, so
+upgrading from v5.3.0 does not require rebuilding system dictionaries — but
+it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
-<tr><td>Built dictionary format is now version 2 (<code>dict.da</code> → <code>dict.trie</code> + <code>dict.valsidx</code>)</td><td>Self-built dictionaries</td><td>Rebuild with <code>lindera build</code></td></tr>
-<tr><td><code>metadata.json</code> records <code>format_version</code>; mismatches are refused at load</td><td>Anyone loading a v5-era built dictionary</td><td>Rebuild, or re-download with <code>lindera download</code></td></tr>
-<tr><td><code>loadDictionaryFromBytes()</code> now takes 9 arguments</td><td>WASM users loading dictionaries from bytes</td><td>Pass <code>dictTrie</code> and <code>dictValsIdx</code> instead of <code>dictDa</code></td></tr>
-<tr><td>OPFS <code>DictionaryFiles</code> replaces <code>dictDa</code> with <code>dictTrie</code> + <code>dictValsIdx</code></td><td>WASM users of the <code>opfs</code> helpers</td><td>Re-download OPFS-cached dictionaries</td></tr>
+<tr><td><strong>Prebuilt user-dictionary <code>.bin</code> files no longer load</strong></td><td>Anyone loading a user dictionary from <code>.bin</code></td><td>Rebuild from the CSV source with <code>lindera build --user</code></td></tr>
 <tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
 <tr><td>Unknown-word length ladder is on by default</td><td>Normal- and Decompose-mode output on out-of-vocabulary text</td><td>Set <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> for v5-identical output</td></tr>
-<tr><td>Several <code>lindera_dictionary::viterbi</code>/<code>mode</code> items renamed or removed</td><td>Direct users of <code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> (not the <code>lindera</code> crate's <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API)</td><td>Update call sites per the table below</td></tr>
+<tr><td>New <code>max_grouping_len</code> option (<code>--max-grouping-len</code>, config key, builder/worker setters)</td><td>Anyone who wants MeCab's <code>max-grouping-size</code> cap</td><td>Nothing — the default is unchanged (unbounded)</td></tr>
 <tr><td>JS bindings return plain objects; the <code>Token</code> class is gone</td><td>Node.js and WASM users</td><td>Replace <code>token.getDetail(i)</code> with <code>token.details[i]</code>; WASM users also switch to camelCase field names</td></tr>
+<tr><td>Several <code>lindera_dictionary::viterbi</code>/<code>mode</code> items renamed or removed, and <code>Lattice::set_text</code>/<code>set_text_nbest</code> take two more arguments</td><td>Direct users of <code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> (not the <code>lindera</code> crate's <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API)</td><td>Update call sites per the table below</td></tr>
+<tr><td>Built dictionary format is version 2 (<code>dict.da</code> → <code>dict.trie</code> + <code>dict.valsidx</code>) — <strong>shipped in v5.3.0</strong></td><td>Self-built system dictionaries created by <strong>v5.2 or earlier</strong></td><td>Rebuild with <code>lindera build</code>, or re-download with <code>lindera download</code></td></tr>
+<tr><td><code>loadDictionaryFromBytes()</code> takes 9 arguments — <strong>shipped in v5.3.0</strong></td><td>WASM users loading dictionaries from bytes, upgrading from <strong>v5.2 or earlier</strong></td><td>Pass <code>dictTrie</code> and <code>dictValsIdx</code> instead of <code>dictDa</code></td></tr>
+<tr><td>OPFS <code>DictionaryFiles</code> replaces <code>dictDa</code> with <code>dictTrie</code> + <code>dictValsIdx</code> — <strong>shipped in v5.3.0</strong></td><td>WASM users of the <code>opfs</code> helpers, upgrading from <strong>v5.2 or earlier</strong></td><td>Re-download OPFS-cached dictionaries</td></tr>
 </tbody></table>
 </div>
-<h2 id="dictionary-format-version-2"><a class="header" href="#dictionary-format-version-2">Dictionary format version 2</a></h2>
+<h2 id="prebuilt-user-dictionaries-must-be-rebuilt"><a class="header" href="#prebuilt-user-dictionaries-must-be-rebuilt">Prebuilt user dictionaries must be rebuilt</a></h2>
+<p>Lindera v6 upgrades <code>daachorse</code> from 4.x to 5.0, which changed the serialized
+form of the Aho-Corasick automaton that a user dictionary embeds. A <code>.bin</code>
+file built by any v5 release therefore fails to load:</p>
+<pre><code class="language-text">LinderaError(kind=Deserialize, source=InvalidAutomatonError: invalid serialized automaton)
+</code></pre>
+<p>Unlike system dictionaries, user-dictionary <code>.bin</code> files carry no
+<code>format_version</code>, so there is no version check to produce a friendlier
+message — the failure surfaces as the deserialize error above.</p>
+<p>Rebuild from the CSV source with v6:</p>
+<pre><code class="language-sh">lindera build --user \
+  --src ./user_dict.csv \
+  --dest ./build \
+  --metadata ./lindera-ipadic/metadata.json
+</code></pre>
+<p>If you load a user dictionary from a <code>.csv</code> file rather than a prebuilt
+<code>.bin</code>, it is compiled at load time and no action is needed.</p>
+<h2 id="dictionary-format-version-2-shipped-in-v530"><a class="header" href="#dictionary-format-version-2-shipped-in-v530">Dictionary format version 2 (shipped in v5.3.0)</a></h2>
+<blockquote>
+<p>This change shipped in <strong>v5.3.0</strong>, not in v6.0.0. If you are upgrading
+from v5.3.0 your system dictionaries already use format version 2 and load
+unchanged. Follow this section only when upgrading from <strong>v5.2 or
+earlier</strong>.</p>
+</blockquote>
 <p>The system prefix dictionary is no longer stored as a serialized <code>daachorse</code>
 Aho-Corasick automaton (<code>dict.da</code>). The builder now constructs a char-wise
 double-array trie with <code>crawdad</code> at build time and writes it as <code>dict.trie</code>,
@@ -221,8 +249,8 @@ it stays lazily paged like every other large component.</p>
 <code>dict.da</code> no longer exists.</p>
 <h3 id="loading-an-old-dictionary-now-fails-with-a-clear-error"><a class="header" href="#loading-an-old-dictionary-now-fails-with-a-clear-error">Loading an old dictionary now fails with a clear error</a></h3>
 <p><code>metadata.json</code> in a built dictionary records <code>format_version: 2</code>, and the
-loader checks it. Loading a dictionary built by v5 fails with an actionable
-error instead of misreading the headerless binary files:</p>
+loader checks it. Loading a dictionary built by v5.2 or earlier fails with an
+actionable error instead of misreading the headerless binary files:</p>
 <pre><code class="language-text">Dictionary 'ipadic' has format version 1, but this build of Lindera reads format version 2. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
 </code></pre>
 <h2 id="tokenization-output-changes"><a class="header" href="#tokenization-output-changes">Tokenization output changes</a></h2>
@@ -253,8 +281,8 @@ The practical effect is that consecutive out-of-vocabulary kanji or kana
 characters can now be grouped into multi-character unknown words when that
 scores lower than splitting them one character at a time — for example, an
 unrecognized two-kanji compound is now tokenized as one word instead of two.</p>
-<p>This is additive to (and independent of) the <code>max_grouping_len</code> option
-introduced in v5.4 for capping whole-run grouping.</p>
+<p>This is additive to (and independent of) <code>max_grouping_len</code>, the new option
+described below for capping whole-run grouping.</p>
 <p>To reproduce v5-identical output on text containing out-of-vocabulary
 kanji/kana runs, disable the ladder:</p>
 <pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
@@ -264,6 +292,19 @@ kanji/kana runs, disable the ladder:</p>
 <p><code>AnalysisWorker</code>/<code>SegmentWorker</code> expose the same toggle via
 <code>set_unknown_word_ladder(bool)</code>, and <code>TokenizerBuilder</code> via
 <code>set_segmenter_unknown_word_ladder(bool)</code>.</p>
+<h3 id="new-option-max_grouping_len-default-unchanged"><a class="header" href="#new-option-max_grouping_len-default-unchanged">New option: <code>max_grouping_len</code> (default unchanged)</a></h3>
+<p>v6 adds MeCab's <code>max-grouping-size</code> semantics: when a groupable run of
+out-of-vocabulary characters extends more than <code>max_grouping_len</code> characters
+beyond the first, the grouped candidate is not emitted and single-character
+unknown words are used instead. The default is unbounded, which is exactly
+what v5 did, so <strong>this changes nothing unless you opt in</strong>:</p>
+<pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
+    .max_grouping_len(Some(24)); // MeCab's own default</code></pre>
+<pre><code class="language-sh">lindera tokenize -d ipadic --max-grouping-len 24 input.txt
+</code></pre>
+<p>Also available as <code>set_max_grouping_len(Option&lt;usize&gt;)</code> on
+<code>SegmentWorker</code>/<code>AnalysisWorker</code>, <code>set_segmenter_max_grouping_len(usize)</code> on
+<code>TokenizerBuilder</code>, and the <code>max_grouping_len</code> key in a segmenter config.</p>
 <h2 id="rust-api-changes-in-lindera_dictionary"><a class="header" href="#rust-api-changes-in-lindera_dictionary">Rust API changes in <code>lindera_dictionary</code></a></h2>
 <p>These affect only code that uses <code>lindera_dictionary::viterbi::{Lattice, Edge}</code> or <code>lindera_dictionary::mode::{Mode, Penalty}</code> directly (for example,
 custom lattice inspection or alternative tokenizer front-ends). The <code>lindera</code>
@@ -278,8 +319,15 @@ options above but no signatures changed.</p>
 <tr><td><code>Edge::num_chars()</code></td><td>Removed</td><td>The packed <code>Edge</code> no longer stores its end position (it always equals the lattice slot it lives in), so this can no longer be computed from the edge alone</td></tr>
 <tr><td><code>Penalty::penalty(&amp;Edge)</code></td><td><code>Penalty::penalty(&amp;Edge, num_chars: usize)</code></td><td>The caller now passes the exact character span (see the Decompose accuracy fix above)</td></tr>
 <tr><td><code>Mode::penalty_cost(&amp;Edge)</code></td><td>Removed</td><td>Had no callers in the codebase; re-implement via <code>Penalty::penalty</code> if needed</td></tr>
+<tr><td><code>Lattice::set_text(..., search_mode)</code></td><td><code>Lattice::set_text(..., search_mode, max_grouping_len, unknown_word_ladder)</code></td><td>Two trailing arguments for the new options; pass <code>None</code> and <code>true</code> to match v6 defaults, or <code>None</code> and <code>false</code> for v5 behavior. <code>set_text_nbest</code> changed identically</td></tr>
+<tr><td>—</td><td><code>Lattice::take_max_char_len()</code> (new)</td><td>Additive: reports and resets the largest sentence seen, for worker-style shrink accounting</td></tr>
 </tbody></table>
 </div>
+<p><code>set_text</code> and <code>set_text_nbest</code> also gained a documented panic: they assert
+that the sentence is shorter than <code>u16::MAX</code> characters, because an edge now
+stores its start position as a <code>u16</code>. Every path through <code>Segmenter</code> is safe
+because it splits sentences at <code>MAX_SENTENCE_BYTES</code>; only code that drives a
+<code>Lattice</code> directly needs to split its own input.</p>
 <h2 id="javascript-bindings-tokens-are-plain-objects"><a class="header" href="#javascript-bindings-tokens-are-plain-objects">JavaScript bindings: tokens are plain objects</a></h2>
 <p>Both JS bindings previously returned <code>Token</code> class instances. Those instances
 own memory outside the JavaScript heap, released only when the host runs a
@@ -308,7 +356,22 @@ const tokens = tokenizer.tokenizeObjects(text);
 const tokens = tokenizer.tokenize(text);
 </code></pre>
 <p><code>tokenizeNbest</code> returns plain objects too, so it no longer has the
-accumulation behavior documented as a known limitation in v5.</p>
+accumulation behavior documented as a known limitation in v5. <code>NbestResult</code>
+stopped being a class along with <code>Token</code>: it is now a plain object with the
+same <code>tokens</code> and <code>cost</code> properties.</p>
+<p>Because neither is a class any more, they are no longer exported from the
+package. <code>Token</code>, <code>JsToken</code>, <code>NbestResult</code>, and <code>JsNbestResult</code> are all gone
+from <code>index.js</code>, so <code>require("lindera-nodejs").Token</code> is <code>undefined</code> and
+<code>instanceof</code> checks against them no longer compile or run:</p>
+<pre><code class="language-javascript">// v5
+const { Token } = require("lindera-nodejs");
+if (tokens[0] instanceof Token) { /* ... */ }
+
+// v6 — the values are plain objects; check a property instead
+if (typeof tokens[0].surface === "string") { /* ... */ }
+</code></pre>
+<p>TypeScript users: the interface describing a token is now called <code>Token</code>
+(it was <code>JsTokenData</code> while <code>Token</code> was taken by the class).</p>
 <h3 id="wasm-field-names-are-now-camelcase"><a class="header" href="#wasm-field-names-are-now-camelcase">WASM: field names are now camelCase</a></h3>
 <p>The removed <code>Token</code> class exposed snake_case fields while its own <code>toJSON()</code>
 already emitted camelCase. v6 settles on camelCase, matching the Node.js
@@ -329,14 +392,22 @@ const data = token.toJSON();
 // v6
 const data = token; // already plain
 </code></pre>
+<p><code>Token</code> is also no longer exported from the module, so
+<code>import { Token } from 'lindera-wasm-...'</code> fails. There is nothing to import
+in its place — <code>tokenize</code> hands back plain objects directly.</p>
 <p><code>tokenizeNbest</code> in WASM already returned plain objects in v5 and is
 unchanged.</p>
 <h2 id="who-does-not-need-to-act"><a class="header" href="#who-does-not-need-to-act">Who does not need to act</a></h2>
 <ul>
-<li><strong>User dictionaries</strong>: prebuilt user-dictionary <code>.bin</code> files are not
-affected. They keep using a <code>daachorse</code> automaton internally and continue to
-load without rebuilding. User dictionaries loaded from <code>.csv</code> are compiled
-at load time as before.</li>
+<li><strong>Python, Ruby, and PHP bindings</strong>: unaffected by the JavaScript changes
+above. They keep their <code>Token</code> classes, because their finalization is
+deterministic and never had the memory problem that motivated the JS
+rework. They each gained a plain-data conversion method — <code>to_dict()</code>,
+<code>to_h</code> (also <code>to_hash</code>), and <code>toArray()</code> respectively — but nothing was
+removed or renamed.</li>
+<li><strong>User dictionaries loaded from <code>.csv</code></strong>: compiled at load time, so they
+pick up the new format automatically. (Prebuilt <code>.bin</code> files <em>do</em> need
+rebuilding — see the first section.)</li>
 <li><strong><code>lindera</code> crate's public API</strong>: <code>Segmenter</code>, <code>Tokenizer</code>,
 <code>SegmentWorker</code>, and <code>AnalysisWorker</code> signatures are unchanged (aside from
 the additive <code>unknown_word_ladder</code>/<code>max_grouping_len</code> options); code that
@@ -346,19 +417,37 @@ are compiled by each dictionary crate's build script, so they always match
 the running version.</li>
 </ul>
 <h2 id="upgrade-checklist"><a class="header" href="#upgrade-checklist">Upgrade checklist</a></h2>
+<p>Everyone:</p>
 <ul>
-<li>Rebuild self-built system dictionaries with the v6 <code>lindera build</code>, or
-re-download prebuilt ones with <code>lindera download</code>.</li>
-<li>WASM: update <code>loadDictionaryFromBytes()</code> calls to the 9-argument signature
-(<code>dictTrie</code> and <code>dictValsIdx</code> in place of <code>dictDa</code>).</li>
-<li>WASM: remove v5-era dictionaries from OPFS and download v6 archives.</li>
+<li><strong>Rebuild prebuilt user-dictionary <code>.bin</code> files</strong> from their CSV source
+with <code>lindera build --user</code>. This is required regardless of which v5 you
+are coming from.</li>
 <li>If you pin exact tokenization output for out-of-vocabulary or non-Japanese
 text, re-check it — the Decompose penalty fix and the unknown-word ladder
 (default on) can both change it. Set <code>unknown_word_ladder(false)</code> if you
 need v5-identical unknown-word output.</li>
-<li>If you use <code>lindera_dictionary::viterbi</code>/<code>mode</code> types directly, update
-call sites per the Rust API table above.</li>
-<li>Nothing to do for user-dictionary <code>.bin</code> files.</li>
+</ul>
+<p>JavaScript (Node.js and WASM):</p>
+<ul>
+<li>Replace <code>token.getDetail(i)</code> with <code>token.details[i]</code>.</li>
+<li>Node.js: replace <code>tokenizeObjects(text)</code> with <code>tokenize(text)</code>; stop
+importing <code>Token</code>/<code>NbestResult</code> (they are no longer exported); TypeScript
+users rename the <code>JsTokenData</code> type to <code>Token</code>.</li>
+<li>WASM: switch token field reads to camelCase (<code>byteStart</code>, <code>byteEnd</code>,
+<code>wordId</code>, <code>isUnknown</code>), drop <code>toJSON()</code> calls, and stop importing <code>Token</code>.</li>
+</ul>
+<p>Direct <code>lindera_dictionary</code> users:</p>
+<ul>
+<li>Update call sites per the Rust API table above, including the two new
+<code>set_text</code>/<code>set_text_nbest</code> arguments.</li>
+</ul>
+<p>Upgrading from v5.2 or earlier (these shipped in v5.3.0):</p>
+<ul>
+<li>Rebuild self-built system dictionaries with <code>lindera build</code>, or re-download
+prebuilt ones with <code>lindera download</code>.</li>
+<li>WASM: update <code>loadDictionaryFromBytes()</code> calls to the 9-argument signature
+(<code>dictTrie</code> and <code>dictValsIdx</code> in place of <code>dictDa</code>).</li>
+<li>WASM: remove v5-era dictionaries from OPFS and download v6 archives.</li>
 </ul>
 
                     </main>
