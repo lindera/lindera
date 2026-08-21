@@ -411,7 +411,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run Node.js build
+      # `make test-lindera-nodejs` also type-checks the regenerated `index.d.ts` with `tsc`. The
+      # freshness check below only compares the file to a fresh regeneration, so it cannot catch a
+      # file that is internally inconsistent — it reproduces the same broken output. #959 was exactly
+      # that: `NbestResult.tokens` referenced a `JsTokenData` type the file never declared, so every
+      # TypeScript consumer of `tokenizeNbest` failed to compile while CI stayed green.
+      - name: Run Node.js build and type check
         run: |
           make test-lindera-nodejs
 
