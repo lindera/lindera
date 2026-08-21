@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
-use crate::token::JsToken;
+use crate::token::token_view_to_js;
 
 /// Parses optional filter arguments (a JS value) into a JSON value.
 fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
@@ -216,13 +216,17 @@ impl Tokenizer {
     }
 
     /// Tokenizes the input text.
-    pub fn tokenize(&self, input_text: &str) -> Result<Vec<JsToken>, JsValue> {
+    ///
+    /// Tokens are returned as plain JS objects with camelCase fields, so
+    /// they carry no Rust-side allocation for the caller to release and
+    /// serialize without conversion.
+    pub fn tokenize(&self, input_text: &str) -> Result<Vec<JsValue>, JsValue> {
         let views = self
             .inner
             .tokenize(input_text)
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-        Ok(views.into_iter().map(JsToken::from_view).collect())
+        Ok(views.into_iter().map(token_view_to_js).collect())
     }
 
     /// Tokenizes the input text and returns only the token surfaces.
@@ -262,8 +266,7 @@ impl Tokenizer {
             let entry = js_sys::Object::new();
             let inner = js_sys::Array::new();
             for view in views {
-                let js_token = JsToken::from_view(view);
-                inner.push(&js_token.to_json());
+                inner.push(&token_view_to_js(view));
             }
             js_sys::Reflect::set(&entry, &"tokens".into(), &inner).unwrap();
             js_sys::Reflect::set(&entry, &"cost".into(), &JsValue::from(cost as f64)).unwrap();
@@ -297,6 +300,44 @@ mod tests {
     #[cfg(target_arch = "wasm32")]
     use wasm_bindgen_test::wasm_bindgen_test;
 
+    /// Reads a string field from a plain-object token (#930: tokens are
+    /// plain JS objects with camelCase keys, not class instances).
+    #[cfg(target_arch = "wasm32")]
+    fn token_str(token: &wasm_bindgen::JsValue, key: &str) -> String {
+        js_sys::Reflect::get(token, &key.into())
+            .unwrap()
+            .as_string()
+            .unwrap()
+    }
+
+    /// Reads a numeric field from a plain-object token.
+    #[cfg(target_arch = "wasm32")]
+    fn token_num(token: &wasm_bindgen::JsValue, key: &str) -> f64 {
+        js_sys::Reflect::get(token, &key.into())
+            .unwrap()
+            .as_f64()
+            .unwrap()
+    }
+
+    /// Reads a boolean field from a plain-object token.
+    #[cfg(target_arch = "wasm32")]
+    fn token_bool(token: &wasm_bindgen::JsValue, key: &str) -> bool {
+        js_sys::Reflect::get(token, &key.into())
+            .unwrap()
+            .as_bool()
+            .unwrap()
+    }
+
+    /// Reads the `details` array from a plain-object token.
+    #[cfg(target_arch = "wasm32")]
+    fn token_details(token: &wasm_bindgen::JsValue) -> Vec<String> {
+        let details = js_sys::Reflect::get(token, &"details".into()).unwrap();
+        js_sys::Array::from(&details)
+            .iter()
+            .map(|d| d.as_string().unwrap())
+            .collect()
+    }
+
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
     fn test_tokenize() {
@@ -311,10 +352,10 @@ mod tests {
         let tokens = tokenizer.tokenize("関西国際空港限定トートバッグ").unwrap();
 
         assert_eq!(tokens.len(), 3);
-        assert_eq!(tokens[0].surface, "関西国際空港");
-        assert_eq!(tokens[1].surface, "限定");
-        assert_eq!(tokens[2].surface, "トートバッグ");
-        assert_eq!(tokens[0].get_detail(0), Some("名詞".to_string()));
+        assert_eq!(token_str(&tokens[0], "surface"), "関西国際空港");
+        assert_eq!(token_str(&tokens[1], "surface"), "限定");
+        assert_eq!(token_str(&tokens[2], "surface"), "トートバッグ");
+        assert_eq!(token_details(&tokens[0])[0], "名詞");
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -332,8 +373,8 @@ mod tests {
         let expected: Vec<String> = tokenizer
             .tokenize(text)
             .unwrap()
-            .into_iter()
-            .map(|t| t.surface)
+            .iter()
+            .map(|t| token_str(t, "surface"))
             .collect();
         let surfaces = tokenizer.tokenize_surfaces(text).unwrap();
         assert_eq!(expected, surfaces);
@@ -361,8 +402,8 @@ mod tests {
         let tokens = tokenizer.tokenize("すもももももももものうち").unwrap();
 
         assert_eq!(tokens.len(), 7);
-        assert_eq!(tokens[0].surface, "すもも");
-        assert_eq!(tokens[6].surface, "うち");
+        assert_eq!(token_str(&tokens[0], "surface"), "すもも");
+        assert_eq!(token_str(&tokens[6], "surface"), "うち");
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -381,18 +422,21 @@ mod tests {
         assert_eq!(tokens.len(), 1);
 
         let token = &tokens[0];
-        assert_eq!(token.surface, "関西国際空港");
-        assert_eq!(token.byte_start, 0);
-        assert_eq!(token.byte_end, "関西国際空港".len());
-        assert_eq!(token.position, 0);
-        assert!(!token.is_unknown);
-        assert!(!token.details.is_empty());
-        assert!(token.word_id > 0);
+        assert_eq!(token_str(token, "surface"), "関西国際空港");
+        assert_eq!(token_num(token, "byteStart"), 0.0);
+        assert_eq!(token_num(token, "byteEnd"), "関西国際空港".len() as f64);
+        assert_eq!(token_num(token, "position"), 0.0);
+        assert!(!token_bool(token, "isUnknown"));
+        assert!(!token_details(token).is_empty());
+        assert!(token_num(token, "wordId") > 0.0);
     }
 
+    /// #930: details are read by indexing the array, which replaces the
+    /// `getDetail(i)` method that existed while tokens were class
+    /// instances.
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_token_get_detail() {
+    fn test_token_details_by_index() {
         use crate::TokenizerBuilder;
 
         let mut builder = TokenizerBuilder::new().unwrap();
@@ -405,18 +449,21 @@ mod tests {
 
         assert!(!tokens.is_empty());
 
-        let token = &tokens[0];
+        let details = token_details(&tokens[0]);
+        assert!(!details.is_empty());
+        assert_eq!(details[0], "名詞");
 
-        let first_detail = token.get_detail(0);
-        assert!(first_detail.is_some());
-        assert_eq!(first_detail.unwrap(), token.details[0]);
-
-        assert!(token.get_detail(9999).is_none());
+        // Out-of-range reads yield undefined, as for any JS array.
+        let raw = js_sys::Reflect::get(&tokens[0], &"details".into()).unwrap();
+        let out_of_range = js_sys::Reflect::get_u32(&raw, 9999).unwrap();
+        assert!(out_of_range.is_undefined());
     }
 
+    /// #930: tokens are plain objects, so they serialize without any
+    /// conversion step and carry no Rust-side allocation to release.
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
-    fn test_token_to_json() {
+    fn test_token_is_plain_serializable_object() {
         use crate::TokenizerBuilder;
 
         let mut builder = TokenizerBuilder::new().unwrap();
@@ -426,11 +473,28 @@ mod tests {
         let tokenizer = builder.build().unwrap();
 
         let tokens = tokenizer.tokenize("東京").unwrap();
+        let token = &tokens[0];
 
-        let json = tokens[0].to_json();
+        // A plain object, not a wasm-bindgen class instance: its prototype
+        // is Object.prototype, i.e. its constructor is Object itself.
+        assert!(token.is_object());
+        let proto = js_sys::Object::get_prototype_of(token);
+        let ctor = js_sys::Reflect::get(&proto, &"constructor".into()).unwrap();
+        let ctor_name = js_sys::Reflect::get(&ctor, &"name".into())
+            .unwrap()
+            .as_string()
+            .unwrap();
+        assert_eq!(ctor_name, "Object");
 
-        assert!(!json.is_null());
-        assert!(!json.is_undefined());
+        // Round-trips through JSON with its fields intact.
+        let json = js_sys::JSON::stringify(token).unwrap();
+        let parsed = js_sys::JSON::parse(&String::from(json)).unwrap();
+        assert_eq!(token_str(&parsed, "surface"), token_str(token, "surface"));
+        assert_eq!(
+            token_num(&parsed, "byteStart"),
+            token_num(token, "byteStart")
+        );
+        assert_eq!(token_details(&parsed), token_details(token));
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -448,7 +512,7 @@ mod tests {
 
         assert!(!tokens.is_empty());
 
-        let reconstructed: String = tokens.iter().map(|t| t.surface.as_str()).collect();
+        let reconstructed: String = tokens.iter().map(|t| token_str(t, "surface")).collect();
         assert_eq!(reconstructed, "関西国際空港");
     }
 
@@ -510,7 +574,7 @@ mod tests {
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
 
         assert!(!tokens.is_empty());
-        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(token_str(&tokens[0], "surface"), "東京");
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -529,7 +593,7 @@ mod tests {
         let tokens = tokenizer.tokenize("東京タワー").unwrap();
 
         assert!(!tokens.is_empty());
-        assert_eq!(tokens[0].surface, "東京");
+        assert_eq!(token_str(&tokens[0], "surface"), "東京");
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -548,7 +612,7 @@ mod tests {
         let tokens = tokenizer.tokenize("関西国際空港").unwrap();
 
         assert!(!tokens.is_empty());
-        let reconstructed: String = tokens.iter().map(|t| t.surface.as_str()).collect();
+        let reconstructed: String = tokens.iter().map(|t| token_str(t, "surface")).collect();
         assert_eq!(reconstructed, "関西国際空港");
     }
 

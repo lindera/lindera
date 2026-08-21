@@ -1,5 +1,7 @@
 # wasm-pack build output
 pkg/
+# nodejs-target build used by the memory-regression check (see scripts/benchmarks/memcheck_wasm.mjs)
+pkg-node/
 
 # Node.js dependencies (for examples/tests)
 node_modules/

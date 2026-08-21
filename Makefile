@@ -188,6 +188,10 @@ memcheck-lindera-nodejs: ## Check lindera-nodejs releases token memory in synchr
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features embed-ipadic
 	node --expose-gc scripts/benchmarks/memcheck_nodejs.mjs
 
+memcheck-lindera-wasm: ## Check lindera-wasm releases token memory in synchronous loops
+	cd lindera-wasm && wasm-pack build --target nodejs --features=$(WASM_FEATURES) --out-dir pkg-node
+	node --expose-gc scripts/benchmarks/memcheck_wasm.mjs
+
 test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test

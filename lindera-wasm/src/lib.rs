@@ -51,7 +51,6 @@ pub use crate::mode::{JsMode as Mode, JsPenalty as Penalty};
 pub use crate::schema::{
     JsFieldDefinition as FieldDefinition, JsFieldType as FieldType, JsSchema as Schema,
 };
-pub use crate::token::JsToken as Token;
 pub use crate::tokenizer::{Tokenizer, TokenizerBuilder};
 
 // Top-level function aliases for consistency with Python API

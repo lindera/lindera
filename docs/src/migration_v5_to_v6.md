@@ -19,6 +19,7 @@ couple of extra things to check.
 | Decompose-mode length penalty is now exact for non-3-byte characters | `Mode::Decompose` output on text with 1-, 2-, or 4-byte UTF-8 characters | Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly |
 | Unknown-word length ladder is on by default | Normal- and Decompose-mode output on out-of-vocabulary text | Set `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` for v5-identical output |
 | Several `lindera_dictionary::viterbi`/`mode` items renamed or removed | Direct users of `Lattice`/`Edge`/`Penalty`/`Mode` (not the `lindera` crate's `Segmenter`/`Tokenizer`/`Worker` API) | Update call sites per the table below |
+| JS bindings return plain objects; the `Token` class is gone | Node.js and WASM users | Replace `token.getDetail(i)` with `token.details[i]`; WASM users also switch to camelCase field names |
 
 ## Dictionary format version 2
 
@@ -129,6 +130,78 @@ options above but no signatures changed.
 | `Edge::num_chars()` | Removed | The packed `Edge` no longer stores its end position (it always equals the lattice slot it lives in), so this can no longer be computed from the edge alone |
 | `Penalty::penalty(&Edge)` | `Penalty::penalty(&Edge, num_chars: usize)` | The caller now passes the exact character span (see the Decompose accuracy fix above) |
 | `Mode::penalty_cost(&Edge)` | Removed | Had no callers in the codebase; re-implement via `Penalty::penalty` if needed |
+
+## JavaScript bindings: tokens are plain objects
+
+Both JS bindings previously returned `Token` class instances. Those instances
+own memory outside the JavaScript heap, released only when the host runs a
+finalizer — which napi defers to the event loop, and which wasm-bindgen leaves
+to the caller. A synchronous loop that tokenizes a large input without
+yielding therefore accumulated memory even under forced GC. In v6 both
+bindings return plain objects instead, which the JavaScript GC owns outright.
+
+Practical benefits: memory stays flat in batch loops, and results work
+directly with `JSON.stringify`, `structuredClone`, and worker transfer.
+
+### `getDetail(i)` is removed (Node.js and WASM)
+
+A plain object has no methods, so read the array instead:
+
+```javascript
+// v5
+const pos = token.getDetail(0);
+
+// v6
+const pos = token.details[0];
+```
+
+Out-of-range reads now yield `undefined` rather than `null`.
+
+### Node.js: `tokenizeObjects` is removed
+
+`tokenizeObjects` existed only as a v5-era workaround for the memory problem
+above. `tokenize` now returns the same plain objects, so drop the call:
+
+```javascript
+// v5
+const tokens = tokenizer.tokenizeObjects(text);
+
+// v6
+const tokens = tokenizer.tokenize(text);
+```
+
+`tokenizeNbest` returns plain objects too, so it no longer has the
+accumulation behavior documented as a known limitation in v5.
+
+### WASM: field names are now camelCase
+
+The removed `Token` class exposed snake_case fields while its own `toJSON()`
+already emitted camelCase. v6 settles on camelCase, matching the Node.js
+binding:
+
+```javascript
+// v5
+token.byte_start, token.byte_end, token.word_id, token.is_unknown
+
+// v6
+token.byteStart, token.byteEnd, token.wordId, token.isUnknown
+```
+
+`surface`, `position`, and `details` are unchanged. Code that already called
+`toJSON()` and read the result was using these names, and keeps working —
+except that `toJSON()` itself is gone, since the token is already a plain
+object:
+
+```javascript
+// v5
+const data = token.toJSON();
+
+// v6
+const data = token; // already plain
+```
+
+`tokenizeNbest` in WASM already returned plain objects in v5 and is
+unchanged.
 
 ## Who does not need to act
 
