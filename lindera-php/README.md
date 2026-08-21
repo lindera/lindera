@@ -48,6 +48,25 @@ foreach ($tokens as $token) {
 }
 ```
 
+### Converting Tokens to Plain Data
+
+`toArray()` returns the token as an associative array, keeping each field's
+natural PHP type, so it serializes without a custom encoder:
+
+```php
+$data = $tokens[0]->toArray();
+// ['surface' => ..., 'byte_start' => 0, 'byte_end' => 9, 'position' => 0,
+//  'word_id' => 12345, 'is_unknown' => false, 'details' => [...]]
+
+echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
+```
+
+`Lindera\Token` does not implement `JsonSerializable`, so passing a token
+object straight to `json_encode` does not produce these fields — call
+`toArray()` first, as above. The extension is built with ext-php-rs, whose
+`#[php_class]` cannot declare implemented interfaces yet (upstream
+[ext-php-rs#326](https://github.com/davidcole1340/ext-php-rs/issues/326)).
+
 ### With Dictionary
 
 ```php

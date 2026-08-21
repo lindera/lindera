@@ -49,6 +49,21 @@ tokens.each do |token|
 end
 ```
 
+### Converting Tokens to Plain Data
+
+`to_h` returns the token as a plain Hash keyed by Symbols, keeping each
+field's natural Ruby type, so it serializes without a custom encoder:
+
+```ruby
+require 'json'
+
+data = tokens.first.to_h
+# {surface: ..., byte_start: 0, byte_end: 9, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&:to_h))
+```
+
 ### Using TokenizerBuilder
 
 ```ruby

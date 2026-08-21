@@ -64,6 +64,26 @@ def test_tokenize_returns_token_objects():
     # Check out of bounds
     assert token.get_detail(9999) is None
 
+    # to_dict() returns plain data with natural Python types (#952)
+    import json
+
+    data = token.to_dict()
+    assert isinstance(data, dict)
+    assert data["surface"] == token.surface
+    assert isinstance(data["byte_start"], int)
+    assert data["byte_start"] == token.byte_start
+    assert data["byte_end"] == token.byte_end
+    assert data["position"] == token.position
+    assert data["word_id"] == token.word_id
+    assert isinstance(data["is_unknown"], bool)
+    assert data["is_unknown"] == token.is_unknown
+    assert isinstance(data["details"], list)
+    assert data["details"] == token.details
+
+    # Serializes without a custom encoder.
+    restored = json.loads(json.dumps(data))
+    assert restored == data
+
     print("PyToken verify success!")
 
 

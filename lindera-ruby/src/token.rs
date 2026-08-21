@@ -3,7 +3,7 @@
 //! This module wraps Lindera tokens for use in Ruby.
 
 use magnus::prelude::*;
-use magnus::{Error, Ruby, method};
+use magnus::{Error, RHash, Ruby, method};
 
 use lindera::token::Token;
 
@@ -111,6 +111,34 @@ impl RbToken {
         self.details.get(index).cloned()
     }
 
+    /// Returns the token as a plain Hash keyed by Symbols.
+    ///
+    /// Values keep their natural Ruby types (Integer for the positions and
+    /// word id, true/false for `:is_unknown`, Array of String for
+    /// `:details`), so the result works directly with `JSON.generate`.
+    ///
+    /// # Returns
+    ///
+    /// A Hash with the keys `:surface`, `:byte_start`, `:byte_end`,
+    /// `:position`, `:word_id`, `:is_unknown`, and `:details`, or a Magnus
+    /// `Error` if the Hash cannot be built.
+    fn to_hash(ruby: &Ruby, rb_self: &Self) -> Result<RHash, Error> {
+        let this = rb_self;
+        let hash = ruby.hash_new();
+        hash.aset(ruby.to_symbol("surface"), this.surface.as_str())?;
+        hash.aset(ruby.to_symbol("byte_start"), this.byte_start)?;
+        hash.aset(ruby.to_symbol("byte_end"), this.byte_end)?;
+        hash.aset(ruby.to_symbol("position"), this.position)?;
+        hash.aset(ruby.to_symbol("word_id"), this.word_id)?;
+        hash.aset(ruby.to_symbol("is_unknown"), this.is_unknown)?;
+        let details = ruby.ary_new();
+        for detail in &this.details {
+            details.push(detail.as_str())?;
+        }
+        hash.aset(ruby.to_symbol("details"), details)?;
+        Ok(hash)
+    }
+
     /// Returns the string representation of the token.
     fn to_s(&self) -> String {
         self.surface.clone()
@@ -150,6 +178,9 @@ pub fn define(ruby: &Ruby, module: &magnus::RModule) -> Result<(), Error> {
     token_class.define_method("unknown?", method!(RbToken::is_unknown, 0))?;
     token_class.define_method("details", method!(RbToken::details, 0))?;
     token_class.define_method("get_detail", method!(RbToken::get_detail, 1))?;
+    token_class.define_method("to_hash", method!(RbToken::to_hash, 0))?;
+    token_class.define_method("to_h", method!(RbToken::to_hash, 0))?;
+
     token_class.define_method("to_s", method!(RbToken::to_s, 0))?;
     token_class.define_method("inspect", method!(RbToken::inspect, 0))?;
 
