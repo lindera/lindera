@@ -10,6 +10,8 @@ segmenter:
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
+  # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
+  # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
 
 character_filters:
   - kind: "unicode_normalize"
@@ -70,6 +72,18 @@ token_filters:
     args:
       japanese: false
 ```
+
+## Segmenter のオプション
+
+| キー | 型 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `mode` | string | `"normal"` | 分割モード。`"normal"` または `"decompose"` |
+| `dictionary` | string | *(必須)* | 辞書 URI。例: `"embedded://ipadic"` |
+| `user_dictionary` | string | *(なし)* | ユーザー辞書のパス |
+| `keep_whitespace` | bool | `false` | 空白トークンを無視せずに出力する（MeCab は無視する） |
+| `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
+| `max_grouping_len` | integer | *(無制限)* | 未知語のグルーピングが**先頭の 1 文字を超えて**span できる最大文字数。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか `0` を指定すると無制限になる |
+| `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、`char.def` の各カテゴリの `LENGTH` フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには `false` を指定する |
 
 ```shell
 % export LINDERA_CONFIG_PATH=./resources/config/lindera.yml

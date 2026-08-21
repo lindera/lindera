@@ -118,7 +118,7 @@ const tokenizer = new Tokenizer(dictionary, "normal");
 
 #### `tokenize(text)`
 
-入力テキストをトークナイズし、`Token` オブジェクトの配列を返します。
+入力テキストをトークナイズし、プレーンなトークンオブジェクトの配列を返します。
 
 ```javascript
 const tokens = tokenizer.tokenize("形態素解析");
@@ -132,29 +132,11 @@ const tokens = tokenizer.tokenize("形態素解析");
 
 **戻り値:** `Token[]`
 
-#### `tokenizeObjects(text)`
-
-入力テキストをトークナイズし、`Token` クラスのインスタンスではなくプレーンな JS オブジェクトとしてトークンを返します。
-
-これは大量処理向けのメモリ使用量が予測可能なパスです。プレーンオブジェクトは通常の GC によって回収されますが、`Token` クラスのインスタンスはイベントループに遅延されたファイナライザによってネイティブメモリを解放するため、`tokenize` を一度も yield しない同期ループで使用すると、メモリが蓄積してしまいます。結果をシリアライズする必要がある場合にも有用です。
-
-```javascript
-const tokens = tokenizer.tokenizeObjects("形態素解析");
-```
-
-**パラメータ:**
-
-| 名前 | 型 | 説明 |
-| --- | --- | --- |
-| `text` | `string` | トークナイズするテキスト |
-
-**戻り値:** `Array<JsTokenData>`。各 `JsTokenData` は `Token` と同じフィールド（`surface`、`byteStart`、`byteEnd`、`position`、`wordId`、`isUnknown`、`details`）を持ちます。
-
-> **注意:** 6.x では `tokenize` 自体がプレーンオブジェクトを返すようになり、`tokenizeObjects` は削除される予定です。詳細は [#930](https://github.com/lindera/lindera/issues/930) を参照してください。
+トークンはクラスのインスタンスではなくプレーンな JavaScript オブジェクトです。そのため通常の GC で回収され、`JSON.stringify`、`structuredClone`、worker への転送を変換なしで通過します。詳細は [Token](#token) を参照してください。
 
 #### `tokenizeSurfaces(text)`
 
-入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。`Token` オブジェクトを生成せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は `tokenize` より大幅に高速です。結果は `tokenizer.tokenize(text).map((t) => t.surface)` と一致します。
+入力テキストをトークナイズし、トークンの surface のみを文字列の配列として返します。分かち書き用途の高速パスです。トークンオブジェクトを構築せず、形態素の詳細情報もロードしないため、surface 文字列だけが必要な場合は `tokenize` より大幅に高速です。結果は `tokenizer.tokenize(text).map((t) => t.surface)` と一致します。
 
 ```javascript
 const surfaces = tokenizer.tokenizeSurfaces("形態素解析");
@@ -189,11 +171,13 @@ for (const { tokens, cost } of results) {
 | `unique` | `boolean` | 結果の重複を排除（デフォルト: `false`） |
 | `costThreshold` | `number \| undefined` | 最良パスからの最大コスト差（デフォルト: `undefined`） |
 
-**戻り値:** `Array<{ tokens: Token[], cost: number }>`
+**戻り値:** `NbestResult[]`。各 `NbestResult` は `{ tokens: Token[], cost: number }` です。
 
 ## Token
 
-`Token` は単一の形態素トークンを表します。
+`Token` は単一の形態素トークンを表すプレーンオブジェクトです。クラスではなく
+TypeScript の `interface` であり、メソッドもプロトタイプも持ちません。
+各フィールドは直接読み出します。
 
 ### プロパティ
 
@@ -207,26 +191,16 @@ for (const { tokens, cost } of results) {
 | `isUnknown` | `boolean` | 辞書に登録されていない単語の場合 `true` |
 | `details` | `string[]` | 形態素の詳細情報（品詞、読みなど） |
 
-### Token メソッド
+### 詳細情報の読み出し
 
-#### `getDetail(index)`
-
-指定されたインデックスの詳細文字列を返します。インデックスが範囲外の場合は `null` を返します。
+`details` を直接インデックスします。範囲外のインデックスは `undefined` になります。
 
 ```javascript
 const token = tokenizer.tokenize("東京")[0];
-const pos = token.getDetail(0);      // 例: "名詞"
-const subpos = token.getDetail(1);   // 例: "固有名詞"
-const reading = token.getDetail(7);  // 例: "トウキョウ"
+const pos = token.details[0];      // 例: "名詞"
+const subpos = token.details[1];   // 例: "固有名詞"
+const reading = token.details[7];  // 例: "トウキョウ"
 ```
-
-**パラメータ:**
-
-| 名前 | 型 | 説明 |
-| --- | --- | --- |
-| `index` | `number` | details 配列へのゼロベースインデックス |
-
-**戻り値:** `string | null`
 
 `details` の構造は辞書によって異なります：
 

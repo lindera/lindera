@@ -44,7 +44,7 @@ const tokenizer = new TokenizerBuilder()
 
 const tokens = tokenizer.tokenize("すもももももももものうち");
 for (const token of tokens) {
-  console.log(`${token.surface}\t${token.getDetail(0)}`);
+  console.log(`${token.surface}\t${token.details[0]}`);
 }
 ```
 

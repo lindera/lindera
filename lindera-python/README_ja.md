@@ -107,6 +107,21 @@ for token in tokens:
     print(f"Text: {token.surface}, Position: {token.byte_start}-{token.byte_end}")
 ```
 
+### トークンをプレーンデータへ変換
+
+`to_dict()` はトークンをプレーンな `dict` として返します。各フィールドは
+Python の自然な型を保つため、独自のエンコーダなしでシリアライズできます:
+
+```python
+import json
+
+data = tokens[0].to_dict()
+# {'surface': ..., 'byte_start': 0, 'byte_end': 9, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+```
+
 ### 文字フィルタの使用
 
 ```python

@@ -176,7 +176,7 @@ const surfaces = tokenizer.tokenizeSurfaces("関西国際空港");
   - `n` (number) -- 返す結果の数
   - `unique` (boolean, 省略可) -- 同一のセグメンテーション結果を重複排除（デフォルト: `false`）
   - `costThreshold` (bigint, 省略可) -- `bestCost + threshold` 以内のパスのみ返す
-- **戻り値**: `{ tokens: object[], cost: number }` の配列
+- **戻り値**: `{ tokens: Token[], cost: number }` の配列
 
 ```javascript
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
@@ -187,45 +187,38 @@ const resultsWithThreshold = tokenizer.tokenizeNbest("すももももももも�
 
 ## Token
 
-トークナイザーが生成する単一のトークンを表します。
+トークナイザーが生成する単一のトークンで、プレーンな JavaScript オブジェクトです。
 
 ### プロパティ
 
 | プロパティ | 型 | 説明 |
 | --- | --- | --- |
 | `surface` | `string` | トークンの表層形 |
-| `byte_start` | `number` | 元テキストでの開始バイトオフセット |
-| `byte_end` | `number` | 元テキストでの終了バイトオフセット |
+| `byteStart` | `number` | 元テキストでの開始バイトオフセット |
+| `byteEnd` | `number` | 元テキストでの終了バイトオフセット |
 | `position` | `number` | トークンの位置インデックス |
-| `word_id` | `number` | 辞書内の単語 ID |
-| `is_unknown` | `boolean` | 未知語かどうか |
+| `wordId` | `number` | 辞書内の単語 ID |
+| `isUnknown` | `boolean` | 未知語かどうか |
 | `details` | `string[]` | 形態素の詳細フィールド |
 
 > [!NOTE]
-> これらが `Token` オブジェクトの実際のフィールド名です -- `lindera-wasm/src/token.rs` は `js_name` によるリネームを一切行っていないため、JavaScript 側でも snake_case のままになります。camelCase にリネームされるのは、下記の `toJSON()` が返す JSON 用オブジェクトのみです。
+> トークンは `wasm_bindgen` のクラスインスタンスではなくプレーンオブジェクトです。クラスインスタンスは JavaScript 側が解放するまでデータを Rust ヒープ上に保持するため、yield しない同期ループでトークナイズするとメモリが蓄積します。プレーンオブジェクトなら Rust 側に確保されるものが無く、結果は `JSON.stringify`、`structuredClone`、worker への転送を変換なしで通過します。フィールド名は `lindera-nodejs` バインディングと同じ camelCase です。
 
-### Token メソッド
+### 詳細情報の読み出し
 
-#### `getDetail(index)`
-
-指定されたインデックスの詳細文字列を返します。
-
-- **パラメータ**: `index` (number) -- details 配列へのゼロベースインデックス
-- **戻り値**: `string | undefined`
+`details` を直接インデックスします。範囲外のインデックスは `undefined` になります。
 
 ```javascript
-const pos = token.getDetail(0);   // 例: "名詞"
-const reading = token.getDetail(7); // 例: "トウキョウ"
+const pos = token.details[0];     // 例: "名詞"
+const reading = token.details[7]; // 例: "トウキョウ"
 ```
 
-#### `toJSON()`
+### トークンのシリアライズ
 
-トークンのプレーンな JavaScript オブジェクト表現を返します。
-
-- **戻り値**: `surface`、`byteStart`、`byteEnd`、`position`、`wordId`、`isUnknown`、`details` をキーに持つ `object`
+トークンは既にプレーンオブジェクトなので、そのままシリアライズできます。
 
 ```javascript
-console.log(JSON.stringify(token.toJSON(), null, 2));
+console.log(JSON.stringify(token, null, 2));
 ```
 
 ## ヘルパー関数

@@ -327,9 +327,15 @@ See `examples/train_and_export.js` for a complete example.
 
 - `TokenizerBuilder`: Fluent builder for tokenizer configuration
 - `Tokenizer`: Main tokenization engine
-- `Token`: Individual token with text, position, and linguistic features
+- `Dictionary`: A loaded system dictionary
+- `UserDictionary`: A loaded user dictionary
 - `Metadata`: Dictionary metadata and configuration
 - `Schema`: Dictionary schema definition
+
+### Core Types
+
+- `Token`: A plain object with text, position, and linguistic features
+- `NbestResult`: A plain object holding one N-best candidate (`tokens` and `cost`)
 
 ### Training Functions (requires `train` feature)
 

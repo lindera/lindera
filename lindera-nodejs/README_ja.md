@@ -105,6 +105,29 @@ for (const token of tokens) {
 }
 ```
 
+### トークンはプレーンオブジェクト
+
+`tokenize` と `tokenizeNbest` はクラスのインスタンスではなく、プレーンな
+JavaScript オブジェクトを返します。これにより大量の同期バッチ処理でも
+メモリ使用量が予測可能になります。napi のクラスインスタンスはネイティブ
+メモリの解放をイベントループへ遅延されるファイナライザ経由で行うため、
+yield しないループでは強制 GC を挟んでもネイティブメモリが蓄積します。
+一方プレーンオブジェクトは通常の GC で回収されます
+（[#930](https://github.com/lindera/lindera/issues/930)）。
+
+変換なしでシリアライズできます:
+
+```javascript
+const tokens = tokenizer.tokenize(text);
+
+JSON.stringify(tokens);   // そのまま動作する
+structuredClone(tokens);  // worker へ安全に送れる
+```
+
+個々の詳細情報は配列をインデックスして読み出します（`token.details[0]`）。
+これはトークンがクラスインスタンスだった頃の `token.getDetail(0)` メソッドを
+置き換えるものです（範囲外の読み出しは `null` ではなく `undefined` になります）。
+
 ### 文字フィルタの使用
 
 ```javascript
@@ -305,9 +328,15 @@ exportModel({
 
 - `TokenizerBuilder`: トークナイザ設定のための Fluent ビルダー
 - `Tokenizer`: メインのトークナイズエンジン
-- `Token`: テキスト、位置、言語的特徴を持つ個々のトークン
+- `Dictionary`: ロード済みのシステム辞書
+- `UserDictionary`: ロード済みのユーザー辞書
 - `Metadata`: 辞書メタデータと設定
 - `Schema`: 辞書スキーマ定義
+
+### コア型
+
+- `Token`: テキスト、位置、言語的特徴を持つプレーンオブジェクト
+- `NbestResult`: N-best 候補 1 件を保持するプレーンオブジェクト（`tokens` と `cost`）
 
 ### 学習関数（`train` feature が必要）
 

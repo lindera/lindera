@@ -10,6 +10,8 @@ segmenter:
   # user_dictionary: "./resources/user_dict/ipadic_simple_userdic.csv"
   # keep_whitespace: false
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
+  # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
+  # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
 
 character_filters:
   - kind: "unicode_normalize"
@@ -70,6 +72,18 @@ token_filters:
     args:
       japanese: false
 ```
+
+## Segmenter Options
+
+| Key | Type | Default | Description |
+| --- | --- | --- | --- |
+| `mode` | string | `"normal"` | Segmentation mode: `"normal"` or `"decompose"` |
+| `dictionary` | string | *(required)* | Dictionary URI, e.g. `"embedded://ipadic"` |
+| `user_dictionary` | string | *(none)* | Path to a user dictionary |
+| `keep_whitespace` | bool | `false` | Emit whitespace tokens instead of ignoring them (MeCab ignores them) |
+| `use_mmap` | bool | on when the `mmap` feature is compiled in (the default) | Memory-map the dictionary; only meaningful for filesystem (non-`embedded://`) dictionaries |
+| `max_grouping_len` | integer | *(unbounded)* | Maximum characters **beyond the first** that an unknown-word grouping may span, matching MeCab's `max-grouping-size` (MeCab defaults to 24). A grouped candidate longer than this is not emitted; the single-character unknown word is emitted instead. Omitting the key, or setting `0`, leaves grouping unbounded |
+| `unknown_word_ladder` | bool | `true` | Also emit the shorter unknown-word candidates up to each category's `LENGTH` field in `char.def`, as MeCab and Vibrato do. Set to `false` to reproduce pre-v6 output exactly |
 
 ```shell
 % export LINDERA_CONFIG_PATH=./resources/config/lindera.yml

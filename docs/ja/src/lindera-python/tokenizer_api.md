@@ -291,6 +291,24 @@ reading = token.get_detail(7)    # 例: "トウキョウ"
 
 **戻り値:** `str` または `None`
 
+#### `to_dict()`
+
+トークンをプレーンな `dict` として返します。各フィールドは Python の自然な型を
+保つため、独自のエンコーダなしでシリアライズできます。
+
+```python
+import json
+
+data = tokenizer.tokenize("東京")[0].to_dict()
+# {'surface': '東京', 'byte_start': 0, 'byte_end': 6, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+```
+
+**戻り値:** `surface`、`byte_start`、`byte_end`、`position`、`word_id`、
+`is_unknown`、`details` をキーに持つ `dict`。
+
 `details` の構造は辞書によって異なります：
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

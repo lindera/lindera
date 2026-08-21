@@ -286,6 +286,25 @@ reading = token.get_detail(7)    # 例: "トウキョウ"
 
 **戻り値:** `String` または `nil`
 
+#### `to_h` / `to_hash`
+
+トークンを Symbol をキーとするプレーンな `Hash` として返します。各フィールドは
+Ruby の自然な型を保つため、独自のエンコーダなしでシリアライズできます。
+`to_h` と `to_hash` は同一のメソッドです。
+
+```ruby
+require 'json'
+
+data = tokenizer.tokenize('東京')[0].to_h
+# {surface: "東京", byte_start: 0, byte_end: 6, position: 0,
+#  word_id: 12345, is_unknown: false, details: [...]}
+
+JSON.generate(tokens.map(&:to_h))
+```
+
+**戻り値:** `:surface`、`:byte_start`、`:byte_end`、`:position`、`:word_id`、
+`:is_unknown`、`:details` をキーに持つ `Hash`。
+
 `details` の構造は辞書によって異なります：
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

@@ -221,6 +221,29 @@ $reading = $token->getDetail(7);    // 例: "トウキョウ"
 
 **戻り値:** `string` または `null`
 
+#### `toArray()`
+
+トークンを連想配列として返します。各フィールドは PHP の自然な型を保つため、
+独自のエンコーダなしでシリアライズできます。
+
+```php
+$data = $tokenizer->tokenize('東京')[0]->toArray();
+// ['surface' => '東京', 'byte_start' => 0, 'byte_end' => 6, 'position' => 0,
+//  'word_id' => 12345, 'is_unknown' => false, 'details' => [...]]
+
+echo json_encode(array_map(fn($t) => $t->toArray(), $tokens));
+```
+
+**戻り値:** `surface`、`byte_start`、`byte_end`、`position`、`word_id`、
+`is_unknown`、`details` をキーに持つ `array`。
+
+> [!NOTE]
+> `Lindera\Token` は `JsonSerializable` を実装していないため、トークンオブジェクトを
+> そのまま `json_encode` に渡してもこれらのフィールドは出力されません。先に
+> `toArray()` を呼んでください。この拡張は ext-php-rs でビルドされており、その
+> `#[php_class]` はまだ実装インターフェースを宣言できません（上流の
+> [ext-php-rs#326](https://github.com/davidcole1340/ext-php-rs/issues/326)）。
+
 `details` の構造は辞書によって異なります：
 
 - **IPADIC**: `[品詞, 品詞細分類1, 品詞細分類2, 品詞細分類3, 活用型, 活用形, 原形, 読み, 発音]`

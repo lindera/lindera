@@ -63,7 +63,9 @@ A built dictionary directory records the on-disk layout it was written in, as `f
 
 The check matters because most artifacts have no header of their own: `matrix.mtx`, `dict.vals` and `dict.words` are raw arrays, so a dictionary from an older layout that happens to be a plausible length decodes into garbage rather than failing. A source `metadata.json` — the hand-written kind checked into each dictionary crate — describes build *inputs*, carries no `format_version`, and is never format-checked.
 
-Bump `DICTIONARY_FORMAT_VERSION` on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (`crawdad` for `dict.trie`, `rkyv` for `char_def.bin` and `unk.bin`), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.
+Bump `DICTIONARY_FORMAT_VERSION` on any change to the bytes of a built artifact. That includes upgrading a dependency whose serialized form is written verbatim (`crawdad` for `dict.trie`, `rkyv` for `char_def.bin` and `unk.bin`, `daachorse` inside user dictionary `.bin` files), which is easy to overlook because no line of this crate changes. The build cache is keyed on the format version for exactly that reason.
+
+The current format version is 2. Version 2 replaced the system prefix dictionary's byte-wise daachorse Aho-Corasick automaton (`dict.da`) with a char-wise double-array trie (`dict.trie`) plus a `u32` prefix-sum index (`dict.valsidx`). Dictionaries at version 1 or earlier are rejected at load time with an actionable error. User dictionary `.bin` files were not affected by *that* change — but they are written by `daachorse`, so a `daachorse` upgrade does invalidate them, which is exactly why it belongs in the list above.
 
 ### Context ID Remapping
 
