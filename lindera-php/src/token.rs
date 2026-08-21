@@ -3,7 +3,9 @@
 //! This module provides the PhpToken class that exposes morphological analysis
 //! results to PHP.
 
+use ext_php_rs::boxed::ZBox;
 use ext_php_rs::prelude::*;
+use ext_php_rs::types::ZendHashTable;
 
 use lindera::token::Token;
 
@@ -114,6 +116,35 @@ impl PhpToken {
     /// The detail string if found, otherwise null.
     pub fn get_detail(&self, index: i64) -> Option<String> {
         self.details.get(index as usize).cloned()
+    }
+
+    /// Returns the token as an associative array.
+    ///
+    /// Values keep their natural PHP types (int for the positions and word
+    /// id, bool for `is_unknown`, array of string for `details`), so the
+    /// result works directly with `json_encode`.
+    ///
+    /// # Returns
+    ///
+    /// An array with the keys `surface`, `byte_start`, `byte_end`,
+    /// `position`, `word_id`, `is_unknown`, and `details`.
+    pub fn to_array(&self) -> PhpResult<ZBox<ZendHashTable>> {
+        let mut arr = ZendHashTable::new();
+        arr.insert("surface", self.surface.as_str())
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("byte_start", self.byte_start as i64)
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("byte_end", self.byte_end as i64)
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("position", self.position as i64)
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("word_id", self.word_id as i64)
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("is_unknown", self.is_unknown)
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        arr.insert("details", self.details.clone())
+            .map_err(|e| PhpException::default(e.to_string()))?;
+        Ok(arr)
     }
 
     /// Returns a string representation of the token.

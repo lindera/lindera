@@ -107,6 +107,21 @@ for token in tokens:
     print(f"Text: {token.surface}, Position: {token.byte_start}-{token.byte_end}")
 ```
 
+### Converting Tokens to Plain Data
+
+`to_dict()` returns the token as a plain `dict`, keeping each field's natural
+Python type, so it serializes without a custom encoder:
+
+```python
+import json
+
+data = tokens[0].to_dict()
+# {'surface': ..., 'byte_start': 0, 'byte_end': 9, 'position': 0,
+#  'word_id': 12345, 'is_unknown': False, 'details': [...]}
+
+json.dumps([token.to_dict() for token in tokens])
+```
+
 ### Using Character Filters
 
 ```python

@@ -204,6 +204,37 @@ class LinderaTest extends TestCase
         $this->assertNull($detailNull);
     }
 
+    // #952: toArray() returns plain data with natural PHP types.
+    public function testTokenToArray(): void
+    {
+        $builder = new Lindera\TokenizerBuilder();
+        $builder->setDictionary('embedded://ipadic');
+        $tokenizer = $builder->build();
+
+        $tokens = $tokenizer->tokenize('東京');
+        $this->assertGreaterThan(0, count($tokens));
+
+        $token = $tokens[0];
+        $array = $token->toArray();
+
+        $this->assertIsArray($array);
+        $this->assertSame($token->surface, $array['surface']);
+        $this->assertIsInt($array['byte_start']);
+        $this->assertSame($token->byte_start, $array['byte_start']);
+        $this->assertSame($token->byte_end, $array['byte_end']);
+        $this->assertSame($token->position, $array['position']);
+        $this->assertSame($token->word_id, $array['word_id']);
+        $this->assertIsBool($array['is_unknown']);
+        $this->assertSame($token->is_unknown, $array['is_unknown']);
+        $this->assertIsArray($array['details']);
+        $this->assertSame($token->details, $array['details']);
+
+        // Serializes without a custom encoder.
+        $json = json_encode($array);
+        $this->assertIsString($json);
+        $this->assertSame($array, json_decode($json, true));
+    }
+
     public function testTokenizerBuilderSetMode(): void
     {
         $builder = new Lindera\TokenizerBuilder();

@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 use lindera::token::Token;
 
@@ -50,6 +51,28 @@ impl PyToken {
     #[pyo3(signature = (index))]
     fn get_detail(&self, index: usize) -> Option<String> {
         self.details.get(index).cloned()
+    }
+
+    /// Returns the token as a plain dictionary.
+    ///
+    /// Field values keep their natural Python types (`int` for the
+    /// positions and word id, `bool` for `is_unknown`, `list[str]` for
+    /// `details`), so the result serializes directly with `json.dumps`.
+    ///
+    /// # Returns
+    ///
+    /// A dict with the keys `surface`, `byte_start`, `byte_end`,
+    /// `position`, `word_id`, `is_unknown`, and `details`.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        let dict = PyDict::new(py);
+        dict.set_item("surface", &self.surface)?;
+        dict.set_item("byte_start", self.byte_start)?;
+        dict.set_item("byte_end", self.byte_end)?;
+        dict.set_item("position", self.position)?;
+        dict.set_item("word_id", self.word_id)?;
+        dict.set_item("is_unknown", self.is_unknown)?;
+        dict.set_item("details", &self.details)?;
+        Ok(dict)
     }
 
     /// Returns a string representation of the token.

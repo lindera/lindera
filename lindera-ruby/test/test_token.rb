@@ -41,6 +41,34 @@ class TestToken < Minitest::Test
     assert_equal token.surface, token.to_s
   end
 
+  # #952: to_h returns plain data with natural Ruby types.
+  def test_token_to_h
+    require 'json'
+
+    token = @tokens[0]
+    hash = token.to_h
+
+    assert_kind_of Hash, hash
+    assert_equal token.surface, hash[:surface]
+    assert_kind_of Integer, hash[:byte_start]
+    assert_equal token.byte_start, hash[:byte_start]
+    assert_equal token.byte_end, hash[:byte_end]
+    assert_equal token.position, hash[:position]
+    assert_equal token.word_id, hash[:word_id]
+    assert_equal token.unknown?, hash[:is_unknown]
+    assert_kind_of Array, hash[:details]
+    assert_equal token.details, hash[:details]
+
+    # Serializes without a custom encoder.
+    assert_equal hash[:surface], JSON.parse(JSON.generate(hash))['surface']
+  end
+
+  # to_hash is the canonical name; to_h is the idiomatic alias.
+  def test_token_to_hash_alias
+    token = @tokens[0]
+    assert_equal token.to_h, token.to_hash
+  end
+
   def test_token_inspect
     token = @tokens[0]
     inspect_str = token.inspect
