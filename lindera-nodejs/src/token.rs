@@ -11,10 +11,10 @@
 /// N-best tokenization result.
 ///
 /// Contains a list of tokens and their total path cost.
-#[napi(object, js_name = "NbestResult")]
-pub struct JsNbestResult {
+#[napi(object)]
+pub struct NbestResult {
     /// Tokens in this result.
-    pub tokens: Vec<JsTokenData>,
+    pub tokens: Vec<Token>,
     /// Total path cost of this tokenization.
     pub cost: i64,
 }
@@ -23,8 +23,8 @@ pub struct JsNbestResult {
 ///
 /// Represents a single token from morphological analysis with its surface
 /// form, position information, and morphological details.
-#[napi(object, js_name = "Token")]
-pub struct JsTokenData {
+#[napi(object)]
+pub struct Token {
     /// Surface form of the token.
     pub surface: String,
     /// Start byte position in the original text.
@@ -41,8 +41,8 @@ pub struct JsTokenData {
     pub details: Vec<String>,
 }
 
-impl JsTokenData {
-    /// Creates a JsTokenData from a binding-core `TokenView`.
+impl Token {
+    /// Creates a Token from a binding-core `TokenView`.
     ///
     /// # Arguments
     ///
@@ -50,7 +50,7 @@ impl JsTokenData {
     ///
     /// # Returns
     ///
-    /// A new JsTokenData instance.
+    /// A new Token instance.
     pub fn from_view(view: lindera_binding_core::TokenView) -> Self {
         Self {
             surface: view.surface,

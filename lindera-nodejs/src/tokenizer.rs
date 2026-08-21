@@ -11,7 +11,7 @@ use lindera_binding_core::{CoreTokenizer, CoreTokenizerBuilder};
 
 use crate::dictionary::{JsDictionary, JsUserDictionary};
 use crate::error::to_napi_error;
-use crate::token::{JsNbestResult, JsTokenData};
+use crate::token::{NbestResult, Token};
 use crate::util::js_value_to_serde_value;
 
 /// Builder for creating a Tokenizer with custom configuration.
@@ -183,9 +183,9 @@ impl JsTokenizer {
     /// An array of token objects containing morphological features, in
     /// reading order.
     #[napi]
-    pub fn tokenize(&self, text: String) -> napi::Result<Vec<JsTokenData>> {
+    pub fn tokenize(&self, text: String) -> napi::Result<Vec<Token>> {
         let views = self.inner.tokenize(&text).map_err(to_napi_error)?;
-        Ok(views.into_iter().map(JsTokenData::from_view).collect())
+        Ok(views.into_iter().map(Token::from_view).collect())
     }
 
     /// Tokenizes the given text and returns only the token surfaces.
@@ -227,16 +227,16 @@ impl JsTokenizer {
         n: u32,
         unique: Option<bool>,
         cost_threshold: Option<i64>,
-    ) -> napi::Result<Vec<JsNbestResult>> {
+    ) -> napi::Result<Vec<NbestResult>> {
         let results = self
             .inner
             .tokenize_nbest(&text, n as usize, unique.unwrap_or(false), cost_threshold)
             .map_err(to_napi_error)?;
 
-        let js_results: Vec<JsNbestResult> = results
+        let js_results: Vec<NbestResult> = results
             .into_iter()
-            .map(|(views, cost)| JsNbestResult {
-                tokens: views.into_iter().map(JsTokenData::from_view).collect(),
+            .map(|(views, cost)| NbestResult {
+                tokens: views.into_iter().map(Token::from_view).collect(),
                 cost,
             })
             .collect();

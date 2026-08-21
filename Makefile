@@ -180,9 +180,9 @@ test-lindera-python: setup-venv ## Test lindera-python (Rust unit tests + Python
 	cargo test -p lindera-python --lib
 	cd lindera-python && VIRTUAL_ENV=$(abspath $(PYTHON_VENV_DIR)) $(abspath $(MATURIN)) develop --quiet --features=embed-ipadic,train && $(abspath $(PYTEST)) tests/ -v
 
-test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test)
+test-lindera-nodejs: ## Test lindera-nodejs (Rust unit tests + Node.js test + generated type check)
 	cargo test -p lindera-nodejs --lib
-	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test
+	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs && npm test && npm run test:types
 
 memcheck-lindera-nodejs: ## Check lindera-nodejs releases token memory in synchronous loops
 	cd lindera-nodejs && npm install --quiet && npx napi build --platform -p lindera-nodejs --features embed-ipadic

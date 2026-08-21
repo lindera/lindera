@@ -34,7 +34,8 @@
     "build": "napi build --platform --release -p lindera-nodejs",
     "build:debug": "napi build --platform -p lindera-nodejs",
     "artifacts": "napi artifacts",
-    "test": "node --test tests/test_*.js tests/test_*.mjs"
+    "test": "node --test tests/test_*.js tests/test_*.mjs",
+    "test:types": "tsc --noEmit --project types-check/tsconfig.json"
   },
   "files": [
     "index.js",
@@ -63,6 +64,7 @@
     "napi"
   ],
   "devDependencies": {
-    "@napi-rs/cli": "^3.6.0"
+    "@napi-rs/cli": "^3.6.0",
+    "typescript": "^6.0.3"
   }
 }

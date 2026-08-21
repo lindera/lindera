@@ -517,7 +517,7 @@ export interface MetadataOptions {
  */
 export interface NbestResult {
   /** Tokens in this result. */
-  tokens: Array<JsTokenData>
+  tokens: Array<Token>
   /** Total path cost of this tokenization. */
   cost: number
 }
