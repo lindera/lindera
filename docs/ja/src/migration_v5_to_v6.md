@@ -1,27 +1,64 @@
 # v5 から v6 への移行
 
-Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマットが変わり、
-`lindera-dictionary` の一部 Rust API が変わり、さらにトークナイズ結果も
-2 点（Decompose モードの精度修正と、新しいデフォルト有効な未知語機能）で
-変わります。ほとんどのユーザーは辞書の再ビルドまたは再ダウンロードだけで
-済みますが、`lindera_dictionary::viterbi`/`mode` の型を直接使っている場合や、
-未知語（辞書外の文字列）に対する厳密な旧出力に依存している場合は、追加で
-確認すべき点があります。
+Lindera v6.0.0 では、ビルド済みユーザー辞書の再ビルドが必要になり、
+トークナイズ結果が 2 点（Decompose モードの精度修正と、新しいデフォルト
+有効な未知語機能）で変わり、JavaScript バインディングのトークン型が変わり、
+`lindera-dictionary` の一部 Rust API が改名されます。ほとんどのユーザーは
+辞書の再ビルドだけで済みますが、`lindera_dictionary::viterbi`/`mode` の型を
+直接使っている場合、JavaScript を使っている場合、未知語（辞書外の文字列）に
+対する厳密な旧出力に依存している場合は、追加で確認すべき点があります。
+
+**v5.2 以前**からアップグレードする場合は、後述のシステム辞書フォーマット
+変更も対象になります。この変更は v5.3.0 で既にリリース済みのため、v5.3.0
+からのアップグレードではシステム辞書の再ビルドは不要です。ただしユーザー
+辞書の再ビルドは、これとは別の理由で必要です。
 
 ## 概要
 
 | 変更 | 影響範囲 | 対処方法 |
 | --- | --- | --- |
-| ビルド済み辞書フォーマットがバージョン 2 に（`dict.da` → `dict.trie` + `dict.valsidx`） | 自前ビルド辞書 | `lindera build` で再ビルド |
-| `metadata.json` が `format_version` を記録し、不一致はロード時に拒否 | v5 世代のビルド済み辞書を読み込むすべてのユーザー | 再ビルド、または `lindera download` で再取得 |
-| `loadDictionaryFromBytes()` が 9 引数に | バイトデータから辞書を読み込む WASM ユーザー | `dictDa` の代わりに `dictTrie` と `dictValsIdx` を渡す |
-| OPFS の `DictionaryFiles` が `dictDa` を `dictTrie` + `dictValsIdx` に置き換え | `opfs` ヘルパーを使う WASM ユーザー | OPFS にキャッシュ済みの辞書を再ダウンロード |
+| **ビルド済みユーザー辞書 `.bin` が読み込めなくなった** | `.bin` からユーザー辞書を読み込むすべてのユーザー | CSV から `lindera build --user` で再ビルド |
 | Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった | 1・2・4 バイトの UTF-8 文字を含むテキストに対する `Mode::Decompose` の出力 | 対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認 |
 | 未知語の候補ラダー（length ladder）がデフォルトで有効に | 辞書外テキストに対する Normal・Decompose 両モードの出力 | v5 と同一の出力が必要な場合は `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` を設定 |
-| `lindera_dictionary::viterbi`/`mode` の一部項目が改名・削除 | `Lattice`/`Edge`/`Penalty`/`Mode` を直接利用するコード（`lindera` クレートの `Segmenter`/`Tokenizer`/`Worker` API 利用者は対象外） | 下記の表に従い呼び出し箇所を更新 |
+| `max_grouping_len` オプションの新設（`--max-grouping-len`、config キー、builder/worker setter） | MeCab の `max-grouping-size` 相当の上限を使いたいユーザー | 対応不要（デフォルトは従来どおり無制限） |
 | JS バインディングがプレーンオブジェクトを返すようになり `Token` クラスが廃止 | Node.js・WASM ユーザー | `token.getDetail(i)` を `token.details[i]` に置換。WASM ユーザーはフィールド名の camelCase 化にも対応 |
+| `lindera_dictionary::viterbi`/`mode` の一部項目が改名・削除、`Lattice::set_text`/`set_text_nbest` に引数 2 つ追加 | `Lattice`/`Edge`/`Penalty`/`Mode` を直接利用するコード（`lindera` クレートの `Segmenter`/`Tokenizer`/`Worker` API 利用者は対象外） | 下記の表に従い呼び出し箇所を更新 |
+| ビルド済み辞書フォーマットがバージョン 2（`dict.da` → `dict.trie` + `dict.valsidx`）— **v5.3.0 でリリース済み** | **v5.2 以前**で作成した自前ビルドのシステム辞書 | `lindera build` で再ビルド、または `lindera download` で再取得 |
+| `loadDictionaryFromBytes()` が 9 引数 — **v5.3.0 でリリース済み** | **v5.2 以前**からアップグレードする、バイトデータから辞書を読み込む WASM ユーザー | `dictDa` の代わりに `dictTrie` と `dictValsIdx` を渡す |
+| OPFS の `DictionaryFiles` が `dictDa` を `dictTrie` + `dictValsIdx` に置き換え — **v5.3.0 でリリース済み** | **v5.2 以前**からアップグレードする、`opfs` ヘルパーを使う WASM ユーザー | OPFS にキャッシュ済みの辞書を再ダウンロード |
 
-## 辞書フォーマットバージョン 2
+## ビルド済みユーザー辞書の再ビルドが必要
+
+Lindera v6 では `daachorse` を 4.x から 5.0 に更新しており、ユーザー辞書が
+内部に持つ Aho-Corasick オートマトンのシリアライズ形式が変わりました。
+そのため、v5 系でビルドした `.bin` ファイルはロードに失敗します:
+
+```text
+LinderaError(kind=Deserialize, source=InvalidAutomatonError: invalid serialized automaton)
+```
+
+システム辞書と異なり、ユーザー辞書の `.bin` には `format_version` が無いため
+バージョン検査ができず、より親切なメッセージを出せません。上記の
+デシリアライズエラーとして表面化します。
+
+CSV から v6 で再ビルドしてください:
+
+```sh
+lindera build --user \
+  --src ./user_dict.csv \
+  --dest ./build \
+  --metadata ./lindera-ipadic/metadata.json
+```
+
+`.bin` ではなく `.csv` からユーザー辞書を読み込んでいる場合は、ロード時に
+コンパイルされるため対応は不要です。
+
+## 辞書フォーマットバージョン 2（v5.3.0 でリリース済み）
+
+> この変更は v6.0.0 ではなく **v5.3.0** でリリース済みです。v5.3.0 から
+> アップグレードする場合、システム辞書は既にフォーマットバージョン 2 で
+> あり、そのままロードできます。この節は **v5.2 以前**からアップグレード
+> する場合にのみ従ってください。
 
 システム前方一致辞書は、シリアライズされた `daachorse` Aho-Corasick オートマトン
 （`dict.da`）として保存されなくなりました。ビルダはビルド時に `crawdad` で文字単位の
@@ -50,8 +87,8 @@ Lindera v6.0.0 では、ビルド済み辞書のオンディスクフォーマ�
 ### 古い辞書のロードは明確なエラーで失敗する
 
 ビルド済み辞書の `metadata.json` は `format_version: 2` を記録し、ローダーがこれを検証
-します。v5 でビルドした辞書のロードは、ヘッダを持たないバイナリファイルを誤読する
-代わりに、対処方法を含むエラーで失敗します:
+します。v5.2 以前でビルドした辞書のロードは、ヘッダを持たないバイナリファイルを
+誤読する代わりに、対処方法を含むエラーで失敗します:
 
 ```text
 Dictionary 'ipadic' has format version 1, but this build of Lindera reads format version 2. To fix this, rebuild it with `lindera build`, or download a matching prebuilt dictionary with `lindera download`.
@@ -92,8 +129,8 @@ v6.0.0 からは、このラダーがデフォルトで生成されるように�
 トークナイズされるようになります — 例えば、未知の 2 字熟語が従来は 2 つの
 未知語トークンに分かれていたのが、1 つの未知語トークンになります。
 
-これは v5.4 で導入されたラン全体のグルーピング上限オプション
-`max_grouping_len` とは独立した、加算的な機能です。
+これは後述の新オプション `max_grouping_len`（ラン全体のグルーピング上限）
+とは独立した、加算的な機能です。
 
 辞書外の漢字・かな連続を含むテキストで v5 と同一の出力を再現するには、
 ラダーを無効化してください:
@@ -110,6 +147,27 @@ lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 `AnalysisWorker`/`SegmentWorker` は `set_unknown_word_ladder(bool)`、
 `TokenizerBuilder` は `set_segmenter_unknown_word_ladder(bool)` で同じ
 切り替えができます。
+
+### 新オプション: `max_grouping_len`（デフォルトは従来どおり）
+
+v6 では MeCab の `max-grouping-size` と同じ意味論を追加しました。辞書外
+文字のグルーピング可能なランが、先頭を除いて `max_grouping_len` 文字を
+超える場合、グループ候補を出さずに 1 文字ずつの未知語を使います。
+デフォルトは無制限で、これは v5 と同じ挙動です。つまり
+**明示的に設定しない限り何も変わりません**:
+
+```rust,ignore
+let segmenter = Segmenter::new(mode, dictionary, None)
+    .max_grouping_len(Some(24)); // MeCab 自体のデフォルト値
+```
+
+```sh
+lindera tokenize -d ipadic --max-grouping-len 24 input.txt
+```
+
+`SegmentWorker`/`AnalysisWorker` の `set_max_grouping_len(Option<usize>)`、
+`TokenizerBuilder` の `set_segmenter_max_grouping_len(usize)`、および
+segmenter 設定の `max_grouping_len` キーでも指定できます。
 
 ## `lindera_dictionary` の Rust API 変更
 
@@ -130,6 +188,14 @@ lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 | `Edge::num_chars()` | 削除 | パック済み `Edge` は終了位置を保持しなくなった（常にラティススロットの添字と一致するため）ので、エッジ単体からは計算できなくなった |
 | `Penalty::penalty(&Edge)` | `Penalty::penalty(&Edge, num_chars: usize)` | 呼び出し側が正確な文字数スパンを渡すようになった（前述の Decompose 精度修正を参照） |
 | `Mode::penalty_cost(&Edge)` | 削除 | コードベース内に呼び出し元が無かった。必要であれば `Penalty::penalty` で再実装可能 |
+| `Lattice::set_text(..., search_mode)` | `Lattice::set_text(..., search_mode, max_grouping_len, unknown_word_ladder)` | 新オプション用に引数 2 つが末尾に追加。v6 のデフォルトに合わせるなら `None` と `true`、v5 の挙動にするなら `None` と `false` を渡す。`set_text_nbest` も同様に変更 |
+| — | `Lattice::take_max_char_len()`（新規） | 加算的な追加。処理した最大の文長を返してリセットする（worker の縮小判定用） |
+
+`set_text` と `set_text_nbest` には、文が `u16::MAX` 文字未満であることを
+検査する panic 契約も追加されました（エッジが開始位置を `u16` で保持する
+ようになったため）。`Segmenter` を経由する経路は `MAX_SENTENCE_BYTES` で
+文を分割するためすべて安全です。`Lattice` を直接駆動するコードだけが、
+自分で入力を分割する必要があります。
 
 ## JavaScript バインディング: トークンがプレーンオブジェクトに
 
@@ -173,7 +239,26 @@ const tokens = tokenizer.tokenize(text);
 ```
 
 `tokenizeNbest` もプレーンオブジェクトを返すようになったため、v5 で
-既知の制約として記載していた蓄積の問題は解消されています。
+既知の制約として記載していた蓄積の問題は解消されています。`NbestResult` も
+`Token` と同様にクラスではなくなり、同じ `tokens`・`cost` プロパティを
+持つプレーンオブジェクトになりました。
+
+どちらもクラスではなくなったため、パッケージから export されなくなりました。
+`Token`・`JsToken`・`NbestResult`・`JsNbestResult` はすべて `index.js` から
+削除され、`require("lindera-nodejs").Token` は `undefined` になります。
+`instanceof` による判定もできません:
+
+```javascript
+// v5
+const { Token } = require("lindera-nodejs");
+if (tokens[0] instanceof Token) { /* ... */ }
+
+// v6 — プレーンオブジェクトなので、プロパティで判定する
+if (typeof tokens[0].surface === "string") { /* ... */ }
+```
+
+TypeScript 利用者へ: トークンを表すインターフェース名は `Token` になりました
+（`Token` がクラスに使われていた間は `JsTokenData` という名前でした）。
 
 ### WASM: フィールド名が camelCase に
 
@@ -202,15 +287,23 @@ const data = token.toJSON();
 const data = token; // 既にプレーンオブジェクト
 ```
 
+`Token` はモジュールから export されなくなったため、
+`import { Token } from 'lindera-wasm-...'` は失敗します。代わりに import
+すべきものはありません — `tokenize` が直接プレーンオブジェクトを返します。
+
 WASM の `tokenizeNbest` は v5 の時点で既にプレーンオブジェクトを
 返していたため、変更ありません。
 
 ## 対応が不要なケース
 
-- **ユーザー辞書**: ビルド済みユーザー辞書の `.bin` ファイルは影響を受けません。
-  内部では引き続き `daachorse` オートマトンを使用しており、再ビルドせずにそのまま
-  ロードできます。`.csv` から読み込むユーザー辞書も、従来どおりロード時に
-  コンパイルされます。
+- **Python・Ruby・PHP バインディング**: 上記の JavaScript の変更の影響を
+  受けません。これらは解放が決定的であり、JS 側の作り直しの動機となった
+  メモリ問題が元々無かったため、`Token` クラスをそのまま維持しています。
+  それぞれプレーンデータへの変換メソッド（`to_dict()`、`to_h`（`to_hash`）、
+  `toArray()`）が追加されましたが、削除・改名されたものはありません。
+- **`.csv` から読み込むユーザー辞書**: ロード時にコンパイルされるため、
+  新しいフォーマットが自動的に反映されます。（ビルド済みの `.bin` は
+  再ビルドが**必要**です — 冒頭の節を参照してください。）
 - **`lindera` クレートの公開 API**: `Segmenter`・`Tokenizer`・`SegmentWorker`・
   `AnalysisWorker` のシグネチャは変わっていません（加算的な
   `unknown_word_ladder`/`max_grouping_len` オプションを除く）。パスや URI から
@@ -220,15 +313,34 @@ WASM の `tokenizeNbest` は v5 の時点で既にプレーンオブジェクト
 
 ## アップグレードチェックリスト
 
-- 自前ビルドのシステム辞書を v6 の `lindera build` で再ビルドするか、`lindera
-  download` でビルド済み辞書を再取得する。
-- WASM: `loadDictionaryFromBytes()` の呼び出しを 9 引数のシグネチャに更新する
-  （`dictDa` の代わりに `dictTrie` と `dictValsIdx`）。
-- WASM: v5 世代の辞書を OPFS から削除し、v6 のアーカイブをダウンロードする。
+全員:
+
+- **ビルド済みユーザー辞書 `.bin` を CSV から再ビルドする**
+  （`lindera build --user`）。どの v5 からのアップグレードでも必要です。
 - 辞書外・非日本語テキストに対するトークナイズ結果を厳密に固定している場合は
   再確認する — Decompose ペナルティ修正と未知語ラダー（デフォルト有効）の
   両方が結果を変える可能性がある。v5 と同一の未知語出力が必要なら
   `unknown_word_ladder(false)` を設定する。
-- `lindera_dictionary::viterbi`/`mode` の型を直接利用している場合は、上記の
-  Rust API 表に従い呼び出し箇所を更新する。
-- ユーザー辞書の `.bin` ファイルは対応不要。
+
+JavaScript（Node.js・WASM）:
+
+- `token.getDetail(i)` を `token.details[i]` に置き換える。
+- Node.js: `tokenizeObjects(text)` を `tokenize(text)` に置き換え、
+  `Token`/`NbestResult` の import をやめる（export されなくなったため）。
+  TypeScript 利用者は型名 `JsTokenData` を `Token` に変更する。
+- WASM: トークンのフィールド参照を camelCase に変更し（`byteStart`・
+  `byteEnd`・`wordId`・`isUnknown`）、`toJSON()` の呼び出しを削除し、
+  `Token` の import をやめる。
+
+`lindera_dictionary` を直接利用している場合:
+
+- 上記の Rust API 表に従い呼び出し箇所を更新する（`set_text`/`set_text_nbest`
+  の追加引数 2 つを含む）。
+
+v5.2 以前からアップグレードする場合（以下は v5.3.0 でリリース済み）:
+
+- 自前ビルドのシステム辞書を `lindera build` で再ビルドするか、`lindera
+  download` でビルド済み辞書を再取得する。
+- WASM: `loadDictionaryFromBytes()` の呼び出しを 9 引数のシグネチャに更新する
+  （`dictDa` の代わりに `dictTrie` と `dictValsIdx`）。
+- WASM: v5 世代の辞書を OPFS から削除し、v6 のアーカイブをダウンロードする。
