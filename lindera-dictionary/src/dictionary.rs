@@ -227,7 +227,7 @@ impl UserDictionary {
         const RIGHT_ID_OFFSET: usize = 8;
 
         let mut vals = self.dict.vals_data.to_vec();
-        for entry in vals.chunks_exact_mut(WordEntry::SERIALIZED_LEN) {
+        for entry in vals.as_chunks_mut::<{ WordEntry::SERIALIZED_LEN }>().0 {
             let left = LittleEndian::read_u16(&entry[LEFT_ID_OFFSET..][..2]);
             let right = LittleEndian::read_u16(&entry[RIGHT_ID_OFFSET..][..2]);
             LittleEndian::write_u16(&mut entry[LEFT_ID_OFFSET..][..2], map.map_left(left));

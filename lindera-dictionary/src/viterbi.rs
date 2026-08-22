@@ -187,7 +187,25 @@ impl WordEntry {
     }
 
     /// Deserializes a word entry from `data`.
-    pub(crate) fn deserialize(data: &[u8], is_system_entry: bool) -> WordEntry {
+    ///
+    /// Takes a fixed-size array rather than a slice so that the four
+    /// fixed-offset reads below are in bounds by construction, with no
+    /// runtime length check. Callers split their byte blocks with
+    /// [`slice::as_chunks`], which yields exactly this type.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The serialized entry, exactly [`Self::SERIALIZED_LEN`] bytes.
+    /// * `is_system_entry` - Whether the entry comes from the system lexicon
+    ///   (as opposed to a user dictionary).
+    ///
+    /// # Returns
+    ///
+    /// The decoded word entry.
+    pub(crate) fn deserialize(
+        data: &[u8; Self::SERIALIZED_LEN],
+        is_system_entry: bool,
+    ) -> WordEntry {
         let word_id = WordId::new(
             if is_system_entry {
                 LexType::System
@@ -961,7 +979,7 @@ impl Lattice {
                     let block =
                         &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
                     let end_char = self.char_index_of_byte(m.end()) as u32;
-                    for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    for chunk in block.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                         let entry = WordEntry::deserialize(chunk, false);
                         let next = self.matches_head[start_char];
                         self.matches_head[start_char] = self.matches_store.len() as u32;
@@ -1008,7 +1026,7 @@ impl Lattice {
                 let suffix = &self.codes_buf[char_idx..];
                 for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char = (char_idx + end_char_offset) as u32;
-                    for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                         self.sys_matches
                             .push((end_char, WordEntry::deserialize(chunk, true)));
                     }
@@ -1856,7 +1874,7 @@ impl Lattice {
                     let block =
                         &ud_vals[offset_bytes..offset_bytes + n * WordEntry::SERIALIZED_LEN];
                     let end_char = self.char_index_of_byte(m.end()) as u32;
-                    for chunk in block.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    for chunk in block.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                         let entry = WordEntry::deserialize(chunk, false);
                         let next = self.matches_head[start_char];
                         self.matches_head[start_char] = self.matches_store.len() as u32;
@@ -1901,7 +1919,7 @@ impl Lattice {
                 let suffix = &self.codes_buf[char_idx..];
                 for (entries, end_char_offset) in dict.common_prefix_search_codes(suffix) {
                     let end_char = (char_idx + end_char_offset) as u32;
-                    for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                    for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                         self.sys_matches
                             .push((end_char, WordEntry::deserialize(chunk, true)));
                     }
@@ -2159,7 +2177,8 @@ mod tests {
             WordEntry::new(WordId::new(LexType::System, 1u32), -17i16, 1411u16, 1412u16);
         word_entry.serialize(&mut buffer).unwrap();
         assert_eq!(WordEntry::SERIALIZED_LEN, buffer.len());
-        let word_entry2 = WordEntry::deserialize(&buffer[..], true);
+        let bytes: &[u8; WordEntry::SERIALIZED_LEN] = buffer.as_slice().try_into().unwrap();
+        let word_entry2 = WordEntry::deserialize(bytes, true);
         assert_eq!(word_entry, word_entry2);
     }
 

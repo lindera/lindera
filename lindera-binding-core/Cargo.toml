@@ -2,6 +2,7 @@
 name = "lindera-binding-core"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "Shared FFI-independent helpers for the Lindera language bindings."
 documentation = "https://docs.rs/lindera-binding-core"
 homepage = { workspace = true }

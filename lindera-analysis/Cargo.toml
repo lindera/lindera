@@ -2,6 +2,7 @@
 name = "lindera-analysis"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "Text analysis chain (character filters, token filters, tokenizer) for Lindera."
 documentation = "https://docs.rs/lindera-analysis"
 homepage = { workspace = true }

@@ -196,6 +196,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-crf
+      lint: true
 
   test-lindera-dictionary:
     name: Test lindera-dictionary (${{ matrix.platform.target }})
@@ -216,6 +217,7 @@ jobs:
       features: "--features build_rs"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
+      lint: true
 
   test-lindera-trainer:
     name: Test lindera-trainer
@@ -226,6 +228,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-trainer
+      lint: true
 
   test-lindera-ipadic:
     name: Test lindera-ipadic
@@ -237,6 +240,7 @@ jobs:
     with:
       crate: lindera-ipadic
       features: "--features embed-ipadic"
+      lint: true
 
   test-lindera-ipadic-neologd:
     name: Test lindera-ipadic-neologd
@@ -249,6 +253,7 @@ jobs:
       crate: lindera-ipadic-neologd
       features: "--features embed-ipadic-neologd"
       free-disk-space: true
+      lint: true
 
   test-lindera-unidic:
     name: Test lindera-unidic
@@ -261,6 +266,7 @@ jobs:
       crate: lindera-unidic
       features: "--features embed-unidic"
       free-disk-space: true
+      lint: true
 
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
@@ -272,6 +278,7 @@ jobs:
     with:
       crate: lindera-ko-dic
       features: "--features embed-ko-dic"
+      lint: true
 
   test-lindera-cc-cedict:
     name: Test lindera-cc-cedict
@@ -283,6 +290,7 @@ jobs:
     with:
       crate: lindera-cc-cedict
       features: "--features embed-cc-cedict"
+      lint: true
 
   test-lindera-jieba:
     name: Test lindera-jieba
@@ -294,6 +302,7 @@ jobs:
     with:
       crate: lindera-jieba
       features: "--features embed-jieba"
+      lint: true
 
   test-lindera:
     name: Test lindera (${{ matrix.platform.target }})
@@ -324,6 +333,7 @@ jobs:
       features: "--features embed-ipadic,embed-ko-dic,train"
       target: ${{ matrix.platform.target }}
       runs-on: ${{ matrix.platform.runner }}
+      lint: true
 
   test-lindera-no-default-features:
     name: Test lindera (no default features)
@@ -335,6 +345,7 @@ jobs:
     with:
       crate: lindera
       features: "--no-default-features"
+      lint: true
 
   test-lindera-analysis:
     name: Test lindera-analysis
@@ -346,6 +357,7 @@ jobs:
     with:
       crate: lindera-analysis
       features: "--features embed-ipadic,embed-ko-dic"
+      lint: true
 
   test-lindera-binding-core:
     name: Test lindera-binding-core
@@ -356,6 +368,7 @@ jobs:
     uses: ./.github/workflows/test-crate.yml
     with:
       crate: lindera-binding-core
+      lint: true
 
   test-lindera-cli:
     name: Test lindera-cli
@@ -367,6 +380,7 @@ jobs:
     with:
       crate: lindera-cli
       features: "--features train,embed-ipadic"
+      lint: true
 
   test-lindera-python:
     name: Test lindera-python
@@ -391,6 +405,11 @@ jobs:
         shell: bash
         run: |
           make test-lindera-python
+
+      # `make lint-lindera-python` also runs the language-side linter, which is not
+      # installed here; this covers the cargo half. See #962.
+      - name: Run clippy
+        run: cargo clippy -p lindera-python -- -D warnings
 
   test-lindera-nodejs:
     name: Test lindera-nodejs
@@ -438,6 +457,11 @@ jobs:
         run: |
           make memcheck-lindera-nodejs
 
+      # `make lint-lindera-nodejs` also runs prettier, which is not installed here;
+      # this covers the cargo half. See #962.
+      - name: Run clippy
+        run: cargo clippy -p lindera-nodejs -- -D warnings
+
   test-lindera-ruby:
     name: Test lindera-ruby
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
@@ -464,6 +488,11 @@ jobs:
         run: |
           make test-lindera-ruby
 
+      # `make lint-lindera-ruby` also runs the language-side linter, which is not
+      # installed here; this covers the cargo half. See #962.
+      - name: Run clippy
+        run: cargo clippy -p lindera-ruby -- -D warnings
+
   test-lindera-php:
     name: Test lindera-php
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
@@ -487,6 +516,11 @@ jobs:
         shell: bash
         run: |
           make test-lindera-php
+
+      # `make lint-lindera-php` also runs the language-side linter, which is not
+      # installed here; this covers the cargo half. See #962.
+      - name: Run clippy
+        run: cargo clippy -p lindera-php -- -D warnings
 
   test-lindera-wasm:
     name: Test lindera-wasm
@@ -515,3 +549,9 @@ jobs:
       # synchronous loops that never yield (#930). This check fails if that pattern comes back.
       - name: Check token memory is released in synchronous loops
         run: make memcheck-lindera-wasm
+
+      # `make lint-lindera-wasm` also runs prettier, which is not installed here;
+      # this covers the cargo half. The wasm32 target is what the crate is built
+      # for, so lint it there too. See #962.
+      - name: Run clippy
+        run: cargo clippy -p lindera-wasm --target wasm32-unknown-unknown -- -D warnings

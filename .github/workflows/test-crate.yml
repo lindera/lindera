@@ -41,6 +41,11 @@ on:
         required: false
         type: boolean
         default: false
+      lint:
+        description: "Also run clippy for this crate. Off by default so release.yml is not gated on lints; regression.yml opts in."
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test:
@@ -59,6 +64,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           target: ${{ inputs.target }}
+          components: ${{ inputs.lint && 'clippy' || '' }}
 
       - name: Cache Cargo
         if: ${{ inputs.cache }}
@@ -68,3 +74,12 @@ jobs:
 
       - name: Run test
         run: cargo test -p ${{ inputs.crate }} ${{ inputs.features }}${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }}
+
+      # Runs after the tests so the crate and its build-script output are already
+      # warm: clippy then costs seconds rather than a second full build. `-D
+      # warnings` is what `make lint-<crate>` uses locally, and `--all-targets`
+      # covers test and bench code, where the unused import fixed alongside this
+      # was hiding (#962).
+      - name: Run clippy
+        if: ${{ inputs.lint }}
+        run: cargo clippy -p ${{ inputs.crate }} ${{ inputs.features }} --all-targets${{ inputs.target != '' && format(' --target {0}', inputs.target) || '' }} -- -D warnings

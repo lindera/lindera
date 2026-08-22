@@ -2,6 +2,7 @@
 name = "lindera"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A morphological analysis library."
 documentation = "https://docs.rs/lindera"
 homepage = { workspace = true }
