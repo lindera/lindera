@@ -435,3 +435,224 @@ impl FeatureExtractor {
         feature_ids
     }
 }
+
+// These tests pin the behavior that the exported `left-id.def` / `right-id.def`
+// depend on: which feature strings are generated, in what order, and how ids
+// are minted. Feature ids are assigned sequentially in template iteration
+// order and written out verbatim by `Model::write_left_id_def` /
+// `write_right_id_def`, so an ordering or off-by-one slip would silently
+// change a trained dictionary without failing anything. There was no coverage
+// here before (#965).
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Builds an extractor from `&str` templates. Bigram templates are given
+    /// as `(left, right)` pairs, matching `TrainerConfig`'s split on `/`.
+    fn extractor(unigram: &[&str], bigram: &[(&str, &str)]) -> FeatureExtractor {
+        FeatureExtractor::from_templates(unigram, bigram)
+    }
+
+    fn features(fields: &[&str]) -> Vec<String> {
+        fields.iter().map(|f| f.to_string()).collect()
+    }
+
+    /// The ids an extractor hands out are 1-based and assigned in template
+    /// order, so the generated strings can be recovered by inverting the map.
+    fn unigram_strings_in_id_order(fe: &FeatureExtractor) -> Vec<String> {
+        let mut pairs: Vec<(u32, &String)> = fe
+            .unigram_feature_ids
+            .iter()
+            .map(|(k, v)| (v.get(), k))
+            .collect();
+        pairs.sort_by_key(|(id, _)| *id);
+        pairs.into_iter().map(|(_, k)| k.clone()).collect()
+    }
+
+    /// Unigram templates are applied in declaration order, and each distinct
+    /// generated string is interned with the next sequential id starting at 1.
+    #[test]
+    fn unigram_ids_follow_template_order() {
+        let mut fe = extractor(&["U0:%F[0]", "U1:%F[1]", "U2:%F[0],%F[1]"], &[]);
+
+        let ids = fe.extract_unigram_feature_ids(&features(&["名詞", "一般"]), 0);
+
+        assert_eq!(
+            ids.iter().map(|i| i.get()).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            unigram_strings_in_id_order(&fe),
+            vec!["U0:名詞", "U1:一般", "U2:名詞,一般"]
+        );
+    }
+
+    /// `%F?[n]` marks the index required: when that field is `*` or empty the
+    /// template is skipped entirely. Unigram extraction **drops** the skipped
+    /// template rather than pushing a placeholder, so the returned vector is
+    /// shorter than the template list.
+    #[test]
+    fn unigram_skips_templates_whose_required_field_is_undefined() {
+        let mut fe = extractor(&["U0:%F[0]", "U1:%F?[1]", "U2:%F[0],%F?[1]"], &[]);
+
+        // Field 1 is "*", so both templates that require it are skipped.
+        let ids = fe.extract_unigram_feature_ids(&features(&["名詞", "*"]), 0);
+
+        assert_eq!(ids.len(), 1, "only U0 should survive");
+        assert_eq!(unigram_strings_in_id_order(&fe), vec!["U0:名詞"]);
+
+        // An empty field is treated the same way as "*".
+        let mut fe = extractor(&["U0:%F[0]", "U1:%F?[1]"], &[]);
+        let ids = fe.extract_unigram_feature_ids(&features(&["名詞", ""]), 0);
+        assert_eq!(ids.len(), 1);
+
+        // A required index past the end of the feature vector also skips.
+        let mut fe = extractor(&["U0:%F[0]", "U1:%F?[5]"], &[]);
+        let ids = fe.extract_unigram_feature_ids(&features(&["名詞"]), 0);
+        assert_eq!(ids.len(), 1);
+    }
+
+    /// Left and right extraction **push `None`** for a skipped template
+    /// instead of dropping it, so the returned vector stays index-aligned with
+    /// the template list. This asymmetry with unigram extraction is
+    /// load-bearing and must not be "unified".
+    #[test]
+    fn left_and_right_push_none_for_skipped_templates() {
+        let mut fe = extractor(&[], &[("L0:%L[0]", "R0:%R[0]"), ("L1:%L?[1]", "R1:%R?[1]")]);
+
+        let left = fe.extract_left_feature_ids(&features(&["名詞", "*"]));
+        let right = fe.extract_right_feature_ids(&features(&["名詞", "*"]));
+
+        assert_eq!(left.len(), 2, "index alignment with the template list");
+        assert!(left[0].is_some());
+        assert!(
+            left[1].is_none(),
+            "the %L? template must yield None, not be dropped"
+        );
+
+        assert_eq!(right.len(), 2);
+        assert!(right[0].is_some());
+        assert!(right[1].is_none());
+    }
+
+    /// An already-interned string returns its existing id and does **not**
+    /// bump the counter, so ids stay dense across repeated calls. This is the
+    /// `new_id == feature_id` condition inside the `get_or_create_*` helpers.
+    #[test]
+    fn repeated_calls_reuse_ids_without_advancing_the_counter() {
+        let mut fe = extractor(&["U0:%F[0]"], &[("L0:%L[0]", "R0:%R[0]")]);
+
+        let first = fe.extract_unigram_feature_ids(&features(&["名詞"]), 0);
+        let again = fe.extract_unigram_feature_ids(&features(&["名詞"]), 0);
+        assert_eq!(first, again, "the same input must return the same ids");
+
+        // A different value mints the next id, with no gap left by the repeat.
+        let other = fe.extract_unigram_feature_ids(&features(&["動詞"]), 0);
+        assert_eq!(other[0].get(), 2);
+        assert_eq!(fe.unigram_feature_ids.len(), 2);
+
+        // Same for the left/right maps, which have their own counters.
+        let l1 = fe.extract_left_feature_ids(&features(&["名詞"]));
+        let l2 = fe.extract_left_feature_ids(&features(&["名詞"]));
+        assert_eq!(l1, l2);
+        let l3 = fe.extract_left_feature_ids(&features(&["動詞"]));
+        assert_eq!(l3[0].map(|i| i.get()), Some(2));
+        assert_eq!(fe.left_feature_ids.len(), 2);
+
+        let r1 = fe.extract_right_feature_ids(&features(&["名詞"]));
+        let r2 = fe.extract_right_feature_ids(&features(&["名詞"]));
+        assert_eq!(r1, r2);
+        assert_eq!(fe.right_feature_ids.len(), 1);
+    }
+
+    /// The three id spaces are independent: the same generated string in the
+    /// unigram, left and right maps gets its own id from its own counter.
+    #[test]
+    fn unigram_left_and_right_id_spaces_are_independent() {
+        let mut fe = extractor(&["X:%F[0]"], &[("X:%L[0]", "X:%R[0]")]);
+
+        let u = fe.extract_unigram_feature_ids(&features(&["名詞"]), 0);
+        let l = fe.extract_left_feature_ids(&features(&["名詞"]));
+        let r = fe.extract_right_feature_ids(&features(&["名詞"]));
+
+        assert_eq!(u[0].get(), 1);
+        assert_eq!(l[0].map(|i| i.get()), Some(1));
+        assert_eq!(r[0].map(|i| i.get()), Some(1));
+        assert_eq!(fe.unigram_feature_ids.len(), 1);
+        assert_eq!(fe.left_feature_ids.len(), 1);
+        assert_eq!(fe.right_feature_ids.len(), 1);
+    }
+
+    /// `%t` substitutes the character-category id, and out-of-range `%F[n]`
+    /// (without `?`) substitutes `*` rather than skipping the template.
+    #[test]
+    fn character_type_and_out_of_range_index_substitution() {
+        let mut fe = extractor(&["T:%t", "O:%F[9]"], &[]);
+
+        let ids = fe.extract_unigram_feature_ids(&features(&["名詞"]), 7);
+
+        assert_eq!(ids.len(), 2, "neither template is skipped");
+        assert_eq!(unigram_strings_in_id_order(&fe), vec!["T:7", "O:*"]);
+    }
+
+    /// The context meta-characters substitute the strings the caller supplies:
+    /// `%w` the surface, `%u` the whole ufeature, `%l` / `%r` the whole
+    /// lfeature / rfeature. An absent one becomes the empty string.
+    #[test]
+    fn context_meta_characters_substitute_from_the_context() {
+        let mut fe = extractor(&["W:%w", "U:%u"], &[("L:%l", "R:%r")]);
+
+        let ctx = TemplateContext {
+            surface: Some("東京"),
+            ufeature: Some("名詞,固有名詞"),
+            lfeature: Some("L-FEAT"),
+            rfeature: Some("R-FEAT"),
+        };
+
+        fe.extract_unigram_feature_ids_with_ctx(&features(&["名詞"]), 0, &ctx);
+        assert_eq!(
+            unigram_strings_in_id_order(&fe),
+            vec!["W:東京", "U:名詞,固有名詞"]
+        );
+
+        fe.extract_left_feature_ids_with_ctx(&features(&["名詞"]), &ctx);
+        assert!(fe.left_feature_ids.contains_key("L:L-FEAT"));
+
+        fe.extract_right_feature_ids_with_ctx(&features(&["名詞"]), &ctx);
+        assert!(fe.right_feature_ids.contains_key("R:R-FEAT"));
+
+        // With no context, the meta-characters collapse to empty strings.
+        let mut fe = extractor(&["W:%w"], &[]);
+        fe.extract_unigram_feature_ids(&features(&["名詞"]), 0);
+        assert_eq!(unigram_strings_in_id_order(&fe), vec!["W:"]);
+    }
+
+    /// Multiple captures inside one template are all substituted, including
+    /// repeats of the same index, and the surrounding literal text is kept.
+    #[test]
+    fn multiple_captures_in_one_template() {
+        let mut fe = extractor(&["M:%F[0]/%F[1]/%F[0]"], &[]);
+
+        fe.extract_unigram_feature_ids(&features(&["名詞", "一般"]), 0);
+
+        assert_eq!(unigram_strings_in_id_order(&fe), vec!["M:名詞/一般/名詞"]);
+    }
+
+    /// An extractor with no templates yields no ids and mints nothing --
+    /// the loop body never runs.
+    #[test]
+    fn empty_template_list_yields_no_ids() {
+        let mut fe = extractor(&[], &[]);
+
+        assert!(
+            fe.extract_unigram_feature_ids(&features(&["名詞"]), 0)
+                .is_empty()
+        );
+        assert!(fe.extract_left_feature_ids(&features(&["名詞"])).is_empty());
+        assert!(
+            fe.extract_right_feature_ids(&features(&["名詞"]))
+                .is_empty()
+        );
+        assert!(fe.unigram_feature_ids.is_empty());
+    }
+}
