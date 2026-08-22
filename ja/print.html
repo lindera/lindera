@@ -380,6 +380,10 @@ Output Tokens
 <li><a href="./getting_started/examples.html">サンプル</a> -- 一般的なユースケースのサンプルプログラムを探索</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
+<h2 id="動作要件"><a class="header" href="#動作要件">動作要件</a></h2>
+<p>Rust <strong>1.88</strong> 以降。ワークスペースが <code>rust-version</code> として宣言しているため、
+古いツールチェインではコンパイルエラーではなく cargo のエラーとして報告されます。</p>
+<h2 id="依存関係の追加"><a class="header" href="#依存関係の追加">依存関係の追加</a></h2>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
 lindera = "5"
