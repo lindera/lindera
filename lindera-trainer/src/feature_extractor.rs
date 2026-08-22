@@ -31,7 +31,7 @@ enum FeatureType {
 }
 
 /// Parsed template structure
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct ParsedTemplate {
     raw_template: String,
     required_indices: Vec<usize>,
@@ -265,7 +265,24 @@ impl FeatureExtractor {
         }
     }
 
-    /// Apply a parsed template to generate feature string
+    /// Applies a parsed template to produce its generated feature string.
+    ///
+    /// An associated function rather than a method: it reads nothing from the
+    /// extractor, and keeping `&self` off it is part of what lets the extract
+    /// loops borrow the template vector and the id map disjointly (#965).
+    ///
+    /// # 引数
+    ///
+    /// * `template` - The parsed template to apply.
+    /// * `features` - The entry's feature fields, indexed by `%F`/`%L`/`%R`.
+    /// * `cate_id` - The character category id substituted for `%t`.
+    /// * `ctx` - Surface and full-feature strings for `%w`/`%u`/`%l`/`%r`.
+    ///
+    /// # 戻り値
+    ///
+    /// The generated feature string, or `None` when a `?`-marked required
+    /// field is undefined (`*`, empty, or out of range), which means the
+    /// template does not apply to this entry.
     fn apply_parsed_template(
         template: &ParsedTemplate,
         features: &[String],
