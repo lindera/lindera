@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::LinderaResult;
 use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
+use crate::util::detail_field_count;
 use crate::viterbi::WordEntry;
 
 #[derive(Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
@@ -53,7 +54,12 @@ impl UnknownDictionary {
             return None;
         }
         let text = std::str::from_utf8(&self.words_data[offset + 4..offset + 4 + len]).ok()?;
-        Some(text.split('\0').collect())
+        // `str::Split` reports a `(0, None)` size hint, so `collect()` would
+        // grow this vector from capacity zero. Size it from the separator
+        // count instead (#966).
+        let mut details = Vec::with_capacity(detail_field_count(text.as_bytes()));
+        details.extend(text.split('\0'));
+        Some(details)
     }
 
     /// Unknown word generation with callback system
@@ -320,4 +326,102 @@ pub fn parse_unk(
         words_idx_data,
         words_data,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UnknownDictionary;
+
+    /// Builds a dictionary whose `words_data` holds `entries`, each encoded
+    /// as a 4-byte LE length followed by its NUL-joined fields -- the layout
+    /// `unknown_dictionary_from_reader` writes.
+    fn with_entries(entries: &[&[&str]]) -> UnknownDictionary {
+        let mut words_idx_data = Vec::new();
+        let mut words_data = Vec::new();
+        for fields in entries {
+            words_idx_data.push(words_data.len() as u32);
+            let joined = fields.join("\0");
+            words_data.extend_from_slice(&(joined.len() as u32).to_le_bytes());
+            words_data.extend_from_slice(joined.as_bytes());
+        }
+        UnknownDictionary {
+            category_references: Vec::new(),
+            costs: Vec::new(),
+            words_idx_data,
+            words_data,
+        }
+    }
+
+    /// Fields come back in order, with the exact count that was written --
+    /// the property the presized vector must not disturb.
+    #[test]
+    fn word_details_returns_fields_in_order() {
+        let dict = with_entries(&[
+            &["名詞", "一般", "*", "*", "*", "*", "*"],
+            &["記号", "一般", "*", "*", "*", "*", "*"],
+        ]);
+
+        assert_eq!(
+            dict.word_details(0),
+            Some(vec!["名詞", "一般", "*", "*", "*", "*", "*"])
+        );
+        assert_eq!(
+            dict.word_details(1),
+            Some(vec!["記号", "一般", "*", "*", "*", "*", "*"])
+        );
+    }
+
+    /// A single-field entry has no separator at all, so the capacity must
+    /// still be 1 rather than 0.
+    #[test]
+    fn word_details_handles_single_field() {
+        let dict = with_entries(&[&["ONLY"]]);
+        assert_eq!(dict.word_details(0), Some(vec!["ONLY"]));
+    }
+
+    /// Empty fields are preserved rather than collapsed, including a leading
+    /// and a trailing one.
+    #[test]
+    fn word_details_preserves_empty_fields() {
+        let dict = with_entries(&[&["", "a", "", "b", ""]]);
+        assert_eq!(dict.word_details(0), Some(vec!["", "a", "", "b", ""]));
+    }
+
+    /// An entry with no bytes at all still yields one empty field, matching
+    /// `str::split`.
+    #[test]
+    fn word_details_empty_entry_yields_one_empty_field() {
+        let dict = with_entries(&[&[]]);
+        assert_eq!(dict.word_details(0), Some(vec![""]));
+    }
+
+    /// Out-of-range ids return `None` (the caller maps this to `UNK`).
+    #[test]
+    fn word_details_out_of_range_returns_none() {
+        let dict = with_entries(&[&["名詞", "一般"]]);
+        assert_eq!(dict.word_details(1), None);
+        assert_eq!(dict.word_details(u32::MAX), None);
+    }
+
+    /// Invalid UTF-8 in the blob returns `None` rather than panicking.
+    #[test]
+    fn word_details_invalid_utf8_returns_none() {
+        let mut dict = with_entries(&[&["ok"]]);
+        // Overwrite the payload (after the 4-byte length) with a lone
+        // continuation byte, which is never valid UTF-8.
+        let payload = dict.words_data.len() - 2;
+        dict.words_data[payload] = 0xff;
+        assert_eq!(dict.word_details(0), None);
+    }
+
+    /// A declared length running past the buffer returns `None`.
+    #[test]
+    fn word_details_truncated_entry_returns_none() {
+        let mut dict = with_entries(&[&["名詞", "一般"]]);
+        // Past the end of the blob, but small enough that `offset + 4 + len`
+        // cannot overflow a 32-bit `usize` (the crate builds for wasm32).
+        let past_end = (dict.words_data.len() + 1) as u32;
+        dict.words_data[0..4].copy_from_slice(&past_end.to_le_bytes());
+        assert_eq!(dict.word_details(0), None);
+    }
 }
