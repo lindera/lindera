@@ -2,6 +2,7 @@
 name = "lindera-python"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A Python binding for Lindera."
 documentation = "https://docs.rs/lindera-python"
 homepage = { workspace = true }

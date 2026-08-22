@@ -2,6 +2,7 @@
 name = "lindera-ipadic-neologd"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A Japanese morphological dictionary for IPADIC NEologd."
 documentation = "https://docs.rs/lindera-ipadic-neologd"
 homepage = { workspace = true }

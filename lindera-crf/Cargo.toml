@@ -2,6 +2,7 @@
 name = "lindera-crf"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "Conditional Random Fields implemented in pure Rust."
 documentation = "https://docs.rs/lindera-crf"
 homepage = { workspace = true }

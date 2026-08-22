@@ -24,6 +24,11 @@ resolver = "2"
 [workspace.package]
 version = "5.3.0"
 edition = "2024"
+# Edition 2024 alone implies 1.85, but `slice::as_chunks` (used by the
+# WordEntry decode path in lindera-dictionary) stabilized in 1.88. Declaring it
+# turns "no method named `as_chunks`" into a clear cargo message on older
+# toolchains.
+rust-version = "1.88"
 description = "A morphological analysis libraries and command line interface."
 documentation = "https://docs.rs/lindera"
 homepage = "https://github.com/lindera/lindera"

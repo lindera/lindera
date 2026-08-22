@@ -457,7 +457,7 @@ impl PrefixDictionary {
         let mut results: Vec<(usize, WordEntry)> = Vec::new();
         for (entries, end_char) in self.common_prefix_search_owned(&chars) {
             let end_byte = boundaries[end_char];
-            for chunk in entries.chunks_exact(WordEntry::SERIALIZED_LEN) {
+            for chunk in entries.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                 results.push((end_byte, WordEntry::deserialize(chunk, true)));
             }
         }
@@ -510,7 +510,7 @@ impl PrefixDictionary {
         let mut entries: Vec<WordEntry> = Vec::new();
         for (bytes, end_char) in self.common_prefix_search_owned(&chars) {
             if end_char == char_count {
-                for chunk in bytes.chunks_exact(WordEntry::SERIALIZED_LEN) {
+                for chunk in bytes.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                     entries.push(WordEntry::deserialize(chunk, true));
                 }
             }
@@ -535,7 +535,7 @@ impl PrefixDictionary {
     pub fn common_prefix_iterator(&self, suffix: &[char]) -> Vec<Match> {
         let mut matches = Vec::new();
         for (bytes, end_char) in self.common_prefix_search(suffix) {
-            for chunk in bytes.chunks_exact(WordEntry::SERIALIZED_LEN) {
+            for chunk in bytes.as_chunks::<{ WordEntry::SERIALIZED_LEN }>().0 {
                 let word_entry = WordEntry::deserialize(chunk, true);
                 matches.push(Match {
                     word_idx: WordIdx::new(word_entry.word_id().id()),

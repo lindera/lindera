@@ -1,5 +1,12 @@
 # Installation
 
+## Requirements
+
+Rust **1.88** or newer. The workspace declares this as `rust-version`, so an
+older toolchain reports it as a cargo error rather than failing to compile.
+
+## Adding the Dependency
+
 Put the following in Cargo.toml:
 
 ```toml

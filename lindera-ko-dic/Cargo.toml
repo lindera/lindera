@@ -2,6 +2,7 @@
 name = "lindera-ko-dic"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A Korean morphological dictionary for ko-dic."
 documentation = "https://docs.rs/lindera-ko-dic"
 homepage = { workspace = true }

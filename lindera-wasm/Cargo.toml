@@ -2,6 +2,7 @@
 name = "lindera-wasm"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A morphological analysis library for WebAssembly."
 documentation = "https://docs.rs/lindera-wasm"
 homepage = { workspace = true }

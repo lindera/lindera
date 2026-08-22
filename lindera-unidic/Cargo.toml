@@ -2,6 +2,7 @@
 name = "lindera-unidic"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A Japanese morphological dictionary for UniDic."
 documentation = "https://docs.rs/lindera-unidic"
 homepage = { workspace = true }

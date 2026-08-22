@@ -2,6 +2,7 @@
 name = "lindera-jieba"
 version = { workspace = true }
 edition = { workspace = true }
+rust-version = { workspace = true }
 description = "A Chinese morphological dictionary for Jieba."
 documentation = "https://docs.rs/lindera-jieba"
 homepage = { workspace = true }

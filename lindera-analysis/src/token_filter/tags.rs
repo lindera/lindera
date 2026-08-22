@@ -89,12 +89,14 @@ pub(crate) fn apply_tag_filter<F>(
     *tokens = filtered_tokens;
 }
 
-#[cfg(test)]
+// Every test here builds a `Token` against an embedded IPADIC dictionary, so
+// the whole module is gated rather than each test individually -- otherwise
+// `use super::*` is unused whenever the feature is off.
+#[cfg(all(test, feature = "embed-ipadic"))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "embed-ipadic")]
     fn test_apply_tag_filter_empty_set_keep_policy_removes_all_without_extracting() {
         use std::borrow::Cow;
         use std::cell::Cell;
@@ -131,7 +133,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "embed-ipadic")]
     fn test_apply_tag_filter_empty_set_remove_policy_keeps_all_without_extracting() {
         use std::borrow::Cow;
         use std::cell::Cell;
