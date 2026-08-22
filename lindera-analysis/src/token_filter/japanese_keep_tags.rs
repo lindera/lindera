@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
-use crate::token_filter::tags::{TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags};
+use crate::token_filter::tags::{
+    TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags, write_japanese_pos_key,
+};
 use lindera::LinderaResult;
 use lindera::token::Token;
 
@@ -48,29 +50,22 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
     /// # Process
     ///
     /// 1. **Token Filtering**:
-    ///    - The function iterates over the tokens and extracts the part-of-speech tags from each token's details.
-    ///    - If the token has at least 4 details, the first 4 elements are used as the tag. Otherwise, only the first element is used.
+    ///    - The function iterates over the tokens and reads the part-of-speech tags from each token's details.
+    ///    - At most the first 4 details form the tag. If the token has fewer, only the available details are used.
     ///
     /// 2. **Tag Matching**:
-    ///    - The tags are constructed as a comma-separated string and checked against the set of tags specified in the configuration (`self.config.tags`).
+    ///    - The tag is written into a single buffer reused across tokens, joined with commas, and checked against the set of tags specified in the configuration (`self.tags`).
     ///
-    /// 3. **Token Retention**:
-    ///    - Only the tokens whose tags match the configuration are retained in the resulting `filtered_tokens` vector.
-    ///
-    /// 4. **Replace Tokens**:
-    ///    - After filtering, the original tokens vector is replaced with the filtered list.
+    /// 3. **In-Place Retention**:
+    ///    - Filtering happens in place over the original tokens vector, preserving order; only the tokens whose tags match the configuration remain.
     ///
     /// # Errors
     ///
     /// If any issue arises during token processing or filtering, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        apply_tag_filter(tokens, &self.tags, TagPolicy::Keep, |token| {
-            let details = token.details();
-            // Determine the length of the tags to consider (either 4 or 1)
-            let tags_len = details.len().min(4);
-            // Construct the tag string from the token's details.
-            details[0..tags_len].join(",")
-        });
+        // The key is the first up-to-4 part-of-speech levels joined with `,`,
+        // written into a buffer `apply_tag_filter` reuses across tokens.
+        apply_tag_filter(tokens, &self.tags, TagPolicy::Keep, write_japanese_pos_key);
 
         Ok(())
     }

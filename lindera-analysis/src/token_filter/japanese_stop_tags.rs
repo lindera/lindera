@@ -3,7 +3,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
-use crate::token_filter::tags::{TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags};
+use crate::token_filter::tags::{
+    TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags, write_japanese_pos_key,
+};
 use lindera::LinderaResult;
 use lindera::token::Token;
 
@@ -48,16 +50,16 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     /// # Process
     ///
     /// 1. **Token Filtering**:
-    ///    - The function iterates over the `tokens` vector and extracts the part-of-speech details of each token.
-    ///    - If the token has at least 4 details, the first 4 elements are used to create a tag. If it has fewer details, only the available details are used.
+    ///    - The function iterates over the `tokens` vector and reads the part-of-speech details of each token.
+    ///    - At most the first 4 details form the tag. If the token has fewer, only the available details are used.
     ///
     /// 2. **Tag Matching**:
-    ///    - A tag string is created by joining the extracted part-of-speech details with commas (`,`) for comparison.
-    ///    - If the tag is **not** found in the configuration (`self.config.tags`), the token is added to the `filtered_tokens` vector.
+    ///    - The tag is written into a single buffer reused across tokens, joining the part-of-speech details with commas (`,`) for comparison.
+    ///    - If the tag is **not** found in the configuration (`self.tags`), the token is retained.
     ///    - If the tag is present in the configuration, the token is discarded.
     ///
-    /// 3. **Token Replacement**:
-    ///    - Once the iteration is complete, the original `tokens` vector is replaced with the filtered tokens, i.e., only those tokens whose part-of-speech tags are not in the configuration remain.
+    /// 3. **In-Place Filtering**:
+    ///    - Filtering happens in place over the original `tokens` vector, preserving order, so only those tokens whose part-of-speech tags are not in the configuration remain.
     ///
     /// # Example
     ///
@@ -67,16 +69,14 @@ impl TokenFilter for JapaneseStopTagsTokenFilter {
     ///
     /// Returns a `LinderaResult` error if there is an issue during processing, but typically this function is expected to complete successfully unless there are issues with the token or tag data.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        apply_tag_filter(tokens, &self.tags, TagPolicy::Remove, |token| {
-            let details = token.details();
-            // Use up to the first 4 part-of-speech levels as the tag. When fewer
-            // details are available (e.g. a token whose details were left empty),
-            // use only what is present. `min` also keeps the slice in bounds for
-            // empty details, which would otherwise panic.
-            let tags_len = details.len().min(4);
-            // Make a string of the part-of-speech tags.
-            details[0..tags_len].join(",")
-        });
+        // The key is the first up-to-4 part-of-speech levels joined with `,`,
+        // written into a buffer `apply_tag_filter` reuses across tokens.
+        apply_tag_filter(
+            tokens,
+            &self.tags,
+            TagPolicy::Remove,
+            write_japanese_pos_key,
+        );
 
         Ok(())
     }
@@ -408,5 +408,107 @@ mod tests {
 
         assert_eq!(tokens.len(), 1);
         assert_eq!(&tokens[0].surface, "テスト");
+    }
+
+    // The test above constructs the filter with an empty tag set, so since
+    // #825 it returns at `apply_tag_filter`'s empty-set fast path and the key
+    // builder never runs -- it no longer covers the #438 crash site. This
+    // variant uses a NON-empty tag set so extraction actually happens, and
+    // pins the key an empty-details token produces: the empty string, which
+    // matches no configured tag (every configured Japanese tag is normalized
+    // to four comma-separated parts).
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_stop_tags_empty_details_with_non_empty_tag_set() {
+        use std::borrow::Cow;
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let mut tags = HashSet::new();
+        tags.insert("助詞".to_string());
+        let filter = JapaneseStopTagsTokenFilter::new(tags);
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let mut tokens: Vec<Token> = vec![Token {
+            surface: Cow::Borrowed("テスト"),
+            byte_start: 0,
+            byte_end: 9,
+            position: 0,
+            position_length: 1,
+            word_id: WordId::new(LexType::System, 0),
+            dictionary: &dictionary,
+            user_dictionary: None,
+            details: Some(vec![]),
+        }];
+
+        filter.apply(&mut tokens).unwrap();
+
+        // The key is "" (zero details joined), which is not in the tag set,
+        // so a stop-tag filter keeps the token.
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "テスト");
+    }
+
+    // The complement of the test above: with a non-empty tag set, a token
+    // whose details DO match is actually removed. Together these two pin
+    // both sides of the key comparison, so a broken key builder cannot pass
+    // by trivially keeping everything.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_stop_tags_removes_matching_token() {
+        use std::borrow::Cow;
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let mut tags = HashSet::new();
+        tags.insert("名詞,固有名詞".to_string());
+        let filter = JapaneseStopTagsTokenFilter::new(tags);
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+
+        let details = |fields: &[&str]| -> Option<Vec<Cow<'static, str>>> {
+            Some(fields.iter().map(|f| Cow::Owned(f.to_string())).collect())
+        };
+
+        let mut tokens: Vec<Token> = vec![
+            Token {
+                surface: Cow::Borrowed("除去対象"),
+                byte_start: 0,
+                byte_end: 12,
+                position: 0,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 0),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                // Normalized configured tag is "名詞,固有名詞,*,*"; the key
+                // built from these four details must equal it.
+                details: details(&["名詞", "固有名詞", "*", "*"]),
+            },
+            Token {
+                surface: Cow::Borrowed("保持対象"),
+                byte_start: 12,
+                byte_end: 24,
+                position: 1,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 1),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: details(&["動詞", "自立", "*", "*"]),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "保持対象");
     }
 }
