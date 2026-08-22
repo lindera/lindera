@@ -172,8 +172,6 @@ impl<'a> Token<'a> {
                 }
             };
 
-            let mut details: Vec<Cow<'a, str>> = tmp.into_iter().map(Cow::Borrowed).collect();
-
             // Pad details to match the dictionary schema's custom field count so that
             // token filters can safely access any field by index.
             let expected_len = self
@@ -182,6 +180,12 @@ impl<'a> Token<'a> {
                 .dictionary_schema
                 .get_custom_fields()
                 .len();
+
+            // Reserve for the padded length up front: collecting first and
+            // resizing afterwards allocated twice whenever the entry carried
+            // fewer fields than the schema (#966).
+            let mut details: Vec<Cow<'a, str>> = Vec::with_capacity(tmp.len().max(expected_len));
+            details.extend(tmp.into_iter().map(Cow::Borrowed));
             if details.len() < expected_len {
                 details.resize(expected_len, Cow::Borrowed("*"));
             }
@@ -348,6 +352,131 @@ mod tests {
 
     use crate::dictionary::load_dictionary;
     use crate::segmenter::Segmenter;
+
+    /// `Dictionary::word_details` must return every field the entry carries,
+    /// in schema order, for a real dictionary. IPADIC's schema is 13 fields
+    /// (4 common + 9 custom), so a system entry yields exactly 9 details --
+    /// the shape the presized vector in `word_details` depends on (#966).
+    #[test]
+    fn test_word_details_field_count_and_order() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let expected_len = dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+        assert_eq!(
+            expected_len, 9,
+            "IPADIC is expected to carry 9 custom fields"
+        );
+
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        let tokens = match segmenter.segment(Cow::Borrowed("東京都に住む")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert!(!tokens.is_empty());
+
+        for token in &tokens {
+            if !token.word_id.is_system() || token.word_id.id() == u32::MAX {
+                continue;
+            }
+            let details = token.dictionary.word_details(token.word_id.id() as usize);
+            assert_eq!(
+                details.len(),
+                expected_len,
+                "surface {:?} yielded {details:?}",
+                token.surface
+            );
+            // The first field is the major POS, never empty for a system entry.
+            assert!(!details[0].is_empty(), "surface {:?}", token.surface);
+        }
+    }
+
+    /// An out-of-range system word id yields an empty vector, while the user
+    /// dictionary's accessor falls back to the `UNK` sentinel. The two
+    /// fallbacks differ and both are load-bearing, so pin them here.
+    #[test]
+    fn test_word_details_out_of_range_returns_empty() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        assert!(dictionary.word_details(usize::MAX / 4).is_empty());
+    }
+
+    /// A user-dictionary entry declares only `surface, part_of_speech,
+    /// reading` (IPADIC's `user_dictionary_schema`), but the builder already
+    /// expands it onto the system schema's field positions, padding the rest
+    /// with `*`. So its details come back at the full custom-field width,
+    /// with the POS at index 0 and the reading at index 7 -- the positions
+    /// `part_of_speech` and `reading` occupy in the system schema. Pin that
+    /// here: `set_detail` indexes this vector directly, so any narrowing
+    /// would panic downstream (#966).
+    #[test]
+    fn test_user_dictionary_details_match_system_schema_positions() {
+        use std::path::PathBuf;
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("user_dict")
+            .join("ipadic_simple_userdic.csv");
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
+            "mode": "normal"
+        });
+
+        let segmenter = match Segmenter::from_config(&config) {
+            Ok(segmenter) => segmenter,
+            Err(err) => panic!("failed to build segmenter: {err}"),
+        };
+        let expected_len = segmenter
+            .dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+
+        let tokens = match segmenter.segment(Cow::Borrowed("東京スカイツリーの近く")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+
+        let mut saw_user_token = false;
+        for mut token in tokens {
+            if token.word_id.is_system() || token.word_id.is_unknown() {
+                continue;
+            }
+            saw_user_token = true;
+            let surface = token.surface.to_string();
+            let details = token.details();
+            assert_eq!(
+                details.len(),
+                expected_len,
+                "user token {surface:?} yielded {details:?}"
+            );
+            // `part_of_speech` is custom field 0, `reading` is custom field 7.
+            assert_eq!(details[0], "カスタム名詞", "{details:?}");
+            assert_eq!(details[7], "トウキョウスカイツリー", "{details:?}");
+            // Every position the user schema does not declare is filled with "*".
+            assert!(
+                details[1..7]
+                    .iter()
+                    .chain(details[8..].iter())
+                    .all(|d| *d == "*"),
+                "{details:?}"
+            );
+        }
+        assert!(
+            saw_user_token,
+            "expected at least one user-dictionary token"
+        );
+    }
 
     /// `details_iter` must yield exactly the same fields, in the same
     /// order, as the `Vec`-collecting `details()` accessor, for both known

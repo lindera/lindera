@@ -29,7 +29,7 @@ use crate::loader::connection_cost_matrix::ConnectionCostMatrixLoader;
 use crate::loader::metadata::MetadataLoader;
 use crate::loader::prefix_dictionary::PrefixDictionaryLoader;
 use crate::loader::unknown_dictionary::UnknownDictionaryLoader;
-use crate::util::Data;
+use crate::util::{Data, detail_field_count};
 use crate::viterbi::WordEntry;
 
 pub static UNK: Lazy<Vec<&str>> = Lazy::new(|| vec!["UNK"]);
@@ -68,21 +68,24 @@ impl Dictionary {
         .try_into()
         {
             Ok(value) => value,
-            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            Err(_) => return UNK.to_vec(), // fall back to the UNK sentinel if conversion fails
         };
         let data = &self.prefix_dictionary.words_data[idx..];
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,
-            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            Err(_) => return UNK.to_vec(), // fall back to the UNK sentinel if conversion fails
         };
         let joined_details_bytes: &[u8] =
             &self.prefix_dictionary.words_data[idx + 4..idx + 4 + joined_details_len];
 
-        let mut details = Vec::new();
+        // Size the vector from the separator count so the pushes below never
+        // reallocate; growing from capacity zero cost two reallocations per
+        // token for a 9-field dictionary (#966).
+        let mut details = Vec::with_capacity(detail_field_count(joined_details_bytes));
         for bytes in joined_details_bytes.split(|&b| b == 0) {
             let detail = match str::from_utf8(bytes) {
                 Ok(s) => s,
-                Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+                Err(_) => return UNK.to_vec(), // fall back to the UNK sentinel if conversion fails
             };
             details.push(detail);
         }
@@ -246,7 +249,7 @@ impl UserDictionary {
 
     pub fn word_details(&self, word_id: usize) -> Vec<&str> {
         if 4 * word_id >= self.dict.words_idx_data.len() {
-            return UNK.to_vec(); // return empty vector if conversion fails
+            return UNK.to_vec(); // fall back to the UNK sentinel for an out-of-range word id
         }
         let idx = LittleEndian::read_u32(&self.dict.words_idx_data[4 * word_id..][..4]);
         let data = &self.dict.words_data[idx as usize..];
@@ -254,19 +257,101 @@ impl UserDictionary {
         // Parse the data in the same format as main Dictionary
         let joined_details_len: usize = match LittleEndian::read_u32(data).try_into() {
             Ok(value) => value,
-            Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+            Err(_) => return UNK.to_vec(), // fall back to the UNK sentinel if conversion fails
         };
         let joined_details_bytes: &[u8] =
             &self.dict.words_data[idx as usize + 4..idx as usize + 4 + joined_details_len];
 
-        let mut details = Vec::new();
+        // Presized from the separator count; see `Dictionary::word_details` (#966).
+        let mut details = Vec::with_capacity(detail_field_count(joined_details_bytes));
         for bytes in joined_details_bytes.split(|&b| b == 0) {
             let detail = match str::from_utf8(bytes) {
                 Ok(s) => s,
-                Err(_) => return UNK.to_vec(), // return empty vector if conversion fails
+                Err(_) => return UNK.to_vec(), // fall back to the UNK sentinel if conversion fails
             };
             details.push(detail);
         }
         details
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use daachorse::DoubleArrayAhoCorasickBuilder;
+
+    use super::{UNK, UserDictionary};
+    use crate::dictionary::prefix_dictionary::UserPrefixDictionary;
+
+    /// Builds a user dictionary whose words blob holds `entries`, each
+    /// encoded as a 4-byte LE length followed by its NUL-joined fields --
+    /// the layout `builder::user_dictionary` writes.
+    fn user_dictionary(entries: &[&[&str]]) -> UserDictionary {
+        let mut words_idx_data = Vec::new();
+        let mut words_data = Vec::new();
+        for fields in entries {
+            words_idx_data.extend_from_slice(&(words_data.len() as u32).to_le_bytes());
+            let joined = fields.join("\0");
+            words_data.extend_from_slice(&(joined.len() as u32).to_le_bytes());
+            words_data.extend_from_slice(joined.as_bytes());
+        }
+        // The automaton is irrelevant to `word_details`, but the type needs a
+        // real one; a single dummy key keeps the build valid.
+        let da = match DoubleArrayAhoCorasickBuilder::new().build_with_values([("x", 0u32)]) {
+            Ok(da) => da,
+            Err(err) => panic!("failed to build test automaton: {err}"),
+        };
+        UserDictionary {
+            dict: UserPrefixDictionary {
+                da,
+                vals_data: Vec::new().into(),
+                words_idx_data: words_idx_data.into(),
+                words_data: words_data.into(),
+                is_system: false,
+            },
+        }
+    }
+
+    /// Fields come back in order with the exact count that was written.
+    #[test]
+    fn user_word_details_returns_fields_in_order() {
+        let dict = user_dictionary(&[&["カスタム名詞", "*", "リンデラ"], &["動詞", "自立", "*"]]);
+
+        assert_eq!(dict.word_details(0), vec!["カスタム名詞", "*", "リンデラ"]);
+        assert_eq!(dict.word_details(1), vec!["動詞", "自立", "*"]);
+    }
+
+    /// A single-field entry has no separator, so the capacity must still be 1.
+    #[test]
+    fn user_word_details_handles_single_field() {
+        let dict = user_dictionary(&[&["ONLY"]]);
+        assert_eq!(dict.word_details(0), vec!["ONLY"]);
+    }
+
+    /// Empty fields are preserved rather than collapsed.
+    #[test]
+    fn user_word_details_preserves_empty_fields() {
+        let dict = user_dictionary(&[&["", "a", "", "b", ""]]);
+        assert_eq!(dict.word_details(0), vec!["", "a", "", "b", ""]);
+    }
+
+    /// Out-of-range ids fall back to the `UNK` sentinel -- note this differs
+    /// from `Dictionary::word_details`, which returns an empty vector.
+    #[test]
+    fn user_word_details_out_of_range_returns_unk() {
+        let dict = user_dictionary(&[&["名詞", "一般"]]);
+        assert_eq!(dict.word_details(1), UNK.to_vec());
+        assert_eq!(dict.word_details(usize::MAX / 4), UNK.to_vec());
+    }
+
+    /// Invalid UTF-8 falls back to the `UNK` sentinel rather than panicking.
+    #[test]
+    fn user_word_details_invalid_utf8_returns_unk() {
+        let mut dict = user_dictionary(&[&["ok", "fields"]]);
+        let words_data: &[u8] = &dict.dict.words_data;
+        let mut bytes = words_data.to_vec();
+        let last = bytes.len() - 1;
+        bytes[last] = 0xff;
+        dict.dict.words_data = bytes.into();
+        assert_eq!(dict.word_details(0), UNK.to_vec());
     }
 }

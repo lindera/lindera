@@ -15,6 +15,27 @@ use crate::error::LinderaErrorKind;
 
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 
+/// Counts the fields a NUL-joined detail blob splits into.
+///
+/// The dictionary builder joins a row's detail fields with `"\0"` and writes
+/// no trailing separator, so the field count is exactly one more than the
+/// number of NUL bytes. Callers use this to size their detail vectors up
+/// front instead of letting them grow from capacity zero, which cost two
+/// reallocations per token for a 9-field dictionary (#966).
+///
+/// # 引数
+///
+/// * `joined_details` - The NUL-joined detail blob.
+///
+/// # 戻り値
+///
+/// The number of fields, always at least 1 (an empty blob splits into a
+/// single empty field, matching `slice::split`).
+#[inline]
+pub(crate) fn detail_field_count(joined_details: &[u8]) -> usize {
+    memchr::memchr_iter(0, joined_details).count() + 1
+}
+
 /// Write data directly to the writer.
 pub fn write_data<W: Write>(buffer: &[u8], writer: &mut W) -> LinderaResult<()> {
     writer.write_all(buffer).map_err(|err| {
@@ -167,5 +188,46 @@ impl<'de> Deserialize<'de> for Data {
     {
         let v = <Vec<u8> as serde::Deserialize>::deserialize(deserializer)?;
         Ok(Data::Vec(v))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detail_field_count;
+
+    /// The count must match what `slice::split` actually yields, which is the
+    /// invariant the presized detail vectors rely on.
+    #[test]
+    fn detail_field_count_matches_split() {
+        for blob in [
+            &b""[..],
+            &b"a"[..],
+            &b"a\0b"[..],
+            &b"\0"[..],
+            &b"\0\0"[..],
+            &b"a\0\0b"[..],
+            &b"NOUN\0general\0*\0*\0*\0*\0base\0reading\0pron"[..],
+        ] {
+            assert_eq!(
+                detail_field_count(blob),
+                blob.split(|&b| b == 0).count(),
+                "blob {blob:?}"
+            );
+        }
+    }
+
+    /// An empty blob still splits into one (empty) field, so the count is
+    /// never zero -- a zero capacity would reintroduce the growth this
+    /// helper exists to avoid.
+    #[test]
+    fn detail_field_count_is_never_zero() {
+        assert_eq!(detail_field_count(b""), 1);
+    }
+
+    /// The IPADIC shape: 9 fields joined by 8 separators.
+    #[test]
+    fn detail_field_count_ipadic_shape() {
+        let blob = b"\xe5\x90\x8d\xe8\xa9\x9e\0*\0*\0*\0*\0*\0a\0b\0c";
+        assert_eq!(detail_field_count(blob), 9);
     }
 }
