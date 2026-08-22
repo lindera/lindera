@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use lindera_dictionary::dictionary::UNK;
+use lindera_dictionary::dictionary::{DetailFields, UNK};
 use serde_json::{Value, json};
 
 use crate::dictionary::{Dictionary, UserDictionary, WordId};
@@ -155,43 +155,55 @@ impl<'a> Token<'a> {
             .map(|c| c.as_ref())
     }
 
-    /// Helper method to ensure details are loaded without returning them
+    /// Loads and caches this token's detail fields.
+    ///
+    /// The fields are borrowed straight out of the dictionary's own bytes and
+    /// written into the cache vector, which is sized exactly once, so
+    /// materializing a token's details costs a single allocation: the cache
+    /// itself. Going through an intermediate `Vec<&str>` cost one more
+    /// (#966).
     fn ensure_details(&mut self) {
-        if self.details.is_none() {
-            let tmp = if self.word_id.is_unknown() {
-                self.dictionary
-                    .unknown_word_details(self.word_id.id() as usize)
-            } else if self.word_id.is_system() {
-                self.dictionary.word_details(self.word_id.id() as usize)
-            } else {
-                match self.user_dictionary {
-                    Some(user_dictionary) => {
-                        user_dictionary.word_details(self.word_id.id() as usize)
-                    }
-                    None => UNK.to_vec(),
-                }
-            };
-
-            // Pad details to match the dictionary schema's custom field count so that
-            // token filters can safely access any field by index.
-            let expected_len = self
-                .dictionary
-                .metadata
-                .dictionary_schema
-                .get_custom_fields()
-                .len();
-
-            // Reserve for the padded length up front: collecting first and
-            // resizing afterwards allocated twice whenever the entry carried
-            // fewer fields than the schema (#966).
-            let mut details: Vec<Cow<'a, str>> = Vec::with_capacity(tmp.len().max(expected_len));
-            details.extend(tmp.into_iter().map(Cow::Borrowed));
-            if details.len() < expected_len {
-                details.resize(expected_len, Cow::Borrowed("*"));
-            }
-
-            self.details = Some(details);
+        if self.details.is_some() {
+            return;
         }
+
+        // Copied out of `self` before the borrow below so the fields borrow
+        // for `'a` rather than for this `&mut self`; the dictionary accessors
+        // take `&'a self`.
+        let dictionary: &'a Dictionary = self.dictionary;
+        let user_dictionary: Option<&'a UserDictionary> = self.user_dictionary;
+        let word_id = self.word_id.id() as usize;
+
+        let fields = if self.word_id.is_unknown() {
+            dictionary.unknown_word_details_iter(word_id)
+        } else if self.word_id.is_system() {
+            dictionary.word_details_iter(word_id)
+        } else {
+            match user_dictionary {
+                Some(user_dictionary) => user_dictionary.word_details_iter(word_id),
+                None => DetailFields::unk(),
+            }
+        };
+
+        // Details are padded to the dictionary schema's custom field count so
+        // that token filters can safely access any field by index.
+        let expected_len = dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+
+        // `DetailFields` is an `ExactSizeIterator`, so the padded width is
+        // known before anything is materialized and this is the only
+        // allocation on the path -- neither the extend nor the pad below can
+        // reallocate.
+        let mut details: Vec<Cow<'a, str>> = Vec::with_capacity(fields.len().max(expected_len));
+        details.extend(fields.map(Cow::Borrowed));
+        if details.len() < expected_len {
+            details.resize(expected_len, Cow::Borrowed("*"));
+        }
+
+        self.details = Some(details);
     }
 
     /// Retrieves the token's detail at the specified index, if available.
@@ -505,5 +517,102 @@ mod tests {
             assert_eq!(expected, actual, "surface {:?}", token.surface);
             assert!(!actual.is_empty());
         }
+    }
+
+    /// The detail cache must be allocated exactly once: `DetailFields` is an
+    /// `ExactSizeIterator`, so `ensure_details` can size the vector before
+    /// materializing anything and neither the extend nor the schema padding
+    /// reallocates. A capacity larger than the padded width means something
+    /// grew, which is precisely the regression #966 step (b) removed -- and
+    /// it is observable without an allocator hook.
+    #[test]
+    fn test_details_cache_is_allocated_exactly_once() {
+        let dictionary = match load_dictionary("embedded://ipadic") {
+            Ok(dictionary) => dictionary,
+            Err(err) => panic!("failed to load embedded IPADIC: {err}"),
+        };
+        let expected_len = dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+
+        let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+        // Mixed input: system entries plus a Latin run that becomes an
+        // unknown word, so both dictionary paths are covered.
+        let tokens = match segmenter.segment(Cow::Borrowed("東京都でsupercalifragilisticを買う"))
+        {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+        assert!(!tokens.is_empty());
+
+        let mut saw_unknown = false;
+        for mut token in tokens {
+            saw_unknown |= token.word_id.is_unknown();
+            let _ = token.details_iter().count();
+            let details = match token.details.as_ref() {
+                Some(details) => details,
+                None => panic!("details must be cached after details_iter"),
+            };
+            assert_eq!(details.len(), expected_len, "surface {:?}", token.surface);
+            assert_eq!(
+                details.capacity(),
+                expected_len,
+                "the cache reallocated for surface {:?}",
+                token.surface
+            );
+        }
+        assert!(saw_unknown, "expected at least one unknown-word token");
+    }
+
+    /// The same, on the user-dictionary path, which reaches a third accessor.
+    #[test]
+    fn test_user_dictionary_details_cache_is_allocated_exactly_once() {
+        use std::path::PathBuf;
+
+        let userdic_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources")
+            .join("user_dict")
+            .join("ipadic_simple_userdic.csv");
+
+        let config = serde_json::json!({
+            "dictionary": "embedded://ipadic",
+            "user_dictionary": userdic_file.to_str().unwrap(),
+            "mode": "normal"
+        });
+
+        let segmenter = match Segmenter::from_config(&config) {
+            Ok(segmenter) => segmenter,
+            Err(err) => panic!("failed to build segmenter: {err}"),
+        };
+        let expected_len = segmenter
+            .dictionary
+            .metadata
+            .dictionary_schema
+            .get_custom_fields()
+            .len();
+
+        let tokens = match segmenter.segment(Cow::Borrowed("東京スカイツリーの近く")) {
+            Ok(tokens) => tokens,
+            Err(err) => panic!("segment failed: {err}"),
+        };
+
+        let mut saw_user_token = false;
+        for mut token in tokens {
+            if !token.word_id.is_system() && !token.word_id.is_unknown() {
+                saw_user_token = true;
+            }
+            let _ = token.details_iter().count();
+            let details = match token.details.as_ref() {
+                Some(details) => details,
+                None => panic!("details must be cached after details_iter"),
+            };
+            assert_eq!(details.capacity(), expected_len);
+        }
+        assert!(
+            saw_user_token,
+            "expected at least one user-dictionary token"
+        );
     }
 }
