@@ -392,4 +392,61 @@ mod tests {
         assert_eq!(&tokens[4].surface, "수");
         assert_eq!(&tokens[5].surface, "있");
     }
+
+    // The Korean key is `get_detail(0)`, which is `None` when the token has
+    // no details at all. `unwrap_or_default()` turns that into `""`, so the
+    // key matches no configured tag and a stop-tag filter keeps the token.
+    // This is the Korean counterpart of the #438 empty-details case, and it
+    // must survive the switch from an owned `String` key to a borrowed write
+    // into the shared buffer.
+    #[test]
+    #[cfg(feature = "embed-ko-dic")]
+    fn test_korean_stop_tags_missing_first_detail_keeps_token() {
+        use std::borrow::Cow;
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use lindera::dictionary::{DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::KoDic).unwrap();
+
+        let mut tags = HashSet::new();
+        tags.insert("JKS".to_string());
+        let filter = KoreanStopTagsTokenFilter::new(tags);
+
+        let mut tokens: Vec<Token> = vec![
+            Token {
+                surface: Cow::Borrowed("없음"),
+                byte_start: 0,
+                byte_end: 6,
+                position: 0,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 0),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                // No details at all: get_detail(0) yields None.
+                details: Some(vec![]),
+            },
+            Token {
+                surface: Cow::Borrowed("제거"),
+                byte_start: 6,
+                byte_end: 12,
+                position: 1,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, 1),
+                dictionary: &dictionary,
+                user_dictionary: None,
+                details: Some(vec![Cow::Borrowed("JKS")]),
+            },
+        ];
+
+        filter.apply(&mut tokens).unwrap();
+
+        // The empty key matched nothing, so the first token stays; the second
+        // matched the stop tag and is gone.
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(&tokens[0].surface, "없음");
+    }
 }
