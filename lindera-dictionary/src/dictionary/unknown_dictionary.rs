@@ -5,9 +5,10 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
+use crate::dictionary::DetailFields;
 use crate::dictionary::character_definition::CategoryId;
 use crate::error::LinderaErrorKind;
-use crate::util::detail_field_count;
+use crate::util::joined_details_at;
 use crate::viterbi::WordEntry;
 
 #[derive(Serialize, Deserialize, Clone, Archive, RkyvSerialize, RkyvDeserialize)]
@@ -40,26 +41,44 @@ impl UnknownDictionary {
     }
 
     /// Retrieve the detail fields (POS, etc.) for an unknown word entry.
+    ///
+    /// # 引数
+    ///
+    /// * `word_id` - The unknown-word entry id.
+    ///
+    /// # 戻り値
+    ///
+    /// A freshly allocated vector of the entry's fields, or `None` when the
+    /// id is out of range or the entry is malformed. Prefer
+    /// [`UnknownDictionary::word_details_iter`] on per-token paths, which
+    /// yields the same fields without allocating.
     pub fn word_details(&self, word_id: u32) -> Option<Vec<&str>> {
-        let idx = word_id as usize;
-        if idx >= self.words_idx_data.len() {
-            return None;
-        }
-        let offset = self.words_idx_data[idx] as usize;
-        if offset + 4 > self.words_data.len() {
-            return None;
-        }
-        let len = u32::from_le_bytes(self.words_data[offset..offset + 4].try_into().ok()?) as usize;
-        if offset + 4 + len > self.words_data.len() {
-            return None;
-        }
-        let text = std::str::from_utf8(&self.words_data[offset + 4..offset + 4 + len]).ok()?;
-        // `str::Split` reports a `(0, None)` size hint, so `collect()` would
-        // grow this vector from capacity zero. Size it from the separator
-        // count instead (#966).
-        let mut details = Vec::with_capacity(detail_field_count(text.as_bytes()));
-        details.extend(text.split('\0'));
-        Some(details)
+        self.word_details_iter(word_id).map(Iterator::collect)
+    }
+
+    /// Yields the detail fields of an unknown-word entry, borrowed from this
+    /// dictionary's own bytes.
+    ///
+    /// Unlike the packed dictionaries, this one distinguishes "no such entry"
+    /// from "an entry with no fields", so the absence stays in the return
+    /// type rather than collapsing into a sentinel; the caller decides what
+    /// to substitute (see [`Dictionary::unknown_word_details_iter`]).
+    ///
+    /// # 引数
+    ///
+    /// * `word_id` - The unknown-word entry id.
+    ///
+    /// # 戻り値
+    ///
+    /// The entry's fields, or `None` when the id is out of range or the entry
+    /// is malformed.
+    #[inline]
+    pub fn word_details_iter<'a>(&'a self, word_id: u32) -> Option<DetailFields<'a>> {
+        // `words_idx_data` here is a `Vec<u32>`, not a packed byte table, so
+        // the index lookup cannot share `util::words_idx_offset`; the blob
+        // decode below is shared.
+        let offset = *self.words_idx_data.get(word_id as usize)? as usize;
+        joined_details_at(&self.words_data, offset).map(DetailFields::from_joined)
     }
 
     /// Unknown word generation with callback system
