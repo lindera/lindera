@@ -33,10 +33,23 @@ impl TokenFilter for KoreanStopTagsTokenFilter {
         KOREAN_STOP_TAGS_TOKEN_FILTER_NAME
     }
 
+    /// Removes the tokens whose first part-of-speech detail is absent from the configured
+    /// tag set, filtering in place and preserving order.
+    ///
+    /// The comparison key is the token's first detail field, written into a
+    /// buffer reused across tokens rather than allocated per token.
+    ///
+    /// # 引数
+    ///
+    /// * `tokens` - The tokens to filter, modified in place.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        apply_tag_filter(tokens, &self.tags, TagPolicy::Remove, |token| {
+        apply_tag_filter(tokens, &self.tags, TagPolicy::Remove, |token, key| {
             // Use the first part-of-speech tag as the comparison key.
-            token.get_detail(0).unwrap_or_default().to_string()
+            key.push_str(token.get_detail(0).unwrap_or_default());
         });
 
         Ok(())
