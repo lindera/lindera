@@ -50,3 +50,8 @@ serde_json = { workspace = true }
 name = "bench_analysis_ipadic"
 harness = false
 required-features = ["embed-ipadic"]
+
+[[bench]]
+name = "bench_tag_filters_ipadic"
+harness = false
+required-features = ["embed-ipadic"]
