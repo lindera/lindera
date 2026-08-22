@@ -267,7 +267,6 @@ impl FeatureExtractor {
 
     /// Apply a parsed template to generate feature string
     fn apply_parsed_template(
-        &self,
         template: &ParsedTemplate,
         features: &[String],
         cate_id: u32,
@@ -310,44 +309,50 @@ impl FeatureExtractor {
     }
 
     /// Get or create feature ID (with NonZeroU32)
-    fn get_or_create_unigram_feature_id(&mut self, feature_str: &str) -> NonZeroU32 {
-        if let Some(&id) = self.unigram_feature_ids.get(feature_str) {
-            id
-        } else {
-            let new_id = NonZeroU32::new(self.unigram_next_id).unwrap();
-            let feature_id = *self
-                .unigram_feature_ids
-                .entry(feature_str.to_string())
-                .or_insert(new_id);
-            if new_id == feature_id {
-                self.unigram_next_id += 1;
-            }
-            feature_id
+    /// Interns `feature_str` in `ids`, minting the next id from `next_id` on
+    /// a miss.
+    ///
+    /// Takes the map and the counter as separate arguments rather than
+    /// `&mut self` so the callers can hold a shared borrow of their template
+    /// vector at the same time; that disjointness is what lets the extract
+    /// loops iterate the templates in place instead of cloning them (#965).
+    ///
+    /// The `get` lookup on the hit path matters: the `entry` API needs an
+    /// owned key, so going straight to it allocated a `String` on *every*
+    /// call, and the ids are interned precisely because the same feature
+    /// strings recur across lexicon entries.
+    ///
+    /// # 引数
+    ///
+    /// * `ids` - The feature-string to id map to intern into.
+    /// * `next_id` - The counter for this id space; incremented on a miss.
+    /// * `feature_str` - The generated feature string to intern.
+    ///
+    /// # 戻り値
+    ///
+    /// The existing id, or the newly minted one.
+    fn intern_feature_id(
+        ids: &mut HashMap<String, NonZeroU32>,
+        next_id: &mut u32,
+        feature_str: &str,
+    ) -> NonZeroU32 {
+        if let Some(&id) = ids.get(feature_str) {
+            return id;
         }
-    }
-
-    fn get_or_create_left_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
-        let new_id = NonZeroU32::new(self.left_next_id).unwrap();
-        let feature_id = *self
-            .left_feature_ids
-            .entry(feature_str.to_string())
-            .or_insert(new_id);
-        if new_id == feature_id {
-            self.left_next_id += 1;
-        }
-        Some(feature_id)
-    }
-
-    fn get_or_create_right_feature_id(&mut self, feature_str: &str) -> Option<NonZeroU32> {
-        let new_id = NonZeroU32::new(self.right_next_id).unwrap();
-        let feature_id = *self
-            .right_feature_ids
-            .entry(feature_str.to_string())
-            .or_insert(new_id);
-        if new_id == feature_id {
-            self.right_next_id += 1;
-        }
-        Some(feature_id)
+        // `from_templates` starts the counters at 1, but `new()` starts them
+        // at 0, where `NonZeroU32::new` yields `None`. The retired helpers
+        // called `.unwrap()` there and would have panicked; clamping to 1
+        // instead keeps the production path free of `unwrap()` per CLAUDE.md.
+        // Advancing from the id actually minted -- rather than from
+        // `*next_id` -- is what keeps ids distinct in that case, instead of
+        // handing out 1 twice. Unreachable today (the template vectors are
+        // private and only `from_templates` fills them, so a `new()`-built
+        // extractor has nothing to iterate), but the helper is correct for
+        // any starting value rather than relying on that.
+        let new_id = NonZeroU32::new(*next_id).unwrap_or(NonZeroU32::MIN);
+        ids.insert(feature_str.to_string(), new_id);
+        *next_id = new_id.get().saturating_add(1);
+        new_id
     }
 
     /// Extracts unigram feature IDs from features.
@@ -366,15 +371,29 @@ impl FeatureExtractor {
         cate_id: u32,
         ctx: &TemplateContext,
     ) -> Vec<NonZeroU32> {
-        let mut feature_ids = Vec::new();
+        // Destructured so the template borrow and the id-map borrow are
+        // disjoint; iterating `self.unigram_templates` directly while calling
+        // a `&mut self` method is what forced the per-call clone this
+        // replaces (#965).
+        let Self {
+            unigram_templates,
+            unigram_feature_ids,
+            unigram_next_id,
+            ..
+        } = self;
 
-        // Clone templates to avoid borrow conflicts
-        let templates = self.unigram_templates.clone();
-        for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, cate_id, ctx)
+        let mut feature_ids = Vec::with_capacity(unigram_templates.len());
+        for template in unigram_templates.iter() {
+            // A template whose `%F?` field is undefined is skipped entirely,
+            // so the result is shorter than the template list. The left/right
+            // variants below deliberately differ.
+            if let Some(feature_str) = Self::apply_parsed_template(template, features, cate_id, ctx)
             {
-                let id = self.get_or_create_unigram_feature_id(&feature_str);
-                feature_ids.push(id);
+                feature_ids.push(Self::intern_feature_id(
+                    unigram_feature_ids,
+                    unigram_next_id,
+                    &feature_str,
+                ));
             }
         }
 
@@ -392,16 +411,28 @@ impl FeatureExtractor {
         features: &[String],
         ctx: &TemplateContext,
     ) -> Vec<Option<NonZeroU32>> {
-        let mut feature_ids = Vec::new();
+        // See `extract_unigram_feature_ids_with_ctx` for why this is
+        // destructured rather than iterating through `self` (#965).
+        let Self {
+            left_templates,
+            left_feature_ids,
+            left_next_id,
+            ..
+        } = self;
 
-        // Clone templates to avoid borrow conflicts
-        let templates = self.left_templates.clone();
-        for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0, ctx) {
-                let id = self.get_or_create_left_feature_id(&feature_str);
-                feature_ids.push(id);
+        let mut feature_ids = Vec::with_capacity(left_templates.len());
+        for template in left_templates.iter() {
+            // Unlike unigram extraction, a skipped template pushes `None`
+            // rather than being dropped, so the result stays index-aligned
+            // with the template list. Callers depend on that alignment.
+            if let Some(feature_str) = Self::apply_parsed_template(template, features, 0, ctx) {
+                feature_ids.push(Some(Self::intern_feature_id(
+                    left_feature_ids,
+                    left_next_id,
+                    &feature_str,
+                )));
             } else {
-                feature_ids.push(None); // Handle undefined features
+                feature_ids.push(None);
             }
         }
 
@@ -419,16 +450,28 @@ impl FeatureExtractor {
         features: &[String],
         ctx: &TemplateContext,
     ) -> Vec<Option<NonZeroU32>> {
-        let mut feature_ids = Vec::new();
+        // See `extract_unigram_feature_ids_with_ctx` for why this is
+        // destructured rather than iterating through `self` (#965).
+        let Self {
+            right_templates,
+            right_feature_ids,
+            right_next_id,
+            ..
+        } = self;
 
-        // Clone templates to avoid borrow conflicts
-        let templates = self.right_templates.clone();
-        for template in templates {
-            if let Some(feature_str) = self.apply_parsed_template(&template, features, 0, ctx) {
-                let id = self.get_or_create_right_feature_id(&feature_str);
-                feature_ids.push(id);
+        let mut feature_ids = Vec::with_capacity(right_templates.len());
+        for template in right_templates.iter() {
+            // Unlike unigram extraction, a skipped template pushes `None`
+            // rather than being dropped, so the result stays index-aligned
+            // with the template list. Callers depend on that alignment.
+            if let Some(feature_str) = Self::apply_parsed_template(template, features, 0, ctx) {
+                feature_ids.push(Some(Self::intern_feature_id(
+                    right_feature_ids,
+                    right_next_id,
+                    &feature_str,
+                )));
             } else {
-                feature_ids.push(None); // Handle undefined features
+                feature_ids.push(None);
             }
         }
 
