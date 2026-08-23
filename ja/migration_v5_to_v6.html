@@ -191,6 +191,7 @@
 <h2 id="概要"><a class="header" href="#概要">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><strong>ビルド済みユーザー辞書 <code>.bin</code> が読み込めなくなった</strong></td><td><code>.bin</code> からユーザー辞書を読み込むすべてのユーザー</td><td>CSV から <code>lindera build --user</code> で再ビルド</td></tr>
+<tr><td><strong>学習済み <code>model.dat</code> が読み込めなくなった</strong></td><td>以前のビルドで生成した <code>model.dat</code> を再利用しているユーザー</td><td><code>lindera train</code> を再実行</td></tr>
 <tr><td>Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった</td><td>1・2・4 バイトの UTF-8 文字を含むテキストに対する <code>Mode::Decompose</code> の出力</td><td>対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認</td></tr>
 <tr><td>未知語の候補ラダー（length ladder）がデフォルトで有効に</td><td>辞書外テキストに対する Normal・Decompose 両モードの出力</td><td>v5 と同一の出力が必要な場合は <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> を設定</td></tr>
 <tr><td><code>max_grouping_len</code> オプションの新設（<code>--max-grouping-len</code>、config キー、builder/worker setter）</td><td>MeCab の <code>max-grouping-size</code> 相当の上限を使いたいユーザー</td><td>対応不要（デフォルトは従来どおり無制限）</td></tr>
@@ -218,6 +219,30 @@
 </code></pre>
 <p><code>.bin</code> ではなく <code>.csv</code> からユーザー辞書を読み込んでいる場合は、ロード時に
 コンパイルされるため対応は不要です。</p>
+<h2 id="学習済みモデルファイルの再生成が必要"><a class="header" href="#学習済みモデルファイルの再生成が必要">学習済みモデルファイルの再生成が必要</a></h2>
+<p><code>lindera train</code> が書き出す <code>model.dat</code> がバイト単位で再現可能になりました。
+同じ入力・同じフラグで 2 回学習するとバイト列が一致するため、
+チェックサムの取得・キャッシュ・差分比較ができます。</p>
+<p>これを実現するため、連接行列と未知語カテゴリをハッシュマップではなく
+順序付きマップとして保持するようにしました。rkyv は archived <code>HashMap</code> を
+ソース走査順にレイアウトし、その順序はインスタンスごとにシードされるためです。
+ディスク上のレイアウトが変わるので、以前のビルドが書き出した <code>model.dat</code> は
+読み込みに失敗します。</p>
+<pre><code class="language-text">failed to deserialize model: ... re-run `lindera train` to regenerate it.
+</code></pre>
+<p><code>model.dat</code> は <code>lindera train</code> と <code>lindera export</code> の間の中間ファイルであり、
+配布物ではありません。<code>lindera train</code> を再実行して生成し直してください。
+旧モデルからすでにエクスポート済みの辞書には影響しません。また、
+学習された重みはどちらでも同一です。変わったのは直列化の順序だけです。</p>
+<p>関連する注意点が 2 つあります。</p>
+<ul>
+<li><code>SerializableModel::connection_matrix</code> と <code>SerializableModel::unk_categories</code> の型が
+<code>HashMap</code> から <code>BTreeMap</code> に変わりました。これらの公開フィールドを直接読んでいる
+場合にのみ影響します。ライターメソッド群は変更ありません。</li>
+<li>再現性は単一スレッド学習（<code>--max-threads 1</code>）で成り立ちます。マルチスレッド実行では、
+スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
+依然として実行ごとに変動します。</li>
+</ul>
 <h2 id="辞書フォーマットバージョン-2v530-でリリース済み"><a class="header" href="#辞書フォーマットバージョン-2v530-でリリース済み">辞書フォーマットバージョン 2（v5.3.0 でリリース済み）</a></h2>
 <blockquote>
 <p>この変更は v6.0.0 ではなく <strong>v5.3.0</strong> でリリース済みです。v5.3.0 から

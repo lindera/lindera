@@ -191,6 +191,7 @@ it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
 <tr><td><strong>Prebuilt user-dictionary <code>.bin</code> files no longer load</strong></td><td>Anyone loading a user dictionary from <code>.bin</code></td><td>Rebuild from the CSV source with <code>lindera build --user</code></td></tr>
+<tr><td><strong>Trained <code>model.dat</code> files no longer load</strong></td><td>Anyone re-using a <code>model.dat</code> produced by an earlier build</td><td>Re-run <code>lindera train</code></td></tr>
 <tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
 <tr><td>Unknown-word length ladder is on by default</td><td>Normal- and Decompose-mode output on out-of-vocabulary text</td><td>Set <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> for v5-identical output</td></tr>
 <tr><td>New <code>max_grouping_len</code> option (<code>--max-grouping-len</code>, config key, builder/worker setters)</td><td>Anyone who wants MeCab's <code>max-grouping-size</code> cap</td><td>Nothing — the default is unchanged (unbounded)</td></tr>
@@ -218,6 +219,30 @@ message — the failure surfaces as the deserialize error above.</p>
 </code></pre>
 <p>If you load a user dictionary from a <code>.csv</code> file rather than a prebuilt
 <code>.bin</code>, it is compiled at load time and no action is needed.</p>
+<h2 id="trained-model-files-must-be-regenerated"><a class="header" href="#trained-model-files-must-be-regenerated">Trained model files must be regenerated</a></h2>
+<p><code>lindera train</code> now writes a byte-reproducible <code>model.dat</code>: training the same
+inputs twice with the same flags produces identical bytes, so the artifact can
+be checksummed, cached and diffed.</p>
+<p>Getting there required storing the connection matrix and the unknown-word
+categories as ordered maps rather than hash maps — rkyv lays an archived
+<code>HashMap</code> out in source iteration order, and that order is seeded per instance.
+This changes the on-disk layout, so a <code>model.dat</code> written by an earlier build
+fails to load:</p>
+<pre><code class="language-text">failed to deserialize model: ... re-run `lindera train` to regenerate it.
+</code></pre>
+<p><code>model.dat</code> is an intermediate between <code>lindera train</code> and <code>lindera export</code>,
+not a distributed artifact — regenerate it by re-running <code>lindera train</code>.
+Dictionaries already exported from an old model are unaffected, and the trained
+weights are identical either way: only the serialization order changed.</p>
+<p>Two related notes:</p>
+<ul>
+<li><code>SerializableModel::connection_matrix</code> and <code>SerializableModel::unk_categories</code>
+are now <code>BTreeMap</code> rather than <code>HashMap</code>. This matters only if you read those
+public fields directly; the writer methods are unchanged.</li>
+<li>Reproducibility holds for single-threaded training (<code>--max-threads 1</code>).
+Multi-threaded runs still vary, because per-thread gradient partials are
+summed in completion order and floating-point addition is not associative.</li>
+</ul>
 <h2 id="dictionary-format-version-2-shipped-in-v530"><a class="header" href="#dictionary-format-version-2-shipped-in-v530">Dictionary format version 2 (shipped in v5.3.0)</a></h2>
 <blockquote>
 <p>This change shipped in <strong>v5.3.0</strong>, not in v6.0.0. If you are upgrading

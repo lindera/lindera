@@ -1034,8 +1034,8 @@ tokenizer
 <h4 id="modelのパブリックメソッド"><a class="header" href="#modelのパブリックメソッド"><code>Model</code>のパブリックメソッド</a></h4>
 <div class="table-wrapper"><table><thead><tr><th>メソッド</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>ユーザー定義辞書（種辞書と同じ<code>surface,left_id,right_id,cost,feature...</code>のCSV形式）をモデルに読み込みます。これにより、後続のエクスポート処理で推定された連接IDとコストを割り当てられるようになります。ユーザー辞書が必要な場合は、辞書を書き出す前に呼び出す必要があります。</td></tr>
-<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、未知語カテゴリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を<code>rkyv</code>バイナリ形式でシリアライズします。</td></tr>
-<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>関連関数。<code>write_model</code>が書き出したデータから<code>SerializableModel</code>をデシリアライズします。まず<code>rkyv</code>形式を試み、失敗した場合はレガシーのJSON形式にフォールバックします。<code>feature_sets</code>フィールドが存在しない旧形式のモデルについては、<code>feature_weights</code>から補完します。</td></tr>
+<tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、未知語カテゴリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を<code>rkyv</code>バイナリ形式でシリアライズします。出力はバイト単位で再現可能です。連接行列と未知語カテゴリが順序付きマップであるため、バイト列はモデルの内容だけで決まります。</td></tr>
+<tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>関連関数。<code>write_model</code>が書き出したデータから<code>SerializableModel</code>をデシリアライズします。まず<code>rkyv</code>形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。<code>feature_sets</code>フィールドが存在しない旧形式のモデルについては、<code>feature_weights</code>から補完します。</td></tr>
 <tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>レキシコン、連接コスト行列、未知語辞書、ユーザー辞書を一度にまとめて書き出す便利メソッドです。</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>マージされたCRFモデルから得た連接IDとコストを用いて、種辞書の各語彙エントリについて<code>lex.csv</code>形式のエントリ（<code>surface,left_id,right_id,cost,features...</code>）を書き出します。</td></tr>
 <tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>すべての<code>(right_id, left_id)</code>の組み合わせ（BOS/EOSを含む）を網羅する密な<code>matrix.def</code>形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（<code>i16::MAX</code>）が設定され、Viterbi探索が未学習の遷移を避けるようにします。</td></tr>
@@ -8383,6 +8383,7 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 <h2 id="概要-3"><a class="header" href="#概要-3">概要</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>変更</th><th>影響範囲</th><th>対処方法</th></tr></thead><tbody>
 <tr><td><strong>ビルド済みユーザー辞書 <code>.bin</code> が読み込めなくなった</strong></td><td><code>.bin</code> からユーザー辞書を読み込むすべてのユーザー</td><td>CSV から <code>lindera build --user</code> で再ビルド</td></tr>
+<tr><td><strong>学習済み <code>model.dat</code> が読み込めなくなった</strong></td><td>以前のビルドで生成した <code>model.dat</code> を再利用しているユーザー</td><td><code>lindera train</code> を再実行</td></tr>
 <tr><td>Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった</td><td>1・2・4 バイトの UTF-8 文字を含むテキストに対する <code>Mode::Decompose</code> の出力</td><td>対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認</td></tr>
 <tr><td>未知語の候補ラダー（length ladder）がデフォルトで有効に</td><td>辞書外テキストに対する Normal・Decompose 両モードの出力</td><td>v5 と同一の出力が必要な場合は <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> を設定</td></tr>
 <tr><td><code>max_grouping_len</code> オプションの新設（<code>--max-grouping-len</code>、config キー、builder/worker setter）</td><td>MeCab の <code>max-grouping-size</code> 相当の上限を使いたいユーザー</td><td>対応不要（デフォルトは従来どおり無制限）</td></tr>
@@ -8410,6 +8411,30 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 </code></pre>
 <p><code>.bin</code> ではなく <code>.csv</code> からユーザー辞書を読み込んでいる場合は、ロード時に
 コンパイルされるため対応は不要です。</p>
+<h2 id="学習済みモデルファイルの再生成が必要"><a class="header" href="#学習済みモデルファイルの再生成が必要">学習済みモデルファイルの再生成が必要</a></h2>
+<p><code>lindera train</code> が書き出す <code>model.dat</code> がバイト単位で再現可能になりました。
+同じ入力・同じフラグで 2 回学習するとバイト列が一致するため、
+チェックサムの取得・キャッシュ・差分比較ができます。</p>
+<p>これを実現するため、連接行列と未知語カテゴリをハッシュマップではなく
+順序付きマップとして保持するようにしました。rkyv は archived <code>HashMap</code> を
+ソース走査順にレイアウトし、その順序はインスタンスごとにシードされるためです。
+ディスク上のレイアウトが変わるので、以前のビルドが書き出した <code>model.dat</code> は
+読み込みに失敗します。</p>
+<pre><code class="language-text">failed to deserialize model: ... re-run `lindera train` to regenerate it.
+</code></pre>
+<p><code>model.dat</code> は <code>lindera train</code> と <code>lindera export</code> の間の中間ファイルであり、
+配布物ではありません。<code>lindera train</code> を再実行して生成し直してください。
+旧モデルからすでにエクスポート済みの辞書には影響しません。また、
+学習された重みはどちらでも同一です。変わったのは直列化の順序だけです。</p>
+<p>関連する注意点が 2 つあります。</p>
+<ul>
+<li><code>SerializableModel::connection_matrix</code> と <code>SerializableModel::unk_categories</code> の型が
+<code>HashMap</code> から <code>BTreeMap</code> に変わりました。これらの公開フィールドを直接読んでいる
+場合にのみ影響します。ライターメソッド群は変更ありません。</li>
+<li>再現性は単一スレッド学習（<code>--max-threads 1</code>）で成り立ちます。マルチスレッド実行では、
+スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
+依然として実行ごとに変動します。</li>
+</ul>
 <h2 id="辞書フォーマットバージョン-2v530-でリリース済み"><a class="header" href="#辞書フォーマットバージョン-2v530-でリリース済み">辞書フォーマットバージョン 2（v5.3.0 でリリース済み）</a></h2>
 <blockquote>
 <p>この変更は v6.0.0 ではなく <strong>v5.3.0</strong> でリリース済みです。v5.3.0 から
@@ -9028,6 +9053,11 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 <li>素性テンプレート</li>
 <li>学習メタデータ（正則化、イテレーション数、素性・ラベル数）</li>
 </ul>
+<p>出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
+<code>model.dat</code> のバイト列が一致するため、チェックサムの取得や差分比較ができます。
+これは単一スレッド学習（<code>--max-threads 1</code>）の場合に成り立ちます。マルチスレッド実行では、
+スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
+依然として実行ごとに変動します。</p>
 <h2 id="api-の使用"><a class="header" href="#api-の使用">API の使用</a></h2>
 <p><code>lindera-trainer</code> の完全な API については、<a href="development/../lindera-trainer/architecture.html">Lindera Trainer アーキテクチャ</a>と<a href="development/../lindera-trainer/api_reference.html">APIリファレンス</a>を参照してください。</p>
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
