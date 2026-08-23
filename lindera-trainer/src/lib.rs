@@ -959,3 +959,185 @@ mod tests {
         );
     }
 }
+
+// Regression tests for #974: `lindera train` must produce a byte-reproducible
+// `model.dat`.
+//
+// These train for real, unlike the pure-serialization tests in `model.rs`, so
+// they cover the path the CLI actually takes -- including the fact that
+// `write_model` rebuilds the connection matrix from scratch on every call.
+#[cfg(test)]
+mod train_determinism_tests {
+    use crate::{Corpus, Trainer, TrainerConfig};
+    use std::io::Cursor;
+
+    /// Seed lexicon and corpus wide enough that the connection matrix holds
+    /// many entries.
+    ///
+    /// This matters for the assertion below. With only a handful of entries
+    /// every key probes the same 16-slot window in rkyv's archived `HashMap`,
+    /// so two runs can land on the same layout by luck and the reproducibility
+    /// assertion passes for the wrong reason. Verified by mutation: with three
+    /// seed words the test still passed after reverting the fix; with this
+    /// fixture it fails.
+    fn wide_seed_and_corpus() -> (String, String) {
+        // Distinct part-of-speech pairs mint distinct connection ids, which is
+        // what widens the matrix.
+        let pos = [
+            ("名詞", "一般"),
+            ("名詞", "固有名詞"),
+            ("名詞", "サ変接続"),
+            ("名詞", "代名詞"),
+            ("動詞", "自立"),
+            ("動詞", "非自立"),
+            ("形容詞", "自立"),
+            ("副詞", "一般"),
+            ("助詞", "係助詞"),
+            ("助詞", "格助詞"),
+            ("助動詞", "*"),
+            ("接続詞", "*"),
+        ];
+        let mut seed = String::new();
+        let mut corpus = String::new();
+        for (i, (major, sub)) in pos.iter().enumerate() {
+            for variant in 0..4 {
+                let surface = format!("語{i}{variant}");
+                let feature = format!("{major},{sub},*,*,*,*,{surface},カナ,カナ");
+                seed.push_str(&format!("{surface},0,0,0,{feature}\n"));
+                corpus.push_str(&format!("{surface}\t{feature}\n"));
+            }
+            corpus.push_str("EOS\n");
+        }
+        (seed, corpus)
+    }
+
+    /// The tiny in-line fixtures shared by these tests, mirroring
+    /// `test_train_with_bigram_template`.
+    fn fixtures() -> (
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+        &'static str,
+    ) {
+        (
+            "これ,0,0,0,名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは,0,0,0,助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト,0,0,0,名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\n",
+            "DEFAULT 0 1 0\nHIRAGANA 1 1 0\nKATAKANA 1 1 0\nKANJI 0 0 2\nALPHA 1 1 0\nNUMERIC 1 1 0\n\n0x3041..0x3096 HIRAGANA\n0x30A1..0x30F6 KATAKANA\n0x4E00..0x9FAF KANJI\n0x0030..0x0039 NUMERIC\n0x0041..0x005A ALPHA\n0x0061..0x007A ALPHA\n",
+            "DEFAULT,0,0,0,名詞,一般,*,*,*,*,*,*,*\nHIRAGANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKATAKANA,0,0,0,名詞,一般,*,*,*,*,*,*,*\nKANJI,0,0,0,名詞,一般,*,*,*,*,*,*,*\nALPHA,0,0,0,名詞,固有名詞,一般,*,*,*,*,*,*\nNUMERIC,0,0,0,名詞,数,*,*,*,*,*,*,*\n",
+            "UNIGRAM U00:%F[0]\nUNIGRAM U01:%F[0],%F?[1]\nBIGRAM B00:%L[0]/%R[0]\n",
+            "名詞,一般\tNOUN,GENERAL\n",
+            "これ\t名詞,代名詞,一般,*,*,*,これ,コレ,コレ\nは\t助詞,係助詞,*,*,*,*,は,ハ,ワ\nテスト\t名詞,サ変接続,*,*,*,*,テスト,テスト,テスト\nEOS\n",
+        )
+    }
+
+    /// Trains once and serializes the resulting model, returning the bytes.
+    ///
+    /// Single-threaded on purpose: multi-threaded gradient accumulation sums
+    /// per-thread partials in completion order, which perturbs the learned
+    /// weights themselves. That is a separate defect, tracked separately, and
+    /// these tests are about the serialization layer.
+    fn train_and_serialize() -> Vec<u8> {
+        let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
+        let (seed, corpus_text) = wide_seed_and_corpus();
+
+        let config = match TrainerConfig::from_readers(
+            Cursor::new(seed.as_bytes()),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        ) {
+            Ok(config) => config,
+            Err(err) => panic!("failed to build config: {err}"),
+        };
+
+        let trainer = match Trainer::new(config) {
+            Ok(trainer) => trainer,
+            Err(err) => panic!("failed to build trainer: {err}"),
+        }
+        .regularization_cost(0.01)
+        .max_iter(5)
+        .num_threads(1);
+
+        let corpus = match Corpus::from_reader(Cursor::new(corpus_text.as_bytes())) {
+            Ok(corpus) => corpus,
+            Err(err) => panic!("failed to read corpus: {err}"),
+        };
+
+        let model = match trainer.train(corpus) {
+            Ok(model) => model,
+            Err(err) => panic!("training failed: {err}"),
+        };
+
+        let mut buf = Vec::new();
+        if let Err(err) = model.write_model(&mut buf) {
+            panic!("failed to serialize model: {err}");
+        }
+        buf
+    }
+
+    /// Two independent training runs over identical inputs must serialize to
+    /// identical bytes. This is the issue's own repro, in-process.
+    #[test]
+    fn training_twice_produces_identical_bytes() {
+        let first = train_and_serialize();
+        let second = train_and_serialize();
+
+        assert!(!first.is_empty(), "serialized model must not be empty");
+        assert_eq!(
+            first.len(),
+            second.len(),
+            "two training runs produced different model sizes"
+        );
+        assert_eq!(
+            first, second,
+            "two training runs over identical inputs must produce identical bytes"
+        );
+    }
+
+    /// Serializing one trained model twice must also be stable. `write_model`
+    /// rebuilds the connection matrix on every call, so this exercises that
+    /// rebuild rather than a cached buffer.
+    #[test]
+    fn writing_one_model_twice_produces_identical_bytes() {
+        let (seed, char_def, unk_def, feature_def, rewrite_def, corpus_text) = fixtures();
+
+        let config = match TrainerConfig::from_readers(
+            Cursor::new(seed),
+            Cursor::new(char_def),
+            Cursor::new(unk_def),
+            Cursor::new(feature_def),
+            Cursor::new(rewrite_def),
+        ) {
+            Ok(config) => config,
+            Err(err) => panic!("failed to build config: {err}"),
+        };
+        let trainer = match Trainer::new(config) {
+            Ok(trainer) => trainer,
+            Err(err) => panic!("failed to build trainer: {err}"),
+        }
+        .regularization_cost(0.01)
+        .max_iter(5)
+        .num_threads(1);
+        let corpus = match Corpus::from_reader(Cursor::new(corpus_text)) {
+            Ok(corpus) => corpus,
+            Err(err) => panic!("failed to read corpus: {err}"),
+        };
+        let model = match trainer.train(corpus) {
+            Ok(model) => model,
+            Err(err) => panic!("training failed: {err}"),
+        };
+
+        let mut first = Vec::new();
+        let mut second = Vec::new();
+        if let Err(err) = model.write_model(&mut first) {
+            panic!("first serialization failed: {err}");
+        }
+        if let Err(err) = model.write_model(&mut second) {
+            panic!("second serialization failed: {err}");
+        }
+
+        assert_eq!(first, second, "two writes of one model must match");
+    }
+}
