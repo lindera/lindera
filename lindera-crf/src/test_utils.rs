@@ -97,7 +97,7 @@ pub fn generate_test_lattices(count: usize) -> Vec<Lattice> {
             let mut backbone = vec![0usize];
             let mut pos = 0;
             while pos < len {
-                let step = if len - pos >= 2 && pseudo(i, pos, 1) % 2 == 0 {
+                let step = if len - pos >= 2 && pseudo(i, pos, 1).is_multiple_of(2) {
                     2
                 } else {
                     1
