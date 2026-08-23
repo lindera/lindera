@@ -32,7 +32,7 @@ impl Gradient for LatticesLoss<'_> {
     type Gradient = Vec<f64>;
 
     fn gradient(&self, param: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
-        Ok(self.gradient_partial(param, 0..self.lattices.len()))
+        Ok(self.gradient_partial(param))
     }
 }
 

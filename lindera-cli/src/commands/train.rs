@@ -92,7 +92,7 @@ pub struct TrainArgs {
     #[clap(
         short = 't',
         long = "max-threads",
-        help = "Maximum number of threads (defaults to CPU core count, auto-adjusted based on dataset size)"
+        help = "Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)"
     )]
     max_threads: Option<usize>,
 }

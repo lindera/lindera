@@ -1031,13 +1031,14 @@ mod train_determinism_tests {
         )
     }
 
-    /// Trains once and serializes the resulting model, returning the bytes.
+    /// Trains once with the given thread count and serializes the resulting
+    /// model, returning the bytes.
     ///
-    /// Single-threaded on purpose: multi-threaded gradient accumulation sums
-    /// per-thread partials in completion order, which perturbs the learned
-    /// weights themselves. That is a separate defect, tracked separately, and
-    /// these tests are about the serialization layer.
-    fn train_and_serialize() -> Vec<u8> {
+    /// The thread count must not affect the bytes: the CRF loss and gradient
+    /// sum a fixed partition of the lattices in a fixed order regardless of
+    /// how many workers run (`lindera-crf`'s `LatticesLoss`), which
+    /// `training_is_identical_across_thread_counts` pins end to end.
+    fn train_and_serialize(threads: usize) -> Vec<u8> {
         let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
         let (seed, corpus_text) = wide_seed_and_corpus();
 
@@ -1058,7 +1059,7 @@ mod train_determinism_tests {
         }
         .regularization_cost(0.01)
         .max_iter(5)
-        .num_threads(1);
+        .num_threads(threads);
 
         let corpus = match Corpus::from_reader(Cursor::new(corpus_text.as_bytes())) {
             Ok(corpus) => corpus,
@@ -1081,8 +1082,8 @@ mod train_determinism_tests {
     /// identical bytes. This is the issue's own repro, in-process.
     #[test]
     fn training_twice_produces_identical_bytes() {
-        let first = train_and_serialize();
-        let second = train_and_serialize();
+        let first = train_and_serialize(1);
+        let second = train_and_serialize(1);
 
         assert!(!first.is_empty(), "serialized model must not be empty");
         assert_eq!(
@@ -1093,6 +1094,21 @@ mod train_determinism_tests {
         assert_eq!(
             first, second,
             "two training runs over identical inputs must produce identical bytes"
+        );
+    }
+
+    /// Training with one thread and with four threads must serialize to
+    /// identical bytes: the CRF reduction is a fixed partition summed in a
+    /// fixed order, so the thread count is a pure performance knob.
+    #[test]
+    fn training_is_identical_across_thread_counts() {
+        let single = train_and_serialize(1);
+        let parallel = train_and_serialize(4);
+
+        assert!(!single.is_empty(), "serialized model must not be empty");
+        assert_eq!(
+            single, parallel,
+            "1-thread and 4-thread training must produce identical bytes"
         );
     }
 
