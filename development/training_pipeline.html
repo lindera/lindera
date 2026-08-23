@@ -340,9 +340,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </ul>
 <p>The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical <code>model.dat</code> bytes, so the artifact can be checksummed
-and diffed. This holds for single-threaded training (<code>--max-threads 1</code>);
-multi-threaded runs still vary because per-thread gradient partials are summed
-in completion order and floating-point addition is not associative.</p>
+and diffed. This holds for any <code>--max-threads</code> value: the gradient and the
+loss are summed over a fixed partition of the training data in a fixed order,
+so the thread count changes only how long training takes, never its result.</p>
 <h2 id="api-usage"><a class="header" href="#api-usage">API Usage</a></h2>
 <p>For the full <code>lindera-trainer</code> API surface, see <a href="../lindera-trainer/architecture.html">Lindera Trainer Architecture</a> and <a href="../lindera-trainer/api_reference.html">API Reference</a>.</p>
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]

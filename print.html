@@ -2665,7 +2665,7 @@ Downloaded dictionary 'ipadic'
 <li><code>--regularization</code> / <code>-R</code>: Regularization type: <code>l1</code>, <code>l2</code>, or <code>elasticnet</code> (default: <code>l1</code>)</li>
 <li><code>--elastic-net-l1-ratio</code>: L1 ratio for Elastic Net regularization (0.0-1.0), only used with <code>--regularization elasticnet</code> (default: 0.5)</li>
 <li><code>--max-iterations</code> / <code>-i</code>: Maximum number of iterations for training (default: 100)</li>
-<li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count)</li>
+<li><code>--max-threads</code> / <code>-t</code>: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)</li>
 </ul>
 <h3 id="basic-workflow"><a class="header" href="#basic-workflow">Basic workflow</a></h3>
 <h4 id="1-prepare-training-files"><a class="header" href="#1-prepare-training-files">1. Prepare training files</a></h4>
@@ -8501,9 +8501,13 @@ weights are identical either way: only the serialization order changed.</p>
 <li><code>SerializableModel::connection_matrix</code> and <code>SerializableModel::unk_categories</code>
 are now <code>BTreeMap</code> rather than <code>HashMap</code>. This matters only if you read those
 public fields directly; the writer methods are unchanged.</li>
-<li>Reproducibility holds for single-threaded training (<code>--max-threads 1</code>).
-Multi-threaded runs still vary, because per-thread gradient partials are
-summed in completion order and floating-point addition is not associative.</li>
+<li>Reproducibility holds for any <code>--max-threads</code> value: the gradient and the
+loss are summed over a fixed partition of the training data in a fixed
+order, so the thread count affects only speed, never the trained model.</li>
+<li>The fixed partition changed the summation order, so weights trained
+<strong>before</strong> this change are not byte-identical to weights trained after it —
+at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if
+you need artifacts that compare equal from now on.</li>
 </ul>
 <h2 id="dictionary-format-version-2-shipped-in-v530"><a class="header" href="#dictionary-format-version-2-shipped-in-v530">Dictionary format version 2 (shipped in v5.3.0)</a></h2>
 <blockquote>
@@ -9127,9 +9131,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </ul>
 <p>The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical <code>model.dat</code> bytes, so the artifact can be checksummed
-and diffed. This holds for single-threaded training (<code>--max-threads 1</code>);
-multi-threaded runs still vary because per-thread gradient partials are summed
-in completion order and floating-point addition is not associative.</p>
+and diffed. This holds for any <code>--max-threads</code> value: the gradient and the
+loss are summed over a fixed partition of the training data in a fixed order,
+so the thread count changes only how long training takes, never its result.</p>
 <h2 id="api-usage"><a class="header" href="#api-usage">API Usage</a></h2>
 <p>For the full <code>lindera-trainer</code> API surface, see <a href="development/../lindera-trainer/architecture.html">Lindera Trainer Architecture</a> and <a href="development/../lindera-trainer/api_reference.html">API Reference</a>.</p>
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]

@@ -239,9 +239,13 @@ weights are identical either way: only the serialization order changed.</p>
 <li><code>SerializableModel::connection_matrix</code> and <code>SerializableModel::unk_categories</code>
 are now <code>BTreeMap</code> rather than <code>HashMap</code>. This matters only if you read those
 public fields directly; the writer methods are unchanged.</li>
-<li>Reproducibility holds for single-threaded training (<code>--max-threads 1</code>).
-Multi-threaded runs still vary, because per-thread gradient partials are
-summed in completion order and floating-point addition is not associative.</li>
+<li>Reproducibility holds for any <code>--max-threads</code> value: the gradient and the
+loss are summed over a fixed partition of the training data in a fixed
+order, so the thread count affects only speed, never the trained model.</li>
+<li>The fixed partition changed the summation order, so weights trained
+<strong>before</strong> this change are not byte-identical to weights trained after it —
+at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if
+you need artifacts that compare equal from now on.</li>
 </ul>
 <h2 id="dictionary-format-version-2-shipped-in-v530"><a class="header" href="#dictionary-format-version-2-shipped-in-v530">Dictionary format version 2 (shipped in v5.3.0)</a></h2>
 <blockquote>

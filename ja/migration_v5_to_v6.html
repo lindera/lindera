@@ -239,9 +239,13 @@
 <li><code>SerializableModel::connection_matrix</code> と <code>SerializableModel::unk_categories</code> の型が
 <code>HashMap</code> から <code>BTreeMap</code> に変わりました。これらの公開フィールドを直接読んでいる
 場合にのみ影響します。ライターメソッド群は変更ありません。</li>
-<li>再現性は単一スレッド学習（<code>--max-threads 1</code>）で成り立ちます。マルチスレッド実行では、
-スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
-依然として実行ごとに変動します。</li>
+<li>再現性は <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの
+固定分割を固定順で加算するため、スレッド数は所要時間だけを変え、
+学習結果は変えません。</li>
+<li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
+変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
+含むすべてのスレッド数で）。以後の成果物を比較可能にするには
+<code>lindera train</code> を再実行してください。</li>
 </ul>
 <h2 id="辞書フォーマットバージョン-2v530-でリリース済み"><a class="header" href="#辞書フォーマットバージョン-2v530-でリリース済み">辞書フォーマットバージョン 2（v5.3.0 でリリース済み）</a></h2>
 <blockquote>

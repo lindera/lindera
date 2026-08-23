@@ -340,9 +340,9 @@ BIGRAM B01:%L[0],%L[1]/%R[0],%R[1]  # Left POS detail / Right POS detail
 </ul>
 <p>出力はバイト単位で再現可能です。同じ入力・同じフラグで 2 回学習すると
 <code>model.dat</code> のバイト列が一致するため、チェックサムの取得や差分比較ができます。
-これは単一スレッド学習（<code>--max-threads 1</code>）の場合に成り立ちます。マルチスレッド実行では、
-スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
-依然として実行ごとに変動します。</p>
+これは <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの
+固定分割を固定順で加算するため、スレッド数は所要時間だけを変え、
+結果は変えません。</p>
 <h2 id="api-の使用"><a class="header" href="#api-の使用">API の使用</a></h2>
 <p><code>lindera-trainer</code> の完全な API については、<a href="../lindera-trainer/architecture.html">Lindera Trainer アーキテクチャ</a>と<a href="../lindera-trainer/api_reference.html">APIリファレンス</a>を参照してください。</p>
 <pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
