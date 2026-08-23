@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::num::NonZeroU32;
 
@@ -15,6 +16,26 @@ use lindera_dictionary::viterbi::{LexType, WordEntry, WordId};
 fn tocost(weight: f64, cost_factor: i32) -> i16 {
     let raw = -(cost_factor as f64) * weight;
     raw.round().clamp(i16::MIN as f64, i16::MAX as f64) as i16
+}
+
+/// Returns whether `bytes` begins a JSON object, ignoring leading whitespace.
+///
+/// Used only to decide whether a payload that rkyv already rejected is worth
+/// handing to the legacy JSON reader. rkyv is always tried first, so a false
+/// positive here cannot misroute a valid model.
+///
+/// # 引数
+///
+/// * `bytes` - Raw model file contents.
+///
+/// # 戻り値
+///
+/// `true` when the first non-whitespace byte is `{`.
+fn looks_like_json_object(bytes: &[u8]) -> bool {
+    bytes
+        .iter()
+        .find(|byte| !byte.is_ascii_whitespace())
+        .is_some_and(|byte| *byte == b'{')
 }
 
 /// Calculate the optimal cost factor from actual model weights.
@@ -68,8 +89,18 @@ pub struct SerializableModel {
     pub pos_info: Vec<String>,
     /// Model metadata
     pub metadata: ModelMetadata,
-    /// Connection cost matrix: (right_id, left_id) -> cost
-    pub connection_matrix: std::collections::HashMap<usize, std::collections::HashMap<usize, f64>>,
+    /// Connection cost matrix: (right_id, left_id) -> cost.
+    ///
+    /// Ordered maps rather than hashed ones, at both levels. rkyv archives a
+    /// `HashMap` as a SwissTable whose slot assignment resolves collisions in
+    /// source iteration order, and `HashMap` iteration order is seeded per
+    /// instance -- so serializing the same trained model twice produced files
+    /// of identical length with scattered byte differences (#974). A
+    /// `BTreeMap` serializes from its key-ordered iterator into a tree whose
+    /// shape depends only on the entry count, which makes `model.dat`
+    /// byte-reproducible. No stored value changes: both levels are only ever
+    /// filled key-by-key from `Vec`-ordered sources.
+    pub connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>>,
     /// Maximum left connection ID
     pub max_left_id: usize,
     /// Maximum right connection ID
@@ -78,8 +109,12 @@ pub struct SerializableModel {
     pub feature_sets: Vec<FeatureSetInfo>,
     /// Unknown word category names (from char.def)
     pub unk_category_names: Vec<String>,
-    /// Unknown word category features (from unk.def)
-    pub unk_categories: std::collections::HashMap<String, String>,
+    /// Unknown word category features (from unk.def).
+    ///
+    /// Ordered for the same reason as
+    /// [`SerializableModel::connection_matrix`]: rkyv's archived `HashMap`
+    /// layout follows source iteration order (#974).
+    pub unk_categories: BTreeMap<String, String>,
     /// Raw content of the character definition file (char.def)
     pub char_def_content: String,
     /// Raw content of the feature definition file (feature.def)
@@ -245,13 +280,13 @@ impl Model {
         // Compute optimal cost factor from actual weight range
         let cost_factor = calculate_cost_factor(&merged_model);
 
-        let mut connection_matrix = std::collections::HashMap::new();
+        let mut connection_matrix: BTreeMap<usize, BTreeMap<usize, f64>> = BTreeMap::new();
         let mut max_left_id = 0;
         let mut max_right_id = 0;
 
         for (right_id, left_map) in merged_model.matrix.iter().enumerate() {
             max_right_id = max_right_id.max(right_id);
-            let mut inner_map = std::collections::HashMap::new();
+            let mut inner_map = BTreeMap::new();
 
             for (&left_id, &weight) in left_map.iter() {
                 max_left_id = max_left_id.max(left_id as usize);
@@ -384,42 +419,73 @@ impl Model {
 
     /// Reads a trained model from a reader.
     ///
-    /// This method allows loading previously trained models for further use,
-    /// compatible with models saved by write_model.
+    /// Accepts the current rkyv binary format and, for backward
+    /// compatibility, the legacy JSON format.
     ///
     /// # Arguments
     ///
     /// * `reader` - Reader containing the serialized model data
     ///
+    /// # Returns
+    ///
+    /// The deserialized model.
+    ///
     /// # Errors
     ///
-    /// Returns an error if the model data is corrupted or incompatible.
+    /// Returns an error naming the format that failed. A model written by a
+    /// build with a different `SerializableModel` layout is reported as such,
+    /// with the instruction to re-train -- it used to fall through to the
+    /// legacy JSON reader and surface as an unrelated UTF-8 error (#974).
     pub fn read_model<R: Read>(mut reader: R) -> Result<SerializableModel> {
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
 
-        // Try rkyv first (new format with feature_sets)
-        if let Ok(mut model) = rkyv::from_bytes::<SerializableModel, rkyv::rancor::Error>(&buffer) {
-            // Backward compatibility: if feature_sets is empty, generate from feature_weights
-            if model.feature_sets.is_empty() {
-                model.feature_sets = model
-                    .feature_weights
-                    .iter()
-                    .map(|&weight| FeatureSetInfo {
-                        left_id: 0,
-                        right_id: 0,
-                        weight,
-                    })
-                    .collect();
-            }
-
-            return Ok(model);
+        if buffer.is_empty() {
+            return Err(anyhow::anyhow!(
+                "model file is empty; re-run `lindera train` to produce one"
+            ));
         }
 
-        // Fallback to JSON format (legacy)
-        let json_str = String::from_utf8(buffer)?;
-        let model: SerializableModel = serde_json::from_str(&json_str)?;
-        Ok(model)
+        // Current format: rkyv. Tried first because it is self-validating, so
+        // a successful parse proves the on-disk layout matched this build.
+        let rkyv_error = match rkyv::from_bytes::<SerializableModel, rkyv::rancor::Error>(&buffer) {
+            Ok(mut model) => {
+                // Backward compatibility: if feature_sets is empty, generate from feature_weights
+                if model.feature_sets.is_empty() {
+                    model.feature_sets = model
+                        .feature_weights
+                        .iter()
+                        .map(|&weight| FeatureSetInfo {
+                            left_id: 0,
+                            right_id: 0,
+                            weight,
+                        })
+                        .collect();
+                }
+
+                return Ok(model);
+            }
+            Err(err) => err,
+        };
+
+        // Legacy format: JSON, attempted only when the payload actually looks
+        // like JSON. Routing on the leading byte as the *primary* check would
+        // be wrong -- a valid rkyv payload starts with the low byte of
+        // `feature_weights[0]` as a little-endian f64, which is `{` about one
+        // time in 256.
+        if looks_like_json_object(&buffer) {
+            let json_str = String::from_utf8(buffer).map_err(|err| {
+                anyhow::anyhow!("model file starts like legacy JSON but is not valid UTF-8: {err}")
+            })?;
+            return serde_json::from_str(&json_str)
+                .map_err(|err| anyhow::anyhow!("failed to parse legacy JSON model: {err}"));
+        }
+
+        Err(anyhow::anyhow!(
+            "failed to deserialize model: {rkyv_error}. The file is not a legacy JSON \
+             model either, so it was most likely written by a different version of \
+             lindera-trainer; re-run `lindera train` to regenerate it."
+        ))
     }
 
     /// Gets the merged model, creating it if necessary
@@ -1239,5 +1305,172 @@ mod tests {
         assert_eq!(tocost(100.0, 700), i16::MIN);
         // Fractional weight
         assert_eq!(tocost(0.5, 700), -350);
+    }
+}
+
+// Regression tests for #974: `model.dat` must be byte-reproducible.
+//
+// Feature ids and connection costs are stable across runs, but the archived
+// bytes were not: rkyv lays an archived `HashMap` out as a SwissTable whose
+// slot assignment resolves collisions in source iteration order, and
+// `HashMap` iteration order is seeded per instance.
+#[cfg(test)]
+mod determinism_tests {
+    use super::{FeatureSetInfo, ModelMetadata, SerializableModel};
+    use std::collections::BTreeMap;
+
+    /// Builds a model whose two order-sensitive maps are populated by walking
+    /// `keys` in the given order. Everything else is fixed.
+    fn model_with_maps(keys: &[usize]) -> SerializableModel {
+        let mut connection_matrix = BTreeMap::new();
+        let mut unk_categories = BTreeMap::new();
+        for &k in keys {
+            // The inner key set is derived from `k`, not from the traversal
+            // order, so two builds over the same keys in different orders
+            // produce logically identical maps -- which is exactly what this
+            // test needs to isolate ordering from content.
+            let mut inner = BTreeMap::new();
+            for j in 0..4 {
+                inner.insert(k + j, (k * 64 + j) as f64);
+            }
+            connection_matrix.insert(k, inner);
+            unk_categories.insert(format!("CAT{k:03}"), format!("feat{k},*,*"));
+        }
+        SerializableModel {
+            feature_weights: vec![0.5; 4],
+            labels: vec!["a".to_string()],
+            pos_info: vec!["名詞,一般".to_string()],
+            metadata: ModelMetadata {
+                version: "1.0.0".to_string(),
+                regularization: 0.01,
+                iterations: 10,
+                feature_count: 4,
+                label_count: 1,
+            },
+            connection_matrix,
+            max_left_id: 63,
+            max_right_id: 63,
+            feature_sets: vec![FeatureSetInfo {
+                left_id: 1,
+                right_id: 1,
+                weight: 0.25,
+            }],
+            unk_category_names: vec!["CAT000".to_string()],
+            unk_categories,
+            char_def_content: String::new(),
+            feature_def_content: String::new(),
+            rewrite_def_content: String::new(),
+            cost_factor: 700,
+            left_id_map: vec![(1, "*".to_string())],
+            right_id_map: vec![(1, "*".to_string())],
+        }
+    }
+
+    /// The archived bytes must depend only on the logical contents of the two
+    /// maps, never on the order they were populated in.
+    ///
+    /// 32 keys is deliberate: rkyv sizes the SwissTable at ~89% load and its
+    /// probe window is 16 slots, so under `HashMap` the ascending and
+    /// descending builds necessarily resolve collisions differently. Two
+    /// separately constructed `HashMap`s also get different `RandomState`
+    /// seeds, so this is not a coin flip.
+    #[test]
+    fn serialized_model_is_independent_of_map_insertion_order() {
+        let forward: Vec<usize> = (0..32).collect();
+        let reverse: Vec<usize> = (0..32).rev().collect();
+
+        let a = match rkyv::to_bytes::<rkyv::rancor::Error>(&model_with_maps(&forward)) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to serialize ascending model: {err}"),
+        };
+        let b = match rkyv::to_bytes::<rkyv::rancor::Error>(&model_with_maps(&reverse)) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to serialize descending model: {err}"),
+        };
+
+        assert_eq!(
+            a.as_slice(),
+            b.as_slice(),
+            "archived bytes must not depend on map insertion order"
+        );
+    }
+
+    /// Serializing the very same value twice must also be stable -- a weaker
+    /// property than the one above, but it is the one a caller writing the
+    /// same model to two files relies on.
+    #[test]
+    fn serializing_the_same_model_twice_is_stable() {
+        let keys: Vec<usize> = (0..32).collect();
+        let model = model_with_maps(&keys);
+
+        let a = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("first serialization failed: {err}"),
+        };
+        let b = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("second serialization failed: {err}"),
+        };
+
+        assert_eq!(a.as_slice(), b.as_slice());
+    }
+
+    /// The connection matrix's type, spelled out so the compile-time guard
+    /// below names it exactly.
+    type OrderedConnectionMatrix = BTreeMap<usize, BTreeMap<usize, f64>>;
+
+    /// The unknown-word category map's type, for the same reason.
+    type OrderedUnkCategories = BTreeMap<String, String>;
+
+    /// Compile-time guard. `model.dat` is byte-reproducible only while these
+    /// two fields are ordered maps. These functions are never called; they
+    /// exist so that switching either field back to `HashMap` fails to
+    /// compile rather than silently regressing (#974).
+    #[allow(dead_code)]
+    fn assert_connection_matrix_is_ordered(model: &SerializableModel) -> &OrderedConnectionMatrix {
+        &model.connection_matrix
+    }
+
+    /// See [`assert_connection_matrix_is_ordered`].
+    #[allow(dead_code)]
+    fn assert_unk_categories_is_ordered(model: &SerializableModel) -> &OrderedUnkCategories {
+        &model.unk_categories
+    }
+
+    /// A payload that is neither valid rkyv nor JSON must say so and tell the
+    /// user to re-train, rather than surfacing an unrelated UTF-8 error.
+    #[test]
+    fn read_model_rejects_unrecognized_payload_with_an_actionable_error() {
+        let garbage = vec![0xffu8; 64];
+
+        let err = match super::Model::read_model(garbage.as_slice()) {
+            Ok(_) => panic!("garbage must not deserialize"),
+            Err(err) => err.to_string(),
+        };
+
+        assert!(err.contains("lindera train"), "unhelpful message: {err}");
+    }
+
+    /// A payload that looks like JSON but is malformed is reported as a JSON
+    /// parse failure, so the legacy path stays diagnosable.
+    #[test]
+    fn read_model_reports_malformed_legacy_json() {
+        let err = match super::Model::read_model(&b"{ not json"[..]) {
+            Ok(_) => panic!("malformed JSON must not deserialize"),
+            Err(err) => err.to_string(),
+        };
+
+        assert!(err.contains("legacy JSON"), "unhelpful message: {err}");
+    }
+
+    /// An empty file is its own case, and used to reach the JSON reader.
+    #[test]
+    fn read_model_rejects_an_empty_file() {
+        let err = match super::Model::read_model(&b""[..]) {
+            Ok(_) => panic!("an empty file must not deserialize"),
+            Err(err) => err.to_string(),
+        };
+
+        assert!(err.contains("empty"), "unhelpful message: {err}");
     }
 }

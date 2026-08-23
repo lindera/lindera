@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::sync::Arc;
@@ -32,7 +32,11 @@ pub struct TrainerConfig {
     pub(crate) metadata: Metadata,
     /// Maps unknown word category names to their feature strings from unk.def
     /// Format: category -> "pos,feature1,feature2,..."
-    pub(crate) unk_categories: HashMap<String, String>,
+    ///
+    /// Ordered rather than hashed: this map is cloned verbatim into
+    /// `SerializableModel::unk_categories`, whose serialized byte layout must
+    /// not depend on iteration order (#974).
+    pub(crate) unk_categories: BTreeMap<String, String>,
     /// Maps unknown word category names to their costs from unk.def
     /// Format: category -> cost
     pub(crate) unk_costs: HashMap<String, i32>,
@@ -189,7 +193,7 @@ impl TrainerConfig {
             std::io::Read::read_to_string(&mut unk_reader, &mut unk_content)?;
         }
 
-        let mut unk_categories = HashMap::new();
+        let mut unk_categories = BTreeMap::new();
         let mut unk_costs = HashMap::new();
         for line in unk_content.lines() {
             if line.trim().is_empty() || line.starts_with('#') {
