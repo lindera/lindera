@@ -1,30 +1,211 @@
-use core::{num::NonZeroU32, ops::Range};
+use core::num::NonZeroU32;
+use core::ops::Range;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use alloc::vec::Vec;
 
-use std::sync::Mutex;
 use std::thread;
 
 use hashbrown::{HashMap, HashSet, hash_map::RawEntryMut};
 
 use crate::errors::{Result, RucrfError};
 use crate::feature::FeatureProvider;
-use crate::forward_backward;
+use crate::forward_backward::{self, Alpha, Beta};
 use crate::lattice::Lattice;
 use crate::model::RawModel;
 use crate::optimizers::lbfgs;
 use crate::utils::FromU32;
 
+/// Upper bound on the number of chunks a lattice slice is split into.
+///
+/// The chunk boundaries fix the order in which partial results are combined,
+/// so this constant is part of the numerical contract of training: changing it
+/// perturbs the learned weights by a few ULP. It also caps how many threads a
+/// single gradient or loss evaluation can keep busy.
+const MAX_CHUNKS: usize = 64;
+
+/// Smallest number of lattices that justifies its own chunk.
+///
+/// Without this floor a tiny corpus would be split into many nearly-empty
+/// chunks and pay one partial buffer and one merge pass per chunk for almost
+/// no work.
+const MIN_LATTICES_PER_CHUNK: usize = 8;
+
+/// Soft budget for all per-chunk partial gradients of one reduction, in bytes.
+///
+/// A chunk's partial gradient is a `param.len()`-sized `f64` buffer, so for
+/// large models the chunk count is reduced to keep the total scratch memory
+/// bounded. Like [`MAX_CHUNKS`], this constant is part of the numerical
+/// contract: changing it changes the partition and therefore the summation
+/// order.
+const PARTIAL_BUDGET_BYTES: usize = 64 << 20;
+
+/// Returns the number of chunks a lattice slice is split into.
+///
+/// Deliberately *not* a function of the thread count: the chunk count and the
+/// chunk boundaries define the summation order of the training objective, and
+/// the summation order must not depend on how many workers happen to run.
+/// Thread counts above the returned value simply leave surplus workers idle.
+///
+/// # 引数
+///
+/// * `lattice_count` - Number of lattices to reduce over.
+/// * `param_len` - Length of the parameter vector, which sizes one partial
+///   gradient buffer.
+///
+/// # 戻り値
+///
+/// The chunk count; `0` when there are no lattices.
+fn chunk_count(lattice_count: usize, param_len: usize) -> usize {
+    if lattice_count == 0 {
+        return 0;
+    }
+    let partial_bytes = param_len.saturating_mul(size_of::<f64>()).max(1);
+    let by_memory = (PARTIAL_BUDGET_BYTES / partial_bytes).max(2);
+    lattice_count
+        .div_ceil(MIN_LATTICES_PER_CHUNK)
+        .min(MAX_CHUNKS)
+        .min(by_memory)
+        .max(1)
+}
+
+/// Returns the half-open lattice range covered by chunk `index`.
+///
+/// Chunk sizes differ by at most one lattice; the first
+/// `lattice_count % chunk_count` chunks are the larger ones. Together with
+/// [`chunk_count`] this fixes the partition — and therefore the summation
+/// order — independently of the thread count.
+///
+/// # 引数
+///
+/// * `lattice_count` - Total number of lattices being partitioned.
+/// * `chunk_count` - Number of chunks, as returned by [`chunk_count`].
+/// * `index` - Chunk index in `0..chunk_count`.
+///
+/// # 戻り値
+///
+/// The half-open range of lattice indices covered by the chunk; empty when
+/// `chunk_count` is `0`.
+fn chunk_range(lattice_count: usize, chunk_count: usize, index: usize) -> Range<usize> {
+    if chunk_count == 0 {
+        return 0..0;
+    }
+    let base = lattice_count / chunk_count;
+    let rem = lattice_count % chunk_count;
+    let extra = index.min(rem);
+    let start = index * base + extra;
+    let end = start + base + usize::from(index < rem);
+    start..end
+}
+
+/// Adds `src` into `dst` element by element.
+///
+/// This is the single place where partial gradients are combined, so the
+/// sequential and the parallel path provably perform the same additions.
+///
+/// # 引数
+///
+/// * `dst` - Accumulator, updated in place.
+/// * `src` - Partial to add; must have the same length as `dst`.
+fn add_assign(dst: &mut [f64], src: &[f64]) {
+    debug_assert_eq!(dst.len(), src.len());
+    for (d, s) in dst.iter_mut().zip(src) {
+        *d += *s;
+    }
+}
+
+/// Sorts `(chunk index, partial gradient)` pairs by chunk index and adds the
+/// partials into `acc` in ascending index order.
+///
+/// The ascending fold makes the reduction independent of which worker
+/// produced which partial and of the order the workers finished in.
+///
+/// # 引数
+///
+/// * `acc` - Accumulator, updated in place.
+/// * `partials` - Indexed partial gradients, in any order.
+fn add_indexed_partials(acc: &mut [f64], mut partials: Vec<(usize, Vec<f64>)>) {
+    partials.sort_unstable_by_key(|(index, _)| *index);
+    for (_, partial) in &partials {
+        add_assign(acc, partial);
+    }
+}
+
+/// Sorts `(chunk index, partial loss)` pairs by chunk index and sums the
+/// partials from `0.0` in ascending index order.
+///
+/// # 引数
+///
+/// * `partials` - Indexed partial losses, in any order.
+///
+/// # 戻り値
+///
+/// The index-ordered sum.
+fn sum_indexed_partials(mut partials: Vec<(usize, f64)>) -> f64 {
+    partials.sort_unstable_by_key(|(index, _)| *index);
+    let mut total = 0.0;
+    for (_, partial) in &partials {
+        total += partial;
+    }
+    total
+}
+
+/// Joins a scoped worker thread, re-raising a worker panic in the caller.
+///
+/// # 引数
+///
+/// * `handle` - The scoped join handle to wait on.
+///
+/// # 戻り値
+///
+/// The worker's return value.
+fn join_or_resume<T>(handle: thread::ScopedJoinHandle<'_, T>) -> T {
+    match handle.join() {
+        Ok(value) => value,
+        Err(payload) => std::panic::resume_unwind(payload),
+    }
+}
+
+/// Training objective (negative log-likelihood) over a set of lattices,
+/// evaluated by L-BFGS through the [`argmin`] `CostFunction` / `Gradient`
+/// traits.
+///
+/// Both evaluations split the lattice slice into chunks whose count and
+/// boundaries depend on the lattice count and the parameter length alone
+/// (see [`chunk_count`]), and reduce the per-chunk partials in ascending
+/// chunk order. `n_threads` therefore changes only how long an evaluation
+/// takes, never its result.
 pub struct LatticesLoss<'a> {
+    /// Lattices of the training corpus.
     pub lattices: &'a [Lattice],
+    /// Provider of per-label feature sets.
     provider: &'a FeatureProvider,
+    /// Maps unigram feature ids to weight indices.
     unigram_weight_indices: &'a [Option<NonZeroU32>],
+    /// Maps bigram feature id pairs to weight indices.
     bigram_weight_indices: &'a [HashMap<u32, u32>],
+    /// Maximum number of worker threads; a pure performance knob.
     n_threads: usize,
+    /// L2 regularization strength, when enabled.
     l2_lambda: Option<f64>,
 }
 
 impl<'a> LatticesLoss<'a> {
+    /// Creates a new loss function over the given lattices.
+    ///
+    /// # 引数
+    ///
+    /// * `lattices` - Lattices of the training corpus.
+    /// * `provider` - Provider of per-label feature sets.
+    /// * `unigram_weight_indices` - Maps unigram feature ids to weight indices.
+    /// * `bigram_weight_indices` - Maps bigram feature id pairs to weight
+    ///   indices.
+    /// * `n_threads` - Maximum number of worker threads.
+    /// * `l2_lambda` - L2 regularization strength, when enabled.
+    ///
+    /// # 戻り値
+    ///
+    /// The loss function.
     pub const fn new(
         lattices: &'a [Lattice],
         provider: &'a FeatureProvider,
@@ -43,48 +224,244 @@ impl<'a> LatticesLoss<'a> {
         }
     }
 
-    pub fn gradient_partial(&self, param: &[f64], range: Range<usize>) -> Vec<f64> {
-        let (s, r) = crossbeam_channel::unbounded();
+    /// Accumulates the gradient of one chunk of lattices into `out`.
+    ///
+    /// Lattices are processed in ascending slice order, so given an `out`
+    /// filled with `+0.0` the result is a pure function of `param` and the
+    /// chunk's lattices — independent of which worker runs the chunk and of
+    /// what that worker ran before.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    /// * `range` - Lattice indices covered by this chunk.
+    /// * `alphas` - Reusable forward-score scratch, grown as needed.
+    /// * `betas` - Reusable backward-score scratch, grown as needed.
+    /// * `out` - Chunk partial gradient, updated in place; the caller must
+    ///   pass it filled with `+0.0`.
+    fn accumulate_chunk_gradient(
+        &self,
+        param: &[f64],
+        range: Range<usize>,
+        alphas: &mut Vec<Vec<Alpha>>,
+        betas: &mut Vec<Vec<Beta>>,
+        out: &mut [f64],
+    ) {
         for lattice in &self.lattices[range] {
-            s.send(lattice).unwrap();
+            let z = forward_backward::calculate_alphas_betas(
+                lattice,
+                self.provider,
+                param,
+                self.unigram_weight_indices,
+                self.bigram_weight_indices,
+                alphas,
+                betas,
+            );
+            forward_backward::update_gradient(
+                lattice,
+                self.provider,
+                param,
+                self.unigram_weight_indices,
+                self.bigram_weight_indices,
+                alphas,
+                betas,
+                z,
+                out,
+            );
         }
-        let gradients = Mutex::new(vec![0.0; param.len()]);
+    }
+
+    /// Computes the loss of one chunk of lattices, summed from `0.0` in
+    /// ascending slice order.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    /// * `range` - Lattice indices covered by this chunk.
+    /// * `alphas` - Reusable forward-score scratch, grown as needed.
+    /// * `betas` - Reusable backward-score scratch, grown as needed.
+    ///
+    /// # 戻り値
+    ///
+    /// The chunk's partial loss.
+    fn chunk_cost(
+        &self,
+        param: &[f64],
+        range: Range<usize>,
+        alphas: &mut Vec<Vec<Alpha>>,
+        betas: &mut Vec<Vec<Beta>>,
+    ) -> f64 {
+        let mut total = 0.0;
+        for lattice in &self.lattices[range] {
+            let z = forward_backward::calculate_alphas_betas(
+                lattice,
+                self.provider,
+                param,
+                self.unigram_weight_indices,
+                self.bigram_weight_indices,
+                alphas,
+                betas,
+            );
+            total += forward_backward::calculate_loss(
+                lattice,
+                self.provider,
+                param,
+                self.unigram_weight_indices,
+                self.bigram_weight_indices,
+                z,
+            );
+        }
+        total
+    }
+
+    /// Runs every chunk on up to `n_threads` workers and returns the indexed
+    /// partial gradients.
+    ///
+    /// Workers claim chunk indices from an atomic ticket, so scheduling stays
+    /// greedy (a slow chunk never stalls an idle worker) — but each partial is
+    /// keyed by its chunk index, which is all the reduction depends on.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    /// * `chunks` - Chunk count, as returned by [`chunk_count`].
+    ///
+    /// # 戻り値
+    ///
+    /// One `(chunk index, partial gradient)` pair per chunk, in no particular
+    /// order.
+    fn gradient_partials_parallel(&self, param: &[f64], chunks: usize) -> Vec<(usize, Vec<f64>)> {
+        let lattice_count = self.lattices.len();
+        // Relaxed suffices: the ticket only hands out chunk indices, and the
+        // partials are published to the caller by the scope's implicit join.
+        let next_chunk = AtomicUsize::new(0);
+        let workers = self.n_threads.min(chunks);
+
         thread::scope(|scope| {
-            for _ in 0..self.n_threads {
-                scope.spawn(|| {
-                    let mut alphas = vec![];
-                    let mut betas = vec![];
-                    let mut local_gradients = vec![0.0; param.len()];
-                    while let Ok(lattice) = r.try_recv() {
-                        let z = forward_backward::calculate_alphas_betas(
-                            lattice,
-                            self.provider,
-                            param,
-                            self.unigram_weight_indices,
-                            self.bigram_weight_indices,
-                            &mut alphas,
-                            &mut betas,
-                        );
-                        forward_backward::update_gradient(
-                            lattice,
-                            self.provider,
-                            param,
-                            self.unigram_weight_indices,
-                            self.bigram_weight_indices,
-                            &alphas,
-                            &betas,
-                            z,
-                            &mut local_gradients,
-                        );
-                    }
-                    #[allow(clippy::significant_drop_in_scrutinee)]
-                    for (y, x) in gradients.lock().unwrap().iter_mut().zip(local_gradients) {
-                        *y += x;
-                    }
-                });
+            let handles: Vec<_> = (0..workers)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let mut alphas = vec![];
+                        let mut betas = vec![];
+                        let mut mine = Vec::new();
+                        loop {
+                            let index = next_chunk.fetch_add(1, Ordering::Relaxed);
+                            if index >= chunks {
+                                break;
+                            }
+                            let mut partial = vec![0.0; param.len()];
+                            self.accumulate_chunk_gradient(
+                                param,
+                                chunk_range(lattice_count, chunks, index),
+                                &mut alphas,
+                                &mut betas,
+                                &mut partial,
+                            );
+                            mine.push((index, partial));
+                        }
+                        mine
+                    })
+                })
+                .collect();
+            handles.into_iter().flat_map(join_or_resume).collect()
+        })
+    }
+
+    /// Runs every chunk on up to `n_threads` workers and returns the indexed
+    /// partial losses.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    /// * `chunks` - Chunk count, as returned by [`chunk_count`].
+    ///
+    /// # 戻り値
+    ///
+    /// One `(chunk index, partial loss)` pair per chunk, in no particular
+    /// order.
+    fn cost_partials_parallel(&self, param: &[f64], chunks: usize) -> Vec<(usize, f64)> {
+        let lattice_count = self.lattices.len();
+        // Relaxed suffices: see `gradient_partials_parallel`.
+        let next_chunk = AtomicUsize::new(0);
+        let workers = self.n_threads.min(chunks);
+
+        thread::scope(|scope| {
+            let handles: Vec<_> = (0..workers)
+                .map(|_| {
+                    scope.spawn(|| {
+                        let mut alphas = vec![];
+                        let mut betas = vec![];
+                        let mut mine = Vec::new();
+                        loop {
+                            let index = next_chunk.fetch_add(1, Ordering::Relaxed);
+                            if index >= chunks {
+                                break;
+                            }
+                            let partial = self.chunk_cost(
+                                param,
+                                chunk_range(lattice_count, chunks, index),
+                                &mut alphas,
+                                &mut betas,
+                            );
+                            mine.push((index, partial));
+                        }
+                        mine
+                    })
+                })
+                .collect();
+            handles.into_iter().flat_map(join_or_resume).collect()
+        })
+    }
+
+    /// Computes the gradient of the training objective over every lattice.
+    ///
+    /// The lattice slice is split into a fixed number of chunks derived from
+    /// the lattice count and the parameter length alone (see [`chunk_count`]).
+    /// Each chunk's partial gradient is accumulated from a zeroed buffer, and
+    /// the partials are added into the result in ascending chunk order.
+    /// Neither the partition nor the reduction order depends on `n_threads`,
+    /// so for a given build, lattice slice and `param` this function returns
+    /// bit-identical values for every thread count; `n_threads` changes only
+    /// how long the call takes. At one thread no channel, lock or thread is
+    /// created and the chunks run as a plain loop.
+    ///
+    /// Do not accumulate two chunks into one buffer, and do not skip the
+    /// final add for a single chunk: `0.0 + x` maps `-0.0` to `+0.0`, so both
+    /// shortcuts would make the result depend on the partition.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    ///
+    /// # 戻り値
+    ///
+    /// The gradient, with the same length as `param`, including the L2 term
+    /// when configured.
+    pub fn gradient_partial(&self, param: &[f64]) -> Vec<f64> {
+        let chunks = chunk_count(self.lattices.len(), param.len());
+        let mut gradients = vec![0.0; param.len()];
+
+        if self.n_threads <= 1 || chunks <= 1 {
+            let mut alphas = vec![];
+            let mut betas = vec![];
+            let mut partial = vec![0.0; param.len()];
+            for index in 0..chunks {
+                partial.fill(0.0);
+                self.accumulate_chunk_gradient(
+                    param,
+                    chunk_range(self.lattices.len(), chunks, index),
+                    &mut alphas,
+                    &mut betas,
+                    &mut partial,
+                );
+                add_assign(&mut gradients, &partial);
             }
-        });
-        let mut gradients = gradients.into_inner().unwrap();
+        } else {
+            add_indexed_partials(
+                &mut gradients,
+                self.gradient_partials_parallel(param, chunks),
+            );
+        }
 
         if let Some(lambda) = self.l2_lambda {
             for (g, p) in gradients.iter_mut().zip(param) {
@@ -95,49 +472,38 @@ impl<'a> LatticesLoss<'a> {
         gradients
     }
 
+    /// Computes the training loss over every lattice.
+    ///
+    /// Chunked and reduced exactly like [`Self::gradient_partial`], with
+    /// scalar partials: the same partition, the same ascending-index fold,
+    /// and therefore the same guarantee — the result is bit-identical for
+    /// every thread count.
+    ///
+    /// # 引数
+    ///
+    /// * `param` - Current parameter vector.
+    ///
+    /// # 戻り値
+    ///
+    /// The loss, including the L2 term when configured.
     pub fn cost(&self, param: &[f64]) -> f64 {
-        let (s, r) = crossbeam_channel::unbounded();
-        for lattice in self.lattices {
-            s.send(lattice).unwrap();
+        let chunks = chunk_count(self.lattices.len(), param.len());
+        let mut loss_total = 0.0;
+
+        if self.n_threads <= 1 || chunks <= 1 {
+            let mut alphas = vec![];
+            let mut betas = vec![];
+            for index in 0..chunks {
+                loss_total += self.chunk_cost(
+                    param,
+                    chunk_range(self.lattices.len(), chunks, index),
+                    &mut alphas,
+                    &mut betas,
+                );
+            }
+        } else {
+            loss_total = sum_indexed_partials(self.cost_partials_parallel(param, chunks));
         }
-        let mut loss_total = thread::scope(|scope| {
-            let mut threads = vec![];
-            for _ in 0..self.n_threads {
-                let t = scope.spawn(|| {
-                    let mut alphas = vec![];
-                    let mut betas = vec![];
-                    let mut loss_total = 0.0;
-                    while let Ok(lattice) = r.try_recv() {
-                        let z = forward_backward::calculate_alphas_betas(
-                            lattice,
-                            self.provider,
-                            param,
-                            self.unigram_weight_indices,
-                            self.bigram_weight_indices,
-                            &mut alphas,
-                            &mut betas,
-                        );
-                        let loss = forward_backward::calculate_loss(
-                            lattice,
-                            self.provider,
-                            param,
-                            self.unigram_weight_indices,
-                            self.bigram_weight_indices,
-                            z,
-                        );
-                        loss_total += loss;
-                    }
-                    loss_total
-                });
-                threads.push(t);
-            }
-            let mut loss_total = 0.0;
-            for t in threads {
-                let loss = t.join().unwrap();
-                loss_total += loss;
-            }
-            loss_total
-        });
 
         if let Some(lambda) = self.l2_lambda {
             let mut norm2 = 0.0;
@@ -624,7 +990,7 @@ mod tests {
             expected[i] += prob4;
         }
 
-        let result = loss_function.gradient_partial(&weights, 0..lattices.len());
+        let result = loss_function.gradient_partial(&weights);
 
         let norm = expected
             .iter()
@@ -632,5 +998,279 @@ mod tests {
             .fold(0.0, |acc, (a, b)| acc + (a - b).abs());
 
         assert!(norm < 1e-12);
+    }
+
+    fn wide_fixture_tables() -> (Vec<Option<NonZeroU32>>, Vec<HashMap<u32, u32>>) {
+        let unigram_weight_indices = vec![
+            NonZeroU32::new(2),
+            NonZeroU32::new(4),
+            NonZeroU32::new(6),
+            NonZeroU32::new(8),
+        ];
+        let bigram_weight_indices = vec![
+            hashmap![0 => 28, 1 => 0, 2 => 2, 3 => 4, 4 => 6],
+            hashmap![0 => 8, 1 => 9, 2 => 10, 3 => 11, 4 => 12],
+            hashmap![0 => 13, 1 => 14, 2 => 15, 3 => 16, 4 => 17],
+            hashmap![0 => 18, 1 => 19, 2 => 20, 3 => 21, 4 => 22],
+            hashmap![0 => 23, 1 => 24, 2 => 25, 3 => 26, 4 => 27],
+        ];
+        (unigram_weight_indices, bigram_weight_indices)
+    }
+
+    // Full-mantissa weights so that any change of summation order shows in
+    // the low bits of the result.
+    fn wide_fixture_weights() -> Vec<f64> {
+        (0..29)
+            .map(|i| ((i + 1) as f64).sqrt() * 0.37 - 0.11)
+            .collect()
+    }
+
+    #[test]
+    fn chunk_range_partitions_the_slice() {
+        for lattice_count in 0..40 {
+            for chunks in 1..=8 {
+                let mut next_start = 0;
+                let mut min_size = usize::MAX;
+                let mut max_size = 0;
+                for index in 0..chunks {
+                    let range = chunk_range(lattice_count, chunks, index);
+                    assert_eq!(
+                        range.start, next_start,
+                        "chunk {index} of {chunks} over {lattice_count} is not contiguous"
+                    );
+                    let size = range.end - range.start;
+                    min_size = min_size.min(size);
+                    max_size = max_size.max(size);
+                    next_start = range.end;
+                }
+                assert_eq!(
+                    next_start, lattice_count,
+                    "{chunks} chunks over {lattice_count} lattices do not cover the slice"
+                );
+                assert!(
+                    max_size - min_size <= 1,
+                    "chunk sizes over {lattice_count} lattices differ by more than one"
+                );
+            }
+        }
+    }
+
+    // The specification test: the full gradient must equal the ascending-
+    // chunk-order fold of each chunk computed on its own. This pins the
+    // reduction *structure*, not just the agreement of two runs, so it fails
+    // on the pre-fix code whose one-thread result is a flat sum.
+    #[test]
+    fn gradient_equals_chunkwise_reduction() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+
+        let chunks = chunk_count(lattices.len(), weights.len());
+        assert!(chunks > 1, "fixture too small to span several chunks");
+
+        let full =
+            LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, None).gradient_partial(&weights);
+
+        let mut folded = vec![0.0; weights.len()];
+        for index in 0..chunks {
+            let range = chunk_range(lattices.len(), chunks, index);
+            let sub = &lattices[range];
+            // A chunk holds at most MIN_LATTICES_PER_CHUNK lattices here, so
+            // evaluating it alone must not split it further -- otherwise this
+            // would not be a raw chunk partial.
+            assert_eq!(chunk_count(sub.len(), weights.len()), 1);
+            let partial =
+                LatticesLoss::new(sub, &provider, &uni, &bi, 1, None).gradient_partial(&weights);
+            add_assign(&mut folded, &partial);
+        }
+
+        for (k, (a, b)) in full.iter().zip(&folded).enumerate() {
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "component {k}: full {a} != chunkwise {b}"
+            );
+        }
+    }
+
+    #[test]
+    fn gradient_is_bit_identical_across_thread_counts() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+
+        assert!(
+            chunk_count(lattices.len(), weights.len()) > 1,
+            "fixture too small to span several chunks"
+        );
+
+        let baseline =
+            LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, None).gradient_partial(&weights);
+        assert!(
+            baseline.iter().all(|g| g.is_finite()),
+            "fixture produced a non-finite gradient"
+        );
+        assert!(
+            baseline.iter().any(|g| *g != 0.0),
+            "vacuous fixture: all-zero gradient"
+        );
+
+        for n_threads in [2, 3, 4, 8, 16] {
+            let result = LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, None)
+                .gradient_partial(&weights);
+            assert_eq!(result.len(), baseline.len());
+            for (k, (a, b)) in baseline.iter().zip(&result).enumerate() {
+                assert_eq!(
+                    a.to_bits(),
+                    b.to_bits(),
+                    "component {k} differs at n_threads={n_threads}: {a} vs {b}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cost_is_bit_identical_across_thread_counts() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+
+        assert!(
+            chunk_count(lattices.len(), weights.len()) > 1,
+            "fixture too small to span several chunks"
+        );
+
+        for l2_lambda in [None, Some(0.01)] {
+            let baseline =
+                LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, l2_lambda).cost(&weights);
+            assert!(baseline.is_finite() && baseline != 0.0, "vacuous fixture");
+
+            for n_threads in [2, 3, 4, 8, 16] {
+                let result =
+                    LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, l2_lambda)
+                        .cost(&weights);
+                assert_eq!(
+                    baseline.to_bits(),
+                    result.to_bits(),
+                    "cost differs at n_threads={n_threads} (l2={l2_lambda:?}): \
+                     {baseline} vs {result}"
+                );
+            }
+        }
+    }
+
+    // Issue #980's repro, in unit form: repeated evaluations at a high thread
+    // count must all agree bit for bit.
+    #[test]
+    fn gradient_is_stable_across_repeated_runs() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(200);
+        let (uni, bi) = wide_fixture_tables();
+
+        let loss = LatticesLoss::new(&lattices, &provider, &uni, &bi, 8, None);
+        let first = loss.gradient_partial(&weights);
+        for run in 1..20 {
+            let again = loss.gradient_partial(&weights);
+            for (k, (a, b)) in first.iter().zip(&again).enumerate() {
+                assert_eq!(
+                    a.to_bits(),
+                    b.to_bits(),
+                    "component {k} changed on run {run}: {a} vs {b}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn more_threads_than_chunks_matches_single_thread() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices = test_utils::generate_test_lattices(24);
+        let (uni, bi) = wide_fixture_tables();
+
+        // Derive the thread count from the data so the test cannot silently
+        // stop exercising the surplus-worker path.
+        let chunks = chunk_count(lattices.len(), weights.len());
+        assert!(chunks >= 2, "fixture too small to span several chunks");
+        let n_threads = chunks + 3;
+
+        let baseline =
+            LatticesLoss::new(&lattices, &provider, &uni, &bi, 1, None).gradient_partial(&weights);
+        let surplus = LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, None)
+            .gradient_partial(&weights);
+        for (k, (a, b)) in baseline.iter().zip(&surplus).enumerate() {
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "component {k} differs with {n_threads} threads over {chunks} chunks"
+            );
+        }
+    }
+
+    #[test]
+    fn empty_lattices_yield_zero_gradient_and_cost() {
+        let weights = wide_fixture_weights();
+        let provider = test_utils::generate_test_feature_provider();
+        let lattices: Vec<Lattice> = vec![];
+        let (uni, bi) = wide_fixture_tables();
+
+        for n_threads in [1, 8] {
+            let loss = LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, None);
+            let gradient = loss.gradient_partial(&weights);
+            // argmin's vector arithmetic depends on the length, so it must be
+            // param-sized even with nothing to sum.
+            assert_eq!(gradient.len(), weights.len());
+            assert!(gradient.iter().all(|g| *g == 0.0));
+            assert_eq!(loss.cost(&weights), 0.0);
+
+            let lambda = 0.05;
+            let loss = LatticesLoss::new(&lattices, &provider, &uni, &bi, n_threads, Some(lambda));
+            let gradient = loss.gradient_partial(&weights);
+            assert_eq!(gradient.len(), weights.len());
+            for (k, (g, p)) in gradient.iter().zip(&weights).enumerate() {
+                assert_eq!(
+                    g.to_bits(),
+                    (lambda * *p).to_bits(),
+                    "L2 gradient component {k}"
+                );
+            }
+            let mut norm2 = 0.0;
+            for &p in &weights {
+                norm2 += p * p;
+            }
+            assert_eq!(
+                loss.cost(&weights).to_bits(),
+                (lambda * norm2 * 0.5).to_bits()
+            );
+        }
+    }
+
+    // Fails by construction under any reordering, not probabilistically:
+    // with ties-to-even, (1.0 + 2^-53) + 2^-53 == 1.0, while summing the two
+    // 2^-53 terms first gives 2^-52, and 1.0 + 2^-52 is the next float up.
+    // So only the ascending-index fold produces exactly 1.0 from these
+    // shuffled partials.
+    #[test]
+    fn partials_are_reduced_in_index_order() {
+        let eps = (2.0f64).powi(-53);
+
+        let scalar = sum_indexed_partials(vec![(1, eps), (2, eps), (0, 1.0)]);
+        assert_eq!(scalar.to_bits(), 1.0f64.to_bits(), "scalar fold: {scalar}");
+
+        let mut acc = vec![0.0f64];
+        add_indexed_partials(
+            &mut acc,
+            vec![(1, vec![eps]), (2, vec![eps]), (0, vec![1.0])],
+        );
+        assert_eq!(
+            acc[0].to_bits(),
+            1.0f64.to_bits(),
+            "vector fold: {}",
+            acc[0]
+        );
     }
 }

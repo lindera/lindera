@@ -831,7 +831,7 @@ Train a new morphological analysis model from annotated corpus data. To use this
 - `--regularization` / `-R`: Regularization type: `l1`, `l2`, or `elasticnet` (default: `l1`)
 - `--elastic-net-l1-ratio`: L1 ratio for Elastic Net regularization (0.0-1.0), only used with `--regularization elasticnet` (default: 0.5)
 - `--max-iterations` / `-i`: Maximum number of iterations for training (default: 100)
-- `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count)
+- `--max-threads` / `-t`: Maximum number of threads (defaults to CPU core count; affects only speed, never the trained model)
 
 ### Basic workflow
 

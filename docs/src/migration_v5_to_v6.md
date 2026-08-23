@@ -80,9 +80,13 @@ Two related notes:
 - `SerializableModel::connection_matrix` and `SerializableModel::unk_categories`
   are now `BTreeMap` rather than `HashMap`. This matters only if you read those
   public fields directly; the writer methods are unchanged.
-- Reproducibility holds for single-threaded training (`--max-threads 1`).
-  Multi-threaded runs still vary, because per-thread gradient partials are
-  summed in completion order and floating-point addition is not associative.
+- Reproducibility holds for any `--max-threads` value: the gradient and the
+  loss are summed over a fixed partition of the training data in a fixed
+  order, so the thread count affects only speed, never the trained model.
+- The fixed partition changed the summation order, so weights trained
+  **before** this change are not byte-identical to weights trained after it —
+  at any thread count, including `--max-threads 1`. Re-run `lindera train` if
+  you need artifacts that compare equal from now on.
 
 ## Dictionary format version 2 (shipped in v5.3.0)
 

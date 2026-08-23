@@ -831,7 +831,7 @@ Downloaded dictionary 'ipadic'
 - `--regularization` / `-R`: 正則化の種類: `l1`, `l2`, または `elasticnet` (デフォルト: `l1`)
 - `--elastic-net-l1-ratio`: Elastic Net 正則化時のL1比率 (0.0-1.0)。`--regularization elasticnet` を指定した場合のみ使用されます (デフォルト: 0.5)
 - `--max-iterations` / `-i`: 学習の最大反復回数 (デフォルト: 100)
-- `--max-threads` / `-t`: 最大スレッド数 (デフォルトはCPUコア数)
+- `--max-threads` / `-t`: 最大スレッド数 (デフォルトはCPUコア数。速度のみに影響し、学習結果は変わりません)
 
 ### 基本的なワークフロー
 

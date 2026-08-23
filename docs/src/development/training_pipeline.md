@@ -213,9 +213,9 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 
 The output is byte-reproducible: training the same inputs twice with the same
 flags produces identical `model.dat` bytes, so the artifact can be checksummed
-and diffed. This holds for single-threaded training (`--max-threads 1`);
-multi-threaded runs still vary because per-thread gradient partials are summed
-in completion order and floating-point addition is not associative.
+and diffed. This holds for any `--max-threads` value: the gradient and the
+loss are summed over a fixed partition of the training data in a fixed order,
+so the thread count changes only how long training takes, never its result.
 
 ## API Usage
 
