@@ -18,6 +18,7 @@ Lindera v6.0.0 では、ビルド済みユーザー辞書の再ビルドが必�
 | 変更 | 影響範囲 | 対処方法 |
 | --- | --- | --- |
 | **ビルド済みユーザー辞書 `.bin` が読み込めなくなった** | `.bin` からユーザー辞書を読み込むすべてのユーザー | CSV から `lindera build --user` で再ビルド |
+| **学習済み `model.dat` が読み込めなくなった** | 以前のビルドで生成した `model.dat` を再利用しているユーザー | `lindera train` を再実行 |
 | Decompose モードの長さペナルティが非 3 バイト文字に対して正確になった | 1・2・4 バイトの UTF-8 文字を含むテキストに対する `Mode::Decompose` の出力 | 対応不要（正確性修正）。出力を厳密に固定している場合は Decompose 出力を再確認 |
 | 未知語の候補ラダー（length ladder）がデフォルトで有効に | 辞書外テキストに対する Normal・Decompose 両モードの出力 | v5 と同一の出力が必要な場合は `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` を設定 |
 | `max_grouping_len` オプションの新設（`--max-grouping-len`、config キー、builder/worker setter） | MeCab の `max-grouping-size` 相当の上限を使いたいユーザー | 対応不要（デフォルトは従来どおり無制限） |
@@ -52,6 +53,36 @@ lindera build --user \
 
 `.bin` ではなく `.csv` からユーザー辞書を読み込んでいる場合は、ロード時に
 コンパイルされるため対応は不要です。
+
+## 学習済みモデルファイルの再生成が必要
+
+`lindera train` が書き出す `model.dat` がバイト単位で再現可能になりました。
+同じ入力・同じフラグで 2 回学習するとバイト列が一致するため、
+チェックサムの取得・キャッシュ・差分比較ができます。
+
+これを実現するため、連接行列と未知語カテゴリをハッシュマップではなく
+順序付きマップとして保持するようにしました。rkyv は archived `HashMap` を
+ソース走査順にレイアウトし、その順序はインスタンスごとにシードされるためです。
+ディスク上のレイアウトが変わるので、以前のビルドが書き出した `model.dat` は
+読み込みに失敗します。
+
+```text
+failed to deserialize model: ... re-run `lindera train` to regenerate it.
+```
+
+`model.dat` は `lindera train` と `lindera export` の間の中間ファイルであり、
+配布物ではありません。`lindera train` を再実行して生成し直してください。
+旧モデルからすでにエクスポート済みの辞書には影響しません。また、
+学習された重みはどちらでも同一です。変わったのは直列化の順序だけです。
+
+関連する注意点が 2 つあります。
+
+- `SerializableModel::connection_matrix` と `SerializableModel::unk_categories` の型が
+  `HashMap` から `BTreeMap` に変わりました。これらの公開フィールドを直接読んでいる
+  場合にのみ影響します。ライターメソッド群は変更ありません。
+- 再現性は単一スレッド学習（`--max-threads 1`）で成り立ちます。マルチスレッド実行では、
+  スレッドごとの勾配の部分和が完了順に加算され、浮動小数の加算が結合則を満たさないため、
+  依然として実行ごとに変動します。
 
 ## 辞書フォーマットバージョン 2（v5.3.0 でリリース済み）
 

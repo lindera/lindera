@@ -18,6 +18,7 @@ it does require rebuilding user dictionaries, for an unrelated reason.
 | Change | Affects | What you do |
 | --- | --- | --- |
 | **Prebuilt user-dictionary `.bin` files no longer load** | Anyone loading a user dictionary from `.bin` | Rebuild from the CSV source with `lindera build --user` |
+| **Trained `model.dat` files no longer load** | Anyone re-using a `model.dat` produced by an earlier build | Re-run `lindera train` |
 | Decompose-mode length penalty is now exact for non-3-byte characters | `Mode::Decompose` output on text with 1-, 2-, or 4-byte UTF-8 characters | Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly |
 | Unknown-word length ladder is on by default | Normal- and Decompose-mode output on out-of-vocabulary text | Set `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` for v5-identical output |
 | New `max_grouping_len` option (`--max-grouping-len`, config key, builder/worker setters) | Anyone who wants MeCab's `max-grouping-size` cap | Nothing — the default is unchanged (unbounded) |
@@ -52,6 +53,36 @@ lindera build --user \
 
 If you load a user dictionary from a `.csv` file rather than a prebuilt
 `.bin`, it is compiled at load time and no action is needed.
+
+## Trained model files must be regenerated
+
+`lindera train` now writes a byte-reproducible `model.dat`: training the same
+inputs twice with the same flags produces identical bytes, so the artifact can
+be checksummed, cached and diffed.
+
+Getting there required storing the connection matrix and the unknown-word
+categories as ordered maps rather than hash maps — rkyv lays an archived
+`HashMap` out in source iteration order, and that order is seeded per instance.
+This changes the on-disk layout, so a `model.dat` written by an earlier build
+fails to load:
+
+```text
+failed to deserialize model: ... re-run `lindera train` to regenerate it.
+```
+
+`model.dat` is an intermediate between `lindera train` and `lindera export`,
+not a distributed artifact — regenerate it by re-running `lindera train`.
+Dictionaries already exported from an old model are unaffected, and the trained
+weights are identical either way: only the serialization order changed.
+
+Two related notes:
+
+- `SerializableModel::connection_matrix` and `SerializableModel::unk_categories`
+  are now `BTreeMap` rather than `HashMap`. This matters only if you read those
+  public fields directly; the writer methods are unchanged.
+- Reproducibility holds for single-threaded training (`--max-threads 1`).
+  Multi-threaded runs still vary, because per-thread gradient partials are
+  summed in completion order and floating-point addition is not associative.
 
 ## Dictionary format version 2 (shipped in v5.3.0)
 

@@ -211,6 +211,12 @@ The trained model is serialized in `rkyv` binary format for fast loading. It con
 - Feature templates
 - Training metadata (regularization, iterations, feature/label counts)
 
+The output is byte-reproducible: training the same inputs twice with the same
+flags produces identical `model.dat` bytes, so the artifact can be checksummed
+and diffed. This holds for single-threaded training (`--max-threads 1`);
+multi-threaded runs still vary because per-thread gradient partials are summed
+in completion order and floating-point addition is not associative.
+
 ## API Usage
 
 For the full `lindera-trainer` API surface, see [Lindera Trainer Architecture](../lindera-trainer/architecture.md) and [API Reference](../lindera-trainer/api_reference.md).
