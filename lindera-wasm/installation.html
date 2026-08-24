@@ -204,6 +204,34 @@ the <code>web</code> target):</p>
 <p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.
 wasm-pack also supports other targets (e.g. <code>--target nodejs</code>) if you need a
 custom build, but the web-target build is what this documentation assumes.</p>
+<h2 id="why-the-web-target-and-not-bundler"><a class="header" href="#why-the-web-target-and-not-bundler">Why the web Target (and Not bundler)?</a></h2>
+<p>wasm-pack's default <code>--target</code> is <code>bundler</code>, yet the published <code>lindera-wasm</code>
+package is deliberately built with <code>--target web</code>. The target names are
+somewhat misleading, so here is what each one actually produces:</p>
+<ul>
+<li><code>--target bundler</code> (the wasm-pack default) emits JavaScript that imports
+the <code>.wasm</code> file as an ES module. This relies on the WebAssembly ESM
+integration proposal, which is not yet a finalized web standard; in
+practice the only bundler that understands the output is Webpack with the
+<code>asyncWebAssembly</code> experiment enabled. The default dates from the era when
+Webpack was the dominant bundler -- despite the generic name, the output is
+effectively Webpack-specific. Vite, for example, needs extra plugins
+(<code>vite-plugin-wasm</code> plus top-level-await support) to consume it.</li>
+<li><code>--target web</code> emits standards-based code only: the <code>.wasm</code> file is
+resolved via <code>new URL('lindera_wasm_bg.wasm', import.meta.url)</code> and loaded
+with <code>fetch</code> + <code>WebAssembly.instantiateStreaming</code> inside an explicit async
+init function. This runs in browsers as native ES modules with no build
+step at all, and modern bundlers (Vite, Webpack 5, Rollup) recognize the
+<code>new URL(..., import.meta.url)</code> pattern and ship the <code>.wasm</code> file as an
+asset. The one cost is that you must call <code>await __wbg_init()</code> once before
+using the API.</li>
+</ul>
+<p>In short, the bundler target is zero-config for Webpack only, while the web
+target runs everywhere at the cost of one explicit init call. Up to v5,
+Lindera published both variants (<code>lindera-wasm-web</code> and
+<code>lindera-wasm-bundler</code>); v6 consolidates on the single portable build. If you
+are migrating from <code>lindera-wasm-bundler</code>, see the
+<a href="../migration_v5_to_v6.html">v5 to v6 migration guide</a>.</p>
 <h2 id="available-feature-flags-advanced"><a class="header" href="#available-feature-flags-advanced">Available Feature Flags (Advanced)</a></h2>
 <p>For advanced users who want to embed dictionaries directly into the WASM binary, the following feature flags are available. This increases the binary size significantly but eliminates the need to download dictionaries at runtime.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Dictionary</th><th>Language</th></tr></thead><tbody>

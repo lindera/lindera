@@ -202,6 +202,13 @@ if (!await hasDictionary("ipadic")) {
 </code></pre>
 <p>出力は <code>lindera-wasm</code> クレート内の <code>pkg/</code> ディレクトリに書き込まれます。</p>
 <p><code>web</code> ターゲットのビルドは、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 の <code>asyncWebAssembly</code> など）からもそのまま利用できます。バンドラー専用のビルドを別途用意する必要はありません。</p>
+<h2 id="なぜ-web-ターゲットのみなのかbundler-ではなく"><a class="header" href="#なぜ-web-ターゲットのみなのかbundler-ではなく">なぜ web ターゲットのみなのか（bundler ではなく）</a></h2>
+<p>wasm-pack のデフォルトの <code>--target</code> は <code>bundler</code> ですが、公開されている <code>lindera-wasm</code> パッケージは意図的に <code>--target web</code> でビルドしています。ターゲット名はやや誤解を招きやすいため、それぞれの実態を説明します：</p>
+<ul>
+<li><code>--target bundler</code>（wasm-pack のデフォルト）は、<code>.wasm</code> ファイルを ES モジュールとして直接 <code>import</code> する JavaScript を生成します。これはまだ標準化が完了していない WebAssembly ESM integration 提案に依存しており、実際にこの出力を解釈できるのは事実上 <code>asyncWebAssembly</code> experiment を有効にした Webpack だけです。このデフォルトは Webpack が支配的だった時代の名残であり、「bundler 汎用」という名前に反して実態は Webpack 専用に近い出力です。たとえば Vite で利用するには追加プラグイン（<code>vite-plugin-wasm</code> と top-level-await 対応）が必要です。</li>
+<li><code>--target web</code> は標準技術のみで構成されたコードを生成します。<code>.wasm</code> ファイルは <code>new URL('lindera_wasm_bg.wasm', import.meta.url)</code> で解決され、明示的な非同期 init 関数の中で <code>fetch</code> + <code>WebAssembly.instantiateStreaming</code> により読み込まれます。ビルドステップなしでブラウザのネイティブ ES モジュールとして動作するほか、モダンなバンドラー（Vite、Webpack 5、Rollup）は <code>new URL(..., import.meta.url)</code> パターンを認識して <code>.wasm</code> ファイルをアセットとして配置します。唯一のコストは、API を使う前に一度 <code>await __wbg_init()</code> を呼ぶ必要があることです。</li>
+</ul>
+<p>まとめると、bundler ターゲットは Webpack に限ればゼロコンフィグですが、web ターゲットは明示的な init 呼び出し 1 回のコストでどこでも動きます。v5 までは両方のビルド（<code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code>）を公開していましたが、v6 からは可搬性の高い単一ビルドに統合しました。<code>lindera-wasm-bundler</code> からの移行は <a href="../migration_v5_to_v6.html">v5 から v6 への移行ガイド</a>を参照してください。</p>
 <h2 id="利用可能な-feature-フラグ上級者向け"><a class="header" href="#利用可能な-feature-フラグ上級者向け">利用可能な Feature フラグ（上級者向け）</a></h2>
 <p>辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
