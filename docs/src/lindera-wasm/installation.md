@@ -39,6 +39,36 @@ The output is written to the `pkg/` directory inside the `lindera-wasm` crate.
 wasm-pack also supports other targets (e.g. `--target nodejs`) if you need a
 custom build, but the web-target build is what this documentation assumes.
 
+## Why the web Target (and Not bundler)?
+
+wasm-pack's default `--target` is `bundler`, yet the published `lindera-wasm`
+package is deliberately built with `--target web`. The target names are
+somewhat misleading, so here is what each one actually produces:
+
+- `--target bundler` (the wasm-pack default) emits JavaScript that imports
+  the `.wasm` file as an ES module. This relies on the WebAssembly ESM
+  integration proposal, which is not yet a finalized web standard; in
+  practice the only bundler that understands the output is Webpack with the
+  `asyncWebAssembly` experiment enabled. The default dates from the era when
+  Webpack was the dominant bundler -- despite the generic name, the output is
+  effectively Webpack-specific. Vite, for example, needs extra plugins
+  (`vite-plugin-wasm` plus top-level-await support) to consume it.
+- `--target web` emits standards-based code only: the `.wasm` file is
+  resolved via `new URL('lindera_wasm_bg.wasm', import.meta.url)` and loaded
+  with `fetch` + `WebAssembly.instantiateStreaming` inside an explicit async
+  init function. This runs in browsers as native ES modules with no build
+  step at all, and modern bundlers (Vite, Webpack 5, Rollup) recognize the
+  `new URL(..., import.meta.url)` pattern and ship the `.wasm` file as an
+  asset. The one cost is that you must call `await __wbg_init()` once before
+  using the API.
+
+In short, the bundler target is zero-config for Webpack only, while the web
+target runs everywhere at the cost of one explicit init call. Up to v5,
+Lindera published both variants (`lindera-wasm-web` and
+`lindera-wasm-bundler`); v6 consolidates on the single portable build. If you
+are migrating from `lindera-wasm-bundler`, see the
+[v5 to v6 migration guide](../migration_v5_to_v6.md).
+
 ## Available Feature Flags (Advanced)
 
 For advanced users who want to embed dictionaries directly into the WASM binary, the following feature flags are available. This increases the binary size significantly but eliminates the need to download dictionaries at runtime.

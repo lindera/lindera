@@ -38,6 +38,15 @@ wasm-pack build --target web
 
 `web` ターゲットのビルドは、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 の `asyncWebAssembly` など）からもそのまま利用できます。バンドラー専用のビルドを別途用意する必要はありません。
 
+## なぜ web ターゲットのみなのか（bundler ではなく）
+
+wasm-pack のデフォルトの `--target` は `bundler` ですが、公開されている `lindera-wasm` パッケージは意図的に `--target web` でビルドしています。ターゲット名はやや誤解を招きやすいため、それぞれの実態を説明します：
+
+- `--target bundler`（wasm-pack のデフォルト）は、`.wasm` ファイルを ES モジュールとして直接 `import` する JavaScript を生成します。これはまだ標準化が完了していない WebAssembly ESM integration 提案に依存しており、実際にこの出力を解釈できるのは事実上 `asyncWebAssembly` experiment を有効にした Webpack だけです。このデフォルトは Webpack が支配的だった時代の名残であり、「bundler 汎用」という名前に反して実態は Webpack 専用に近い出力です。たとえば Vite で利用するには追加プラグイン（`vite-plugin-wasm` と top-level-await 対応）が必要です。
+- `--target web` は標準技術のみで構成されたコードを生成します。`.wasm` ファイルは `new URL('lindera_wasm_bg.wasm', import.meta.url)` で解決され、明示的な非同期 init 関数の中で `fetch` + `WebAssembly.instantiateStreaming` により読み込まれます。ビルドステップなしでブラウザのネイティブ ES モジュールとして動作するほか、モダンなバンドラー（Vite、Webpack 5、Rollup）は `new URL(..., import.meta.url)` パターンを認識して `.wasm` ファイルをアセットとして配置します。唯一のコストは、API を使う前に一度 `await __wbg_init()` を呼ぶ必要があることです。
+
+まとめると、bundler ターゲットは Webpack に限ればゼロコンフィグですが、web ターゲットは明示的な init 呼び出し 1 回のコストでどこでも動きます。v5 までは両方のビルド（`lindera-wasm-web` と `lindera-wasm-bundler`）を公開していましたが、v6 からは可搬性の高い単一ビルドに統合しました。`lindera-wasm-bundler` からの移行は [v5 から v6 への移行ガイド](../migration_v5_to_v6.md)を参照してください。
+
 ## 利用可能な Feature フラグ（上級者向け）
 
 辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。
