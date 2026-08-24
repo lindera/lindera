@@ -8511,6 +8511,10 @@ that still contain the key keep parsing.</li>
 cache was keyed on the full feature string, which is unique per row in a
 real lexicon, so it never hit and only retained memory. Call <code>rewrite</code>
 instead — it no longer requires <code>&amp;mut</code>.</li>
+<li>The <code>features</code> parameter of the six <code>FeatureExtractor::extract_*</code> methods
+changed from <code>&amp;[String]</code> to <code>&amp;[&amp;str]</code>, so callers no longer have to
+allocate one <code>String</code> per feature field. A caller holding a <code>&amp;[String]</code>
+can pass <code>&amp;v.iter().map(|s| s.as_str()).collect::&lt;Vec&lt;_&gt;&gt;()</code>.</li>
 <li>The fixed partition changed the summation order, so weights trained
 <strong>before</strong> this change are not byte-identical to weights trained after it —
 at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if

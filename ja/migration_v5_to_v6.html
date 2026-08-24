@@ -251,6 +251,10 @@
 キャッシュは素性文字列全体をキーにしており、実辞書では行ごとにほぼ一意で
 一度もヒットせず、メモリを保持するだけだったためです。代わりに <code>rewrite</code>
 を呼んでください（<code>&amp;mut</code> も不要になりました）。</li>
+<li><code>FeatureExtractor::extract_*</code> 6 メソッドの <code>features</code> 引数を
+<code>&amp;[String]</code> から <code>&amp;[&amp;str]</code> に変更しました。呼び出し側がフィールドごとに
+<code>String</code> を確保する必要がなくなります。<code>&amp;[String]</code> を持っている場合は
+<code>&amp;v.iter().map(|s| s.as_str()).collect::&lt;Vec&lt;_&gt;&gt;()</code> で渡せます。</li>
 <li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
 変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
 含むすべてのスレッド数で）。以後の成果物を比較可能にするには
