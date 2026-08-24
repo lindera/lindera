@@ -218,7 +218,9 @@ $builder-&gt;setDictionary('/path/to/dictionary');
 <h4 id="appendtokenfilterkind-args"><a class="header" href="#appendtokenfilterkind-args"><code>appendTokenFilter($kind, $args)</code></a></h4>
 <p>後処理パイプラインにトークンフィルタを追加します。</p>
 <pre><code class="language-php">$builder-&gt;appendTokenFilter('lowercase');
-$builder-&gt;appendTokenFilter('japanese_stop_tags', ['tags' =&gt; ['助詞', '助動詞']]);
+$builder-&gt;appendTokenFilter('japanese_stop_tags', [
+    'tags' =&gt; ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞'],
+]);
 </code></pre>
 <h3 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h3>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>

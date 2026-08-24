@@ -247,17 +247,14 @@ console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-The <code>lindera</code> npm package's <code>package.json</code> currently declares only a <code>require</code> condition in its
-<code>exports</code> map (no <code>import</code> condition), so <code>import { version } from "lindera"</code> fails
-with <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>. From an ES module, load it with Node's <code>createRequire</code>
-instead:</p>
+The <code>lindera</code> npm package's <code>exports</code> map declares <code>types</code>, <code>import</code>, and <code>require</code>
+conditions, so the package loads from CommonJS
+(<code>const { TokenizerBuilder } = require("lindera")</code>) and ES modules
+(<code>import { TokenizerBuilder } from "lindera"</code>) alike:</p>
 </blockquote>
-<pre><code class="language-javascript">import { createRequire } from "node:module";
+<pre><code class="language-javascript">import { TokenizerBuilder } from "lindera";
 
-const require = createRequire(import.meta.url);
-const lindera = require("lindera");
-
-console.log(lindera.version());
+console.log(typeof TokenizerBuilder); // "function"
 </code></pre>
 
                     </main>

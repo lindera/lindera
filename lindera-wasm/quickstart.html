@@ -270,7 +270,7 @@ async function main() {
 
     // Add a stop-tags filter to remove particles and auxiliary verbs
     builder.appendTokenFilter("japanese_stop_tags", {
-        tags: ["助詞", "助動詞"]
+        tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"]
     });
 
     const tokenizer = builder.build();

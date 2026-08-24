@@ -197,88 +197,96 @@ character and token filter, including parameters and examples.</p>
 <p>Applies Unicode normalization to the input text.</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+const tokenizer = builder.build();
 </code></pre>
 <p>Supported normalization forms: <code>"nfc"</code>, <code>"nfkc"</code>, <code>"nfd"</code>, <code>"nfkd"</code>.</p>
 <h3 id="mapping"><a class="header" href="#mapping">mapping</a></h3>
 <p>Replaces characters or strings according to a mapping table.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("mapping", {
-    mapping: {
-      "\u30fc": "-",
-      "\uff5e": "~",
-    },
-  })
-  .build();
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("mapping", {
+  mapping: {
+    "\u30fc": "-",
+    "\uff5e": "~",
+  },
+});
+const tokenizer = builder.build();
 </code></pre>
 <h3 id="japanese_iteration_mark"><a class="header" href="#japanese_iteration_mark">japanese_iteration_mark</a></h3>
 <p>Resolves Japanese iteration marks (odoriji) into their full forms.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("japanese_iteration_mark", {
-    normalize_kanji: true,
-    normalize_kana: true,
-  })
-  .build();
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("japanese_iteration_mark", {
+  normalize_kanji: true,
+  normalize_kana: true,
+});
+const tokenizer = builder.build();
 </code></pre>
 <h2 id="token-filters"><a class="header" href="#token-filters">Token Filters</a></h2>
 <p>Token filters transform or remove tokens after tokenization.</p>
 <h3 id="lowercase"><a class="header" href="#lowercase">lowercase</a></h3>
 <p>Converts token surface forms to lowercase.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("lowercase", {})
-  .build();
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("lowercase", {});
+const tokenizer = builder.build();
 </code></pre>
 <h3 id="japanese_base_form"><a class="header" href="#japanese_base_form">japanese_base_form</a></h3>
 <p>Replaces inflected forms with their base (dictionary) form using the morphological details from the dictionary.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_base_form", {})
-  .build();
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_base_form", {});
+const tokenizer = builder.build();
 </code></pre>
 <h3 id="japanese_stop_tags"><a class="header" href="#japanese_stop_tags">japanese_stop_tags</a></h3>
 <p>Removes tokens whose part-of-speech matches any of the specified tags.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_stop_tags", {
-    tags: ["助詞", "助動詞"],
-  })
-  .build();
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_stop_tags", {
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"],
+});
+const tokenizer = builder.build();
 </code></pre>
+<blockquote>
+<p>[!NOTE]
+Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>)
+and compared for exact equality against the first four part-of-speech details of each token.
+A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory
+such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no
+subcategory (<code>助動詞,*,*,*</code>).</p>
+</blockquote>
 <h3 id="japanese_keep_tags"><a class="header" href="#japanese_keep_tags">japanese_keep_tags</a></h3>
-<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed.</p>
-<pre><code class="language-javascript">const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_keep_tags", {
-    tags: ["名詞"],
-  })
-  .build();
+<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
+<pre><code class="language-javascript">const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_keep_tags", {
+  tags: ["名詞,一般"],
+});
+const tokenizer = builder.build();
 </code></pre>
 <h2 id="complete-pipeline-example"><a class="header" href="#complete-pipeline-example">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("embedded://ipadic")
-  // Preprocessing
-  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
-  .appendCharacterFilter("japanese_iteration_mark", {
-    normalize_kanji: true,
-    normalize_kana: true,
-  })
-  // Postprocessing
-  .appendTokenFilter("japanese_base_form", {})
-  .appendTokenFilter("japanese_stop_tags", {
-    tags: ["助詞", "助動詞", "記号"],
-  })
-  .appendTokenFilter("lowercase", {})
-  .build();
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("embedded://ipadic");
+// Preprocessing
+builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+builder.appendCharacterFilter("japanese_iteration_mark", {
+  normalize_kanji: true,
+  normalize_kana: true,
+});
+// Postprocessing
+builder.appendTokenFilter("japanese_base_form", {});
+builder.appendTokenFilter("japanese_stop_tags", {
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"],
+});
+builder.appendTokenFilter("lowercase", {});
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("Ｌｉｎｄｅｒａは形態素解析を行うライブラリです。");
 for (const token of tokens) {
@@ -290,7 +298,7 @@ for (const token of tokens) {
 <li><code>unicode_normalize</code> converts full-width characters to half-width (NFKC normalization)</li>
 <li><code>japanese_iteration_mark</code> resolves iteration marks</li>
 <li><code>japanese_base_form</code> converts inflected tokens to base form</li>
-<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
+<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and punctuation</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
 

@@ -250,18 +250,19 @@ tokenizer = (
     TokenizerBuilder()
     .set_dictionary("embedded://ipadic")
     .append_token_filter("japanese_stop_tags", {
-        "tags": ["助詞", "助動詞"],
+        "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"],
     })
     .build()
 )
 </code></pre>
+<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the first four part-of-speech details of each token. A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 <h3 id="japanese_keep_tags"><a class="header" href="#japanese_keep_tags">japanese_keep_tags</a></h3>
-<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed.</p>
+<p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
 <pre><code class="language-python">tokenizer = (
     TokenizerBuilder()
     .set_dictionary("embedded://ipadic")
     .append_token_filter("japanese_keep_tags", {
-        "tags": ["名詞"],
+        "tags": ["名詞,一般"],
     })
     .build()
 )
@@ -283,7 +284,7 @@ tokenizer = (
     # Postprocessing
     .append_token_filter("japanese_base_form", {})
     .append_token_filter("japanese_stop_tags", {
-        "tags": ["助詞", "助動詞", "記号"],
+        "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"],
     })
     .append_token_filter("lowercase", {})
     .build()
@@ -298,7 +299,7 @@ for token in tokens:
 <li><code>unicode_normalize</code> converts full-width characters to half-width (NFKC normalization)</li>
 <li><code>japanese_iteration_mark</code> resolves iteration marks</li>
 <li><code>japanese_base_form</code> converts inflected tokens to base form</li>
-<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and symbols</li>
+<li><code>japanese_stop_tags</code> removes particles, auxiliary verbs, and punctuation</li>
 <li><code>lowercase</code> normalizes alphabetic characters to lowercase</li>
 </ol>
 

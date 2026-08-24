@@ -198,29 +198,15 @@ for (const token of tokens) {
 <p>Expected output:</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
-</code></pre>
-<h2 id="method-chaining"><a class="header" href="#method-chaining">Method Chaining</a></h2>
-<p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
-
-const tokens = tokenizer.tokenize("すもももももももものうち");
-for (const token of tokens) {
-  console.log(`${token.surface}\t${token.details[0]}`);
-}
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <h2 id="accessing-token-properties"><a class="header" href="#accessing-token-properties">Accessing Token Properties</a></h2>
 <p>Each token exposes the following properties:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("東京タワー");
 for (const token of tokens) {
@@ -237,9 +223,9 @@ for (const token of tokens) {
 <p>Retrieve multiple tokenization candidates ranked by cost:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 for (const { tokens, cost } of results) {
@@ -248,20 +234,14 @@ for (const { tokens, cost } of results) {
 }
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
-<p>Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:</p>
+<p>Lindera Node.js includes TypeScript type definitions, so all classes and functions are fully typed. The package's <code>exports</code> map serves both <code>require</code> and <code>import</code>, and the following sample compiles under <code>moduleResolution: node16</code> with <code>strict</code> enabled:</p>
 <pre><code class="language-typescript">import type { Token } from "lindera";
-import { createRequire } from "node:module";
+import { TokenizerBuilder } from "lindera";
 
-// The `lindera` npm package only exposes a CommonJS `require` entry point (see Installation),
-// so ESM projects load the runtime values through `createRequire` while still getting
-// full type information via `import type`.
-const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
 for (const token of tokens) {

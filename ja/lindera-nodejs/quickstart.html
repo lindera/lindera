@@ -198,29 +198,15 @@ for (const token of tokens) {
 <p>期待される出力：</p>
 <pre><code class="language-text">関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
-</code></pre>
-<h2 id="メソッドチェーン"><a class="header" href="#メソッドチェーン">メソッドチェーン</a></h2>
-<p><code>TokenizerBuilder</code> は簡潔な設定のためにメソッドチェーンをサポートしています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
-
-const tokens = tokenizer.tokenize("すもももももももものうち");
-for (const token of tokens) {
-  console.log(`${token.surface}\t${token.details[0]}`);
-}
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
 <h2 id="トークンプロパティへのアクセス"><a class="header" href="#トークンプロパティへのアクセス">トークンプロパティへのアクセス</a></h2>
 <p>各トークンは以下のプロパティを公開しています：</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("東京タワー");
 for (const token of tokens) {
@@ -237,9 +223,9 @@ for (const token of tokens) {
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 for (const { tokens, cost } of results) {
@@ -248,20 +234,14 @@ for (const { tokens, cost } of results) {
 }
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
-<p>Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：</p>
+<p>Lindera Node.js には TypeScript の型定義が同梱されています。すべてのクラスと関数に完全な型が付いています。npm パッケージ <code>lindera</code> の <code>exports</code> マップは <code>require</code> / <code>import</code> の両方の条件を宣言しているため、CommonJS からも ES モジュールからもそのまま読み込めます。以下のサンプルは <code>moduleResolution: node16</code> + <code>strict</code> でコンパイルできることを確認済みです：</p>
 <pre><code class="language-typescript">import type { Token } from "lindera";
-import { createRequire } from "node:module";
+import { TokenizerBuilder } from "lindera";
 
-// npm パッケージ lindera は CommonJS の require エントリポイントのみを公開しているため
-// （「インストール」を参照）、ESM プロジェクトでは createRequire で実行時の値を
-// 読み込みつつ、import type で型情報を取得します。
-const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
 for (const token of tokens) {

@@ -281,10 +281,10 @@ const metadata = Metadata.fromJsonFile("/tmp/dictionary_source/metadata.json");
 buildDictionary("/tmp/dictionary_source", "/tmp/dictionary", metadata);
 
 // Step 4: Use the trained dictionary
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/tmp/dictionary")
-  .setMode("normal")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/tmp/dictionary");
+builder.setMode("normal");
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("形態素解析のテスト");
 for (const token of tokens) {

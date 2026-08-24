@@ -247,17 +247,14 @@ console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-npm パッケージ <code>lindera</code> の <code>package.json</code> は現状、<code>exports</code> マップに <code>require</code> 条件のみを定義しており
-（<code>import</code> 条件はありません）、そのため <code>import { version } from "lindera";</code> は
-<code>ERR_PACKAGE_PATH_NOT_EXPORTED</code> で失敗します。ES modules から利用する場合は、Node.js の
-<code>createRequire</code> を使用してください：</p>
+npm パッケージ <code>lindera</code> の <code>exports</code> マップは <code>types</code> / <code>import</code> / <code>require</code> の各条件を宣言しているため、
+CommonJS（<code>require("lindera")</code>）からも ES モジュール（<code>import { TokenizerBuilder } from "lindera"</code>）からも
+そのまま読み込めます。</p>
 </blockquote>
-<pre><code class="language-javascript">import { createRequire } from "node:module";
+<p>最小の ESM の例：</p>
+<pre><code class="language-javascript">import { TokenizerBuilder } from "lindera";
 
-const require = createRequire(import.meta.url);
-const lindera = require("lindera");
-
-console.log(lindera.version());
+console.log(typeof TokenizerBuilder); // "function"
 </code></pre>
 
                     </main>
