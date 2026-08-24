@@ -28,7 +28,7 @@ Parses MeCab-compatible feature templates and manages the mapping from generated
 
 ### DictionaryRewriter
 
-Implements MeCab's 3-section `rewrite.def` format: `[unigram rewrite]`, `[left rewrite]`, and `[right rewrite]` sections, each holding an ordered list of `pattern<TAB>replacement` rules built into a `FeatureRewriter` prefix trie (via the internal `FeatureRewriterBuilder`). `DictionaryRewriter::from_reader` parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera `rewrite.def` files). `rewrite()` applies all three rewriters to a feature string and returns `(ufeature, lfeature, rfeature)`, passing a section through unchanged when no rule matches; `rewrite_cached()` memoizes results per input feature string (MeCab's `rewrite2` equivalent).
+Implements MeCab's 3-section `rewrite.def` format: `[unigram rewrite]`, `[left rewrite]`, and `[right rewrite]` sections, each holding an ordered list of `pattern<TAB>replacement` rules built into a `FeatureRewriter` prefix trie (via the internal `FeatureRewriterBuilder`). `DictionaryRewriter::from_reader` parses all three sections (falling back to treating an unsectioned file as legacy right-rewrite-only content, for backward compatibility with older Lindera `rewrite.def` files). `rewrite()` applies all three rewriters to a feature string and returns `(ufeature, lfeature, rfeature)`, passing a section through unchanged when no rule matches. (An earlier `rewrite_cached()` memoized per full feature string, but real lexicon features are unique per row, so the cache never hit and was removed — #975.)
 
 ### Model / SerializableModel
 

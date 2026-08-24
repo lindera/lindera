@@ -88,6 +88,10 @@ Two related notes:
   a deterministic order. Accordingly, the `ModelInfo.updated_at` field was
   removed from the Rust API (`lindera-dictionary`); old `metadata.json` files
   that still contain the key keep parsing.
+- `DictionaryRewriter::rewrite_cached` and `clear_cache` were removed: the
+  cache was keyed on the full feature string, which is unique per row in a
+  real lexicon, so it never hit and only retained memory. Call `rewrite`
+  instead — it no longer requires `&mut`.
 - The fixed partition changed the summation order, so weights trained
   **before** this change are not byte-identical to weights trained after it —
   at any thread count, including `--max-threads 1`. Re-run `lindera train` if

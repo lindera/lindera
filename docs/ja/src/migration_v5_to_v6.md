@@ -88,6 +88,10 @@ failed to deserialize model: ... re-run `lindera train` to regenerate it.
   順序でエントリを書き出します。これに伴い Rust API から
   `ModelInfo.updated_at` フィールドを削除しました（`lindera-dictionary`）。
   このキーを含む既存の `metadata.json` は引き続き読み込めます。
+- `DictionaryRewriter::rewrite_cached` と `clear_cache` を削除しました。
+  キャッシュは素性文字列全体をキーにしており、実辞書では行ごとにほぼ一意で
+  一度もヒットせず、メモリを保持するだけだったためです。代わりに `rewrite`
+  を呼んでください（`&mut` も不要になりました）。
 - 固定分割の導入で加算順が変わったため、この変更**前**に学習した重みと
   変更後に学習した重みはバイト単位では一致しません（`--max-threads 1` を
   含むすべてのスレッド数で）。以後の成果物を比較可能にするには
