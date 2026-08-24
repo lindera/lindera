@@ -155,7 +155,9 @@ builder.set_dictionary("/path/to/ipadic")
 # Add token filters
 builder.append_token_filter("lowercase")
 builder.append_token_filter("length", {"min": 2, "max": 10})
-builder.append_token_filter("japanese_stop_tags", {"tags": ["助詞", "助動詞"]})
+builder.append_token_filter("japanese_stop_tags", {
+    "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"]
+})
 
 # Build tokenizer with filters
 tokenizer = builder.build()
@@ -227,7 +229,7 @@ builder.append_character_filter("mapping", {
 builder.append_token_filter("japanese_katakana_stem", {"min": 3})
 builder.append_token_filter("length", {"min": 2, "max": 10})
 builder.append_token_filter("japanese_stop_tags", {
-    "tags": ["助詞", "助動詞", "記号"]
+    "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
 })
 
 # Filters without configuration can omit the dict

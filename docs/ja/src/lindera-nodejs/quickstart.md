@@ -27,25 +27,7 @@ for (const token of tokens) {
 ```text
 関西国際空港    名詞,固有名詞,組織,*,*,*,関西国際空港,カンサイコクサイクウコウ,カンサイコクサイクーコー
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
-トートバッグ    UNK
-```
-
-## メソッドチェーン
-
-`TokenizerBuilder` は簡潔な設定のためにメソッドチェーンをサポートしています：
-
-```javascript
-const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
-
-const tokens = tokenizer.tokenize("すもももももももものうち");
-for (const token of tokens) {
-  console.log(`${token.surface}\t${token.details[0]}`);
-}
+トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
 ## トークンプロパティへのアクセス
@@ -55,9 +37,9 @@ for (const token of tokens) {
 ```javascript
 const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("東京タワー");
 for (const token of tokens) {
@@ -78,9 +60,9 @@ for (const token of tokens) {
 ```javascript
 const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const results = tokenizer.tokenizeNbest("すもももももももものうち", 3);
 for (const { tokens, cost } of results) {
@@ -91,22 +73,16 @@ for (const { tokens, cost } of results) {
 
 ## TypeScript
 
-Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：
+Lindera Node.js には TypeScript の型定義が同梱されています。すべてのクラスと関数に完全な型が付いています。npm パッケージ `lindera` の `exports` マップは `require` / `import` の両方の条件を宣言しているため、CommonJS からも ES モジュールからもそのまま読み込めます。以下のサンプルは `moduleResolution: node16` + `strict` でコンパイルできることを確認済みです：
 
 ```typescript
 import type { Token } from "lindera";
-import { createRequire } from "node:module";
+import { TokenizerBuilder } from "lindera";
 
-// npm パッケージ lindera は CommonJS の require エントリポイントのみを公開しているため
-// （「インストール」を参照）、ESM プロジェクトでは createRequire で実行時の値を
-// 読み込みつつ、import type で型情報を取得します。
-const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera");
-
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("/path/to/ipadic")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("/path/to/ipadic");
+const tokenizer = builder.build();
 
 const tokens: Token[] = tokenizer.tokenize("形態素解析");
 for (const token of tokens) {

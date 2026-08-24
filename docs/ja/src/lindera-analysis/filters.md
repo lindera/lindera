@@ -191,6 +191,8 @@
 
 品詞タグが`tags`のいずれかに一致するトークンのみを保持し、それ以外を除去します。
 
+タグは 4 階層のカンマ区切りに正規化され（不足分は `*` で補完）、各トークンの先頭 4 つの品詞詳細と完全一致で比較されます。IPADIC の助詞トークンは必ず `助詞,係助詞` のようにサブカテゴリを持つため、`助詞` 単独では一致しません。一方、助動詞はサブカテゴリを持たないため（`助動詞,*,*,*`）、`助動詞` 単独で一致します。この動作は `japanese_stop_tags` も同様です。
+
 **パラメータ:**
 
 | パラメータ | 型 | 必須 | 説明 |
@@ -204,9 +206,7 @@
   "kind": "japanese_keep_tags",
   "args": {
     "tags": [
-      "名詞",
-      "名詞,一般",
-      "名詞,固有名詞"
+      "名詞,一般"
     ]
   }
 }
@@ -266,9 +266,10 @@
   "kind": "japanese_stop_tags",
   "args": {
     "tags": [
-      "助詞",
-      "助動詞",
-      "記号"
+      "助詞,格助詞,一般",
+      "助詞,係助詞",
+      "助詞,連体化",
+      "助動詞"
     ]
   }
 }
@@ -497,9 +498,10 @@ token_filters:
   - kind: "japanese_stop_tags"
     args:
       tags:
-        - "助詞"
+        - "助詞,格助詞,一般"
+        - "助詞,係助詞"
+        - "助詞,連体化"
         - "助動詞"
-        - "記号"
   - kind: "japanese_katakana_stem"
     args:
       min: 3
@@ -540,9 +542,10 @@ fn main() -> LinderaResult<()> {
     // トークンフィルタを追加
     let stop_tags_filter = JapaneseStopTagsTokenFilter::new(
         vec![
-            "助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,連体化".to_string(),
             "助動詞".to_string(),
-            "記号".to_string(),
         ]
         .into_iter()
         .collect(),

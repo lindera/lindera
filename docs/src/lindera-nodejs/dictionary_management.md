@@ -58,10 +58,10 @@ Or via the builder:
 ```javascript
 const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("/path/to/ipadic")
-  .setUserDictionary("/path/to/user_dictionary")
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("/path/to/ipadic");
+builder.setUserDictionary("/path/to/user_dictionary");
+const tokenizer = builder.build();
 ```
 
 ## Building Dictionaries

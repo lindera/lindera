@@ -115,10 +115,12 @@ $tokenizer = $builder->build();
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
 $builder->appendTokenFilter('japanese_stop_tags', [
-    'tags' => ['助詞', '助動詞', '記号'],
+    'tags' => ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞'],
 ]);
 $tokenizer = $builder->build();
 ```
+
+タグは 4 階層のカンマ区切りに正規化され（不足分は `*` で補完）、各トークンの先頭 4 つの品詞詳細と完全一致で比較されます。IPADIC の助詞トークンは必ず `助詞,係助詞` のようにサブカテゴリを持つため、`助詞` 単独では一致しません。一方、助動詞はサブカテゴリを持たないため（`助動詞,*,*,*`）、`助動詞` 単独で一致します。
 
 ### japanese_keep_tags
 
@@ -130,7 +132,7 @@ $tokenizer = $builder->build();
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
 $builder->appendTokenFilter('japanese_keep_tags', [
-    'tags' => ['名詞'],
+    'tags' => ['名詞,一般'],
 ]);
 $tokenizer = $builder->build();
 ```
@@ -161,8 +163,7 @@ $builder->appendTokenFilter('japanese_katakana_stem', ['min' => 3]);
 $builder->appendTokenFilter('japanese_stop_tags', [
     'tags' => [
         '接続詞',
-        '助詞',
-        '助詞,格助詞',
+        '助詞,格助詞,一般',
         '助詞,格助詞,一般',
         '助詞,係助詞',
         '助詞,副助詞',

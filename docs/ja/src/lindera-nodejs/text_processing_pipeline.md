@@ -26,10 +26,10 @@ Input Text
 ```javascript
 const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+const tokenizer = builder.build();
 ```
 
 サポートされる正規化形式: `"nfc"`、`"nfkc"`、`"nfd"`、`"nfkd"`。
@@ -39,15 +39,15 @@ const tokenizer = new TokenizerBuilder()
 マッピングテーブルに従って文字や文字列を置換します。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("mapping", {
-    mapping: {
-      "\u30fc": "-",
-      "\uff5e": "~",
-    },
-  })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("mapping", {
+  mapping: {
+    "\u30fc": "-",
+    "\uff5e": "~",
+  },
+});
+const tokenizer = builder.build();
 ```
 
 ### japanese_iteration_mark
@@ -55,13 +55,13 @@ const tokenizer = new TokenizerBuilder()
 日本語の踊り字（繰り返し記号）を完全な形に展開します。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendCharacterFilter("japanese_iteration_mark", {
-    normalize_kanji: true,
-    normalize_kana: true,
-  })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendCharacterFilter("japanese_iteration_mark", {
+  normalize_kanji: true,
+  normalize_kana: true,
+});
+const tokenizer = builder.build();
 ```
 
 ## トークンフィルタ
@@ -73,10 +73,10 @@ const tokenizer = new TokenizerBuilder()
 トークンの表層形を小文字に変換します。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("lowercase", {})
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("lowercase", {});
+const tokenizer = builder.build();
 ```
 
 ### japanese_base_form
@@ -84,10 +84,10 @@ const tokenizer = new TokenizerBuilder()
 辞書の形態素情報を使用して、活用形を基本形（辞書形）に置換します。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_base_form", {})
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_base_form", {});
+const tokenizer = builder.build();
 ```
 
 ### japanese_stop_tags
@@ -95,25 +95,30 @@ const tokenizer = new TokenizerBuilder()
 指定されたタグに一致する品詞のトークンを除去します。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_stop_tags", {
-    tags: ["助詞", "助動詞"],
-  })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_stop_tags", {
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"],
+});
+const tokenizer = builder.build();
 ```
+
+> [!NOTE]
+> タグは 4 階層のカンマ区切りに正規化され（不足分は `*` で補完）、各トークンの先頭 4 つの品詞詳細と完全一致で比較されます。
+> IPADIC の助詞トークンは必ず `助詞,係助詞` のようにサブカテゴリを持つため、`助詞` 単独では一致しません。
+> 一方、助動詞はサブカテゴリを持たないため（`助動詞,*,*,*`）、`助動詞` 単独で一致します。
 
 ### japanese_keep_tags
 
 指定されたタグに一致する品詞のトークンのみを保持します。その他のトークンはすべて除去されます。
 
 ```javascript
-const tokenizer = new TokenizerBuilder()
-  .setDictionary("embedded://ipadic")
-  .appendTokenFilter("japanese_keep_tags", {
-    tags: ["名詞"],
-  })
-  .build();
+const builder = new TokenizerBuilder();
+builder.setDictionary("embedded://ipadic");
+builder.appendTokenFilter("japanese_keep_tags", {
+  tags: ["名詞,一般"],
+});
+const tokenizer = builder.build();
 ```
 
 ## パイプラインの完全な例
@@ -123,22 +128,22 @@ const tokenizer = new TokenizerBuilder()
 ```javascript
 const { TokenizerBuilder } = require("lindera");
 
-const tokenizer = new TokenizerBuilder()
-  .setMode("normal")
-  .setDictionary("embedded://ipadic")
-  // Preprocessing
-  .appendCharacterFilter("unicode_normalize", { kind: "nfkc" })
-  .appendCharacterFilter("japanese_iteration_mark", {
-    normalize_kanji: true,
-    normalize_kana: true,
-  })
-  // Postprocessing
-  .appendTokenFilter("japanese_base_form", {})
-  .appendTokenFilter("japanese_stop_tags", {
-    tags: ["助詞", "助動詞", "記号"],
-  })
-  .appendTokenFilter("lowercase", {})
-  .build();
+const builder = new TokenizerBuilder();
+builder.setMode("normal");
+builder.setDictionary("embedded://ipadic");
+// Preprocessing
+builder.appendCharacterFilter("unicode_normalize", { kind: "nfkc" });
+builder.appendCharacterFilter("japanese_iteration_mark", {
+  normalize_kanji: true,
+  normalize_kana: true,
+});
+// Postprocessing
+builder.appendTokenFilter("japanese_base_form", {});
+builder.appendTokenFilter("japanese_stop_tags", {
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"],
+});
+builder.appendTokenFilter("lowercase", {});
+const tokenizer = builder.build();
 
 const tokens = tokenizer.tokenize("Ｌｉｎｄｅｒａは形態素解析を行うライブラリです。");
 for (const token of tokens) {
@@ -151,5 +156,5 @@ for (const token of tokens) {
 1. `unicode_normalize` が全角文字を半角に変換（NFKC 正規化）
 2. `japanese_iteration_mark` が踊り字を展開
 3. `japanese_base_form` が活用形のトークンを基本形に変換
-4. `japanese_stop_tags` が助詞、助動詞、記号を除去
+4. `japanese_stop_tags` が助詞（格助詞・係助詞・連体化）・助動詞・句読点を除去
 5. `lowercase` がアルファベットを小文字に正規化

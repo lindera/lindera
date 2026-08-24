@@ -161,7 +161,9 @@ builder.setDictionary("/path/to/ipadic");
 // Add token filters
 builder.appendTokenFilter("lowercase");
 builder.appendTokenFilter("length", { min: 2, max: 10 });
-builder.appendTokenFilter("japanese_stop_tags", { tags: ["助詞", "助動詞"] });
+builder.appendTokenFilter("japanese_stop_tags", {
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"],
+});
 
 // Build tokenizer with filters
 const tokenizer = builder.build();
@@ -232,7 +234,7 @@ builder.appendCharacterFilter("mapping", {
 builder.appendTokenFilter("japanese_katakana_stem", { min: 3 });
 builder.appendTokenFilter("length", { min: 2, max: 10 });
 builder.appendTokenFilter("japanese_stop_tags", {
-  tags: ["助詞", "助動詞", "記号"],
+  tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"],
 });
 
 // Filters without configuration can omit the object
