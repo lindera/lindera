@@ -23,8 +23,8 @@ OPFS やその他のブラウザストレージに保存された辞書を `load
 - **戻り値**: `Dictionary`
 
 ```javascript
-import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // OPFS から辞書ファイルを読み込む
 const files = await loadDictionaryFiles("ipadic");
@@ -56,12 +56,12 @@ const tokenizer = builder.build();
 `embed-*` feature フラグ付きでビルドした場合、`embedded://` URI スキームで埋め込み辞書を読み込めます。WASM バイナリのサイズが大幅に増加します。
 
 > [!NOTE]
-> 以下の例の `lindera-wasm-web-ipadic` は `embed-ipadic` feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。詳細は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
+> 以下の例の `lindera-wasm-ipadic` は `embed-ipadic` feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm` のみです。詳細は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ### 埋め込み辞書の読み込み
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-web-ipadic';
+import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 ```
@@ -88,7 +88,7 @@ const tokenizer = builder.build();
 ### Tokenizer コンストラクタでの使用
 
 ```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -125,7 +125,7 @@ WebAssembly にはファイルシステムが無いため、ユーザー辞書�
 あります。
 
 ```javascript
-import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadUserDictionaryFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
@@ -146,7 +146,7 @@ const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 `lindera build --user` でコンパイルしたユーザー辞書はそのまま読み込めます：
 
 ```javascript
-import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+import { loadUserDictionaryBinFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.bin');
 const binBytes = new Uint8Array(await response.arrayBuffer());
@@ -156,8 +156,8 @@ const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ### Tokenizer でのユーザー辞書の使用
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(

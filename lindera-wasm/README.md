@@ -10,8 +10,7 @@ WebAssembly of Lindera
 
 ## npm
 
-- <https://www.npmjs.com/package/lindera-wasm-web> — Lindera WASM for Web
-- <https://www.npmjs.com/package/lindera-wasm-bundler> — Lindera WASM for Bundler
+- <https://www.npmjs.com/package/lindera-wasm> — Lindera WASM
 
 ## Dictionary
 
@@ -23,12 +22,13 @@ See the [example application](example/) for a working demo of downloading and lo
 
 ### Web Usage
 
-Use the `lindera-wasm-web` package for browser environments.
+The `lindera-wasm` package is built with wasm-pack's `web` target. Call the
+default-exported async init function (`__wbg_init`) once before using any API.
 Dictionaries are loaded at runtime from a local path or downloaded from [GitHub Releases](https://github.com/lindera/lindera/releases) using the OPFS API.
 
 ```js
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -59,8 +59,10 @@ main();
 
 ### Bundler Usage (Webpack, Rollup, etc.)
 
-Use the `lindera-wasm-bundler` package for bundler environments.
-The dictionary loading approach is the same as the web usage above.
+Bundlers use the same `lindera-wasm` package. Modern bundlers (Vite, Webpack 5
+with the `asyncWebAssembly` experiment) can consume the web-target build
+directly; call `await __wbg_init()` before using any API, exactly as in the
+web usage above. The dictionary loading approach is also the same.
 
 ### Token Properties
 
@@ -90,7 +92,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "lindera-wasm-web"
+      "lindera-wasm"
     ]
   },
 })

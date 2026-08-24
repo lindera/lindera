@@ -81,13 +81,13 @@ The examples below use CommonJS. The package is also importable from ESM — the
 same named exports are available:
 
 ```javascript
-import { loadDictionary, Tokenizer } from "lindera-nodejs";
+import { loadDictionary, Tokenizer } from "lindera";
 ```
 
 ### Basic Tokenization
 
 ```javascript
-const { loadDictionary, Tokenizer } = require("lindera-nodejs");
+const { loadDictionary, Tokenizer } = require("lindera");
 
 // Load dictionary
 // Load dictionary from a local path (download from GitHub Releases)
@@ -130,7 +130,7 @@ instances (out-of-range reads now yield `undefined` rather than `null`).
 ### Using Character Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
@@ -150,7 +150,7 @@ const tokens = tokenizer.tokenize(text); // Will apply filters automatically
 ### Using Token Filters
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 // Create tokenizer builder
 const builder = new TokenizerBuilder();
@@ -170,7 +170,7 @@ const tokens = tokenizer.tokenize("テキストの解析");
 ### Integrated Pipeline
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 // Build tokenizer with integrated filters
 const builder = new TokenizerBuilder();
@@ -193,7 +193,7 @@ const tokens = tokenizer.tokenize("コーヒーショップ");
 ### Working with Metadata
 
 ```javascript
-const { Metadata } = require("lindera-nodejs");
+const { Metadata } = require("lindera");
 
 // Create metadata with default values
 const metadata = new Metadata();
@@ -212,7 +212,7 @@ console.log(loaded.toObject());
 Character filters and token filters accept configuration as object arguments:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setDictionary("/path/to/ipadic");
@@ -282,7 +282,7 @@ npm run build -- --features train
 ### Training a Model
 
 ```javascript
-const { train } = require("lindera-nodejs");
+const { train } = require("lindera");
 
 // Train a model from corpus
 train({
@@ -301,7 +301,7 @@ train({
 ### Exporting Dictionary Files
 
 ```javascript
-const { exportModel } = require("lindera-nodejs");
+const { exportModel } = require("lindera");
 
 // Export trained model to dictionary files
 exportModel({

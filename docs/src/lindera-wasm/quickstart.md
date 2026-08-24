@@ -5,8 +5,8 @@
 The recommended approach is to download dictionaries at runtime using the OPFS helpers:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -56,10 +56,10 @@ Expected output:
 If you built with an `embed-*` feature flag, you can use embedded dictionaries:
 
 > [!NOTE]
-> `lindera-wasm-web-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
+> `lindera-wasm-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm` is actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -83,8 +83,8 @@ main();
 You can add character filters and token filters to the tokenization pipeline:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

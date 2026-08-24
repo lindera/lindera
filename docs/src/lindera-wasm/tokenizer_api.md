@@ -47,8 +47,8 @@ Use this when the dictionary has been loaded from bytes (e.g., via `loadDictiona
 - **Returns**: void
 
 ```javascript
-import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -212,7 +212,7 @@ console.log(JSON.stringify(token, null, 2));
 ## Helper Functions
 
 > [!NOTE]
-> The examples below import from `lindera-wasm-web-ipadic`, an illustrative package name for a local build with the `embed-ipadic` feature -- it is not published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
+> The examples below import from `lindera-wasm-ipadic`, an illustrative package name for a local build with the `embed-ipadic` feature -- it is not published to npm. Only `lindera-wasm` is actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
 
 ### `loadDictionary(uri)`
 
@@ -222,7 +222,7 @@ Loads a dictionary from the specified URI.
 - **Returns**: `Dictionary`
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-web-ipadic';
+import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 ```
@@ -250,7 +250,7 @@ Returns the version string of the lindera-wasm package.
 - **Returns**: `string`
 
 ```javascript
-import { version } from 'lindera-wasm-web-ipadic';
+import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // e.g., "5.3.0"
 ```

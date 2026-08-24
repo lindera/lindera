@@ -32,7 +32,7 @@ Lindera tokenizes Japanese text (IPADIC) at roughly 10-20 MB/s single-threaded, 
 Lindera also provides Python bindings. You can install it via pip:
 
 ```bash
-pip install lindera-python
+pip install lindera
 ```
 
 For more details, see the [lindera-python](lindera-python/) directory.
@@ -42,7 +42,7 @@ For more details, see the [lindera-python](lindera-python/) directory.
 Lindera also provides Node.js bindings. You can install it via npm:
 
 ```bash
-npm install lindera-nodejs
+npm install lindera
 ```
 
 For more details, see the [lindera-nodejs](lindera-nodejs/) directory.
@@ -60,9 +60,11 @@ Lindera also provides PHP bindings. They are not yet published to Packagist — 
 Lindera also provides WebAssembly bindings. You can install it via npm:
 
 ```bash
-npm install lindera-wasm-web      # browser (native ES modules)
-npm install lindera-wasm-bundler  # bundlers (Webpack, Rollup, etc.)
+npm install lindera-wasm
 ```
+
+The package is built with wasm-pack's `web` target and works in browsers
+natively as well as with modern bundlers (Vite, Webpack 5).
 
 For more details and a demo application, see the [lindera-wasm](lindera-wasm/) directory.
 

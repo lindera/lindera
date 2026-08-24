@@ -5,7 +5,7 @@
 ビルド済みパッケージが npm で公開予定です：
 
 ```bash
-npm install lindera-nodejs
+npm install lindera
 ```
 
 > [!NOTE]
@@ -97,14 +97,14 @@ npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 インストール後、Node.js で lindera が利用可能であることを確認します：
 
 ```javascript
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 ```
 
 > [!NOTE]
-> `lindera-nodejs` の `package.json` は現状、`exports` マップに `require` 条件のみを定義しており
-> （`import` 条件はありません）、そのため `import { version } from "lindera-nodejs";` は
+> npm パッケージ `lindera` の `package.json` は現状、`exports` マップに `require` 条件のみを定義しており
+> （`import` 条件はありません）、そのため `import { version } from "lindera";` は
 > `ERR_PACKAGE_PATH_NOT_EXPORTED` で失敗します。ES modules から利用する場合は、Node.js の
 > `createRequire` を使用してください：
 
@@ -112,7 +112,7 @@ console.log(lindera.version());
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 ```

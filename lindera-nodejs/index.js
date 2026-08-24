@@ -70,13 +70,13 @@ function requireNative() {
   } else if (process.platform === 'android') {
     if (process.arch === 'arm64') {
       try {
-        return require('./lindera-nodejs.android-arm64.node')
+        return require('./lindera.android-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-android-arm64')
-        const bindingPackageVersion = require('lindera-nodejs-android-arm64/package.json').version
+        const binding = require('lindera-android-arm64')
+        const bindingPackageVersion = require('lindera-android-arm64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -86,13 +86,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./lindera-nodejs.android-arm-eabi.node')
+        return require('./lindera.android-arm-eabi.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-android-arm-eabi')
-        const bindingPackageVersion = require('lindera-nodejs-android-arm-eabi/package.json').version
+        const binding = require('lindera-android-arm-eabi')
+        const bindingPackageVersion = require('lindera-android-arm-eabi/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -107,13 +107,13 @@ function requireNative() {
     if (process.arch === 'x64') {
       if ((process.config && process.config.variables && process.config.variables.shlib_suffix === 'dll.a') || (process.config && process.config.variables && process.config.variables.node_target_type === 'shared_library')) {
         try {
-        return require('./lindera-nodejs.win32-x64-gnu.node')
+        return require('./lindera.win32-x64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-win32-x64-gnu')
-        const bindingPackageVersion = require('lindera-nodejs-win32-x64-gnu/package.json').version
+        const binding = require('lindera-win32-x64-gnu')
+        const bindingPackageVersion = require('lindera-win32-x64-gnu/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -123,13 +123,13 @@ function requireNative() {
       }
       } else {
         try {
-        return require('./lindera-nodejs.win32-x64-msvc.node')
+        return require('./lindera.win32-x64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-win32-x64-msvc')
-        const bindingPackageVersion = require('lindera-nodejs-win32-x64-msvc/package.json').version
+        const binding = require('lindera-win32-x64-msvc')
+        const bindingPackageVersion = require('lindera-win32-x64-msvc/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -140,13 +140,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ia32') {
       try {
-        return require('./lindera-nodejs.win32-ia32-msvc.node')
+        return require('./lindera.win32-ia32-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-win32-ia32-msvc')
-        const bindingPackageVersion = require('lindera-nodejs-win32-ia32-msvc/package.json').version
+        const binding = require('lindera-win32-ia32-msvc')
+        const bindingPackageVersion = require('lindera-win32-ia32-msvc/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -156,13 +156,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./lindera-nodejs.win32-arm64-msvc.node')
+        return require('./lindera.win32-arm64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-win32-arm64-msvc')
-        const bindingPackageVersion = require('lindera-nodejs-win32-arm64-msvc/package.json').version
+        const binding = require('lindera-win32-arm64-msvc')
+        const bindingPackageVersion = require('lindera-win32-arm64-msvc/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -175,13 +175,13 @@ function requireNative() {
     }
   } else if (process.platform === 'darwin') {
     try {
-      return require('./lindera-nodejs.darwin-universal.node')
+      return require('./lindera.darwin-universal.node')
     } catch (e) {
       loadErrors.push(e)
     }
     try {
-      const binding = require('lindera-nodejs-darwin-universal')
-      const bindingPackageVersion = require('lindera-nodejs-darwin-universal/package.json').version
+      const binding = require('lindera-darwin-universal')
+      const bindingPackageVersion = require('lindera-darwin-universal/package.json').version
       if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
         throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
@@ -191,13 +191,13 @@ function requireNative() {
     }
     if (process.arch === 'x64') {
       try {
-        return require('./lindera-nodejs.darwin-x64.node')
+        return require('./lindera.darwin-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-darwin-x64')
-        const bindingPackageVersion = require('lindera-nodejs-darwin-x64/package.json').version
+        const binding = require('lindera-darwin-x64')
+        const bindingPackageVersion = require('lindera-darwin-x64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -207,13 +207,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./lindera-nodejs.darwin-arm64.node')
+        return require('./lindera.darwin-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-darwin-arm64')
-        const bindingPackageVersion = require('lindera-nodejs-darwin-arm64/package.json').version
+        const binding = require('lindera-darwin-arm64')
+        const bindingPackageVersion = require('lindera-darwin-arm64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -227,13 +227,13 @@ function requireNative() {
   } else if (process.platform === 'freebsd') {
     if (process.arch === 'x64') {
       try {
-        return require('./lindera-nodejs.freebsd-x64.node')
+        return require('./lindera.freebsd-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-freebsd-x64')
-        const bindingPackageVersion = require('lindera-nodejs-freebsd-x64/package.json').version
+        const binding = require('lindera-freebsd-x64')
+        const bindingPackageVersion = require('lindera-freebsd-x64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -243,13 +243,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./lindera-nodejs.freebsd-arm64.node')
+        return require('./lindera.freebsd-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-freebsd-arm64')
-        const bindingPackageVersion = require('lindera-nodejs-freebsd-arm64/package.json').version
+        const binding = require('lindera-freebsd-arm64')
+        const bindingPackageVersion = require('lindera-freebsd-arm64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -264,13 +264,13 @@ function requireNative() {
     if (process.arch === 'x64') {
       if (isMusl()) {
         try {
-          return require('./lindera-nodejs.linux-x64-musl.node')
+          return require('./lindera.linux-x64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-x64-musl')
-          const bindingPackageVersion = require('lindera-nodejs-linux-x64-musl/package.json').version
+          const binding = require('lindera-linux-x64-musl')
+          const bindingPackageVersion = require('lindera-linux-x64-musl/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -280,13 +280,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./lindera-nodejs.linux-x64-gnu.node')
+          return require('./lindera.linux-x64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-x64-gnu')
-          const bindingPackageVersion = require('lindera-nodejs-linux-x64-gnu/package.json').version
+          const binding = require('lindera-linux-x64-gnu')
+          const bindingPackageVersion = require('lindera-linux-x64-gnu/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -298,13 +298,13 @@ function requireNative() {
     } else if (process.arch === 'arm64') {
       if (isMusl()) {
         try {
-          return require('./lindera-nodejs.linux-arm64-musl.node')
+          return require('./lindera.linux-arm64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-arm64-musl')
-          const bindingPackageVersion = require('lindera-nodejs-linux-arm64-musl/package.json').version
+          const binding = require('lindera-linux-arm64-musl')
+          const bindingPackageVersion = require('lindera-linux-arm64-musl/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -314,13 +314,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./lindera-nodejs.linux-arm64-gnu.node')
+          return require('./lindera.linux-arm64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-arm64-gnu')
-          const bindingPackageVersion = require('lindera-nodejs-linux-arm64-gnu/package.json').version
+          const binding = require('lindera-linux-arm64-gnu')
+          const bindingPackageVersion = require('lindera-linux-arm64-gnu/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -332,13 +332,13 @@ function requireNative() {
     } else if (process.arch === 'arm') {
       if (isMusl()) {
         try {
-          return require('./lindera-nodejs.linux-arm-musleabihf.node')
+          return require('./lindera.linux-arm-musleabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-arm-musleabihf')
-          const bindingPackageVersion = require('lindera-nodejs-linux-arm-musleabihf/package.json').version
+          const binding = require('lindera-linux-arm-musleabihf')
+          const bindingPackageVersion = require('lindera-linux-arm-musleabihf/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -348,13 +348,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./lindera-nodejs.linux-arm-gnueabihf.node')
+          return require('./lindera.linux-arm-gnueabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('lindera-nodejs-linux-arm-gnueabihf/package.json').version
+          const binding = require('lindera-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('lindera-linux-arm-gnueabihf/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -366,13 +366,13 @@ function requireNative() {
     } else if (process.arch === 'loong64') {
       if (isMusl()) {
         try {
-          return require('./lindera-nodejs.linux-loong64-musl.node')
+          return require('./lindera.linux-loong64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-loong64-musl')
-          const bindingPackageVersion = require('lindera-nodejs-linux-loong64-musl/package.json').version
+          const binding = require('lindera-linux-loong64-musl')
+          const bindingPackageVersion = require('lindera-linux-loong64-musl/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -382,13 +382,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./lindera-nodejs.linux-loong64-gnu.node')
+          return require('./lindera.linux-loong64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-loong64-gnu')
-          const bindingPackageVersion = require('lindera-nodejs-linux-loong64-gnu/package.json').version
+          const binding = require('lindera-linux-loong64-gnu')
+          const bindingPackageVersion = require('lindera-linux-loong64-gnu/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -400,13 +400,13 @@ function requireNative() {
     } else if (process.arch === 'riscv64') {
       if (isMusl()) {
         try {
-          return require('./lindera-nodejs.linux-riscv64-musl.node')
+          return require('./lindera.linux-riscv64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-riscv64-musl')
-          const bindingPackageVersion = require('lindera-nodejs-linux-riscv64-musl/package.json').version
+          const binding = require('lindera-linux-riscv64-musl')
+          const bindingPackageVersion = require('lindera-linux-riscv64-musl/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -416,13 +416,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./lindera-nodejs.linux-riscv64-gnu.node')
+          return require('./lindera.linux-riscv64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('lindera-nodejs-linux-riscv64-gnu')
-          const bindingPackageVersion = require('lindera-nodejs-linux-riscv64-gnu/package.json').version
+          const binding = require('lindera-linux-riscv64-gnu')
+          const bindingPackageVersion = require('lindera-linux-riscv64-gnu/package.json').version
           if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -433,13 +433,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ppc64') {
       try {
-        return require('./lindera-nodejs.linux-ppc64-gnu.node')
+        return require('./lindera.linux-ppc64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-linux-ppc64-gnu')
-        const bindingPackageVersion = require('lindera-nodejs-linux-ppc64-gnu/package.json').version
+        const binding = require('lindera-linux-ppc64-gnu')
+        const bindingPackageVersion = require('lindera-linux-ppc64-gnu/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -449,13 +449,13 @@ function requireNative() {
       }
     } else if (process.arch === 's390x') {
       try {
-        return require('./lindera-nodejs.linux-s390x-gnu.node')
+        return require('./lindera.linux-s390x-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-linux-s390x-gnu')
-        const bindingPackageVersion = require('lindera-nodejs-linux-s390x-gnu/package.json').version
+        const binding = require('lindera-linux-s390x-gnu')
+        const bindingPackageVersion = require('lindera-linux-s390x-gnu/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -469,13 +469,13 @@ function requireNative() {
   } else if (process.platform === 'openharmony') {
     if (process.arch === 'arm64') {
       try {
-        return require('./lindera-nodejs.openharmony-arm64.node')
+        return require('./lindera.openharmony-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-openharmony-arm64')
-        const bindingPackageVersion = require('lindera-nodejs-openharmony-arm64/package.json').version
+        const binding = require('lindera-openharmony-arm64')
+        const bindingPackageVersion = require('lindera-openharmony-arm64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -485,13 +485,13 @@ function requireNative() {
       }
     } else if (process.arch === 'x64') {
       try {
-        return require('./lindera-nodejs.openharmony-x64.node')
+        return require('./lindera.openharmony-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-openharmony-x64')
-        const bindingPackageVersion = require('lindera-nodejs-openharmony-x64/package.json').version
+        const binding = require('lindera-openharmony-x64')
+        const bindingPackageVersion = require('lindera-openharmony-x64/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -501,13 +501,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./lindera-nodejs.openharmony-arm.node')
+        return require('./lindera.openharmony-arm.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('lindera-nodejs-openharmony-arm')
-        const bindingPackageVersion = require('lindera-nodejs-openharmony-arm/package.json').version
+        const binding = require('lindera-openharmony-arm')
+        const bindingPackageVersion = require('lindera-openharmony-arm/package.json').version
         if (bindingPackageVersion !== '5.3.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -623,10 +623,10 @@ if (!nativeBinding || forceWasi) {
     let candidateError = null
     let candidateFailed = false
     try {
-      candidateError = __napiWasiResolveCandidate('./lindera-nodejs.wasi.cjs', false, ["./lindera-nodejs.wasm32-wasi.debug.wasm","./lindera-nodejs.wasm32-wasi.wasm"])
+      candidateError = __napiWasiResolveCandidate('./lindera.wasi.cjs', false, ["./lindera.wasm32-wasi.debug.wasm","./lindera.wasm32-wasi.wasm"])
       candidateFailed = candidateError !== null
       if (!candidateFailed) {
-        wasiBinding = require('./lindera-nodejs.wasi.cjs')
+        wasiBinding = require('./lindera.wasi.cjs')
         nativeBinding = wasiBinding
         wasiBindingLoaded = true
       }
@@ -643,16 +643,16 @@ if (!nativeBinding || forceWasi) {
     let candidateError = null
     let candidateFailed = false
     try {
-      candidateError = __napiWasiResolveCandidate('lindera-nodejs-wasm32-wasi', true, undefined)
+      candidateError = __napiWasiResolveCandidate('lindera-wasm32-wasi', true, undefined)
       candidateFailed = candidateError !== null
       if (!candidateFailed) {
         if (process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          const bindingPackageVersion = require('lindera-nodejs-wasm32-wasi/package.json').version
+          const bindingPackageVersion = require('lindera-wasm32-wasi/package.json').version
           if (bindingPackageVersion !== '5.3.0') {
             throw new Error(`WASI binding package version mismatch, expected 5.3.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
         }
-        wasiBinding = require('lindera-nodejs-wasm32-wasi')
+        wasiBinding = require('lindera-wasm32-wasi')
         nativeBinding = wasiBinding
         wasiBindingLoaded = true
       }

@@ -11,7 +11,7 @@
 デフォルト設定で新しいビルダーを作成します。
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 ```
@@ -108,7 +108,7 @@ const tokenizer = builder.build();
 読み込み済みの辞書から直接トークナイザーを作成します。
 
 ```javascript
-const { Tokenizer, loadDictionary } = require("lindera-nodejs");
+const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -210,7 +210,7 @@ const reading = token.details[7];  // 例: "トウキョウ"
 
 ## Mode と Penalty
 
-`Mode` と `Penalty` は `lindera-nodejs` からエクスポートされていますが、**現状どの公開 API
+`Mode` と `Penalty` は npm パッケージ `lindera` からエクスポートされていますが、**現状どの公開 API
 にも接続されていません**： `TokenizerBuilder.setMode()` / `Tokenizer` のコンストラクタは
 単純なモード文字列（`"normal"` または `"decompose"`）のみを受け取り、decompose モードは
 内部的に常にデフォルトのペナルティ設定を使用します。これらの型は完全性のためにここで

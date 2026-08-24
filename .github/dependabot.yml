@@ -49,7 +49,7 @@ updates:
       # placeholders in the repository; the release workflow rewrites
       # them to the actual version at publish time. They must never be
       # bumped in-repo.
-      - dependency-name: lindera-nodejs-*
+      - dependency-name: lindera-*
 
   # Python binding (Poetry via the pip ecosystem).
   - package-ecosystem: pip

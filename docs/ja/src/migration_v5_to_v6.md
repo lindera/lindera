@@ -23,10 +23,109 @@ Lindera v6.0.0 では、ビルド済みユーザー辞書の再ビルドが必�
 | 未知語の候補ラダー（length ladder）がデフォルトで有効に | 辞書外テキストに対する Normal・Decompose 両モードの出力 | v5 と同一の出力が必要な場合は `unknown_word_ladder(false)` / `--disable-unknown-word-ladder` を設定 |
 | `max_grouping_len` オプションの新設（`--max-grouping-len`、config キー、builder/worker setter） | MeCab の `max-grouping-size` 相当の上限を使いたいユーザー | 対応不要（デフォルトは従来どおり無制限） |
 | JS バインディングがプレーンオブジェクトを返すようになり `Token` クラスが廃止 | Node.js・WASM ユーザー | `token.getDetail(i)` を `token.details[i]` に置換。WASM ユーザーはフィールド名の camelCase 化にも対応 |
+| **npm・PyPI のパッケージ名が変更**（`lindera-nodejs` → `lindera`、`lindera-python` → `lindera`、WASM は `lindera-wasm` に統合） | npm・PyPI からバインディングをインストールしているユーザー | 依存関係と import のパッケージ名を更新（[下記](#npmpypicratesio-のパッケージ名変更)参照） |
 | `lindera_dictionary::viterbi`/`mode` の一部項目が改名・削除、`Lattice::set_text`/`set_text_nbest` に引数 2 つ追加 | `Lattice`/`Edge`/`Penalty`/`Mode` を直接利用するコード（`lindera` クレートの `Segmenter`/`Tokenizer`/`Worker` API 利用者は対象外） | 下記の表に従い呼び出し箇所を更新 |
 | ビルド済み辞書フォーマットがバージョン 2（`dict.da` → `dict.trie` + `dict.valsidx`）— **v5.3.0 でリリース済み** | **v5.2 以前**で作成した自前ビルドのシステム辞書 | `lindera build` で再ビルド、または `lindera download` で再取得 |
 | `loadDictionaryFromBytes()` が 9 引数 — **v5.3.0 でリリース済み** | **v5.2 以前**からアップグレードする、バイトデータから辞書を読み込む WASM ユーザー | `dictDa` の代わりに `dictTrie` と `dictValsIdx` を渡す |
 | OPFS の `DictionaryFiles` が `dictDa` を `dictTrie` + `dictValsIdx` に置き換え — **v5.3.0 でリリース済み** | **v5.2 以前**からアップグレードする、`opfs` ヘルパーを使う WASM ユーザー | OPFS にキャッシュ済みの辞書を再ダウンロード |
+
+## npm・PyPI・crates.io のパッケージ名変更
+
+v6.0.0 から、公開パッケージ名がサフィックス付きの名前から素の名前
+（bare name）に統一されます:
+
+| レジストリ | 旧パッケージ名 | 新パッケージ名 |
+| --- | --- | --- |
+| npm（Node.js 本体） | `lindera-nodejs` | `lindera` |
+| npm（プラットフォーム別） | `lindera-nodejs-<platform>`（例: `lindera-nodejs-darwin-arm64`） | `lindera-<platform>`（例: `lindera-darwin-arm64`） |
+| npm（WASM） | `lindera-wasm-web` / `lindera-wasm-bundler` | `lindera-wasm`（単一パッケージ） |
+| PyPI | `lindera-python` | `lindera` |
+
+RubyGems の `lindera` と、crates.io のコアクレート（`lindera`・
+`lindera-dictionary` など）は変更ありません。
+
+### Node.js（npm）
+
+`package.json` の依存関係と `require`/`import` のパッケージ名を更新してください:
+
+```javascript
+// v5
+const { TokenizerBuilder } = require("lindera-nodejs");
+
+// v6
+const { TokenizerBuilder } = require("lindera");
+```
+
+プラットフォーム別パッケージ（`optionalDependencies` 経由で自動的に
+解決されます）も `lindera-nodejs-<platform>` から `lindera-<platform>` に
+変わりますが、通常は明示的に依存指定していないため対応は不要です。
+
+旧 `lindera-nodejs` 系パッケージは npm 上で deprecated としてマークされます。
+公開済みの旧バージョンはそのまま残ります。
+
+### Python（PyPI）
+
+インストールコマンドと依存関係を更新してください:
+
+```bash
+# v5
+pip install lindera-python
+
+# v6
+pip install lindera
+```
+
+**Python の import 名は変わりません** — 以前から `import lindera` であり、
+コードの変更は不要です。変わるのは PyPI 上の配布名だけです。
+
+移行を助けるため、`lindera-python` の最終リリースとして、新しい `lindera`
+パッケージに依存するだけの移行スタブ（transition stub）が PyPI に公開されます。
+`pip install lindera-python` は当面動作しますが、依存関係は `lindera` に
+切り替えてください。
+
+### WASM（npm）
+
+`lindera-wasm-web` と `lindera-wasm-bundler` の 2 パッケージは、
+`wasm-pack --target web` でビルドされた単一の `lindera-wasm` パッケージに
+統合されます。
+
+`lindera-wasm-web` を使っていた場合は、パッケージ名の置き換えのみです:
+
+```javascript
+// v5
+import __wbg_init, { TokenizerBuilder } from "lindera-wasm-web";
+await __wbg_init();
+
+// v6
+import init, { TokenizerBuilder } from "lindera-wasm";
+await init();
+```
+
+`lindera-wasm-bundler` を使っていた場合も、同じ `lindera-wasm` パッケージを
+インストールします。ただし `web` ターゲットのビルドでは初期化が自動では
+行われないため、使用前にデフォルトエクスポートの非同期初期化関数を必ず
+呼び出してください:
+
+```javascript
+// v5（bundler ターゲット: 初期化はバンドラーが処理）
+import { TokenizerBuilder } from "lindera-wasm-bundler";
+
+// v6（web ターゲット: 明示的な初期化が必要）
+import init, { TokenizerBuilder } from "lindera-wasm";
+await init();
+```
+
+モダンなバンドラー（Vite、Webpack 5 の `asyncWebAssembly` など）は
+`web` ターゲットのビルドをそのまま扱えます。設定例は
+[ブラウザでの使用](./lindera-wasm/browser_usage.md) を参照してください。
+
+### crates.io
+
+バインディングクレート（`lindera-python`・`lindera-nodejs`・`lindera-ruby`・
+`lindera-wasm`）は crates.io への公開を終了します。公開済みの 5.3.0 までの
+バージョンはそのまま残ります。これらは各言語のレジストリ（PyPI・npm・
+RubyGems）経由で利用するものであり、Rust クレートとして依存する用途は
+想定されていません。コアクレートは引き続き crates.io に公開されます。
 
 ## ビルド済みユーザー辞書の再ビルドが必要
 
@@ -303,7 +402,7 @@ const tokens = tokenizer.tokenize(text);
 
 どちらもクラスではなくなったため、パッケージから export されなくなりました。
 `Token`・`JsToken`・`NbestResult`・`JsNbestResult` はすべて `index.js` から
-削除され、`require("lindera-nodejs").Token` は `undefined` になります。
+削除され、`require("lindera").Token` は `undefined` になります。
 `instanceof` による判定もできません:
 
 ```javascript
@@ -382,6 +481,12 @@ WASM の `tokenizeNbest` は v5 の時点で既にプレーンオブジェクト
 
 JavaScript（Node.js・WASM）:
 
+- Node.js: `package.json` の依存を `lindera-nodejs` から `lindera` に変更し、
+  `require`/`import` のパッケージ名を更新する。
+- WASM: 依存を `lindera-wasm-web` / `lindera-wasm-bundler` から `lindera-wasm`
+  に変更する。`lindera-wasm-bundler` を使っていた場合は、使用前に
+  デフォルトエクスポートの初期化関数（`await init()`）を呼び出すコードを
+  追加する。
 - `token.getDetail(i)` を `token.details[i]` に置き換える。
 - Node.js: `tokenizeObjects(text)` を `tokenize(text)` に置き換え、
   `Token`/`NbestResult` の import をやめる（export されなくなったため）。
@@ -389,6 +494,11 @@ JavaScript（Node.js・WASM）:
 - WASM: トークンのフィールド参照を camelCase に変更し（`byteStart`・
   `byteEnd`・`wordId`・`isUnknown`）、`toJSON()` の呼び出しを削除し、
   `Token` の import をやめる。
+
+Python:
+
+- 依存を `lindera-python` から `lindera` に変更する（`pip install lindera`）。
+  `import lindera` はそのままで、コードの変更は不要。
 
 `lindera_dictionary` を直接利用している場合:
 

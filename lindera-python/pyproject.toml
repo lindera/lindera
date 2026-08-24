@@ -3,7 +3,7 @@ module-name = "lindera"
 features = ["pyo3/abi3-py310", "pyo3/generate-import-lib"]
 
 [project]
-name = "lindera-python"
+name = "lindera"
 dynamic = ["version"]
 description = "Python binding for Lindera (no embedded dictionaries)"
 authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]

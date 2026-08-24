@@ -1,5 +1,7 @@
 [package]
 name = "lindera-ruby"
+# Distributed via RubyGems, not crates.io.
+publish = false
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }

@@ -7,8 +7,8 @@ In browser environments, you must initialize the WASM module before using any Li
 The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -48,10 +48,10 @@ main();
 If you built with an `embed-*` feature flag, you can use embedded dictionaries instead of OPFS:
 
 > [!NOTE]
-> `lindera-wasm-web-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
+> `lindera-wasm-ipadic` is an illustrative package name here, not something published to npm. Only `lindera-wasm` is actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention) for how to build and name a package like this yourself.
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -138,7 +138,9 @@ A minimal HTML page using lindera-wasm with OPFS dictionary loading:
 
 ## Webpack Configuration
 
-When using Webpack 5, enable the `asyncWebAssembly` experiment:
+The `lindera-wasm` package is built with wasm-pack's `web` target, and modern
+bundlers can consume it directly. When using Webpack 5, enable the
+`asyncWebAssembly` experiment:
 
 ```javascript
 // webpack.config.js
@@ -157,11 +159,14 @@ module.exports = {
 };
 ```
 
-Then import using the bundler target build:
+Then import the package and call the default-exported async init function
+once before using any API (the web-target build requires it, bundled or not):
 
 ```javascript
-import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+await __wbg_init();
 
 // Load dictionary from OPFS (see OPFS Dictionary Storage for setup)
 const files = await loadDictionaryFiles("ipadic");
@@ -176,11 +181,11 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 ```
 
-With the bundler target, `__wbg_init()` is called automatically by the bundler.
-
 ## Vite / Rollup Setup
 
-Vite supports WASM out of the box with the web target. Place the built `pkg/` directory in your project and import directly:
+Vite supports the web-target WASM build out of the box. Install `lindera-wasm`
+from npm, or place a locally built `pkg/` directory in your project and import
+directly:
 
 ```javascript
 import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
@@ -190,14 +195,15 @@ await __wbg_init();
 // Load dictionary from OPFS and use TokenizerBuilder as shown above
 ```
 
-For the bundler target with Vite, you may need the [vite-plugin-wasm](https://github.com/nicolo-ribaudo/vite-plugin-wasm) plugin:
+When installing from npm, exclude the package from Vite's dependency
+pre-bundling:
 
 ```javascript
 // vite.config.js
-import wasm from 'vite-plugin-wasm';
-
 export default {
-    plugins: [wasm()],
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
 };
 ```
 

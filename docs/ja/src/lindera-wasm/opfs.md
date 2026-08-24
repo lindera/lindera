@@ -12,7 +12,7 @@ OPFS ヘルパーは、WASM パッケージとともに別の JavaScript モジ�
 
 ```javascript
 import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 ```
 
 ## 関数
@@ -133,8 +133,8 @@ if (await hasDictionary("ipadic")) {
 OPFS ベースの辞書を使用する一般的なワークフロー:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

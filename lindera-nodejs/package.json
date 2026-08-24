@@ -1,5 +1,5 @@
 {
-  "name": "lindera-nodejs",
+  "name": "lindera",
   "version": "5.3.0",
   "description": "Node.js bindings for Lindera morphological analysis engine",
   "main": "index.js",
@@ -16,9 +16,9 @@
     "node": "^20.17.0 || ^22.13.0 || >= 23.5.0"
   },
   "napi": {
-    "binaryName": "lindera-nodejs",
+    "binaryName": "lindera",
     "package": {
-      "name": "lindera-nodejs"
+      "name": "lindera"
     },
     "targets": [
       "x86_64-apple-darwin",
@@ -42,12 +42,12 @@
     "index.d.ts"
   ],
   "optionalDependencies": {
-    "lindera-nodejs-darwin-arm64": "0.0.0",
-    "lindera-nodejs-darwin-x64": "0.0.0",
-    "lindera-nodejs-linux-arm64-gnu": "0.0.0",
-    "lindera-nodejs-linux-x64-gnu": "0.0.0",
-    "lindera-nodejs-win32-arm64-msvc": "0.0.0",
-    "lindera-nodejs-win32-x64-msvc": "0.0.0"
+    "lindera-darwin-arm64": "0.0.0",
+    "lindera-darwin-x64": "0.0.0",
+    "lindera-linux-arm64-gnu": "0.0.0",
+    "lindera-linux-x64-gnu": "0.0.0",
+    "lindera-win32-arm64-msvc": "0.0.0",
+    "lindera-win32-x64-msvc": "0.0.0"
   },
   "repository": {
     "type": "git",

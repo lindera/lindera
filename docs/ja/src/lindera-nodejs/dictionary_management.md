@@ -9,7 +9,7 @@ Lindera Node.js は、形態素解析で使用する辞書の読み込み、ビ�
 `loadDictionary(uri)` を使用してシステム辞書を読み込みます。[GitHub Releases](https://github.com/lindera/lindera/releases) からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：
 
 ```javascript
-const { loadDictionary } = require("lindera-nodejs");
+const { loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 ```
@@ -35,7 +35,7 @@ console.log(metadata.defaultWordCost);
 ユーザー辞書はシステム辞書にカスタム語彙を追加します。
 
 ```javascript
-const { loadUserDictionary, Metadata } = require("lindera-nodejs");
+const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
@@ -44,7 +44,7 @@ const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 トークナイザーのビルド時にユーザー辞書を渡します：
 
 ```javascript
-const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
+const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
@@ -56,7 +56,7 @@ const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 または、ビルダー経由で設定します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -71,7 +71,7 @@ const tokenizer = new TokenizerBuilder()
 ソースファイルからシステム辞書をビルドします：
 
 ```javascript
-const { buildDictionary, Metadata } = require("lindera-nodejs");
+const { buildDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -84,7 +84,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 CSV ファイルからユーザー辞書をビルドします：
 
 ```javascript
-const { buildUserDictionary, Metadata } = require("lindera-nodejs");
+const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -107,7 +107,7 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir");
 ### Metadata の作成
 
 ```javascript
-const { Metadata } = require("lindera-nodejs");
+const { Metadata } = require("lindera");
 
 // デフォルトのメタデータ
 const metadata = new Metadata();
@@ -170,7 +170,7 @@ console.log(metadata.toObject());
 ### Schema の作成
 
 ```javascript
-const { Schema } = require("lindera-nodejs");
+const { Schema } = require("lindera");
 
 // デフォルトの IPADIC 互換スキーマ
 const schema = Schema.createDefault();
