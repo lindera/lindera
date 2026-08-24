@@ -247,6 +247,10 @@
 順序でエントリを書き出します。これに伴い Rust API から
 <code>ModelInfo.updated_at</code> フィールドを削除しました（<code>lindera-dictionary</code>）。
 このキーを含む既存の <code>metadata.json</code> は引き続き読み込めます。</li>
+<li><code>DictionaryRewriter::rewrite_cached</code> と <code>clear_cache</code> を削除しました。
+キャッシュは素性文字列全体をキーにしており、実辞書では行ごとにほぼ一意で
+一度もヒットせず、メモリを保持するだけだったためです。代わりに <code>rewrite</code>
+を呼んでください（<code>&amp;mut</code> も不要になりました）。</li>
 <li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
 変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
 含むすべてのスレッド数で）。以後の成果物を比較可能にするには

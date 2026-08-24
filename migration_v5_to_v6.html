@@ -247,6 +247,10 @@ carries an <code>updated_at</code> timestamp, and every export writer emits entr
 a deterministic order. Accordingly, the <code>ModelInfo.updated_at</code> field was
 removed from the Rust API (<code>lindera-dictionary</code>); old <code>metadata.json</code> files
 that still contain the key keep parsing.</li>
+<li><code>DictionaryRewriter::rewrite_cached</code> and <code>clear_cache</code> were removed: the
+cache was keyed on the full feature string, which is unique per row in a
+real lexicon, so it never hit and only retained memory. Call <code>rewrite</code>
+instead — it no longer requires <code>&amp;mut</code>.</li>
 <li>The fixed partition changed the summation order, so weights trained
 <strong>before</strong> this change are not byte-identical to weights trained after it —
 at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if
