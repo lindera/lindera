@@ -123,7 +123,7 @@ impl Trainer {
     /// Creates a new [`Trainer`] using the specified configuration.
     pub fn new(mut config: TrainerConfig) -> Result<Self> {
         let mut provider = lindera_crf::FeatureProvider::default();
-        let mut label_id_map = HashMap::new();
+        let mut label_id_map: HashMap<String, HashMap<char, NonZeroU32>> = HashMap::new();
 
         // Build label mapping from surfaces and add feature sets to provider
         // Generate default features based on dictionary schema
@@ -136,15 +136,16 @@ impl Trainer {
 
         for (i, surface) in config.surfaces.iter().enumerate() {
             // Get feature string from config.features (parallel to surfaces)
-            let feature_str = if i < config.features.len() {
-                config.features[i].clone()
+            let feature_str: &str = if i < config.features.len() {
+                &config.features[i]
             } else {
-                default_features.clone()
+                &default_features
             };
 
-            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
-            let (ufeature, lfeature, rfeature) =
-                config.dictionary_rewriter.rewrite_cached(&feature_str);
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature.
+            // Uncached on purpose: real feature strings are unique per row,
+            // so a cache keyed on them never hits (#975).
+            let (ufeature, lfeature, rfeature) = config.dictionary_rewriter.rewrite(feature_str);
             let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
             let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
             let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
@@ -184,14 +185,9 @@ impl Trainer {
             let label_id = provider.add_feature_set(feature_set)?;
 
             // Map feature string to label ID using first character classification
-            label_id_map
-                .entry(feature_str.to_string())
-                .or_insert_with(HashMap::new);
+            let char_map = label_id_map.entry(feature_str.to_string()).or_default();
             if let Some(first_char) = surface.chars().next() {
-                label_id_map
-                    .get_mut(&feature_str)
-                    .unwrap()
-                    .insert(first_char, label_id);
+                char_map.insert(first_char, label_id);
             }
         }
 
@@ -202,15 +198,15 @@ impl Trainer {
 
         for (i, category) in unk_category_names.iter().enumerate() {
             // Get unknown word feature string from unk_categories
-            let unk_feature = config
+            let unk_feature: &str = config
                 .unk_categories
                 .get(category)
-                .cloned()
-                .unwrap_or_else(|| default_features.clone());
+                .map(|s| s.as_str())
+                .unwrap_or(&default_features);
 
-            // Apply dictionary rewriter to get ufeature, lfeature, rfeature
-            let (ufeature, lfeature, rfeature) =
-                config.dictionary_rewriter.rewrite_cached(&unk_feature);
+            // Apply dictionary rewriter to get ufeature, lfeature, rfeature.
+            // Uncached on purpose: see the seed loop above (#975).
+            let (ufeature, lfeature, rfeature) = config.dictionary_rewriter.rewrite(unk_feature);
             let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
             let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
             let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();

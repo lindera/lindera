@@ -28,7 +28,7 @@ MeCab互換の素性テンプレートを解析し、生成された素性文字
 
 ### DictionaryRewriter
 
-MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewrite]`、`[right rewrite]`）を実装します。各セクションは`pattern<TAB>replacement`形式のルールの並びを持ち、内部の`FeatureRewriterBuilder`によって`FeatureRewriter`というprefix trie（前方一致木）に構築されます。`DictionaryRewriter::from_reader`は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。`rewrite()`は素性文字列に3つの書き換え器すべてを適用し、`(ufeature, lfeature, rfeature)`を返します。マッチするルールがないセクションは入力をそのまま通過させます。`rewrite_cached()`は入力の素性文字列ごとに結果をメモ化します（MeCabの`rewrite2`に相当）。
+MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewrite]`、`[right rewrite]`）を実装します。各セクションは`pattern<TAB>replacement`形式のルールの並びを持ち、内部の`FeatureRewriterBuilder`によって`FeatureRewriter`というprefix trie（前方一致木）に構築されます。`DictionaryRewriter::from_reader`は3セクションすべてをパースしますが、セクションヘッダのないファイルは後方互換性のため（右文脈書き換えのみのレガシー形式として）扱います。`rewrite()`は素性文字列に3つの書き換え器すべてを適用し、`(ufeature, lfeature, rfeature)`を返します。マッチするルールがないセクションは入力をそのまま通過させます。（かつての`rewrite_cached()`は素性文字列全体をキーにメモ化していましたが、実辞書の素性は行ごとにほぼ一意でキャッシュが一度もヒットしないため削除されました — #975。）
 
 ### Model / SerializableModel
 

@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {
@@ -52,8 +52,13 @@ impl FeatureRewriterBuilder {
     }
 
     /// Adds the rewrite rule associated with the pattern.
-    /// If the pattern is shorter than the rewrite rule,
-    /// the remainings are automatically padded with "*".
+    ///
+    /// # 引数
+    ///
+    /// * `pattern` - Field patterns matched positionally from field 0; `*`
+    ///   matches any single field, `A|B` any of the listed values.
+    /// * `rewrite` - Replacement fields; `$N` (1-based) copies input field
+    ///   `N`, anything else is literal text.
     pub fn add_rule<S>(&mut self, pattern: &[S], rewrite: &[S])
     where
         S: AsRef<str>,
@@ -91,13 +96,19 @@ impl FeatureRewriterBuilder {
         let mut parsed_rewrite = vec![];
         for p in rewrite {
             let p = p.as_ref();
-            parsed_rewrite.push(self.ref_pattern.captures(p).map_or_else(
-                || Rewrite::Text(p.to_string()),
-                |cap| {
-                    let idx = cap.get(1).unwrap().as_str().parse::<usize>().unwrap() - 1;
-                    Rewrite::Reference(idx)
-                },
-            ));
+            // `$N` is 1-based (MeCab convention). `$0`, or a digit string
+            // too long for usize, is out-of-spec input and falls back to
+            // literal text rather than panicking (#975).
+            let reference = self
+                .ref_pattern
+                .captures(p)
+                .and_then(|cap| cap.get(1))
+                .and_then(|digits| digits.as_str().parse::<usize>().ok())
+                .and_then(|n| n.checked_sub(1));
+            parsed_rewrite.push(match reference {
+                Some(idx) => Rewrite::Reference(idx),
+                None => Rewrite::Text(p.to_string()),
+            });
         }
         self.nodes[cursor]
             .actions
@@ -232,7 +243,6 @@ pub struct DictionaryRewriter {
     unigram_rewriter: FeatureRewriter,
     left_rewriter: FeatureRewriter,
     right_rewriter: FeatureRewriter,
-    cache: HashMap<String, (String, String, String)>,
 }
 
 impl Default for DictionaryRewriter {
@@ -248,7 +258,6 @@ impl DictionaryRewriter {
             unigram_rewriter: FeatureRewriter::new(),
             left_rewriter: FeatureRewriter::new(),
             right_rewriter: FeatureRewriter::new(),
-            cache: HashMap::new(),
         }
     }
 
@@ -328,7 +337,6 @@ impl DictionaryRewriter {
             unigram_rewriter: FeatureRewriter::from(unigram_builder),
             left_rewriter: FeatureRewriter::from(left_builder),
             right_rewriter: FeatureRewriter::from(right_builder),
-            cache: HashMap::new(),
         })
     }
 
@@ -359,22 +367,6 @@ impl DictionaryRewriter {
             .unwrap_or_else(|| feature.to_string());
 
         (ufeature, lfeature, rfeature)
-    }
-
-    /// Rewrites input features with caching (MeCab's rewrite2 equivalent).
-    pub fn rewrite_cached(&mut self, feature: &str) -> (String, String, String) {
-        if let Some(cached) = self.cache.get(feature) {
-            return cached.clone();
-        }
-
-        let result = self.rewrite(feature);
-        self.cache.insert(feature.to_string(), result.clone());
-        result
-    }
-
-    /// Clears the rewrite cache.
-    pub fn clear_cache(&mut self) {
-        self.cache.clear();
     }
 
     /// Returns the unigram rewriter (for direct access when needed).
@@ -419,24 +411,61 @@ mod tests {
         assert_eq!(r, "名詞,一般,*");
     }
 
+    /// Pins `rewrite` over an ipadic-shaped rewrite.def: three sections,
+    /// depth-7/8 patterns, `$N` references, and a passthrough path.
+    ///
+    /// This replaces the removed `test_dictionary_rewriter_cached`, which
+    /// passed even with the cache logic deleted (#975).
     #[test]
-    fn test_dictionary_rewriter_cached() {
+    fn test_dictionary_rewriter_ipadic_shape() {
         let rewrite_def = "\
 [unigram rewrite]
-*\t$1
+*,*,*,*,*,*,*,*\t$1,$2,$3,$4,$5,$6,$7,$8
 
 [left rewrite]
-*\t$1
+名詞,一般,*,*,*,*,*\t$1,$2,$3,$4,$5,$6,NOUN
 
 [right rewrite]
-*\t$1
+名詞,一般,*,*,*,*,*\t$1,$2,$3,$4,$5,$6,$7
 ";
-        let mut rewriter =
+        let rewriter =
             DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
 
-        let result1 = rewriter.rewrite_cached("名詞");
-        let result2 = rewriter.rewrite_cached("名詞");
-        assert_eq!(result1, result2);
+        // All three sections match: unigram keeps 8 fields, left replaces
+        // field 7 with a literal, right keeps 7 fields (dropping 8..).
+        let (u, l, r) = rewriter.rewrite("名詞,一般,*,*,*,*,外食,ガイショク,ガイショク");
+        assert_eq!(u, "名詞,一般,*,*,*,*,外食,ガイショク");
+        assert_eq!(l, "名詞,一般,*,*,*,*,NOUN");
+        assert_eq!(r, "名詞,一般,*,*,*,*,外食");
+
+        // Two entries differing only after the matched prefix must still
+        // differ in the sections that reference those fields -- the reason a
+        // prefix cache key was rejected in #975.
+        let (u2, _, r2) = rewriter.rewrite("名詞,一般,*,*,*,*,会見,カイケン,カイケン");
+        assert_ne!(u, u2);
+        assert_ne!(r, r2);
+
+        // Passthrough: a feature no left/right rule matches comes back whole.
+        let (u3, l3, r3) = rewriter.rewrite("動詞,自立,*,*,*,*,動く,ウゴク,ウゴク");
+        assert_eq!(u3, "動詞,自立,*,*,*,*,動く,ウゴク");
+        assert_eq!(l3, "動詞,自立,*,*,*,*,動く,ウゴク,ウゴク");
+        assert_eq!(r3, "動詞,自立,*,*,*,*,動く,ウゴク,ウゴク");
+    }
+
+    /// A `$0` reference is out-of-spec (`$N` is 1-based, per MeCab) and must
+    /// be treated as literal text rather than panicking (#975; the previous
+    /// parser underflowed on the `- 1`).
+    #[test]
+    fn test_dollar_zero_is_literal_text() {
+        let rewrite_def = "\
+[right rewrite]
+名詞\t$0,$1
+";
+        let rewriter =
+            DictionaryRewriter::from_reader(Cursor::new(rewrite_def.as_bytes())).unwrap();
+
+        let (_, _, r) = rewriter.rewrite("名詞,一般");
+        assert_eq!(r, "$0,名詞");
     }
 
     #[test]
