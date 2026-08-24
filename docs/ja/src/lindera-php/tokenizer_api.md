@@ -71,7 +71,9 @@ $builder->appendCharacterFilter('unicode_normalize', ['kind' => 'nfkc']);
 
 ```php
 $builder->appendTokenFilter('lowercase');
-$builder->appendTokenFilter('japanese_stop_tags', ['tags' => ['助詞', '助動詞']]);
+$builder->appendTokenFilter('japanese_stop_tags', [
+    'tags' => ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞'],
+]);
 ```
 
 ### ビルド

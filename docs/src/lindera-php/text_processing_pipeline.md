@@ -121,14 +121,21 @@ Removes tokens whose part-of-speech matches any of the specified tags.
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
 $builder->appendTokenFilter('japanese_stop_tags', [
-    'tags' => ['助詞', '助動詞'],
+    'tags' => ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞'],
 ]);
 $tokenizer = $builder->build();
 ```
 
+> [!NOTE]
+> Tags are normalized to exactly four comma-separated levels (missing levels are padded with `*`)
+> and compared for exact equality against the first four part-of-speech details of each token.
+> A bare `助詞` therefore never matches IPADIC particle tokens — they always carry a subcategory
+> such as `助詞,係助詞` — while a bare `助動詞` does match, because auxiliary verbs have no
+> subcategory (`助動詞,*,*,*`).
+
 ### japanese_keep_tags
 
-Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed.
+Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:
 
 ```php
 <?php
@@ -136,7 +143,7 @@ Keeps only tokens whose part-of-speech matches one of the specified tags. All ot
 $builder = new Lindera\TokenizerBuilder();
 $builder->setDictionary('embedded://ipadic');
 $builder->appendTokenFilter('japanese_keep_tags', [
-    'tags' => ['名詞'],
+    'tags' => ['名詞,一般'],
 ]);
 $tokenizer = $builder->build();
 ```
@@ -168,7 +175,7 @@ $builder->appendTokenFilter('japanese_stop_tags', [
     'tags' => [
         '接続詞',
         '助詞',
-        '助詞,格助詞',
+        '助詞,格助詞,一般',
         '助詞,格助詞,一般',
         '助詞,係助詞',
         '助詞,副助詞',

@@ -89,7 +89,7 @@ $tokenizer = $builder->build();
 $builder = new Lindera\TokenizerBuilder();
 $builder->set_mode("normal");
 $builder->append_character_filter("unicode_normalize", ["kind" => "nfkc"]);
-$builder->append_token_filter("japanese_stop_tags", ["tags" => ["助詞"]]);
+$builder->append_token_filter("japanese_stop_tags", ["tags" => ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"]]);
 $tokenizer = $builder->build();
 ```
 

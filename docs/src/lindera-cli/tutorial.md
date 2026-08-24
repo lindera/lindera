@@ -105,7 +105,7 @@ Use Unicode normalization and keep only common nouns:
 % echo "Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。" | lindera tokenize \
   --dict ipadic \
   --char-filter 'unicode_normalize:{"kind":"nfkc"}' \
-  --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,固有名詞,組織"]}'
+  --token-filter 'japanese_keep_tags:{"tags":["名詞,一般","名詞,サ変接続","名詞,固有名詞,組織"]}'
 ```
 
 Expected output:
@@ -125,7 +125,7 @@ You can also combine multiple filters:
 ```shell
 % echo "すもももももももものうち" | lindera tokenize \
   --dict ipadic \
-  --token-filter 'japanese_stop_tags:{"tags":["助詞","助詞,係助詞","助詞,連体化"]}'
+  --token-filter 'japanese_stop_tags:{"tags":["助詞,格助詞,一般","助詞,係助詞","助詞,連体化","助動詞"]}'
 ```
 
 ## 7. Use user dictionary

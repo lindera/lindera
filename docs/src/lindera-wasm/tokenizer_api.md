@@ -101,7 +101,7 @@ Appends a token filter to the postprocessing pipeline.
 
 ```javascript
 builder.appendTokenFilter("japanese_stop_tags", {
-    tags: ["助詞", "助動詞", "記号"]
+    tags: ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"]
 });
 ```
 

@@ -204,9 +204,8 @@ Keeps only tokens whose part-of-speech tag matches one of `tags`, removing all o
   "kind": "japanese_keep_tags",
   "args": {
     "tags": [
-      "名詞",
       "名詞,一般",
-      "名詞,固有名詞"
+      "名詞,固有名詞,一般"
     ]
   }
 }
@@ -266,13 +265,16 @@ Removes tokens whose part-of-speech tag matches one of `tags`.
   "kind": "japanese_stop_tags",
   "args": {
     "tags": [
-      "助詞",
-      "助動詞",
-      "記号"
+      "助詞,格助詞,一般",
+      "助詞,係助詞",
+      "助詞,連体化",
+      "助動詞"
     ]
   }
 }
 ```
+
+Tags are normalized to exactly four comma-separated levels (missing levels are padded with `*`) and compared for exact equality against the first four part-of-speech details of each token. A bare `助詞` therefore never matches IPADIC particle tokens — they always carry a subcategory such as `助詞,係助詞` — while a bare `助動詞` does match, because auxiliary verbs have no subcategory (`助動詞,*,*,*`). The same matching rule applies to `japanese_keep_tags`.
 
 ### keep_words
 
@@ -497,9 +499,10 @@ token_filters:
   - kind: "japanese_stop_tags"
     args:
       tags:
-        - "助詞"
+        - "助詞,格助詞,一般"
+        - "助詞,係助詞"
+        - "助詞,連体化"
         - "助動詞"
-        - "記号"
   - kind: "japanese_katakana_stem"
     args:
       min: 3
@@ -540,9 +543,10 @@ fn main() -> LinderaResult<()> {
     // Add token filters
     let stop_tags_filter = JapaneseStopTagsTokenFilter::new(
         vec![
-            "助詞".to_string(),
+            "助詞,格助詞,一般".to_string(),
+            "助詞,係助詞".to_string(),
+            "助詞,連体化".to_string(),
             "助動詞".to_string(),
-            "記号".to_string(),
         ]
         .into_iter()
         .collect(),

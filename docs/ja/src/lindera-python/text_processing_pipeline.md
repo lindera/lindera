@@ -104,11 +104,13 @@ tokenizer = (
     TokenizerBuilder()
     .set_dictionary("embedded://ipadic")
     .append_token_filter("japanese_stop_tags", {
-        "tags": ["助詞", "助動詞"],
+        "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"],
     })
     .build()
 )
 ```
+
+タグは 4 階層のカンマ区切りに正規化され（不足分は `*` で補完）、各トークンの先頭 4 つの品詞詳細と完全一致で比較されます。IPADIC の助詞トークンは必ず `助詞,係助詞` のようにサブカテゴリを持つため、`助詞` 単独では一致しません。一方、助動詞はサブカテゴリを持たないため（`助動詞,*,*,*`）、`助動詞` 単独で一致します。
 
 ### japanese_keep_tags
 
@@ -119,7 +121,7 @@ tokenizer = (
     TokenizerBuilder()
     .set_dictionary("embedded://ipadic")
     .append_token_filter("japanese_keep_tags", {
-        "tags": ["名詞"],
+        "tags": ["名詞,一般"],
     })
     .build()
 )
@@ -145,7 +147,7 @@ tokenizer = (
     # Postprocessing
     .append_token_filter("japanese_base_form", {})
     .append_token_filter("japanese_stop_tags", {
-        "tags": ["助詞", "助動詞", "記号"],
+        "tags": ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞", "記号,句点", "記号,読点"],
     })
     .append_token_filter("lowercase", {})
     .build()
@@ -161,5 +163,5 @@ for token in tokens:
 1. `unicode_normalize` が全角文字を半角に変換（NFKC 正規化）
 2. `japanese_iteration_mark` が踊り字を展開
 3. `japanese_base_form` が活用形のトークンを基本形に変換
-4. `japanese_stop_tags` が助詞、助動詞、記号を除去
+4. `japanese_stop_tags` が助詞（格助詞・係助詞・連体化）・助動詞・句読点を除去
 5. `lowercase` がアルファベットを小文字に正規化
