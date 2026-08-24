@@ -115,19 +115,49 @@ console.log(dictionary.encoding); // "utf-8"
 
 User dictionaries allow you to add custom words that are not in the system dictionary.
 
-### Loading a User Dictionary
+There is no filesystem on WebAssembly, so user dictionaries are loaded from
+**bytes** obtained in JavaScript — from `fetch`, an `<input type="file">`
+element, or OPFS.
+
+### Loading a User Dictionary from CSV Bytes
+
+Pass the metadata of the system dictionary the user dictionary will be used
+with (e.g. `dictionary.metadata`), so the CSV is interpreted with the right
+schema. The CSV content must be UTF-8.
 
 ```javascript
-import { loadUserDictionary } from 'lindera-wasm-web';
+import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
 
-const metadata = dictionary.metadata;
-const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+```
+
+Bytes from OPFS work the same way:
+
+```javascript
+const root = await navigator.storage.getDirectory();
+const handle = await root.getFileHandle('user_dict.csv');
+const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+```
+
+### Loading a Prebuilt User Dictionary (`.bin`)
+
+A user dictionary compiled with `lindera build --user` loads directly:
+
+```javascript
+import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+
+const response = await fetch('/dictionaries/user_dict.bin');
+const binBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ```
 
 ### Using a User Dictionary with Tokenizer
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
 import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -135,48 +165,33 @@ const dictionary = loadDictionaryFromBytes(
     files.metadata, files.dictTrie, files.dictValsIdx, files.dictVals,
     files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef, files.unk,
 );
-const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
 
 ### User Dictionary CSV Format
 
-The user dictionary CSV follows the same format as the Lindera user dictionary:
+The user dictionary CSV follows the same format as the Lindera user dictionary.
+For IPADIC the simple format is:
 
 ```csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 ```
 
-Each line contains: `surface,part_of_speech,reading`
+Each line contains: `surface,part_of_speech,reading`. Rows in the full
+dictionary format (13+ fields for IPADIC) are also accepted. The content must
+be UTF-8.
 
 ## Building Dictionaries
 
-You can build compiled dictionaries from source files using the JavaScript API.
-
-### Building a System Dictionary
-
-`metadata` must be an actual `Metadata` instance, not a plain object literal -- the generated binding asserts the argument is a `Metadata` and throws otherwise. Create one with `Metadata.createDefault()` and set the fields you need:
-
-```javascript
-import { buildDictionary, Metadata } from 'lindera-wasm-web';
-
-const metadata = Metadata.createDefault();
-metadata.name = "custom-dict";
-metadata.encoding = "utf-8";
-
-buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
-```
-
-### Building a User Dictionary
-
-```javascript
-import { buildUserDictionary } from 'lindera-wasm-web';
-
-buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
-```
-
-The `metadata` parameter is optional for `buildUserDictionary`. If omitted, default metadata is used.
+Dictionaries cannot be built in WebAssembly: building reads a source directory
+and writes an output directory, and there is no filesystem on
+`wasm32-unknown-unknown`. Build dictionaries with the `lindera` CLI (or a
+native binding) and load the result here as bytes — see
+[OPFS Dictionary Management](opfs.md) for downloading prebuilt dictionaries.
 
 ## Metadata
 

@@ -18,7 +18,9 @@ use self::context_id_remap::compute_context_id_remap;
 use self::metadata::MetadataBuilder;
 use self::prefix_dictionary::PrefixDictionaryBuilderOptions;
 use self::unknown_dictionary::UnknownDictionaryBuilderOptions;
-use self::user_dictionary::{UserDictionaryBuilderOptions, build_user_dictionary};
+use self::user_dictionary::{
+    UserDictionaryBuilder, UserDictionaryBuilderOptions, build_user_dictionary,
+};
 use crate::LinderaResult;
 use crate::dictionary::UserDictionary;
 use crate::dictionary::character_definition::CharacterDefinition;
@@ -278,6 +280,37 @@ impl DictionaryBuilder {
     }
 
     pub fn build_user_dict(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
+        self.user_dictionary_builder().build(input_file)
+    }
+
+    /// Builds a user dictionary from CSV content supplied by a reader.
+    ///
+    /// The filesystem-free counterpart of [`Self::build_user_dict`], added so
+    /// WebAssembly callers can build a user dictionary from bytes (#972).
+    /// The content must be UTF-8.
+    ///
+    /// # 引数
+    ///
+    /// * `reader` - Read source of the user dictionary CSV content.
+    ///
+    /// # 戻り値
+    ///
+    /// The built user dictionary.
+    pub fn build_user_dict_from_reader<R: std::io::Read>(
+        &self,
+        reader: R,
+    ) -> LinderaResult<UserDictionary> {
+        self.user_dictionary_builder().build_from_reader(reader)
+    }
+
+    /// Composes the user-dictionary builder from this builder's metadata,
+    /// including the handler that maps simple rows onto the dictionary
+    /// schema's custom fields.
+    ///
+    /// # 戻り値
+    ///
+    /// The configured builder, shared by the path and reader entry points.
+    fn user_dictionary_builder(&self) -> UserDictionaryBuilder {
         let userdic_schema = self.metadata.user_dictionary_schema.clone();
         let dict_schema = self.metadata.dictionary_schema.clone();
         let default_field_value = self.metadata.default_field_value.clone();
@@ -311,6 +344,5 @@ impl DictionaryBuilder {
                 Ok(result)
             })))
             .builder()
-            .build(input_file)
     }
 }

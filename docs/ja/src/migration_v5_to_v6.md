@@ -96,6 +96,16 @@ failed to deserialize model: ... re-run `lindera train` to regenerate it.
   `&[String]` から `&[&str]` に変更しました。呼び出し側がフィールドごとに
   `String` を確保する必要がなくなります。`&[String]` を持っている場合は
   `&v.iter().map(|s| s.as_str()).collect::<Vec<_>>()` で渡せます。
+- `lindera-wasm` からファイルシステム依存のエクスポート
+  `loadUserDictionary` / `buildDictionary` / `buildUserDictionary` /
+  `TokenizerBuilder.setUserDictionary(uri)`（と snake_case エイリアス）を
+  削除しました。`wasm32-unknown-unknown` にはファイルシステムが無く、
+  これらは常に実行時に失敗していました。システム辞書は
+  `loadDictionaryFromBytes()`（または `embedded://`）で、ユーザー辞書は
+  新設の `loadUserDictionaryFromBytes()` /
+  `loadUserDictionaryBinFromBytes()` と `setUserDictionaryInstance()` で
+  読み込んでください。`loadDictionary()` はファイル URI・パスを
+  bytes API を案内するエラーで即座に拒否するようになりました。
 - 固定分割の導入で加算順が変わったため、この変更**前**に学習した重みと
   変更後に学習した重みはバイト単位では一致しません（`--max-threads 1` を
   含むすべてのスレッド数で）。以後の成果物を比較可能にするには

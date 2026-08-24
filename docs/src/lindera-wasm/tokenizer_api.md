@@ -59,20 +59,9 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 ```
 
-#### `setUserDictionary(uri)`
-
-Sets a user-defined dictionary by URI.
-
-- **Parameters**: `uri` (string) -- Path or URI to the user dictionary
-- **Returns**: void
-
-```javascript
-builder.setUserDictionary("file:///path/to/user_dict.csv");
-```
-
 #### `setUserDictionaryInstance(userDictionary)`
 
-Sets a pre-loaded user dictionary instance. Use this when the user dictionary has been loaded from bytes instead of from a URI.
+Sets a pre-loaded user dictionary instance. Load one from bytes with `loadUserDictionaryFromBytes()` (CSV) or `loadUserDictionaryBinFromBytes()` (prebuilt `.bin`); URI-based user dictionaries are not available on WebAssembly.
 
 - **Parameters**: `userDictionary` (UserDictionary) -- A loaded user dictionary object
 - **Returns**: void
@@ -238,34 +227,21 @@ import { loadDictionary } from 'lindera-wasm-web-ipadic';
 const dict = loadDictionary("embedded://ipadic");
 ```
 
-### `loadUserDictionary(uri, metadata)`
+### `loadUserDictionaryFromBytes(csv, metadata)`
 
-Loads a user dictionary from the specified URI.
+Builds a user dictionary from CSV bytes (UTF-8), obtained via `fetch`, a file input, or OPFS.
 
 - **Parameters**:
-  - `uri` (string) -- Path or URI to the user dictionary file
-  - `metadata` (Metadata) -- Dictionary metadata object
+  - `csv` (Uint8Array) -- The user dictionary CSV content
+  - `metadata` (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. `dictionary.metadata`)
 - **Returns**: `UserDictionary`
 
-### `buildDictionary(inputDir, outputDir, metadata)`
+### `loadUserDictionaryBinFromBytes(bytes)`
 
-Builds a compiled dictionary from source files.
+Loads a prebuilt user dictionary (the output of `lindera build --user`) from bytes.
 
-- **Parameters**:
-  - `inputDir` (string) -- Path to the directory containing source dictionary files
-  - `outputDir` (string) -- Path to the output directory
-  - `metadata` (Metadata) -- Dictionary metadata object
-- **Returns**: void
-
-### `buildUserDictionary(inputFile, outputDir, metadata?)`
-
-Builds a compiled user dictionary from a CSV file.
-
-- **Parameters**:
-  - `inputFile` (string) -- Path to the user dictionary CSV file
-  - `outputDir` (string) -- Path to the output directory
-  - `metadata` (Metadata, optional) -- Dictionary metadata object
-- **Returns**: void
+- **Parameters**: `bytes` (Uint8Array) -- The `.bin` content
+- **Returns**: `UserDictionary`
 
 ### `version()` / `getVersion()`
 
@@ -337,7 +313,6 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `setMode()` | `set_mode()` |
 | `setDictionary()` | `set_dictionary()` |
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
-| `setUserDictionary()` | `set_user_dictionary()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
@@ -346,6 +321,5 @@ For consistency with the Python API, all methods are also available in snake\_ca
 | `tokenizeNbest()` | `tokenize_nbest()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
-| `loadUserDictionary()` | `load_user_dictionary()` |
-| `buildDictionary()` | `build_dictionary()` |
-| `buildUserDictionary()` | `build_user_dictionary()` |
+| `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
+| `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |

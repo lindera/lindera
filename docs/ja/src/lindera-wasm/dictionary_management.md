@@ -115,19 +115,48 @@ console.log(dictionary.encoding); // "utf-8"
 
 ユーザー辞書を使用すると、システム辞書にないカスタム語彙を追加できます。
 
-### ユーザー辞書の読み込み
+WebAssembly にはファイルシステムが無いため、ユーザー辞書は JavaScript 側で
+取得した**バイト列**（`fetch`・`<input type="file">`・OPFS）から読み込みます。
+
+### CSV バイト列からのユーザー辞書の読み込み
+
+ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
+`dictionary.metadata`）を渡してください。CSV の内容は UTF-8 である必要が
+あります。
 
 ```javascript
-import { loadUserDictionary } from 'lindera-wasm-web';
+import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
 
-const metadata = dictionary.metadata;
-const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+```
+
+OPFS 上のファイルも同じ形で使えます：
+
+```javascript
+const root = await navigator.storage.getDirectory();
+const handle = await root.getFileHandle('user_dict.csv');
+const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+```
+
+### ビルド済みユーザー辞書（`.bin`）の読み込み
+
+`lindera build --user` でコンパイルしたユーザー辞書はそのまま読み込めます：
+
+```javascript
+import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+
+const response = await fetch('/dictionaries/user_dict.bin');
+const binBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ```
 
 ### Tokenizer でのユーザー辞書の使用
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
 import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -136,48 +165,33 @@ const dictionary = loadDictionaryFromBytes(
     files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
     files.unk,
 );
-const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 ```
 
 ### ユーザー辞書の CSV フォーマット
 
-ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します：
+ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します。
+IPADIC のシンプル形式は以下のとおりです：
 
 ```csv
 東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 ```
 
-各行の構成: `surface,part_of_speech,reading`
+各行の構成: `surface,part_of_speech,reading`。辞書のフル形式
+（IPADIC では 13 フィールド以上）の行も併用できます。内容は UTF-8 で
+ある必要があります。
 
 ## 辞書のビルド
 
-JavaScript API を使用してソースファイルからコンパイル済み辞書をビルドできます。
-
-### システム辞書のビルド
-
-`metadata` はプレーンなオブジェクトリテラルではなく、実際の `Metadata` インスタンスである必要があります -- 生成されたバインディングは引数が `Metadata` であることをアサートしており、そうでない場合は例外を投げます。`Metadata.createDefault()` でインスタンスを作成し、必要なフィールドを設定してください。
-
-```javascript
-import { buildDictionary, Metadata } from 'lindera-wasm-web';
-
-const metadata = Metadata.createDefault();
-metadata.name = "custom-dict";
-metadata.encoding = "utf-8";
-
-buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
-```
-
-### ユーザー辞書のビルド
-
-```javascript
-import { buildUserDictionary } from 'lindera-wasm-web';
-
-buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
-```
-
-`buildUserDictionary` の `metadata` パラメータは省略可能です。省略した場合はデフォルトのメタデータが使用されます。
+WebAssembly では辞書のビルドはできません。ビルドはソースディレクトリを
+読み出力ディレクトリへ書き込みますが、`wasm32-unknown-unknown` には
+ファイルシステムが無いためです。辞書は `lindera` CLI（またはネイティブ
+バインディング）でビルドし、結果をバイト列としてここに読み込んでください。
+ビルド済み辞書のダウンロードは [OPFS 辞書管理](opfs.md) を参照してください。
 
 ## Metadata
 

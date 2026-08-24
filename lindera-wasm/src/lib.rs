@@ -11,7 +11,7 @@
 //! - **Flexible tokenization modes**: Normal and decompose modes
 //! - **Character filters**: Unicode normalization and more
 //! - **Token filters**: Lowercase, compound word handling, number normalization
-//! - **Custom user dictionaries**: Support for user-defined dictionaries
+//! - **Custom user dictionaries**: Built from CSV or prebuilt bytes via `loadUserDictionaryFromBytes()` / `loadUserDictionaryBinFromBytes()`
 //!
 //! ## Usage
 //!
@@ -85,27 +85,17 @@ pub fn py_load_dictionary_from_bytes(
     )
 }
 
-#[wasm_bindgen(js_name = "load_user_dictionary")]
-pub fn py_load_user_dictionary(uri: &str, metadata: Metadata) -> Result<UserDictionary, JsValue> {
-    crate::dictionary::load_user_dictionary(uri, metadata)
-}
-
-#[wasm_bindgen(js_name = "build_dictionary")]
-pub fn py_build_dictionary(
-    input_dir: &str,
-    output_dir: &str,
+#[wasm_bindgen(js_name = "load_user_dictionary_from_bytes")]
+pub fn py_load_user_dictionary_from_bytes(
+    csv: &[u8],
     metadata: Metadata,
-) -> Result<(), JsValue> {
-    crate::dictionary::build_dictionary(input_dir, output_dir, metadata)
+) -> Result<UserDictionary, JsValue> {
+    crate::dictionary::load_user_dictionary_from_bytes(csv, metadata)
 }
 
-#[wasm_bindgen(js_name = "build_user_dictionary")]
-pub fn py_build_user_dictionary(
-    input_file: &str,
-    output_dir: &str,
-    metadata: Option<Metadata>,
-) -> Result<(), JsValue> {
-    crate::dictionary::build_user_dictionary(input_file, output_dir, metadata)
+#[wasm_bindgen(js_name = "load_user_dictionary_bin_from_bytes")]
+pub fn py_load_user_dictionary_bin_from_bytes(bytes: &[u8]) -> Result<UserDictionary, JsValue> {
+    crate::dictionary::load_user_dictionary_bin_from_bytes(bytes)
 }
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
