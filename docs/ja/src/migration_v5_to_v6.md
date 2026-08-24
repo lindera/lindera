@@ -83,6 +83,11 @@ failed to deserialize model: ... re-run `lindera train` to regenerate it.
 - 再現性は `--max-threads` の値によらず成り立ちます。勾配と損失は学習データの
   固定分割を固定順で加算するため、スレッド数は所要時間だけを変え、
   学習結果は変えません。
+- `lindera export` の出力もバイト単位で再現可能になりました。`metadata.json` は
+  `updated_at` タイムスタンプを持たなくなり、各エクスポートライターは決定的な
+  順序でエントリを書き出します。これに伴い Rust API から
+  `ModelInfo.updated_at` フィールドを削除しました（`lindera-dictionary`）。
+  このキーを含む既存の `metadata.json` は引き続き読み込めます。
 - 固定分割の導入で加算順が変わったため、この変更**前**に学習した重みと
   変更後に学習した重みはバイト単位では一致しません（`--max-threads 1` を
   含むすべてのスレッド数で）。以後の成果物を比較可能にするには

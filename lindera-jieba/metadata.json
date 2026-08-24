@@ -31,7 +31,6 @@
     "max_right_context_id": 6,
     "regularization": 0.01,
     "training_iterations": 100,
-    "updated_at": 1773881523,
     "version": "1.0.0"
   },
   "name": "jieba",

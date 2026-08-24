@@ -14,48 +14,82 @@ use crate::utils::FromU32;
 
 /// Wrapper for serializing `Vec<HashMap<K, V>>` as `Vec<Vec<(K, V)>>` with rkyv.
 ///
-/// `hashbrown::HashMap` does not implement `Archive` directly.
-/// This wrapper converts the HashMap to a Vec of key-value pairs for serialization,
-/// and converts back to HashMap during deserialization.
+/// `hashbrown::HashMap` does not implement `Archive` directly, and enabling
+/// rkyv's `hashbrown-0_17` feature would archive maps as rkyv's SwissTable,
+/// whose collision resolution follows source iteration order — the very
+/// nondeterminism class fixed in #974. This wrapper instead flattens each map
+/// to a **key-sorted** pair vector, so the archived bytes are a canonical
+/// function of the map's contents (#981), and rebuilds the maps on
+/// deserialization.
+///
+/// New code should prefer an ordered map over copying this wrapper: see
+/// `SerializableModel::connection_matrix` in `lindera-trainer` for the
+/// `BTreeMap` precedent.
 pub(crate) struct VecHashMapAsVec;
+
+/// Converts each map to a `Vec` of key-value pairs sorted by key.
+///
+/// Shared by `resolve_with` and `serialize_with`, which rkyv requires to
+/// observe the same value: both must produce the identical ordering.
+///
+/// # 引数
+///
+/// * `field` - The maps to flatten.
+///
+/// # 戻り値
+///
+/// One key-sorted pair vector per input map.
+fn sorted_pairs<K, V>(field: &[HashMap<K, V>]) -> Vec<Vec<(K, V)>>
+where
+    K: Copy + Ord + core::hash::Hash + Eq,
+    V: Copy,
+{
+    field
+        .iter()
+        .map(|hm| {
+            let mut pairs: Vec<(K, V)> = hm.iter().map(|(&k, &v)| (k, v)).collect();
+            // Keys are unique, so an unstable sort is deterministic.
+            pairs.sort_unstable_by_key(|&(k, _)| k);
+            pairs
+        })
+        .collect()
+}
 
 impl<K, V> ArchiveWith<Vec<HashMap<K, V>>> for VecHashMapAsVec
 where
-    K: Copy + core::hash::Hash + Eq,
+    K: Copy + Ord + core::hash::Hash + Eq,
     V: Copy,
     Vec<Vec<(K, V)>>: Archive,
 {
     type Archived = <Vec<Vec<(K, V)>> as Archive>::Archived;
     type Resolver = <Vec<Vec<(K, V)>> as Archive>::Resolver;
 
+    /// Resolves the archived value from the same key-sorted flattening that
+    /// `serialize_with` produced.
     fn resolve_with(
         field: &Vec<HashMap<K, V>>,
         resolver: Self::Resolver,
         out: Place<Self::Archived>,
     ) {
-        let vec: Vec<Vec<(K, V)>> = field
-            .iter()
-            .map(|hm| hm.iter().map(|(&k, &v)| (k, v)).collect())
-            .collect();
+        let vec = sorted_pairs(field);
         Archive::resolve(&vec, resolver, out);
     }
 }
 
 impl<K, V, S> SerializeWith<Vec<HashMap<K, V>>, S> for VecHashMapAsVec
 where
-    K: Copy + core::hash::Hash + Eq,
+    K: Copy + Ord + core::hash::Hash + Eq,
     V: Copy,
     S: Fallible + rkyv::ser::Writer + rkyv::ser::Allocator + ?Sized,
     Vec<Vec<(K, V)>>: RkyvSerialize<S>,
 {
+    /// Serializes the key-sorted flattening, so the archived bytes do not
+    /// depend on the maps' per-instance iteration order.
     fn serialize_with(
         field: &Vec<HashMap<K, V>>,
         serializer: &mut S,
     ) -> core::result::Result<Self::Resolver, S::Error> {
-        let vec: Vec<Vec<(K, V)>> = field
-            .iter()
-            .map(|hm| hm.iter().map(|(&k, &v)| (k, v)).collect())
-            .collect();
+        let vec = sorted_pairs(field);
         RkyvSerialize::serialize(&vec, serializer)
     }
 }
@@ -545,5 +579,81 @@ mod tests {
             path,
         );
         assert!((194.0 - score).abs() < f64::EPSILON);
+    }
+}
+
+#[cfg(test)]
+mod determinism_tests {
+    use super::*;
+
+    use core::num::NonZeroU32;
+
+    use crate::test_utils;
+
+    /// Builds a `RawModel` whose bigram map is populated by walking `keys` in
+    /// the given order. The value set is derived from each key, not from the
+    /// traversal order, so two builds over the same keys in different orders
+    /// produce logically identical maps.
+    ///
+    /// 32 keys matter: with only a handful, a hashbrown map can lay out
+    /// identically regardless of insertion order and the assertion would pass
+    /// for the wrong reason (the #974 lesson).
+    fn model_with_bigram_keys(keys: &[u32]) -> RawModel {
+        let mut map = HashMap::new();
+        for &k in keys {
+            map.insert(k, k * 3 + 1);
+        }
+        RawModel {
+            weights: vec![0.25; 4],
+            unigram_weight_indices: vec![NonZeroU32::new(1), NonZeroU32::new(2)],
+            bigram_weight_indices: vec![map],
+            provider: test_utils::generate_test_feature_provider(),
+        }
+    }
+
+    /// The archived bytes must depend only on the logical contents of the
+    /// bigram maps, never on the order they were populated in.
+    ///
+    /// Before #981 `VecHashMapAsVec` flattened each map in its per-instance
+    /// iteration order, so two logically identical models archived to
+    /// different bytes.
+    #[test]
+    fn archived_bytes_are_independent_of_map_insertion_order() {
+        let ascending: Vec<u32> = (0..32).collect();
+        let descending: Vec<u32> = (0..32).rev().collect();
+
+        let bytes_asc =
+            match rkyv::to_bytes::<rkyv::rancor::Error>(&model_with_bigram_keys(&ascending)) {
+                Ok(bytes) => bytes,
+                Err(err) => panic!("serialization failed: {err}"),
+            };
+        let bytes_desc =
+            match rkyv::to_bytes::<rkyv::rancor::Error>(&model_with_bigram_keys(&descending)) {
+                Ok(bytes) => bytes,
+                Err(err) => panic!("serialization failed: {err}"),
+            };
+
+        assert_eq!(
+            bytes_asc.as_slice(),
+            bytes_desc.as_slice(),
+            "archived bytes must not depend on map insertion order"
+        );
+    }
+
+    /// Serializing the same instance twice must be stable.
+    #[test]
+    fn serializing_the_same_model_twice_is_stable() {
+        let model = model_with_bigram_keys(&(0..32).collect::<Vec<u32>>());
+
+        let first = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("serialization failed: {err}"),
+        };
+        let second = match rkyv::to_bytes::<rkyv::rancor::Error>(&model) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("serialization failed: {err}"),
+        };
+
+        assert_eq!(first.as_slice(), second.as_slice());
     }
 }

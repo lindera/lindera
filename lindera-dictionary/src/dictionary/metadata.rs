@@ -67,15 +67,22 @@ fn legacy_format_version() -> u32 {
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 
 pub struct ModelInfo {
+    /// Number of trained feature weights.
     pub feature_count: usize,
+    /// Number of labels (vocabulary entries) in the trained model.
     pub label_count: usize,
+    /// Highest left context ID used by the model.
     pub max_left_context_id: usize,
+    /// Highest right context ID used by the model.
     pub max_right_context_id: usize,
+    /// Connection matrix dimensions, formatted as `{rows}x{cols}`.
     pub connection_matrix_size: String,
+    /// Version of the model format.
     pub version: String,
+    /// Number of training iterations that were run.
     pub training_iterations: u64,
+    /// Regularization coefficient used during training.
     pub regularization: f64,
-    pub updated_at: u64,
 }
 
 #[derive(Clone, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
@@ -305,6 +312,49 @@ mod tests {
 
         let err = metadata.validate_format_version().unwrap_err().to_string();
         assert!(err.contains("upgrade Lindera"), "{err}");
+    }
+
+    /// A `model_info` object emitted by the current exporter carries no
+    /// `updated_at`; the struct must accept it (#981).
+    ///
+    /// Before #981 `updated_at` was a required field, so removing it from the
+    /// writer alone would have broken loading of every newly exported
+    /// `metadata.json`.
+    #[test]
+    fn model_info_without_updated_at_parses() {
+        let json = serde_json::json!({
+            "feature_count": 4,
+            "label_count": 1,
+            "max_left_context_id": 63,
+            "max_right_context_id": 63,
+            "connection_matrix_size": "64x64",
+            "version": "1.0.0",
+            "training_iterations": 10,
+            "regularization": 0.01,
+        });
+        let info: ModelInfo = serde_json::from_value(json).unwrap();
+        assert_eq!(info.feature_count, 4);
+        assert_eq!(info.version, "1.0.0");
+    }
+
+    /// A legacy `model_info` that still carries `updated_at` must keep
+    /// parsing: serde tolerates unknown fields here, which is what protects
+    /// dictionaries built before #981.
+    #[test]
+    fn model_info_with_legacy_updated_at_still_parses() {
+        let json = serde_json::json!({
+            "feature_count": 4,
+            "label_count": 1,
+            "max_left_context_id": 63,
+            "max_right_context_id": 63,
+            "connection_matrix_size": "64x64",
+            "version": "1.0.0",
+            "training_iterations": 10,
+            "regularization": 0.01,
+            "updated_at": 1773881523u64,
+        });
+        let info: ModelInfo = serde_json::from_value(json).unwrap();
+        assert_eq!(info.training_iterations, 10);
     }
 
     /// The version must survive a JSON round trip; a `skip_serializing_if`

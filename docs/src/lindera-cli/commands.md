@@ -970,8 +970,6 @@ When the `--metadata` option is provided, the export command will:
 
 1. **Read the base metadata.json file** to preserve existing configuration
 2. **Update specific fields** with values from the trained model:
-   - `default_left_context_id`: Maximum left context ID from trained model
-   - `default_right_context_id`: Maximum right context ID from trained model
    - `default_word_cost`: Calculated from feature weight median
-   - `model_info`: Training statistics including feature count, label count, matrix size, iterations, regularization, version, and timestamp
+   - `model_info`: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output
 3. **Preserve existing settings** such as dictionary name, character encoding, schema definitions, and other user-defined configuration
