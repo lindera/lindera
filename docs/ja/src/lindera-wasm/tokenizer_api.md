@@ -60,20 +60,9 @@ const dictionary = loadDictionaryFromBytes(
 builder.setDictionaryInstance(dictionary);
 ```
 
-#### `setUserDictionary(uri)`
-
-ユーザー定義辞書を設定します。
-
-- **パラメータ**: `uri` (string) -- ユーザー辞書のパスまたは URI
-- **戻り値**: void
-
-```javascript
-builder.setUserDictionary("file:///path/to/user_dict.csv");
-```
-
 #### `setUserDictionaryInstance(userDictionary)`
 
-読み込み済みのユーザー辞書インスタンスを設定します。URI の代わりにバイトデータから読み込んだユーザー辞書を使用する場合に使います。
+読み込み済みのユーザー辞書インスタンスを設定します。`loadUserDictionaryFromBytes()`（CSV）または `loadUserDictionaryBinFromBytes()`（ビルド済み `.bin`）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。
 
 - **パラメータ**: `userDictionary` (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト
 - **戻り値**: void
@@ -239,34 +228,21 @@ import { loadDictionary } from 'lindera-wasm-web-ipadic';
 const dict = loadDictionary("embedded://ipadic");
 ```
 
-### `loadUserDictionary(uri, metadata)`
+### `loadUserDictionaryFromBytes(csv, metadata)`
 
-指定された URI からユーザー辞書を読み込みます。
+CSV バイト列（UTF-8）からユーザー辞書をビルドします。バイト列は `fetch`・ファイル入力・OPFS から取得します。
 
 - **パラメータ**:
-  - `uri` (string) -- ユーザー辞書ファイルのパスまたは URI
-  - `metadata` (Metadata) -- 辞書のメタデータオブジェクト
+  - `csv` (Uint8Array) -- ユーザー辞書 CSV の内容
+  - `metadata` (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: `dictionary.metadata`）
 - **戻り値**: `UserDictionary`
 
-### `buildDictionary(inputDir, outputDir, metadata)`
+### `loadUserDictionaryBinFromBytes(bytes)`
 
-ソースファイルからコンパイル済み辞書をビルドします。
+ビルド済みユーザー辞書（`lindera build --user` の出力）をバイト列から読み込みます。
 
-- **パラメータ**:
-  - `inputDir` (string) -- 辞書ソースファイルを含むディレクトリのパス
-  - `outputDir` (string) -- 出力ディレクトリのパス
-  - `metadata` (Metadata) -- 辞書のメタデータオブジェクト
-- **戻り値**: void
-
-### `buildUserDictionary(inputFile, outputDir, metadata?)`
-
-CSV ファイルからコンパイル済みユーザー辞書をビルドします。
-
-- **パラメータ**:
-  - `inputFile` (string) -- ユーザー辞書 CSV ファイルのパス
-  - `outputDir` (string) -- 出力ディレクトリのパス
-  - `metadata` (Metadata, 省略可) -- 辞書のメタデータオブジェクト
-- **戻り値**: void
+- **パラメータ**: `bytes` (Uint8Array) -- `.bin` の内容
+- **戻り値**: `UserDictionary`
 
 ### `version()` / `getVersion()`
 
@@ -338,7 +314,6 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `setMode()` | `set_mode()` |
 | `setDictionary()` | `set_dictionary()` |
 | `setDictionaryInstance()` | `set_dictionary_instance()` |
-| `setUserDictionary()` | `set_user_dictionary()` |
 | `setUserDictionaryInstance()` | `set_user_dictionary_instance()` |
 | `setKeepWhitespace()` | `set_keep_whitespace()` |
 | `appendCharacterFilter()` | `append_character_filter()` |
@@ -347,6 +322,5 @@ Python API との一貫性のため、すべてのメソッドは snake\_case �
 | `tokenizeNbest()` | `tokenize_nbest()` |
 | `loadDictionary()` | `load_dictionary()` |
 | `loadDictionaryFromBytes()` | `load_dictionary_from_bytes()` |
-| `loadUserDictionary()` | `load_user_dictionary()` |
-| `buildDictionary()` | `build_dictionary()` |
-| `buildUserDictionary()` | `build_user_dictionary()` |
+| `loadUserDictionaryFromBytes()` | `load_user_dictionary_from_bytes()` |
+| `loadUserDictionaryBinFromBytes()` | `load_user_dictionary_bin_from_bytes()` |

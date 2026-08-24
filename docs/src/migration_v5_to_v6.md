@@ -96,6 +96,15 @@ Two related notes:
   changed from `&[String]` to `&[&str]`, so callers no longer have to
   allocate one `String` per feature field. A caller holding a `&[String]`
   can pass `&v.iter().map(|s| s.as_str()).collect::<Vec<_>>()`.
+- `lindera-wasm` removed the filesystem-based exports `loadUserDictionary`,
+  `buildDictionary`, `buildUserDictionary`, and
+  `TokenizerBuilder.setUserDictionary(uri)` (plus their snake_case aliases):
+  there is no filesystem on `wasm32-unknown-unknown`, so they always failed
+  at runtime. Load system dictionaries with `loadDictionaryFromBytes()` (or
+  `embedded://`), and user dictionaries with the new
+  `loadUserDictionaryFromBytes()` / `loadUserDictionaryBinFromBytes()` +
+  `setUserDictionaryInstance()`. `loadDictionary()` now rejects file URIs
+  and bare paths up front with an error naming the bytes API.
 - The fixed partition changed the summation order, so weights trained
   **before** this change are not byte-identical to weights trained after it —
   at any thread count, including `--max-threads 1`. Re-run `lindera train` if

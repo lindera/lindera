@@ -103,19 +103,11 @@ impl TokenizerBuilder {
         self.dictionary_instance = Some(dictionary);
     }
 
-    /// Sets a user-defined dictionary by URI.
-    #[wasm_bindgen(js_name = "setUserDictionary")]
-    pub fn set_user_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
-        self.inner.set_user_dictionary(uri);
-        self.user_dictionary_instance = None;
-
-        Ok(())
-    }
-
     /// Sets a pre-loaded user dictionary instance.
     ///
-    /// Use this method when the user dictionary has been loaded from bytes
-    /// instead of from a URI.
+    /// Use this method with a user dictionary loaded from bytes via
+    /// `loadUserDictionaryFromBytes()` or `loadUserDictionaryBinFromBytes()`;
+    /// URI-based user dictionaries are not available on WebAssembly (#972).
     #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
     pub fn set_user_dictionary_instance(&mut self, user_dictionary: JsUserDictionary) {
         self.user_dictionary_instance = Some(user_dictionary);
@@ -161,11 +153,6 @@ impl TokenizerBuilder {
     #[wasm_bindgen(js_name = "set_dictionary_instance")]
     pub fn py_set_dictionary_instance(&mut self, dictionary: JsDictionary) {
         self.set_dictionary_instance(dictionary)
-    }
-
-    #[wasm_bindgen(js_name = "set_user_dictionary")]
-    pub fn py_set_user_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
-        self.set_user_dictionary(uri)
     }
 
     #[wasm_bindgen(js_name = "set_user_dictionary_instance")]

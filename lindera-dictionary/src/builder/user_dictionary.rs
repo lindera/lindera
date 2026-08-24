@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io;
+use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
@@ -92,20 +93,47 @@ impl UserDictionaryBuilderOptions {
 }
 
 impl UserDictionaryBuilder {
+    /// Builds a user dictionary from a CSV file on disk.
+    ///
+    /// # 引数
+    ///
+    /// * `input_file` - Path of the user dictionary CSV file.
+    ///
+    /// # 戻り値
+    ///
+    /// The built user dictionary.
     pub fn build(&self, input_file: &Path) -> LinderaResult<UserDictionary> {
         debug!("reading {input_file:?}");
 
+        let file = File::open(input_file).map_err(|err| {
+            LinderaErrorKind::Io
+                .with_error(anyhow::anyhow!(err))
+                .add_context(format!(
+                    "Failed to open user dictionary CSV file: {input_file:?}"
+                ))
+        })?;
+        self.build_from_reader(file)
+    }
+
+    /// Builds a user dictionary from CSV content supplied by a reader.
+    ///
+    /// This is the filesystem-free entry point: WebAssembly callers feed it
+    /// bytes obtained in JavaScript (fetch, file inputs, OPFS), and
+    /// [`Self::build`] delegates here after opening its file (#972).
+    /// The content must be UTF-8.
+    ///
+    /// # 引数
+    ///
+    /// * `reader` - Read source of the user dictionary CSV content.
+    ///
+    /// # 戻り値
+    ///
+    /// The built user dictionary.
+    pub fn build_from_reader<R: Read>(&self, reader: R) -> LinderaResult<UserDictionary> {
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .flexible(self.flexible_csv)
-            .from_path(input_file)
-            .map_err(|err| {
-                LinderaErrorKind::Io
-                    .with_error(anyhow::anyhow!(err))
-                    .add_context(format!(
-                        "Failed to open user dictionary CSV file: {input_file:?}"
-                    ))
-            })?;
+            .from_reader(reader);
 
         let mut rows: Vec<StringRecord> = vec![];
         for (line_num, result) in rdr.records().enumerate() {
@@ -113,13 +141,38 @@ impl UserDictionaryBuilder {
                 LinderaErrorKind::Content
                     .with_error(anyhow::anyhow!(err))
                     .add_context(format!(
-                        "Failed to parse CSV record at line {} in file: {:?}",
+                        "Failed to parse CSV record at line {}",
                         line_num + 1,
-                        input_file
                     ))
             })?;
             rows.push(record);
         }
+
+        // Classify row arity before anything indexes into a row: with
+        // `flexible` CSV parsing a 1- or 2-field row would otherwise reach
+        // the cost/context-id column accesses below and panic out of bounds
+        // -- and a panic aborts the module on wasm32, where this builder is
+        // fed untrusted browser input (#972). Runs before the sort so the
+        // reported row number matches the input order.
+        for (row_id, row) in rows.iter().enumerate() {
+            if row.len() != self.user_dictionary_fields_num
+                && row.len() < self.dictionary_fields_num
+            {
+                return Err(LinderaErrorKind::Content
+                    .with_error(anyhow::anyhow!(
+                        "user dictionary should be a CSV with {} or {}+ fields",
+                        self.user_dictionary_fields_num,
+                        self.dictionary_fields_num
+                    ))
+                    .add_context(format!(
+                        "Row {} has {} fields (surface: '{}')",
+                        row_id + 1,
+                        row.len(),
+                        row.get(0).unwrap_or("<empty>")
+                    )));
+            }
+        }
+
         // The cached variant computes the allocating surface key once per row
         // instead of once per comparison.
         rows.sort_by_cached_key(|row| row[0].to_string());
@@ -182,7 +235,7 @@ impl UserDictionaryBuilder {
 
         let mut words_data = Vec::<u8>::new();
         let mut words_idx_data = Vec::<u8>::new();
-        for row in rows.iter() {
+        for (row_id, row) in rows.iter().enumerate() {
             let word_detail = if row.len() == self.user_dictionary_fields_num {
                 if let Some(handler) = &self.user_dictionary_handler {
                     handler(row)?
@@ -207,7 +260,7 @@ impl UserDictionaryBuilder {
                     ))
                     .add_context(format!(
                         "Row {} has {} fields (surface: '{}')",
-                        rows.iter().position(|r| std::ptr::eq(r, row)).unwrap_or(0) + 1,
+                        row_id + 1,
                         row.len(),
                         row.get(0).unwrap_or("<empty>")
                     )));
@@ -343,4 +396,91 @@ pub fn build_user_dictionary(user_dict: UserDictionary, output_file: &Path) -> L
     })?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::builder::DictionaryBuilder;
+    use crate::dictionary::metadata::Metadata;
+
+    fn fixture_path(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../resources/user_dict")
+            .join(name)
+    }
+
+    fn flexible_builder() -> DictionaryBuilder {
+        let metadata = Metadata {
+            flexible_csv: true,
+            ..Metadata::default()
+        };
+        DictionaryBuilder::new(metadata)
+    }
+
+    /// The reader-based build must produce a byte-identical dictionary to the
+    /// path-based build over the same CSV (#972).
+    #[test]
+    fn reader_and_path_builds_are_identical() {
+        let path = fixture_path("ipadic_simple_userdic.csv");
+        let builder = flexible_builder();
+
+        let from_path = match builder.build_user_dict(&path) {
+            Ok(dict) => dict,
+            Err(err) => panic!("path build failed: {err}"),
+        };
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to read fixture: {err}"),
+        };
+        let from_reader = match builder.build_user_dict_from_reader(bytes.as_slice()) {
+            Ok(dict) => dict,
+            Err(err) => panic!("reader build failed: {err}"),
+        };
+
+        let path_bytes = match rkyv::to_bytes::<rkyv::rancor::Error>(&from_path) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("serialization failed: {err}"),
+        };
+        let reader_bytes = match rkyv::to_bytes::<rkyv::rancor::Error>(&from_reader) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("serialization failed: {err}"),
+        };
+        assert_eq!(path_bytes.as_slice(), reader_bytes.as_slice());
+    }
+
+    /// A CSV mixing simple (3-field) and detailed (13-field) rows builds
+    /// under flexible parsing. First test to exercise the mixed fixture.
+    #[test]
+    fn mixed_simple_and_detailed_rows_build() {
+        let bytes = match std::fs::read(fixture_path("ipadic_mixed_userdic.csv")) {
+            Ok(bytes) => bytes,
+            Err(err) => panic!("failed to read fixture: {err}"),
+        };
+        let dict = match flexible_builder().build_user_dict_from_reader(bytes.as_slice()) {
+            Ok(dict) => dict,
+            Err(err) => panic!("mixed build failed: {err}"),
+        };
+        assert!(!dict.dict.vals_data.is_empty());
+    }
+
+    /// Rows shorter than the simple format must produce an error, not an
+    /// out-of-bounds panic: with flexible CSV parsing such rows previously
+    /// reached the cost-column access before any arity check, and on wasm32
+    /// a panic aborts the module (#972).
+    #[test]
+    fn short_rows_error_instead_of_panicking() {
+        for csv in ["東京\n", "東京,1288\n"] {
+            let result = flexible_builder().build_user_dict_from_reader(csv.as_bytes());
+            let err = match result {
+                Ok(_) => panic!("{csv:?} must not build"),
+                Err(err) => format!("{err:?}"),
+            };
+            assert!(
+                err.contains("user dictionary should be a CSV with 3 or 13+ fields"),
+                "unexpected error for {csv:?}: {err}"
+            );
+        }
+    }
 }
