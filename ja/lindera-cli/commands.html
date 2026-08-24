@@ -916,10 +916,8 @@ EOS
 <li><strong>ベースとなる metadata.json ファイルを読み込み</strong>、既存の設定を保持します</li>
 <li><strong>特定のフィールドを学習済みモデルの値で更新</strong>します：
 <ul>
-<li><code>default_left_context_id</code>: 学習済みモデルからの最大左文脈ID</li>
-<li><code>default_right_context_id</code>: 学習済みモデルからの最大右文脈ID</li>
 <li><code>default_word_cost</code>: 素性重みの中央値から計算された値</li>
-<li><code>model_info</code>: 素性数、ラベル数、行列サイズ、反復回数、正則化、バージョン、タイムスタンプを含む学習統計情報</li>
+<li><code>model_info</code>: 素性数、ラベル数、行列サイズ、反復回数、正則化、バージョンを含む学習統計情報。タイムスタンプは書き込まれないため、同じモデルを 2 回エクスポートすると同一の出力になります</li>
 </ul>
 </li>
 <li><strong>既存の設定を保持</strong>します（辞書名、文字エンコード設定、スキーマ定義、その他のユーザー定義設定など）</li>

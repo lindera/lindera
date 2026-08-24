@@ -916,10 +916,8 @@ EOS
 <li><strong>Read the base metadata.json file</strong> to preserve existing configuration</li>
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
-<li><code>default_left_context_id</code>: Maximum left context ID from trained model</li>
-<li><code>default_right_context_id</code>: Maximum right context ID from trained model</li>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, version, and timestamp</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>

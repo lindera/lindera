@@ -382,7 +382,8 @@ let model = trainer.train(corpus)?;
 let mut output = File::create("trained_model.dat")?;
 model.write_model(&amp;mut output)?;
 
-// Output in Lindera dictionary format
+// Output in Lindera dictionary format. output_user.csv には read_user_lexicon で
+// 読み込んだエントリが入力順で書かれる（呼ばなければ空になる）。
 let mut lex_out = File::create("output_lex.csv")?;
 let mut conn_out = File::create("output_conn.dat")?;
 let mut unk_out = File::create("output_unk.def")?;

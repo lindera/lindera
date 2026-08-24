@@ -242,6 +242,11 @@
 <li>再現性は <code>--max-threads</code> の値によらず成り立ちます。勾配と損失は学習データの
 固定分割を固定順で加算するため、スレッド数は所要時間だけを変え、
 学習結果は変えません。</li>
+<li><code>lindera export</code> の出力もバイト単位で再現可能になりました。<code>metadata.json</code> は
+<code>updated_at</code> タイムスタンプを持たなくなり、各エクスポートライターは決定的な
+順序でエントリを書き出します。これに伴い Rust API から
+<code>ModelInfo.updated_at</code> フィールドを削除しました（<code>lindera-dictionary</code>）。
+このキーを含む既存の <code>metadata.json</code> は引き続き読み込めます。</li>
 <li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
 変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
 含むすべてのスレッド数で）。以後の成果物を比較可能にするには

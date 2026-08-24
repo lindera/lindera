@@ -242,6 +242,11 @@ public fields directly; the writer methods are unchanged.</li>
 <li>Reproducibility holds for any <code>--max-threads</code> value: the gradient and the
 loss are summed over a fixed partition of the training data in a fixed
 order, so the thread count affects only speed, never the trained model.</li>
+<li><code>lindera export</code> output is byte-reproducible too: <code>metadata.json</code> no longer
+carries an <code>updated_at</code> timestamp, and every export writer emits entries in
+a deterministic order. Accordingly, the <code>ModelInfo.updated_at</code> field was
+removed from the Rust API (<code>lindera-dictionary</code>); old <code>metadata.json</code> files
+that still contain the key keep parsing.</li>
 <li>The fixed partition changed the summation order, so weights trained
 <strong>before</strong> this change are not byte-identical to weights trained after it —
 at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if

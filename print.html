@@ -1041,7 +1041,7 @@ tokenizer
 <tr><td><code>read_user_lexicon&lt;R: Read&gt;(&amp;mut self, rdr: R) -&gt; Result&lt;()&gt;</code></td><td>Loads a user-defined lexicon (same <code>surface,left_id,right_id,cost,feature...</code> CSV format as the seed lexicon) into the model so that later exports can assign it inferred connection IDs and costs. Must be called before writing the dictionary if a user lexicon is needed.</td></tr>
 <tr><td><code>write_model&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Serializes the full trained model (feature weights, labels, POS info, connection matrix, unknown-word categories, preserved definition file contents, cost factor, left/right ID maps) to <code>rkyv</code> binary format. The output is byte-reproducible: the connection matrix and unknown-word categories are ordered maps, so the bytes depend only on the model's contents.</td></tr>
 <tr><td><code>read_model&lt;R: Read&gt;(reader: R) -&gt; Result&lt;SerializableModel&gt;</code></td><td>Associated function. Deserializes a <code>SerializableModel</code> from data written by <code>write_model</code>. It tries <code>rkyv</code> first, and falls back to legacy JSON only when the payload actually begins a JSON object; anything else is reported as a format mismatch with the instruction to re-train. Backfills <code>feature_sets</code> from <code>feature_weights</code> for older models that predate that field.</td></tr>
-<tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call.</td></tr>
+<tr><td><code>write_dictionary&lt;W1, W2, W3, W4&gt;(&amp;self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -&gt; Result&lt;()&gt;</code></td><td>Convenience method that writes the lexicon, connection cost matrix, unknown-word dictionary, and user lexicon in one call. The user lexicon is written from the entries loaded by <code>read_user_lexicon</code>, in input order; an entry whose parameters were <code>0,0,0</code> gets inferred connection IDs and a trained cost, any other entry is re-emitted verbatim.</td></tr>
 <tr><td><code>write_lexicon&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>lex.csv</code>-style entries (<code>surface,left_id,right_id,cost,features...</code>) for every seed vocabulary entry, using the connection IDs and costs from the merged CRF model.</td></tr>
 <tr><td><code>write_connection_costs&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes a dense <code>matrix.def</code>-style connection cost matrix over every <code>(right_id, left_id)</code> pair (including BOS/EOS); pairs never seen during training get the maximum penalty cost (<code>i16::MAX</code>) so Viterbi avoids untrained transitions.</td></tr>
 <tr><td><code>write_unknown_dictionary&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>unk.def</code>-style entries for each unknown-word character category, using the learned connection IDs/costs together with the category's feature string from <code>unk.def</code>.</td></tr>
@@ -1049,7 +1049,7 @@ tokenizer
 <tr><td><code>num_features(&amp;self) -&gt; usize</code></td><td>Number of feature weights held by the trained model.</td></tr>
 <tr><td><code>num_labels(&amp;self) -&gt; usize</code></td><td>Number of labels (vocabulary surfaces plus unknown-word categories) in the trained model.</td></tr>
 <tr><td><code>raw_model(&amp;self) -&gt; &amp;lindera_crf::RawModel</code></td><td>Access to the underlying <code>lindera-crf</code> raw model, for advanced or lower-level operations.</td></tr>
-<tr><td><code>write_bigram_details&lt;L: Write, R: Write, C: Write&gt;(&amp;self, left_wtr, right_wtr, cost_wtr) -&gt; Result&lt;()&gt;</code></td><td>Writes three diagnostic files describing bigram connection features and costs (left feature list, right feature list, and left/right feature-pair costs), for dictionary optimization and debugging.</td></tr>
+<tr><td><code>write_bigram_details&lt;L: Write, R: Write, C: Write&gt;(&amp;self, left_wtr, right_wtr, cost_wtr) -&gt; Result&lt;()&gt;</code></td><td>Writes three diagnostic files describing bigram features and costs (left feature list, right feature list, and one line per raw bigram feature pair with <code>BOS</code>/<code>EOS</code> for id 0 and names from the feature extractor). All three files are byte-reproducible for the same model.</td></tr>
 <tr><td><code>evaluate(&amp;self, test_lattices: &amp;[lindera_crf::Lattice]) -&gt; f64</code></td><td>Returns the mean absolute value of the raw model's feature weights as a simple evaluation score. The <code>test_lattices</code> argument is currently unused; it does not yet score the model against held-out data.</td></tr>
 <tr><td><code>write_dictionary_buffers(&amp;self, lexicon, connector, unk_handler, user_lexicon: &amp;mut Vec&lt;u8&gt;) -&gt; Result&lt;()&gt;</code></td><td>Serializes labels, feature weights, user-entry count, and surfaces into four raw <code>rkyv</code> byte buffers -- a lower-level alternative to the CSV-oriented <code>write_dictionary</code>.</td></tr>
 <tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>left-id.def</code>, mapping each learned left-context ID to its feature string, with <code>0 BOS/EOS</code> as the first line.</td></tr>
@@ -1067,7 +1067,7 @@ tokenizer
 <tr><td><code>write_rewrite_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes the <code>rewrite.def</code> content preserved verbatim from the original training input.</td></tr>
 <tr><td><code>write_left_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>left-id.def</code> from the stored <code>left_id_map</code>, with <code>0 BOS/EOS</code> as the first line.</td></tr>
 <tr><td><code>write_right_id_def&lt;W: Write&gt;(&amp;self, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Writes <code>right-id.def</code> from the stored <code>right_id_map</code>, with <code>0 BOS/EOS</code> as the first line.</td></tr>
-<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Reads a base <code>metadata.json</code>, updates it with training-derived values (<code>default_word_cost</code> estimated from the median feature weight, plus a <code>model_info</code> section with feature/label counts, context ID ranges, and training metadata), and writes the result.</td></tr>
+<tr><td><code>update_metadata_json&lt;W: Write&gt;(&amp;self, base_metadata_path: &amp;Path, writer: &amp;mut W) -&gt; Result&lt;()&gt;</code></td><td>Reads a base <code>metadata.json</code>, updates it with training-derived values (<code>default_word_cost</code> estimated from the median feature weight, plus a <code>model_info</code> section with feature/label counts, context ID ranges, and training metadata), and writes the result. The output carries no timestamp and is byte-reproducible for the same model.</td></tr>
 </tbody></table>
 </div>
 <h4 id="modelmetadata-and-featuresetinfo"><a class="header" href="#modelmetadata-and-featuresetinfo"><code>ModelMetadata</code> and <code>FeatureSetInfo</code></a></h4>
@@ -2774,10 +2774,8 @@ EOS
 <li><strong>Read the base metadata.json file</strong> to preserve existing configuration</li>
 <li><strong>Update specific fields</strong> with values from the trained model:
 <ul>
-<li><code>default_left_context_id</code>: Maximum left context ID from trained model</li>
-<li><code>default_right_context_id</code>: Maximum right context ID from trained model</li>
 <li><code>default_word_cost</code>: Calculated from feature weight median</li>
-<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, version, and timestamp</li>
+<li><code>model_info</code>: Training statistics including feature count, label count, matrix size, iterations, regularization, and version. No timestamp is written, so exporting the same model twice produces identical output</li>
 </ul>
 </li>
 <li><strong>Preserve existing settings</strong> such as dictionary name, character encoding, schema definitions, and other user-defined configuration</li>
@@ -8504,6 +8502,11 @@ public fields directly; the writer methods are unchanged.</li>
 <li>Reproducibility holds for any <code>--max-threads</code> value: the gradient and the
 loss are summed over a fixed partition of the training data in a fixed
 order, so the thread count affects only speed, never the trained model.</li>
+<li><code>lindera export</code> output is byte-reproducible too: <code>metadata.json</code> no longer
+carries an <code>updated_at</code> timestamp, and every export writer emits entries in
+a deterministic order. Accordingly, the <code>ModelInfo.updated_at</code> field was
+removed from the Rust API (<code>lindera-dictionary</code>); old <code>metadata.json</code> files
+that still contain the key keep parsing.</li>
 <li>The fixed partition changed the summation order, so weights trained
 <strong>before</strong> this change are not byte-identical to weights trained after it —
 at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if
@@ -9173,7 +9176,8 @@ let model = trainer.train(corpus)?;
 let mut output = File::create("trained_model.dat")?;
 model.write_model(&amp;mut output)?;
 
-// Output in Lindera dictionary format
+// Output in Lindera dictionary format. output_user.csv holds the entries
+// loaded by read_user_lexicon, in input order; without that call it is empty.
 let mut lex_out = File::create("output_lex.csv")?;
 let mut conn_out = File::create("output_conn.dat")?;
 let mut unk_out = File::create("output_unk.def")?;
