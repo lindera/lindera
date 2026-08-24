@@ -180,8 +180,8 @@
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
 <p>The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -219,9 +219,9 @@ main();
 <p>If you built with an <code>embed-*</code> feature flag, you can use embedded dictionaries instead of OPFS:</p>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-wasm-web-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
+<code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -302,7 +302,9 @@ main();
 &lt;/html&gt;
 </code></pre>
 <h2 id="webpack-configuration"><a class="header" href="#webpack-configuration">Webpack Configuration</a></h2>
-<p>When using Webpack 5, enable the <code>asyncWebAssembly</code> experiment:</p>
+<p>The <code>lindera-wasm</code> package is built with wasm-pack's <code>web</code> target, and modern
+bundlers can consume it directly. When using Webpack 5, enable the
+<code>asyncWebAssembly</code> experiment:</p>
 <pre><code class="language-javascript">// webpack.config.js
 module.exports = {
     experiments: {
@@ -318,9 +320,12 @@ module.exports = {
     },
 };
 </code></pre>
-<p>Then import using the bundler target build:</p>
-<pre><code class="language-javascript">import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+<p>Then import the package and call the default-exported async init function
+once before using any API (the web-target build requires it, bundled or not):</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+await __wbg_init();
 
 // Load dictionary from OPFS (see OPFS Dictionary Storage for setup)
 const files = await loadDictionaryFiles("ipadic");
@@ -334,21 +339,23 @@ builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
-<p>With the bundler target, <code>__wbg_init()</code> is called automatically by the bundler.</p>
 <h2 id="vite--rollup-setup"><a class="header" href="#vite--rollup-setup">Vite / Rollup Setup</a></h2>
-<p>Vite supports WASM out of the box with the web target. Place the built <code>pkg/</code> directory in your project and import directly:</p>
+<p>Vite supports the web-target WASM build out of the box. Install <code>lindera-wasm</code>
+from npm, or place a locally built <code>pkg/</code> directory in your project and import
+directly:</p>
 <pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
 import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
 // Load dictionary from OPFS and use TokenizerBuilder as shown above
 </code></pre>
-<p>For the bundler target with Vite, you may need the <a href="https://github.com/nicolo-ribaudo/vite-plugin-wasm">vite-plugin-wasm</a> plugin:</p>
+<p>When installing from npm, exclude the package from Vite's dependency
+pre-bundling:</p>
 <pre><code class="language-javascript">// vite.config.js
-import wasm from 'vite-plugin-wasm';
-
 export default {
-    plugins: [wasm()],
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
 };
 </code></pre>
 <h2 id="chrome-extension-considerations"><a class="header" href="#chrome-extension-considerations">Chrome Extension Considerations</a></h2>

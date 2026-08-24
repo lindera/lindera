@@ -180,7 +180,8 @@
 <p>Lindera v6.0.0 rebuilds prebuilt user dictionaries, changes tokenization
 output in two targeted ways (a Decompose-mode accuracy fix and a new
 default-on unknown-word feature), reshapes the JavaScript bindings' token
-type, and renames several <code>lindera-dictionary</code> Rust APIs. Most users only
+type, renames the published binding packages on npm and PyPI to bare names,
+and renames several <code>lindera-dictionary</code> Rust APIs. Most users only
 need to rebuild their dictionaries; direct users of
 <code>lindera_dictionary::viterbi</code>/<code>mode</code> types, JavaScript users, and anyone
 relying on exact legacy output for out-of-vocabulary text have more to check.</p>
@@ -190,6 +191,7 @@ upgrading from v5.3.0 does not require rebuilding system dictionaries — but
 it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
+<tr><td><strong>Published package names change on npm and PyPI</strong></td><td>npm users of <code>lindera-nodejs</code> / <code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code>, PyPI users of <code>lindera-python</code></td><td>Install <code>lindera</code> (npm, PyPI) or <code>lindera-wasm</code> (npm, WASM) and update <code>require</code>/<code>import</code> specifiers — see the next section</td></tr>
 <tr><td><strong>Prebuilt user-dictionary <code>.bin</code> files no longer load</strong></td><td>Anyone loading a user dictionary from <code>.bin</code></td><td>Rebuild from the CSV source with <code>lindera build --user</code></td></tr>
 <tr><td><strong>Trained <code>model.dat</code> files no longer load</strong></td><td>Anyone re-using a <code>model.dat</code> produced by an earlier build</td><td>Re-run <code>lindera train</code></td></tr>
 <tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
@@ -202,6 +204,73 @@ it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <tr><td>OPFS <code>DictionaryFiles</code> replaces <code>dictDa</code> with <code>dictTrie</code> + <code>dictValsIdx</code> — <strong>shipped in v5.3.0</strong></td><td>WASM users of the <code>opfs</code> helpers, upgrading from <strong>v5.2 or earlier</strong></td><td>Re-download OPFS-cached dictionaries</td></tr>
 </tbody></table>
 </div>
+<h2 id="package-renames-on-npm-pypi-and-cratesio"><a class="header" href="#package-renames-on-npm-pypi-and-cratesio">Package renames on npm, PyPI, and crates.io</a></h2>
+<p>Starting with v6.0.0, the language bindings are published under bare names —
+the registry already scopes the package to its ecosystem, so the
+<code>-nodejs</code>/<code>-python</code> suffixes carried no information:</p>
+<div class="table-wrapper"><table><thead><tr><th>Registry</th><th>v5 name</th><th>v6 name</th></tr></thead><tbody>
+<tr><td>npm (Node.js)</td><td><code>lindera-nodejs</code></td><td><code>lindera</code></td></tr>
+<tr><td>npm (Node.js platform packages)</td><td><code>lindera-nodejs-&lt;platform&gt;</code> (e.g. <code>lindera-nodejs-darwin-arm64</code>)</td><td><code>lindera-&lt;platform&gt;</code> (e.g. <code>lindera-darwin-arm64</code>)</td></tr>
+<tr><td>npm (WASM)</td><td><code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code></td><td><code>lindera-wasm</code></td></tr>
+<tr><td>PyPI</td><td><code>lindera-python</code></td><td><code>lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>The RubyGems gem name (<code>lindera</code>) and the core Rust crates on crates.io are
+unchanged.</p>
+<h3 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h3>
+<p>Update the dependency and the module specifier; the API itself is unaffected:</p>
+<pre><code class="language-javascript">// v5
+const { TokenizerBuilder } = require("lindera-nodejs");
+
+// v6
+const { TokenizerBuilder } = require("lindera");
+</code></pre>
+<p>The platform packages (<code>lindera-darwin-arm64</code>, <code>lindera-linux-x64-gnu</code>, …)
+are <code>optionalDependencies</code> of the main package, so npm selects the right one
+automatically — you never install them by name.</p>
+<p>The old <code>lindera-nodejs</code> and <code>lindera-nodejs-*</code> packages are npm-deprecated:
+they remain installable at their last v5 versions but receive no further
+releases.</p>
+<h3 id="python"><a class="header" href="#python">Python</a></h3>
+<p>Only the install name changes — the import name was always <code>lindera</code> and
+stays that way:</p>
+<pre><code class="language-sh"># v5
+pip install lindera-python
+
+# v6
+pip install lindera
+</code></pre>
+<p>A final <code>lindera-python</code> release is published as a transition stub that
+depends on <code>lindera</code>, so an unchanged <code>pip install lindera-python</code> still
+ends up with the real package during the transition. Update your
+requirements to <code>lindera</code> anyway — the stub will not be maintained.</p>
+<h3 id="wasm"><a class="header" href="#wasm">WASM</a></h3>
+<p>The two v5 packages are consolidated into a single <code>lindera-wasm</code> package,
+built with <code>wasm-pack --target web</code>. A web-target build requires calling the
+default-exported async init function once before using any API:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from "lindera-wasm";
+
+await __wbg_init();
+</code></pre>
+<ul>
+<li>Coming from <code>lindera-wasm-web</code>: only the package name changes — your code
+already calls the init function.</li>
+<li>Coming from <code>lindera-wasm-bundler</code>: install <code>lindera-wasm</code> and <strong>add the
+init call</strong> — the bundler-target build initialized implicitly, the
+web-target build does not. Modern bundlers consume the web-target build
+directly (Vite out of the box; Webpack 5 with the <code>asyncWebAssembly</code>
+experiment). See <a href="./lindera-wasm/browser_usage.html">Browser Usage</a> for
+bundler configuration.</li>
+</ul>
+<p>The old <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> packages are
+npm-deprecated at their last v5 versions.</p>
+<h3 id="cratesio"><a class="header" href="#cratesio">crates.io</a></h3>
+<p>The binding crates (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>,
+<code>lindera-wasm</code>) are no longer published to crates.io — they were never
+usable as Rust dependencies, only as sources for the registry packages
+above. The existing 5.3.0 releases remain available there. The core crates
+(<code>lindera</code>, <code>lindera-dictionary</code>, the dictionary crates, and so on) continue
+to be published as before.</p>
 <h2 id="prebuilt-user-dictionaries-must-be-rebuilt"><a class="header" href="#prebuilt-user-dictionaries-must-be-rebuilt">Prebuilt user dictionaries must be rebuilt</a></h2>
 <p>Lindera v6 upgrades <code>daachorse</code> from 4.x to 5.0, which changed the serialized
 form of the Aho-Corasick automaton that a user dictionary embeds. A <code>.bin</code>
@@ -412,7 +481,7 @@ stopped being a class along with <code>Token</code>: it is now a plain object wi
 same <code>tokens</code> and <code>cost</code> properties.</p>
 <p>Because neither is a class any more, they are no longer exported from the
 package. <code>Token</code>, <code>JsToken</code>, <code>NbestResult</code>, and <code>JsNbestResult</code> are all gone
-from <code>index.js</code>, so <code>require("lindera-nodejs").Token</code> is <code>undefined</code> and
+from <code>index.js</code>, so <code>require("lindera").Token</code> is <code>undefined</code> and
 <code>instanceof</code> checks against them no longer compile or run:</p>
 <pre><code class="language-javascript">// v5
 const { Token } = require("lindera-nodejs");
@@ -444,7 +513,7 @@ const data = token.toJSON();
 const data = token; // already plain
 </code></pre>
 <p><code>Token</code> is also no longer exported from the module, so
-<code>import { Token } from 'lindera-wasm-...'</code> fails. There is nothing to import
+<code>import { Token } from 'lindera-wasm'</code> fails. There is nothing to import
 in its place — <code>tokenize</code> hands back plain objects directly.</p>
 <p><code>tokenizeNbest</code> in WASM already returned plain objects in v5 and is
 unchanged.</p>
@@ -477,6 +546,18 @@ are coming from.</li>
 text, re-check it — the Decompose penalty fix and the unknown-word ladder
 (default on) can both change it. Set <code>unknown_word_ladder(false)</code> if you
 need v5-identical unknown-word output.</li>
+</ul>
+<p>Package names (see
+<a href="#package-renames-on-npm-pypi-and-cratesio">Package renames on npm, PyPI, and crates.io</a>):</p>
+<ul>
+<li>npm: depend on <code>lindera</code> instead of <code>lindera-nodejs</code>, and on <code>lindera-wasm</code>
+instead of <code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code>; update
+<code>require</code>/<code>import</code> specifiers to match.</li>
+<li>PyPI: <code>pip install lindera</code> instead of <code>lindera-python</code>; <code>import lindera</code>
+is unchanged.</li>
+<li>Former <code>lindera-wasm-bundler</code> users: add <code>await __wbg_init()</code> before the
+first API call — the consolidated package is a web-target build and does
+not initialize implicitly.</li>
 </ul>
 <p>JavaScript (Node.js and WASM):</p>
 <ul>

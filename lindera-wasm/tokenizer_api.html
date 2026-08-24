@@ -208,8 +208,8 @@ Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDic
 <li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
 <li><strong>Returns</strong>: void</li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -347,7 +347,7 @@ const reading = token.details[7]; // e.g., "トウキョウ"
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>
 <p>[!NOTE]
-The examples below import from <code>lindera-wasm-web-ipadic</code>, an illustrative package name for a local build with the <code>embed-ipadic</code> feature -- it is not published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
+The examples below import from <code>lindera-wasm-ipadic</code>, an illustrative package name for a local build with the <code>embed-ipadic</code> feature -- it is not published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
 </blockquote>
 <h3 id="loaddictionaryuri"><a class="header" href="#loaddictionaryuri"><code>loadDictionary(uri)</code></a></h3>
 <p>Loads a dictionary from the specified URI.</p>
@@ -355,7 +355,7 @@ The examples below import from <code>lindera-wasm-web-ipadic</code>, an illustra
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -381,7 +381,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>Returns</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // e.g., "5.3.0"
 </code></pre>

@@ -183,7 +183,7 @@
 <p>Dictionaries are stored under the OPFS path <code>lindera/dictionaries/&lt;name&gt;/</code>.</p>
 <h2 id="import"><a class="header" href="#import">Import</a></h2>
 <pre><code class="language-javascript">import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 </code></pre>
 <h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
 <h3 id="downloaddictionaryurl-name-options"><a class="header" href="#downloaddictionaryurl-name-options"><code>downloadDictionary(url, name, options?)</code></a></h3>
@@ -285,8 +285,8 @@ console.log(names); // e.g., ["ipadic", "unidic"]
 </code></pre>
 <h2 id="complete-workflow"><a class="header" href="#complete-workflow">Complete Workflow</a></h2>
 <p>A typical workflow for using OPFS-based dictionaries:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

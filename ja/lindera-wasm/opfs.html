@@ -183,7 +183,7 @@
 <p>辞書は OPFS パス <code>lindera/dictionaries/&lt;name&gt;/</code> に保存されます。</p>
 <h2 id="インポート"><a class="header" href="#インポート">インポート</a></h2>
 <pre><code class="language-javascript">import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 </code></pre>
 <h2 id="関数"><a class="header" href="#関数">関数</a></h2>
 <h3 id="downloaddictionaryurl-name-options"><a class="header" href="#downloaddictionaryurl-name-options"><code>downloadDictionary(url, name, options?)</code></a></h3>
@@ -285,8 +285,8 @@ console.log(names); // 例: ["ipadic", "unidic"]
 </code></pre>
 <h2 id="完全なワークフロー"><a class="header" href="#完全なワークフロー">完全なワークフロー</a></h2>
 <p>OPFS ベースの辞書を使用する一般的なワークフロー:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

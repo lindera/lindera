@@ -180,8 +180,8 @@
 <h2 id="es-module-インポート"><a class="header" href="#es-module-インポート">ES Module インポート</a></h2>
 <p>ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの <code>__wbg_init</code> がこの初期化を処理します。</p>
 <p>推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // WASM モジュールを初期化する（いずれかの API を使用する前に一度だけ呼び出す必要がある）
@@ -220,9 +220,9 @@ main();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：</p>
 <blockquote>
 <p>[!NOTE]
-ここでの <code>lindera-wasm-web-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+ここでの <code>lindera-wasm-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -320,9 +320,12 @@ module.exports = {
     },
 };
 </code></pre>
-<p>次に、bundler ターゲットビルドを使用してインポートします：</p>
-<pre><code class="language-javascript">import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+<p>次に、<code>lindera-wasm</code> パッケージをインポートします。<code>web</code> ターゲットのビルドでは、使用前にデフォルトエクスポートの <code>__wbg_init()</code> を呼び出す必要があります：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+// WASM モジュールを初期化
+await __wbg_init();
 
 // OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
 const files = await loadDictionaryFiles("ipadic");
@@ -337,23 +340,25 @@ builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
-<p>bundler ターゲットでは、<code>__wbg_init()</code> はバンドラーによって自動的に呼び出されます。</p>
 <h2 id="vite--rollup-のセットアップ"><a class="header" href="#vite--rollup-のセットアップ">Vite / Rollup のセットアップ</a></h2>
-<p>Vite は web ターゲットでの WASM をそのままサポートしています。ビルド済みの <code>pkg/</code> ディレクトリをプロジェクトに配置し、直接インポートします：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
-import { loadDictionaryFiles } from './pkg/opfs.js';
+<p>Vite は <code>web</code> ターゲットの WASM をそのままサポートしています。npm からインストールした <code>lindera-wasm</code> を直接インポートできます：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
 // OPFS から辞書を読み込み、上記のように TokenizerBuilder を使用
 </code></pre>
-<p>bundler ターゲットで Vite を使用する場合は、<a href="https://github.com/nicolo-ribaudo/vite-plugin-wasm">vite-plugin-wasm</a> プラグインが必要になることがあります：</p>
+<p>Vite では <code>optimizeDeps</code> でこのパッケージを除外してください：</p>
 <pre><code class="language-javascript">// vite.config.js
-import wasm from 'vite-plugin-wasm';
+import { defineConfig } from 'vite';
 
-export default {
-    plugins: [wasm()],
-};
+export default defineConfig({
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
+});
 </code></pre>
+<p>ローカルでビルドした場合は、生成された <code>pkg/</code> ディレクトリをプロジェクトに配置し、<code>./pkg/lindera_wasm.js</code> を直接インポートすることもできます。</p>
 <h2 id="chrome-拡張機能に関する注意事項"><a class="header" href="#chrome-拡張機能に関する注意事項">Chrome 拡張機能に関する注意事項</a></h2>
 <p>Manifest V3 を使用する Chrome 拡張機能では、デフォルトで <code>WebAssembly.compile</code> と <code>WebAssembly.instantiate</code> が制限されています。拡張機能で lindera-wasm を使用するには、Content Security Policy に <code>wasm-unsafe-eval</code> を追加する必要があります：</p>
 <pre><code class="language-json">{

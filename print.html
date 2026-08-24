@@ -2905,8 +2905,8 @@ EOS
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation-2"><a class="header" href="#installation-2">Installation</a></h1>
 <h2 id="installing-from-pypi"><a class="header" href="#installing-from-pypi">Installing from PyPI</a></h2>
-<p>Pre-built wheels are available on <a href="https://pypi.org/project/lindera-python/">PyPI</a>:</p>
-<pre><code class="language-bash">pip install lindera-python
+<p>Pre-built wheels are available on <a href="https://pypi.org/project/lindera/">PyPI</a>:</p>
+<pre><code class="language-bash">pip install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -3718,7 +3718,7 @@ for token in tokens:
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation-3"><a class="header" href="#installation-3">Installation</a></h1>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
 <p>Pre-built packages will be available on npm:</p>
-<pre><code class="language-bash">npm install lindera-nodejs
+<pre><code class="language-bash">npm install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -3780,21 +3780,21 @@ If you want to embed a dictionary directly into the binary (advanced usage), ena
 </blockquote>
 <h2 id="verifying-the-installation-1"><a class="header" href="#verifying-the-installation-1">Verifying the Installation</a></h2>
 <p>After installation, verify that lindera is available in Node.js:</p>
-<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
+<pre><code class="language-javascript">const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-nodejs</code>'s <code>package.json</code> currently declares only a <code>require</code> condition in its
-<code>exports</code> map (no <code>import</code> condition), so <code>import { version } from "lindera-nodejs"</code> fails
+The <code>lindera</code> npm package's <code>package.json</code> currently declares only a <code>require</code> condition in its
+<code>exports</code> map (no <code>import</code> condition), so <code>import { version } from "lindera"</code> fails
 with <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>. From an ES module, load it with Node's <code>createRequire</code>
 instead:</p>
 </blockquote>
 <pre><code class="language-javascript">import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
@@ -3802,7 +3802,7 @@ console.log(lindera.version());
 <p>This guide shows how to tokenize text using lindera-nodejs.</p>
 <h2 id="basic-tokenization-1"><a class="header" href="#basic-tokenization-1">Basic Tokenization</a></h2>
 <p>The recommended way to create a tokenizer is through <code>TokenizerBuilder</code>:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
@@ -3824,7 +3824,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="method-chaining-1"><a class="header" href="#method-chaining-1">Method Chaining</a></h2>
 <p><code>TokenizerBuilder</code> supports method chaining for concise configuration:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -3838,7 +3838,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="accessing-token-properties-1"><a class="header" href="#accessing-token-properties-1">Accessing Token Properties</a></h2>
 <p>Each token exposes the following properties:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -3857,7 +3857,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="n-best-tokenization-3"><a class="header" href="#n-best-tokenization-3">N-best Tokenization</a></h2>
 <p>Retrieve multiple tokenization candidates ranked by cost:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -3871,14 +3871,14 @@ for (const { tokens, cost } of results) {
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
 <p>Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:</p>
-<pre><code class="language-typescript">import type { Token } from "lindera-nodejs";
+<pre><code class="language-typescript">import type { Token } from "lindera";
 import { createRequire } from "node:module";
 
-// `lindera-nodejs` only exposes a CommonJS `require` entry point (see Installation),
+// The `lindera` npm package only exposes a CommonJS `require` entry point (see Installation),
 // so ESM projects load the runtime values through `createRequire` while still getting
 // full type information via `import type`.
 const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -3896,7 +3896,7 @@ for (const token of tokens) {
 <h3 id="constructors-1"><a class="header" href="#constructors-1">Constructors</a></h3>
 <h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
 <p>Creates a new builder with default configuration.</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 </code></pre>
@@ -3949,7 +3949,7 @@ builder.setDictionary("/path/to/dictionary");
 <h3 id="creating-a-tokenizer-1"><a class="header" href="#creating-a-tokenizer-1">Creating a Tokenizer</a></h3>
 <h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -4022,7 +4022,7 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
 <h2 id="mode-and-penalty"><a class="header" href="#mode-and-penalty">Mode and Penalty</a></h2>
-<p><code>Mode</code> and <code>Penalty</code> are exported from <code>lindera-nodejs</code>, but they are <strong>not currently wired into
+<p><code>Mode</code> and <code>Penalty</code> are exported from the <code>lindera</code> npm package, but they are <strong>not currently wired into
 any public API</strong>: <code>TokenizerBuilder.setMode()</code> / <code>Tokenizer</code>'s constructor accept only a plain
 mode string (<code>"normal"</code> or <code>"decompose"</code>), and decompose mode always uses the default penalty
 configuration internally. These types are documented here for completeness; they cannot yet be
@@ -4046,7 +4046,7 @@ used to customize penalty behavior from JavaScript.</p>
 <h2 id="loading-dictionaries-1"><a class="header" href="#loading-dictionaries-1">Loading Dictionaries</a></h2>
 <h3 id="system-dictionaries-1"><a class="header" href="#system-dictionaries-1">System Dictionaries</a></h3>
 <p>Use <code>loadDictionary(uri)</code> to load a system dictionary. Download a pre-built dictionary from <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> and specify the path to the extracted directory:</p>
-<pre><code class="language-javascript">const { loadDictionary } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 </code></pre>
@@ -4062,13 +4062,13 @@ console.log(metadata.defaultWordCost);
 </code></pre>
 <h3 id="user-dictionaries-1"><a class="header" href="#user-dictionaries-1">User Dictionaries</a></h3>
 <p>User dictionaries add custom vocabulary on top of a system dictionary.</p>
-<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 </code></pre>
 <p>Pass the user dictionary when building a tokenizer:</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
@@ -4077,7 +4077,7 @@ const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <p>Or via the builder:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -4087,7 +4087,7 @@ const tokenizer = new TokenizerBuilder()
 <h2 id="building-dictionaries-1"><a class="header" href="#building-dictionaries-1">Building Dictionaries</a></h2>
 <h3 id="system-dictionary-2"><a class="header" href="#system-dictionary-2">System Dictionary</a></h3>
 <p>Build a system dictionary from source files:</p>
-<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -4095,7 +4095,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>The input directory should contain the dictionary source files (CSV lexicon, matrix.def, etc.).</p>
 <h3 id="user-dictionary-3"><a class="header" href="#user-dictionary-3">User Dictionary</a></h3>
 <p>Build a user dictionary from a CSV file:</p>
-<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -4111,7 +4111,7 @@ effect on the build. Any string value can be passed for it today.</p>
 <h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
 <p>The <code>Metadata</code> class configures dictionary parameters.</p>
 <h3 id="creating-metadata-1"><a class="header" href="#creating-metadata-1">Creating Metadata</a></h3>
-<pre><code class="language-javascript">const { Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Metadata } = require("lindera");
 
 // Default metadata
 const metadata = new Metadata();
@@ -4159,7 +4159,7 @@ console.log(metadata.toObject());
 <h2 id="schema-1"><a class="header" href="#schema-1">Schema</a></h2>
 <p>The <code>Schema</code> class defines the field structure of dictionary entries.</p>
 <h3 id="creating-a-schema-1"><a class="header" href="#creating-a-schema-1">Creating a Schema</a></h3>
-<pre><code class="language-javascript">const { Schema } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Schema } = require("lindera");
 
 // Default IPADIC-compatible schema
 const schema = Schema.createDefault();
@@ -4220,7 +4220,7 @@ character and token filter, including parameters and examples.</p>
 <p>Character filters transform the input text before tokenization.</p>
 <h3 id="unicode_normalize-2"><a class="header" href="#unicode_normalize-2">unicode_normalize</a></h3>
 <p>Applies Unicode normalization to the input text.</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -4286,7 +4286,7 @@ const tokenizer = new TokenizerBuilder()
 </code></pre>
 <h2 id="complete-pipeline-example-1"><a class="header" href="#complete-pipeline-example-1">Complete Pipeline Example</a></h2>
 <p>The following example combines multiple character filters and token filters into a single pipeline:</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -4334,7 +4334,7 @@ a real dictionary, see
 <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/examples/train_and_export.js"><code>lindera-nodejs/examples/train_and_export.js</code></a>.</p>
 </blockquote>
 <p>Use <code>train()</code> to train a CRF model from a seed lexicon and annotated corpus:</p>
-<pre><code class="language-javascript">const { train } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { train } = require("lindera");
 
 train({
   seed: "resources/training/seed.csv",
@@ -4365,7 +4365,7 @@ train({
 </div>
 <h2 id="exporting-a-trained-model-1"><a class="header" href="#exporting-a-trained-model-1">Exporting a Trained Model</a></h2>
 <p>After training, export the model to dictionary source files using <code>exportModel()</code>:</p>
-<pre><code class="language-javascript">const { exportModel } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { exportModel } = require("lindera");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -4396,7 +4396,7 @@ exportModel({
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera-nodejs");
+} = require("lindera");
 
 // Step 1: Train the CRF model
 train({
@@ -6077,7 +6077,7 @@ foreach ($tokens as $token) {
 <p>Lindera WASM does not bundle dictionaries by default. The recommended approach for browser environments is to download dictionaries at runtime using the OPFS (Origin Private File System) API.</p>
 <h3 id="download-from-github-releases-5"><a class="header" href="#download-from-github-releases-5">Download from GitHub Releases</a></h3>
 <p>Pre-built dictionaries are available on the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page. In browser environments, use the OPFS helpers to download and cache dictionaries:</p>
-<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm/opfs';
 
 if (!await hasDictionary("ipadic")) {
     await downloadDictionary(
@@ -6088,14 +6088,13 @@ if (!await hasDictionary("ipadic")) {
 </code></pre>
 <p>See <a href="lindera-wasm/./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
 <h2 id="building-with-wasm-pack"><a class="header" href="#building-with-wasm-pack">Building with wasm-pack</a></h2>
-<p>Build the WASM package for your target environment:</p>
-<h3 id="web-es-modules-for-browsers"><a class="header" href="#web-es-modules-for-browsers">Web (ES Modules for browsers)</a></h3>
+<p>Build the WASM package (the published <code>lindera-wasm</code> npm package is built with
+the <code>web</code> target):</p>
 <pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
-<h3 id="bundler-webpack-vite-rollup"><a class="header" href="#bundler-webpack-vite-rollup">Bundler (Webpack, Vite, Rollup)</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler
-</code></pre>
-<p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.</p>
+<p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.
+wasm-pack also supports other targets (e.g. <code>--target nodejs</code>) if you need a
+custom build, but the web-target build is what this documentation assumes.</p>
 <h2 id="available-feature-flags-advanced"><a class="header" href="#available-feature-flags-advanced">Available Feature Flags (Advanced)</a></h2>
 <p>For advanced users who want to embed dictionaries directly into the WASM binary, the following feature flags are available. This increases the binary size significantly but eliminates the need to download dictionaries at runtime.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Dictionary</th><th>Language</th></tr></thead><tbody>
@@ -6111,29 +6110,38 @@ if (!await hasDictionary("ipadic")) {
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 </code></pre>
 <h2 id="npm-package-naming-convention"><a class="header" href="#npm-package-naming-convention">NPM Package Naming Convention</a></h2>
-<p>When publishing to npm, the recommended naming convention is:</p>
-<pre><code class="language-text">lindera-wasm-{target}
-lindera-wasm-{target}-{dict}
+<p>When publishing a custom build with embedded dictionaries to npm, the
+recommended naming convention is:</p>
+<pre><code class="language-text">lindera-wasm-{dict}
 </code></pre>
 <p>Examples:</p>
 <ul>
-<li><code>lindera-wasm-web</code></li>
-<li><code>lindera-wasm-web-ipadic</code></li>
-<li><code>lindera-wasm-bundler-unidic</code></li>
-<li><code>lindera-wasm-web-cjk</code></li>
+<li><code>lindera-wasm-ipadic</code></li>
+<li><code>lindera-wasm-unidic</code></li>
+<li><code>lindera-wasm-cjk</code></li>
 </ul>
 <p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
 <blockquote>
 <p>[!NOTE]
-This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes two packages to npm -- <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> -- built without any <code>embed-*</code> feature. Dictionary-suffixed names such as <code>lindera-wasm-web-ipadic</code> are not published anywhere; they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="lindera-wasm/installation.html#available-feature-flags-advanced">Available Feature Flags</a> above) would produce after you rename the package yourself.</p>
+This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes a single package to npm -- <code>lindera-wasm</code>, built with <code>wasm-pack --target web</code> and without any <code>embed-*</code> feature. Dictionary-suffixed names such as <code>lindera-wasm-ipadic</code> are not published anywhere; they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="lindera-wasm/installation.html#available-feature-flags-advanced">Available Feature Flags</a> above) would produce after you rename the package yourself.</p>
 </blockquote>
 <h2 id="installing-from-npm-1"><a class="header" href="#installing-from-npm-1">Installing from npm</a></h2>
-<p>Pre-built packages are available on npm:</p>
-<pre><code class="language-bash">npm install lindera-wasm-web
+<p>The pre-built package is available on npm:</p>
+<pre><code class="language-bash">npm install lindera-wasm
 </code></pre>
 <p>Or with yarn:</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web
+<pre><code class="language-bash">yarn add lindera-wasm
 </code></pre>
+<p>Because the package is a web-target build, call the default-exported async
+init function once before using any API:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm';
+
+await __wbg_init();
+</code></pre>
+<p>This applies both in browsers (native ES modules) and when the package is
+consumed through a bundler -- modern bundlers such as Vite or Webpack 5 (with
+the <code>asyncWebAssembly</code> experiment) handle the web-target build directly; see
+<a href="lindera-wasm/./browser_usage.html">Browser Usage</a> for bundler configuration.</p>
 <blockquote>
 <p>[!NOTE]
 The npm package does not include dictionaries. Use the OPFS helpers to download dictionaries at runtime. See <a href="lindera-wasm/./opfs.html">OPFS Dictionary Storage</a>.</p>
@@ -6141,8 +6149,8 @@ The npm package does not include dictionaries. Use the OPFS helpers to download 
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-5"><a class="header" href="#quick-start-5">Quick Start</a></h1>
 <h2 id="web-browser----opfs-dictionary-loading"><a class="header" href="#web-browser----opfs-dictionary-loading">Web (Browser) -- OPFS Dictionary Loading</a></h2>
 <p>The recommended approach is to download dictionaries at runtime using the OPFS helpers:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -6188,9 +6196,9 @@ main();
 <p>If you built with an <code>embed-*</code> feature flag, you can use embedded dictionaries:</p>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-wasm-web-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
+<code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -6210,8 +6218,8 @@ main();
 </code></pre>
 <h2 id="using-filters"><a class="header" href="#using-filters">Using Filters</a></h2>
 <p>You can add character filters and token filters to the tokenization pipeline:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -6286,8 +6294,8 @@ Use this when the dictionary has been loaded from bytes (e.g., via <code>loadDic
 <li><strong>Parameters</strong>: <code>dictionary</code> (Dictionary) -- A loaded dictionary object</li>
 <li><strong>Returns</strong>: void</li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -6425,7 +6433,7 @@ const reading = token.details[7]; // e.g., "トウキョウ"
 <h2 id="helper-functions"><a class="header" href="#helper-functions">Helper Functions</a></h2>
 <blockquote>
 <p>[!NOTE]
-The examples below import from <code>lindera-wasm-web-ipadic</code>, an illustrative package name for a local build with the <code>embed-ipadic</code> feature -- it is not published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
+The examples below import from <code>lindera-wasm-ipadic</code>, an illustrative package name for a local build with the <code>embed-ipadic</code> feature -- it is not published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
 </blockquote>
 <h3 id="loaddictionaryuri"><a class="header" href="#loaddictionaryuri"><code>loadDictionary(uri)</code></a></h3>
 <p>Loads a dictionary from the specified URI.</p>
@@ -6433,7 +6441,7 @@ The examples below import from <code>lindera-wasm-web-ipadic</code>, an illustra
 <li><strong>Parameters</strong>: <code>uri</code> (string) -- Dictionary URI (e.g., <code>"embedded://ipadic"</code>)</li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -6459,7 +6467,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>Returns</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // e.g., "5.3.0"
 </code></pre>
@@ -6541,8 +6549,8 @@ console.log(error.toString()); // "message"
 </li>
 <li><strong>Returns</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // Load dictionary files from OPFS
 const files = await loadDictionaryFiles("ipadic");
@@ -6571,10 +6579,10 @@ const tokenizer = builder.build();
 <p>If you built with an <code>embed-*</code> feature flag, you can load embedded dictionaries via the <code>embedded://</code> URI scheme. This increases the WASM binary size significantly.</p>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-wasm-web-ipadic</code> in the examples below is an illustrative package name for a local build with the <code>embed-ipadic</code> feature, not something published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
+<code>lindera-wasm-ipadic</code> in the examples below is an illustrative package name for a local build with the <code>embed-ipadic</code> feature, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a>.</p>
 </blockquote>
 <h3 id="loading-an-embedded-dictionary"><a class="header" href="#loading-an-embedded-dictionary">Loading an Embedded Dictionary</a></h3>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -6594,7 +6602,7 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="using-with-tokenizer-constructor"><a class="header" href="#using-with-tokenizer-constructor">Using with Tokenizer Constructor</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -6620,7 +6628,7 @@ element, or OPFS.</p>
 <p>Pass the metadata of the system dictionary the user dictionary will be used
 with (e.g. <code>dictionary.metadata</code>), so the CSV is interpreted with the right
 schema. The CSV content must be UTF-8.</p>
-<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
@@ -6634,15 +6642,15 @@ const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 </code></pre>
 <h3 id="loading-a-prebuilt-user-dictionary-bin"><a class="header" href="#loading-a-prebuilt-user-dictionary-bin">Loading a Prebuilt User Dictionary (<code>.bin</code>)</a></h3>
 <p>A user dictionary compiled with <code>lindera build --user</code> loads directly:</p>
-<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.bin');
 const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="using-a-user-dictionary-with-tokenizer"><a class="header" href="#using-a-user-dictionary-with-tokenizer">Using a User Dictionary with Tokenizer</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -6745,8 +6753,8 @@ Unlike the Python, Node.js, Ruby, and PHP bindings, the WASM <code>Metadata</cod
 <h2 id="es-module-import"><a class="header" href="#es-module-import">ES Module Import</a></h2>
 <p>In browser environments, you must initialize the WASM module before using any Lindera functions. The default export <code>__wbg_init</code> handles this initialization.</p>
 <p>The recommended approach is to load dictionaries from OPFS rather than embedding them in the WASM binary:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // Initialize the WASM module (must be called once before using any API)
@@ -6784,9 +6792,9 @@ main();
 <p>If you built with an <code>embed-*</code> feature flag, you can use embedded dictionaries instead of OPFS:</p>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-wasm-web-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> are actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
+<code>lindera-wasm-ipadic</code> is an illustrative package name here, not something published to npm. Only <code>lindera-wasm</code> is actually published; see <a href="lindera-wasm/./installation.html#npm-package-naming-convention">NPM Package Naming Convention</a> for how to build and name a package like this yourself.</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -6867,7 +6875,9 @@ main();
 &lt;/html&gt;
 </code></pre>
 <h2 id="webpack-configuration"><a class="header" href="#webpack-configuration">Webpack Configuration</a></h2>
-<p>When using Webpack 5, enable the <code>asyncWebAssembly</code> experiment:</p>
+<p>The <code>lindera-wasm</code> package is built with wasm-pack's <code>web</code> target, and modern
+bundlers can consume it directly. When using Webpack 5, enable the
+<code>asyncWebAssembly</code> experiment:</p>
 <pre><code class="language-javascript">// webpack.config.js
 module.exports = {
     experiments: {
@@ -6883,9 +6893,12 @@ module.exports = {
     },
 };
 </code></pre>
-<p>Then import using the bundler target build:</p>
-<pre><code class="language-javascript">import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+<p>Then import the package and call the default-exported async init function
+once before using any API (the web-target build requires it, bundled or not):</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+await __wbg_init();
 
 // Load dictionary from OPFS (see OPFS Dictionary Storage for setup)
 const files = await loadDictionaryFiles("ipadic");
@@ -6899,21 +6912,23 @@ builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
-<p>With the bundler target, <code>__wbg_init()</code> is called automatically by the bundler.</p>
 <h2 id="vite--rollup-setup"><a class="header" href="#vite--rollup-setup">Vite / Rollup Setup</a></h2>
-<p>Vite supports WASM out of the box with the web target. Place the built <code>pkg/</code> directory in your project and import directly:</p>
+<p>Vite supports the web-target WASM build out of the box. Install <code>lindera-wasm</code>
+from npm, or place a locally built <code>pkg/</code> directory in your project and import
+directly:</p>
 <pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
 import { loadDictionaryFiles } from './pkg/opfs.js';
 
 await __wbg_init();
 // Load dictionary from OPFS and use TokenizerBuilder as shown above
 </code></pre>
-<p>For the bundler target with Vite, you may need the <a href="https://github.com/nicolo-ribaudo/vite-plugin-wasm">vite-plugin-wasm</a> plugin:</p>
+<p>When installing from npm, exclude the package from Vite's dependency
+pre-bundling:</p>
 <pre><code class="language-javascript">// vite.config.js
-import wasm from 'vite-plugin-wasm';
-
 export default {
-    plugins: [wasm()],
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
 };
 </code></pre>
 <h2 id="chrome-extension-considerations"><a class="header" href="#chrome-extension-considerations">Chrome Extension Considerations</a></h2>
@@ -6938,7 +6953,7 @@ export default {
 <p>Dictionaries are stored under the OPFS path <code>lindera/dictionaries/&lt;name&gt;/</code>.</p>
 <h2 id="import"><a class="header" href="#import">Import</a></h2>
 <pre><code class="language-javascript">import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 </code></pre>
 <h2 id="functions"><a class="header" href="#functions">Functions</a></h2>
 <h3 id="downloaddictionaryurl-name-options"><a class="header" href="#downloaddictionaryurl-name-options"><code>downloadDictionary(url, name, options?)</code></a></h3>
@@ -7040,8 +7055,8 @@ console.log(names); // e.g., ["ipadic", "unidic"]
 </code></pre>
 <h2 id="complete-workflow-4"><a class="header" href="#complete-workflow-4">Complete Workflow</a></h2>
 <p>A typical workflow for using OPFS-based dictionaries:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -8426,7 +8441,8 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 <p>Lindera v6.0.0 rebuilds prebuilt user dictionaries, changes tokenization
 output in two targeted ways (a Decompose-mode accuracy fix and a new
 default-on unknown-word feature), reshapes the JavaScript bindings' token
-type, and renames several <code>lindera-dictionary</code> Rust APIs. Most users only
+type, renames the published binding packages on npm and PyPI to bare names,
+and renames several <code>lindera-dictionary</code> Rust APIs. Most users only
 need to rebuild their dictionaries; direct users of
 <code>lindera_dictionary::viterbi</code>/<code>mode</code> types, JavaScript users, and anyone
 relying on exact legacy output for out-of-vocabulary text have more to check.</p>
@@ -8436,6 +8452,7 @@ upgrading from v5.3.0 does not require rebuilding system dictionaries — but
 it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <h2 id="overview-3"><a class="header" href="#overview-3">Overview</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Change</th><th>Affects</th><th>What you do</th></tr></thead><tbody>
+<tr><td><strong>Published package names change on npm and PyPI</strong></td><td>npm users of <code>lindera-nodejs</code> / <code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code>, PyPI users of <code>lindera-python</code></td><td>Install <code>lindera</code> (npm, PyPI) or <code>lindera-wasm</code> (npm, WASM) and update <code>require</code>/<code>import</code> specifiers — see the next section</td></tr>
 <tr><td><strong>Prebuilt user-dictionary <code>.bin</code> files no longer load</strong></td><td>Anyone loading a user dictionary from <code>.bin</code></td><td>Rebuild from the CSV source with <code>lindera build --user</code></td></tr>
 <tr><td><strong>Trained <code>model.dat</code> files no longer load</strong></td><td>Anyone re-using a <code>model.dat</code> produced by an earlier build</td><td>Re-run <code>lindera train</code></td></tr>
 <tr><td>Decompose-mode length penalty is now exact for non-3-byte characters</td><td><code>Mode::Decompose</code> output on text with 1-, 2-, or 4-byte UTF-8 characters</td><td>Nothing — this is a correctness fix; re-check Decompose output if you pin it exactly</td></tr>
@@ -8448,6 +8465,73 @@ it does require rebuilding user dictionaries, for an unrelated reason.</p>
 <tr><td>OPFS <code>DictionaryFiles</code> replaces <code>dictDa</code> with <code>dictTrie</code> + <code>dictValsIdx</code> — <strong>shipped in v5.3.0</strong></td><td>WASM users of the <code>opfs</code> helpers, upgrading from <strong>v5.2 or earlier</strong></td><td>Re-download OPFS-cached dictionaries</td></tr>
 </tbody></table>
 </div>
+<h2 id="package-renames-on-npm-pypi-and-cratesio"><a class="header" href="#package-renames-on-npm-pypi-and-cratesio">Package renames on npm, PyPI, and crates.io</a></h2>
+<p>Starting with v6.0.0, the language bindings are published under bare names —
+the registry already scopes the package to its ecosystem, so the
+<code>-nodejs</code>/<code>-python</code> suffixes carried no information:</p>
+<div class="table-wrapper"><table><thead><tr><th>Registry</th><th>v5 name</th><th>v6 name</th></tr></thead><tbody>
+<tr><td>npm (Node.js)</td><td><code>lindera-nodejs</code></td><td><code>lindera</code></td></tr>
+<tr><td>npm (Node.js platform packages)</td><td><code>lindera-nodejs-&lt;platform&gt;</code> (e.g. <code>lindera-nodejs-darwin-arm64</code>)</td><td><code>lindera-&lt;platform&gt;</code> (e.g. <code>lindera-darwin-arm64</code>)</td></tr>
+<tr><td>npm (WASM)</td><td><code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code></td><td><code>lindera-wasm</code></td></tr>
+<tr><td>PyPI</td><td><code>lindera-python</code></td><td><code>lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>The RubyGems gem name (<code>lindera</code>) and the core Rust crates on crates.io are
+unchanged.</p>
+<h3 id="nodejs"><a class="header" href="#nodejs">Node.js</a></h3>
+<p>Update the dependency and the module specifier; the API itself is unaffected:</p>
+<pre><code class="language-javascript">// v5
+const { TokenizerBuilder } = require("lindera-nodejs");
+
+// v6
+const { TokenizerBuilder } = require("lindera");
+</code></pre>
+<p>The platform packages (<code>lindera-darwin-arm64</code>, <code>lindera-linux-x64-gnu</code>, …)
+are <code>optionalDependencies</code> of the main package, so npm selects the right one
+automatically — you never install them by name.</p>
+<p>The old <code>lindera-nodejs</code> and <code>lindera-nodejs-*</code> packages are npm-deprecated:
+they remain installable at their last v5 versions but receive no further
+releases.</p>
+<h3 id="python"><a class="header" href="#python">Python</a></h3>
+<p>Only the install name changes — the import name was always <code>lindera</code> and
+stays that way:</p>
+<pre><code class="language-sh"># v5
+pip install lindera-python
+
+# v6
+pip install lindera
+</code></pre>
+<p>A final <code>lindera-python</code> release is published as a transition stub that
+depends on <code>lindera</code>, so an unchanged <code>pip install lindera-python</code> still
+ends up with the real package during the transition. Update your
+requirements to <code>lindera</code> anyway — the stub will not be maintained.</p>
+<h3 id="wasm"><a class="header" href="#wasm">WASM</a></h3>
+<p>The two v5 packages are consolidated into a single <code>lindera-wasm</code> package,
+built with <code>wasm-pack --target web</code>. A web-target build requires calling the
+default-exported async init function once before using any API:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from "lindera-wasm";
+
+await __wbg_init();
+</code></pre>
+<ul>
+<li>Coming from <code>lindera-wasm-web</code>: only the package name changes — your code
+already calls the init function.</li>
+<li>Coming from <code>lindera-wasm-bundler</code>: install <code>lindera-wasm</code> and <strong>add the
+init call</strong> — the bundler-target build initialized implicitly, the
+web-target build does not. Modern bundlers consume the web-target build
+directly (Vite out of the box; Webpack 5 with the <code>asyncWebAssembly</code>
+experiment). See <a href="./lindera-wasm/browser_usage.html">Browser Usage</a> for
+bundler configuration.</li>
+</ul>
+<p>The old <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> packages are
+npm-deprecated at their last v5 versions.</p>
+<h3 id="cratesio"><a class="header" href="#cratesio">crates.io</a></h3>
+<p>The binding crates (<code>lindera-python</code>, <code>lindera-nodejs</code>, <code>lindera-ruby</code>,
+<code>lindera-wasm</code>) are no longer published to crates.io — they were never
+usable as Rust dependencies, only as sources for the registry packages
+above. The existing 5.3.0 releases remain available there. The core crates
+(<code>lindera</code>, <code>lindera-dictionary</code>, the dictionary crates, and so on) continue
+to be published as before.</p>
 <h2 id="prebuilt-user-dictionaries-must-be-rebuilt"><a class="header" href="#prebuilt-user-dictionaries-must-be-rebuilt">Prebuilt user dictionaries must be rebuilt</a></h2>
 <p>Lindera v6 upgrades <code>daachorse</code> from 4.x to 5.0, which changed the serialized
 form of the Aho-Corasick automaton that a user dictionary embeds. A <code>.bin</code>
@@ -8658,7 +8742,7 @@ stopped being a class along with <code>Token</code>: it is now a plain object wi
 same <code>tokens</code> and <code>cost</code> properties.</p>
 <p>Because neither is a class any more, they are no longer exported from the
 package. <code>Token</code>, <code>JsToken</code>, <code>NbestResult</code>, and <code>JsNbestResult</code> are all gone
-from <code>index.js</code>, so <code>require("lindera-nodejs").Token</code> is <code>undefined</code> and
+from <code>index.js</code>, so <code>require("lindera").Token</code> is <code>undefined</code> and
 <code>instanceof</code> checks against them no longer compile or run:</p>
 <pre><code class="language-javascript">// v5
 const { Token } = require("lindera-nodejs");
@@ -8690,7 +8774,7 @@ const data = token.toJSON();
 const data = token; // already plain
 </code></pre>
 <p><code>Token</code> is also no longer exported from the module, so
-<code>import { Token } from 'lindera-wasm-...'</code> fails. There is nothing to import
+<code>import { Token } from 'lindera-wasm'</code> fails. There is nothing to import
 in its place — <code>tokenize</code> hands back plain objects directly.</p>
 <p><code>tokenizeNbest</code> in WASM already returned plain objects in v5 and is
 unchanged.</p>
@@ -8723,6 +8807,18 @@ are coming from.</li>
 text, re-check it — the Decompose penalty fix and the unknown-word ladder
 (default on) can both change it. Set <code>unknown_word_ladder(false)</code> if you
 need v5-identical unknown-word output.</li>
+</ul>
+<p>Package names (see
+<a href="migration_v5_to_v6.html#package-renames-on-npm-pypi-and-cratesio">Package renames on npm, PyPI, and crates.io</a>):</p>
+<ul>
+<li>npm: depend on <code>lindera</code> instead of <code>lindera-nodejs</code>, and on <code>lindera-wasm</code>
+instead of <code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code>; update
+<code>require</code>/<code>import</code> specifiers to match.</li>
+<li>PyPI: <code>pip install lindera</code> instead of <code>lindera-python</code>; <code>import lindera</code>
+is unchanged.</li>
+<li>Former <code>lindera-wasm-bundler</code> users: add <code>await __wbg_init()</code> before the
+first API call — the consolidated package is a web-target build and does
+not initialize implicitly.</li>
 </ul>
 <p>JavaScript (Node.js and WASM):</p>
 <ul>

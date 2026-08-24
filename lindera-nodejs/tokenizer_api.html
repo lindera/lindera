@@ -182,7 +182,7 @@
 <h3 id="constructors"><a class="header" href="#constructors">Constructors</a></h3>
 <h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
 <p>Creates a new builder with default configuration.</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 </code></pre>
@@ -235,7 +235,7 @@ builder.setDictionary("/path/to/dictionary");
 <h3 id="creating-a-tokenizer"><a class="header" href="#creating-a-tokenizer">Creating a Tokenizer</a></h3>
 <h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
 <p>Creates a tokenizer directly from a loaded dictionary.</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -308,7 +308,7 @@ const reading = token.details[7];  // e.g., "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: Dictionary-specific detail formats</li>
 </ul>
 <h2 id="mode-and-penalty"><a class="header" href="#mode-and-penalty">Mode and Penalty</a></h2>
-<p><code>Mode</code> and <code>Penalty</code> are exported from <code>lindera-nodejs</code>, but they are <strong>not currently wired into
+<p><code>Mode</code> and <code>Penalty</code> are exported from the <code>lindera</code> npm package, but they are <strong>not currently wired into
 any public API</strong>: <code>TokenizerBuilder.setMode()</code> / <code>Tokenizer</code>'s constructor accept only a plain
 mode string (<code>"normal"</code> or <code>"decompose"</code>), and decompose mode always uses the default penalty
 configuration internally. These types are documented here for completeness; they cannot yet be

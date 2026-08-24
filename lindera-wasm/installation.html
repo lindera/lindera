@@ -186,7 +186,7 @@
 <p>Lindera WASM does not bundle dictionaries by default. The recommended approach for browser environments is to download dictionaries at runtime using the OPFS (Origin Private File System) API.</p>
 <h3 id="download-from-github-releases"><a class="header" href="#download-from-github-releases">Download from GitHub Releases</a></h3>
 <p>Pre-built dictionaries are available on the <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> page. In browser environments, use the OPFS helpers to download and cache dictionaries:</p>
-<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm/opfs';
 
 if (!await hasDictionary("ipadic")) {
     await downloadDictionary(
@@ -197,14 +197,13 @@ if (!await hasDictionary("ipadic")) {
 </code></pre>
 <p>See <a href="./opfs.html">OPFS Dictionary Storage</a> for the full workflow.</p>
 <h2 id="building-with-wasm-pack"><a class="header" href="#building-with-wasm-pack">Building with wasm-pack</a></h2>
-<p>Build the WASM package for your target environment:</p>
-<h3 id="web-es-modules-for-browsers"><a class="header" href="#web-es-modules-for-browsers">Web (ES Modules for browsers)</a></h3>
+<p>Build the WASM package (the published <code>lindera-wasm</code> npm package is built with
+the <code>web</code> target):</p>
 <pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
-<h3 id="bundler-webpack-vite-rollup"><a class="header" href="#bundler-webpack-vite-rollup">Bundler (Webpack, Vite, Rollup)</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler
-</code></pre>
-<p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.</p>
+<p>The output is written to the <code>pkg/</code> directory inside the <code>lindera-wasm</code> crate.
+wasm-pack also supports other targets (e.g. <code>--target nodejs</code>) if you need a
+custom build, but the web-target build is what this documentation assumes.</p>
 <h2 id="available-feature-flags-advanced"><a class="header" href="#available-feature-flags-advanced">Available Feature Flags (Advanced)</a></h2>
 <p>For advanced users who want to embed dictionaries directly into the WASM binary, the following feature flags are available. This increases the binary size significantly but eliminates the need to download dictionaries at runtime.</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>Dictionary</th><th>Language</th></tr></thead><tbody>
@@ -220,29 +219,38 @@ if (!await hasDictionary("ipadic")) {
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 </code></pre>
 <h2 id="npm-package-naming-convention"><a class="header" href="#npm-package-naming-convention">NPM Package Naming Convention</a></h2>
-<p>When publishing to npm, the recommended naming convention is:</p>
-<pre><code class="language-text">lindera-wasm-{target}
-lindera-wasm-{target}-{dict}
+<p>When publishing a custom build with embedded dictionaries to npm, the
+recommended naming convention is:</p>
+<pre><code class="language-text">lindera-wasm-{dict}
 </code></pre>
 <p>Examples:</p>
 <ul>
-<li><code>lindera-wasm-web</code></li>
-<li><code>lindera-wasm-web-ipadic</code></li>
-<li><code>lindera-wasm-bundler-unidic</code></li>
-<li><code>lindera-wasm-web-cjk</code></li>
+<li><code>lindera-wasm-ipadic</code></li>
+<li><code>lindera-wasm-unidic</code></li>
+<li><code>lindera-wasm-cjk</code></li>
 </ul>
 <p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
 <blockquote>
 <p>[!NOTE]
-This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes two packages to npm -- <code>lindera-wasm-web</code> and <code>lindera-wasm-bundler</code> -- built without any <code>embed-*</code> feature. Dictionary-suffixed names such as <code>lindera-wasm-web-ipadic</code> are not published anywhere; they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="#available-feature-flags-advanced">Available Feature Flags</a> above) would produce after you rename the package yourself.</p>
+This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes a single package to npm -- <code>lindera-wasm</code>, built with <code>wasm-pack --target web</code> and without any <code>embed-*</code> feature. Dictionary-suffixed names such as <code>lindera-wasm-ipadic</code> are not published anywhere; they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="#available-feature-flags-advanced">Available Feature Flags</a> above) would produce after you rename the package yourself.</p>
 </blockquote>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
-<p>Pre-built packages are available on npm:</p>
-<pre><code class="language-bash">npm install lindera-wasm-web
+<p>The pre-built package is available on npm:</p>
+<pre><code class="language-bash">npm install lindera-wasm
 </code></pre>
 <p>Or with yarn:</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web
+<pre><code class="language-bash">yarn add lindera-wasm
 </code></pre>
+<p>Because the package is a web-target build, call the default-exported async
+init function once before using any API:</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm';
+
+await __wbg_init();
+</code></pre>
+<p>This applies both in browsers (native ES modules) and when the package is
+consumed through a bundler -- modern bundlers such as Vite or Webpack 5 (with
+the <code>asyncWebAssembly</code> experiment) handle the web-target build directly; see
+<a href="./browser_usage.html">Browser Usage</a> for bundler configuration.</p>
 <blockquote>
 <p>[!NOTE]
 The npm package does not include dictionaries. Use the OPFS helpers to download dictionaries at runtime. See <a href="./opfs.html">OPFS Dictionary Storage</a>.</p>

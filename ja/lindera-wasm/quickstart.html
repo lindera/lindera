@@ -179,8 +179,8 @@
                         <h1 id="クイックスタート"><a class="header" href="#クイックスタート">クイックスタート</a></h1>
 <h2 id="webブラウザ----opfs-辞書ロード"><a class="header" href="#webブラウザ----opfs-辞書ロード">Web（ブラウザ） -- OPFS 辞書ロード</a></h2>
 <p>推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -227,9 +227,9 @@ main();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
 <blockquote>
 <p>[!NOTE]
-ここでの <code>lindera-wasm-web-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+ここでの <code>lindera-wasm-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -249,8 +249,8 @@ main();
 </code></pre>
 <h2 id="フィルタの使用"><a class="header" href="#フィルタの使用">フィルタの使用</a></h2>
 <p>トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

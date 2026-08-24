@@ -186,7 +186,7 @@
 <p>Lindera WASM はデフォルトで辞書を同梱しません。ブラウザ環境では、OPFS（Origin Private File System）API を使用して辞書を実行時にダウンロードする方法を推奨します。</p>
 <h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
 <p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。ブラウザ環境では、OPFS ヘルパーを使用して辞書をダウンロードしてキャッシュします：</p>
-<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm/opfs';
 
 if (!await hasDictionary("ipadic")) {
     await downloadDictionary(
@@ -197,14 +197,11 @@ if (!await hasDictionary("ipadic")) {
 </code></pre>
 <p>詳細は <a href="./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
 <h2 id="wasm-pack-によるビルド"><a class="header" href="#wasm-pack-によるビルド">wasm-pack によるビルド</a></h2>
-<p>ターゲット環境に合わせて WASM パッケージをビルドします：</p>
-<h3 id="webブラウザ向け-es-modules"><a class="header" href="#webブラウザ向け-es-modules">Web（ブラウザ向け ES Modules）</a></h3>
+<p>公開されている npm パッケージと同じ構成でビルドするには、<code>web</code> ターゲットを使用します：</p>
 <pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
-<h3 id="バンドラーwebpackviterollup"><a class="header" href="#バンドラーwebpackviterollup">バンドラー（Webpack、Vite、Rollup）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler
-</code></pre>
 <p>出力は <code>lindera-wasm</code> クレート内の <code>pkg/</code> ディレクトリに書き込まれます。</p>
+<p><code>web</code> ターゲットのビルドは、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 の <code>asyncWebAssembly</code> など）からもそのまま利用できます。バンドラー専用のビルドを別途用意する必要はありません。</p>
 <h2 id="利用可能な-feature-フラグ上級者向け"><a class="header" href="#利用可能な-feature-フラグ上級者向け">利用可能な Feature フラグ（上級者向け）</a></h2>
 <p>辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
@@ -220,28 +217,28 @@ if (!await hasDictionary("ipadic")) {
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 </code></pre>
 <h2 id="npm-パッケージの命名規則"><a class="header" href="#npm-パッケージの命名規則">npm パッケージの命名規則</a></h2>
-<p>npm に公開する際の推奨命名規則は以下の通りです：</p>
-<pre><code class="language-text">lindera-wasm-{target}
-lindera-wasm-{target}-{dict}
+<p>辞書を埋め込んだパッケージを自分で公開する際の推奨命名規則は以下の通りです：</p>
+<pre><code class="language-text">lindera-wasm
+lindera-wasm-{dict}
 </code></pre>
 <p>例：</p>
 <ul>
-<li><code>lindera-wasm-web</code></li>
-<li><code>lindera-wasm-web-ipadic</code></li>
-<li><code>lindera-wasm-bundler-unidic</code></li>
-<li><code>lindera-wasm-web-cjk</code></li>
+<li><code>lindera-wasm</code></li>
+<li><code>lindera-wasm-ipadic</code></li>
+<li><code>lindera-wasm-unidic</code></li>
+<li><code>lindera-wasm-cjk</code></li>
 </ul>
 <p>公開前にパッケージ名を設定するには、生成された <code>pkg/package.json</code> の <code>name</code> フィールドを編集します。</p>
 <blockquote>
 <p>[!NOTE]
-本プロジェクトのリリースワークフロー（<code>.github/workflows/release.yml</code>）が実際にビルドして npm に公開しているのは、<code>embed-*</code> feature を一切使わずにビルドした <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> という 2 つの汎用パッケージのみです。<code>lindera-wasm-web-ipadic</code> のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する <code>embed-*</code> feature（上記の<a href="#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA-feature-%E3%83%95%E3%83%A9%E3%82%B0%E4%B8%8A%E7%B4%9A%E8%80%85%E5%90%91%E3%81%91">利用可能な Feature フラグ</a>を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。</p>
+本プロジェクトのリリースワークフロー（<code>.github/workflows/release.yml</code>）が実際にビルドして npm に公開しているのは、<code>embed-*</code> feature を一切使わずに <code>web</code> ターゲットでビルドした <code>lindera-wasm</code> という汎用パッケージのみです。<code>lindera-wasm-ipadic</code> のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する <code>embed-*</code> feature（上記の<a href="#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA-feature-%E3%83%95%E3%83%A9%E3%82%B0%E4%B8%8A%E7%B4%9A%E8%80%85%E5%90%91%E3%81%91">利用可能な Feature フラグ</a>を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。</p>
 </blockquote>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm で公開されています：</p>
-<pre><code class="language-bash">npm install lindera-wasm-web
+<pre><code class="language-bash">npm install lindera-wasm
 </code></pre>
 <p>または yarn で：</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web
+<pre><code class="language-bash">yarn add lindera-wasm
 </code></pre>
 <blockquote>
 <p>[!NOTE]

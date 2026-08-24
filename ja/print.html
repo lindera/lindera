@@ -2907,8 +2907,8 @@ EOS
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-2"><a class="header" href="#インストール-2">インストール</a></h1>
 <h2 id="pypi-からのインストール"><a class="header" href="#pypi-からのインストール">PyPI からのインストール</a></h2>
-<p>ビルド済みホイールが <a href="https://pypi.org/project/lindera-python/">PyPI</a> で公開されています：</p>
-<pre><code class="language-bash">pip install lindera-python
+<p>ビルド済みホイールが <a href="https://pypi.org/project/lindera/">PyPI</a> で公開されています：</p>
+<pre><code class="language-bash">pip install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -3722,7 +3722,7 @@ for token in tokens:
 <div style="break-before: page; page-break-before: always;"></div><h1 id="インストール-3"><a class="header" href="#インストール-3">インストール</a></h1>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm で公開予定です：</p>
-<pre><code class="language-bash">npm install lindera-nodejs
+<pre><code class="language-bash">npm install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -3784,21 +3784,21 @@ npm run build
 </blockquote>
 <h2 id="インストールの確認-1"><a class="header" href="#インストールの確認-1">インストールの確認</a></h2>
 <p>インストール後、Node.js で lindera が利用可能であることを確認します：</p>
-<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
+<pre><code class="language-javascript">const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-nodejs</code> の <code>package.json</code> は現状、<code>exports</code> マップに <code>require</code> 条件のみを定義しており
-（<code>import</code> 条件はありません）、そのため <code>import { version } from "lindera-nodejs";</code> は
+npm パッケージ <code>lindera</code> の <code>package.json</code> は現状、<code>exports</code> マップに <code>require</code> 条件のみを定義しており
+（<code>import</code> 条件はありません）、そのため <code>import { version } from "lindera";</code> は
 <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code> で失敗します。ES modules から利用する場合は、Node.js の
 <code>createRequire</code> を使用してください：</p>
 </blockquote>
 <pre><code class="language-javascript">import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
@@ -3806,7 +3806,7 @@ console.log(lindera.version());
 <p>このガイドでは、lindera-nodejs を使用してテキストをトークナイズする方法を紹介します。</p>
 <h2 id="基本的なトークナイズ-1"><a class="header" href="#基本的なトークナイズ-1">基本的なトークナイズ</a></h2>
 <p>トークナイザーの作成には <code>TokenizerBuilder</code> の使用を推奨します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
@@ -3828,7 +3828,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="メソッドチェーン-1"><a class="header" href="#メソッドチェーン-1">メソッドチェーン</a></h2>
 <p><code>TokenizerBuilder</code> は簡潔な設定のためにメソッドチェーンをサポートしています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -3842,7 +3842,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="トークンプロパティへのアクセス-1"><a class="header" href="#トークンプロパティへのアクセス-1">トークンプロパティへのアクセス</a></h2>
 <p>各トークンは以下のプロパティを公開しています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -3861,7 +3861,7 @@ for (const token of tokens) {
 </code></pre>
 <h2 id="n-best-トークナイズ-2"><a class="header" href="#n-best-トークナイズ-2">N-best トークナイズ</a></h2>
 <p>コスト順にランク付けされた複数のトークナイズ候補を取得します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -3875,14 +3875,14 @@ for (const { tokens, cost } of results) {
 </code></pre>
 <h2 id="typescript"><a class="header" href="#typescript">TypeScript</a></h2>
 <p>Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：</p>
-<pre><code class="language-typescript">import type { Token } from "lindera-nodejs";
+<pre><code class="language-typescript">import type { Token } from "lindera";
 import { createRequire } from "node:module";
 
-// lindera-nodejs は CommonJS の require エントリポイントのみを公開しているため
+// npm パッケージ lindera は CommonJS の require エントリポイントのみを公開しているため
 // （「インストール」を参照）、ESM プロジェクトでは createRequire で実行時の値を
 // 読み込みつつ、import type で型情報を取得します。
 const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -3900,7 +3900,7 @@ for (const token of tokens) {
 <h3 id="コンストラクタ-1"><a class="header" href="#コンストラクタ-1">コンストラクタ</a></h3>
 <h4 id="new-tokenizerbuilder"><a class="header" href="#new-tokenizerbuilder"><code>new TokenizerBuilder()</code></a></h4>
 <p>デフォルト設定で新しいビルダーを作成します。</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 </code></pre>
@@ -3955,7 +3955,7 @@ builder.setDictionary("/path/to/dictionary");
 <h3 id="tokenizer-の作成-1"><a class="header" href="#tokenizer-の作成-1">Tokenizer の作成</a></h3>
 <h4 id="new-tokenizerdictionary-mode-userdictionary"><a class="header" href="#new-tokenizerdictionary-mode-userdictionary"><code>new Tokenizer(dictionary, mode?, userDictionary?)</code></a></h4>
 <p>読み込み済みの辞書から直接トークナイザーを作成します。</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -4028,7 +4028,7 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <li><strong>ko-dic / CC-CEDICT / Jieba</strong>: 各辞書固有の詳細フォーマット</li>
 </ul>
 <h2 id="mode-と-penalty"><a class="header" href="#mode-と-penalty">Mode と Penalty</a></h2>
-<p><code>Mode</code> と <code>Penalty</code> は <code>lindera-nodejs</code> からエクスポートされていますが、<strong>現状どの公開 API
+<p><code>Mode</code> と <code>Penalty</code> は npm パッケージ <code>lindera</code> からエクスポートされていますが、<strong>現状どの公開 API
 にも接続されていません</strong>： <code>TokenizerBuilder.setMode()</code> / <code>Tokenizer</code> のコンストラクタは
 単純なモード文字列（<code>"normal"</code> または <code>"decompose"</code>）のみを受け取り、decompose モードは
 内部的に常にデフォルトのペナルティ設定を使用します。これらの型は完全性のためにここで
@@ -4052,7 +4052,7 @@ const reading = token.details[7];  // 例: "トウキョウ"
 <h2 id="辞書の読み込み-2"><a class="header" href="#辞書の読み込み-2">辞書の読み込み</a></h2>
 <h3 id="システム辞書-1"><a class="header" href="#システム辞書-1">システム辞書</a></h3>
 <p><code>loadDictionary(uri)</code> を使用してシステム辞書を読み込みます。<a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> からビルド済み辞書をダウンロードし、展開したディレクトリのパスを指定してください：</p>
-<pre><code class="language-javascript">const { loadDictionary } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 </code></pre>
@@ -4068,13 +4068,13 @@ console.log(metadata.defaultWordCost);
 </code></pre>
 <h3 id="ユーザー辞書-2"><a class="header" href="#ユーザー辞書-2">ユーザー辞書</a></h3>
 <p>ユーザー辞書はシステム辞書にカスタム語彙を追加します。</p>
-<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { loadUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 </code></pre>
 <p>トークナイザーのビルド時にユーザー辞書を渡します：</p>
-<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Tokenizer, loadDictionary, loadUserDictionary, Metadata } = require("lindera");
 
 const dictionary = loadDictionary("/path/to/ipadic");
 const metadata = new Metadata();
@@ -4083,7 +4083,7 @@ const userDict = loadUserDictionary("/path/to/user_dictionary", metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <p>または、ビルダー経由で設定します：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -4093,7 +4093,7 @@ const tokenizer = new TokenizerBuilder()
 <h2 id="辞書のビルド-1"><a class="header" href="#辞書のビルド-1">辞書のビルド</a></h2>
 <h3 id="システム辞書のビルド-1"><a class="header" href="#システム辞書のビルド-1">システム辞書のビルド</a></h3>
 <p>ソースファイルからシステム辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { buildDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata({ name: "custom", encoding: "UTF-8" });
 buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
@@ -4101,7 +4101,7 @@ buildDictionary("/path/to/input_dir", "/path/to/output_dir", metadata);
 <p>入力ディレクトリには辞書のソースファイル（CSV レキシコン、matrix.def など）が含まれている必要があります。</p>
 <h3 id="ユーザー辞書のビルド-2"><a class="header" href="#ユーザー辞書のビルド-2">ユーザー辞書のビルド</a></h3>
 <p>CSV ファイルからユーザー辞書をビルドします：</p>
-<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { buildUserDictionary, Metadata } = require("lindera");
 
 const metadata = new Metadata();
 buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata);
@@ -4117,7 +4117,7 @@ buildUserDictionary("ipadic", "user_words.csv", "/path/to/output_dir", metadata)
 <h2 id="metadata-1"><a class="header" href="#metadata-1">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="metadata-の作成-1"><a class="header" href="#metadata-の作成-1">Metadata の作成</a></h3>
-<pre><code class="language-javascript">const { Metadata } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Metadata } = require("lindera");
 
 // デフォルトのメタデータ
 const metadata = new Metadata();
@@ -4165,7 +4165,7 @@ console.log(metadata.toObject());
 <h2 id="schema-1"><a class="header" href="#schema-1">Schema</a></h2>
 <p><code>Schema</code> クラスは辞書エントリーのフィールド構造を定義します。</p>
 <h3 id="schema-の作成-1"><a class="header" href="#schema-の作成-1">Schema の作成</a></h3>
-<pre><code class="language-javascript">const { Schema } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { Schema } = require("lindera");
 
 // デフォルトの IPADIC 互換スキーマ
 const schema = Schema.createDefault();
@@ -4225,7 +4225,7 @@ console.log(schema.getCustomFields());      // インデックス 4 以降のフ
 <p>文字フィルタはトークナイズ前に入力テキストを変換します。</p>
 <h3 id="unicode_normalize-2"><a class="header" href="#unicode_normalize-2">unicode_normalize</a></h3>
 <p>入力テキストに Unicode 正規化を適用します。</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("embedded://ipadic")
@@ -4291,7 +4291,7 @@ const tokenizer = new TokenizerBuilder()
 </code></pre>
 <h2 id="パイプラインの完全な例-1"><a class="header" href="#パイプラインの完全な例-1">パイプラインの完全な例</a></h2>
 <p>以下の例では、複数の文字フィルタとトークンフィルタを1つのパイプラインに組み合わせています：</p>
-<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -4339,7 +4339,7 @@ for (const token of tokens) {
 を参照してください。</p>
 </blockquote>
 <p><code>train()</code> を使用して、種辞書とアノテーション付きコーパスから CRF モデルを学習します：</p>
-<pre><code class="language-javascript">const { train } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { train } = require("lindera");
 
 train({
   seed: "resources/training/seed.csv",
@@ -4370,7 +4370,7 @@ train({
 </div>
 <h2 id="学習済みモデルのエクスポート-1"><a class="header" href="#学習済みモデルのエクスポート-1">学習済みモデルのエクスポート</a></h2>
 <p>学習後、<code>exportModel()</code> を使用してモデルを辞書ソースファイルにエクスポートします：</p>
-<pre><code class="language-javascript">const { exportModel } = require("lindera-nodejs");
+<pre><code class="language-javascript">const { exportModel } = require("lindera");
 
 exportModel({
   model: "/tmp/model.dat",
@@ -4401,7 +4401,7 @@ exportModel({
   buildDictionary,
   Metadata,
   TokenizerBuilder,
-} = require("lindera-nodejs");
+} = require("lindera");
 
 // Step 1: Train the CRF model
 train({
@@ -6006,7 +6006,7 @@ foreach ($tokens as $token) {
 <p>Lindera WASM はデフォルトで辞書を同梱しません。ブラウザ環境では、OPFS（Origin Private File System）API を使用して辞書を実行時にダウンロードする方法を推奨します。</p>
 <h3 id="github-releases-からのダウンロード-4"><a class="header" href="#github-releases-からのダウンロード-4">GitHub Releases からのダウンロード</a></h3>
 <p>ビルド済み辞書は <a href="https://github.com/lindera/lindera/releases">GitHub Releases</a> ページから入手できます。ブラウザ環境では、OPFS ヘルパーを使用して辞書をダウンロードしてキャッシュします：</p>
-<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { downloadDictionary, hasDictionary } from 'lindera-wasm/opfs';
 
 if (!await hasDictionary("ipadic")) {
     await downloadDictionary(
@@ -6017,14 +6017,11 @@ if (!await hasDictionary("ipadic")) {
 </code></pre>
 <p>詳細は <a href="lindera-wasm/./opfs.html">OPFS 辞書ストレージ</a> を参照してください。</p>
 <h2 id="wasm-pack-によるビルド"><a class="header" href="#wasm-pack-によるビルド">wasm-pack によるビルド</a></h2>
-<p>ターゲット環境に合わせて WASM パッケージをビルドします：</p>
-<h3 id="webブラウザ向け-es-modules"><a class="header" href="#webブラウザ向け-es-modules">Web（ブラウザ向け ES Modules）</a></h3>
+<p>公開されている npm パッケージと同じ構成でビルドするには、<code>web</code> ターゲットを使用します：</p>
 <pre><code class="language-bash">wasm-pack build --target web
 </code></pre>
-<h3 id="バンドラーwebpackviterollup"><a class="header" href="#バンドラーwebpackviterollup">バンドラー（Webpack、Vite、Rollup）</a></h3>
-<pre><code class="language-bash">wasm-pack build --target bundler
-</code></pre>
 <p>出力は <code>lindera-wasm</code> クレート内の <code>pkg/</code> ディレクトリに書き込まれます。</p>
+<p><code>web</code> ターゲットのビルドは、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 の <code>asyncWebAssembly</code> など）からもそのまま利用できます。バンドラー専用のビルドを別途用意する必要はありません。</p>
 <h2 id="利用可能な-feature-フラグ上級者向け"><a class="header" href="#利用可能な-feature-フラグ上級者向け">利用可能な Feature フラグ（上級者向け）</a></h2>
 <p>辞書を WASM バイナリに直接埋め込みたい上級者向けに、以下の feature フラグが利用できます。バイナリサイズが大幅に増加しますが、実行時の辞書ダウンロードが不要になります。</p>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>辞書</th><th>言語</th></tr></thead><tbody>
@@ -6040,28 +6037,28 @@ if (!await hasDictionary("ipadic")) {
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 </code></pre>
 <h2 id="npm-パッケージの命名規則"><a class="header" href="#npm-パッケージの命名規則">npm パッケージの命名規則</a></h2>
-<p>npm に公開する際の推奨命名規則は以下の通りです：</p>
-<pre><code class="language-text">lindera-wasm-{target}
-lindera-wasm-{target}-{dict}
+<p>辞書を埋め込んだパッケージを自分で公開する際の推奨命名規則は以下の通りです：</p>
+<pre><code class="language-text">lindera-wasm
+lindera-wasm-{dict}
 </code></pre>
 <p>例：</p>
 <ul>
-<li><code>lindera-wasm-web</code></li>
-<li><code>lindera-wasm-web-ipadic</code></li>
-<li><code>lindera-wasm-bundler-unidic</code></li>
-<li><code>lindera-wasm-web-cjk</code></li>
+<li><code>lindera-wasm</code></li>
+<li><code>lindera-wasm-ipadic</code></li>
+<li><code>lindera-wasm-unidic</code></li>
+<li><code>lindera-wasm-cjk</code></li>
 </ul>
 <p>公開前にパッケージ名を設定するには、生成された <code>pkg/package.json</code> の <code>name</code> フィールドを編集します。</p>
 <blockquote>
 <p>[!NOTE]
-本プロジェクトのリリースワークフロー（<code>.github/workflows/release.yml</code>）が実際にビルドして npm に公開しているのは、<code>embed-*</code> feature を一切使わずにビルドした <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> という 2 つの汎用パッケージのみです。<code>lindera-wasm-web-ipadic</code> のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する <code>embed-*</code> feature（上記の<a href="lindera-wasm/installation.html#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA-feature-%E3%83%95%E3%83%A9%E3%82%B0%E4%B8%8A%E7%B4%9A%E8%80%85%E5%90%91%E3%81%91">利用可能な Feature フラグ</a>を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。</p>
+本プロジェクトのリリースワークフロー（<code>.github/workflows/release.yml</code>）が実際にビルドして npm に公開しているのは、<code>embed-*</code> feature を一切使わずに <code>web</code> ターゲットでビルドした <code>lindera-wasm</code> という汎用パッケージのみです。<code>lindera-wasm-ipadic</code> のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する <code>embed-*</code> feature（上記の<a href="lindera-wasm/installation.html#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA-feature-%E3%83%95%E3%83%A9%E3%82%B0%E4%B8%8A%E7%B4%9A%E8%80%85%E5%90%91%E3%81%91">利用可能な Feature フラグ</a>を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。</p>
 </blockquote>
 <h2 id="npm-からのインストール-1"><a class="header" href="#npm-からのインストール-1">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm で公開されています：</p>
-<pre><code class="language-bash">npm install lindera-wasm-web
+<pre><code class="language-bash">npm install lindera-wasm
 </code></pre>
 <p>または yarn で：</p>
-<pre><code class="language-bash">yarn add lindera-wasm-web
+<pre><code class="language-bash">yarn add lindera-wasm
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -6070,8 +6067,8 @@ npm パッケージには辞書が含まれていません。OPFS ヘルパー�
 <div style="break-before: page; page-break-before: always;"></div><h1 id="クイックスタート-5"><a class="header" href="#クイックスタート-5">クイックスタート</a></h1>
 <h2 id="webブラウザ----opfs-辞書ロード"><a class="header" href="#webブラウザ----opfs-辞書ロード">Web（ブラウザ） -- OPFS 辞書ロード</a></h2>
 <p>推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -6118,9 +6115,9 @@ main();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：</p>
 <blockquote>
 <p>[!NOTE]
-ここでの <code>lindera-wasm-web-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+ここでの <code>lindera-wasm-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -6140,8 +6137,8 @@ main();
 </code></pre>
 <h2 id="フィルタの使用"><a class="header" href="#フィルタの使用">フィルタの使用</a></h2>
 <p>トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -6217,8 +6214,8 @@ URI の代わりにバイトデータから読み込んだ辞書（例: <code>lo
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><strong>戻り値</strong>: void</li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -6357,7 +6354,7 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>
 <p>[!NOTE]
-以下の例は <code>lindera-wasm-web-ipadic</code> からインポートしていますが、これは <code>embed-ipadic</code> feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。詳細は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+以下の例は <code>lindera-wasm-ipadic</code> からインポートしていますが、これは <code>embed-ipadic</code> feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。詳細は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
 <h3 id="loaddictionaryuri"><a class="header" href="#loaddictionaryuri"><code>loadDictionary(uri)</code></a></h3>
 <p>指定された URI から辞書を読み込みます。</p>
@@ -6365,7 +6362,7 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -6391,7 +6388,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>戻り値</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // 例: "5.3.0"
 </code></pre>
@@ -6473,8 +6470,8 @@ console.log(error.toString()); // "message"
 </li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // OPFS から辞書ファイルを読み込む
 const files = await loadDictionaryFiles("ipadic");
@@ -6503,10 +6500,10 @@ const tokenizer = builder.build();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、<code>embedded://</code> URI スキームで埋め込み辞書を読み込めます。WASM バイナリのサイズが大幅に増加します。</p>
 <blockquote>
 <p>[!NOTE]
-以下の例の <code>lindera-wasm-web-ipadic</code> は <code>embed-ipadic</code> feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。詳細は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+以下の例の <code>lindera-wasm-ipadic</code> は <code>embed-ipadic</code> feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。詳細は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
 <h3 id="埋め込み辞書の読み込み"><a class="header" href="#埋め込み辞書の読み込み">埋め込み辞書の読み込み</a></h3>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -6526,7 +6523,7 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="tokenizer-コンストラクタでの使用"><a class="header" href="#tokenizer-コンストラクタでの使用">Tokenizer コンストラクタでの使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -6551,7 +6548,7 @@ console.log(dictionary.encoding); // "utf-8"
 <p>ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
 <code>dictionary.metadata</code>）を渡してください。CSV の内容は UTF-8 である必要が
 あります。</p>
-<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
@@ -6565,15 +6562,15 @@ const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 </code></pre>
 <h3 id="ビルド済みユーザー辞書binの読み込み"><a class="header" href="#ビルド済みユーザー辞書binの読み込み">ビルド済みユーザー辞書（<code>.bin</code>）の読み込み</a></h3>
 <p><code>lindera build --user</code> でコンパイルしたユーザー辞書はそのまま読み込めます：</p>
-<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.bin');
 const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -6677,8 +6674,8 @@ Python・Node.js・Ruby・PHP の各バインディングと異なり、WASM の
 <h2 id="es-module-インポート"><a class="header" href="#es-module-インポート">ES Module インポート</a></h2>
 <p>ブラウザ環境では、Lindera の関数を使用する前に WASM モジュールを初期化する必要があります。デフォルトエクスポートの <code>__wbg_init</code> がこの初期化を処理します。</p>
 <p>推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // WASM モジュールを初期化する（いずれかの API を使用する前に一度だけ呼び出す必要がある）
@@ -6717,9 +6714,9 @@ main();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：</p>
 <blockquote>
 <p>[!NOTE]
-ここでの <code>lindera-wasm-web-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+ここでの <code>lindera-wasm-ipadic</code> は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。このようなパッケージを自分でビルド・命名する方法は <a href="lindera-wasm/./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -6817,9 +6814,12 @@ module.exports = {
     },
 };
 </code></pre>
-<p>次に、bundler ターゲットビルドを使用してインポートします：</p>
-<pre><code class="language-javascript">import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+<p>次に、<code>lindera-wasm</code> パッケージをインポートします。<code>web</code> ターゲットのビルドでは、使用前にデフォルトエクスポートの <code>__wbg_init()</code> を呼び出す必要があります：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+// WASM モジュールを初期化
+await __wbg_init();
 
 // OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
 const files = await loadDictionaryFiles("ipadic");
@@ -6834,23 +6834,25 @@ builder.setDictionaryInstance(dictionary);
 builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
-<p>bundler ターゲットでは、<code>__wbg_init()</code> はバンドラーによって自動的に呼び出されます。</p>
 <h2 id="vite--rollup-のセットアップ"><a class="header" href="#vite--rollup-のセットアップ">Vite / Rollup のセットアップ</a></h2>
-<p>Vite は web ターゲットでの WASM をそのままサポートしています。ビルド済みの <code>pkg/</code> ディレクトリをプロジェクトに配置し、直接インポートします：</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
-import { loadDictionaryFiles } from './pkg/opfs.js';
+<p>Vite は <code>web</code> ターゲットの WASM をそのままサポートしています。npm からインストールした <code>lindera-wasm</code> を直接インポートできます：</p>
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
 // OPFS から辞書を読み込み、上記のように TokenizerBuilder を使用
 </code></pre>
-<p>bundler ターゲットで Vite を使用する場合は、<a href="https://github.com/nicolo-ribaudo/vite-plugin-wasm">vite-plugin-wasm</a> プラグインが必要になることがあります：</p>
+<p>Vite では <code>optimizeDeps</code> でこのパッケージを除外してください：</p>
 <pre><code class="language-javascript">// vite.config.js
-import wasm from 'vite-plugin-wasm';
+import { defineConfig } from 'vite';
 
-export default {
-    plugins: [wasm()],
-};
+export default defineConfig({
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
+});
 </code></pre>
+<p>ローカルでビルドした場合は、生成された <code>pkg/</code> ディレクトリをプロジェクトに配置し、<code>./pkg/lindera_wasm.js</code> を直接インポートすることもできます。</p>
 <h2 id="chrome-拡張機能に関する注意事項"><a class="header" href="#chrome-拡張機能に関する注意事項">Chrome 拡張機能に関する注意事項</a></h2>
 <p>Manifest V3 を使用する Chrome 拡張機能では、デフォルトで <code>WebAssembly.compile</code> と <code>WebAssembly.instantiate</code> が制限されています。拡張機能で lindera-wasm を使用するには、Content Security Policy に <code>wasm-unsafe-eval</code> を追加する必要があります：</p>
 <pre><code class="language-json">{
@@ -6873,7 +6875,7 @@ export default {
 <p>辞書は OPFS パス <code>lindera/dictionaries/&lt;name&gt;/</code> に保存されます。</p>
 <h2 id="インポート"><a class="header" href="#インポート">インポート</a></h2>
 <pre><code class="language-javascript">import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 </code></pre>
 <h2 id="関数"><a class="header" href="#関数">関数</a></h2>
 <h3 id="downloaddictionaryurl-name-options"><a class="header" href="#downloaddictionaryurl-name-options"><code>downloadDictionary(url, name, options?)</code></a></h3>
@@ -6975,8 +6977,8 @@ console.log(names); // 例: ["ipadic", "unidic"]
 </code></pre>
 <h2 id="完全なワークフロー-4"><a class="header" href="#完全なワークフロー-4">完全なワークフロー</a></h2>
 <p>OPFS ベースの辞書を使用する一般的なワークフロー:</p>
-<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -8371,12 +8373,85 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 <tr><td>未知語の候補ラダー（length ladder）がデフォルトで有効に</td><td>辞書外テキストに対する Normal・Decompose 両モードの出力</td><td>v5 と同一の出力が必要な場合は <code>unknown_word_ladder(false)</code> / <code>--disable-unknown-word-ladder</code> を設定</td></tr>
 <tr><td><code>max_grouping_len</code> オプションの新設（<code>--max-grouping-len</code>、config キー、builder/worker setter）</td><td>MeCab の <code>max-grouping-size</code> 相当の上限を使いたいユーザー</td><td>対応不要（デフォルトは従来どおり無制限）</td></tr>
 <tr><td>JS バインディングがプレーンオブジェクトを返すようになり <code>Token</code> クラスが廃止</td><td>Node.js・WASM ユーザー</td><td><code>token.getDetail(i)</code> を <code>token.details[i]</code> に置換。WASM ユーザーはフィールド名の camelCase 化にも対応</td></tr>
+<tr><td><strong>npm・PyPI のパッケージ名が変更</strong>（<code>lindera-nodejs</code> → <code>lindera</code>、<code>lindera-python</code> → <code>lindera</code>、WASM は <code>lindera-wasm</code> に統合）</td><td>npm・PyPI からバインディングをインストールしているユーザー</td><td>依存関係と import のパッケージ名を更新（<a href="migration_v5_to_v6.html#npmpypicratesio-%E3%81%AE%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E5%90%8D%E5%A4%89%E6%9B%B4">下記</a>参照）</td></tr>
 <tr><td><code>lindera_dictionary::viterbi</code>/<code>mode</code> の一部項目が改名・削除、<code>Lattice::set_text</code>/<code>set_text_nbest</code> に引数 2 つ追加</td><td><code>Lattice</code>/<code>Edge</code>/<code>Penalty</code>/<code>Mode</code> を直接利用するコード（<code>lindera</code> クレートの <code>Segmenter</code>/<code>Tokenizer</code>/<code>Worker</code> API 利用者は対象外）</td><td>下記の表に従い呼び出し箇所を更新</td></tr>
 <tr><td>ビルド済み辞書フォーマットがバージョン 2（<code>dict.da</code> → <code>dict.trie</code> + <code>dict.valsidx</code>）— <strong>v5.3.0 でリリース済み</strong></td><td><strong>v5.2 以前</strong>で作成した自前ビルドのシステム辞書</td><td><code>lindera build</code> で再ビルド、または <code>lindera download</code> で再取得</td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code> が 9 引数 — <strong>v5.3.0 でリリース済み</strong></td><td><strong>v5.2 以前</strong>からアップグレードする、バイトデータから辞書を読み込む WASM ユーザー</td><td><code>dictDa</code> の代わりに <code>dictTrie</code> と <code>dictValsIdx</code> を渡す</td></tr>
 <tr><td>OPFS の <code>DictionaryFiles</code> が <code>dictDa</code> を <code>dictTrie</code> + <code>dictValsIdx</code> に置き換え — <strong>v5.3.0 でリリース済み</strong></td><td><strong>v5.2 以前</strong>からアップグレードする、<code>opfs</code> ヘルパーを使う WASM ユーザー</td><td>OPFS にキャッシュ済みの辞書を再ダウンロード</td></tr>
 </tbody></table>
 </div>
+<h2 id="npmpypicratesio-のパッケージ名変更"><a class="header" href="#npmpypicratesio-のパッケージ名変更">npm・PyPI・crates.io のパッケージ名変更</a></h2>
+<p>v6.0.0 から、公開パッケージ名がサフィックス付きの名前から素の名前
+（bare name）に統一されます:</p>
+<div class="table-wrapper"><table><thead><tr><th>レジストリ</th><th>旧パッケージ名</th><th>新パッケージ名</th></tr></thead><tbody>
+<tr><td>npm（Node.js 本体）</td><td><code>lindera-nodejs</code></td><td><code>lindera</code></td></tr>
+<tr><td>npm（プラットフォーム別）</td><td><code>lindera-nodejs-&lt;platform&gt;</code>（例: <code>lindera-nodejs-darwin-arm64</code>）</td><td><code>lindera-&lt;platform&gt;</code>（例: <code>lindera-darwin-arm64</code>）</td></tr>
+<tr><td>npm（WASM）</td><td><code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code></td><td><code>lindera-wasm</code>（単一パッケージ）</td></tr>
+<tr><td>PyPI</td><td><code>lindera-python</code></td><td><code>lindera</code></td></tr>
+</tbody></table>
+</div>
+<p>RubyGems の <code>lindera</code> と、crates.io のコアクレート（<code>lindera</code>・
+<code>lindera-dictionary</code> など）は変更ありません。</p>
+<h3 id="nodejsnpm"><a class="header" href="#nodejsnpm">Node.js（npm）</a></h3>
+<p><code>package.json</code> の依存関係と <code>require</code>/<code>import</code> のパッケージ名を更新してください:</p>
+<pre><code class="language-javascript">// v5
+const { TokenizerBuilder } = require("lindera-nodejs");
+
+// v6
+const { TokenizerBuilder } = require("lindera");
+</code></pre>
+<p>プラットフォーム別パッケージ（<code>optionalDependencies</code> 経由で自動的に
+解決されます）も <code>lindera-nodejs-&lt;platform&gt;</code> から <code>lindera-&lt;platform&gt;</code> に
+変わりますが、通常は明示的に依存指定していないため対応は不要です。</p>
+<p>旧 <code>lindera-nodejs</code> 系パッケージは npm 上で deprecated としてマークされます。
+公開済みの旧バージョンはそのまま残ります。</p>
+<h3 id="pythonpypi"><a class="header" href="#pythonpypi">Python（PyPI）</a></h3>
+<p>インストールコマンドと依存関係を更新してください:</p>
+<pre><code class="language-bash"># v5
+pip install lindera-python
+
+# v6
+pip install lindera
+</code></pre>
+<p><strong>Python の import 名は変わりません</strong> — 以前から <code>import lindera</code> であり、
+コードの変更は不要です。変わるのは PyPI 上の配布名だけです。</p>
+<p>移行を助けるため、<code>lindera-python</code> の最終リリースとして、新しい <code>lindera</code>
+パッケージに依存するだけの移行スタブ（transition stub）が PyPI に公開されます。
+<code>pip install lindera-python</code> は当面動作しますが、依存関係は <code>lindera</code> に
+切り替えてください。</p>
+<h3 id="wasmnpm"><a class="header" href="#wasmnpm">WASM（npm）</a></h3>
+<p><code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> の 2 パッケージは、
+<code>wasm-pack --target web</code> でビルドされた単一の <code>lindera-wasm</code> パッケージに
+統合されます。</p>
+<p><code>lindera-wasm-web</code> を使っていた場合は、パッケージ名の置き換えのみです:</p>
+<pre><code class="language-javascript">// v5
+import __wbg_init, { TokenizerBuilder } from "lindera-wasm-web";
+await __wbg_init();
+
+// v6
+import init, { TokenizerBuilder } from "lindera-wasm";
+await init();
+</code></pre>
+<p><code>lindera-wasm-bundler</code> を使っていた場合も、同じ <code>lindera-wasm</code> パッケージを
+インストールします。ただし <code>web</code> ターゲットのビルドでは初期化が自動では
+行われないため、使用前にデフォルトエクスポートの非同期初期化関数を必ず
+呼び出してください:</p>
+<pre><code class="language-javascript">// v5（bundler ターゲット: 初期化はバンドラーが処理）
+import { TokenizerBuilder } from "lindera-wasm-bundler";
+
+// v6（web ターゲット: 明示的な初期化が必要）
+import init, { TokenizerBuilder } from "lindera-wasm";
+await init();
+</code></pre>
+<p>モダンなバンドラー（Vite、Webpack 5 の <code>asyncWebAssembly</code> など）は
+<code>web</code> ターゲットのビルドをそのまま扱えます。設定例は
+<a href="./lindera-wasm/browser_usage.html">ブラウザでの使用</a> を参照してください。</p>
+<h3 id="cratesio"><a class="header" href="#cratesio">crates.io</a></h3>
+<p>バインディングクレート（<code>lindera-python</code>・<code>lindera-nodejs</code>・<code>lindera-ruby</code>・
+<code>lindera-wasm</code>）は crates.io への公開を終了します。公開済みの 5.3.0 までの
+バージョンはそのまま残ります。これらは各言語のレジストリ（PyPI・npm・
+RubyGems）経由で利用するものであり、Rust クレートとして依存する用途は
+想定されていません。コアクレートは引き続き crates.io に公開されます。</p>
 <h2 id="ビルド済みユーザー辞書の再ビルドが必要"><a class="header" href="#ビルド済みユーザー辞書の再ビルドが必要">ビルド済みユーザー辞書の再ビルドが必要</a></h2>
 <p>Lindera v6 では <code>daachorse</code> を 4.x から 5.0 に更新しており、ユーザー辞書が
 内部に持つ Aho-Corasick オートマトンのシリアライズ形式が変わりました。
@@ -8591,7 +8666,7 @@ const tokens = tokenizer.tokenize(text);
 持つプレーンオブジェクトになりました。</p>
 <p>どちらもクラスではなくなったため、パッケージから export されなくなりました。
 <code>Token</code>・<code>JsToken</code>・<code>NbestResult</code>・<code>JsNbestResult</code> はすべて <code>index.js</code> から
-削除され、<code>require("lindera-nodejs").Token</code> は <code>undefined</code> になります。
+削除され、<code>require("lindera").Token</code> は <code>undefined</code> になります。
 <code>instanceof</code> による判定もできません:</p>
 <pre><code class="language-javascript">// v5
 const { Token } = require("lindera-nodejs");
@@ -8656,6 +8731,12 @@ const data = token; // 既にプレーンオブジェクト
 </ul>
 <p>JavaScript（Node.js・WASM）:</p>
 <ul>
+<li>Node.js: <code>package.json</code> の依存を <code>lindera-nodejs</code> から <code>lindera</code> に変更し、
+<code>require</code>/<code>import</code> のパッケージ名を更新する。</li>
+<li>WASM: 依存を <code>lindera-wasm-web</code> / <code>lindera-wasm-bundler</code> から <code>lindera-wasm</code>
+に変更する。<code>lindera-wasm-bundler</code> を使っていた場合は、使用前に
+デフォルトエクスポートの初期化関数（<code>await init()</code>）を呼び出すコードを
+追加する。</li>
 <li><code>token.getDetail(i)</code> を <code>token.details[i]</code> に置き換える。</li>
 <li>Node.js: <code>tokenizeObjects(text)</code> を <code>tokenize(text)</code> に置き換え、
 <code>Token</code>/<code>NbestResult</code> の import をやめる（export されなくなったため）。
@@ -8663,6 +8744,11 @@ TypeScript 利用者は型名 <code>JsTokenData</code> を <code>Token</code> �
 <li>WASM: トークンのフィールド参照を camelCase に変更し（<code>byteStart</code>・
 <code>byteEnd</code>・<code>wordId</code>・<code>isUnknown</code>）、<code>toJSON()</code> の呼び出しを削除し、
 <code>Token</code> の import をやめる。</li>
+</ul>
+<p>Python:</p>
+<ul>
+<li>依存を <code>lindera-python</code> から <code>lindera</code> に変更する（<code>pip install lindera</code>）。
+<code>import lindera</code> はそのままで、コードの変更は不要。</li>
 </ul>
 <p><code>lindera_dictionary</code> を直接利用している場合:</p>
 <ul>

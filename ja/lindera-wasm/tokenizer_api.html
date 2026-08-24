@@ -208,8 +208,8 @@ URI の代わりにバイトデータから読み込んだ辞書（例: <code>lo
 <li><strong>パラメータ</strong>: <code>dictionary</code> (Dictionary) -- 読み込み済みの辞書オブジェクト</li>
 <li><strong>戻り値</strong>: void</li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -348,7 +348,7 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <h2 id="ヘルパー関数"><a class="header" href="#ヘルパー関数">ヘルパー関数</a></h2>
 <blockquote>
 <p>[!NOTE]
-以下の例は <code>lindera-wasm-web-ipadic</code> からインポートしていますが、これは <code>embed-ipadic</code> feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。詳細は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+以下の例は <code>lindera-wasm-ipadic</code> からインポートしていますが、これは <code>embed-ipadic</code> feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。詳細は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
 <h3 id="loaddictionaryuri"><a class="header" href="#loaddictionaryuri"><code>loadDictionary(uri)</code></a></h3>
 <p>指定された URI から辞書を読み込みます。</p>
@@ -356,7 +356,7 @@ const reading = token.details[7]; // 例: "トウキョウ"
 <li><strong>パラメータ</strong>: <code>uri</code> (string) -- 辞書の URI（例: <code>"embedded://ipadic"</code>）</li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -382,7 +382,7 @@ const dict = loadDictionary("embedded://ipadic");
 <ul>
 <li><strong>戻り値</strong>: <code>string</code></li>
 </ul>
-<pre><code class="language-javascript">import { version } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // 例: "5.3.0"
 </code></pre>

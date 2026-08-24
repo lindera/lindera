@@ -179,7 +179,7 @@
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
 <h2 id="npm-からのインストール"><a class="header" href="#npm-からのインストール">npm からのインストール</a></h2>
 <p>ビルド済みパッケージが npm で公開予定です：</p>
-<pre><code class="language-bash">npm install lindera-nodejs
+<pre><code class="language-bash">npm install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -241,21 +241,21 @@ npm run build
 </blockquote>
 <h2 id="インストールの確認"><a class="header" href="#インストールの確認">インストールの確認</a></h2>
 <p>インストール後、Node.js で lindera が利用可能であることを確認します：</p>
-<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
+<pre><code class="language-javascript">const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-nodejs</code> の <code>package.json</code> は現状、<code>exports</code> マップに <code>require</code> 条件のみを定義しており
-（<code>import</code> 条件はありません）、そのため <code>import { version } from "lindera-nodejs";</code> は
+npm パッケージ <code>lindera</code> の <code>package.json</code> は現状、<code>exports</code> マップに <code>require</code> 条件のみを定義しており
+（<code>import</code> 条件はありません）、そのため <code>import { version } from "lindera";</code> は
 <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code> で失敗します。ES modules から利用する場合は、Node.js の
 <code>createRequire</code> を使用してください：</p>
 </blockquote>
 <pre><code class="language-javascript">import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>

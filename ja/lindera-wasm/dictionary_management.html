@@ -198,8 +198,8 @@
 </li>
 <li><strong>戻り値</strong>: <code>Dictionary</code></li>
 </ul>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // OPFS から辞書ファイルを読み込む
 const files = await loadDictionaryFiles("ipadic");
@@ -228,10 +228,10 @@ const tokenizer = builder.build();
 <p><code>embed-*</code> feature フラグ付きでビルドした場合、<code>embedded://</code> URI スキームで埋め込み辞書を読み込めます。WASM バイナリのサイズが大幅に増加します。</p>
 <blockquote>
 <p>[!NOTE]
-以下の例の <code>lindera-wasm-web-ipadic</code> は <code>embed-ipadic</code> feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm-web</code> と <code>lindera-wasm-bundler</code> のみです。詳細は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
+以下の例の <code>lindera-wasm-ipadic</code> は <code>embed-ipadic</code> feature でローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは <code>lindera-wasm</code> のみです。詳細は <a href="./installation.html#npm-%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E5%91%BD%E5%90%8D%E8%A6%8F%E5%89%87">npm パッケージの命名規則</a> を参照してください。</p>
 </blockquote>
 <h3 id="埋め込み辞書の読み込み"><a class="header" href="#埋め込み辞書の読み込み">埋め込み辞書の読み込み</a></h3>
-<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 </code></pre>
@@ -251,7 +251,7 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 </code></pre>
 <h3 id="tokenizer-コンストラクタでの使用"><a class="header" href="#tokenizer-コンストラクタでの使用">Tokenizer コンストラクタでの使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+<pre><code class="language-javascript">import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -276,7 +276,7 @@ console.log(dictionary.encoding); // "utf-8"
 <p>ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
 <code>dictionary.metadata</code>）を渡してください。CSV の内容は UTF-8 である必要が
 あります。</p>
-<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
@@ -290,15 +290,15 @@ const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 </code></pre>
 <h3 id="ビルド済みユーザー辞書binの読み込み"><a class="header" href="#ビルド済みユーザー辞書binの読み込み">ビルド済みユーザー辞書（<code>.bin</code>）の読み込み</a></h3>
 <p><code>lindera build --user</code> でコンパイルしたユーザー辞書はそのまま読み込めます：</p>
-<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.bin');
 const binBytes = new Uint8Array(await response.arrayBuffer());
 const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(

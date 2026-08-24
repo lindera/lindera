@@ -179,7 +179,7 @@
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
 <p>Pre-built packages will be available on npm:</p>
-<pre><code class="language-bash">npm install lindera-nodejs
+<pre><code class="language-bash">npm install lindera
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -241,21 +241,21 @@ If you want to embed a dictionary directly into the binary (advanced usage), ena
 </blockquote>
 <h2 id="verifying-the-installation"><a class="header" href="#verifying-the-installation">Verifying the Installation</a></h2>
 <p>After installation, verify that lindera is available in Node.js:</p>
-<pre><code class="language-javascript">const lindera = require("lindera-nodejs");
+<pre><code class="language-javascript">const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
 <blockquote>
 <p>[!NOTE]
-<code>lindera-nodejs</code>'s <code>package.json</code> currently declares only a <code>require</code> condition in its
-<code>exports</code> map (no <code>import</code> condition), so <code>import { version } from "lindera-nodejs"</code> fails
+The <code>lindera</code> npm package's <code>package.json</code> currently declares only a <code>require</code> condition in its
+<code>exports</code> map (no <code>import</code> condition), so <code>import { version } from "lindera"</code> fails
 with <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>. From an ES module, load it with Node's <code>createRequire</code>
 instead:</p>
 </blockquote>
 <pre><code class="language-javascript">import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 </code></pre>
