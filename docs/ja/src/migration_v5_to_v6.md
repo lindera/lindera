@@ -92,6 +92,10 @@ failed to deserialize model: ... re-run `lindera train` to regenerate it.
   キャッシュは素性文字列全体をキーにしており、実辞書では行ごとにほぼ一意で
   一度もヒットせず、メモリを保持するだけだったためです。代わりに `rewrite`
   を呼んでください（`&mut` も不要になりました）。
+- `FeatureExtractor::extract_*` 6 メソッドの `features` 引数を
+  `&[String]` から `&[&str]` に変更しました。呼び出し側がフィールドごとに
+  `String` を確保する必要がなくなります。`&[String]` を持っている場合は
+  `&v.iter().map(|s| s.as_str()).collect::<Vec<_>>()` で渡せます。
 - 固定分割の導入で加算順が変わったため、この変更**前**に学習した重みと
   変更後に学習した重みはバイト単位では一致しません（`--max-threads 1` を
   含むすべてのスレッド数で）。以後の成果物を比較可能にするには

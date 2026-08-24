@@ -217,9 +217,9 @@ impl Model {
                 // Apply dictionary rewriter to get ufeature, lfeature, rfeature
                 let (ufeature, lfeature, rfeature) =
                     self.config.dictionary_rewriter.rewrite(&features);
-                let u_vec: Vec<String> = ufeature.split(',').map(|s| s.to_string()).collect();
-                let l_vec: Vec<String> = lfeature.split(',').map(|s| s.to_string()).collect();
-                let r_vec: Vec<String> = rfeature.split(',').map(|s| s.to_string()).collect();
+                let u_vec: Vec<&str> = ufeature.split(',').collect();
+                let l_vec: Vec<&str> = lfeature.split(',').collect();
+                let r_vec: Vec<&str> = rfeature.split(',').collect();
 
                 let unigram_features = self
                     .config
