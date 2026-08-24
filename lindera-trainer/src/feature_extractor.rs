@@ -285,7 +285,7 @@ impl FeatureExtractor {
     /// template does not apply to this entry.
     fn apply_parsed_template(
         template: &ParsedTemplate,
-        features: &[String],
+        features: &[&str],
         cate_id: u32,
         ctx: &TemplateContext,
     ) -> Option<String> {
@@ -294,7 +294,7 @@ impl FeatureExtractor {
             if required_idx >= features.len() {
                 return None; // Index out of bounds
             }
-            let feature_val = &features[required_idx];
+            let feature_val = features[required_idx];
             if feature_val == "*" || feature_val.is_empty() {
                 return None; // Skip if required feature is undefined
             }
@@ -309,7 +309,7 @@ impl FeatureExtractor {
                     if *idx >= features.len() {
                         "*".to_string() // Default for out of bounds
                     } else {
-                        features[*idx].clone()
+                        features[*idx].to_string()
                     }
                 }
                 FeatureType::CharacterType => cate_id.to_string(),
@@ -373,18 +373,39 @@ impl FeatureExtractor {
     }
 
     /// Extracts unigram feature IDs from features.
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten unigram feature fields, one slice element per
+    ///   comma-separated field.
+    /// * `cate_id` - Character category id for the `%t` placeholder.
+    ///
+    /// # 戻り値
+    ///
+    /// The interned feature ids; templates whose `%F?` field is undefined are
+    /// skipped, so the result may be shorter than the template list.
     pub fn extract_unigram_feature_ids(
         &mut self,
-        features: &[String],
+        features: &[&str],
         cate_id: u32,
     ) -> Vec<NonZeroU32> {
         self.extract_unigram_feature_ids_with_ctx(features, cate_id, &TemplateContext::default())
     }
 
     /// Extracts unigram feature IDs from features with template context.
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten unigram feature fields.
+    /// * `cate_id` - Character category id for the `%t` placeholder.
+    /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
+    ///
+    /// # 戻り値
+    ///
+    /// The interned feature ids; skipped templates are dropped.
     pub fn extract_unigram_feature_ids_with_ctx(
         &mut self,
-        features: &[String],
+        features: &[&str],
         cate_id: u32,
         ctx: &TemplateContext,
     ) -> Vec<NonZeroU32> {
@@ -418,14 +439,32 @@ impl FeatureExtractor {
     }
 
     /// Extracts left context feature IDs from features (with Optional).
-    pub fn extract_left_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten left-context feature fields.
+    ///
+    /// # 戻り値
+    ///
+    /// One entry per template, `None` where the template was skipped, so the
+    /// result stays index-aligned with the template list.
+    pub fn extract_left_feature_ids(&mut self, features: &[&str]) -> Vec<Option<NonZeroU32>> {
         self.extract_left_feature_ids_with_ctx(features, &TemplateContext::default())
     }
 
     /// Extracts left context feature IDs from features with template context.
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten left-context feature fields.
+    /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
+    ///
+    /// # 戻り値
+    ///
+    /// One entry per template, `None` where the template was skipped.
     pub fn extract_left_feature_ids_with_ctx(
         &mut self,
-        features: &[String],
+        features: &[&str],
         ctx: &TemplateContext,
     ) -> Vec<Option<NonZeroU32>> {
         // See `extract_unigram_feature_ids_with_ctx` for why this is
@@ -457,14 +496,32 @@ impl FeatureExtractor {
     }
 
     /// Extracts right context feature IDs from features (with Optional).
-    pub fn extract_right_feature_ids(&mut self, features: &[String]) -> Vec<Option<NonZeroU32>> {
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten right-context feature fields.
+    ///
+    /// # 戻り値
+    ///
+    /// One entry per template, `None` where the template was skipped, so the
+    /// result stays index-aligned with the template list.
+    pub fn extract_right_feature_ids(&mut self, features: &[&str]) -> Vec<Option<NonZeroU32>> {
         self.extract_right_feature_ids_with_ctx(features, &TemplateContext::default())
     }
 
     /// Extracts right context feature IDs from features with template context.
+    ///
+    /// # 引数
+    ///
+    /// * `features` - Rewritten right-context feature fields.
+    /// * `ctx` - Values for the `%w` / `%u` / `%l` / `%r` placeholders.
+    ///
+    /// # 戻り値
+    ///
+    /// One entry per template, `None` where the template was skipped.
     pub fn extract_right_feature_ids_with_ctx(
         &mut self,
-        features: &[String],
+        features: &[&str],
         ctx: &TemplateContext,
     ) -> Vec<Option<NonZeroU32>> {
         // See `extract_unigram_feature_ids_with_ctx` for why this is
@@ -513,8 +570,8 @@ mod tests {
         FeatureExtractor::from_templates(unigram, bigram)
     }
 
-    fn features(fields: &[&str]) -> Vec<String> {
-        fields.iter().map(|f| f.to_string()).collect()
+    fn features<'a>(fields: &[&'a str]) -> Vec<&'a str> {
+        fields.to_vec()
     }
 
     /// The ids an extractor hands out are 1-based and assigned in template

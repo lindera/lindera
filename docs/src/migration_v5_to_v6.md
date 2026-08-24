@@ -92,6 +92,10 @@ Two related notes:
   cache was keyed on the full feature string, which is unique per row in a
   real lexicon, so it never hit and only retained memory. Call `rewrite`
   instead — it no longer requires `&mut`.
+- The `features` parameter of the six `FeatureExtractor::extract_*` methods
+  changed from `&[String]` to `&[&str]`, so callers no longer have to
+  allocate one `String` per feature field. A caller holding a `&[String]`
+  can pass `&v.iter().map(|s| s.as_str()).collect::<Vec<_>>()`.
 - The fixed partition changed the summation order, so weights trained
   **before** this change are not byte-identical to weights trained after it —
   at any thread count, including `--max-threads 1`. Re-run `lindera train` if
