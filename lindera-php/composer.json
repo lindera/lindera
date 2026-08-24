@@ -1,5 +1,5 @@
 {
-  "name": "lindera/lindera-php",
+  "name": "lindera/lindera",
   "description": "PHP bindings for the Lindera morphological analysis library",
   "type": "php-ext",
   "license": "MIT",

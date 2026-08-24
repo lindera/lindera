@@ -7,7 +7,7 @@ This guide shows how to tokenize text using lindera-nodejs.
 The recommended way to create a tokenizer is through `TokenizerBuilder`:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
@@ -35,7 +35,7 @@ Expected output:
 `TokenizerBuilder` supports method chaining for concise configuration:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -53,7 +53,7 @@ for (const token of tokens) {
 Each token exposes the following properties:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -76,7 +76,7 @@ for (const token of tokens) {
 Retrieve multiple tokenization candidates ranked by cost:
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -94,14 +94,14 @@ for (const { tokens, cost } of results) {
 Lindera Node.js includes TypeScript type definitions. All classes and functions are fully typed:
 
 ```typescript
-import type { Token } from "lindera-nodejs";
+import type { Token } from "lindera";
 import { createRequire } from "node:module";
 
-// `lindera-nodejs` only exposes a CommonJS `require` entry point (see Installation),
+// The `lindera` npm package only exposes a CommonJS `require` entry point (see Installation),
 // so ESM projects load the runtime values through `createRequire` while still getting
 // full type information via `import type`.
 const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

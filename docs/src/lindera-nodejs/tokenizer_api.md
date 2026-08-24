@@ -11,7 +11,7 @@
 Creates a new builder with default configuration.
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 ```
@@ -106,7 +106,7 @@ const tokenizer = builder.build();
 Creates a tokenizer directly from a loaded dictionary.
 
 ```javascript
-const { Tokenizer, loadDictionary } = require("lindera-nodejs");
+const { Tokenizer, loadDictionary } = require("lindera");
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -208,7 +208,7 @@ The structure of `details` depends on the dictionary:
 
 ## Mode and Penalty
 
-`Mode` and `Penalty` are exported from `lindera-nodejs`, but they are **not currently wired into
+`Mode` and `Penalty` are exported from the `lindera` npm package, but they are **not currently wired into
 any public API**: `TokenizerBuilder.setMode()` / `Tokenizer`'s constructor accept only a plain
 mode string (`"normal"` or `"decompose"`), and decompose mode always uses the default penalty
 configuration internally. These types are documented here for completeness; they cannot yet be

@@ -26,7 +26,7 @@ lindera = "5"
 Lindera は Python バインディングも提供しています。pip でインストールできます:
 
 ```bash
-pip install lindera-python
+pip install lindera
 ```
 
 詳細は [lindera-python](lindera-python/) ディレクトリを参照してください。
@@ -36,7 +36,7 @@ pip install lindera-python
 Lindera は Node.js バインディングも提供しています。npm でインストールできます:
 
 ```bash
-npm install lindera-nodejs
+npm install lindera
 ```
 
 詳細は [lindera-nodejs](lindera-nodejs/) ディレクトリを参照してください。
@@ -54,9 +54,10 @@ Lindera は PHP バインディングも提供していますが、Packagist に
 Lindera は WebAssembly バインディングも提供しています。npm でインストールできます:
 
 ```bash
-npm install lindera-wasm-web      # ブラウザ向け（ネイティブ ES モジュール）
-npm install lindera-wasm-bundler  # バンドラー向け（Webpack、Rollup など）
+npm install lindera-wasm
 ```
+
+パッケージは `web` ターゲットでビルドされており、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 など）からも利用できます。
 
 詳細とデモアプリケーションは [lindera-wasm](lindera-wasm/) ディレクトリを参照してください。
 

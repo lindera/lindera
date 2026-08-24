@@ -23,8 +23,8 @@ Use `loadDictionaryFromBytes()` to construct a `Dictionary` from raw byte arrays
 - **Returns**: `Dictionary`
 
 ```javascript
-import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes, TokenizerBuilder } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 // Load dictionary files from OPFS
 const files = await loadDictionaryFiles("ipadic");
@@ -56,12 +56,12 @@ See [OPFS Dictionary Storage](./opfs.md) for the full OPFS workflow including do
 If you built with an `embed-*` feature flag, you can load embedded dictionaries via the `embedded://` URI scheme. This increases the WASM binary size significantly.
 
 > [!NOTE]
-> `lindera-wasm-web-ipadic` in the examples below is an illustrative package name for a local build with the `embed-ipadic` feature, not something published to npm. Only `lindera-wasm-web` and `lindera-wasm-bundler` are actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
+> `lindera-wasm-ipadic` in the examples below is an illustrative package name for a local build with the `embed-ipadic` feature, not something published to npm. Only `lindera-wasm` is actually published; see [NPM Package Naming Convention](./installation.md#npm-package-naming-convention).
 
 ### Loading an Embedded Dictionary
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-web-ipadic';
+import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 ```
@@ -88,7 +88,7 @@ const tokenizer = builder.build();
 ### Using with Tokenizer Constructor
 
 ```javascript
-import { loadDictionary, Tokenizer } from 'lindera-wasm-web-ipadic';
+import { loadDictionary, Tokenizer } from 'lindera-wasm-ipadic';
 
 const dictionary = loadDictionary("embedded://ipadic");
 const tokenizer = new Tokenizer(dictionary, "normal");
@@ -126,7 +126,7 @@ with (e.g. `dictionary.metadata`), so the CSV is interpreted with the right
 schema. The CSV content must be UTF-8.
 
 ```javascript
-import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
+import { loadUserDictionaryFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.csv');
 const csvBytes = new Uint8Array(await response.arrayBuffer());
@@ -147,7 +147,7 @@ const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 A user dictionary compiled with `lindera build --user` loads directly:
 
 ```javascript
-import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+import { loadUserDictionaryBinFromBytes } from 'lindera-wasm';
 
 const response = await fetch('/dictionaries/user_dict.bin');
 const binBytes = new Uint8Array(await response.arrayBuffer());
@@ -157,8 +157,8 @@ const userDict = loadUserDictionaryBinFromBytes(binBytes);
 ### Using a User Dictionary with Tokenizer
 
 ```javascript
-import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(

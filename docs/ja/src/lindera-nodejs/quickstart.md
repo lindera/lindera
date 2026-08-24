@@ -7,7 +7,7 @@
 トークナイザーの作成には `TokenizerBuilder` の使用を推奨します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const builder = new TokenizerBuilder();
 builder.setMode("normal");
@@ -35,7 +35,7 @@ for (const token of tokens) {
 `TokenizerBuilder` は簡潔な設定のためにメソッドチェーンをサポートしています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")
@@ -53,7 +53,7 @@ for (const token of tokens) {
 各トークンは以下のプロパティを公開しています：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -76,7 +76,7 @@ for (const token of tokens) {
 コスト順にランク付けされた複数のトークナイズ候補を取得します：
 
 ```javascript
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setDictionary("/path/to/ipadic")
@@ -94,14 +94,14 @@ for (const { tokens, cost } of results) {
 Lindera Node.js には TypeScript の型定義が含まれています。すべてのクラスと関数に完全な型が付いています：
 
 ```typescript
-import type { Token } from "lindera-nodejs";
+import type { Token } from "lindera";
 import { createRequire } from "node:module";
 
-// lindera-nodejs は CommonJS の require エントリポイントのみを公開しているため
+// npm パッケージ lindera は CommonJS の require エントリポイントのみを公開しているため
 // （「インストール」を参照）、ESM プロジェクトでは createRequire で実行時の値を
 // 読み込みつつ、import type で型情報を取得します。
 const require = createRequire(import.meta.url);
-const { TokenizerBuilder } = require("lindera-nodejs");
+const { TokenizerBuilder } = require("lindera");
 
 const tokenizer = new TokenizerBuilder()
   .setMode("normal")

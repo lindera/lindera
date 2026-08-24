@@ -1,0 +1,33 @@
+# Transition stub for the old PyPI distribution name.
+#
+# Lindera's Python binding was renamed from `lindera-python` to `lindera` in
+# v6.0.0. This stub is published once as the final `lindera-python` release so
+# that existing users are pulled forward to the new name via the dependency.
+#
+# It deliberately ships NO Python modules: the real `lindera` wheel provides
+# the `lindera` package, and shipping any files here would collide with it
+# when both distributions are installed side by side.
+#
+# Publish manually after the v6.0.0 release:
+#   cd scripts/pypi-stub && python -m build && twine upload dist/*
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lindera-python"
+version = "6.0.0"
+description = "Renamed to 'lindera'. This stub only depends on the new name."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Minoru Osuka", email = "minoru.osuka@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = ["lindera>=6.0.0"]
+classifiers = ["Development Status :: 7 - Inactive"]
+
+[project.urls]
+Repository = "https://github.com/lindera/lindera"
+
+[tool.setuptools]
+# An empty package list makes this a metadata-only distribution.
+packages = []

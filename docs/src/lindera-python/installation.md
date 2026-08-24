@@ -2,10 +2,10 @@
 
 ## Installing from PyPI
 
-Pre-built wheels are available on [PyPI](https://pypi.org/project/lindera-python/):
+Pre-built wheels are available on [PyPI](https://pypi.org/project/lindera/):
 
 ```bash
-pip install lindera-python
+pip install lindera
 ```
 
 > [!NOTE]

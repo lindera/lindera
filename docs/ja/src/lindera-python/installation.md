@@ -2,10 +2,10 @@
 
 ## PyPI からのインストール
 
-ビルド済みホイールが [PyPI](https://pypi.org/project/lindera-python/) で公開されています：
+ビルド済みホイールが [PyPI](https://pypi.org/project/lindera/) で公開されています：
 
 ```bash
-pip install lindera-python
+pip install lindera
 ```
 
 > [!NOTE]

@@ -7,8 +7,8 @@
 推奨される方法は、辞書を WASM バイナリに埋め込むのではなく、OPFS から読み込むことです：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     // WASM モジュールを初期化する（いずれかの API を使用する前に一度だけ呼び出す必要がある）
@@ -49,10 +49,10 @@ main();
 `embed-*` feature フラグ付きでビルドした場合、OPFS の代わりに埋め込み辞書を使用できます：
 
 > [!NOTE]
-> ここでの `lindera-wasm-web-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
+> ここでの `lindera-wasm-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -159,11 +159,14 @@ module.exports = {
 };
 ```
 
-次に、bundler ターゲットビルドを使用してインポートします：
+次に、`lindera-wasm` パッケージをインポートします。`web` ターゲットのビルドでは、使用前にデフォルトエクスポートの `__wbg_init()` を呼び出す必要があります：
 
 ```javascript
-import { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-bundler';
-import { loadDictionaryFiles } from 'lindera-wasm-bundler/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
+
+// WASM モジュールを初期化
+await __wbg_init();
 
 // OPFS から辞書を読み込み（セットアップは OPFS 辞書ストレージを参照）
 const files = await loadDictionaryFiles("ipadic");
@@ -179,30 +182,32 @@ builder.setMode("normal");
 const tokenizer = builder.build();
 ```
 
-bundler ターゲットでは、`__wbg_init()` はバンドラーによって自動的に呼び出されます。
-
 ## Vite / Rollup のセットアップ
 
-Vite は web ターゲットでの WASM をそのままサポートしています。ビルド済みの `pkg/` ディレクトリをプロジェクトに配置し、直接インポートします：
+Vite は `web` ターゲットの WASM をそのままサポートしています。npm からインストールした `lindera-wasm` を直接インポートできます：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from './pkg/lindera_wasm.js';
-import { loadDictionaryFiles } from './pkg/opfs.js';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 await __wbg_init();
 // OPFS から辞書を読み込み、上記のように TokenizerBuilder を使用
 ```
 
-bundler ターゲットで Vite を使用する場合は、[vite-plugin-wasm](https://github.com/nicolo-ribaudo/vite-plugin-wasm) プラグインが必要になることがあります：
+Vite では `optimizeDeps` でこのパッケージを除外してください：
 
 ```javascript
 // vite.config.js
-import wasm from 'vite-plugin-wasm';
+import { defineConfig } from 'vite';
 
-export default {
-    plugins: [wasm()],
-};
+export default defineConfig({
+    optimizeDeps: {
+        exclude: ["lindera-wasm"],
+    },
+});
 ```
+
+ローカルでビルドした場合は、生成された `pkg/` ディレクトリをプロジェクトに配置し、`./pkg/lindera_wasm.js` を直接インポートすることもできます。
 
 ## Chrome 拡張機能に関する注意事項
 

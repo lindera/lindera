@@ -1,5 +1,7 @@
 [package]
 name = "lindera-wasm"
+# Distributed via npm, not crates.io.
+publish = false
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }

@@ -14,7 +14,7 @@ Lindera WASM はデフォルトで辞書を同梱しません。ブラウザ環�
 ビルド済み辞書は [GitHub Releases](https://github.com/lindera/lindera/releases) ページから入手できます。ブラウザ環境では、OPFS ヘルパーを使用して辞書をダウンロードしてキャッシュします：
 
 ```javascript
-import { downloadDictionary, hasDictionary } from 'lindera-wasm-web/opfs';
+import { downloadDictionary, hasDictionary } from 'lindera-wasm/opfs';
 
 if (!await hasDictionary("ipadic")) {
     await downloadDictionary(
@@ -28,21 +28,15 @@ if (!await hasDictionary("ipadic")) {
 
 ## wasm-pack によるビルド
 
-ターゲット環境に合わせて WASM パッケージをビルドします：
-
-### Web（ブラウザ向け ES Modules）
+公開されている npm パッケージと同じ構成でビルドするには、`web` ターゲットを使用します：
 
 ```bash
 wasm-pack build --target web
 ```
 
-### バンドラー（Webpack、Vite、Rollup）
-
-```bash
-wasm-pack build --target bundler
-```
-
 出力は `lindera-wasm` クレート内の `pkg/` ディレクトリに書き込まれます。
+
+`web` ターゲットのビルドは、ブラウザからネイティブ ES モジュールとして直接利用できるほか、モダンなバンドラー（Vite、Webpack 5 の `asyncWebAssembly` など）からもそのまま利用できます。バンドラー専用のビルドを別途用意する必要はありません。
 
 ## 利用可能な Feature フラグ（上級者向け）
 
@@ -65,37 +59,37 @@ wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 
 ## npm パッケージの命名規則
 
-npm に公開する際の推奨命名規則は以下の通りです：
+辞書を埋め込んだパッケージを自分で公開する際の推奨命名規則は以下の通りです：
 
 ```text
-lindera-wasm-{target}
-lindera-wasm-{target}-{dict}
+lindera-wasm
+lindera-wasm-{dict}
 ```
 
 例：
 
-- `lindera-wasm-web`
-- `lindera-wasm-web-ipadic`
-- `lindera-wasm-bundler-unidic`
-- `lindera-wasm-web-cjk`
+- `lindera-wasm`
+- `lindera-wasm-ipadic`
+- `lindera-wasm-unidic`
+- `lindera-wasm-cjk`
 
 公開前にパッケージ名を設定するには、生成された `pkg/package.json` の `name` フィールドを編集します。
 
 > [!NOTE]
-> 本プロジェクトのリリースワークフロー（`.github/workflows/release.yml`）が実際にビルドして npm に公開しているのは、`embed-*` feature を一切使わずにビルドした `lindera-wasm-web` と `lindera-wasm-bundler` という 2 つの汎用パッケージのみです。`lindera-wasm-web-ipadic` のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する `embed-*` feature（上記の[利用可能な Feature フラグ](#利用可能な-feature-フラグ上級者向け)を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。
+> 本プロジェクトのリリースワークフロー（`.github/workflows/release.yml`）が実際にビルドして npm に公開しているのは、`embed-*` feature を一切使わずに `web` ターゲットでビルドした `lindera-wasm` という汎用パッケージのみです。`lindera-wasm-ipadic` のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する `embed-*` feature（上記の[利用可能な Feature フラグ](#利用可能な-feature-フラグ上級者向け)を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。
 
 ## npm からのインストール
 
 ビルド済みパッケージが npm で公開されています：
 
 ```bash
-npm install lindera-wasm-web
+npm install lindera-wasm
 ```
 
 または yarn で：
 
 ```bash
-yarn add lindera-wasm-web
+yarn add lindera-wasm
 ```
 
 > [!NOTE]

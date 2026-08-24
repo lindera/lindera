@@ -5,7 +5,7 @@
 Pre-built packages will be available on npm:
 
 ```bash
-npm install lindera-nodejs
+npm install lindera
 ```
 
 > [!NOTE]
@@ -97,14 +97,14 @@ npm run build -- --features "train,embed-ipadic,embed-ko-dic"
 After installation, verify that lindera is available in Node.js:
 
 ```javascript
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 ```
 
 > [!NOTE]
-> `lindera-nodejs`'s `package.json` currently declares only a `require` condition in its
-> `exports` map (no `import` condition), so `import { version } from "lindera-nodejs"` fails
+> The `lindera` npm package's `package.json` currently declares only a `require` condition in its
+> `exports` map (no `import` condition), so `import { version } from "lindera"` fails
 > with `ERR_PACKAGE_PATH_NOT_EXPORTED`. From an ES module, load it with Node's `createRequire`
 > instead:
 
@@ -112,7 +112,7 @@ console.log(lindera.version());
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-const lindera = require("lindera-nodejs");
+const lindera = require("lindera");
 
 console.log(lindera.version());
 ```

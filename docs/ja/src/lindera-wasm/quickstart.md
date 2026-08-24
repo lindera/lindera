@@ -5,8 +5,8 @@
 推奨される方法は、OPFS ヘルパーを使用して辞書を実行時にダウンロードすることです：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -57,10 +57,10 @@ main();
 `embed-*` feature フラグ付きでビルドした場合、埋め込み辞書を使用できます：
 
 > [!NOTE]
-> ここでの `lindera-wasm-web-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
+> ここでの `lindera-wasm-ipadic` は説明用のパッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm` のみです。このようなパッケージを自分でビルド・命名する方法は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ```javascript
-import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-ipadic';
 
 async function main() {
     await __wbg_init();
@@ -84,8 +84,8 @@ main();
 トークナイズパイプラインに文字フィルタやトークンフィルタを追加できます：
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

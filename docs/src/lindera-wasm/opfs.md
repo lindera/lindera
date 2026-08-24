@@ -12,7 +12,7 @@ Dictionaries are stored under the OPFS path `lindera/dictionaries/<name>/`.
 
 ```javascript
 import { downloadDictionary, loadDictionaryFiles, removeDictionary,
-         listDictionaries, hasDictionary } from 'lindera-wasm-web/opfs';
+         listDictionaries, hasDictionary } from 'lindera-wasm/opfs';
 ```
 
 ## Functions
@@ -133,8 +133,8 @@ if (await hasDictionary("ipadic")) {
 A typical workflow for using OPFS-based dictionaries:
 
 ```javascript
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles, hasDictionary } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();

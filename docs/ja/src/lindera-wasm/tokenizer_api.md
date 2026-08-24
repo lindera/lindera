@@ -47,8 +47,8 @@ URI の代わりにバイトデータから読み込んだ辞書（例: `loadDic
 - **戻り値**: void
 
 ```javascript
-import { loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import { loadDictionaryFromBytes } from 'lindera-wasm';
+import { loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
 const dictionary = loadDictionaryFromBytes(
@@ -213,7 +213,7 @@ console.log(JSON.stringify(token, null, 2));
 ## ヘルパー関数
 
 > [!NOTE]
-> 以下の例は `lindera-wasm-web-ipadic` からインポートしていますが、これは `embed-ipadic` feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm-web` と `lindera-wasm-bundler` のみです。詳細は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
+> 以下の例は `lindera-wasm-ipadic` からインポートしていますが、これは `embed-ipadic` feature を使ってローカルビルドした場合の説明用パッケージ名であり、npm に公開されているものではありません。実際に公開されているのは `lindera-wasm` のみです。詳細は [npm パッケージの命名規則](./installation.md#npm-パッケージの命名規則) を参照してください。
 
 ### `loadDictionary(uri)`
 
@@ -223,7 +223,7 @@ console.log(JSON.stringify(token, null, 2));
 - **戻り値**: `Dictionary`
 
 ```javascript
-import { loadDictionary } from 'lindera-wasm-web-ipadic';
+import { loadDictionary } from 'lindera-wasm-ipadic';
 
 const dict = loadDictionary("embedded://ipadic");
 ```
@@ -251,7 +251,7 @@ lindera-wasm パッケージのバージョン文字列を返します。
 - **戻り値**: `string`
 
 ```javascript
-import { version } from 'lindera-wasm-web-ipadic';
+import { version } from 'lindera-wasm-ipadic';
 
 console.log(version()); // 例: "5.3.0"
 ```

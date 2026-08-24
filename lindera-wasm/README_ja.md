@@ -10,8 +10,7 @@ Lindera の WebAssembly 版
 
 ## npm
 
-- <https://www.npmjs.com/package/lindera-wasm-web> — Web 向け Lindera WASM
-- <https://www.npmjs.com/package/lindera-wasm-bundler> — バンドラ向け Lindera WASM
+- <https://www.npmjs.com/package/lindera-wasm> — Lindera WASM（`web` ターゲットでビルド）
 
 ## 辞書
 
@@ -23,12 +22,14 @@ Lindera の WebAssembly 版
 
 ### Web での使用
 
-ブラウザ環境では `lindera-wasm-web` パッケージを使用します。
+ブラウザ環境では `lindera-wasm` パッケージを使用します。
 辞書はローカルパスまたは [GitHub Releases](https://github.com/lindera/lindera/releases) から OPFS API を使用してダウンロードし、ランタイムで読み込みます。
 
+パッケージは `web` ターゲットでビルドされているため、使用前にデフォルトエクスポートの非同期初期化関数（下記の `__wbg_init`）を必ず呼び出してください。
+
 ```js
-import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm-web';
-import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm-web/opfs';
+import __wbg_init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
+import { downloadDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
 
 async function main() {
     await __wbg_init();
@@ -57,9 +58,11 @@ async function main() {
 main();
 ```
 
-### バンドラでの使用（Webpack、Rollup など）
+### バンドラでの使用（Vite、Webpack など）
 
-バンドラ環境では `lindera-wasm-bundler` パッケージを使用します。
+バンドラ環境でも同じ `lindera-wasm` パッケージを使用します。
+モダンなバンドラ（Vite、Webpack 5 の `asyncWebAssembly` など）は `web` ターゲットのビルドをそのまま扱えます。
+上記と同様に、使用前にデフォルトエクスポートの初期化関数を呼び出してください。
 辞書の読み込み方法は上記の Web での使用と同じです。
 
 ### トークンのプロパティ
@@ -90,7 +93,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   optimizeDeps: {
     exclude: [
-      "lindera-wasm-web"
+      "lindera-wasm"
     ]
   },
 })
