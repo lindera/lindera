@@ -219,16 +219,8 @@ const dictionary = loadDictionaryFromBytes(
 
 builder.setDictionaryInstance(dictionary);
 </code></pre>
-<h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
-<p>Sets a user-defined dictionary by URI.</p>
-<ul>
-<li><strong>Parameters</strong>: <code>uri</code> (string) -- Path or URI to the user dictionary</li>
-<li><strong>Returns</strong>: void</li>
-</ul>
-<pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
-</code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>Sets a pre-loaded user dictionary instance. Use this when the user dictionary has been loaded from bytes instead of from a URI.</p>
+<p>Sets a pre-loaded user dictionary instance. Load one from bytes with <code>loadUserDictionaryFromBytes()</code> (CSV) or <code>loadUserDictionaryBinFromBytes()</code> (prebuilt <code>.bin</code>); URI-based user dictionaries are not available on WebAssembly.</p>
 <ul>
 <li><strong>Parameters</strong>: <code>userDictionary</code> (UserDictionary) -- A loaded user dictionary object</li>
 <li><strong>Returns</strong>: void</li>
@@ -367,40 +359,22 @@ The examples below import from <code>lindera-wasm-web-ipadic</code>, an illustra
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
-<h3 id="loaduserdictionaryuri-metadata"><a class="header" href="#loaduserdictionaryuri-metadata"><code>loadUserDictionary(uri, metadata)</code></a></h3>
-<p>Loads a user dictionary from the specified URI.</p>
+<h3 id="loaduserdictionaryfrombytescsv-metadata"><a class="header" href="#loaduserdictionaryfrombytescsv-metadata"><code>loadUserDictionaryFromBytes(csv, metadata)</code></a></h3>
+<p>Builds a user dictionary from CSV bytes (UTF-8), obtained via <code>fetch</code>, a file input, or OPFS.</p>
 <ul>
 <li><strong>Parameters</strong>:
 <ul>
-<li><code>uri</code> (string) -- Path or URI to the user dictionary file</li>
-<li><code>metadata</code> (Metadata) -- Dictionary metadata object</li>
+<li><code>csv</code> (Uint8Array) -- The user dictionary CSV content</li>
+<li><code>metadata</code> (Metadata) -- Metadata of the system dictionary the user dictionary will be used with (e.g. <code>dictionary.metadata</code>)</li>
 </ul>
 </li>
 <li><strong>Returns</strong>: <code>UserDictionary</code></li>
 </ul>
-<h3 id="builddictionaryinputdir-outputdir-metadata"><a class="header" href="#builddictionaryinputdir-outputdir-metadata"><code>buildDictionary(inputDir, outputDir, metadata)</code></a></h3>
-<p>Builds a compiled dictionary from source files.</p>
+<h3 id="loaduserdictionarybinfrombytesbytes"><a class="header" href="#loaduserdictionarybinfrombytesbytes"><code>loadUserDictionaryBinFromBytes(bytes)</code></a></h3>
+<p>Loads a prebuilt user dictionary (the output of <code>lindera build --user</code>) from bytes.</p>
 <ul>
-<li><strong>Parameters</strong>:
-<ul>
-<li><code>inputDir</code> (string) -- Path to the directory containing source dictionary files</li>
-<li><code>outputDir</code> (string) -- Path to the output directory</li>
-<li><code>metadata</code> (Metadata) -- Dictionary metadata object</li>
-</ul>
-</li>
-<li><strong>Returns</strong>: void</li>
-</ul>
-<h3 id="builduserdictionaryinputfile-outputdir-metadata"><a class="header" href="#builduserdictionaryinputfile-outputdir-metadata"><code>buildUserDictionary(inputFile, outputDir, metadata?)</code></a></h3>
-<p>Builds a compiled user dictionary from a CSV file.</p>
-<ul>
-<li><strong>Parameters</strong>:
-<ul>
-<li><code>inputFile</code> (string) -- Path to the user dictionary CSV file</li>
-<li><code>outputDir</code> (string) -- Path to the output directory</li>
-<li><code>metadata</code> (Metadata, optional) -- Dictionary metadata object</li>
-</ul>
-</li>
-<li><strong>Returns</strong>: void</li>
+<li><strong>Parameters</strong>: <code>bytes</code> (Uint8Array) -- The <code>.bin</code> content</li>
+<li><strong>Returns</strong>: <code>UserDictionary</code></li>
 </ul>
 <h3 id="version--getversion"><a class="header" href="#version--getversion"><code>version()</code> / <code>getVersion()</code></a></h3>
 <p>Returns the version string of the lindera-wasm package.</p>
@@ -456,7 +430,6 @@ console.log(error.toString()); // "message"
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
-<tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
@@ -465,9 +438,8 @@ console.log(error.toString()); // "message"
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
-<tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
-<tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
-<tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
+<tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
+<tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div>
                     </main>

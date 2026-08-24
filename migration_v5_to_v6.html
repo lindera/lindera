@@ -255,6 +255,15 @@ instead — it no longer requires <code>&amp;mut</code>.</li>
 changed from <code>&amp;[String]</code> to <code>&amp;[&amp;str]</code>, so callers no longer have to
 allocate one <code>String</code> per feature field. A caller holding a <code>&amp;[String]</code>
 can pass <code>&amp;v.iter().map(|s| s.as_str()).collect::&lt;Vec&lt;_&gt;&gt;()</code>.</li>
+<li><code>lindera-wasm</code> removed the filesystem-based exports <code>loadUserDictionary</code>,
+<code>buildDictionary</code>, <code>buildUserDictionary</code>, and
+<code>TokenizerBuilder.setUserDictionary(uri)</code> (plus their snake_case aliases):
+there is no filesystem on <code>wasm32-unknown-unknown</code>, so they always failed
+at runtime. Load system dictionaries with <code>loadDictionaryFromBytes()</code> (or
+<code>embedded://</code>), and user dictionaries with the new
+<code>loadUserDictionaryFromBytes()</code> / <code>loadUserDictionaryBinFromBytes()</code> +
+<code>setUserDictionaryInstance()</code>. <code>loadDictionary()</code> now rejects file URIs
+and bare paths up front with an error naming the bytes API.</li>
 <li>The fixed partition changed the summation order, so weights trained
 <strong>before</strong> this change are not byte-identical to weights trained after it —
 at any thread count, including <code>--max-threads 1</code>. Re-run <code>lindera train</code> if

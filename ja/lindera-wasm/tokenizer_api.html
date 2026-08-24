@@ -220,16 +220,8 @@ const dictionary = loadDictionaryFromBytes(
 
 builder.setDictionaryInstance(dictionary);
 </code></pre>
-<h4 id="setuserdictionaryuri"><a class="header" href="#setuserdictionaryuri"><code>setUserDictionary(uri)</code></a></h4>
-<p>ユーザー定義辞書を設定します。</p>
-<ul>
-<li><strong>パラメータ</strong>: <code>uri</code> (string) -- ユーザー辞書のパスまたは URI</li>
-<li><strong>戻り値</strong>: void</li>
-</ul>
-<pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
-</code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>読み込み済みのユーザー辞書インスタンスを設定します。URI の代わりにバイトデータから読み込んだユーザー辞書を使用する場合に使います。</p>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
 <li><strong>戻り値</strong>: void</li>
@@ -368,40 +360,22 @@ const reading = token.details[7]; // 例: "トウキョウ"
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
-<h3 id="loaduserdictionaryuri-metadata"><a class="header" href="#loaduserdictionaryuri-metadata"><code>loadUserDictionary(uri, metadata)</code></a></h3>
-<p>指定された URI からユーザー辞書を読み込みます。</p>
+<h3 id="loaduserdictionaryfrombytescsv-metadata"><a class="header" href="#loaduserdictionaryfrombytescsv-metadata"><code>loadUserDictionaryFromBytes(csv, metadata)</code></a></h3>
+<p>CSV バイト列（UTF-8）からユーザー辞書をビルドします。バイト列は <code>fetch</code>・ファイル入力・OPFS から取得します。</p>
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
-<li><code>uri</code> (string) -- ユーザー辞書ファイルのパスまたは URI</li>
-<li><code>metadata</code> (Metadata) -- 辞書のメタデータオブジェクト</li>
+<li><code>csv</code> (Uint8Array) -- ユーザー辞書 CSV の内容</li>
+<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>UserDictionary</code></li>
 </ul>
-<h3 id="builddictionaryinputdir-outputdir-metadata"><a class="header" href="#builddictionaryinputdir-outputdir-metadata"><code>buildDictionary(inputDir, outputDir, metadata)</code></a></h3>
-<p>ソースファイルからコンパイル済み辞書をビルドします。</p>
+<h3 id="loaduserdictionarybinfrombytesbytes"><a class="header" href="#loaduserdictionarybinfrombytesbytes"><code>loadUserDictionaryBinFromBytes(bytes)</code></a></h3>
+<p>ビルド済みユーザー辞書（<code>lindera build --user</code> の出力）をバイト列から読み込みます。</p>
 <ul>
-<li><strong>パラメータ</strong>:
-<ul>
-<li><code>inputDir</code> (string) -- 辞書ソースファイルを含むディレクトリのパス</li>
-<li><code>outputDir</code> (string) -- 出力ディレクトリのパス</li>
-<li><code>metadata</code> (Metadata) -- 辞書のメタデータオブジェクト</li>
-</ul>
-</li>
-<li><strong>戻り値</strong>: void</li>
-</ul>
-<h3 id="builduserdictionaryinputfile-outputdir-metadata"><a class="header" href="#builduserdictionaryinputfile-outputdir-metadata"><code>buildUserDictionary(inputFile, outputDir, metadata?)</code></a></h3>
-<p>CSV ファイルからコンパイル済みユーザー辞書をビルドします。</p>
-<ul>
-<li><strong>パラメータ</strong>:
-<ul>
-<li><code>inputFile</code> (string) -- ユーザー辞書 CSV ファイルのパス</li>
-<li><code>outputDir</code> (string) -- 出力ディレクトリのパス</li>
-<li><code>metadata</code> (Metadata, 省略可) -- 辞書のメタデータオブジェクト</li>
-</ul>
-</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>パラメータ</strong>: <code>bytes</code> (Uint8Array) -- <code>.bin</code> の内容</li>
+<li><strong>戻り値</strong>: <code>UserDictionary</code></li>
 </ul>
 <h3 id="version--getversion"><a class="header" href="#version--getversion"><code>version()</code> / <code>getVersion()</code></a></h3>
 <p>lindera-wasm パッケージのバージョン文字列を返します。</p>
@@ -457,7 +431,6 @@ console.log(error.toString()); // "message"
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
-<tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
@@ -466,9 +439,8 @@ console.log(error.toString()); // "message"
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
-<tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
-<tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
-<tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
+<tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
+<tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div>
                     </main>

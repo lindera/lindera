@@ -255,6 +255,16 @@
 <code>&amp;[String]</code> から <code>&amp;[&amp;str]</code> に変更しました。呼び出し側がフィールドごとに
 <code>String</code> を確保する必要がなくなります。<code>&amp;[String]</code> を持っている場合は
 <code>&amp;v.iter().map(|s| s.as_str()).collect::&lt;Vec&lt;_&gt;&gt;()</code> で渡せます。</li>
+<li><code>lindera-wasm</code> からファイルシステム依存のエクスポート
+<code>loadUserDictionary</code> / <code>buildDictionary</code> / <code>buildUserDictionary</code> /
+<code>TokenizerBuilder.setUserDictionary(uri)</code>（と snake_case エイリアス）を
+削除しました。<code>wasm32-unknown-unknown</code> にはファイルシステムが無く、
+これらは常に実行時に失敗していました。システム辞書は
+<code>loadDictionaryFromBytes()</code>（または <code>embedded://</code>）で、ユーザー辞書は
+新設の <code>loadUserDictionaryFromBytes()</code> /
+<code>loadUserDictionaryBinFromBytes()</code> と <code>setUserDictionaryInstance()</code> で
+読み込んでください。<code>loadDictionary()</code> はファイル URI・パスを
+bytes API を案内するエラーで即座に拒否するようになりました。</li>
 <li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
 変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
 含むすべてのスレッド数で）。以後の成果物を比較可能にするには

@@ -6229,16 +6229,8 @@ const dictionary = loadDictionaryFromBytes(
 
 builder.setDictionaryInstance(dictionary);
 </code></pre>
-<h4 id="setuserdictionaryuri-2"><a class="header" href="#setuserdictionaryuri-2"><code>setUserDictionary(uri)</code></a></h4>
-<p>ユーザー定義辞書を設定します。</p>
-<ul>
-<li><strong>パラメータ</strong>: <code>uri</code> (string) -- ユーザー辞書のパスまたは URI</li>
-<li><strong>戻り値</strong>: void</li>
-</ul>
-<pre><code class="language-javascript">builder.setUserDictionary("file:///path/to/user_dict.csv");
-</code></pre>
 <h4 id="setuserdictionaryinstanceuserdictionary"><a class="header" href="#setuserdictionaryinstanceuserdictionary"><code>setUserDictionaryInstance(userDictionary)</code></a></h4>
-<p>読み込み済みのユーザー辞書インスタンスを設定します。URI の代わりにバイトデータから読み込んだユーザー辞書を使用する場合に使います。</p>
+<p>読み込み済みのユーザー辞書インスタンスを設定します。<code>loadUserDictionaryFromBytes()</code>（CSV）または <code>loadUserDictionaryBinFromBytes()</code>（ビルド済み <code>.bin</code>）でバイト列から読み込んでください。WebAssembly では URI ベースのユーザー辞書は使用できません。</p>
 <ul>
 <li><strong>パラメータ</strong>: <code>userDictionary</code> (UserDictionary) -- 読み込み済みのユーザー辞書オブジェクト</li>
 <li><strong>戻り値</strong>: void</li>
@@ -6377,40 +6369,22 @@ const reading = token.details[7]; // 例: "トウキョウ"
 
 const dict = loadDictionary("embedded://ipadic");
 </code></pre>
-<h3 id="loaduserdictionaryuri-metadata"><a class="header" href="#loaduserdictionaryuri-metadata"><code>loadUserDictionary(uri, metadata)</code></a></h3>
-<p>指定された URI からユーザー辞書を読み込みます。</p>
+<h3 id="loaduserdictionaryfrombytescsv-metadata"><a class="header" href="#loaduserdictionaryfrombytescsv-metadata"><code>loadUserDictionaryFromBytes(csv, metadata)</code></a></h3>
+<p>CSV バイト列（UTF-8）からユーザー辞書をビルドします。バイト列は <code>fetch</code>・ファイル入力・OPFS から取得します。</p>
 <ul>
 <li><strong>パラメータ</strong>:
 <ul>
-<li><code>uri</code> (string) -- ユーザー辞書ファイルのパスまたは URI</li>
-<li><code>metadata</code> (Metadata) -- 辞書のメタデータオブジェクト</li>
+<li><code>csv</code> (Uint8Array) -- ユーザー辞書 CSV の内容</li>
+<li><code>metadata</code> (Metadata) -- 組み合わせるシステム辞書のメタデータ（例: <code>dictionary.metadata</code>）</li>
 </ul>
 </li>
 <li><strong>戻り値</strong>: <code>UserDictionary</code></li>
 </ul>
-<h3 id="builddictionaryinputdir-outputdir-metadata"><a class="header" href="#builddictionaryinputdir-outputdir-metadata"><code>buildDictionary(inputDir, outputDir, metadata)</code></a></h3>
-<p>ソースファイルからコンパイル済み辞書をビルドします。</p>
+<h3 id="loaduserdictionarybinfrombytesbytes"><a class="header" href="#loaduserdictionarybinfrombytesbytes"><code>loadUserDictionaryBinFromBytes(bytes)</code></a></h3>
+<p>ビルド済みユーザー辞書（<code>lindera build --user</code> の出力）をバイト列から読み込みます。</p>
 <ul>
-<li><strong>パラメータ</strong>:
-<ul>
-<li><code>inputDir</code> (string) -- 辞書ソースファイルを含むディレクトリのパス</li>
-<li><code>outputDir</code> (string) -- 出力ディレクトリのパス</li>
-<li><code>metadata</code> (Metadata) -- 辞書のメタデータオブジェクト</li>
-</ul>
-</li>
-<li><strong>戻り値</strong>: void</li>
-</ul>
-<h3 id="builduserdictionaryinputfile-outputdir-metadata"><a class="header" href="#builduserdictionaryinputfile-outputdir-metadata"><code>buildUserDictionary(inputFile, outputDir, metadata?)</code></a></h3>
-<p>CSV ファイルからコンパイル済みユーザー辞書をビルドします。</p>
-<ul>
-<li><strong>パラメータ</strong>:
-<ul>
-<li><code>inputFile</code> (string) -- ユーザー辞書 CSV ファイルのパス</li>
-<li><code>outputDir</code> (string) -- 出力ディレクトリのパス</li>
-<li><code>metadata</code> (Metadata, 省略可) -- 辞書のメタデータオブジェクト</li>
-</ul>
-</li>
-<li><strong>戻り値</strong>: void</li>
+<li><strong>パラメータ</strong>: <code>bytes</code> (Uint8Array) -- <code>.bin</code> の内容</li>
+<li><strong>戻り値</strong>: <code>UserDictionary</code></li>
 </ul>
 <h3 id="version--getversion"><a class="header" href="#version--getversion"><code>version()</code> / <code>getVersion()</code></a></h3>
 <p>lindera-wasm パッケージのバージョン文字列を返します。</p>
@@ -6466,7 +6440,6 @@ console.log(error.toString()); // "message"
 <tr><td><code>setMode()</code></td><td><code>set_mode()</code></td></tr>
 <tr><td><code>setDictionary()</code></td><td><code>set_dictionary()</code></td></tr>
 <tr><td><code>setDictionaryInstance()</code></td><td><code>set_dictionary_instance()</code></td></tr>
-<tr><td><code>setUserDictionary()</code></td><td><code>set_user_dictionary()</code></td></tr>
 <tr><td><code>setUserDictionaryInstance()</code></td><td><code>set_user_dictionary_instance()</code></td></tr>
 <tr><td><code>setKeepWhitespace()</code></td><td><code>set_keep_whitespace()</code></td></tr>
 <tr><td><code>appendCharacterFilter()</code></td><td><code>append_character_filter()</code></td></tr>
@@ -6475,9 +6448,8 @@ console.log(error.toString()); // "message"
 <tr><td><code>tokenizeNbest()</code></td><td><code>tokenize_nbest()</code></td></tr>
 <tr><td><code>loadDictionary()</code></td><td><code>load_dictionary()</code></td></tr>
 <tr><td><code>loadDictionaryFromBytes()</code></td><td><code>load_dictionary_from_bytes()</code></td></tr>
-<tr><td><code>loadUserDictionary()</code></td><td><code>load_user_dictionary()</code></td></tr>
-<tr><td><code>buildDictionary()</code></td><td><code>build_dictionary()</code></td></tr>
-<tr><td><code>buildUserDictionary()</code></td><td><code>build_user_dictionary()</code></td></tr>
+<tr><td><code>loadUserDictionaryFromBytes()</code></td><td><code>load_user_dictionary_from_bytes()</code></td></tr>
+<tr><td><code>loadUserDictionaryBinFromBytes()</code></td><td><code>load_user_dictionary_bin_from_bytes()</code></td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><h1 id="辞書管理-4"><a class="header" href="#辞書管理-4">辞書管理</a></h1>
 <h2 id="opfs-からの辞書読み込み"><a class="header" href="#opfs-からの辞書読み込み">OPFS からの辞書読み込み</a></h2>
@@ -6573,14 +6545,34 @@ console.log(dictionary.encoding); // "utf-8"
 </code></pre>
 <h2 id="ユーザー辞書-5"><a class="header" href="#ユーザー辞書-5">ユーザー辞書</a></h2>
 <p>ユーザー辞書を使用すると、システム辞書にないカスタム語彙を追加できます。</p>
-<h3 id="ユーザー辞書の読み込み"><a class="header" href="#ユーザー辞書の読み込み">ユーザー辞書の読み込み</a></h3>
-<pre><code class="language-javascript">import { loadUserDictionary } from 'lindera-wasm-web';
+<p>WebAssembly にはファイルシステムが無いため、ユーザー辞書は JavaScript 側で
+取得した<strong>バイト列</strong>（<code>fetch</code>・<code>&lt;input type="file"&gt;</code>・OPFS）から読み込みます。</p>
+<h3 id="csv-バイト列からのユーザー辞書の読み込み"><a class="header" href="#csv-バイト列からのユーザー辞書の読み込み">CSV バイト列からのユーザー辞書の読み込み</a></h3>
+<p>ユーザー辞書を組み合わせるシステム辞書のメタデータ（例:
+<code>dictionary.metadata</code>）を渡してください。CSV の内容は UTF-8 である必要が
+あります。</p>
+<pre><code class="language-javascript">import { loadUserDictionaryFromBytes } from 'lindera-wasm-web';
 
-const metadata = dictionary.metadata;
-const userDict = loadUserDictionary("/path/to/user_dict.csv", metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+</code></pre>
+<p>OPFS 上のファイルも同じ形で使えます：</p>
+<pre><code class="language-javascript">const root = await navigator.storage.getDirectory();
+const handle = await root.getFileHandle('user_dict.csv');
+const csvBytes = new Uint8Array(await (await handle.getFile()).arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
+</code></pre>
+<h3 id="ビルド済みユーザー辞書binの読み込み"><a class="header" href="#ビルド済みユーザー辞書binの読み込み">ビルド済みユーザー辞書（<code>.bin</code>）の読み込み</a></h3>
+<p><code>lindera build --user</code> でコンパイルしたユーザー辞書はそのまま読み込めます：</p>
+<pre><code class="language-javascript">import { loadUserDictionaryBinFromBytes } from 'lindera-wasm-web';
+
+const response = await fetch('/dictionaries/user_dict.bin');
+const binBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryBinFromBytes(binBytes);
 </code></pre>
 <h3 id="tokenizer-でのユーザー辞書の使用"><a class="header" href="#tokenizer-でのユーザー辞書の使用">Tokenizer でのユーザー辞書の使用</a></h3>
-<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionary, Tokenizer } from 'lindera-wasm-web';
+<pre><code class="language-javascript">import { loadDictionaryFromBytes, loadUserDictionaryFromBytes, Tokenizer } from 'lindera-wasm-web';
 import { loadDictionaryFiles } from 'lindera-wasm-web/opfs';
 
 const files = await loadDictionaryFiles("ipadic");
@@ -6589,33 +6581,26 @@ const dictionary = loadDictionaryFromBytes(
     files.dictWordsIdx, files.dictWords, files.matrixMtx, files.charDef,
     files.unk,
 );
-const userDict = loadUserDictionary("/path/to/user_dict.csv", dictionary.metadata);
+const response = await fetch('/dictionaries/user_dict.csv');
+const csvBytes = new Uint8Array(await response.arrayBuffer());
+const userDict = loadUserDictionaryFromBytes(csvBytes, dictionary.metadata);
 const tokenizer = new Tokenizer(dictionary, "normal", userDict);
 </code></pre>
 <h3 id="ユーザー辞書の-csv-フォーマット"><a class="header" href="#ユーザー辞書の-csv-フォーマット">ユーザー辞書の CSV フォーマット</a></h3>
-<p>ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します：</p>
+<p>ユーザー辞書の CSV は Lindera ユーザー辞書と同じフォーマットに準拠します。
+IPADIC のシンプル形式は以下のとおりです：</p>
 <pre><code class="language-csv">東京スカイツリー,カスタム名詞,トウキョウスカイツリー
 東武スカイツリーライン,カスタム名詞,トウブスカイツリーライン
 </code></pre>
-<p>各行の構成: <code>surface,part_of_speech,reading</code></p>
+<p>各行の構成: <code>surface,part_of_speech,reading</code>。辞書のフル形式
+（IPADIC では 13 フィールド以上）の行も併用できます。内容は UTF-8 で
+ある必要があります。</p>
 <h2 id="辞書のビルド-4"><a class="header" href="#辞書のビルド-4">辞書のビルド</a></h2>
-<p>JavaScript API を使用してソースファイルからコンパイル済み辞書をビルドできます。</p>
-<h3 id="システム辞書のビルド-4"><a class="header" href="#システム辞書のビルド-4">システム辞書のビルド</a></h3>
-<p><code>metadata</code> はプレーンなオブジェクトリテラルではなく、実際の <code>Metadata</code> インスタンスである必要があります -- 生成されたバインディングは引数が <code>Metadata</code> であることをアサートしており、そうでない場合は例外を投げます。<code>Metadata.createDefault()</code> でインスタンスを作成し、必要なフィールドを設定してください。</p>
-<pre><code class="language-javascript">import { buildDictionary, Metadata } from 'lindera-wasm-web';
-
-const metadata = Metadata.createDefault();
-metadata.name = "custom-dict";
-metadata.encoding = "utf-8";
-
-buildDictionary("/path/to/source/dir", "/path/to/output/dir", metadata);
-</code></pre>
-<h3 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h3>
-<pre><code class="language-javascript">import { buildUserDictionary } from 'lindera-wasm-web';
-
-buildUserDictionary("/path/to/user_dict.csv", "/path/to/output/dir");
-</code></pre>
-<p><code>buildUserDictionary</code> の <code>metadata</code> パラメータは省略可能です。省略した場合はデフォルトのメタデータが使用されます。</p>
+<p>WebAssembly では辞書のビルドはできません。ビルドはソースディレクトリを
+読み出力ディレクトリへ書き込みますが、<code>wasm32-unknown-unknown</code> には
+ファイルシステムが無いためです。辞書は <code>lindera</code> CLI（またはネイティブ
+バインディング）でビルドし、結果をバイト列としてここに読み込んでください。
+ビルド済み辞書のダウンロードは <a href="lindera-wasm/opfs.html">OPFS 辞書管理</a> を参照してください。</p>
 <h2 id="metadata-4"><a class="header" href="#metadata-4">Metadata</a></h2>
 <p><code>Metadata</code> クラスは辞書のパラメータを設定します。</p>
 <h3 id="コンストラクタ-5"><a class="header" href="#コンストラクタ-5">コンストラクタ</a></h3>
@@ -7129,7 +7114,7 @@ main();
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-5"><a class="header" href="#ビルド-5">ビルド</a></h1>
 <p>このページでは、ソースファイルから IPADIC 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-5"><a class="header" href="#システム辞書のビルド-5">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-4"><a class="header" href="#システム辞書のビルド-4">システム辞書のビルド</a></h2>
 <p>IPADIC のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell"># IPADIC ソースファイルのダウンロードと展開
 % curl -L -o /tmp/mecab-ipadic-2.7.0-20250920.tar.gz "https://Lindera.dev/mecab-ipadic-2.7.0-20250920.tar.gz"
@@ -7141,7 +7126,7 @@ main();
   --dest /tmp/lindera-ipadic-2.7.0-20250920 \
   --metadata ./lindera-ipadic/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-4"><a class="header" href="#ユーザー辞書のビルド-4">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -7304,7 +7289,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-6"><a class="header" href="#ビルド-6">ビルド</a></h1>
 <p>このページでは、ソースファイルから IPADIC NEologd 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-6"><a class="header" href="#システム辞書のビルド-6">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-5"><a class="header" href="#システム辞書のビルド-5">システム辞書のビルド</a></h2>
 <p>IPADIC NEologd のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz "https://lindera.dev/mecab-ipadic-neologd-0.0.7-20200820.tar.gz"
 % tar zxvf /tmp/mecab-ipadic-neologd-0.0.7-20200820.tar.gz -C /tmp
@@ -7314,7 +7299,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-ipadic-neologd-0.0.7-20200820 \
   --metadata ./lindera-ipadic-neologd/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-5"><a class="header" href="#ユーザー辞書のビルド-5">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ipadic_simple_userdic.csv \
@@ -7492,7 +7477,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-7"><a class="header" href="#ビルド-7">ビルド</a></h1>
 <p>このページでは、ソースファイルから UniDic 辞書をビルドする方法を説明します。</p>
-<h2 id="システム辞書のビルド-7"><a class="header" href="#システム辞書のビルド-7">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-6"><a class="header" href="#システム辞書のビルド-6">システム辞書のビルド</a></h2>
 <p>UniDic のソースファイルをダウンロードし、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/unidic-mecab-2.1.2.tar.gz "https://Lindera.dev/unidic-mecab-2.1.2.tar.gz"
 % tar zxvf /tmp/unidic-mecab-2.1.2.tar.gz -C /tmp
@@ -7513,7 +7498,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
 関わるものであって正確性には影響しません。</p>
 </blockquote>
-<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-6"><a class="header" href="#ユーザー辞書のビルド-6">ユーザー辞書のビルド</a></h2>
 <p>CSV ファイルからユーザー辞書をビルドします:</p>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/unidic_simple_userdic.csv \
@@ -7655,7 +7640,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="https://docs.rs/lindera-ko-dic">lindera-ko-dic</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-8"><a class="header" href="#ビルド-8">ビルド</a></h1>
-<h2 id="システム辞書のビルド-8"><a class="header" href="#システム辞書のビルド-8">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-7"><a class="header" href="#システム辞書のビルド-7">システム辞書のビルド</a></h2>
 <p>mecab-ko-dic のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz "https://Lindera.dev/mecab-ko-dic-2.1.1-20180720.tar.gz"
 % tar zxvf /tmp/mecab-ko-dic-2.1.1-20180720.tar.gz -C /tmp
@@ -7675,7 +7660,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 結果には影響しません -- この付け替えはコストを保つ全単射な再ラベル付けであり、ビルド時の最適化のみに
 関わるものであって正確性には影響しません。</p>
 </blockquote>
-<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-7"><a class="header" href="#ユーザー辞書のビルド-7">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/ko-dic_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -7804,7 +7789,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="https://docs.rs/lindera-cc-cedict">lindera-cc-cedict</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-9"><a class="header" href="#ビルド-9">ビルド</a></h1>
-<h2 id="システム辞書のビルド-9"><a class="header" href="#システム辞書のビルド-9">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-8"><a class="header" href="#システム辞書のビルド-8">システム辞書のビルド</a></h2>
 <p>CC-CEDICT-MeCab のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz "https://lindera.dev/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz"
 % tar zxvf /tmp/CC-CEDICT-MeCab-0.1.0-20200409.tar.gz -C /tmp
@@ -7813,7 +7798,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-cc-cedict-0.1.0-20200409 \
   --metadata ./lindera-cc-cedict/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-8"><a class="header" href="#ユーザー辞書のビルド-8">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/cc-cedict_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -7936,7 +7921,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <li><a href="https://docs.rs/lindera-jieba">lindera-jieba</a></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ビルド-10"><a class="header" href="#ビルド-10">ビルド</a></h1>
-<h2 id="システム辞書のビルド-10"><a class="header" href="#システム辞書のビルド-10">システム辞書のビルド</a></h2>
+<h2 id="システム辞書のビルド-9"><a class="header" href="#システム辞書のビルド-9">システム辞書のビルド</a></h2>
 <p>mecab-jieba のソースファイルをダウンロード・展開し、辞書をビルドします:</p>
 <pre><code class="language-shell">% curl -L -o /tmp/mecab-jieba-0.1.1.tar.gz "https://lindera.dev/mecab-jieba-0.1.1.tar.gz"
 % tar zxvf /tmp/mecab-jieba-0.1.1.tar.gz -C /tmp
@@ -7945,7 +7930,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   --dest /tmp/lindera-jieba-0.1.1 \
   --metadata ./lindera-jieba/metadata.json
 </code></pre>
-<h2 id="ユーザー辞書のビルド-10"><a class="header" href="#ユーザー辞書のビルド-10">ユーザー辞書のビルド</a></h2>
+<h2 id="ユーザー辞書のビルド-9"><a class="header" href="#ユーザー辞書のビルド-9">ユーザー辞書のビルド</a></h2>
 <pre><code class="language-shell">% lindera build \
   --src ./resources/user_dict/jieba_simple_userdic.csv \
   --dest ./resources/user_dict \
@@ -8445,6 +8430,16 @@ export LINDERA_BUILD_DICTIONARY_CACHE_DIR=/path/to/cache
 <code>&amp;[String]</code> から <code>&amp;[&amp;str]</code> に変更しました。呼び出し側がフィールドごとに
 <code>String</code> を確保する必要がなくなります。<code>&amp;[String]</code> を持っている場合は
 <code>&amp;v.iter().map(|s| s.as_str()).collect::&lt;Vec&lt;_&gt;&gt;()</code> で渡せます。</li>
+<li><code>lindera-wasm</code> からファイルシステム依存のエクスポート
+<code>loadUserDictionary</code> / <code>buildDictionary</code> / <code>buildUserDictionary</code> /
+<code>TokenizerBuilder.setUserDictionary(uri)</code>（と snake_case エイリアス）を
+削除しました。<code>wasm32-unknown-unknown</code> にはファイルシステムが無く、
+これらは常に実行時に失敗していました。システム辞書は
+<code>loadDictionaryFromBytes()</code>（または <code>embedded://</code>）で、ユーザー辞書は
+新設の <code>loadUserDictionaryFromBytes()</code> /
+<code>loadUserDictionaryBinFromBytes()</code> と <code>setUserDictionaryInstance()</code> で
+読み込んでください。<code>loadDictionary()</code> はファイル URI・パスを
+bytes API を案内するエラーで即座に拒否するようになりました。</li>
 <li>固定分割の導入で加算順が変わったため、この変更<strong>前</strong>に学習した重みと
 変更後に学習した重みはバイト単位では一致しません（<code>--max-threads 1</code> を
 含むすべてのスレッド数で）。以後の成果物を比較可能にするには
