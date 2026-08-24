@@ -256,12 +256,30 @@ impl TrainerConfig {
         &self.surface_features
     }
 
-    /// Get the user lexicon mapping
+    /// Get the user lexicon mapping.
+    ///
+    /// This map only feeds [`TrainerConfig::get_features`]; dictionary export
+    /// reads the user entries loaded via `Model::read_user_lexicon` instead
+    /// (#981).
+    ///
+    /// # 戻り値
+    ///
+    /// The surface-to-features map.
     pub fn user_lexicon(&self) -> &HashMap<String, String> {
         &self.user_lexicon
     }
 
-    /// Add user lexicon entry (user dictionary support)
+    /// Add user lexicon entry (user dictionary support).
+    ///
+    /// # 引数
+    ///
+    /// * `surface` - Surface form of the entry.
+    /// * `features` - Comma-joined feature string of the entry.
+    #[deprecated(
+        since = "5.3.0",
+        note = "this map only feeds TrainerConfig::get_features; dictionary \
+                export reads user entries loaded via Model::read_user_lexicon"
+    )]
     pub fn add_user_lexicon_entry(&mut self, surface: String, features: String) {
         self.user_lexicon.insert(surface, features);
     }
@@ -275,7 +293,20 @@ impl TrainerConfig {
             .cloned()
     }
 
-    /// Load user lexicon from CSV content
+    /// Load user lexicon from CSV content.
+    ///
+    /// # 引数
+    ///
+    /// * `content` - User lexicon CSV content.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`; malformed lines are skipped.
+    #[deprecated(
+        since = "5.3.0",
+        note = "this map only feeds TrainerConfig::get_features; dictionary \
+                export reads user entries loaded via Model::read_user_lexicon"
+    )]
     pub fn load_user_lexicon_from_content(&mut self, content: &str) -> Result<()> {
         for line in content.lines() {
             if line.trim().is_empty() || line.starts_with('#') {

@@ -20,3 +20,6 @@ regex = { workspace = true }
 rkyv = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"

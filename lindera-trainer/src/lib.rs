@@ -967,20 +967,20 @@ mod tests {
 // they cover the path the CLI actually takes -- including the fact that
 // `write_model` rebuilds the connection matrix from scratch on every call.
 #[cfg(test)]
-mod train_determinism_tests {
+pub(crate) mod test_fixtures {
     use crate::{Corpus, Trainer, TrainerConfig};
     use std::io::Cursor;
 
     /// Seed lexicon and corpus wide enough that the connection matrix holds
     /// many entries.
     ///
-    /// This matters for the assertion below. With only a handful of entries
-    /// every key probes the same 16-slot window in rkyv's archived `HashMap`,
-    /// so two runs can land on the same layout by luck and the reproducibility
-    /// assertion passes for the wrong reason. Verified by mutation: with three
-    /// seed words the test still passed after reverting the fix; with this
-    /// fixture it fails.
-    fn wide_seed_and_corpus() -> (String, String) {
+    /// This matters for the determinism assertions built on it. With only a
+    /// handful of entries every key probes the same 16-slot window in rkyv's
+    /// archived `HashMap`, so two runs can land on the same layout by luck and
+    /// a reproducibility assertion passes for the wrong reason. Verified by
+    /// mutation: with three seed words such a test still passed after
+    /// reverting the #974 fix; with this fixture it fails.
+    pub(crate) fn wide_seed_and_corpus() -> (String, String) {
         // Distinct part-of-speech pairs mint distinct connection ids, which is
         // what widens the matrix.
         let pos = [
@@ -1013,7 +1013,7 @@ mod train_determinism_tests {
 
     /// The tiny in-line fixtures shared by these tests, mirroring
     /// `test_train_with_bigram_template`.
-    fn fixtures() -> (
+    pub(crate) fn fixtures() -> (
         &'static str,
         &'static str,
         &'static str,
@@ -1031,14 +1031,9 @@ mod train_determinism_tests {
         )
     }
 
-    /// Trains once with the given thread count and serializes the resulting
-    /// model, returning the bytes.
-    ///
-    /// The thread count must not affect the bytes: the CRF loss and gradient
-    /// sum a fixed partition of the lattices in a fixed order regardless of
-    /// how many workers run (`lindera-crf`'s `LatticesLoss`), which
-    /// `training_is_identical_across_thread_counts` pins end to end.
-    fn train_and_serialize(threads: usize) -> Vec<u8> {
+    /// Trains the wide fixture with the given thread count and returns the
+    /// model.
+    pub(crate) fn train_wide_model(threads: usize) -> crate::model::Model {
         let (_, char_def, unk_def, feature_def, rewrite_def, _) = fixtures();
         let (seed, corpus_text) = wide_seed_and_corpus();
 
@@ -1066,11 +1061,150 @@ mod train_determinism_tests {
             Err(err) => panic!("failed to read corpus: {err}"),
         };
 
-        let model = match trainer.train(corpus) {
+        match trainer.train(corpus) {
             Ok(model) => model,
             Err(err) => panic!("training failed: {err}"),
+        }
+    }
+}
+
+#[cfg(test)]
+mod export_determinism_tests {
+    use crate::test_fixtures::train_wide_model;
+    use std::io::Cursor;
+
+    /// `read_user_lexicon` -> `write_dictionary` must emit the user entries,
+    /// in input order, byte-identically across runs.
+    ///
+    /// Before #981 this wrote an empty file: the writer read
+    /// `config.user_lexicon`, which nothing populates, instead of the
+    /// `user_entries` that `read_user_lexicon` fills.
+    #[test]
+    fn user_lexicon_roundtrips_in_input_order() {
+        // One `0,0,0` entry (parameters must be inferred) and one entry with
+        // explicit parameters (must be re-emitted verbatim, per the contract
+        // documented on `read_user_lexicon`).
+        let user_csv = "外食,0,0,0,名詞,一般,*,*,*,*,外食,ガイショク,ガイショク\n\
+                        ラー油,3,3,912,名詞,一般,*,*,*,*,ラー油,ラーユ,ラーユ\n";
+
+        let write_all = |model: &crate::model::Model| -> Vec<u8> {
+            let (mut lex, mut conn, mut unk, mut user) =
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            if let Err(err) = model.write_dictionary(&mut lex, &mut conn, &mut unk, &mut user) {
+                panic!("write_dictionary failed: {err}");
+            }
+            user
         };
 
+        let mut model = train_wide_model(1);
+        if let Err(err) = model.read_user_lexicon(Cursor::new(user_csv.as_bytes())) {
+            panic!("read_user_lexicon failed: {err}");
+        }
+
+        let first = write_all(&model);
+        assert!(
+            !first.is_empty(),
+            "user lexicon output is empty: write_user_lexicon is not reading user_entries"
+        );
+
+        let text = match String::from_utf8(first.clone()) {
+            Ok(text) => text,
+            Err(err) => panic!("user lexicon output is not UTF-8: {err}"),
+        };
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2, "expected both user entries: {text}");
+
+        // Input order, not map order.
+        assert!(
+            lines[0].starts_with("外食,"),
+            "first line must be the first input entry: {}",
+            lines[0]
+        );
+        // The parameterized entry is re-emitted verbatim.
+        assert_eq!(
+            lines[1], "ラー油,3,3,912,名詞,一般,*,*,*,*,ラー油,ラーユ,ラーユ",
+            "non-zero parameters must be preserved as-is"
+        );
+        // The inferred entry keeps its surface and feature string.
+        assert!(
+            lines[0].ends_with(",名詞,一般,*,*,*,*,外食,ガイショク,ガイショク"),
+            "inferred line must keep the input features: {}",
+            lines[0]
+        );
+
+        // Byte-reproducible across repeated writes.
+        let second = write_all(&model);
+        assert_eq!(first, second, "user lexicon output must be reproducible");
+    }
+
+    /// The three bigram-details files must be byte-identical across repeated
+    /// writes, and must carry real feature names.
+    ///
+    /// Before #981 the cost file iterated an unsorted `hashbrown::HashMap`
+    /// rebuilt per call (different seed each time), and its labels were
+    /// fabricated `L{i}`/`R{j}` strings in the wrong id space, degenerating
+    /// to `*`.
+    #[test]
+    fn bigram_details_are_reproducible_and_named() {
+        let model = train_wide_model(1);
+
+        let dump = || -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+            let (mut left, mut right, mut cost) = (Vec::new(), Vec::new(), Vec::new());
+            if let Err(err) = model.write_bigram_details(&mut left, &mut right, &mut cost) {
+                panic!("write_bigram_details failed: {err}");
+            }
+            (left, right, cost)
+        };
+
+        let (left_a, right_a, cost_a) = dump();
+        let (left_b, right_b, cost_b) = dump();
+        assert_eq!(left_a, left_b, "left file must be reproducible");
+        assert_eq!(right_a, right_b, "right file must be reproducible");
+        assert_eq!(cost_a, cost_b, "cost file must be reproducible");
+
+        let cost_text = match String::from_utf8(cost_a) {
+            Ok(text) => text,
+            Err(err) => panic!("cost file is not UTF-8: {err}"),
+        };
+        assert!(
+            cost_text.lines().any(|line| line.starts_with("BOS/")),
+            "cost file must label bigram feature id 0 as BOS: {cost_text}"
+        );
+        assert!(
+            cost_text.lines().any(|line| line.contains("/EOS\t")),
+            "cost file must label right feature id 0 as EOS: {cost_text}"
+        );
+        assert!(
+            cost_text.contains("名詞"),
+            "cost file must carry real feature names, not fabricated ids: {cost_text}"
+        );
+
+        let left_text = match String::from_utf8(left_a) {
+            Ok(text) => text,
+            Err(err) => panic!("left file is not UTF-8: {err}"),
+        };
+        assert!(
+            left_text.contains("名詞"),
+            "left file must carry real feature names: {left_text}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod train_determinism_tests {
+    use crate::test_fixtures::fixtures;
+    use crate::{Corpus, Trainer, TrainerConfig};
+    use std::io::Cursor;
+
+    /// Trains once with the given thread count and serializes the resulting
+    /// model, returning the bytes.
+    ///
+    /// The thread count must not affect the bytes: the CRF loss and gradient
+    /// sum a fixed partition of the lattices in a fixed order regardless of
+    /// how many workers run (`lindera-crf`'s `LatticesLoss`), which
+    /// `training_is_identical_across_thread_counts` pins end to end.
+    fn train_and_serialize(threads: usize) -> Vec<u8> {
+        let model = crate::test_fixtures::train_wide_model(threads);
         let mut buf = Vec::new();
         if let Err(err) = model.write_model(&mut buf) {
             panic!("failed to serialize model: {err}");

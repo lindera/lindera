@@ -669,19 +669,49 @@ impl Model {
         Ok(())
     }
 
+    /// Writes the user lexicon with trained parameters.
+    ///
+    /// Entries are written in the order `read_user_lexicon` read them, so the
+    /// output is byte-reproducible and diffable against the input file (#981).
+    /// An entry whose left id, right id and cost are all zero receives
+    /// inferred context ids and a trained cost; any other entry is re-emitted
+    /// with its input parameters unchanged, per the contract documented on
+    /// `read_user_lexicon`.
+    ///
+    /// # 引数
+    ///
+    /// * `writer` - Write sink for the user lexicon CSV.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())` on success; writing nothing when no user lexicon was read.
     fn write_user_lexicon<W: Write>(&self, writer: &mut W) -> Result<()> {
-        if self.config.user_lexicon().is_empty() {
+        if self.user_entries.is_empty() {
             return Ok(());
         }
 
         let merged_model = self.get_merged_model()?;
         let cost_factor = calculate_cost_factor(&merged_model);
 
-        for (surface, features) in self.config.user_lexicon() {
-            let (left_id, right_id) = self.infer_context_ids(surface, features);
-            let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
-            let cost = tocost(raw_cost, cost_factor);
-            writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
+        for (word, entry, _label_id) in &self.user_entries {
+            let surface = word.surface();
+            let features = word.feature();
+            if entry.left_id() == 0 && entry.right_id() == 0 && entry.word_cost() == 0 {
+                let (left_id, right_id) = self.infer_context_ids(surface, features);
+                let raw_cost = self.get_user_word_cost(surface) as f64 / 1000.0;
+                let cost = tocost(raw_cost, cost_factor);
+                writeln!(writer, "{surface},{left_id},{right_id},{cost},{features}")?;
+            } else {
+                writeln!(
+                    writer,
+                    "{},{},{},{},{}",
+                    surface,
+                    entry.left_id(),
+                    entry.right_id(),
+                    entry.word_cost(),
+                    features
+                )?;
+            }
         }
 
         Ok(())
@@ -841,11 +871,27 @@ impl Model {
     /// Writes the bigram details in three separate files.
     ///
     /// This method outputs:
-    /// - Left features: connection features for left context
-    /// - Right features: connection features for right context
-    /// - Costs: bigram connection costs with feature names
+    /// - Left features: per left connection id, the quoted right-side (`%R`)
+    ///   feature strings it groups, `*` for absent slots
+    /// - Right features: per right connection id, the quoted left-side (`%L`)
+    ///   feature strings it groups
+    /// - Costs: one `{left}/{right}\t{cost}` line per raw bigram feature
+    ///   pair, where id 0 renders as `BOS` / `EOS` and names come from the
+    ///   feature extractor
     ///
-    /// Writes detailed bigram connection information for dictionary optimization.
+    /// All three files are byte-reproducible for the same model: the loops
+    /// run over vectors or key-sorted map entries, never over raw map
+    /// iteration order (#981).
+    ///
+    /// # 引数
+    ///
+    /// * `left_wtr` - Write sink for the left-feature file.
+    /// * `right_wtr` - Write sink for the right-feature file.
+    /// * `cost_wtr` - Write sink for the feature-pair cost file.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())` on success.
     pub fn write_bigram_details<L, R, C>(
         &self,
         left_wtr: L,
@@ -864,21 +910,22 @@ impl Model {
         let merged_model = self.get_merged_model()?;
         let cost_factor = self.config.cost_factor;
 
-        // Build feature mappings from the config's feature extractor
-        let mut right_features = HashMap::new();
-        let mut left_features = HashMap::new();
-
-        // Extract right feature names (simplified version - in practice would come from feature extractor)
-        for i in 0..merged_model.feature_sets.len() {
-            let feature_name = format!("R{i}");
-            right_features.insert(i as u32, feature_name);
-        }
-
-        // Extract left feature names
-        for i in 0..merged_model.feature_sets.len() {
-            let feature_name = format!("L{i}");
-            left_features.insert(i as u32, feature_name);
-        }
+        // Real feature names, inverted from the extractor's string-to-id maps
+        // (the same inversion write_left_id_def uses): id -> feature string.
+        let right_features: HashMap<u32, &str> = self
+            .config
+            .feature_extractor
+            .right_feature_ids
+            .iter()
+            .map(|(s, &id)| (id.get(), s.as_str()))
+            .collect();
+        let left_features: HashMap<u32, &str> = self
+            .config
+            .feature_extractor
+            .left_feature_ids
+            .iter()
+            .map(|(s, &id)| (id.get(), s.as_str()))
+            .collect();
 
         // Write left features
         let mut left_wtr = BufWriter::new(left_wtr);
@@ -889,11 +936,8 @@ impl Model {
                     write!(&mut left_wtr, ",")?;
                 }
                 if let Some(feat_id) = feat_id {
-                    if let Some(feat_str) = right_features.get(&feat_id.get()) {
-                        write!(&mut left_wtr, "\"{feat_str}\"")?;
-                    } else {
-                        write!(&mut left_wtr, "\"*\"")?;
-                    }
+                    let feat_str = right_features.get(&feat_id.get()).copied().unwrap_or("*");
+                    write!(&mut left_wtr, "\"{feat_str}\"")?;
                 } else {
                     write!(&mut left_wtr, "*")?;
                 }
@@ -910,11 +954,8 @@ impl Model {
                     write!(&mut right_wtr, ",")?;
                 }
                 if let Some(feat_id) = feat_id {
-                    if let Some(feat_str) = left_features.get(&feat_id.get()) {
-                        write!(&mut right_wtr, "\"{feat_str}\"")?;
-                    } else {
-                        write!(&mut right_wtr, "\"*\"")?;
-                    }
+                    let feat_str = left_features.get(&feat_id.get()).copied().unwrap_or("*");
+                    write!(&mut right_wtr, "\"{feat_str}\"")?;
                 } else {
                     write!(&mut right_wtr, "*")?;
                 }
@@ -922,17 +963,38 @@ impl Model {
             writeln!(&mut right_wtr)?;
         }
 
-        // Write bigram costs with feature pair names
+        // Write bigram costs with feature pair names. The source is the raw
+        // model's bigram weight table -- left bigram feature id (0 = BOS) to
+        // right bigram feature id (0 = EOS) to weight index -- which is the
+        // id space these name maps describe. The inner maps are key-sorted so
+        // the output is byte-reproducible (#981).
         let mut cost_wtr = BufWriter::new(cost_wtr);
-        for (left_feat_id, hm) in merged_model.matrix.iter().enumerate() {
-            let left_feat_str = left_features
-                .get(&(left_feat_id as u32))
-                .map_or("*", |x| x.as_str());
-            for (&right_feat_id, &w) in hm.iter() {
-                let right_feat_str = right_features
-                    .get(&right_feat_id)
-                    .map_or("*", |x| x.as_str());
-                let cost = tocost(w, cost_factor);
+        for (left_feat_id, hm) in self.raw_model.bigram_weight_indices().iter().enumerate() {
+            let left_feat_str = if left_feat_id == 0 {
+                "BOS"
+            } else {
+                left_features
+                    .get(&(left_feat_id as u32))
+                    .copied()
+                    .unwrap_or("*")
+            };
+            let mut entries: Vec<(u32, u32)> = hm.iter().map(|(&k, &v)| (k, v)).collect();
+            entries.sort_unstable_by_key(|&(k, _)| k);
+            for (right_feat_id, weight_index) in entries {
+                let right_feat_str = if right_feat_id == 0 {
+                    "EOS"
+                } else {
+                    right_features.get(&right_feat_id).copied().unwrap_or("*")
+                };
+                let weight = self
+                    .raw_model
+                    .weights()
+                    .get(weight_index as usize)
+                    .copied()
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("bigram weight index {weight_index} out of range")
+                    })?;
+                let cost = tocost(weight, cost_factor);
                 writeln!(&mut cost_wtr, "{left_feat_str}/{right_feat_str}\t{cost}")?;
             }
         }
@@ -1077,7 +1139,16 @@ impl SerializableModel {
         Ok(())
     }
 
-    /// Update metadata.json with trained model values
+    /// Update metadata.json with trained model values.
+    ///
+    /// The emitted `model_info` section deliberately carries no timestamp, so
+    /// exporting the same model twice produces byte-identical output (#981);
+    /// serde_json's map is ordered, so key order is stable too.
+    ///
+    /// # 引数
+    ///
+    /// * `base_metadata_path` - Path of the base `metadata.json` to update.
+    /// * `writer` - Write sink for the updated JSON.
     pub fn update_metadata_json<W: std::io::Write>(
         &self,
         base_metadata_path: &std::path::Path,
@@ -1122,7 +1193,6 @@ impl SerializableModel {
             "version": self.metadata.version,
             "training_iterations": self.metadata.iterations,
             "regularization": self.metadata.regularization,
-            "updated_at": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs()
         });
 
         // Write updated metadata
@@ -1472,5 +1542,65 @@ mod determinism_tests {
         };
 
         assert!(err.contains("empty"), "unhelpful message: {err}");
+    }
+
+    /// `update_metadata_json` must be byte-reproducible and must not emit a
+    /// timestamp; its output must round-trip through
+    /// `lindera_dictionary`'s `Metadata` loader.
+    ///
+    /// Before #981 it stamped `updated_at` from `SystemTime::now()` (and
+    /// `unwrap()`ed in production code), so two exports of the same model
+    /// could never compare equal.
+    #[test]
+    fn metadata_json_is_reproducible_and_timestamp_free() {
+        use lindera_dictionary::dictionary::metadata::Metadata;
+
+        let model = model_with_maps(&[0, 7, 21]);
+
+        let dir = match tempfile::tempdir() {
+            Ok(dir) => dir,
+            Err(err) => panic!("failed to create temp dir: {err}"),
+        };
+        let base_path = dir.path().join("metadata.json");
+        let base_json = match serde_json::to_string_pretty(&Metadata::default()) {
+            Ok(json) => json,
+            Err(err) => panic!("failed to serialize base metadata: {err}"),
+        };
+        if let Err(err) = std::fs::write(&base_path, base_json) {
+            panic!("failed to write base metadata: {err}");
+        }
+
+        let update = || -> Vec<u8> {
+            let mut buf = Vec::new();
+            if let Err(err) = model.update_metadata_json(&base_path, &mut buf) {
+                panic!("update_metadata_json failed: {err}");
+            }
+            buf
+        };
+
+        let first = update();
+        let second = update();
+        assert_eq!(first, second, "metadata.json output must be reproducible");
+
+        let value: serde_json::Value = match serde_json::from_slice(&first) {
+            Ok(value) => value,
+            Err(err) => panic!("output is not valid JSON: {err}"),
+        };
+        let model_info = match value.get("model_info") {
+            Some(serde_json::Value::Object(map)) => map,
+            other => panic!("model_info must be an object, got {other:?}"),
+        };
+        assert!(
+            !model_info.contains_key("updated_at"),
+            "model_info must not carry a timestamp"
+        );
+        assert!(model_info.contains_key("feature_count"));
+        assert!(model_info.contains_key("version"));
+
+        // The emitted file must load through the dictionary-side struct,
+        // pinning writer/struct consistency end to end.
+        if let Err(err) = Metadata::load(&first) {
+            panic!("exported metadata.json must load as Metadata: {err}");
+        }
     }
 }

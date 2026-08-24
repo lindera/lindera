@@ -43,7 +43,7 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 | `read_user_lexicon<R: Read>(&mut self, rdr: R) -> Result<()>` | ユーザー定義辞書（種辞書と同じ`surface,left_id,right_id,cost,feature...`のCSV形式）をモデルに読み込みます。これにより、後続のエクスポート処理で推定された連接IDとコストを割り当てられるようになります。ユーザー辞書が必要な場合は、辞書を書き出す前に呼び出す必要があります。 |
 | `write_model<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習済みモデル全体（素性の重み、ラベル、品詞情報、連接行列、未知語カテゴリ、保存された定義ファイルの内容、コストファクター、左右IDマッピング）を`rkyv`バイナリ形式でシリアライズします。出力はバイト単位で再現可能です。連接行列と未知語カテゴリが順序付きマップであるため、バイト列はモデルの内容だけで決まります。 |
 | `read_model<R: Read>(reader: R) -> Result<SerializableModel>` | 関連関数。`write_model`が書き出したデータから`SerializableModel`をデシリアライズします。まず`rkyv`形式を試み、ペイロードが実際にJSONオブジェクトで始まる場合にのみレガシーのJSON形式へフォールバックします。いずれでもない場合は、形式の不一致として再学習を促すエラーを返します。`feature_sets`フィールドが存在しない旧形式のモデルについては、`feature_weights`から補完します。 |
-| `write_dictionary<W1, W2, W3, W4>(&self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -> Result<()>` | レキシコン、連接コスト行列、未知語辞書、ユーザー辞書を一度にまとめて書き出す便利メソッドです。 |
+| `write_dictionary<W1, W2, W3, W4>(&self, lexicon_wtr, connector_wtr, unk_handler_wtr, user_lexicon_wtr) -> Result<()>` | レキシコン、連接コスト行列、未知語辞書、ユーザー辞書を一度にまとめて書き出す便利メソッドです。ユーザー辞書は`read_user_lexicon`で読み込んだエントリを入力順で書き出します。パラメータが`0,0,0`のエントリには推定した連接IDと学習済みコストを割り当て、それ以外のエントリは入力のまま再出力します。 |
 | `write_lexicon<W: Write>(&self, writer: &mut W) -> Result<()>` | マージされたCRFモデルから得た連接IDとコストを用いて、種辞書の各語彙エントリについて`lex.csv`形式のエントリ（`surface,left_id,right_id,cost,features...`）を書き出します。 |
 | `write_connection_costs<W: Write>(&self, writer: &mut W) -> Result<()>` | すべての`(right_id, left_id)`の組み合わせ（BOS/EOSを含む）を網羅する密な`matrix.def`形式の連接コスト行列を書き出します。学習中に一度も出現しなかった組み合わせには最大のペナルティコスト（`i16::MAX`）が設定され、Viterbi探索が未学習の遷移を避けるようにします。 |
 | `write_unknown_dictionary<W: Write>(&self, writer: &mut W) -> Result<()>` | 各未知語文字カテゴリについて、学習された連接ID・コストと`unk.def`由来の素性文字列を用いて`unk.def`形式のエントリを書き出します。 |
@@ -51,7 +51,7 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 | `num_features(&self) -> usize` | 学習済みモデルが保持する素性の重みの数を返します。 |
 | `num_labels(&self) -> usize` | 学習済みモデルにおけるラベル（語彙の表層形と未知語カテゴリの合計）の数を返します。 |
 | `raw_model(&self) -> &lindera_crf::RawModel` | 高度な操作や低レベルの処理のために、内部の`lindera-crf`のraw modelへアクセスします。 |
-| `write_bigram_details<L: Write, R: Write, C: Write>(&self, left_wtr, right_wtr, cost_wtr) -> Result<()>` | 辞書最適化やデバッグのために、バイグラムの連接素性とコストを記述した3つの診断用ファイル（左側素性一覧、右側素性一覧、左右素性ペアごとのコスト）を書き出します。 |
+| `write_bigram_details<L: Write, R: Write, C: Write>(&self, left_wtr, right_wtr, cost_wtr) -> Result<()>` | バイグラム素性とコストを記述した3つの診断用ファイル（左側素性一覧、右側素性一覧、生のバイグラム素性ペアごとのコスト行。id 0 は`BOS`/`EOS`、名前は素性抽出器由来）を書き出します。3ファイルとも同じモデルに対してバイト単位で再現可能です。 |
 | `evaluate(&self, test_lattices: &[lindera_crf::Lattice]) -> f64` | raw modelの素性の重みの絶対値の平均を簡易的な評価スコアとして返します。引数`test_lattices`は現時点では未使用であり、保留データに対するモデルの評価はまだ行われません。 |
 | `write_dictionary_buffers(&self, lexicon, connector, unk_handler, user_lexicon: &mut Vec<u8>) -> Result<()>` | ラベル、素性の重み、ユーザーエントリ数、表層形を、それぞれ生の`rkyv`バイトバッファへシリアライズします。CSVベースの`write_dictionary`に対する、より低レベルな代替エクスポート手段です。 |
 | `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 学習された左文脈IDをその素性文字列にマッピングした`left-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
@@ -71,7 +71,7 @@ MeCabの3セクション形式`rewrite.def`（`[unigram rewrite]`、`[left rewri
 | `write_rewrite_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 元の学習入力からそのまま保存されている`rewrite.def`の内容を書き出します。 |
 | `write_left_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`left_id_map`から`left-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
 | `write_right_id_def<W: Write>(&self, writer: &mut W) -> Result<()>` | 保存されている`right_id_map`から`right-id.def`を書き出します。先頭行は`0 BOS/EOS`です。 |
-| `update_metadata_json<W: Write>(&self, base_metadata_path: &Path, writer: &mut W) -> Result<()>` | ベースとなる`metadata.json`を読み込み、学習結果に基づく値（素性の重みの中央値から推定した`default_word_cost`、および素性・ラベル数や文脈IDの範囲・学習メタデータを含む`model_info`セクション）で更新した結果を書き出します。 |
+| `update_metadata_json<W: Write>(&self, base_metadata_path: &Path, writer: &mut W) -> Result<()>` | ベースとなる`metadata.json`を読み込み、学習結果に基づく値（素性の重みの中央値から推定した`default_word_cost`、および素性・ラベル数や文脈IDの範囲・学習メタデータを含む`model_info`セクション）で更新した結果を書き出します。タイムスタンプは含まれず、同じモデルに対してバイト単位で再現可能です。 |
 
 #### `ModelMetadata`と`FeatureSetInfo`
 
