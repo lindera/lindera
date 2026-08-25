@@ -247,20 +247,24 @@ are migrating from <code>lindera-wasm-bundler</code>, see the
 <pre><code class="language-bash">wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 </code></pre>
 <h2 id="npm-package-naming-convention"><a class="header" href="#npm-package-naming-convention">NPM Package Naming Convention</a></h2>
-<p>When publishing a custom build with embedded dictionaries to npm, the
-recommended naming convention is:</p>
-<pre><code class="language-text">lindera-wasm-{dict}
+<p>The unscoped <code>lindera-wasm-*</code> prefix is the Lindera project's namespace. If you
+publish a custom build with embedded dictionaries to npm, use a name under your
+own scope so it cannot be mistaken for an official package:</p>
+<pre><code class="language-text">@your-scope/lindera-wasm-{dict}
 </code></pre>
 <p>Examples:</p>
 <ul>
-<li><code>lindera-wasm-ipadic</code></li>
-<li><code>lindera-wasm-unidic</code></li>
-<li><code>lindera-wasm-cjk</code></li>
+<li><code>@your-scope/lindera-wasm-ipadic</code></li>
+<li><code>@your-scope/lindera-wasm-unidic</code></li>
+<li><code>@your-scope/lindera-wasm-cjk</code></li>
 </ul>
-<p>To set the package name before publishing, edit the <code>name</code> field in the generated <code>pkg/package.json</code>.</p>
+<p>To set the package name before publishing, edit the <code>name</code> field in the
+generated <code>pkg/package.json</code>. Note that a package with an embedded dictionary
+redistributes that dictionary, so follow the dictionary's license terms
+(attribution and so on) as well.</p>
 <blockquote>
 <p>[!NOTE]
-This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes a single package to npm -- <code>lindera-wasm</code>, built with <code>wasm-pack --target web</code> and without any <code>embed-*</code> feature. Dictionary-suffixed names such as <code>lindera-wasm-ipadic</code> are not published anywhere; they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="#available-feature-flags-advanced">Available Feature Flags</a> above) would produce after you rename the package yourself.</p>
+This project's own release workflow (<code>.github/workflows/release.yml</code>) only builds and publishes a single package to npm -- <code>lindera-wasm</code>, built with <code>wasm-pack --target web</code> and without any <code>embed-*</code> feature. Unscoped dictionary-suffixed names such as <code>lindera-wasm-ipadic</code> are reserved by the project (leftovers from pre-v3 releases, no longer updated) and must not be claimed by third parties; in this documentation they only illustrate what a local build with an <code>embed-*</code> feature (see <a href="#available-feature-flags-advanced">Available Feature Flags</a> above) would produce.</p>
 </blockquote>
 <h2 id="installing-from-npm"><a class="header" href="#installing-from-npm">Installing from npm</a></h2>
 <p>The pre-built package is available on npm:</p>
