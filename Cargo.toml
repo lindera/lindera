@@ -23,7 +23,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "5.3.0"
+version = "6.0.0"
 edition = "2024"
 # Edition 2024 alone implies 1.85, but `slice::as_chunks` (used by the
 # WordEntry decode path in lindera-dictionary) stabilized in 1.88. Declaring it
@@ -49,25 +49,25 @@ csv = "1.4.0"
 # loudly if the layout changes; review it before moving this pin.
 crawdad = "=0.4.1"
 daachorse = "5.0.0"
-lindera = { version = "5.3.0", path = "lindera" }
-lindera-analysis = { version = "5.3.0", path = "lindera-analysis" }
-lindera-binding-core = { version = "5.3.0", path = "lindera-binding-core" }
-lindera-crf = { version = "5.3.0", path = "lindera-crf" }
-lindera-cc-cedict = { version = "5.3.0", path = "lindera-cc-cedict" }
-lindera-cli = { version = "5.3.0", path = "lindera-cli" }
-lindera-dictionary = { version = "5.3.0", path = "lindera-dictionary" }
-lindera-trainer = { version = "5.3.0", path = "lindera-trainer" }
-lindera-ipadic = { version = "5.3.0", path = "lindera-ipadic" }
-lindera-ipadic-neologd = { version = "5.3.0", path = "lindera-ipadic-neologd" }
-lindera-jieba = { version = "5.3.0", path = "lindera-jieba" }
-lindera-ko-dic = { version = "5.3.0", path = "lindera-ko-dic" }
-lindera-nodejs = { version = "5.3.0", path = "lindera-nodejs" }
-lindera-sudachidict = { version = "5.3.0", path = "lindera-sudachidict" }
-lindera-python = { version = "5.3.0", path = "lindera-python" }
-lindera-ruby = { version = "5.3.0", path = "lindera-ruby" }
-lindera-unidic = { version = "5.3.0", path = "lindera-unidic" }
-lindera-php = { version = "5.3.0", path = "lindera-php" }
-lindera-wasm = { version = "5.3.0", path = "lindera-wasm" }
+lindera = { version = "6.0.0", path = "lindera" }
+lindera-analysis = { version = "6.0.0", path = "lindera-analysis" }
+lindera-binding-core = { version = "6.0.0", path = "lindera-binding-core" }
+lindera-crf = { version = "6.0.0", path = "lindera-crf" }
+lindera-cc-cedict = { version = "6.0.0", path = "lindera-cc-cedict" }
+lindera-cli = { version = "6.0.0", path = "lindera-cli" }
+lindera-dictionary = { version = "6.0.0", path = "lindera-dictionary" }
+lindera-trainer = { version = "6.0.0", path = "lindera-trainer" }
+lindera-ipadic = { version = "6.0.0", path = "lindera-ipadic" }
+lindera-ipadic-neologd = { version = "6.0.0", path = "lindera-ipadic-neologd" }
+lindera-jieba = { version = "6.0.0", path = "lindera-jieba" }
+lindera-ko-dic = { version = "6.0.0", path = "lindera-ko-dic" }
+lindera-nodejs = { version = "6.0.0", path = "lindera-nodejs" }
+lindera-sudachidict = { version = "6.0.0", path = "lindera-sudachidict" }
+lindera-python = { version = "6.0.0", path = "lindera-python" }
+lindera-ruby = { version = "6.0.0", path = "lindera-ruby" }
+lindera-unidic = { version = "6.0.0", path = "lindera-unidic" }
+lindera-php = { version = "6.0.0", path = "lindera-php" }
+lindera-wasm = { version = "6.0.0", path = "lindera-wasm" }
 log = "0.4.33"
 num_cpus = "1.17.0"
 once_cell = "1.21.4"
