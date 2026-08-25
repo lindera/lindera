@@ -16,6 +16,10 @@ const builder = new TokenizerBuilder();
 
 ### メソッド
 
+すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
+`builder.setMode("normal").setDictionary(...)` のようにチェーンでも、1 文ずつでも記述できます。
+返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。
+
 #### `setMode(mode)`
 
 トークナイズモードを設定します。
@@ -108,7 +112,7 @@ builder.appendTokenFilter("japanese_stop_tags", {
 
 #### `build()`
 
-設定済みの `Tokenizer` インスタンスをビルドして返します。ビルダーは消費されます。
+設定済みの `Tokenizer` インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。
 
 - **戻り値**: `Tokenizer`
 

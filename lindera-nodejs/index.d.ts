@@ -282,32 +282,48 @@ export declare class TokenizerBuilder {
    * # Arguments
    *
    * * `mode` - Mode string ("normal" or "decompose").
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  setMode(mode: string): void
+  setMode(mode: string): this
   /**
    * Sets the dictionary path or URI.
    *
    * # Arguments
    *
    * * `path` - Path to the dictionary directory or embedded URI (e.g. "embedded://ipadic").
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  setDictionary(path: string): void
+  setDictionary(path: string): this
   /**
    * Sets the user dictionary URI.
    *
    * # Arguments
    *
    * * `uri` - URI to the user dictionary.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  setUserDictionary(uri: string): void
+  setUserDictionary(uri: string): this
   /**
    * Sets whether to keep whitespace in tokenization results.
    *
    * # Arguments
    *
    * * `keep_whitespace` - If true, whitespace tokens will be included in results.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  setKeepWhitespace(keepWhitespace: boolean): void
+  setKeepWhitespace(keepWhitespace: boolean): this
   /**
    * Appends a character filter to the preprocessing pipeline.
    *
@@ -315,8 +331,12 @@ export declare class TokenizerBuilder {
    *
    * * `kind` - Type of character filter to add (e.g. "unicode_normalize", "mapping").
    * * `args` - Optional filter arguments as a JSON-compatible object.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  appendCharacterFilter(kind: string, args?: any | undefined | null): void
+  appendCharacterFilter(kind: string, args?: any | undefined | null): this
   /**
    * Appends a token filter to the postprocessing pipeline.
    *
@@ -324,8 +344,12 @@ export declare class TokenizerBuilder {
    *
    * * `kind` - Type of token filter to add (e.g. "lowercase", "japanese_stop_tags").
    * * `args` - Optional filter arguments as a JSON-compatible object.
+   *
+   * # Returns
+   *
+   * The builder itself (`this`), enabling method chaining.
    */
-  appendTokenFilter(kind: string, args?: any | undefined | null): void
+  appendTokenFilter(kind: string, args?: any | undefined | null): this
   /**
    * Builds the tokenizer with the configured settings.
    *

@@ -18,7 +18,7 @@
 //! ### Web (Browser)
 //!
 //! ```javascript
-//! import __wbg_init, { TokenizerBuilder } from 'lindera-wasm-web-ipadic';
+//! import __wbg_init, { TokenizerBuilder } from 'lindera-wasm';
 //!
 //! __wbg_init().then(() => {
 //!     const builder = new TokenizerBuilder();

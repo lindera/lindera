@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
@@ -15,14 +18,8 @@ fn parse_filter_args(args: JsValue) -> Result<Value, JsValue> {
     }
 }
 
-/// Builder for creating a [`Tokenizer`] instance.
-///
-/// `TokenizerBuilder` provides a fluent API for configuring and building a tokenizer
-/// with various options such as dictionary selection, tokenization mode, character filters,
-/// and token filters. The build-flow orchestration is delegated to
-/// [`lindera_binding_core::CoreTokenizerBuilder`].
-#[wasm_bindgen]
-pub struct TokenizerBuilder {
+/// Mutable builder configuration shared between chained builder handles.
+struct BuilderState {
     /// The backing binding-core builder (used for URI-based dictionary loading).
     inner: CoreTokenizerBuilder,
     /// Pre-loaded dictionary instance, used instead of URI-based loading.
@@ -33,6 +30,23 @@ pub struct TokenizerBuilder {
     mode_for_instance: Option<String>,
 }
 
+/// Builder for creating a [`Tokenizer`] instance.
+///
+/// `TokenizerBuilder` provides a fluent API for configuring and building a tokenizer
+/// with various options such as dictionary selection, tokenization mode, character filters,
+/// and token filters. The build-flow orchestration is delegated to
+/// [`lindera_binding_core::CoreTokenizerBuilder`].
+///
+/// Setters return a builder handle sharing the same configuration, so both the
+/// chained style (`builder.setMode(...).setDictionary(...).build()`) and the
+/// sequential style (one call per statement) work. wasm-bindgen cannot return
+/// the borrowed JS `this`, hence the shared-state handle instead.
+#[wasm_bindgen]
+pub struct TokenizerBuilder {
+    /// Configuration shared by every handle returned from the setters.
+    state: Rc<RefCell<BuilderState>>,
+}
+
 #[wasm_bindgen]
 impl TokenizerBuilder {
     /// Creates a new `TokenizerBuilder` instance.
@@ -41,10 +55,12 @@ impl TokenizerBuilder {
         let inner = CoreTokenizerBuilder::new().map_err(|e| JsValue::from_str(&e.to_string()))?;
 
         Ok(Self {
-            inner,
-            dictionary_instance: None,
-            user_dictionary_instance: None,
-            mode_for_instance: None,
+            state: Rc::new(RefCell::new(BuilderState {
+                inner,
+                dictionary_instance: None,
+                user_dictionary_instance: None,
+                mode_for_instance: None,
+            })),
         })
     }
 
@@ -52,12 +68,17 @@ impl TokenizerBuilder {
     ///
     /// If a dictionary instance was set via `setDictionaryInstance()`,
     /// it will be used directly instead of loading from a URI.
-    pub fn build(self) -> Result<Tokenizer, JsValue> {
-        if let Some(dict) = self.dictionary_instance {
-            // Build tokenizer using the pre-loaded dictionary instance.
-            let user_dict = self.user_dictionary_instance.map(|d| d.inner);
+    ///
+    /// The builder remains usable afterwards, so multiple tokenizers can be
+    /// built from the same configuration.
+    pub fn build(&self) -> Result<Tokenizer, JsValue> {
+        let state = self.state.borrow();
+        if let Some(dict) = state.dictionary_instance.clone() {
+            // Build tokenizer using the pre-loaded dictionary instance
+            // (dictionaries are cheap to clone: their payload is shared).
+            let user_dict = state.user_dictionary_instance.clone().map(|d| d.inner);
             let inner = CoreTokenizer::from_segmenter(
-                self.mode_for_instance.as_deref().unwrap_or("normal"),
+                state.mode_for_instance.as_deref().unwrap_or("normal"),
                 dict.inner,
                 user_dict,
             )
@@ -65,7 +86,7 @@ impl TokenizerBuilder {
 
             Ok(Tokenizer { inner })
         } else {
-            let inner = self
+            let inner = state
                 .inner
                 .build()
                 .map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -74,33 +95,55 @@ impl TokenizerBuilder {
         }
     }
 
-    /// Sets the tokenization mode.
-    #[wasm_bindgen(js_name = "setMode")]
-    pub fn set_mode(&mut self, mode: &str) -> Result<(), JsValue> {
-        self.inner
-            .set_mode(mode)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        self.mode_for_instance = Some(mode.to_string());
+    /// Returns a new handle sharing this builder's configuration.
+    fn share(&self) -> TokenizerBuilder {
+        TokenizerBuilder {
+            state: Rc::clone(&self.state),
+        }
+    }
 
-        Ok(())
+    /// Sets the tokenization mode.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
+    #[wasm_bindgen(js_name = "setMode")]
+    pub fn set_mode(&self, mode: &str) -> Result<TokenizerBuilder, JsValue> {
+        {
+            let mut state = self.state.borrow_mut();
+            state
+                .inner
+                .set_mode(mode)
+                .map_err(|e| JsValue::from_str(&e.to_string()))?;
+            state.mode_for_instance = Some(mode.to_string());
+        }
+
+        Ok(self.share())
     }
 
     /// Sets the dictionary to use for tokenization by URI.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setDictionary")]
-    pub fn set_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
-        self.inner.set_dictionary(uri);
-        self.dictionary_instance = None;
+    pub fn set_dictionary(&self, uri: &str) -> TokenizerBuilder {
+        {
+            let mut state = self.state.borrow_mut();
+            state.inner.set_dictionary(uri);
+            state.dictionary_instance = None;
+        }
 
-        Ok(())
+        self.share()
     }
 
     /// Sets a pre-loaded dictionary instance for tokenization.
     ///
     /// Use this method when the dictionary has been loaded from bytes
     /// (e.g., via `loadDictionaryFromBytes()`) instead of from a URI.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setDictionaryInstance")]
-    pub fn set_dictionary_instance(&mut self, dictionary: JsDictionary) {
-        self.dictionary_instance = Some(dictionary);
+    pub fn set_dictionary_instance(&self, dictionary: JsDictionary) -> TokenizerBuilder {
+        self.state.borrow_mut().dictionary_instance = Some(dictionary);
+
+        self.share()
     }
 
     /// Sets a pre-loaded user dictionary instance.
@@ -108,70 +151,99 @@ impl TokenizerBuilder {
     /// Use this method with a user dictionary loaded from bytes via
     /// `loadUserDictionaryFromBytes()` or `loadUserDictionaryBinFromBytes()`;
     /// URI-based user dictionaries are not available on WebAssembly (#972).
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
-    pub fn set_user_dictionary_instance(&mut self, user_dictionary: JsUserDictionary) {
-        self.user_dictionary_instance = Some(user_dictionary);
+    pub fn set_user_dictionary_instance(&self, user_dictionary: JsUserDictionary) -> TokenizerBuilder {
+        self.state.borrow_mut().user_dictionary_instance = Some(user_dictionary);
+
+        self.share()
     }
 
     /// Sets whether to keep whitespace tokens in the output.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setKeepWhitespace")]
-    pub fn set_keep_whitespace(&mut self, keep: bool) -> Result<(), JsValue> {
-        self.inner.set_keep_whitespace(keep);
+    pub fn set_keep_whitespace(&self, keep: bool) -> TokenizerBuilder {
+        self.state.borrow_mut().inner.set_keep_whitespace(keep);
 
-        Ok(())
+        self.share()
     }
 
     /// Appends a character filter to the tokenization pipeline.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "appendCharacterFilter")]
-    pub fn append_character_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
+    pub fn append_character_filter(&self, name: &str, args: JsValue) -> Result<TokenizerBuilder, JsValue> {
         let a = parse_filter_args(args)?;
-        self.inner.append_character_filter(name, &a);
+        self.state.borrow_mut().inner.append_character_filter(name, &a);
 
-        Ok(())
+        Ok(self.share())
     }
 
     /// Appends a token filter to the tokenization pipeline.
+    ///
+    /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "appendTokenFilter")]
-    pub fn append_token_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
+    pub fn append_token_filter(&self, name: &str, args: JsValue) -> Result<TokenizerBuilder, JsValue> {
         let a = parse_filter_args(args)?;
-        self.inner.append_token_filter(name, &a);
+        self.state.borrow_mut().inner.append_token_filter(name, &a);
 
-        Ok(())
+        Ok(self.share())
     }
 
     // Python-style aliases (snake_case)
+
+    /// Sets the tokenization mode (snake_case alias).
     #[wasm_bindgen(js_name = "set_mode")]
-    pub fn py_set_mode(&mut self, mode: &str) -> Result<(), JsValue> {
+    pub fn py_set_mode(&self, mode: &str) -> Result<TokenizerBuilder, JsValue> {
         self.set_mode(mode)
     }
 
+    /// Sets the dictionary by URI (snake_case alias).
     #[wasm_bindgen(js_name = "set_dictionary")]
-    pub fn py_set_dictionary(&mut self, uri: &str) -> Result<(), JsValue> {
+    pub fn py_set_dictionary(&self, uri: &str) -> TokenizerBuilder {
         self.set_dictionary(uri)
     }
 
+    /// Sets a pre-loaded dictionary instance (snake_case alias).
     #[wasm_bindgen(js_name = "set_dictionary_instance")]
-    pub fn py_set_dictionary_instance(&mut self, dictionary: JsDictionary) {
+    pub fn py_set_dictionary_instance(&self, dictionary: JsDictionary) -> TokenizerBuilder {
         self.set_dictionary_instance(dictionary)
     }
 
+    /// Sets a pre-loaded user dictionary instance (snake_case alias).
     #[wasm_bindgen(js_name = "set_user_dictionary_instance")]
-    pub fn py_set_user_dictionary_instance(&mut self, user_dictionary: JsUserDictionary) {
+    pub fn py_set_user_dictionary_instance(
+        &self,
+        user_dictionary: JsUserDictionary,
+    ) -> TokenizerBuilder {
         self.set_user_dictionary_instance(user_dictionary)
     }
 
+    /// Sets whether to keep whitespace tokens (snake_case alias).
     #[wasm_bindgen(js_name = "set_keep_whitespace")]
-    pub fn py_set_keep_whitespace(&mut self, keep: bool) -> Result<(), JsValue> {
+    pub fn py_set_keep_whitespace(&self, keep: bool) -> TokenizerBuilder {
         self.set_keep_whitespace(keep)
     }
 
+    /// Appends a character filter (snake_case alias).
     #[wasm_bindgen(js_name = "append_character_filter")]
-    pub fn py_append_character_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
+    pub fn py_append_character_filter(
+        &self,
+        name: &str,
+        args: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
         self.append_character_filter(name, args)
     }
 
+    /// Appends a token filter (snake_case alias).
     #[wasm_bindgen(js_name = "append_token_filter")]
-    pub fn py_append_token_filter(&mut self, name: &str, args: JsValue) -> Result<(), JsValue> {
+    pub fn py_append_token_filter(
+        &self,
+        name: &str,
+        args: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
         self.append_token_filter(name, args)
     }
 }
@@ -330,9 +402,9 @@ mod tests {
     fn test_tokenize() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -350,9 +422,9 @@ mod tests {
     fn test_tokenize_surfaces_matches_tokenize() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -380,9 +452,9 @@ mod tests {
     fn test_tokenize_with_ipadic() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -395,12 +467,52 @@ mod tests {
 
     #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen_test]
+    fn test_builder_method_chaining() {
+        use crate::TokenizerBuilder;
+
+        // Chained style: every setter returns a handle sharing the same state.
+        let tokenizer = TokenizerBuilder::new()
+            .unwrap()
+            .set_mode("normal")
+            .unwrap()
+            .set_dictionary("embedded://ipadic")
+            .build()
+            .unwrap();
+
+        let surfaces = tokenizer.tokenize_surfaces("すもももももももものうち").unwrap();
+        assert_eq!(surfaces.len(), 7);
+        assert_eq!(surfaces[0], "すもも");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
+    fn test_builder_handles_share_state() {
+        use crate::TokenizerBuilder;
+
+        // A setter called on a returned handle must affect the original builder,
+        // and the builder must remain usable after `build()`.
+        let builder = TokenizerBuilder::new().unwrap();
+        let handle = builder.set_mode("normal").unwrap();
+        handle.set_dictionary("embedded://ipadic");
+
+        let first = builder.build().unwrap();
+        assert!(!first.tokenize_surfaces("日本語").unwrap().is_empty());
+
+        let second = builder.build().unwrap();
+        assert_eq!(
+            first.tokenize_surfaces("日本語").unwrap(),
+            second.tokenize_surfaces("日本語").unwrap()
+        );
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen_test]
     fn test_token_properties() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -426,9 +538,9 @@ mod tests {
     fn test_token_details_by_index() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -453,9 +565,9 @@ mod tests {
     fn test_token_is_plain_serializable_object() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -489,9 +601,9 @@ mod tests {
     fn test_tokenize_decompose_mode() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("decompose").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -508,9 +620,9 @@ mod tests {
     fn test_tokenize_empty_string() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -524,9 +636,9 @@ mod tests {
     fn test_tokenize_nbest() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
-        builder.set_dictionary("embedded://ipadic").unwrap();
+        builder.set_dictionary("embedded://ipadic");
 
         let tokenizer = builder.build().unwrap();
 
@@ -543,7 +655,7 @@ mod tests {
     fn test_builder_set_mode_invalid() {
         use crate::TokenizerBuilder;
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         let result = builder.set_mode("invalid_mode");
 
         assert!(result.is_err());
@@ -572,7 +684,7 @@ mod tests {
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("normal").unwrap();
         builder.set_dictionary_instance(dict);
 
@@ -591,7 +703,7 @@ mod tests {
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_mode("decompose").unwrap();
         builder.set_dictionary_instance(dict);
 
@@ -611,7 +723,7 @@ mod tests {
 
         let dict = load_dictionary("embedded://ipadic").unwrap();
 
-        let mut builder = TokenizerBuilder::new().unwrap();
+        let builder = TokenizerBuilder::new().unwrap();
         builder.set_dictionary_instance(dict);
 
         let tokenizer = builder.build().unwrap();
