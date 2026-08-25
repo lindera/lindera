@@ -16,6 +16,11 @@ Creates a new builder with default settings.
 
 ### Methods
 
+Every setter returns a builder handle that shares the same configuration, so
+the calls can be chained (`builder.setMode("normal").setDictionary(...)`) or
+made one statement at a time. The returned handle is a new object, but it
+configures the same underlying builder.
+
 #### `setMode(mode)`
 
 Sets the tokenization mode.
@@ -107,7 +112,9 @@ builder.appendTokenFilter("japanese_stop_tags", {
 
 #### `build()`
 
-Builds and returns a configured `Tokenizer` instance. Consumes the builder.
+Builds and returns a configured `Tokenizer` instance. The builder remains
+usable afterwards, so multiple tokenizers can be built from the same
+configuration.
 
 - **Returns**: `Tokenizer`
 

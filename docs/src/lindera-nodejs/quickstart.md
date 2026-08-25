@@ -30,6 +30,28 @@ Expected output:
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 ```
 
+## Method Chaining
+
+Every setter returns the builder itself (`this`), so the configuration can be
+chained:
+
+```javascript
+const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("/path/to/ipadic")
+  .build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details[0]}`);
+}
+```
+
+Calling the setters one statement at a time works just as well — both styles
+configure the same builder.
+
 ## Accessing Token Properties
 
 Each token exposes the following properties:

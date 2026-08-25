@@ -30,7 +30,7 @@ const builder = new TokenizerBuilder().fromFile("lindera.yml");
 
 ### 設定メソッド
 
-セッターメソッドは `this` ではなく `undefined` を返すため、メソッドチェーンはできません。ビルダーインスタンスに対して個別に呼び出してください。
+すべてのセッターメソッドはビルダー自身（`this`）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。
 
 #### `setMode(mode)`
 

@@ -28,7 +28,7 @@ See [`lindera-nodejs/resources/lindera.yml`](https://github.com/lindera/lindera/
 
 ### Configuration Methods
 
-Setter methods return `undefined` (not `this`), so they cannot be chained — call them individually on the builder instance.
+All setter methods return the builder itself (`this`), so they can be chained or called one statement at a time.
 
 #### `setMode(mode)`
 

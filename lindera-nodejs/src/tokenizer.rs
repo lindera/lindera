@@ -53,10 +53,14 @@ impl JsTokenizerBuilder {
     /// # Arguments
     ///
     /// * `mode` - Mode string ("normal" or "decompose").
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn set_mode(&mut self, mode: String) -> napi::Result<()> {
+    pub fn set_mode(&mut self, mode: String) -> napi::Result<&Self> {
         self.inner.set_mode(&mode).map_err(to_napi_error)?;
-        Ok(())
+        Ok(self)
     }
 
     /// Sets the dictionary path or URI.
@@ -64,9 +68,14 @@ impl JsTokenizerBuilder {
     /// # Arguments
     ///
     /// * `path` - Path to the dictionary directory or embedded URI (e.g. "embedded://ipadic").
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn set_dictionary(&mut self, path: String) {
+    pub fn set_dictionary(&mut self, path: String) -> &Self {
         self.inner.set_dictionary(&path);
+        self
     }
 
     /// Sets the user dictionary URI.
@@ -74,9 +83,14 @@ impl JsTokenizerBuilder {
     /// # Arguments
     ///
     /// * `uri` - URI to the user dictionary.
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn set_user_dictionary(&mut self, uri: String) {
+    pub fn set_user_dictionary(&mut self, uri: String) -> &Self {
         self.inner.set_user_dictionary(&uri);
+        self
     }
 
     /// Sets whether to keep whitespace in tokenization results.
@@ -84,9 +98,14 @@ impl JsTokenizerBuilder {
     /// # Arguments
     ///
     /// * `keep_whitespace` - If true, whitespace tokens will be included in results.
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn set_keep_whitespace(&mut self, keep_whitespace: bool) {
+    pub fn set_keep_whitespace(&mut self, keep_whitespace: bool) -> &Self {
         self.inner.set_keep_whitespace(keep_whitespace);
+        self
     }
 
     /// Appends a character filter to the preprocessing pipeline.
@@ -95,15 +114,19 @@ impl JsTokenizerBuilder {
     ///
     /// * `kind` - Type of character filter to add (e.g. "unicode_normalize", "mapping").
     /// * `args` - Optional filter arguments as a JSON-compatible object.
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
     pub fn append_character_filter(
         &mut self,
         kind: String,
         args: Option<serde_json::Value>,
-    ) -> napi::Result<()> {
+    ) -> &Self {
         let filter_args = js_value_to_serde_value(args);
         self.inner.append_character_filter(&kind, &filter_args);
-        Ok(())
+        self
     }
 
     /// Appends a token filter to the postprocessing pipeline.
@@ -112,15 +135,15 @@ impl JsTokenizerBuilder {
     ///
     /// * `kind` - Type of token filter to add (e.g. "lowercase", "japanese_stop_tags").
     /// * `args` - Optional filter arguments as a JSON-compatible object.
+    ///
+    /// # Returns
+    ///
+    /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn append_token_filter(
-        &mut self,
-        kind: String,
-        args: Option<serde_json::Value>,
-    ) -> napi::Result<()> {
+    pub fn append_token_filter(&mut self, kind: String, args: Option<serde_json::Value>) -> &Self {
         let filter_args = js_value_to_serde_value(args);
         self.inner.append_token_filter(&kind, &filter_args);
-        Ok(())
+        self
     }
 
     /// Builds the tokenizer with the configured settings.
