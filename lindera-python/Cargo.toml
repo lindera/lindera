@@ -25,6 +25,9 @@ embed-ipadic-neologd = [
     "lindera/embed-ipadic-neologd",
 ] # Include Japanese dictionary (IPADIC NEologd)
 embed-unidic = ["lindera/embed-unidic"] # Include Japanese dictionary (UniDic)
+embed-sudachidict = [
+    "lindera/embed-sudachidict",
+] # Include Japanese dictionary (SudachiDict)
 embed-ko-dic = ["lindera/embed-ko-dic"] # Include Korean dictionary (ko-dic)
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",

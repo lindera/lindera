@@ -1,6 +1,6 @@
 //! Shared macros for the per-dictionary crates (`lindera-ipadic`,
-//! `lindera-ko-dic`, `lindera-unidic`, `lindera-cc-cedict`, `lindera-jieba`,
-//! `lindera-ipadic-neologd`).
+//! `lindera-ko-dic`, `lindera-unidic`, `lindera-sudachidict`,
+//! `lindera-cc-cedict`, `lindera-jieba`, `lindera-ipadic-neologd`).
 //!
 //! Each of those crates' `embedded` module used to contain ~90 lines of
 //! identical boilerplate that differed only in the dictionary subdirectory

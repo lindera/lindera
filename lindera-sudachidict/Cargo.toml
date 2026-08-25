@@ -1,0 +1,22 @@
+[package]
+name = "lindera-sudachidict"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "A Japanese morphological dictionary for SudachiDict."
+documentation = "https://docs.rs/lindera-sudachidict"
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+keywords = ["morphological", "analysis", "dictionary", "japanese", "sudachidict"]
+categories = { workspace = true }
+license = { workspace = true }
+
+[features]
+embed-sudachidict = [] # Embed SudachiDict dictionary in the binary
+
+[dependencies]
+lindera-dictionary = { workspace = true }
+
+[build-dependencies]
+lindera-dictionary = { workspace = true, features = ["build_rs"] }

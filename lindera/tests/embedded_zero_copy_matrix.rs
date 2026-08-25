@@ -8,7 +8,11 @@
 //! the copy #926 removes, and on a `no_std`-free target such as wasm32 (where
 //! there is no mmap at all) the embedded path is the only path.
 
-#![cfg(any(feature = "embed-ipadic", feature = "embed-unidic"))]
+#![cfg(any(
+    feature = "embed-ipadic",
+    feature = "embed-unidic",
+    feature = "embed-sudachidict"
+))]
 
 use lindera::dictionary::load_dictionary;
 
@@ -43,4 +47,10 @@ fn embedded_ipadic_matrix_is_zero_copy() {
 #[cfg(feature = "embed-unidic")]
 fn embedded_unidic_matrix_is_zero_copy() {
     assert_embedded_matrix_is_borrowed("embedded://unidic");
+}
+
+#[test]
+#[cfg(feature = "embed-sudachidict")]
+fn embedded_sudachidict_matrix_is_zero_copy() {
+    assert_embedded_matrix_is_borrowed("embedded://sudachidict");
 }

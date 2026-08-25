@@ -18,6 +18,9 @@ embed-ipadic-neologd = [
     "lindera/embed-ipadic-neologd",
 ] # Embed IPADIC-NEologd dictionary in the binary
 embed-unidic = ["lindera/embed-unidic"] # Embed UniDic dictionary in the binary
+embed-sudachidict = [
+    "lindera/embed-sudachidict",
+] # Embed SudachiDict dictionary in the binary
 embed-ko-dic = ["lindera/embed-ko-dic"] # Embed ko-dic dictionary in the binary
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",
@@ -33,6 +36,9 @@ embed-cjk2 = [
 embed-cjk3 = [
     "lindera/embed-cjk3",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
+embed-cjk4 = [
+    "lindera/embed-cjk4",
+] # Embed CJK dictionaries (SudachiDict, ko-dic, Jieba) in the binary
 
 mmap = ["lindera/mmap"]     # Use memory-mapped file
 train = ["lindera/train"]   # Enable training functionality

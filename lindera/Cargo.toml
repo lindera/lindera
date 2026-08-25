@@ -22,6 +22,9 @@ embed-ipadic-neologd = [
 embed-unidic = [
     "lindera-unidic/embed-unidic",
 ] # Embed UniDic dictionary in the binary
+embed-sudachidict = [
+    "lindera-sudachidict/embed-sudachidict",
+] # Embed SudachiDict dictionary in the binary
 embed-ko-dic = [
     "lindera-ko-dic/embed-ko-dic",
 ] # Embed ko-dic dictionary in the binary
@@ -46,6 +49,11 @@ embed-cjk3 = [
     "embed-ko-dic",
     "embed-jieba",
 ] # Embed CJK dictionaries (IPADIC NEologd, ko-dic, Jieba) in the binary
+embed-cjk4 = [
+    "embed-sudachidict",
+    "embed-ko-dic",
+    "embed-jieba",
+] # Embed CJK dictionaries (SudachiDict, ko-dic, Jieba) in the binary
 mmap = ["lindera-dictionary/mmap"] # Use memory-mapped file
 train = ["dep:lindera-trainer"] # Enable training functionality
 # Experimental: profile per-context-id connection-matrix access frequency over a
@@ -61,6 +69,7 @@ lindera-ipadic = { workspace = true, optional = true }
 lindera-ipadic-neologd = { workspace = true, optional = true }
 lindera-jieba = { workspace = true, optional = true }
 lindera-ko-dic = { workspace = true, optional = true }
+lindera-sudachidict = { workspace = true, optional = true }
 lindera-trainer = { workspace = true, optional = true }
 lindera-unidic = { workspace = true, optional = true }
 log = { workspace = true }
@@ -112,3 +121,8 @@ required-features = ["embed-ipadic-neologd"]
 name = "bench_jieba"
 harness = false
 required-features = ["embed-jieba"]
+
+[[bench]]
+name = "bench_sudachidict"
+harness = false
+required-features = ["embed-sudachidict"]

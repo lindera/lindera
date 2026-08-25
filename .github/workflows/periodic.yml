@@ -152,6 +152,30 @@ jobs:
       - name: Run test
         run: cargo test -p lindera-unidic --features embed-unidic
 
+  test-lindera-sudachidict:
+    name: Test lindera-sudachidict (${{ matrix.toolchain }})
+    needs: [test-lindera-dictionary]
+    strategy:
+      matrix:
+        toolchain: [stable, beta, nightly]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h /
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+
+      - name: Run test
+        run: cargo test -p lindera-sudachidict --features embed-sudachidict
+
   test-lindera-ko-dic:
     name: Test lindera-ko-dic (${{ matrix.toolchain }})
     needs: [test-lindera-dictionary]
@@ -216,6 +240,7 @@ jobs:
       - test-lindera-ipadic
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
+      - test-lindera-sudachidict
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba

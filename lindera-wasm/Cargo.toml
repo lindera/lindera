@@ -20,6 +20,9 @@ crate-type = ["cdylib"]
 [features]
 embed-ipadic = ["lindera/embed-ipadic"] # Embed IPADIC dictionary (Japanese)
 embed-unidic = ["lindera/embed-unidic"] # Embed UniDic dictionary (Japanese)
+embed-sudachidict = [
+    "lindera/embed-sudachidict",
+] # Embed SudachiDict dictionary (Japanese)
 embed-ko-dic = ["lindera/embed-ko-dic"] # Embed ko-dic dictionary (Korean)
 embed-cc-cedict = [
     "lindera/embed-cc-cedict",

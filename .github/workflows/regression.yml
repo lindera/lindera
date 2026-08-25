@@ -34,6 +34,7 @@ jobs:
       lindera-ipadic: ${{ steps.filter.outputs.lindera-ipadic }}
       lindera-ipadic-neologd: ${{ steps.filter.outputs.lindera-ipadic-neologd }}
       lindera-unidic: ${{ steps.filter.outputs.lindera-unidic }}
+      lindera-sudachidict: ${{ steps.filter.outputs.lindera-sudachidict }}
       lindera-ko-dic: ${{ steps.filter.outputs.lindera-ko-dic }}
       lindera-cc-cedict: ${{ steps.filter.outputs.lindera-cc-cedict }}
       lindera-jieba: ${{ steps.filter.outputs.lindera-jieba }}
@@ -73,6 +74,9 @@ jobs:
             lindera-unidic:
               - 'lindera-unidic/**'
               - 'lindera-dictionary/**'
+            lindera-sudachidict:
+              - 'lindera-sudachidict/**'
+              - 'lindera-dictionary/**'
             lindera-ko-dic:
               - 'lindera-ko-dic/**'
               - 'lindera-dictionary/**'
@@ -90,6 +94,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -116,6 +121,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -130,6 +136,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -144,6 +151,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -158,6 +166,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -172,6 +181,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -185,6 +195,7 @@ jobs:
               - 'lindera-ipadic/**'
               - 'lindera-ipadic-neologd/**'
               - 'lindera-unidic/**'
+              - 'lindera-sudachidict/**'
               - 'lindera-ko-dic/**'
               - 'lindera-cc-cedict/**'
               - 'lindera-jieba/**'
@@ -268,6 +279,19 @@ jobs:
       free-disk-space: true
       lint: true
 
+  test-lindera-sudachidict:
+    name: Test lindera-sudachidict
+    needs: [test-lindera-dictionary, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-sudachidict == 'true')
+    uses: ./.github/workflows/test-crate.yml
+    with:
+      crate: lindera-sudachidict
+      features: "--features embed-sudachidict"
+      free-disk-space: true
+      lint: true
+
   test-lindera-ko-dic:
     name: Test lindera-ko-dic
     needs: [test-lindera-dictionary, detect-changes]
@@ -312,6 +336,7 @@ jobs:
       - test-lindera-ipadic
       - test-lindera-ipadic-neologd
       - test-lindera-unidic
+      - test-lindera-sudachidict
       - test-lindera-ko-dic
       - test-lindera-cc-cedict
       - test-lindera-jieba
