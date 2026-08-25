@@ -67,6 +67,7 @@ php -d extension=target/release/liblindera_php.so script.php
 | `train` | CRF 学習機能 | 有効 |
 | `embed-ipadic` | 日本語辞書（IPADIC）をバイナリに埋め込み | 無効 |
 | `embed-unidic` | 日本語辞書（UniDic）をバイナリに埋め込み | 無効 |
+| `embed-sudachidict` | 日本語辞書（SudachiDict）をバイナリに埋め込み | 無効 |
 | `embed-ipadic-neologd` | 日本語辞書（IPADIC NEologd）をバイナリに埋め込み | 無効 |
 | `embed-ko-dic` | 韓国語辞書（ko-dic）をバイナリに埋め込み | 無効 |
 | `embed-cc-cedict` | 中国語辞書（CC-CEDICT）をバイナリに埋め込み | 無効 |

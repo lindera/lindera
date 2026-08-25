@@ -105,6 +105,10 @@
     - [Dictionary Format](./lindera-unidic/dictionary_format.md)
     - [Build](./lindera-unidic/build.md)
     - [Examples](./lindera-unidic/examples.md)
+- [Lindera SudachiDict](./lindera-sudachidict.md)
+    - [Dictionary Format](./lindera-sudachidict/dictionary_format.md)
+    - [Build](./lindera-sudachidict/build.md)
+    - [Examples](./lindera-sudachidict/examples.md)
 
 - [Lindera ko-dic](./lindera-ko-dic.md)
     - [Dictionary Format](./lindera-ko-dic/dictionary_format.md)
@@ -121,7 +125,7 @@
     - [Build](./lindera-jieba/build.md)
     - [Examples](./lindera-jieba/examples.md)
 
-- [SudachiDict (Community Recipe)](./sudachidict.md)
+- [SudachiDict (Custom Build)](./sudachidict.md)
 
 ---
 

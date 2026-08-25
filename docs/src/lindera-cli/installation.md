@@ -82,6 +82,12 @@ For advanced users who want to embed dictionaries directly into the binary, use 
 % cargo build --release --features=embed-unidic
 ```
 
+#### SudachiDict (Japanese dictionary)
+
+```shell
+% cargo build --release --features=embed-sudachidict
+```
+
 #### ko-dic (Korean dictionary)
 
 ```shell
