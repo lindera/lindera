@@ -154,7 +154,10 @@ impl TokenizerBuilder {
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "setUserDictionaryInstance")]
-    pub fn set_user_dictionary_instance(&self, user_dictionary: JsUserDictionary) -> TokenizerBuilder {
+    pub fn set_user_dictionary_instance(
+        &self,
+        user_dictionary: JsUserDictionary,
+    ) -> TokenizerBuilder {
         self.state.borrow_mut().user_dictionary_instance = Some(user_dictionary);
 
         self.share()
@@ -174,9 +177,16 @@ impl TokenizerBuilder {
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "appendCharacterFilter")]
-    pub fn append_character_filter(&self, name: &str, args: JsValue) -> Result<TokenizerBuilder, JsValue> {
+    pub fn append_character_filter(
+        &self,
+        name: &str,
+        args: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
         let a = parse_filter_args(args)?;
-        self.state.borrow_mut().inner.append_character_filter(name, &a);
+        self.state
+            .borrow_mut()
+            .inner
+            .append_character_filter(name, &a);
 
         Ok(self.share())
     }
@@ -185,7 +195,11 @@ impl TokenizerBuilder {
     ///
     /// Returns a builder handle sharing this configuration, enabling method chaining.
     #[wasm_bindgen(js_name = "appendTokenFilter")]
-    pub fn append_token_filter(&self, name: &str, args: JsValue) -> Result<TokenizerBuilder, JsValue> {
+    pub fn append_token_filter(
+        &self,
+        name: &str,
+        args: JsValue,
+    ) -> Result<TokenizerBuilder, JsValue> {
         let a = parse_filter_args(args)?;
         self.state.borrow_mut().inner.append_token_filter(name, &a);
 
@@ -479,7 +493,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let surfaces = tokenizer.tokenize_surfaces("すもももももももものうち").unwrap();
+        let surfaces = tokenizer
+            .tokenize_surfaces("すもももももももものうち")
+            .unwrap();
         assert_eq!(surfaces.len(), 7);
         assert_eq!(surfaces[0], "すもも");
     }

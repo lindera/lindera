@@ -140,11 +140,7 @@ impl JsTokenizerBuilder {
     ///
     /// The builder itself (`this`), enabling method chaining.
     #[napi]
-    pub fn append_token_filter(
-        &mut self,
-        kind: String,
-        args: Option<serde_json::Value>,
-    ) -> &Self {
+    pub fn append_token_filter(&mut self, kind: String, args: Option<serde_json::Value>) -> &Self {
         let filter_args = js_value_to_serde_value(args);
         self.inner.append_token_filter(&kind, &filter_args);
         self
