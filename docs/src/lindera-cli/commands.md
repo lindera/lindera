@@ -28,6 +28,7 @@ NAME            EMBEDDED  DOWNLOADED  PATH
 ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
 ipadic-neologd  no        no          -
 unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+sudachidict     no        no          -
 ko-dic          no        no          -
 cc-cedict       no        no          -
 jieba           no        no          -
@@ -720,6 +721,20 @@ For more details about user dictionary format please refer to the following URL:
   --user
 ```
 
+#### Build SudachiDict user dictionary (Japanese)
+
+For more details about user dictionary format please refer to the following URL:
+
+- [Lindera SudachiDict Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-sudachidict#user-dictionary-format-csv)
+
+```shell
+% lindera build \
+  --src ./resources/user_dict/sudachidict_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-sudachidict/metadata.json \
+  --user
+```
+
 #### Build CC-CEDICT user dictionary (Chinese)
 
 For more details about user dictionary format please refer to the following URL:
@@ -768,7 +783,7 @@ Download the pre-built dictionary archive matching the CLI version from the [Git
 
 ### Download parameters
 
-- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `ko-dic`, `cc-cedict`, `jieba`
+- Dictionary name (required): one of `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba`
 - `--force`: Re-download and replace an existing dictionary
 
 ### Storage location

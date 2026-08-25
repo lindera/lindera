@@ -35,6 +35,7 @@ These features embed pre-built dictionaries directly into the binary, eliminatin
 | `embed-ipadic` | IPADIC | Japanese |
 | `embed-ipadic-neologd` | IPADIC NEologd | Japanese |
 | `embed-unidic` | UniDic | Japanese |
+| `embed-sudachidict` | SudachiDict | Japanese |
 | `embed-ko-dic` | ko-dic | Korean |
 | `embed-cc-cedict` | CC-CEDICT | Chinese |
 | `embed-jieba` | Jieba | Chinese |
@@ -68,6 +69,7 @@ These meta-features enable multiple dictionaries at once for multilingual applic
 | `embed-cjk` | IPADIC + ko-dic + Jieba |
 | `embed-cjk2` | UniDic + ko-dic + Jieba |
 | `embed-cjk3` | IPADIC NEologd + ko-dic + Jieba |
+| `embed-cjk4` | SudachiDict + ko-dic + Jieba |
 
 ### Combining Feature Flags
 

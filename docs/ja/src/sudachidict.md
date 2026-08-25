@@ -1,9 +1,17 @@
-# SudachiDict（コミュニティレシピ）
+# SudachiDict（カスタムビルド）
 
 このページでは、[SudachiDict](https://github.com/WorksApplications/SudachiDict)
-— Sudachi が使用する、活発にメンテナンスされている日本語辞書 — を、汎用辞書ビルダーと
-メタデータファイルのみを使って Lindera 辞書としてビルドする方法を説明します。
-エンジン側の変更は不要です。
+— Sudachi が使用する、活発にメンテナンスされている日本語辞書 — を、上流の raw
+配布物から、汎用辞書ビルダーとメタデータファイルのみを使って Lindera 辞書として
+直接ビルドする方法を説明します。エンジン側の変更は不要です。
+
+> [!TIP]
+> SudachiDict は公式辞書クレート
+> [`lindera-sudachidict`](./lindera-sudachidict.md) としても利用できます。通常の用途では
+> クレートの利用を推奨します（`--features embed-sudachidict`、`lindera download sudachidict`、
+> またはビルド済みリリースアーカイブ）。同梱バージョンより新しい上流リリースを取り込みたい
+> 場合や、カスタムバリアント（例: small + core のみ）をビルドしたい場合に、このページを
+> 利用してください。
 
 関連 Issue: [lindera/lindera#487](https://github.com/lindera/lindera/issues/487)
 
@@ -14,10 +22,12 @@
 
 ## なぜ SudachiDict か
 
-Lindera が同梱する MeCab フォーマットの辞書（IPADIC、UniDic 2.1.2）は、語彙の更新が
+従来の MeCab フォーマットの辞書（IPADIC、UniDic 2.1.2）は、語彙の更新が
 何年も前に止まっています。SudachiDict は年に数回更新されており、MeCab 互換の raw CSV
 フォーマットで配布されているため、汎用ビルダーでそのままコンパイルできます。
-`20260723` リリースでは:
+公式の `lindera-sudachidict` クレートは `20260723` リリースを同梱しています。この
+レシピを使って上流の raw 配布物からビルドすれば、より新しいリリースを自分で
+取り込むことができます。`20260723` リリースでは:
 
 - `令和` が単一の固有名詞になります（IPADIC と UniDic 2.1.2 は `令|和` に分割します）
 - `スマホ`、`テレワーク`、`推し活`、`コロナ禍` が語彙に含まれます

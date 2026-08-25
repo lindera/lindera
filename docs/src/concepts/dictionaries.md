@@ -7,6 +7,7 @@ Lindera supports various dictionaries for Japanese, Korean, and Chinese morpholo
 | [IPADIC](../lindera-ipadic.md) | Japanese | `lindera-ipadic` | The most common dictionary for Japanese |
 | [IPADIC NEologd](../lindera-ipadic-neologd.md) | Japanese | `lindera-ipadic-neologd` | IPADIC with neologisms (new words) |
 | [UniDic](../lindera-unidic.md) | Japanese | `lindera-unidic` | Uniform word unit definitions |
+| [SudachiDict](../lindera-sudachidict.md) | Japanese | `lindera-sudachidict` | Actively maintained vocabulary, updated several times a year upstream |
 | [ko-dic](../lindera-ko-dic.md) | Korean | `lindera-ko-dic` | Korean morphological analysis |
 | [CC-CEDICT](../lindera-cc-cedict.md) | Chinese | `lindera-cc-cedict` | Chinese-English dictionary |
 | [Jieba](../lindera-jieba.md) | Chinese | `lindera-jieba` | Jieba-based Chinese dictionary |

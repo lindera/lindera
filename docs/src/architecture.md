@@ -11,6 +11,7 @@ graph TB
     TRAINER["lindera-trainer\n(CRF Training)"]
     IPADIC["lindera-ipadic"]
     UNIDIC["lindera-unidic"]
+    SUDACHIDICT["lindera-sudachidict"]
     KODIC["lindera-ko-dic"]
     CCCEDICT["lindera-cc-cedict"]
     JIEBA["lindera-jieba"]
@@ -30,6 +31,7 @@ graph TB
     TRAINER -.->|"train feature"| LIB
     DICT --> IPADIC
     DICT --> UNIDIC
+    DICT --> SUDACHIDICT
     DICT --> KODIC
     DICT --> CCCEDICT
     DICT --> JIEBA
@@ -39,6 +41,7 @@ graph TB
     DICT --> WASM
     IPADIC --> LIB
     UNIDIC --> LIB
+    SUDACHIDICT --> LIB
     KODIC --> LIB
     CCCEDICT --> LIB
     JIEBA --> LIB
@@ -69,6 +72,7 @@ graph TB
 | `lindera-ipadic` | Dictionary | Japanese dictionary based on IPADIC. |
 | `lindera-ipadic-neologd` | Dictionary | Japanese dictionary based on IPADIC NEologd (includes neologisms). |
 | `lindera-unidic` | Dictionary | Japanese dictionary based on UniDic. |
+| `lindera-sudachidict` | Dictionary | Japanese dictionary based on SudachiDict. |
 | `lindera-ko-dic` | Dictionary | Korean dictionary based on ko-dic. |
 | `lindera-cc-cedict` | Dictionary | Chinese dictionary based on CC-CEDICT. |
 | `lindera-jieba` | Dictionary | Chinese dictionary based on Jieba. |
@@ -109,12 +113,14 @@ The **Segmenter** is the core component. It builds a lattice of candidate tokens
 | `embed-ipadic` | Embed the IPADIC dictionary into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed the IPADIC NEologd dictionary into the binary | Disabled |
 | `embed-unidic` | Embed the UniDic dictionary into the binary | Disabled |
+| `embed-sudachidict` | Embed the SudachiDict dictionary into the binary | Disabled |
 | `embed-ko-dic` | Embed the ko-dic dictionary into the binary | Disabled |
 | `embed-cc-cedict` | Embed the CC-CEDICT dictionary into the binary | Disabled |
 | `embed-jieba` | Embed the Jieba dictionary into the binary | Disabled |
 | `embed-cjk` | Embed IPADIC + ko-dic + Jieba dictionaries | Disabled |
 | `embed-cjk2` | Embed UniDic + ko-dic + Jieba dictionaries | Disabled |
 | `embed-cjk3` | Embed IPADIC NEologd + ko-dic + Jieba dictionaries | Disabled |
+| `embed-cjk4` | Embed SudachiDict + ko-dic + Jieba dictionaries | Disabled |
 
 ## Learn More
 

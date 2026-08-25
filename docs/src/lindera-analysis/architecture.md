@@ -73,6 +73,7 @@ A trait for filters that post-process the tokens produced by the segmenter. Each
 | `embed-ipadic` | Embed the IPADIC dictionary in the binary (forwards to `lindera/embed-ipadic`) | No |
 | `embed-ipadic-neologd` | Embed the IPADIC-NEologd dictionary in the binary (forwards to `lindera/embed-ipadic-neologd`) | No |
 | `embed-unidic` | Embed the UniDic dictionary in the binary (forwards to `lindera/embed-unidic`) | No |
+| `embed-sudachidict` | Embed the SudachiDict dictionary in the binary (forwards to `lindera/embed-sudachidict`) | No |
 | `embed-ko-dic` | Embed the ko-dic dictionary in the binary (forwards to `lindera/embed-ko-dic`) | No |
 | `embed-cc-cedict` | Embed the CC-CEDICT dictionary in the binary (forwards to `lindera/embed-cc-cedict`) | No |
 | `embed-jieba` | Embed the Jieba dictionary in the binary (forwards to `lindera/embed-jieba`) | No |

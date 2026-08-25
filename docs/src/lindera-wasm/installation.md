@@ -77,6 +77,7 @@ For advanced users who want to embed dictionaries directly into the WASM binary,
 | --- | --- | --- |
 | `embed-ipadic` | IPADIC | Japanese |
 | `embed-unidic` | UniDic | Japanese |
+| `embed-sudachidict` | SudachiDict | Japanese (note: ~570MB, generally impractical for WASM) |
 | `embed-ko-dic` | ko-dic | Korean |
 | `embed-cc-cedict` | CC-CEDICT | Chinese |
 | `embed-jieba` | Jieba | Chinese |

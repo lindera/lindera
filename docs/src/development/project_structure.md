@@ -16,6 +16,7 @@ lindera/
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
+├── lindera-sudachidict/    # SudachiDict dictionary (Japanese)
 ├── lindera-ko-dic/         # ko-dic dictionary (Korean)
 ├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
 ├── lindera-jieba/          # Jieba dictionary (Chinese)
@@ -78,6 +79,7 @@ Each dictionary crate contains pre-built dictionary data for a specific language
 | `lindera-ipadic` | Japanese | IPADIC |
 | `lindera-ipadic-neologd` | Japanese | IPADIC NEologd (extended vocabulary) |
 | `lindera-unidic` | Japanese | UniDic |
+| `lindera-sudachidict` | Japanese | SudachiDict |
 | `lindera-ko-dic` | Korean | ko-dic |
 | `lindera-cc-cedict` | Chinese | CC-CEDICT |
 | `lindera-jieba` | Chinese | Jieba |

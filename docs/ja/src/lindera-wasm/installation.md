@@ -55,6 +55,7 @@ wasm-pack のデフォルトの `--target` は `bundler` ですが、公開さ�
 | --- | --- | --- |
 | `embed-ipadic` | IPADIC | 日本語 |
 | `embed-unidic` | UniDic | 日本語 |
+| `embed-sudachidict` | SudachiDict | 日本語（注意: 約570MB、WASMでは通常非現実的） |
 | `embed-ko-dic` | ko-dic | 韓国語 |
 | `embed-cc-cedict` | CC-CEDICT | 中国語 |
 | `embed-jieba` | Jieba | 中国語 |

@@ -16,6 +16,7 @@ lindera/
 ├── lindera-ipadic/         # IPADIC dictionary (Japanese)
 ├── lindera-ipadic-neologd/ # IPADIC NEologd dictionary (Japanese)
 ├── lindera-unidic/         # UniDic dictionary (Japanese)
+├── lindera-sudachidict/    # SudachiDict dictionary (Japanese)
 ├── lindera-ko-dic/         # ko-dic dictionary (Korean)
 ├── lindera-cc-cedict/      # CC-CEDICT dictionary (Chinese)
 ├── lindera-jieba/          # Jieba dictionary (Chinese)
@@ -78,6 +79,7 @@ lindera/
 | `lindera-ipadic` | 日本語 | IPADIC |
 | `lindera-ipadic-neologd` | 日本語 | IPADIC NEologd（拡張語彙） |
 | `lindera-unidic` | 日本語 | UniDic |
+| `lindera-sudachidict` | 日本語 | SudachiDict |
 | `lindera-ko-dic` | 韓国語 | ko-dic |
 | `lindera-cc-cedict` | 中国語 | CC-CEDICT |
 | `lindera-jieba` | 中国語 | Jieba |

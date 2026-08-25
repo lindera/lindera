@@ -1,9 +1,18 @@
-# SudachiDict (Community Recipe)
+# SudachiDict (Custom Build)
 
 This page describes how to build [SudachiDict](https://github.com/WorksApplications/SudachiDict)
 — the actively maintained Japanese dictionary used by Sudachi — as a Lindera
-dictionary, using only the generic dictionary builder and a metadata file.
-No engine changes are required.
+dictionary directly from the upstream raw distribution, using only the
+generic dictionary builder and a metadata file. No engine changes are
+required.
+
+> [!TIP]
+> SudachiDict is also available as an official dictionary crate:
+> [`lindera-sudachidict`](./lindera-sudachidict.md). Prefer the crate for
+> normal use (`--features embed-sudachidict`, `lindera download sudachidict`,
+> or the pre-built release archive). Use this page when you want to track a
+> newer upstream release than the bundled one, or to build a custom variant
+> (for example, small + core only).
 
 Related issue: [lindera/lindera#487](https://github.com/lindera/lindera/issues/487)
 
@@ -15,10 +24,13 @@ Related issue: [lindera/lindera#487](https://github.com/lindera/lindera/issues/4
 
 ## Why
 
-The MeCab-format dictionaries Lindera ships (IPADIC, UniDic 2.1.2) stopped
+The classic MeCab-format dictionaries (IPADIC, UniDic 2.1.2) stopped
 receiving vocabulary updates years ago. SudachiDict is updated several times a
 year and is distributed in a MeCab-compatible raw CSV format, which the
-generic builder can compile directly. With the `20260723` release:
+generic builder can compile directly. The official `lindera-sudachidict`
+crate bundles the `20260723` release; building from the upstream raw
+distribution with this recipe lets you pick up newer releases yourself.
+With the `20260723` release:
 
 - `令和` is a single proper noun (IPADIC and UniDic 2.1.2 split it into `令|和`)
 - `スマホ`, `テレワーク`, `推し活`, `コロナ禍` are in-vocabulary

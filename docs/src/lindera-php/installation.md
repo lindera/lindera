@@ -52,6 +52,7 @@ cargo build -p lindera-php --features train
 | `train` | CRF training functionality | Enabled (default) |
 | `embed-ipadic` | Embed Japanese dictionary (IPADIC) into the binary | Disabled |
 | `embed-unidic` | Embed Japanese dictionary (UniDic) into the binary | Disabled |
+| `embed-sudachidict` | Embed Japanese dictionary (SudachiDict) into the binary | Disabled |
 | `embed-ipadic-neologd` | Embed Japanese dictionary (IPADIC NEologd) into the binary | Disabled |
 | `embed-ko-dic` | Embed Korean dictionary (ko-dic) into the binary | Disabled |
 | `embed-cc-cedict` | Embed Chinese dictionary (CC-CEDICT) into the binary | Disabled |

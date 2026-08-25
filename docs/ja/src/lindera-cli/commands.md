@@ -28,6 +28,7 @@ NAME            EMBEDDED  DOWNLOADED  PATH
 ipadic          yes       yes         /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-ipadic
 ipadic-neologd  no        no          -
 unidic          no        incomplete  /home/user/.local/share/lindera/dictionaries/5.1.0/lindera-unidic
+sudachidict     no        no          -
 ko-dic          no        no          -
 cc-cedict       no        no          -
 jieba           no        no          -
@@ -720,6 +721,20 @@ Linderaで使用するための形態素解析辞書をCSVソースファイル�
   --user
 ```
 
+#### SudachiDictユーザー辞書（日本語）のビルド
+
+ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
+
+- [Lindera SudachiDict Builder/User Dictionary Format](https://github.com/lindera/lindera/tree/main/lindera-sudachidict#user-dictionary-format-csv)
+
+```shell
+% lindera build \
+  --src ./resources/user_dict/sudachidict_simple_userdic.csv \
+  --dest ./resources/user_dict \
+  --metadata ./lindera-sudachidict/metadata.json \
+  --user
+```
+
 #### CC-CEDICTユーザー辞書（中国語）のビルド
 
 ユーザー辞書フォーマットの詳細については、以下のURLを参照してください：
@@ -768,7 +783,7 @@ CLI と同じバージョンの学習済み辞書アーカイブを [GitHub リ�
 
 ### download パラメータ
 
-- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
+- 辞書名（必須）: `ipadic`, `ipadic-neologd`, `unidic`, `sudachidict`, `ko-dic`, `cc-cedict`, `jieba` のいずれか
 - `--force`: 既存の辞書を再ダウンロードして置き換える
 
 ### 保存場所

@@ -105,6 +105,10 @@
     - [辞書フォーマット](./lindera-unidic/dictionary_format.md)
     - [ビルド](./lindera-unidic/build.md)
     - [使用例](./lindera-unidic/examples.md)
+- [Lindera SudachiDict](./lindera-sudachidict.md)
+    - [辞書フォーマット](./lindera-sudachidict/dictionary_format.md)
+    - [ビルド](./lindera-sudachidict/build.md)
+    - [使用例](./lindera-sudachidict/examples.md)
 
 - [Lindera ko-dic](./lindera-ko-dic.md)
     - [辞書フォーマット](./lindera-ko-dic/dictionary_format.md)
@@ -121,7 +125,7 @@
     - [ビルド](./lindera-jieba/build.md)
     - [使用例](./lindera-jieba/examples.md)
 
-- [SudachiDict（コミュニティレシピ）](./sudachidict.md)
+- [SudachiDict（カスタムビルド）](./sudachidict.md)
 
 ---
 

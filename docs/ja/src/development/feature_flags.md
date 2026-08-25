@@ -34,6 +34,7 @@ let dictionary = load_dictionary("/path/to/ipadic")?;
 | `embed-ipadic` | IPADIC | 日本語 |
 | `embed-ipadic-neologd` | IPADIC NEologd | 日本語 |
 | `embed-unidic` | UniDic | 日本語 |
+| `embed-sudachidict` | SudachiDict | 日本語 |
 | `embed-ko-dic` | ko-dic | 韓国語 |
 | `embed-cc-cedict` | CC-CEDICT | 中国語 |
 | `embed-jieba` | Jieba | 中国語 |
@@ -66,6 +67,7 @@ let dictionary = load_dictionary("embedded://ipadic")?;
 | `embed-cjk` | IPADIC + ko-dic + Jieba |
 | `embed-cjk2` | UniDic + ko-dic + Jieba |
 | `embed-cjk3` | IPADIC NEologd + ko-dic + Jieba |
+| `embed-cjk4` | SudachiDict + ko-dic + Jieba |
 
 ### Feature フラグの組み合わせ
 
