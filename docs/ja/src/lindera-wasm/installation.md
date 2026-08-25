@@ -68,24 +68,22 @@ wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 
 ## npm パッケージの命名規則
 
-辞書を埋め込んだパッケージを自分で公開する際の推奨命名規則は以下の通りです：
+スコープなしの `lindera-wasm-*` プレフィックスは Lindera プロジェクトの名前空間です。辞書を埋め込んだ独自ビルドを npm に公開する場合は、公式パッケージとの誤認を避けるため、必ず自分のスコープ配下の名前で公開してください：
 
 ```text
-lindera-wasm
-lindera-wasm-{dict}
+@your-scope/lindera-wasm-{dict}
 ```
 
 例：
 
-- `lindera-wasm`
-- `lindera-wasm-ipadic`
-- `lindera-wasm-unidic`
-- `lindera-wasm-cjk`
+- `@your-scope/lindera-wasm-ipadic`
+- `@your-scope/lindera-wasm-unidic`
+- `@your-scope/lindera-wasm-cjk`
 
-公開前にパッケージ名を設定するには、生成された `pkg/package.json` の `name` フィールドを編集します。
+公開前にパッケージ名を設定するには、生成された `pkg/package.json` の `name` フィールドを編集します。なお、辞書を埋め込んだパッケージは辞書の再配布にあたるため、各辞書のライセンス条件（帰属表示など）にも従ってください。
 
 > [!NOTE]
-> 本プロジェクトのリリースワークフロー（`.github/workflows/release.yml`）が実際にビルドして npm に公開しているのは、`embed-*` feature を一切使わずに `web` ターゲットでビルドした `lindera-wasm` という汎用パッケージのみです。`lindera-wasm-ipadic` のような辞書名付きのパッケージ名はどこにも公開されていません。これは、対応する `embed-*` feature（上記の[利用可能な Feature フラグ](#利用可能な-feature-フラグ上級者向け)を参照）でローカルビルドし、自分でパッケージ名をリネームした場合に得られる名前の例に過ぎません。
+> 本プロジェクトのリリースワークフロー（`.github/workflows/release.yml`）が実際にビルドして npm に公開しているのは、`embed-*` feature を一切使わずに `web` ターゲットでビルドした `lindera-wasm` という汎用パッケージのみです。`lindera-wasm-ipadic` のようなスコープなしの辞書名付きパッケージ名は、v3 以前のリリースの名残としてプロジェクトが確保しているもので、現在は更新されていません。第三者がこれらの名前で公開することはできません（しないでください）。本ドキュメント内でのこれらの名前は、対応する `embed-*` feature（上記の[利用可能な Feature フラグ](#利用可能な-feature-フラグ上級者向け)を参照）でローカルビルドした場合の説明用の例に過ぎません。
 
 ## npm からのインストール
 

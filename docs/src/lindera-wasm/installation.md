@@ -90,23 +90,27 @@ wasm-pack build --target web --features embed-ipadic,embed-ko-dic
 
 ## NPM Package Naming Convention
 
-When publishing a custom build with embedded dictionaries to npm, the
-recommended naming convention is:
+The unscoped `lindera-wasm-*` prefix is the Lindera project's namespace. If you
+publish a custom build with embedded dictionaries to npm, use a name under your
+own scope so it cannot be mistaken for an official package:
 
 ```text
-lindera-wasm-{dict}
+@your-scope/lindera-wasm-{dict}
 ```
 
 Examples:
 
-- `lindera-wasm-ipadic`
-- `lindera-wasm-unidic`
-- `lindera-wasm-cjk`
+- `@your-scope/lindera-wasm-ipadic`
+- `@your-scope/lindera-wasm-unidic`
+- `@your-scope/lindera-wasm-cjk`
 
-To set the package name before publishing, edit the `name` field in the generated `pkg/package.json`.
+To set the package name before publishing, edit the `name` field in the
+generated `pkg/package.json`. Note that a package with an embedded dictionary
+redistributes that dictionary, so follow the dictionary's license terms
+(attribution and so on) as well.
 
 > [!NOTE]
-> This project's own release workflow (`.github/workflows/release.yml`) only builds and publishes a single package to npm -- `lindera-wasm`, built with `wasm-pack --target web` and without any `embed-*` feature. Dictionary-suffixed names such as `lindera-wasm-ipadic` are not published anywhere; they only illustrate what a local build with an `embed-*` feature (see [Available Feature Flags](#available-feature-flags-advanced) above) would produce after you rename the package yourself.
+> This project's own release workflow (`.github/workflows/release.yml`) only builds and publishes a single package to npm -- `lindera-wasm`, built with `wasm-pack --target web` and without any `embed-*` feature. Unscoped dictionary-suffixed names such as `lindera-wasm-ipadic` are reserved by the project (leftovers from pre-v3 releases, no longer updated) and must not be claimed by third parties; in this documentation they only illustrate what a local build with an `embed-*` feature (see [Available Feature Flags](#available-feature-flags-advanced) above) would produce.
 
 ## Installing from npm
 
