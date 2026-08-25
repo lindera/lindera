@@ -3826,6 +3826,21 @@ for (const token of tokens) {
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
+<h2 id="メソッドチェーン-1"><a class="header" href="#メソッドチェーン-1">メソッドチェーン</a></h2>
+<p>すべてのセッターはビルダー自身（<code>this</code>）を返すため、設定をチェーンして記述できます：</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("/path/to/ipadic")
+  .build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details[0]}`);
+}
+</code></pre>
+<p>1 文ずつセッターを呼び出すスタイルもそのまま使えます。どちらのスタイルでも同じビルダーを設定します。</p>
 <h2 id="トークンプロパティへのアクセス-1"><a class="header" href="#トークンプロパティへのアクセス-1">トークンプロパティへのアクセス</a></h2>
 <p>各トークンは以下のプロパティを公開しています：</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
@@ -3892,7 +3907,7 @@ const builder = new TokenizerBuilder();
 <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml"><code>lindera-nodejs/resources/lindera.yml</code></a>
 を参照してください。</p>
 <h3 id="設定メソッド-1"><a class="header" href="#設定メソッド-1">設定メソッド</a></h3>
-<p>セッターメソッドは <code>this</code> ではなく <code>undefined</code> を返すため、メソッドチェーンはできません。ビルダーインスタンスに対して個別に呼び出してください。</p>
+<p>すべてのセッターメソッドはビルダー自身（<code>this</code>）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
@@ -6192,6 +6207,9 @@ results.forEach((result, rank) =&gt; {
 </code></pre>
 <p>デフォルト設定で新しいビルダーを作成します。</p>
 <h3 id="メソッド-2"><a class="header" href="#メソッド-2">メソッド</a></h3>
+<p>すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
+<code>builder.setMode("normal").setDictionary(...)</code> のようにチェーンでも、1 文ずつでも記述できます。
+返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。</p>
 <h4 id="setmodemode-2"><a class="header" href="#setmodemode-2"><code>setMode(mode)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
@@ -6270,7 +6288,7 @@ builder.setDictionaryInstance(dictionary);
 });
 </code></pre>
 <h4 id="build-5"><a class="header" href="#build-5"><code>build()</code></a></h4>
-<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルダーは消費されます。</p>
+<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。</p>
 <ul>
 <li><strong>戻り値</strong>: <code>Tokenizer</code></li>
 </ul>

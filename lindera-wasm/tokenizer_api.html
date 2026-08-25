@@ -185,6 +185,10 @@
 </code></pre>
 <p>Creates a new builder with default settings.</p>
 <h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
+<p>Every setter returns a builder handle that shares the same configuration, so
+the calls can be chained (<code>builder.setMode("normal").setDictionary(...)</code>) or
+made one statement at a time. The returned handle is a new object, but it
+configures the same underlying builder.</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
@@ -262,7 +266,9 @@ builder.setDictionaryInstance(dictionary);
 });
 </code></pre>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
-<p>Builds and returns a configured <code>Tokenizer</code> instance. Consumes the builder.</p>
+<p>Builds and returns a configured <code>Tokenizer</code> instance. The builder remains
+usable afterwards, so multiple tokenizers can be built from the same
+configuration.</p>
 <ul>
 <li><strong>Returns</strong>: <code>Tokenizer</code></li>
 </ul>

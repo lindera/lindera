@@ -3823,6 +3823,23 @@ for (const token of tokens) {
 限定    名詞,サ変接続,*,*,*,*,限定,ゲンテイ,ゲンテイ
 トートバッグ    名詞,一般,*,*,*,*,*,*,*
 </code></pre>
+<h2 id="method-chaining-1"><a class="header" href="#method-chaining-1">Method Chaining</a></h2>
+<p>Every setter returns the builder itself (<code>this</code>), so the configuration can be
+chained:</p>
+<pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
+
+const tokenizer = new TokenizerBuilder()
+  .setMode("normal")
+  .setDictionary("/path/to/ipadic")
+  .build();
+
+const tokens = tokenizer.tokenize("すもももももももものうち");
+for (const token of tokens) {
+  console.log(`${token.surface}\t${token.details[0]}`);
+}
+</code></pre>
+<p>Calling the setters one statement at a time works just as well — both styles
+configure the same builder.</p>
 <h2 id="accessing-token-properties-1"><a class="header" href="#accessing-token-properties-1">Accessing Token Properties</a></h2>
 <p>Each token exposes the following properties:</p>
 <pre><code class="language-javascript">const { TokenizerBuilder } = require("lindera");
@@ -3887,7 +3904,7 @@ const builder = new TokenizerBuilder();
 </code></pre>
 <p>See <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml"><code>lindera-nodejs/resources/lindera.yml</code></a> for a complete example configuration file, including dictionary, character filter, and token filter settings.</p>
 <h3 id="configuration-methods-1"><a class="header" href="#configuration-methods-1">Configuration Methods</a></h3>
-<p>Setter methods return <code>undefined</code> (not <code>this</code>), so they cannot be chained — call them individually on the builder instance.</p>
+<p>All setter methods return the builder itself (<code>this</code>), so they can be chained or called one statement at a time.</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
@@ -6304,6 +6321,10 @@ results.forEach((result, rank) =&gt; {
 </code></pre>
 <p>Creates a new builder with default settings.</p>
 <h3 id="methods-1"><a class="header" href="#methods-1">Methods</a></h3>
+<p>Every setter returns a builder handle that shares the same configuration, so
+the calls can be chained (<code>builder.setMode("normal").setDictionary(...)</code>) or
+made one statement at a time. The returned handle is a new object, but it
+configures the same underlying builder.</p>
 <h4 id="setmodemode-2"><a class="header" href="#setmodemode-2"><code>setMode(mode)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
@@ -6381,7 +6402,9 @@ builder.setDictionaryInstance(dictionary);
 });
 </code></pre>
 <h4 id="build-9"><a class="header" href="#build-9"><code>build()</code></a></h4>
-<p>Builds and returns a configured <code>Tokenizer</code> instance. Consumes the builder.</p>
+<p>Builds and returns a configured <code>Tokenizer</code> instance. The builder remains
+usable afterwards, so multiple tokenizers can be built from the same
+configuration.</p>
 <ul>
 <li><strong>Returns</strong>: <code>Tokenizer</code></li>
 </ul>

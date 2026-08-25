@@ -194,7 +194,7 @@ const builder = new TokenizerBuilder();
 <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml"><code>lindera-nodejs/resources/lindera.yml</code></a>
 を参照してください。</p>
 <h3 id="設定メソッド"><a class="header" href="#設定メソッド">設定メソッド</a></h3>
-<p>セッターメソッドは <code>this</code> ではなく <code>undefined</code> を返すため、メソッドチェーンはできません。ビルダーインスタンスに対して個別に呼び出してください。</p>
+<p>すべてのセッターメソッドはビルダー自身（<code>this</code>）を返すため、メソッドチェーンでも 1 文ずつの呼び出しでも設定できます。</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>

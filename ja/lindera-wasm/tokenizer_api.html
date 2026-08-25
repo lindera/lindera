@@ -185,6 +185,9 @@
 </code></pre>
 <p>デフォルト設定で新しいビルダーを作成します。</p>
 <h3 id="メソッド"><a class="header" href="#メソッド">メソッド</a></h3>
+<p>すべてのセッターは同じ設定を共有するビルダーハンドルを返すため、
+<code>builder.setMode("normal").setDictionary(...)</code> のようにチェーンでも、1 文ずつでも記述できます。
+返されるハンドルは新しいオブジェクトですが、設定先は同一のビルダーです。</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>トークナイズモードを設定します。</p>
 <ul>
@@ -263,7 +266,7 @@ builder.setDictionaryInstance(dictionary);
 });
 </code></pre>
 <h4 id="build"><a class="header" href="#build"><code>build()</code></a></h4>
-<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルダーは消費されます。</p>
+<p>設定済みの <code>Tokenizer</code> インスタンスをビルドして返します。ビルド後もビルダーはそのまま使えるため、同じ設定から複数のトークナイザーをビルドできます。</p>
 <ul>
 <li><strong>戻り値</strong>: <code>Tokenizer</code></li>
 </ul>

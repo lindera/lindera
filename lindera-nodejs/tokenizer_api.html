@@ -192,7 +192,7 @@ const builder = new TokenizerBuilder();
 </code></pre>
 <p>See <a href="https://github.com/lindera/lindera/blob/main/lindera-nodejs/resources/lindera.yml"><code>lindera-nodejs/resources/lindera.yml</code></a> for a complete example configuration file, including dictionary, character filter, and token filter settings.</p>
 <h3 id="configuration-methods"><a class="header" href="#configuration-methods">Configuration Methods</a></h3>
-<p>Setter methods return <code>undefined</code> (not <code>this</code>), so they cannot be chained — call them individually on the builder instance.</p>
+<p>All setter methods return the builder itself (<code>this</code>), so they can be chained or called one statement at a time.</p>
 <h4 id="setmodemode"><a class="header" href="#setmodemode"><code>setMode(mode)</code></a></h4>
 <p>Sets the tokenization mode.</p>
 <ul>
