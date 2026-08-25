@@ -31,6 +31,10 @@ use lindera_jieba::embedded::EmbeddedJiebaLoader;
 use lindera_ko_dic::DICTIONARY_NAME as KO_DIC_DICTIONARY_NAME;
 #[cfg(feature = "embed-ko-dic")]
 use lindera_ko_dic::embedded::EmbeddedKoDicLoader;
+#[cfg(feature = "embed-sudachidict")]
+use lindera_sudachidict::DICTIONARY_NAME as SUDACHIDICT_DICTIONARY_NAME;
+#[cfg(feature = "embed-sudachidict")]
+use lindera_sudachidict::embedded::EmbeddedSudachiDictLoader;
 #[cfg(feature = "train")]
 #[cfg_attr(docsrs, doc(cfg(feature = "train")))]
 pub use lindera_trainer as trainer;
@@ -59,6 +63,7 @@ pub enum DictionaryScheme {
         feature = "embed-ipadic",
         feature = "embed-ipadic-neologd",
         feature = "embed-unidic",
+        feature = "embed-sudachidict",
         feature = "embed-ko-dic",
         feature = "embed-cc-cedict",
         feature = "embed-jieba",
@@ -76,6 +81,7 @@ impl DictionaryScheme {
                 feature = "embed-ipadic",
                 feature = "embed-ipadic-neologd",
                 feature = "embed-unidic",
+                feature = "embed-sudachidict",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
                 feature = "embed-jieba",
@@ -94,6 +100,7 @@ impl FromStr for DictionaryScheme {
                 feature = "embed-ipadic",
                 feature = "embed-ipadic-neologd",
                 feature = "embed-unidic",
+                feature = "embed-sudachidict",
                 feature = "embed-ko-dic",
                 feature = "embed-cc-cedict",
                 feature = "embed-jieba",
@@ -117,6 +124,9 @@ pub enum DictionaryKind {
     #[cfg(feature = "embed-unidic")]
     #[serde(rename = "unidic")]
     UniDic,
+    #[cfg(feature = "embed-sudachidict")]
+    #[serde(rename = "sudachidict")]
+    SudachiDict,
     #[cfg(feature = "embed-ko-dic")]
     #[serde(rename = "ko-dic")]
     KoDic,
@@ -143,6 +153,8 @@ impl DictionaryKind {
                 DictionaryKind::IPADICNEologd => cfg!(feature = "embed-ipadic-neologd"),
                 #[cfg(feature = "embed-unidic")]
                 DictionaryKind::UniDic => cfg!(feature = "embed-unidic"),
+                #[cfg(feature = "embed-sudachidict")]
+                DictionaryKind::SudachiDict => cfg!(feature = "embed-sudachidict"),
                 #[cfg(feature = "embed-ko-dic")]
                 DictionaryKind::KoDic => cfg!(feature = "embed-ko-dic"),
                 #[cfg(feature = "embed-cc-cedict")]
@@ -163,6 +175,8 @@ impl DictionaryKind {
             DictionaryKind::IPADICNEologd => IPADIC_NEOLOGD_DICTIONARY_NAME,
             #[cfg(feature = "embed-unidic")]
             DictionaryKind::UniDic => UNIDIC_DICTIONARY_NAME,
+            #[cfg(feature = "embed-sudachidict")]
+            DictionaryKind::SudachiDict => SUDACHIDICT_DICTIONARY_NAME,
             #[cfg(feature = "embed-ko-dic")]
             DictionaryKind::KoDic => KO_DIC_DICTIONARY_NAME,
             #[cfg(feature = "embed-cc-cedict")]
@@ -191,6 +205,10 @@ impl FromStr for DictionaryKind {
         #[cfg(feature = "embed-unidic")]
         if input == UNIDIC_DICTIONARY_NAME {
             return Ok(DictionaryKind::UniDic);
+        }
+        #[cfg(feature = "embed-sudachidict")]
+        if input == SUDACHIDICT_DICTIONARY_NAME {
+            return Ok(DictionaryKind::SudachiDict);
         }
         #[cfg(feature = "embed-ko-dic")]
         if input == KO_DIC_DICTIONARY_NAME {
@@ -229,6 +247,8 @@ pub fn resolve_embedded_loader(
         DictionaryKind::IPADICNEologd => Ok(Box::new(EmbeddedIPADICNEologdLoader::new())),
         #[cfg(feature = "embed-unidic")]
         DictionaryKind::UniDic => Ok(Box::new(EmbeddedUniDicLoader::new())),
+        #[cfg(feature = "embed-sudachidict")]
+        DictionaryKind::SudachiDict => Ok(Box::new(EmbeddedSudachiDictLoader::new())),
         #[cfg(feature = "embed-ko-dic")]
         DictionaryKind::KoDic => Ok(Box::new(EmbeddedKoDicLoader::new())),
         #[cfg(feature = "embed-cc-cedict")]
@@ -335,6 +355,7 @@ pub fn load_dictionary_with_options(uri: &str, use_mmap: bool) -> LinderaResult<
                         feature = "embed-ipadic",
                         feature = "embed-ipadic-neologd",
                         feature = "embed-unidic",
+                        feature = "embed-sudachidict",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",
                         feature = "embed-jieba",
@@ -434,6 +455,7 @@ pub fn load_user_dictionary(uri: &str, metadata: &Metadata) -> LinderaResult<Use
                         feature = "embed-ipadic",
                         feature = "embed-ipadic-neologd",
                         feature = "embed-unidic",
+                        feature = "embed-sudachidict",
                         feature = "embed-ko-dic",
                         feature = "embed-cc-cedict",
                         feature = "embed-jieba",

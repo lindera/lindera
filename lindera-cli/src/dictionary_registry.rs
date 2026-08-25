@@ -9,10 +9,11 @@ use lindera::error::LinderaErrorKind;
 /// `DictionaryKind`, whose variants are feature-gated and absent from a
 /// default CLI build) and matches the pre-built dictionary archives published
 /// on the GitHub releases page.
-pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 6] = [
+pub(crate) const DOWNLOADABLE_DICTIONARIES: [&str; 7] = [
     "ipadic",
     "ipadic-neologd",
     "unidic",
+    "sudachidict",
     "ko-dic",
     "cc-cedict",
     "jieba",

@@ -1581,6 +1581,7 @@ dependencies = [
  "lindera-ipadic-neologd",
  "lindera-jieba",
  "lindera-ko-dic",
+ "lindera-sudachidict",
  "lindera-trainer",
  "lindera-unidic",
  "log",
@@ -1769,6 +1770,13 @@ dependencies = [
  "num_cpus",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "lindera-sudachidict"
+version = "5.3.0"
+dependencies = [
+ "lindera-dictionary",
 ]
 
 [[package]]

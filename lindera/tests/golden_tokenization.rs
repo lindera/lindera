@@ -14,15 +14,16 @@
 //! cargo insta review  # or inspect the diff manually
 //! ```
 
-//! Snapshots currently exist for IPADIC, UniDic, ko-dic and Jieba. Tests for
-//! the remaining embedded dictionaries (IPADIC NEologd, CC-CEDICT) can be
-//! added with the same `golden_tests!` macro once snapshots have been
-//! generated in an environment where those dictionaries can be downloaded
-//! and embedded.
+//! Snapshots currently exist for IPADIC, UniDic, SudachiDict, ko-dic and
+//! Jieba. Tests for the remaining embedded dictionaries (IPADIC NEologd,
+//! CC-CEDICT) can be added with the same `golden_tests!` macro once snapshots
+//! have been generated in an environment where those dictionaries can be
+//! downloaded and embedded.
 
 #![cfg(any(
     feature = "embed-ipadic",
     feature = "embed-unidic",
+    feature = "embed-sudachidict",
     feature = "embed-ko-dic",
     feature = "embed-jieba",
 ))]
@@ -123,6 +124,12 @@ macro_rules! golden_tests {
 
 golden_tests!("embed-ipadic", ipadic, "embedded://ipadic", JAPANESE_TEXTS);
 golden_tests!("embed-unidic", unidic, "embedded://unidic", JAPANESE_TEXTS);
+golden_tests!(
+    "embed-sudachidict",
+    sudachidict,
+    "embedded://sudachidict",
+    JAPANESE_TEXTS
+);
 golden_tests!("embed-ko-dic", ko_dic, "embedded://ko-dic", KOREAN_TEXTS);
 golden_tests!("embed-jieba", jieba, "embedded://jieba", CHINESE_TEXTS);
 

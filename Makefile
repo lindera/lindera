@@ -29,7 +29,8 @@ CARGO_TEST_WITH_RBCONFIG = ruby -rrbconfig -e 'RbConfig::CONFIG.each { |k, v| EN
 
 # Crates whose verbs are plain cargo invocations.
 CARGO_CRATES := lindera-crf lindera-dictionary lindera-trainer lindera-ipadic \
-	lindera-ipadic-neologd lindera-unidic lindera-ko-dic lindera-cc-cedict lindera-jieba \
+	lindera-ipadic-neologd lindera-unidic lindera-sudachidict lindera-ko-dic \
+	lindera-cc-cedict lindera-jieba \
 	lindera lindera-analysis lindera-cli lindera-binding-core
 
 # Language bindings with bespoke tooling (explicit targets below).
@@ -45,6 +46,7 @@ FEATURES_lindera-dictionary     := --features build_rs
 FEATURES_lindera-ipadic         := --features embed-ipadic
 FEATURES_lindera-ipadic-neologd := --features embed-ipadic-neologd
 FEATURES_lindera-unidic         := --features embed-unidic
+FEATURES_lindera-sudachidict    := --features embed-sudachidict
 FEATURES_lindera-ko-dic         := --features embed-ko-dic
 FEATURES_lindera-cc-cedict      := --features embed-cc-cedict
 FEATURES_lindera-jieba          := --features embed-jieba
@@ -239,7 +241,7 @@ build: ## Build all crates (release)
 
 bench: ## Run all benchmarks
 	@echo "Running all Lindera benchmarks..."
-	@$(foreach dict,ipadic ipadic_neologd unidic ko_dic cc_cedict, \
+	@$(foreach dict,ipadic ipadic_neologd unidic sudachidict ko_dic cc_cedict, \
 		echo "Running $(dict) benchmark..."; \
 		(cd lindera && cargo bench --bench=bench_$(dict) --features=embed-$(subst _,-,$(dict))) || true; \
 		echo "";)
@@ -298,6 +300,7 @@ publish: ## Publish packages to crates.io
 	$(call PUBLISH_CRATE,lindera-jieba,$(call crate_version,lindera-jieba))
 	$(call PUBLISH_CRATE,lindera-ko-dic,$(call crate_version,lindera-ko-dic))
 	$(call PUBLISH_CRATE,lindera-unidic,$(call crate_version,lindera-unidic))
+	$(call PUBLISH_CRATE,lindera-sudachidict,$(call crate_version,lindera-sudachidict))
 	$(call PUBLISH_CRATE,lindera,$(LINDERA_VERSION))
 	$(call PUBLISH_CRATE,lindera-analysis,$(call crate_version,lindera-analysis))
 	$(call PUBLISH_CRATE,lindera-cli,$(call crate_version,lindera-cli))
