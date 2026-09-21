@@ -355,6 +355,57 @@ impl Segmenter {
         self.space_penalty.as_ref()
     }
 
+    /// Builder method to enable the left-space penalty with the rules the
+    /// dictionary ships in its `metadata.json` (`space_penalty`); ko-dic
+    /// carries mecab-ko-dic's `left-space-penalty-factor` there.
+    ///
+    /// # 戻り値
+    ///
+    /// `self`, for chaining, or an error when the dictionary ships no rules
+    /// (or its schema has no part-of-speech field).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera::mode::Mode;
+    /// use lindera::dictionary::load_dictionary;
+    /// use lindera::segmenter::Segmenter;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # #[cfg(feature = "embed-ko-dic")]
+    /// # {
+    /// let dictionary = load_dictionary("embedded://ko-dic")?;
+    /// let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+    /// # }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn space_penalty_from_dictionary(mut self) -> LinderaResult<Self> {
+        self.set_space_penalty_from_dictionary()?;
+        Ok(self)
+    }
+
+    /// In-place form of [`Segmenter::space_penalty_from_dictionary`].
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary ships no rules; the
+    /// previous setting is kept on error.
+    pub fn set_space_penalty_from_dictionary(&mut self) -> LinderaResult<()> {
+        let rules = self
+            .dictionary
+            .metadata
+            .space_penalty
+            .clone()
+            .ok_or_else(|| {
+                LinderaErrorKind::Dictionary.with_error(anyhow::anyhow!(
+                    "dictionary '{}' ships no space_penalty rules in its metadata; pass explicit rules instead",
+                    self.dictionary.metadata.name
+                ))
+            })?;
+        self.set_space_penalty(Some(rules))
+    }
+
     /// Bundles the per-sentence lattice options from this segmenter's
     /// settings.
     ///
@@ -479,15 +530,17 @@ impl Segmenter {
             .unwrap_or(true);
 
         // Load the space_penalty option from the config. Absent, `null` or
-        // `false` means off (the default); an object holds the rules.
+        // `false` means off (the default); `true` uses the rules the
+        // dictionary ships in its metadata; an object holds explicit rules.
+        enum SpacePenaltySetting {
+            Off,
+            FromDictionary,
+            Rules(SpacePenaltyConfig),
+        }
         let space_penalty = match config.get("space_penalty") {
-            None | Some(Value::Null) | Some(Value::Bool(false)) => None,
-            Some(Value::Bool(true)) => {
-                return Err(LinderaErrorKind::Parse.with_error(anyhow::anyhow!(
-                    "space_penalty: true is not supported; pass an object with \"rules\""
-                )));
-            }
-            Some(value) => Some(
+            None | Some(Value::Null) | Some(Value::Bool(false)) => SpacePenaltySetting::Off,
+            Some(Value::Bool(true)) => SpacePenaltySetting::FromDictionary,
+            Some(value) => SpacePenaltySetting::Rules(
                 serde_json::from_value::<SpacePenaltyConfig>(value.clone()).map_err(|e| {
                     LinderaErrorKind::Parse
                         .with_error(anyhow::anyhow!("space_penalty field is invalid: {e}"))
@@ -495,11 +548,15 @@ impl Segmenter {
             ),
         };
 
-        Self::new(mode, dictionary, user_dictionary)
+        let segmenter = Self::new(mode, dictionary, user_dictionary)
             .keep_whitespace(keep_whitespace)
             .max_grouping_len(max_grouping_len)
-            .unknown_word_ladder(unknown_word_ladder)
-            .space_penalty(space_penalty)
+            .unknown_word_ladder(unknown_word_ladder);
+        match space_penalty {
+            SpacePenaltySetting::Off => Ok(segmenter),
+            SpacePenaltySetting::FromDictionary => segmenter.space_penalty_from_dictionary(),
+            SpacePenaltySetting::Rules(rules) => segmenter.space_penalty(Some(rules)),
+        }
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -2648,13 +2705,41 @@ mod tests {
                     .is_none()
             );
 
+            // `true` takes the rules ko-dic ships in its metadata.json, which
+            // are mecab-ko-dic's `left-space-penalty-factor`.
             let mut config = base.clone();
             config["space_penalty"] = serde_json::json!(true);
-            assert!(Segmenter::from_config(&config).is_err());
+            let segmenter = Segmenter::from_config(&config).unwrap();
+            assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
 
             let mut config = base.clone();
             config["space_penalty"] = serde_json::json!({"rules": [{"pos": "JKB", "cost": 1}]});
             assert!(Segmenter::from_config(&config).is_err());
+        }
+
+        /// The dictionary-shipped rules are also reachable from the builder,
+        /// and a dictionary without rules reports an error rather than
+        /// silently running unpenalized.
+        #[test]
+        fn test_space_penalty_from_dictionary() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            assert_eq!(
+                dictionary.metadata.space_penalty.as_ref(),
+                Some(&ko_dic_rules())
+            );
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None)
+                .space_penalty_from_dictionary()
+                .unwrap();
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
+
+            let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut metadata = (*dictionary.metadata).clone();
+            metadata.space_penalty = None;
+            dictionary.metadata = std::sync::Arc::new(metadata);
+            let mut segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            assert!(segmenter.set_space_penalty_from_dictionary().is_err());
+            assert!(segmenter.space_penalty_config().is_none());
         }
     }
 }

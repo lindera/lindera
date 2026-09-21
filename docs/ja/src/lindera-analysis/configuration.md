@@ -12,7 +12,7 @@ segmenter:
   # use_mmap: false # ファイルシステム辞書（embedded:// ではない辞書）にのみ意味がある
   # max_grouping_len: 24 # 未知語のグルーピング長の上限。省略または 0 で無制限
   # unknown_word_ladder: true # 短い未知語候補も生成する（デフォルト: true）
-  # space_penalty: { rules: [ { pos: [JKS, JX], cost: 6000 } ] } # 左側空白ペナルティ（韓国語）。デフォルトはオフ
+  # space_penalty: true # 左側空白ペナルティ（韓国語）を辞書同梱のルールで有効化。デフォルトはオフ。オブジェクトで明示的なルールも指定可能
 
 character_filters:
   - kind: "unicode_normalize"
@@ -85,7 +85,7 @@ token_filters:
 | `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
 | `max_grouping_len` | integer | *(無制限)* | 未知語のグルーピングが**先頭の 1 文字を超えて**span できる最大文字数。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか `0` を指定すると無制限になる |
 | `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、`char.def` の各カテゴリの `LENGTH` フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには `false` を指定する |
-| `space_penalty` | object | *(オフ)* | 左側空白ペナルティのルール `{"rules": [{"pos": [...], "cost": n}, ...]}`（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。`false` または `null` でオフ。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
+| `space_penalty` | bool または object | *(オフ)* | 左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。`true` で辞書が `metadata.json` に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱）、オブジェクト `{"rules": [{"pos": [...], "cost": n}, ...]}` で明示的なルールを指定、`false` または `null` でオフ。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
 
 ```shell
 % export LINDERA_CONFIG_PATH=./resources/config/lindera.yml

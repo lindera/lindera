@@ -77,9 +77,15 @@ pub struct TokenizeArgs {
     )]
     disable_unknown_word_ladder: bool,
     #[clap(
+        long = "space-penalty",
+        conflicts_with = "space_penalty_rules",
+        help = "Enable the left-space penalty with the rules shipped in the dictionary's metadata.json (ko-dic: mecab-ko-dic's left-space-penalty-factor). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Errors when the dictionary ships no rules. Default: off"
+    )]
+    space_penalty: bool,
+    #[clap(
         long = "space-penalty-rules",
         value_name = "JSON",
-        help = "Enable the left-space penalty (mecab-ko's left-space-penalty-factor) with explicit rules, e.g. '{\"rules\":[{\"pos\":[\"JKS\",\"JX\"],\"cost\":6000}]}'. A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Default: off"
+        help = "Enable the left-space penalty with explicit rules instead of the dictionary's, e.g. '{\"rules\":[{\"pos\":[\"JKS\",\"JX\"],\"cost\":6000}]}'. Default: off"
     )]
     space_penalty_rules: Option<String>,
     #[clap(
@@ -272,7 +278,11 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         builder.set_segmenter_unknown_word_ladder(false);
     }
 
-    // Left-space penalty (default: off)
+    // Left-space penalty (default: off): the dictionary's own rules, or
+    // explicit ones (clap rejects both flags together).
+    if args.space_penalty {
+        builder.set_segmenter_space_penalty_from_dictionary(true);
+    }
     if let Some(rules) = args.space_penalty_rules.as_deref() {
         let config: SpacePenaltyConfig = serde_json::from_str(rules).map_err(|err| {
             LinderaErrorKind::Args

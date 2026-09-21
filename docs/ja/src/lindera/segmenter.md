@@ -184,7 +184,13 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 
 「空白」とは辞書の `SPACE` カテゴリ（`char.def`）に属する文字のことで、`keep_whitespace` が除外する文字集合と同じです。`SPACE` カテゴリを持たない辞書では Unicode の `White_Space` にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。`space_penalty` は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに `part_of_speech_tag` も `part_of_speech` もない場合はエラーを返します。
 
-`SegmenterConfig` では同じルールを `space_penalty` キーに指定します（`false` または `null` でオフ）:
+辞書は `metadata.json` の `space_penalty` にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しています。`space_penalty_from_dictionary()` を使えばルールを書き出さずに有効化できます（ルールを同梱しない辞書ではエラーを返します）:
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+```
+
+`SegmenterConfig` の `space_penalty` キーには、辞書のルールを使う `true`、明示的なルールのオブジェクト、オフ（デフォルト）の `false` または `null` を指定できます:
 
 ```json
 {

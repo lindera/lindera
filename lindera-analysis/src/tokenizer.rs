@@ -192,6 +192,22 @@ impl TokenizerBuilder {
         self
     }
 
+    /// Enables the left-space penalty with the rules the dictionary ships in
+    /// its `metadata.json` (see `Segmenter::space_penalty_from_dictionary`),
+    /// i.e. `space_penalty: true` in the config; `false` turns it off.
+    ///
+    /// # Arguments
+    ///
+    /// * `enabled` - Whether to use the dictionary's rules.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_space_penalty_from_dictionary(&mut self, enabled: bool) -> &mut Self {
+        self.config["segmenter"]["space_penalty"] = json!(enabled);
+        self
+    }
+
     /// Set whether to route filesystem-loaded dictionaries through
     /// memory-mapped reads. Ignored for `embedded://` dictionaries.
     ///

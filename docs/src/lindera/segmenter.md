@@ -177,7 +177,13 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 
 "Whitespace" means a character of the dictionary's `SPACE` category (`char.def`), the same set `keep_whitespace` filters on; a dictionary without that category falls back to Unicode `White_Space`. The penalty applies in both modes and in N-best search, to system, user and unknown-word entries alike. `space_penalty` builds a per-word-id lookup once (a few tens of milliseconds for ko-dic), and returns an error when the dictionary schema has neither a `part_of_speech_tag` nor a `part_of_speech` field.
 
-The same rules go under the `space_penalty` key of a `SegmenterConfig` (`false` or `null` leaves the penalty off):
+A dictionary can ship its default rules in `metadata.json` under `space_penalty`; ko-dic does, with exactly the rules above. `space_penalty_from_dictionary()` enables them without spelling them out (it returns an error for a dictionary that ships none):
+
+```rust
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+```
+
+In a `SegmenterConfig`, the `space_penalty` key takes `true` for the dictionary's rules, an object for explicit rules, and `false` or `null` for off (the default):
 
 ```json
 {

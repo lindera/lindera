@@ -37,7 +37,7 @@ mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost o
 left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 ```
 
-Lindera does not store `pos-id.def` ids, but every listed id corresponds to the entry's first part-of-speech tag (for `Inflect` rows, the `First part-of-speech` column), so the same rules are written by tag and enabled with `Segmenter::space_penalty`, the `space_penalty` key of the segmenter config, or `lindera tokenize --space-penalty-rules`. The penalty is off by default.
+Lindera does not store `pos-id.def` ids, but every listed id corresponds to the entry's first part-of-speech tag (for `Inflect` rows, the `First part-of-speech` column), so the same rules are written by tag. ko-dic ships them in its `metadata.json` (`space_penalty`), so they can be enabled without spelling them out: `Segmenter::space_penalty_from_dictionary()`, `"space_penalty": true` in the segmenter config, or `lindera tokenize --space-penalty`. Explicit rules go through `Segmenter::space_penalty`, a `space_penalty` object, or `--space-penalty-rules`. The penalty is off by default.
 
 | pos-id.def ids | First part-of-speech tags | Cost |
 | --- | --- | --- |
@@ -56,8 +56,7 @@ Lindera does not store `pos-id.def` ids, but every listed id corresponds to the 
 ```
 
 ```shell
-echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic \
-  --space-penalty-rules '{"rules":[{"pos":["EC","EF","EP","ETM","ETN","VCP","XSA","XSN","XSV"],"cost":3000},{"pos":["JC","JKB","JKC","JKG","JKO","JKQ","JKS","JKV","JX"],"cost":6000}]}'
+echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic --space-penalty
 ```
 
 With the penalty, `시` in `서울 시 에서` is read as the noun `NNG` (as mecab-ko does) instead of the ending `EP`. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.
