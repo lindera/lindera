@@ -63,6 +63,7 @@ Perform morphological analysis (tokenization) on Japanese, Chinese, or Korean te
 - `--keep-whitespace`: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)
 - `--max-grouping-len`: Maximum unknown-word grouping length in characters beyond the first (MeCab's `max-grouping-size`; MeCab defaults to 24). Runs longer than the cap fall back to single-character unknown words. Default: unbounded
 - `--disable-unknown-word-ladder`: Disable the MeCab/Vibrato-inspired unknown-word length ladder (`char.def`'s `LENGTH` field). Enabled by default; disable for output identical to pre-v6 Lindera
+- `--space-penalty-rules`: Enable the left-space penalty (mecab-ko's `left-space-penalty-factor`) with explicit rules as JSON, e.g. `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`. A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Default: off. See the [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) documentation for the mecab-ko-dic rules
 - `--mmap`: Use memory-mapped file loading for the dictionary directory's word list. Ignored for `embedded://` dictionaries and when the `mmap` feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup.
 - `--nbest` / `-N`: Number of N-best results to return (default: 1). When set to 2 or more, N-best output is enabled.
 - `--nbest-unique`: Deduplicate N-best results by removing paths that produce the same segmentation.

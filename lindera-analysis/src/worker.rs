@@ -1,5 +1,6 @@
 use lindera::LinderaResult;
 use lindera::mode::Mode;
+use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 use lindera::worker::SegmentWorker;
 
@@ -237,6 +238,24 @@ impl AnalysisWorker {
     pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
         self.segment_worker
             .set_unknown_word_ladder(unknown_word_ladder);
+    }
+
+    /// Sets the left-space penalty rules for subsequent calls (see
+    /// `Segmenter::space_penalty`; `None`, the default, disables it).
+    ///
+    /// # 引数
+    ///
+    /// * `space_penalty` - The rules, or `None` to disable the penalty.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary schema has no
+    /// part-of-speech field; the previous setting is kept on error.
+    pub fn set_space_penalty(
+        &mut self,
+        space_penalty: Option<SpacePenaltyConfig>,
+    ) -> LinderaResult<()> {
+        self.segment_worker.set_space_penalty(space_penalty)
     }
 
     /// Immediately shrinks the worker's internal buffers to what an input

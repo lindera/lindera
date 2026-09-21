@@ -166,6 +166,40 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 ```
 
+## 左側空白ペナルティ（韓国語）
+
+MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `서울 시 에서` の `시` は名詞 `NNG` ではなく語尾 `EP` と解析されます。Lindera でも同じペナルティを適用できます。デフォルトではオフです。
+
+`SpacePenaltyConfig` は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の `+` より前の部分（ko-dic の `Inflect` 行では `first_part_of_speech` 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の `dicrc` のルールは次のように書けます:
+
+```rust
+use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+let rules = SpacePenaltyConfig::new(vec![
+    SpacePenaltyRule::new(["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], 3000),
+    SpacePenaltyRule::new(["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], 6000),
+]);
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
+```
+
+「空白」とは辞書の `SPACE` カテゴリ（`char.def`）に属する文字のことで、`keep_whitespace` が除外する文字集合と同じです。`SPACE` カテゴリを持たない辞書では Unicode の `White_Space` にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。`space_penalty` は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに `part_of_speech_tag` も `part_of_speech` もない場合はエラーを返します。
+
+`SegmenterConfig` では同じルールを `space_penalty` キーに指定します（`false` または `null` でオフ）:
+
+```json
+{
+  "dictionary": "embedded://ko-dic",
+  "space_penalty": {
+    "rules": [
+      { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+      { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+    ]
+  }
+}
+```
+
+なお、Lindera は空白をラティスのノード（`SPACE` の未知語）として保持し、前後の語をそのノード経由で接続しますが、MeCab は空白を読み飛ばして前後の語を直接接続します。そのため、このペナルティでペナルティ対象の読みは修正されますが、空白を含む文が常に mecab-ko と同じ分割になるわけではありません。
+
 ## N-Best セグメンテーション
 
 `segment_nbest` は、コストの合計で並べた上位 `n` 件の分割結果を、それぞれのコストと共に返します。`unique` を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。`cost_threshold` を指定すると、`best_cost + threshold` を超えるコストのパスを除外できます：

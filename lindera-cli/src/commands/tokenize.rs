@@ -6,6 +6,7 @@ use std::str::FromStr;
 use lindera::LinderaResult;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
+use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 use lindera_analysis::character_filter::CharacterFilterLoader;
 use lindera_analysis::token_filter::TokenFilterLoader;
@@ -75,6 +76,12 @@ pub struct TokenizeArgs {
         help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), matching pre-v6 output exactly. Enabled by default"
     )]
     disable_unknown_word_ladder: bool,
+    #[clap(
+        long = "space-penalty-rules",
+        value_name = "JSON",
+        help = "Enable the left-space penalty (mecab-ko's left-space-penalty-factor) with explicit rules, e.g. '{\"rules\":[{\"pos\":[\"JKS\",\"JX\"],\"cost\":6000}]}'. A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Default: off"
+    )]
+    space_penalty_rules: Option<String>,
     #[clap(
         long = "mmap",
         help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
@@ -263,6 +270,15 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Unknown-word length ladder (default: enabled)
     if args.disable_unknown_word_ladder {
         builder.set_segmenter_unknown_word_ladder(false);
+    }
+
+    // Left-space penalty (default: off)
+    if let Some(rules) = args.space_penalty_rules.as_deref() {
+        let config: SpacePenaltyConfig = serde_json::from_str(rules).map_err(|err| {
+            LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("invalid --space-penalty-rules JSON: {err}"))
+        })?;
+        builder.set_segmenter_space_penalty(Some(&config));
     }
 
     // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)
