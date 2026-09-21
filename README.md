@@ -13,10 +13,10 @@ Lindera aims to build a library which is easy to install and provides concise AP
 
 ```toml
 [dependencies]
-lindera = "5"
+lindera = "6"
 ```
 
-> **Note:** Upgrading from v4? See the [migration guide](https://lindera.github.io/lindera/migration_v4_to_v5.html)
+> **Note:** Upgrading from v5? See the [migration guide](https://lindera.github.io/lindera/migration_v5_to_v6.html)
 > for details.
 
 Pre-built dictionaries are available from [GitHub Releases](https://github.com/lindera/lindera/releases).
