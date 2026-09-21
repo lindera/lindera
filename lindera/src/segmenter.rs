@@ -87,11 +87,25 @@ pub struct Segmenter {
 
     /// The dictionary used for segmenting text. This dictionary contains the necessary
     /// data structures and algorithms to perform morphological analysis and tokenization.
+    ///
+    /// Assigning to this field after construction is not supported: [`Segmenter::new`]
+    /// derives per-dictionary state from it (the `SPACE` category lookup behind
+    /// `keep_whitespace`, and the [`Segmenter::space_penalty`] table when one is set),
+    /// and that state is *not* recomputed here. A replacement dictionary therefore
+    /// leaves those caches addressing the previous dictionary's ids, which yields
+    /// wrong results silently rather than failing. Build a new `Segmenter` instead.
     pub dictionary: Dictionary,
 
     /// An optional user-defined dictionary that can be used to customize the segmentation process.
     /// If provided, this dictionary will be used in addition to the default dictionary to improve
     /// the accuracy of segmentation for specific words or phrases.
+    ///
+    /// Assigning to this field after construction is not supported, for the same reason
+    /// as [`Segmenter::dictionary`] plus one of its own: [`Segmenter::new`] is where a
+    /// user dictionary's context IDs are remapped into the system dictionary's ID space
+    /// (see [`UserDictionary::remap_context_ids`]), so a dictionary put here directly
+    /// keeps its original IDs and addresses the wrong connection-matrix cells. Build a
+    /// new `Segmenter` instead.
     pub user_dictionary: Option<UserDictionary>,
 
     /// Keep whitespace tokens in output.
@@ -2676,8 +2690,9 @@ mod tests {
             assert_eq!(table.cost(WordId::default()), 0);
         }
 
-        /// `from_config` accepts an object, `false`/`null`/absent for off,
-        /// and rejects `true` and malformed objects.
+        /// `from_config` accepts an object of explicit rules, `true` for the
+        /// rules the dictionary ships in its metadata, `false`/`null`/absent
+        /// for off, and rejects malformed objects.
         #[test]
         fn test_from_config_space_penalty() {
             let base = serde_json::json!({
@@ -2716,6 +2731,51 @@ mod tests {
             let mut config = base.clone();
             config["space_penalty"] = serde_json::json!({"rules": [{"pos": "JKB", "cost": 1}]});
             assert!(Segmenter::from_config(&config).is_err());
+        }
+
+        /// `SpacePenaltyTable::is_space` classifies by the dictionary's
+        /// `SPACE` category, not by Unicode `White_Space`. The two differ on
+        /// ko-dic: U+3000 IDEOGRAPHIC SPACE is `SYMBOL` in its `char.def`, so
+        /// it must not trigger the penalty even though `char::is_whitespace`
+        /// accepts it. The ASCII fast path must agree with the category
+        /// lookup it replaces.
+        #[test]
+        fn test_space_penalty_whitespace_is_the_space_category() {
+            let on = segmenter(Mode::Normal, true);
+            let table = on.space_penalty_table.as_deref().unwrap();
+            let char_definitions = &on.dictionary.character_definition;
+
+            // ko-dic char.def SPACE: 0x20, 0x09, 0x0A, 0x0B, 0x0D.
+            for c in [' ', '\t', '\n', '\u{0B}', '\r'] {
+                assert!(table.is_space(c, char_definitions), "{c:?}");
+            }
+            for c in ['가', 'a', '0', '.', '\u{3000}'] {
+                assert!(!table.is_space(c, char_definitions), "{c:?}");
+            }
+            // U+3000 is Unicode whitespace but not a ko-dic SPACE character.
+            assert!('\u{3000}'.is_whitespace());
+
+            // The ASCII fast path must return what the category lookup would.
+            let space_id = char_definitions.category_id_by_name("SPACE").unwrap();
+            for codepoint in 0..256u32 {
+                let c = char::from_u32(codepoint).unwrap();
+                assert_eq!(
+                    table.is_space(c, char_definitions),
+                    char_definitions.lookup_categories(c).contains(&space_id),
+                    "U+{codepoint:04X}"
+                );
+            }
+
+            // And the classification is what actually gates the penalty: an
+            // input whose only "whitespace" is U+3000 is analyzed identically
+            // with the penalty on and off. (U+3000 surfaces as its own `SY`
+            // token rather than being dropped, which is the other half of not
+            // being a `SPACE` character.)
+            let off = segmenter(Mode::Normal, false);
+            assert_eq!(
+                render(&on, "서울\u{3000}시"),
+                render(&off, "서울\u{3000}시")
+            );
         }
 
         /// The dictionary-shipped rules are also reachable from the builder,

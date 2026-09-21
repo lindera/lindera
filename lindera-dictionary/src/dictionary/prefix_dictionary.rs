@@ -478,6 +478,20 @@ impl PrefixDictionary {
         self.common_prefix_search(chars).collect()
     }
 
+    /// Returns the number of word ids this dictionary holds details for.
+    ///
+    /// The valid ids are `0..word_count()`; anything else has no slot in the
+    /// index and yields [`crate::dictionary::DetailFields::empty`] from
+    /// [`crate::dictionary::Dictionary::word_details_iter`].
+    ///
+    /// # Returns
+    ///
+    /// The entry count.
+    #[inline]
+    pub fn word_count(&self) -> usize {
+        crate::util::words_idx_count(&self.words_idx_data)
+    }
+
     /// Find `WordEntry`s with surface
     ///
     /// # Arguments
@@ -890,6 +904,20 @@ impl UserPrefixDictionary {
     #[inline]
     pub fn decode_val(&self, val: u32) -> (u32, u32) {
         (val >> 8u32, val & ((1u32 << 8) - 1u32))
+    }
+
+    /// Returns the number of word ids this user dictionary holds details for.
+    ///
+    /// The valid ids are `0..word_count()`; anything else has no slot in the
+    /// index and yields the `UNK` sentinel from
+    /// [`crate::dictionary::UserDictionary::word_details_iter`].
+    ///
+    /// # Returns
+    ///
+    /// The entry count.
+    #[inline]
+    pub fn word_count(&self) -> usize {
+        crate::util::words_idx_count(&self.words_idx_data)
     }
 
     /// Load a `UserPrefixDictionary` from raw binary data.

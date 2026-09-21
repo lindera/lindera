@@ -484,9 +484,11 @@ pub struct LatticeOptions<'a> {
     pub unknown_word_ladder: bool,
     /// Left-space penalty table; `None` (the default) adds no penalty. When
     /// set, a candidate whose start position is preceded by a whitespace
-    /// character (`char::is_whitespace`) within the sentence has
-    /// [`SpacePenaltyTable::cost`] added to its path cost, in every mode and
-    /// in both the 1-best and the N-best lattice.
+    /// character within the sentence has [`SpacePenaltyTable::cost`] added to
+    /// its path cost, in every mode and in both the 1-best and the N-best
+    /// lattice. "Whitespace" is what [`SpacePenaltyTable::is_space`] accepts:
+    /// a character carrying the dictionary's `SPACE` category, or
+    /// `char::is_whitespace` for a dictionary that defines no such category.
     pub space_penalty: Option<&'a SpacePenaltyTable>,
 }
 
@@ -575,6 +577,13 @@ struct CharData {
     /// only in Decompose mode (its sole consumer is the penalty).
     kanji_run_char_len: u32,
 }
+
+/// `CharData` is allocated one per character of every sentence, so its size
+/// is a throughput concern rather than a detail: the `is_space` bit added for
+/// the space penalty fits in the padding `is_kanji` already left behind.
+/// Asserted rather than commented so a future field cannot silently push the
+/// per-character buffer to 20 bytes.
+const _: () = assert!(size_of::<CharData>() == 16);
 
 #[inline]
 pub fn is_kanji(c: char) -> bool {
@@ -894,11 +903,9 @@ impl Lattice {
     ///   computed in Decompose mode, their sole consumer (`Penalty::penalty`
     ///   via `kanji_only`) — in Normal mode they stay zero and every edge
     ///   gets `kanji_only = false`, which the Normal relaxation arms never
-    ///   read (#942). Likewise `CharData::is_space` is only computed when
-    ///   the space penalty is enabled: a character is whitespace when it
-    ///   carries the dictionary's `SPACE` category (what MeCab skips and
-    ///   `Segmenter::keep_whitespace` filters on), or, for a dictionary
-    ///   without that category, when `char::is_whitespace` holds.
+    ///   read (#942). Likewise `CharData::is_space` stays `false` unless the
+    ///   space penalty is enabled, in which case each character is classified
+    ///   by [`SpacePenaltyTable::is_space`].
     fn prepare_char_buffers(
         &mut self,
         dict: &PrefixDictionary,
@@ -909,12 +916,10 @@ impl Lattice {
         let len = text.len();
         let search_mode = options.mode;
         let needs_kanji_runs = search_mode.is_search();
-        let needs_spaces = options.space_penalty.is_some();
-        let space_category = if needs_spaces {
-            char_definitions.category_id_by_name("SPACE")
-        } else {
-            None
-        };
+        // Hoisted so the per-character classification is one indexed load
+        // through the table's ASCII fast path, not a category lookup (the
+        // table also resolves the `SPACE` category id once, at build time).
+        let space_table = options.space_penalty;
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
@@ -947,11 +952,7 @@ impl Lattice {
                 group_runs_total += categories_len as u32;
             }
 
-            let is_space = needs_spaces
-                && match space_category {
-                    Some(space_id) => char_definitions.lookup_categories(c).contains(&space_id),
-                    None => c.is_whitespace(),
-                };
+            let is_space = space_table.is_some_and(|table| table.is_space(c, char_definitions));
 
             self.char_info_buffer.push(CharData {
                 byte_offset: byte_offset as u32,

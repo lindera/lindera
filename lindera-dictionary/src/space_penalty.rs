@@ -36,6 +36,7 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::LinderaResult;
+use crate::dictionary::character_definition::{CategoryId, CharacterDefinition};
 use crate::dictionary::schema::Schema;
 use crate::dictionary::{Dictionary, UserDictionary};
 use crate::error::LinderaErrorKind;
@@ -190,6 +191,10 @@ pub fn pos_detail_index(schema: &Schema) -> LinderaResult<usize> {
 /// Each lexicon stores one byte per word id: the 1-based index of the
 /// matching rule, or `0` for "no penalty". The rule costs live in a separate
 /// small vector, so a lookup is two loads.
+///
+/// The table also carries the whitespace classifier the penalty is gated on
+/// (see [`SpacePenaltyTable::is_space`]), since that is per-dictionary state
+/// with the same lifetime as the rule indexes.
 #[derive(Clone, Debug)]
 pub struct SpacePenaltyTable {
     /// Rule index per system word id.
@@ -200,6 +205,16 @@ pub struct SpacePenaltyTable {
     unknown: Vec<u8>,
     /// `costs[0] == 0`; `costs[i]` is the cost of rule `i - 1`.
     costs: Vec<i32>,
+    /// Precomputed `SPACE`-category membership for the ASCII/Latin-1 range,
+    /// mirroring the table `Segmenter` keeps for `keep_whitespace`. Every
+    /// character `char.def` files classify as `SPACE` in practice lives here
+    /// (0x20, 0x09, 0x0A, 0x0B, 0x0D), so this is the path that actually
+    /// runs, one indexed load per character instead of a category lookup.
+    space_ascii: [bool; 256],
+    /// The dictionary's `SPACE` category, for codepoints outside
+    /// `space_ascii`; `None` when the dictionary defines no such category,
+    /// which selects the `char::is_whitespace` fallback.
+    space_category: Option<CategoryId>,
 }
 
 impl SpacePenaltyTable {
@@ -252,14 +267,12 @@ impl SpacePenaltyTable {
                 .unwrap_or(0)
         };
 
-        let n_system = dictionary.prefix_dictionary.words_idx_data.len() / 4;
-        let system = (0..n_system)
+        let system = (0..dictionary.prefix_dictionary.word_count())
             .map(|id| rule_for(dictionary.word_details_iter(id).nth(pos_index)))
             .collect();
 
         let user = user_dictionary.map_or_else(Vec::new, |ud| {
-            let n_user = ud.dict.words_idx_data.len() / 4;
-            (0..n_user)
+            (0..ud.dict.word_count())
                 .map(|id| rule_for(ud.word_details_iter(id).nth(pos_index)))
                 .collect()
         });
@@ -268,12 +281,61 @@ impl SpacePenaltyTable {
             .map(|id| rule_for(dictionary.unknown_word_details_iter(id).nth(pos_index)))
             .collect();
 
+        // Whitespace classifier, resolved once here rather than per character
+        // per sentence. Built from the dictionary's own `char.def`, like the
+        // equivalent table in `Segmenter::new`.
+        let char_definitions = &dictionary.character_definition;
+        let space_category = char_definitions.category_id_by_name("SPACE");
+        let mut space_ascii = [false; 256];
+        for (codepoint, is_space) in space_ascii.iter_mut().enumerate() {
+            if let Some(c) = char::from_u32(codepoint as u32) {
+                *is_space = match space_category {
+                    Some(space_id) => char_definitions.lookup_categories(c).contains(&space_id),
+                    None => c.is_whitespace(),
+                };
+            }
+        }
+
         Ok(Self {
             system,
             user,
             unknown,
             costs,
+            space_ascii,
+            space_category,
         })
+    }
+
+    /// Returns whether `c` counts as whitespace for the penalty: a character
+    /// carrying the dictionary's `SPACE` category (`char.def`), which is the
+    /// set MeCab skips and `keep_whitespace` filters on, or, for a dictionary
+    /// that defines no `SPACE` category, one satisfying
+    /// [`char::is_whitespace`].
+    ///
+    /// ASCII/Latin-1 codepoints are answered from a precomputed table, which
+    /// covers every character real `char.def` files put in `SPACE`; anything
+    /// above falls back to a category lookup.
+    ///
+    /// # Arguments
+    ///
+    /// * `c` - The character to classify.
+    /// * `char_definitions` - The same dictionary's character definitions,
+    ///   read only on the non-ASCII path.
+    ///
+    /// # Returns
+    ///
+    /// `true` when a candidate starting after `c` is subject to the penalty.
+    #[inline]
+    pub fn is_space(&self, c: char, char_definitions: &CharacterDefinition) -> bool {
+        let codepoint = c as u32;
+        if codepoint < 256 {
+            self.space_ascii[codepoint as usize]
+        } else {
+            match self.space_category {
+                Some(space_id) => char_definitions.lookup_categories(c).contains(&space_id),
+                None => c.is_whitespace(),
+            }
+        }
     }
 
     /// Returns the penalty for a candidate that starts after whitespace.
