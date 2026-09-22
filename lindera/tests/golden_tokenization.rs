@@ -188,3 +188,35 @@ fn ipadic_nbest() {
     }
     insta::assert_snapshot!("ipadic_nbest", out);
 }
+
+/// Regression test #1016: Apply the Decompose penalty when connecting a compound to EOS.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_decompose_compound_at_eos() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Decompose(Penalty::default()));
+
+    for (text, expected) in [
+        ("東京大学", vec!["東京", "大学"]),
+        ("関西国際空港", vec!["関西", "国際", "空港"]),
+    ] {
+        let surfaces = segmenter
+            .segment(Cow::Borrowed(text))
+            .expect("segmentation should succeed")
+            .into_iter()
+            .map(|token| token.surface.into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(surfaces, expected);
+
+        let nbest_surfaces = segmenter
+            .segment_nbest(Cow::Borrowed(text), 1, false, None)
+            .expect("N-best segmentation should succeed")
+            .into_iter()
+            .next()
+            .expect("at least one N-best path should exist")
+            .0
+            .into_iter()
+            .map(|token| token.surface.into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(nbest_surfaces, expected);
+    }
+}
