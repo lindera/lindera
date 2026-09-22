@@ -1122,7 +1122,7 @@ let mode = Mode::Normal;
 <span class="boring">}</span></code></pre></pre>
 <h3 id="modedecompose"><a class="header" href="#modedecompose">Mode::Decompose</a></h3>
 <p>Decomposes compound nouns into their constituent parts. This mode applies a configurable penalty to long compound words, encouraging the segmenter to split them into shorter components.</p>
-<p>For example, with <code>Mode::Normal</code>, the compound word "関西国際空港" in the sentence "関西国際空港限定トートバッグ" remains part of a single token, while with <code>Mode::Decompose</code>, it is split into "関西", "国際", and "空港" (the surrounding context affects whether a compound is split; the same string in isolation may not split the same way).</p>
+<p>For example, with <code>Mode::Normal</code>, the compound word "関西国際空港" in the sentence "関西国際空港限定トートバッグ" remains part of a single token, while with <code>Mode::Decompose</code>, it is split into "関西", "国際", and "空港".</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use lindera::mode::Mode;

@@ -205,7 +205,7 @@ let mode = Mode::Normal;
 <span class="boring">}</span></code></pre></pre>
 <h3 id="modedecompose"><a class="header" href="#modedecompose">Mode::Decompose</a></h3>
 <p>複合名詞を構成要素に分解します。このモードでは、長い複合語にペナルティを適用し、Segmenter がより短い構成要素に分割するよう促します。</p>
-<p>例えば、「関西国際空港限定トートバッグ」という文中の複合語「関西国際空港」は、<code>Mode::Normal</code> では1つのトークンの一部のままですが、<code>Mode::Decompose</code> では「関西」「国際」「空港」に分割されます（分割されるかどうかは前後の文脈にも依存し、同じ文字列単独では同じ結果にならない場合があります）。</p>
+<p>例えば、「関西国際空港限定トートバッグ」という文中の複合語「関西国際空港」は、<code>Mode::Normal</code> では1つのトークンの一部のままですが、<code>Mode::Decompose</code> では「関西」「国際」「空港」に分割されます。</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>use lindera::mode::Mode;
