@@ -1082,6 +1082,12 @@ impl Lattice {
 
             for (i, left_edge) in left_edges.iter().enumerate() {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost = match search_mode {
+                    Mode::Normal => path_cost,
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
+                    ),
+                };
                 if path_cost < best_cost {
                     best_cost = path_cost;
                     best_left = Some(i as u16);
@@ -1974,6 +1980,12 @@ impl Lattice {
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost = match search_mode {
+                    Mode::Normal => path_cost,
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
+                    ),
+                };
 
                 // Record all transitions to EOS
                 self.all_paths[n_chars].push(PathEntry {

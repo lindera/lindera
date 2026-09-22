@@ -35,7 +35,7 @@ let mode = Mode::Normal;
 
 Decomposes compound nouns into their constituent parts. This mode applies a configurable penalty to long compound words, encouraging the segmenter to split them into shorter components.
 
-For example, with `Mode::Normal`, the compound word "関西国際空港" in the sentence "関西国際空港限定トートバッグ" remains part of a single token, while with `Mode::Decompose`, it is split into "関西", "国際", and "空港" (the surrounding context affects whether a compound is split; the same string in isolation may not split the same way).
+For example, with `Mode::Normal`, the compound word "関西国際空港" in the sentence "関西国際空港限定トートバッグ" remains part of a single token, while with `Mode::Decompose`, it is split into "関西", "国際", and "空港".
 
 ```rust
 use lindera::mode::Mode;
