@@ -46,6 +46,15 @@ impl DictionaryBuilder {
         }
     }
 
+    /// Returns the source metadata this builder was created with.
+    ///
+    /// # Returns
+    ///
+    /// The metadata read from the dictionary crate's `metadata.json`.
+    pub fn metadata(&self) -> &Metadata {
+        &self.metadata
+    }
+
     /// Attach a bundled context-ID frequency histogram used for the connection-cost
     /// remap ranking.
     ///
