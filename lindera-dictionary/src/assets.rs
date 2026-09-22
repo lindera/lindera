@@ -382,22 +382,33 @@ fn dictionary_cache_dir_from_env() -> Option<OsString> {
 /// `Ok(())` once the dictionary has been built into the output directory, or a
 /// `LinderaError` if the download, extraction, or build fails.
 /// Whether a cached dictionary directory was built in the format this crate
-/// reads.
+/// reads, from the metadata this crate ships.
 ///
 /// Anything unexpected -- a missing or unreadable `metadata.json`, a version
-/// that does not match -- answers `false`, so the caller rebuilds. A cache is
-/// an optimization; refusing to use a questionable one costs a rebuild,
-/// whereas trusting one costs correctness.
+/// that does not match, contents that differ from the crate's `metadata.json`
+/// -- answers `false`, so the caller rebuilds. A cache is an optimization;
+/// refusing to use a questionable one costs a rebuild, whereas trusting one
+/// costs correctness.
+///
+/// The cache directory is keyed on the crate version and the dictionary
+/// format version only, so a change to the crate's `metadata.json` that bumps
+/// neither (a new schema flag, newly shipped rules) would otherwise be served
+/// from a warm cache: `cargo:rerun-if-changed=metadata.json` reruns the build
+/// script, but the cached artifacts, `metadata.json` included, would be
+/// embedded verbatim. Comparing against `source` closes that gap.
 ///
 /// # Arguments
 ///
 /// * `output_dir` - The cached dictionary directory to inspect.
+/// * `source` - The metadata the crate ships (`metadata.json` in the crate
+///   root), which the cached copy must match apart from the fields the build
+///   derives; see [`metadata_matches_source`].
 ///
 /// # Returns
 ///
-/// `true` only when `metadata.json` is present, parses, and declares
-/// [`DICTIONARY_FORMAT_VERSION`].
-fn cached_dictionary_is_current(output_dir: &Path) -> bool {
+/// `true` only when `metadata.json` is present, parses, declares
+/// [`DICTIONARY_FORMAT_VERSION`], and matches `source`.
+fn cached_dictionary_is_current(output_dir: &Path, source: &Metadata) -> bool {
     let path = output_dir.join("metadata.json");
     let Ok(data) = fs::read(&path) else {
         debug!("Cache miss: cannot read {}", path.display());
@@ -416,7 +427,51 @@ fn cached_dictionary_is_current(output_dir: &Path) -> bool {
         );
         return false;
     }
+    if !metadata_matches_source(&metadata, source) {
+        debug!(
+            "Cache miss: {} differs from the crate's metadata.json",
+            path.display()
+        );
+        return false;
+    }
     true
+}
+
+/// Whether a cached build's metadata equals the crate's, ignoring the fields
+/// the build derives.
+///
+/// `DictionaryBuilder::build_metadata` writes the crate's metadata into the
+/// output directory with two changes: it stamps `format_version` (which the
+/// caller checks separately) and, when `connection_id_mapping` is on, embeds
+/// the computed `context_id_map`. Everything else is copied verbatim, so any
+/// other difference means the crate's `metadata.json` changed after the cache
+/// was built. The comparison goes through the JSON representation so that
+/// optional fields are treated identically on both sides and `Metadata` needs
+/// no `PartialEq`.
+///
+/// # Arguments
+///
+/// * `cached` - The metadata read back from the cached build.
+/// * `source` - The metadata the crate ships.
+///
+/// # Returns
+///
+/// `true` when the two agree on every field the build does not derive. A
+/// serialization failure answers `false`, i.e. a cache miss.
+fn metadata_matches_source(cached: &Metadata, source: &Metadata) -> bool {
+    /// Fields `DictionaryBuilder::build_metadata` sets at build time.
+    const BUILD_DERIVED_FIELDS: [&str; 2] = ["format_version", "context_id_map"];
+
+    let strip = |metadata: &Metadata| -> Option<serde_json::Value> {
+        let mut value = serde_json::to_value(metadata).ok()?;
+        if let Some(object) = value.as_object_mut() {
+            for field in BUILD_DERIVED_FIELDS {
+                object.remove(field);
+            }
+        }
+        Some(value)
+    };
+    matches!((strip(cached), strip(source)), (Some(a), Some(b)) if a == b)
 }
 
 pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<()> {
@@ -503,12 +558,16 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
     //
     // The directory name already carries the format version, so a mismatch is
     // normally a cache miss rather than a stale hit. This re-reads the cached
-    // `metadata.json` anyway, because the cheap failure mode -- an interrupted
-    // build that left a half-written directory behind, or a directory copied
-    // in by hand -- is not covered by the key, and a stale artifact would be
-    // embedded verbatim into the binary. A cache entry that fails the check
-    // is rebuilt rather than trusted.
-    if is_cache && output_dir.is_dir() && cached_dictionary_is_current(&output_dir) {
+    // `metadata.json` anyway, because two cheap failure modes are not covered
+    // by the key: an interrupted build that left a half-written directory
+    // behind (or a directory copied in by hand), and a change to the crate's
+    // `metadata.json` that bumps neither the crate nor the format version.
+    // Either would embed a stale artifact verbatim into the binary. A cache
+    // entry that fails the check is rebuilt rather than trusted.
+    if is_cache
+        && output_dir.is_dir()
+        && cached_dictionary_is_current(&output_dir, builder.metadata())
+    {
         return Ok(());
     }
 
@@ -787,6 +846,7 @@ mod tests {
     }
 
     use super::*;
+    use crate::dictionary::context_id_map::ContextIdMap;
 
     #[test]
     fn test_create_dummy_dictionary_source_without_subdir() {
@@ -835,26 +895,36 @@ mod tests {
         assert!(input_dir.join("dict-src").join("char.def").is_file());
     }
 
-    /// Writes `metadata.json` declaring `format_version` into a fresh
-    /// directory, standing in for a cached dictionary build.
-    fn cached_dir_with_format_version(version: u32) -> tempfile::TempDir {
+    /// Writes `metadata` as `metadata.json` into a fresh directory, standing
+    /// in for a cached dictionary build.
+    fn cached_dir_with(metadata: &Metadata) -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
-        let metadata = Metadata {
-            format_version: version,
-            ..Metadata::default()
-        };
         fs::write(
             dir.path().join("metadata.json"),
-            serde_json::to_vec_pretty(&metadata).unwrap(),
+            serde_json::to_vec_pretty(metadata).unwrap(),
         )
         .unwrap();
         dir
     }
 
+    /// [`cached_dir_with`] for the default metadata declaring `format_version`.
+    fn cached_dir_with_format_version(version: u32) -> tempfile::TempDir {
+        cached_dir_with(&Metadata {
+            format_version: version,
+            ..Metadata::default()
+        })
+    }
+
+    /// The metadata a crate would ship for the caches above: the default,
+    /// whose `format_version` the build stamps over.
+    fn source_metadata() -> Metadata {
+        Metadata::default()
+    }
+
     #[test]
     fn cache_hit_requires_the_current_format_version() {
         let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION);
-        assert!(cached_dictionary_is_current(dir.path()));
+        assert!(cached_dictionary_is_current(dir.path(), &source_metadata()));
     }
 
     #[test]
@@ -863,13 +933,19 @@ mod tests {
         // covers the leftovers: a hand-copied directory, or one from an
         // interrupted build.
         let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION + 1);
-        assert!(!cached_dictionary_is_current(dir.path()));
+        assert!(!cached_dictionary_is_current(
+            dir.path(),
+            &source_metadata()
+        ));
     }
 
     #[test]
     fn cache_without_metadata_is_a_miss() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(!cached_dictionary_is_current(dir.path()));
+        assert!(!cached_dictionary_is_current(
+            dir.path(),
+            &source_metadata()
+        ));
     }
 
     #[test]
@@ -878,6 +954,56 @@ mod tests {
         // trusted; rebuilding is cheap, misreading a dictionary is not.
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("metadata.json"), b"{\"name\":").unwrap();
-        assert!(!cached_dictionary_is_current(dir.path()));
+        assert!(!cached_dictionary_is_current(
+            dir.path(),
+            &source_metadata()
+        ));
+    }
+
+    #[test]
+    fn cache_with_different_source_metadata_is_a_miss() {
+        // The crate's metadata.json changed after the cache was built (here a
+        // build-affecting flag) without a crate or format version bump: the
+        // directory key still matches, so only the content comparison can
+        // catch it.
+        let dir = cached_dir_with_format_version(DICTIONARY_FORMAT_VERSION);
+        let source = Metadata {
+            connection_id_mapping: !Metadata::default().connection_id_mapping,
+            ..Metadata::default()
+        };
+        assert!(!cached_dictionary_is_current(dir.path(), &source));
+    }
+
+    #[test]
+    fn cache_ignores_build_derived_fields() {
+        // The build stamps `format_version` and, with connection-ID mapping,
+        // embeds the computed `context_id_map`; neither is in the crate's
+        // metadata.json, so neither may count as a difference.
+        let cached = Metadata {
+            format_version: DICTIONARY_FORMAT_VERSION,
+            context_id_map: Some(ContextIdMap {
+                left: vec![1, 0],
+                right: vec![0, 1],
+            }),
+            ..Metadata::default()
+        };
+        let dir = cached_dir_with(&cached);
+        assert!(cached_dictionary_is_current(dir.path(), &source_metadata()));
+    }
+
+    #[test]
+    fn cache_hit_with_identical_non_default_source() {
+        let source = Metadata {
+            name: "ko-dic".to_string(),
+            default_word_cost: -1,
+            connection_id_mapping: true,
+            ..Metadata::default()
+        };
+        let cached = Metadata {
+            format_version: DICTIONARY_FORMAT_VERSION,
+            ..source.clone()
+        };
+        let dir = cached_dir_with(&cached);
+        assert!(cached_dictionary_is_current(dir.path(), &source));
     }
 }
