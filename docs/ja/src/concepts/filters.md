@@ -46,7 +46,7 @@ Input Text
 
 ## 利用可能なフィルタ
 
-Linderaは4種類の文字フィルタと19種類のトークンフィルタを提供しており、日本語・韓国語・汎用的なテキスト正規化をカバーしています。
+Linderaは4種類の文字フィルタと20種類のトークンフィルタを提供しており、日本語・韓国語・汎用的なテキスト正規化をカバーしています。
 
 | カテゴリ | フィルタ |
 | --- | --- |
@@ -54,6 +54,6 @@ Linderaは4種類の文字フィルタと19種類のトークンフィルタを�
 | トークンフィルタ -- 正規化 | `japanese_base_form`, `japanese_reading_form`, `korean_reading_form`, `japanese_kana`, `japanese_katakana_stem`, `japanese_number`, `korean_number`, `mapping`, `remove_diacritical_mark`, `lowercase`, `uppercase` |
 | トークンフィルタ -- 品詞によるフィルタリング | `japanese_keep_tags`, `japanese_stop_tags`, `korean_keep_tags`, `korean_stop_tags` |
 | トークンフィルタ -- 単語によるフィルタリング | `keep_words`, `stop_words` |
-| トークンフィルタ -- 構造の変換 | `japanese_compound_word`, `length` |
+| トークンフィルタ -- 構造の変換 | `japanese_compound_word`, `korean_compound_word`, `length` |
 
 各フィルタの説明・パラメータ・実行可能なYAML/Rust APIの例は[フィルターリファレンス](../lindera-analysis/filters.md)を参照してください。

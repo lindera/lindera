@@ -16,8 +16,8 @@ pub type KoreanNumberTokenFilterConfig = Value;
 ///
 /// Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into one token per
 /// morpheme, so `이천이십육년` arrives as `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` and comes out as
-/// `2 1000 2 10 6 년`, not as `2026 년`. Merging those tokens first is tracked in
-/// <https://github.com/lindera/lindera/issues/1026>.
+/// `2 1000 2 10 6 년`, not as `2026 년`. Put `korean_compound_word` with `tags: ["SN", "NR"]` and
+/// `new_tag: "NR"` in front of this filter to merge those tokens first and get `2026 년`.
 ///
 #[derive(Clone, Debug)]
 pub struct KoreanNumberTokenFilter {
@@ -536,7 +536,7 @@ mod tests {
 
         // ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, and this filter
         // converts each token on its own, so the tokens do not add up to a single number.
-        // Merging them first is tracked in lindera/lindera#1026.
+        // `korean_compound_word` merges them first; its tokenizer test covers the chain.
         assert_eq!(
             tokenize("이천이십육년", default_filter()),
             ["2", "1000", "2", "10", "6", "년"]

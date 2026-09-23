@@ -13,6 +13,7 @@ lindera-analysis/src/
 │   └── regex.rs                    # Regex-based text replacement
 ├── token_filter.rs                 # TokenFilter trait, TokenFilterLoader
 ├── token_filter/
+│   ├── compound.rs                 # Shared compound-word merge helper (private)
 │   ├── japanese_base_form.rs
 │   ├── japanese_compound_word.rs
 │   ├── japanese_kana.rs
@@ -22,6 +23,7 @@ lindera-analysis/src/
 │   ├── japanese_reading_form.rs
 │   ├── japanese_stop_tags.rs
 │   ├── keep_words.rs
+│   ├── korean_compound_word.rs
 │   ├── korean_keep_tags.rs
 │   ├── korean_number.rs
 │   ├── korean_reading_form.rs

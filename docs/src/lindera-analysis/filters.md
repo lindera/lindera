@@ -302,6 +302,42 @@ Keeps only tokens whose surface text exactly matches one of `words`.
 }
 ```
 
+### korean_compound_word
+
+Merges consecutive Korean tokens whose first part-of-speech tag matches one of `tags` into a single compound token. The merged token keeps the first token's `byte_start` and `position`, takes the last token's `byte_end`, and its `position_length` is the number of tokens merged. A matching token whose neighbours do not match is left as it is.
+
+ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so this filter is what turns `이/NR 천/NR 이/NR 십/NR 육/NR` back into one token before `korean_number` converts it:
+
+| Input | Tokens from ko-dic | After `korean_compound_word` (`tags: ["SN", "NR"]`, `new_tag: "NR"`) | After `korean_number` |
+| --- | --- | --- | --- |
+| `이천이십육년` | `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` | `이천이십육/NR 년/NNBC` | `2026 년` |
+| `10만` | `10/SN 만/NR` | `10만/NR` | `100000` |
+| `2천26` | `2/SN 천/NR 26/SN` | `2천26/NR` | `2026` |
+
+**Parameters:**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tags` | array\<string\> | Yes | Part-of-speech tags (the single ko-dic tag, such as `NR` or `SN`) that mark tokens eligible for merging |
+| `new_tag` | string | No | Part-of-speech tag assigned to the merged token; its other details are `*`. When omitted, the merged token is tagged `복합어`, which is not a ko-dic tag, so pass a tag such as `NR` when a following `korean_number` or `korean_keep_tags` should pick the merged token up |
+
+**Example:**
+
+```json
+{
+  "kind": "korean_compound_word",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ],
+    "new_tag": "NR"
+  }
+}
+```
+
+`만` right after a space is `NR` under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it `JX` (`만 원`, `십만 원`), which stays outside `["SN", "NR"]`.
+
 ### korean_keep_tags
 
 Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.
@@ -336,7 +372,16 @@ Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into 
 | `이천이십육년` | `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` | `2 1000 2 10 6 년` |
 | `10만` | `10/SN 만/NR` | `10 10000` |
 
-Merging those tokens before the conversion, the way `japanese_compound_word` does for IPADIC, is tracked in [#1026](https://github.com/lindera/lindera/issues/1026). A single token that holds the whole numeral, such as the Hanja `二千二十六/SH`, is converted in full.
+Put `korean_compound_word` in front of this filter to merge those tokens first, the way `japanese_compound_word` does for IPADIC. Its `new_tag` must be one of this filter's `tags` for the merged token to be converted:
+
+```json
+[
+  {"kind": "korean_compound_word", "args": {"tags": ["SN", "NR"], "new_tag": "NR"}},
+  {"kind": "korean_number", "args": {"tags": ["SN", "NR"]}}
+]
+```
+
+With that chain `이천이십육년` becomes `2026 년`, `10만` becomes `100000` and `2천26` becomes `2026`. A single token that holds the whole numeral, such as the Hanja `二千二十六/SH`, is converted in full by this filter alone.
 
 **Parameters:**
 
