@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use lindera::LinderaResult;
+use lindera::dictionary::Dictionary;
 use lindera::error::LinderaErrorKind;
 use lindera::token::Token;
 
@@ -140,14 +141,72 @@ pub(crate) fn apply_tag_filter<F>(
     });
 }
 
-/// Writes a token's leading part-of-speech fields into `out`, joined with
-/// `,`, as the Japanese tag filters' comparison key.
+/// Name of the dictionary schema field at which the Japanese part-of-speech
+/// hierarchy starts (`part_of_speech`, followed by its subcategory fields).
 ///
-/// Uses at most the first four fields, matching `normalize_japanese_tags`,
-/// which pads every configured tag to exactly four parts. A token with fewer
-/// details yields a shorter key (and, for zero details, the empty string),
-/// which is existing behavior that predates this helper -- such a key simply
-/// matches no configured tag.
+/// Every bundled Japanese dictionary names its first custom field so, but a
+/// schema may put other columns first: SudachiDict's `display_surface`
+/// precedes the part-of-speech columns, which is why the position is
+/// resolved from the schema rather than assumed to be the first detail
+/// (#997).
+pub(crate) const PART_OF_SPEECH_FIELD: &str = "part_of_speech";
+
+/// Resolves the index within a token's details at which the part-of-speech
+/// hierarchy starts, from the dictionary schema.
+///
+/// A schema without a `part_of_speech` field (ko-dic's `part_of_speech_tag`,
+/// the legacy default schema's `major_pos`) yields `0`, so the hierarchy is
+/// read from the first detail exactly as before this lookup existed.
+///
+/// The lookup is a hash-map probe, so the filters resolve it once per
+/// `apply` call rather than per token (see [`part_of_speech_offset_of`]).
+///
+/// # 引数
+///
+/// * `dictionary` - The dictionary the tokens were segmented with.
+///
+/// # 戻り値
+///
+/// The details index of the `part_of_speech` field, or `0` when the schema
+/// does not define one.
+pub(crate) fn part_of_speech_offset(dictionary: &Dictionary) -> usize {
+    dictionary
+        .metadata
+        .dictionary_schema
+        .get_custom_field_index(PART_OF_SPEECH_FIELD)
+        .unwrap_or(0)
+}
+
+/// Resolves [`part_of_speech_offset`] for a whole token list from its first
+/// token, once per `apply` call.
+///
+/// Every token a filter receives comes from the same segmenter, hence the
+/// same dictionary, so the first token's schema speaks for the list. An empty
+/// list yields `0`; no filter reads a detail of an empty list anyway.
+///
+/// # 引数
+///
+/// * `tokens` - The tokens an `apply` call received.
+///
+/// # 戻り値
+///
+/// The details index the part-of-speech hierarchy starts at for these tokens.
+pub(crate) fn part_of_speech_offset_of(tokens: &[Token<'_>]) -> usize {
+    tokens
+        .first()
+        .map_or(0, |token| part_of_speech_offset(token.dictionary))
+}
+
+/// Writes a token's part-of-speech fields into `out`, joined with `,`, as
+/// the Japanese tag filters' comparison key.
+///
+/// The fields are the four details starting at `offset`, the position of the
+/// schema's `part_of_speech` field as resolved by [`part_of_speech_offset`].
+/// Four matches `normalize_japanese_tags`, which pads every configured tag
+/// to exactly four parts. A token with fewer details past the offset yields
+/// a shorter key (and, for none, the empty string), which is existing
+/// behavior that predates this helper -- such a key simply matches no
+/// configured tag.
 ///
 /// `details_iter` is used rather than `details` so the per-token `Vec<&str>`
 /// the latter collects is not allocated.
@@ -155,13 +214,99 @@ pub(crate) fn apply_tag_filter<F>(
 /// # 引数
 ///
 /// * `token` - The token whose details form the key.
+/// * `offset` - The details index the part-of-speech hierarchy starts at.
 /// * `out` - The buffer to write into; assumed already cleared.
-pub(crate) fn write_japanese_pos_key(token: &mut Token<'_>, out: &mut String) {
-    for (i, detail) in token.details_iter().take(4).enumerate() {
+pub(crate) fn write_japanese_pos_key(token: &mut Token<'_>, offset: usize, out: &mut String) {
+    for (i, detail) in token.details_iter().skip(offset).take(4).enumerate() {
         if i > 0 {
             out.push(',');
         }
         out.push_str(detail);
+    }
+}
+
+/// Test support shared by the token filter tests: dictionaries whose schema
+/// differs from IPADIC's, built without any dictionary but the embedded one.
+#[cfg(all(test, feature = "embed-ipadic"))]
+pub(crate) mod test_support {
+    use std::borrow::Cow;
+    use std::sync::Arc;
+
+    use lindera::dictionary::{
+        Dictionary, DictionaryKind, Schema, WordId, load_embedded_dictionary,
+    };
+    use lindera::token::Token;
+    use lindera_dictionary::viterbi::LexType;
+
+    /// The SudachiDict schema (`lindera-sudachidict/metadata.json`): the
+    /// display surface precedes the part-of-speech columns, so the
+    /// part-of-speech hierarchy is details `1..5` and a token has 15 details.
+    pub(crate) const SUDACHIDICT_FIELDS: [&str; 19] = [
+        "surface",
+        "left_context_id",
+        "right_context_id",
+        "cost",
+        "display_surface",
+        "part_of_speech",
+        "part_of_speech_subcategory_1",
+        "part_of_speech_subcategory_2",
+        "part_of_speech_subcategory_3",
+        "conjugation_type",
+        "conjugation_form",
+        "reading",
+        "normalized_form",
+        "dictionary_form_id",
+        "split_mode",
+        "split_a",
+        "split_b",
+        "word_structure",
+        "synonym_group_ids",
+    ];
+
+    /// The embedded IPADIC dictionary with its schema replaced by `fields`.
+    ///
+    /// Only the schema is swapped; the lexicon is still IPADIC's, so tokens
+    /// built against this dictionary must carry explicit `details` laid out
+    /// per `fields` rather than have them loaded from the lexicon.
+    pub(crate) fn dictionary_with_schema(fields: &[&str]) -> Dictionary {
+        let mut dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+        let mut metadata = (*dictionary.metadata).clone();
+        metadata.dictionary_schema = Schema::new(fields.iter().map(|f| f.to_string()).collect());
+        dictionary.metadata = Arc::new(metadata);
+        dictionary
+    }
+
+    /// A dictionary with the SudachiDict schema; see [`dictionary_with_schema`].
+    pub(crate) fn sudachidict_schema_dictionary() -> Dictionary {
+        dictionary_with_schema(&SUDACHIDICT_FIELDS)
+    }
+
+    /// Builds contiguous tokens from `(surface, details)` rows: byte offsets
+    /// follow the surfaces, positions count from zero, and each row's details
+    /// are used verbatim, not padded.
+    pub(crate) fn tokens<'a>(
+        dictionary: &'a Dictionary,
+        rows: &[(&'static str, &[&'static str])],
+    ) -> Vec<Token<'a>> {
+        let mut byte_start = 0;
+        rows.iter()
+            .enumerate()
+            .map(|(i, (surface, details))| {
+                let token = Token {
+                    surface: Cow::Borrowed(surface),
+                    byte_start,
+                    byte_end: byte_start + surface.len(),
+                    position: i,
+                    position_length: 1,
+                    word_id: WordId::new(LexType::System, i as u32),
+                    dictionary,
+                    user_dictionary: None,
+                    details: Some(details.iter().map(|d| Cow::Borrowed(*d)).collect()),
+                };
+                byte_start += surface.len();
+                token
+            })
+            .collect()
     }
 }
 
@@ -289,7 +434,7 @@ mod tests {
             };
 
             let mut key = String::new();
-            write_japanese_pos_key(&mut token, &mut key);
+            write_japanese_pos_key(&mut token, 0, &mut key);
             assert_eq!(key, expected, "details {details:?}");
 
             // Equivalence with the retired implementation, on the same input.
@@ -336,12 +481,9 @@ mod tests {
         let mut tags = HashSet::new();
         tags.insert("助詞".to_string());
 
-        apply_tag_filter(
-            &mut tokens,
-            &tags,
-            TagPolicy::Remove,
-            write_japanese_pos_key,
-        );
+        apply_tag_filter(&mut tokens, &tags, TagPolicy::Remove, |token, key| {
+            write_japanese_pos_key(token, 0, key)
+        });
 
         let surfaces: Vec<&str> = tokens.iter().map(|t| t.surface.as_ref()).collect();
         assert_eq!(surfaces, vec!["long", "empty"]);
@@ -401,12 +543,9 @@ mod tests {
 
         for shape in shapes {
             let mut tokens = build(shape);
-            apply_tag_filter(
-                &mut tokens,
-                &tags,
-                TagPolicy::Remove,
-                write_japanese_pos_key,
-            );
+            apply_tag_filter(&mut tokens, &tags, TagPolicy::Remove, |token, key| {
+                write_japanese_pos_key(token, 0, key)
+            });
 
             let expected: Vec<usize> = shape
                 .iter()
@@ -420,6 +559,81 @@ mod tests {
                 tokens.iter().all(|t| t.surface == "keep"),
                 "shape {shape:?}"
             );
+        }
+    }
+
+    /// The part-of-speech offset follows the schema: IPADIC's first custom
+    /// field is `part_of_speech`, SudachiDict's is `display_surface` with
+    /// `part_of_speech` one field later, and a schema that does not name the
+    /// field at all (ko-dic, the legacy default schema) falls back to the
+    /// first detail, which keeps those dictionaries on their old behavior.
+    #[test]
+    fn test_part_of_speech_offset_follows_the_schema() {
+        use lindera::dictionary::{DictionaryKind, Schema, load_embedded_dictionary};
+
+        use super::test_support::{dictionary_with_schema, sudachidict_schema_dictionary};
+
+        let ipadic = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+        assert_eq!(part_of_speech_offset(&ipadic), 0);
+
+        let sudachidict = sudachidict_schema_dictionary();
+        assert_eq!(part_of_speech_offset(&sudachidict), 1);
+
+        let ko_dic_like = dictionary_with_schema(&[
+            "surface",
+            "left_context_id",
+            "right_context_id",
+            "cost",
+            "part_of_speech_tag",
+            "meaning",
+        ]);
+        assert_eq!(part_of_speech_offset(&ko_dic_like), 0);
+
+        let legacy_schema = Schema::default();
+        let legacy_fields: Vec<&str> = legacy_schema
+            .get_all_fields()
+            .iter()
+            .map(String::as_str)
+            .collect();
+        assert_eq!(legacy_fields[4], "major_pos");
+        let legacy = dictionary_with_schema(&legacy_fields);
+        assert_eq!(part_of_speech_offset(&legacy), 0);
+
+        // An empty list has no dictionary to consult and no detail to read.
+        assert_eq!(part_of_speech_offset_of(&[]), 0);
+    }
+
+    /// With an offset the key skips the leading non-part-of-speech fields
+    /// and still takes exactly four: SudachiDict's `display_surface` never
+    /// leaks into the key, and a token with no detail past the offset yields
+    /// the empty key rather than panicking.
+    #[test]
+    fn test_write_japanese_pos_key_starts_at_the_offset() {
+        use super::test_support::{sudachidict_schema_dictionary, tokens};
+
+        let dictionary = sudachidict_schema_dictionary();
+        let mut tokens = tokens(
+            &dictionary,
+            &[
+                (
+                    "五",
+                    &[
+                        "五", "名詞", "数詞", "*", "*", "*", "*", "ゴ", "五", "*", "A", "*", "*",
+                        "*", "017040",
+                    ],
+                ),
+                ("短", &["短", "名詞", "数詞"]),
+                ("表層のみ", &["表層のみ"]),
+                ("空", &[]),
+            ],
+        );
+        let expected = ["名詞,数詞,*,*", "名詞,数詞", "", ""];
+
+        let mut key = String::new();
+        for (token, expected) in tokens.iter_mut().zip(expected) {
+            key.clear();
+            write_japanese_pos_key(token, 1, &mut key);
+            assert_eq!(key, expected, "surface {}", token.surface);
         }
     }
 }

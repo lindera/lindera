@@ -123,6 +123,8 @@ This filter takes no configuration parameters.
 
 Merges consecutive tokens whose part-of-speech tag matches one of `tags` into a single compound token.
 
+The merged token's details carry `new_tag` at the part-of-speech position resolved from the dictionary schema; any leading non-part-of-speech field (SudachiDict's `display_surface`) and every remaining field are set to `*`.
+
 **Parameters:**
 
 | Argument | Type | Required | Description |
@@ -221,7 +223,7 @@ When this filter follows `japanese_compound_word`, merge only the `名詞,数` t
 
 | Argument | Type | Required | Description |
 | --- | --- | --- | --- |
-| `tags` | array\<string\> or `null` | No | Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to. When omitted or `null`, every token is converted |
+| `tags` | array\<string\> or `null` | No | Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to, matched the same way as `japanese_keep_tags`. When omitted or `null`, every token is converted |
 
 **Example:**
 
@@ -276,7 +278,7 @@ Removes tokens whose part-of-speech tag matches one of `tags`.
 }
 ```
 
-Tags are normalized to exactly four comma-separated levels (missing levels are padded with `*`) and compared for exact equality against the first four part-of-speech details of each token. A bare `助詞` therefore never matches IPADIC particle tokens — they always carry a subcategory such as `助詞,係助詞` — while a bare `助動詞` does match, because auxiliary verbs have no subcategory (`助動詞,*,*,*`). The same matching rule applies to `japanese_keep_tags`.
+Tags are normalized to exactly four comma-separated levels (missing levels are padded with `*`) and compared for exact equality against the four part-of-speech details of each token, starting at the field named `part_of_speech` in the dictionary schema (or at the first detail when the schema has no such field). A bare `助詞` therefore never matches IPADIC particle tokens — they always carry a subcategory such as `助詞,係助詞` — while a bare `助動詞` does match, because auxiliary verbs have no subcategory (`助動詞,*,*,*`). The same matching rule applies to `japanese_keep_tags`, `japanese_compound_word`, and the `tags` option of `japanese_number`. Because the position is resolved through the schema, the rule also holds for dictionaries whose schema has leading non-part-of-speech columns, such as SudachiDict's `display_surface`.
 
 ### keep_words
 

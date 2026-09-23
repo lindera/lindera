@@ -152,10 +152,13 @@ references, synonym group IDs), so downstream code can use them.
 > [!NOTE]
 > Because `display_surface` sits before the part-of-speech columns,
 > `details[0]` is the display surface — not the part-of-speech as in IPADIC
-> or UniDic. Token filters that read the leading details positionally as
-> part-of-speech tags (`japanese_stop_tags`, `japanese_keep_tags`,
-> `japanese_compound_word`) will not match as expected with this dictionary.
-> Schema-aware access such as `token.get("part_of_speech")` works correctly.
+> or UniDic. Code that reads the details positionally must account for
+> this; schema-aware access such as `token.get("part_of_speech")` returns
+> the part-of-speech directly. The part-of-speech token filters
+> (`japanese_stop_tags`, `japanese_keep_tags`, `japanese_compound_word`,
+> and `japanese_number` with `tags`) resolve the part-of-speech columns
+> through the dictionary schema, so they match this dictionary the same way
+> they match IPADIC or UniDic.
 
 ## Behavioral differences from Sudachi
 

@@ -4,7 +4,8 @@ use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
 use crate::token_filter::tags::{
-    TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags, write_japanese_pos_key,
+    TagPolicy, apply_tag_filter, normalize_japanese_tags, parse_tags, part_of_speech_offset_of,
+    write_japanese_pos_key,
 };
 use lindera::LinderaResult;
 use lindera::token::Token;
@@ -51,7 +52,7 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
     ///
     /// 1. **Token Filtering**:
     ///    - The function iterates over the tokens and reads the part-of-speech tags from each token's details.
-    ///    - At most the first 4 details form the tag. If the token has fewer, only the available details are used.
+    ///    - The four details starting at the schema's `part_of_speech` field form the tag (the first four when the schema names no such field, as with ko-dic). If the token has fewer, only the available details are used.
     ///
     /// 2. **Tag Matching**:
     ///    - The tag is written into a single buffer reused across tokens, joined with commas, and checked against the set of tags specified in the configuration (`self.tags`).
@@ -63,9 +64,13 @@ impl TokenFilter for JapaneseKeepTagsTokenFilter {
     ///
     /// If any issue arises during token processing or filtering, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        // The key is the first up-to-4 part-of-speech levels joined with `,`,
-        // written into a buffer `apply_tag_filter` reuses across tokens.
-        apply_tag_filter(tokens, &self.tags, TagPolicy::Keep, write_japanese_pos_key);
+        // The key is the up-to-4 part-of-speech levels joined with `,`, read
+        // from where the dictionary schema puts them (resolved once per call)
+        // and written into a buffer `apply_tag_filter` reuses across tokens.
+        let offset = part_of_speech_offset_of(tokens);
+        apply_tag_filter(tokens, &self.tags, TagPolicy::Keep, |token, key| {
+            write_japanese_pos_key(token, offset, key)
+        });
 
         Ok(())
     }
@@ -183,6 +188,171 @@ mod tests {
         let result = JapaneseKeepTagsTokenFilter::from_config(&config);
 
         assert!(result.is_ok());
+    }
+
+    /// With the SudachiDict schema the part-of-speech hierarchy is details
+    /// `1..5` (`display_surface` comes first), and the tags must be matched
+    /// there rather than against the leading four details (#997).
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_keep_tags_token_filter_apply_sudachidict_schema() {
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::japanese_keep_tags::JapaneseKeepTagsTokenFilter;
+        use crate::token_filter::tags::test_support::{sudachidict_schema_dictionary, tokens};
+
+        // `令和五年に始まった。` as SudachiDict tokenizes it.
+        let rows: [(&str, &[&str]); 7] = [
+            (
+                "令和",
+                &[
+                    "令和",
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "レイワ",
+                    "令和",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "五",
+                &[
+                    "五", "名詞", "数詞", "*", "*", "*", "*", "ゴ", "五", "*", "A", "*", "*", "*",
+                    "017040",
+                ],
+            ),
+            (
+                "年",
+                &[
+                    "年",
+                    "名詞",
+                    "普通名詞",
+                    "助数詞可能",
+                    "*",
+                    "*",
+                    "*",
+                    "ネン",
+                    "年",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "に",
+                &[
+                    "に",
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ニ",
+                    "に",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "始まっ",
+                &[
+                    "始まっ",
+                    "動詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "五段-ラ行",
+                    "連用形-促音便",
+                    "ハジマッ",
+                    "始まる",
+                    "380965",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "000378",
+                ],
+            ),
+            (
+                "た",
+                &[
+                    "た",
+                    "助動詞",
+                    "*",
+                    "*",
+                    "*",
+                    "助動詞-タ",
+                    "終止形-一般",
+                    "タ",
+                    "た",
+                    "83558",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "。",
+                &[
+                    "。",
+                    "補助記号",
+                    "句点",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "。",
+                    "。",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+        ];
+        let dictionary = sudachidict_schema_dictionary();
+
+        let filter = JapaneseKeepTagsTokenFilter::new(HashSet::from([
+            "名詞,固有名詞,一般".to_string(),
+            "名詞,数詞".to_string(),
+            "名詞,普通名詞,助数詞可能".to_string(),
+        ]));
+        let mut kept = tokens(&dictionary, &rows);
+        filter.apply(&mut kept).unwrap();
+        let surfaces: Vec<&str> = kept.iter().map(|t| t.surface.as_ref()).collect();
+        assert_eq!(surfaces, ["令和", "五", "年"]);
+
+        // The key no longer starts at the display surface, so a tag spelled
+        // the way the old positional key came out keeps nothing.
+        let filter = JapaneseKeepTagsTokenFilter::new(HashSet::from([
+            "令和,名詞,固有名詞,一般".to_string(),
+            "五,名詞,数詞".to_string(),
+        ]));
+        let mut none = tokens(&dictionary, &rows);
+        filter.apply(&mut none).unwrap();
+        assert!(none.is_empty());
     }
 
     #[test]

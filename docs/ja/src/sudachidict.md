@@ -148,10 +148,12 @@ small + core + notcore（2026-07-23）のビルドは Lindera v6 で約 10 秒�
 
 > [!NOTE]
 > `display_surface` が品詞カラムの前にあるため、`details[0]` は IPADIC や UniDic の
-> ような品詞ではなく表示用表層形になります。details の先頭を品詞タグとして位置ベースで
-> 読むトークンフィルタ（`japanese_stop_tags`、`japanese_keep_tags`、
-> `japanese_compound_word`）は、この辞書では期待どおりにマッチしません。
-> `token.get("part_of_speech")` のようなスキーマ経由のアクセスは正しく動作します。
+> ような品詞ではなく表示用表層形になります。details を位置ベースで読むコードはこの点を
+> 考慮してください。`token.get("part_of_speech")` のようなスキーマ経由のアクセスは
+> 品詞を直接返します。品詞ベースのトークンフィルタ（`japanese_stop_tags`、
+> `japanese_keep_tags`、`japanese_compound_word`、および `tags` を指定した
+> `japanese_number`）は辞書スキーマ経由で品詞カラムを解決するため、IPADIC や UniDic
+> と同様にこの辞書でも一致します。
 
 ## Sudachi との挙動の違い
 

@@ -9,7 +9,8 @@ use crate::token_filter::compound::{
     merge_consecutive_tokens, parse_new_tag, write_compound_details,
 };
 use crate::token_filter::tags::{
-    normalize_japanese_tag, normalize_japanese_tags, parse_tags, write_japanese_pos_key,
+    normalize_japanese_tag, normalize_japanese_tags, parse_tags, part_of_speech_offset_of,
+    write_japanese_pos_key,
 };
 use lindera::LinderaResult;
 use lindera::token::Token;
@@ -23,9 +24,12 @@ const DEFAULT_NEW_TAG: &str = "複合語";
 
 /// Compound consecutive tokens that have specified part-of-speech tags into a single token.
 ///
-/// A token takes part in a merge when its first four detail fields, joined with `,`, equal one
-/// of `tags` (each padded to four parts with `*`), the same key the Japanese keep/stop tag
-/// filters use. The merge itself is shared with `korean_compound_word`.
+/// A token takes part in a merge when its four part-of-speech detail fields, joined with `,`,
+/// equal one of `tags` (each padded to four parts with `*`), the same key the Japanese
+/// keep/stop tag filters use. The fields start at the dictionary schema's `part_of_speech`
+/// field (the first detail when the schema names no such field), so the filter also works with
+/// SudachiDict, whose `display_surface` precedes the part-of-speech columns. The merge itself
+/// is shared with `korean_compound_word`.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseCompoundWordTokenFilter {
@@ -78,9 +82,11 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
     /// tags into one token.
     ///
     /// The merged token has the concatenated surface, the first token's `byte_start` and
-    /// `position`, the last token's `byte_end`, the summed `position_length`, and details of
-    /// `new_tag` (or `複合語`) padded with `*` to the dictionary's field count. A matching
-    /// token with no matching neighbour is left as it is.
+    /// `position`, the last token's `byte_end`, the summed `position_length`, and details
+    /// carrying `new_tag` (or `複合語`) at the schema's part-of-speech position, with every
+    /// other field (any leading non-part-of-speech field such as SudachiDict's
+    /// `display_surface`, and the rest up to the dictionary's field count) set to `*`. A
+    /// matching token with no matching neighbour is left as it is.
     ///
     /// # 引数
     ///
@@ -90,16 +96,31 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
     ///
     /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        merge_consecutive_tokens(tokens, &self.tags, write_japanese_pos_key, |token| {
-            match &self.new_tag {
-                // The four-part tag becomes the leading detail fields, one per part.
-                Some(new_tag) => write_compound_details(
-                    token,
-                    new_tag.split(',').map(|part| Cow::Owned(part.to_owned())),
-                ),
-                None => write_compound_details(token, iter::once(Cow::Borrowed(DEFAULT_NEW_TAG))),
-            }
-        });
+        // Where the part-of-speech hierarchy starts in the details, resolved
+        // once from the dictionary schema: it is both where each token's key
+        // is read from and where the merged token's tag is written to.
+        let offset = part_of_speech_offset_of(tokens);
+        merge_consecutive_tokens(
+            tokens,
+            &self.tags,
+            |token, key| write_japanese_pos_key(token, offset, key),
+            |token| {
+                // Fields before the part-of-speech position (SudachiDict's
+                // `display_surface`) get `*`, as unknown words carry there.
+                let leading = iter::repeat_n(Cow::Borrowed("*"), offset);
+                match &self.new_tag {
+                    // The four-part tag becomes the part-of-speech fields, one per part.
+                    Some(new_tag) => write_compound_details(
+                        token,
+                        leading.chain(new_tag.split(',').map(|part| Cow::Owned(part.to_owned()))),
+                    ),
+                    None => write_compound_details(
+                        token,
+                        leading.chain(iter::once(Cow::Borrowed(DEFAULT_NEW_TAG))),
+                    ),
+                }
+            },
+        );
 
         Ok(())
     }
@@ -474,5 +495,130 @@ mod tests {
         assert_eq!(tokens_lone[2].surface, "円");
         assert_eq!(tokens_lone[2].position_length, 1);
         assert_eq!(tokens_lone[2].details(), counter_details);
+    }
+
+    /// With the SudachiDict schema the part-of-speech hierarchy is details
+    /// `1..5` (`display_surface` comes first): the tags are matched there,
+    /// and the merged token's tag is written there, with `*` in the display
+    /// surface slot as SudachiDict's own unknown words have (#997).
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_compound_word_token_filter_apply_sudachidict_schema() {
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+        use crate::token_filter::tags::test_support::{sudachidict_schema_dictionary, tokens};
+
+        // `令和五年に` as SudachiDict tokenizes it; a SudachiDict token has 15 details.
+        let rows: [(&str, &[&str]); 4] = [
+            (
+                "令和",
+                &[
+                    "令和",
+                    "名詞",
+                    "固有名詞",
+                    "一般",
+                    "*",
+                    "*",
+                    "*",
+                    "レイワ",
+                    "令和",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "五",
+                &[
+                    "五", "名詞", "数詞", "*", "*", "*", "*", "ゴ", "五", "*", "A", "*", "*", "*",
+                    "017040",
+                ],
+            ),
+            (
+                "年",
+                &[
+                    "年",
+                    "名詞",
+                    "普通名詞",
+                    "助数詞可能",
+                    "*",
+                    "*",
+                    "*",
+                    "ネン",
+                    "年",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+            (
+                "に",
+                &[
+                    "に",
+                    "助詞",
+                    "格助詞",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                    "ニ",
+                    "に",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+        ];
+        let dictionary = sudachidict_schema_dictionary();
+        let tags = serde_json::json!(["名詞,数詞", "名詞,普通名詞,助数詞可能"]);
+
+        // Omitted `new_tag`: `複合語` goes into the part-of-speech slot, `*` before it.
+        let filter =
+            JapaneseCompoundWordTokenFilter::from_config(&serde_json::json!({ "tags": tags }))
+                .unwrap();
+        let mut merged = tokens(&dictionary, &rows);
+        filter.apply(&mut merged).unwrap();
+        let surfaces: Vec<&str> = merged.iter().map(|t| t.surface.as_ref()).collect();
+        assert_eq!(surfaces, ["令和", "五年", "に"]);
+        assert_eq!(merged[1].byte_start, "令和".len());
+        assert_eq!(merged[1].byte_end, "令和五年".len());
+        assert_eq!(merged[1].position, 1);
+        assert_eq!(merged[1].position_length, 2);
+        let mut expected = vec!["*", "複合語"];
+        expected.resize(15, "*");
+        assert_eq!(merged[1].details(), expected);
+        // The neighbours keep their own details, display surface included.
+        assert_eq!(merged[0].details(), rows[0].1);
+        assert_eq!(merged[2].details(), rows[3].1);
+
+        // A multi-level `new_tag` is laid out from the part-of-speech slot on.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": tags, "new_tag": "名詞,数詞" }),
+        )
+        .unwrap();
+        let mut merged = tokens(&dictionary, &rows);
+        filter.apply(&mut merged).unwrap();
+        let mut expected = vec!["*", "名詞", "数詞", "*", "*"];
+        expected.resize(15, "*");
+        assert_eq!(merged[1].details(), expected);
+
+        // A tag spelled the way the old positional key came out (display
+        // surface first) must not match anymore, so nothing is merged.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["五,名詞,数詞", "年,名詞,普通名詞,助数詞可能"] }),
+        )
+        .unwrap();
+        let mut untouched = tokens(&dictionary, &rows);
+        filter.apply(&mut untouched).unwrap();
+        assert_eq!(untouched.len(), rows.len());
     }
 }

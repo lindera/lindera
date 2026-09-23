@@ -34,11 +34,14 @@ Refer to the [SudachiDict documentation](https://github.com/WorksApplications/Su
 
 > **Note:** Because the display surface sits at index 4 (before the
 > part-of-speech columns), the first token detail is the display surface —
-> not the part-of-speech as in IPADIC or UniDic. Token filters that read the
-> leading details positionally as part-of-speech tags do not match as
-> expected with this dictionary; schema-aware access such as
-> `token.get("part_of_speech")` works correctly. See
-> [lindera/lindera#997](https://github.com/lindera/lindera/issues/997).
+> not the part-of-speech as in IPADIC or UniDic. Code that reads the details
+> positionally must account for this; schema-aware access such as
+> `token.get("part_of_speech")` returns the part-of-speech directly. The
+> part-of-speech token filters (`japanese_stop_tags`, `japanese_keep_tags`,
+> `japanese_compound_word`, and `japanese_number` with `tags`) resolve the
+> part-of-speech columns through the dictionary schema, so they match this
+> dictionary the same way they match IPADIC or UniDic (see
+> [lindera/lindera#997](https://github.com/lindera/lindera/issues/997)).
 
 ## User dictionary format (CSV)
 

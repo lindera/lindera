@@ -98,6 +98,22 @@ impl Schema {
             .copied()
     }
 
+    /// Get the index of a field within the custom fields, which is its index
+    /// within a token's details (the four common fields are not stored there).
+    ///
+    /// # 引数
+    ///
+    /// * `field_name` - The schema field name.
+    ///
+    /// # 戻り値
+    ///
+    /// The field's index minus the four common fields, or `None` when the
+    /// name is not in the schema or names a common field (`surface`,
+    /// `left_context_id`, `right_context_id`, `cost`).
+    pub fn get_custom_field_index(&self, field_name: &str) -> Option<usize> {
+        self.get_field_index(field_name)?.checked_sub(4)
+    }
+
     /// Get total field count
     pub fn field_count(&self) -> usize {
         self.get_all_fields().len()
@@ -219,6 +235,42 @@ mod tests {
 
         // Non-existent field
         assert_eq!(schema.get_field_index("nonexistent"), None);
+    }
+
+    #[test]
+    fn test_custom_field_index_lookup() {
+        let schema = Schema::default();
+
+        // Custom fields are indexed from zero, after the four common fields.
+        assert_eq!(schema.get_custom_field_index("major_pos"), Some(0));
+        assert_eq!(schema.get_custom_field_index("base_form"), Some(6));
+        assert_eq!(schema.get_custom_field_index("pronunciation"), Some(8));
+
+        // Common fields are not custom fields.
+        assert_eq!(schema.get_custom_field_index("surface"), None);
+        assert_eq!(schema.get_custom_field_index("left_context_id"), None);
+        assert_eq!(schema.get_custom_field_index("right_context_id"), None);
+        assert_eq!(schema.get_custom_field_index("cost"), None);
+
+        // Non-existent field
+        assert_eq!(schema.get_custom_field_index("nonexistent"), None);
+
+        // A leading non-part-of-speech column shifts the part-of-speech
+        // field, as SudachiDict's `display_surface` does.
+        let schema = Schema::new(
+            [
+                "surface",
+                "left_context_id",
+                "right_context_id",
+                "cost",
+                "display_surface",
+                "part_of_speech",
+            ]
+            .map(String::from)
+            .to_vec(),
+        );
+        assert_eq!(schema.get_custom_field_index("display_surface"), Some(0));
+        assert_eq!(schema.get_custom_field_index("part_of_speech"), Some(1));
     }
 
     #[test]
