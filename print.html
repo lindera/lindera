@@ -1430,9 +1430,9 @@ character_filters:
 token_filters:
   - kind: "japanese_compound_word"
     args:
+      # Merge the numeral tokens only. A counter merged into the number token is read as digits by japanese_number.
       tags:
         - "名詞,数"
-        - "名詞,接尾,助数詞"
       new_tag: "名詞,数"
   - kind: "japanese_number"
     args:
@@ -1672,6 +1672,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_number"><a class="header" href="#japanese_number">japanese_number</a></h3>
 <p>Converts Japanese numeral representations (kanji numerals, formal/legal kanji numerals, and fullwidth digits) in the token's surface text to Arabic numerals.</p>
+<p>When this filter follows <code>japanese_compound_word</code>, merge only the <code>名詞,数</code> tokens. A counter (<code>名詞,接尾,助数詞</code>) merged into the number token is read as digits, so <code>一万円</code> comes out as <code>10円</code> instead of <code>10000</code> and <code>円</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to. When omitted or <code>null</code>, every token is converted</td></tr>

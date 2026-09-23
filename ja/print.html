@@ -1432,9 +1432,9 @@ character_filters:
 token_filters:
   - kind: "japanese_compound_word"
     args:
+      # Merge the numeral tokens only. A counter merged into the number token is read as digits by japanese_number.
       tags:
         - "名詞,数"
-        - "名詞,接尾,助数詞"
       new_tag: "名詞,数"
   - kind: "japanese_number"
     args:
@@ -1674,6 +1674,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_number"><a class="header" href="#japanese_number">japanese_number</a></h3>
 <p>トークンの表層テキストに含まれる日本語の数値表現（漢数字、大字、全角数字）をアラビア数字に変換します。</p>
+<p><code>japanese_compound_word</code>の後段で使う場合は、<code>名詞,数</code>のトークンだけを結合してください。助数詞（<code>名詞,接尾,助数詞</code>）を数値トークンに結合すると助数詞が桁として扱われ、<code>一万円</code>は<code>10000</code>と<code>円</code>ではなく<code>10円</code>になります。</p>
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt;または<code>null</code></td><td>いいえ</td><td>変換対象を限定する品詞タグ（カンマ区切りで最大4階層）。省略または<code>null</code>の場合はすべてのトークンが変換対象になる</td></tr>
