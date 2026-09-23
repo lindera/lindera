@@ -14,34 +14,55 @@ pub type KoreanNumberTokenFilterConfig = Value;
 
 /// Convert tokens representing Sino-Korean numerals, written in Hangul or in Hanja, to Arabic numerals.
 ///
+/// Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into one token per
+/// morpheme, so `이천이십육년` arrives as `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` and comes out as
+/// `2 1000 2 10 6 년`, not as `2026 년`. Merging those tokens first is tracked in
+/// <https://github.com/lindera/lindera/issues/1026>.
+///
 #[derive(Clone, Debug)]
 pub struct KoreanNumberTokenFilter {
     tags: Option<HashSet<String>>,
 }
 
 impl KoreanNumberTokenFilter {
+    /// The tags the filter is restricted to when `tags` is not given: numbers and numerals.
+    ///
+    /// Hangul numerals are homographs of very common morphemes, so converting every token
+    /// rewrites ordinary text: `이것은 사과입니다` becomes `2것 은 4과 입니다`. Restricting the
+    /// filter to the numeral tags is the useful default. `"tags": null` asks for every token.
+    pub const DEFAULT_TAGS: [&'static str; 2] = ["SN", "NR"];
+
     pub fn new(tags: Option<HashSet<String>>) -> Self {
         Self { tags }
     }
 
     pub fn from_config(config: &KoreanNumberTokenFilterConfig) -> LinderaResult<Self> {
-        let tags = config
-            .get("tags")
-            .and_then(|t| t.as_array())
-            .map_or(Ok(None), |array| {
-                array
-                    .iter()
-                    .map(|v| {
-                        v.as_str()
-                            .ok_or_else(|| {
-                                LinderaErrorKind::Deserialize
-                                    .with_error(anyhow::anyhow!("tag must be a string"))
-                            })
-                            .map(|s| s.to_string())
-                    })
-                    .collect::<LinderaResult<HashSet<String>>>()
-                    .map(Some)
-            })?;
+        let tags = match config.get("tags") {
+            // Absent: restrict the filter to the numeral tags.
+            None => Some(Self::DEFAULT_TAGS.iter().map(|s| s.to_string()).collect()),
+            // Explicitly null: convert every token.
+            Some(Value::Null) => None,
+            Some(value) => {
+                let array = value.as_array().ok_or_else(|| {
+                    LinderaErrorKind::Deserialize
+                        .with_error(anyhow::anyhow!("tags must be an array of strings"))
+                })?;
+
+                Some(
+                    array
+                        .iter()
+                        .map(|v| {
+                            v.as_str()
+                                .ok_or_else(|| {
+                                    LinderaErrorKind::Deserialize
+                                        .with_error(anyhow::anyhow!("tag must be a string"))
+                                })
+                                .map(|s| s.to_string())
+                        })
+                        .collect::<LinderaResult<HashSet<String>>>()?,
+                )
+            }
+        };
 
         Ok(Self::new(tags))
     }
@@ -69,9 +90,9 @@ impl TokenFilter for KoreanNumberTokenFilter {
     ///
     /// 2. **Tag Matching**:
     ///    - If the configuration contains specific tags (`tags`), the function checks whether the token's tag is one of them.
-    ///    - If no tags are specified (`None`), the conversion is applied to every token.  Hangul numerals are
-    ///      homographs of common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle),
-    ///      so restricting this filter to `SN` and `NR` is recommended.
+    ///    - If no tags are specified (`None`), the conversion is applied to every token. Configurations that
+    ///      leave `tags` out get [`KoreanNumberTokenFilter::DEFAULT_TAGS`] instead, because Hangul numerals are
+    ///      homographs of common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle).
     ///
     /// 3. **Text Conversion**:
     ///    - For tokens that match the criteria, the text is converted to Arabic numerals using the `to_arabic_numerals` function and stored as `Cow::Owned`.
@@ -133,21 +154,22 @@ fn to_arabic_numerals(from_str: &str) -> String {
         match c {
             '0' | '０' | '영' | '공' | '〇' | '零' => num_buf.insert(0, '0'),
             '1' | '１' | '일' | '一' | '壹' => num_buf.insert(0, '1'),
-            '2' | '２' | '이' | '二' | '貳' => num_buf.insert(0, '2'),
-            '3' | '３' | '삼' | '三' | '參' => num_buf.insert(0, '3'),
-            '4' | '４' | '사' | '四' => num_buf.insert(0, '4'),
-            '5' | '５' | '오' | '五' => num_buf.insert(0, '5'),
-            '6' | '６' | '육' | '륙' | '六' => num_buf.insert(0, '6'),
-            '7' | '７' | '칠' | '七' => num_buf.insert(0, '7'),
-            '8' | '８' | '팔' | '八' => num_buf.insert(0, '8'),
-            '9' | '９' | '구' | '九' => num_buf.insert(0, '9'),
+            '2' | '２' | '이' | '二' | '貳' | '貮' => num_buf.insert(0, '2'),
+            '3' | '３' | '삼' | '三' | '參' | '叁' => num_buf.insert(0, '3'),
+            '4' | '４' | '사' | '四' | '肆' => num_buf.insert(0, '4'),
+            '5' | '５' | '오' | '五' | '伍' => num_buf.insert(0, '5'),
+            '6' | '６' | '육' | '륙' | '六' | '陸' => num_buf.insert(0, '6'),
+            '7' | '７' | '칠' | '七' | '柒' => num_buf.insert(0, '7'),
+            '8' | '８' | '팔' | '八' | '捌' => num_buf.insert(0, '8'),
+            '9' | '９' | '구' | '九' | '玖' => num_buf.insert(0, '9'),
             '십' | '十' | '拾' => {
                 num_buf = adjust_digits(&num_buf, "0", &digit);
 
                 match i.peek() {
-                    Some('백') | Some('百') | Some('천') | Some('千') | Some('만') | Some('萬')
-                    | Some('万') | Some('억') | Some('億') | Some('조') | Some('兆')
-                    | Some('경') | Some('京') | Some('해') | Some('垓') | None => {
+                    Some('백') | Some('百') | Some('佰') | Some('천') | Some('千') | Some('仟')
+                    | Some('만') | Some('萬') | Some('万') | Some('억') | Some('億')
+                    | Some('조') | Some('兆') | Some('경') | Some('京') | Some('해')
+                    | Some('垓') | None => {
                         // If the first character is a '0', the '1' has been omitted.
                         // Therefore, insert a leading '1'.
                         num_buf.insert(0, '1');
@@ -157,13 +179,13 @@ fn to_arabic_numerals(from_str: &str) -> String {
                     }
                 }
             }
-            '백' | '百' => {
+            '백' | '百' | '佰' => {
                 num_buf = adjust_digits(&num_buf, "00", &digit);
 
                 match i.peek() {
-                    Some('천') | Some('千') | Some('만') | Some('萬') | Some('万') | Some('억')
-                    | Some('億') | Some('조') | Some('兆') | Some('경') | Some('京')
-                    | Some('해') | Some('垓') | None => {
+                    Some('천') | Some('千') | Some('仟') | Some('만') | Some('萬') | Some('万')
+                    | Some('억') | Some('億') | Some('조') | Some('兆') | Some('경')
+                    | Some('京') | Some('해') | Some('垓') | None => {
                         num_buf.insert(0, '1');
                     }
                     _ => {
@@ -171,7 +193,7 @@ fn to_arabic_numerals(from_str: &str) -> String {
                     }
                 }
             }
-            '천' | '千' => {
+            '천' | '千' | '仟' => {
                 num_buf = adjust_digits(&num_buf, "000", &digit);
 
                 match i.peek() {
@@ -315,7 +337,17 @@ mod tests {
         assert_eq!(to_arabic_numerals("十"), "10");
         assert_eq!(to_arabic_numerals("二千二十六"), "2026");
         assert_eq!(to_arabic_numerals("三千五百"), "3500");
+        // The financial forms, used on cheques and contracts.
         assert_eq!(to_arabic_numerals("壹"), "1");
+        assert_eq!(to_arabic_numerals("貳"), "2");
+        assert_eq!(to_arabic_numerals("參"), "3");
+        assert_eq!(to_arabic_numerals("肆"), "4");
+        assert_eq!(to_arabic_numerals("伍"), "5");
+        assert_eq!(to_arabic_numerals("陸"), "6");
+        assert_eq!(to_arabic_numerals("柒"), "7");
+        assert_eq!(to_arabic_numerals("捌"), "8");
+        assert_eq!(to_arabic_numerals("玖"), "9");
+        assert_eq!(to_arabic_numerals("壹仟貳佰參拾肆"), "1234");
     }
 
     #[test]
@@ -328,12 +360,40 @@ mod tests {
 
     #[test]
     fn test_to_arabic_numerals_leaves_other_text_alone() {
-        // 고유어 수사는 자릿수 구조가 없으므로 그대로 둔다.
+        // Native Korean numerals are not positional, so they are left as they are.
         assert_eq!(to_arabic_numerals("하나"), "하나");
         assert_eq!(to_arabic_numerals("스물"), "스물");
         assert_eq!(to_arabic_numerals("여덟"), "여덟");
         assert_eq!(to_arabic_numerals("한국"), "한국");
         assert_eq!(to_arabic_numerals(""), "");
+    }
+
+    #[test]
+    fn test_from_config_tags() {
+        use crate::token_filter::korean_number::KoreanNumberTokenFilter;
+
+        // An absent `tags` restricts the filter to the numeral tags.
+        let filter = KoreanNumberTokenFilter::from_config(&serde_json::json!({})).unwrap();
+        let tags = filter.tags.unwrap();
+        assert_eq!(tags.len(), 2);
+        assert!(tags.contains("SN"));
+        assert!(tags.contains("NR"));
+
+        // An explicit null asks for every token.
+        let filter =
+            KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": null })).unwrap();
+        assert!(filter.tags.is_none());
+
+        // An explicit list is taken as it is.
+        let filter =
+            KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": ["NR"] })).unwrap();
+        assert_eq!(filter.tags.unwrap().len(), 1);
+
+        // Anything that is not a list of strings is an error.
+        assert!(
+            KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": "NR" })).is_err()
+        );
+        assert!(KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": [1] })).is_err());
     }
 
     #[test]
@@ -371,21 +431,16 @@ mod tests {
             ]),
         };
 
-        // 태그를 지정하지 않으면 모든 토큰을 변환한다.
+        // Without tags every token is converted.
         let filter = KoreanNumberTokenFilter::new(None);
-        let mut tokens: Vec<Token> = vec![
-            make_token("이천이십육", "NR", 0),
-            make_token("년", "NNB", 1),
-        ];
+        let mut tokens: Vec<Token> = vec![make_token("육", "NR", 0), make_token("년", "NNB", 1)];
         filter.apply(&mut tokens).unwrap();
-        assert_eq!(tokens[0].surface, "2026");
+        assert_eq!(tokens[0].surface, "6");
         assert_eq!(tokens[1].surface, "년");
 
-        // 태그를 지정하면 그 태그의 토큰만 변환한다.
-        // 한글 수사는 다른 형태소와 동형이라(`이`/JKS, `만`/JX) 태그 지정을 권장한다.
-        let mut tags = HashSet::new();
-        tags.insert("NR".to_string());
-        let filter = KoreanNumberTokenFilter::new(Some(tags));
+        // With tags only the tokens carrying one of them are converted. Hangul numerals are
+        // homographs of common morphemes, which is what the tags keep apart here.
+        let filter = KoreanNumberTokenFilter::new(Some(HashSet::from(["NR".to_string()])));
         let mut tokens: Vec<Token> = vec![
             make_token("삼", "NR", 0),
             make_token("이", "JKS", 1),
@@ -395,5 +450,68 @@ mod tests {
         assert_eq!(tokens[0].surface, "3");
         assert_eq!(tokens[1].surface, "이");
         assert_eq!(tokens[2].surface, "만");
+    }
+
+    #[test]
+    #[cfg(feature = "embed-ko-dic")]
+    fn test_korean_number_token_filter_with_tokenizer() {
+        use crate::token_filter::BoxTokenFilter;
+        use crate::token_filter::korean_number::KoreanNumberTokenFilter;
+        use crate::tokenizer::Tokenizer;
+        use lindera::dictionary::load_dictionary;
+        use lindera::mode::Mode;
+        use lindera::segmenter::Segmenter;
+
+        let tokenize = |text: &str, filter: KoreanNumberTokenFilter| -> Vec<String> {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let mut tokenizer = Tokenizer::new(segmenter);
+            tokenizer.append_token_filter(BoxTokenFilter::from(filter));
+            tokenizer
+                .tokenize(text)
+                .unwrap()
+                .iter()
+                .map(|token| token.surface.to_string())
+                .collect()
+        };
+
+        let default_filter =
+            || KoreanNumberTokenFilter::from_config(&serde_json::json!({})).unwrap();
+
+        // ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, and this filter
+        // converts each token on its own, so the tokens do not add up to a single number.
+        // Merging them first is tracked in lindera/lindera#1026.
+        assert_eq!(
+            tokenize("이천이십육년", default_filter()),
+            ["2", "1000", "2", "10", "6", "년"]
+        );
+        assert_eq!(tokenize("10만", default_filter()), ["10", "10000"]);
+        assert_eq!(tokenize("2천26", default_filter()), ["2", "1000", "26"]);
+
+        // Ordinary text is left alone under the default tags, even though it is full of
+        // morphemes that are spelled like numerals.
+        assert_eq!(
+            tokenize("이것은 사과입니다", default_filter()),
+            ["이것", "은", "사과", "입니다"]
+        );
+        assert_eq!(
+            tokenize("나는 만 원만 있다", default_filter()),
+            ["나", "는", "만", "원만", "있", "다"]
+        );
+
+        // With `tags` set to null every token is converted, which rewrites that same text.
+        let every_token =
+            KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": null })).unwrap();
+        assert_eq!(
+            tokenize("이것은 사과입니다", every_token),
+            ["2것", "은", "4과", "입니다"]
+        );
+
+        // ko-dic tags Hanja as SH, so Hanja numerals need that tag to be converted.
+        let with_hanja = KoreanNumberTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["SN", "NR", "SH"] }),
+        )
+        .unwrap();
+        assert_eq!(tokenize("二千二十六", with_hanja), ["2026"]);
     }
 }
