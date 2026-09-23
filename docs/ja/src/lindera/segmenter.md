@@ -168,7 +168,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## 左側空白ペナルティ（韓国語）
 
-MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `서울 시 에서` の `시` は名詞 `NNG` ではなく語尾 `EP` と解析されます。Lindera でも同じペナルティを適用できます。デフォルトではオフです。
+MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 `J*`、語尾 `E*`、指定詞 `VCP`、派生接尾辞 `XS*`）である場合にコストを加算します。これがないと `서울 시 에서` の `시` は名詞 `NNG` ではなく語尾 `EP` と解析されます。Lindera は、ルールを `metadata.json` に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。`Segmenter::space_penalty(None)`、設定の `"space_penalty": false`、CLI の `--disable-space-penalty` でオフにでき、v6.0 の出力に戻ります。
 
 `SpacePenaltyConfig` は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の `+` より前の部分（ko-dic の `Inflect` 行では `first_part_of_speech` 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の `dicrc` のルールは次のように書けます:
 
@@ -184,15 +184,15 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 
 「空白」とは辞書の `SPACE` カテゴリ（`char.def`）に属する文字のことで、`keep_whitespace` が除外する文字集合と同じです。`SPACE` カテゴリを持たない辞書では Unicode の `White_Space` にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。`space_penalty` は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに `part_of_speech_tag` も `part_of_speech` もない場合はエラーを返します。
 
-辞書は `metadata.json` の `space_penalty` にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しています。`space_penalty_from_dictionary()` を使えばルールを書き出さずに有効化できます（ルールを同梱しない辞書ではエラーを返します）:
+辞書は `metadata.json` の `space_penalty` にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しており、`Segmenter::new` がそれを自動的に適用します。`space_penalty_from_dictionary()` はオフにした後に再び有効化するためのもので、ルールを同梱しない辞書ではエラーを返します。同梱ルールを適用できない辞書（スキーマに品詞列が無い辞書）では、`Segmenter::new` は警告を出してオフのままにします:
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 ```
 
-このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、辞書を再ビルドするまで `space_penalty_from_dictionary()`（および `"space_penalty": true`、`--space-penalty`）はエラーを返します。明示的なルール（`space_penalty`、`--space-penalty-rules`）はどの ko-dic でも使えます。
+このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、`space_penalty_from_dictionary()`（および `"space_penalty": true`）は辞書を再ビルドするまでエラーを返します。明示的なルール（`space_penalty`、`--space-penalty-rules`）はどの ko-dic でも使えます。
 
-`SegmenterConfig` の `space_penalty` キーには、辞書のルールを使う `true`、明示的なルールのオブジェクト、オフ（デフォルト）の `false` または `null` を指定できます:
+`SegmenterConfig` の `space_penalty` キーには、明示的なルールのオブジェクト、オフにする `false`、辞書のルールを要求する `true`（同梱しない辞書ではエラー）を指定できます。キーを省略するか `null` にするとデフォルト、つまり辞書がルールを同梱していればそのルールが使われます:
 
 ```json
 {

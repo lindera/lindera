@@ -161,7 +161,7 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladd
 
 ## Left-Space Penalty (Korean)
 
-MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `서울 시 에서` reads `시` as the ending `EP` rather than the noun `NNG`. Lindera can apply the same penalty; it is off by default.
+MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (`J*`), endings (`E*`), the copula (`VCP`) and derivational suffixes (`XS*`). Without it, `서울 시 에서` reads `시` as the ending `EP` rather than the noun `NNG`. Lindera applies the same penalty by default for dictionaries that ship the rules in their metadata (ko-dic does); other dictionaries are unaffected. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the config, or `--disable-space-penalty` on the CLI, which restores the v6.0 output.
 
 `SpacePenaltyConfig` is a list of rules, each pairing first part-of-speech tags with a cost. A candidate is matched by the part of its tag before the first `+` (for ko-dic `Inflect` rows, the `first_part_of_speech` column); the first matching rule wins and unlisted tags cost nothing. mecab-ko-dic's `dicrc` rules translate to:
 
@@ -177,15 +177,15 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Som
 
 "Whitespace" means a character of the dictionary's `SPACE` category (`char.def`), the same set `keep_whitespace` filters on; a dictionary without that category falls back to Unicode `White_Space`. The penalty applies in both modes and in N-best search, to system, user and unknown-word entries alike. `space_penalty` builds a per-word-id lookup once (a few tens of milliseconds for ko-dic), and returns an error when the dictionary schema has neither a `part_of_speech_tag` nor a `part_of_speech` field.
 
-A dictionary can ship its default rules in `metadata.json` under `space_penalty`; ko-dic does, with exactly the rules above. `space_penalty_from_dictionary()` enables them without spelling them out (it returns an error for a dictionary that ships none):
+A dictionary can ship its default rules in `metadata.json` under `space_penalty`; ko-dic does, with exactly the rules above, and `Segmenter::new` applies them automatically. `space_penalty_from_dictionary()` re-enables them after an opt-out and returns an error for a dictionary that ships none. Shipped rules that cannot be applied, because the schema has no part-of-speech field, only log a warning in `Segmenter::new`:
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 ```
 
-Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so `space_penalty_from_dictionary()` (and `"space_penalty": true`, `--space-penalty`) returns an error until the dictionary is rebuilt. Explicit rules (`space_penalty`, `--space-penalty-rules`) work with any ko-dic.
+Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so with it the penalty silently stays off, and `space_penalty_from_dictionary()` (or `"space_penalty": true`) returns an error until the dictionary is rebuilt. Explicit rules (`space_penalty`, `--space-penalty-rules`) work with any ko-dic.
 
-In a `SegmenterConfig`, the `space_penalty` key takes `true` for the dictionary's rules, an object for explicit rules, and `false` or `null` for off (the default):
+In a `SegmenterConfig`, the `space_penalty` key takes an object for explicit rules, `false` for off, and `true` for the dictionary's rules (an error when it ships none). Leaving the key out, or `null`, keeps the default: the dictionary's rules when it ships any.
 
 ```json
 {

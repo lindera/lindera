@@ -241,7 +241,8 @@ impl AnalysisWorker {
     }
 
     /// Sets the left-space penalty rules for subsequent calls (see
-    /// `Segmenter::space_penalty`; `None`, the default, disables it).
+    /// `Segmenter::space_penalty`; `None` disables it, overriding the rules
+    /// the dictionary ships and applies by default).
     ///
     /// # 引数
     ///
@@ -256,6 +257,18 @@ impl AnalysisWorker {
         space_penalty: Option<SpacePenaltyConfig>,
     ) -> LinderaResult<()> {
         self.segment_worker.set_space_penalty(space_penalty)
+    }
+
+    /// Enables the left-space penalty with the rules the dictionary ships in
+    /// its metadata (see `Segmenter::space_penalty_from_dictionary`), e.g.
+    /// to restore the default after `set_space_penalty(None)`.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary ships no rules; the
+    /// previous setting is kept on error.
+    pub fn set_space_penalty_from_dictionary(&mut self) -> LinderaResult<()> {
+        self.segment_worker.set_space_penalty_from_dictionary()
     }
 
     /// Immediately shrinks the worker's internal buffers to what an input
