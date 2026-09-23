@@ -342,7 +342,11 @@ Merging those tokens before the conversion, the way `japanese_compound_word` doe
 | --- | --- | --- | --- |
 | `tags` | array\<string\> or `null` | No | Part-of-speech tags to restrict the conversion to. Omitted, it defaults to `["SN", "NR"]`; `null` converts every token |
 
-Hangul numerals are homographs of very common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle), so converting every token rewrites ordinary text: `이것은 사과입니다` becomes `2것 은 4과 입니다`. That is why the default is restricted to the numeral tags. Add `SH` to convert Hanja numerals as well; note that ko-dic tags some Hanja numerals as `NNG` instead, so that coverage is partial.
+A token is converted only when every one of its characters is a numeral, the rule Lucene's `KoreanNumberFilter` applies. That is what keeps native Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일`, and a character-by-character conversion would give `1곱`.
+
+Hangul numerals are also homographs of very common morphemes (`이` is a subject particle, `만` an auxiliary particle), and those are single characters that the all-numeral rule cannot separate from a numeral. That is why the default is restricted to the numeral tags.
+
+Add `SH` to convert Hanja numerals as well. The coverage is partial in two ways: ko-dic tags whole Hanja words as `NNG` (`參加`, `萬歲` are untouched), while a single Hanja character it cannot attach to a word is `SH` on its own, so `十字架` becomes `10 字 架` and `百貨店` becomes `100 貨 店`.
 
 **Example:**
 

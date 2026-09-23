@@ -136,14 +136,49 @@ fn adjust_digits(num: &str, base: &str, digit: &str) -> String {
     num_str
 }
 
+/// Whether the character can take part in a Sino-Korean numeral: a digit, a numeral syllable or
+/// one of the position characters, in Hangul, in Hanja or in the financial Hanja forms.
+fn is_numeral(c: char) -> bool {
+    matches!(
+        c,
+        '0'..='9'
+            | '０'..='９'
+            | '영' | '공' | '〇' | '零'
+            | '일' | '一' | '壹'
+            | '이' | '二' | '貳' | '貮'
+            | '삼' | '三' | '參' | '叁'
+            | '사' | '四' | '肆'
+            | '오' | '五' | '伍'
+            | '육' | '륙' | '六' | '陸'
+            | '칠' | '七' | '柒'
+            | '팔' | '八' | '捌'
+            | '구' | '九' | '玖'
+            | '십' | '十' | '拾'
+            | '백' | '百' | '佰'
+            | '천' | '千' | '仟'
+            | '만' | '萬' | '万'
+            | '억' | '億'
+            | '조' | '兆'
+            | '경' | '京'
+            | '해' | '垓'
+    )
+}
+
 /// Converts a Sino-Korean numeral into Arabic numerals.
 ///
 /// Both the Hangul spelling (`이천이십육`) and the Hanja spelling (`二千二十六`) are accepted, as are
 /// mixed forms (`2천26`) and full width digits.  Characters that are not numerals are copied as they are,
 /// so a token that is not a number comes back unchanged.
 ///
-/// Native Korean numerals (`하나`, `둘`, `열`, `스물`, ...) are not positional and are left untouched.
+/// A token is converted only when every one of its characters is a numeral, the rule Lucene's
+/// `KoreanNumberFilter` applies. Anything else is returned unchanged, which is what keeps native
+/// Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일` but is not a
+/// positional numeral, and converting it character by character would give `1곱`.
 fn to_arabic_numerals(from_str: &str) -> String {
+    if !from_str.chars().all(is_numeral) {
+        return from_str.to_owned();
+    }
+
     let mut num_buf = String::new();
     let mut digit = String::new();
 
@@ -364,8 +399,28 @@ mod tests {
         assert_eq!(to_arabic_numerals("하나"), "하나");
         assert_eq!(to_arabic_numerals("스물"), "스물");
         assert_eq!(to_arabic_numerals("여덟"), "여덟");
+        // These carry a Sino-Korean syllable, and a character-by-character conversion would
+        // turn them into `1곱`, `1흔` and `1고여덟`. The all-numeral rule keeps them whole.
+        assert_eq!(to_arabic_numerals("일곱"), "일곱");
+        assert_eq!(to_arabic_numerals("일흔"), "일흔");
+        assert_eq!(to_arabic_numerals("일고여덟"), "일고여덟");
+        // The same rule protects ordinary words that begin with a numeral character.
         assert_eq!(to_arabic_numerals("한국"), "한국");
+        assert_eq!(to_arabic_numerals("參加"), "參加");
+        assert_eq!(to_arabic_numerals("萬歲"), "萬歲");
         assert_eq!(to_arabic_numerals(""), "");
+    }
+
+    #[test]
+    fn test_is_numeral_matches_the_conversion_table() {
+        use crate::token_filter::korean_number::is_numeral;
+
+        for c in "0123456789０９영공〇零일一壹이二貳貮삼三參叁사四肆오五伍육륙六陸칠七柒팔八捌구九玖십十拾백百佰천千仟만萬万억億조兆경京해垓".chars() {
+            assert!(is_numeral(c), "{c} should be a numeral character");
+        }
+        for c in "가나다곱흔여덟한국字架貨店 -.".chars() {
+            assert!(!is_numeral(c), "{c} should not be a numeral character");
+        }
     }
 
     #[test]
@@ -494,17 +549,32 @@ mod tests {
             tokenize("이것은 사과입니다", default_filter()),
             ["이것", "은", "사과", "입니다"]
         );
+
+        // ko-dic tags native numerals as NR, so they reach the filter under the default tags.
+        // Those that contain a Sino-Korean syllable must still come through untouched.
+        assert_eq!(tokenize("일곱 명", default_filter()), ["일곱", "명"]);
+        assert_eq!(tokenize("일흔 살", default_filter()), ["일흔", "살"]);
+        assert_eq!(
+            tokenize("일고여덟 명", default_filter()),
+            ["일고여덟", "명"]
+        );
         assert_eq!(
             tokenize("나는 만 원만 있다", default_filter()),
             ["나", "는", "만", "원만", "있", "다"]
         );
 
-        // With `tags` set to null every token is converted, which rewrites that same text.
+        // With `tags` set to null every token is converted. The all-numeral rule still protects
+        // words that merely contain a numeral character, but a particle that is spelled exactly
+        // like a numeral is indistinguishable from one without its tag: `만`/JX becomes 10000.
         let every_token =
-            KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": null })).unwrap();
+            || KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": null })).unwrap();
         assert_eq!(
-            tokenize("이것은 사과입니다", every_token),
-            ["2것", "은", "4과", "입니다"]
+            tokenize("이것은 사과입니다", every_token()),
+            ["이것", "은", "사과", "입니다"]
+        );
+        assert_eq!(
+            tokenize("나는 만 원만 있다", every_token()),
+            ["나", "는", "10000", "원만", "있", "다"]
         );
 
         // ko-dic tags Hanja as SH, so Hanja numerals need that tag to be converted.
