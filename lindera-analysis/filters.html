@@ -394,6 +394,34 @@
   }
 }
 </code></pre>
+<h3 id="korean_compound_word"><a class="header" href="#korean_compound_word">korean_compound_word</a></h3>
+<p>Merges consecutive Korean tokens whose first part-of-speech tag matches one of <code>tags</code> into a single compound token. The merged token keeps the first token's <code>byte_start</code> and <code>position</code>, takes the last token's <code>byte_end</code>, and its <code>position_length</code> is the number of tokens merged. A matching token whose neighbours do not match is left as it is.</p>
+<p>ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so this filter is what turns <code>이/NR 천/NR 이/NR 십/NR 육/NR</code> back into one token before <code>korean_number</code> converts it:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input</th><th>Tokens from ko-dic</th><th>After <code>korean_compound_word</code> (<code>tags: ["SN", "NR"]</code>, <code>new_tag: "NR"</code>)</th><th>After <code>korean_number</code></th></tr></thead><tbody>
+<tr><td><code>이천이십육년</code></td><td><code>이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC</code></td><td><code>이천이십육/NR 년/NNBC</code></td><td><code>2026 년</code></td></tr>
+<tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10만/NR</code></td><td><code>100000</code></td></tr>
+<tr><td><code>2천26</code></td><td><code>2/SN 천/NR 26/SN</code></td><td><code>2천26/NR</code></td><td><code>2026</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tags</code></td><td>array&lt;string&gt;</td><td>Yes</td><td>Part-of-speech tags (the single ko-dic tag, such as <code>NR</code> or <code>SN</code>) that mark tokens eligible for merging</td></tr>
+<tr><td><code>new_tag</code></td><td>string</td><td>No</td><td>Part-of-speech tag assigned to the merged token; its other details are <code>*</code>. When omitted, the merged token is tagged <code>복합어</code>, which is not a ko-dic tag, so pass a tag such as <code>NR</code> when a following <code>korean_number</code> or <code>korean_keep_tags</code> should pick the merged token up</td></tr>
+</tbody></table>
+</div>
+<p><strong>Example:</strong></p>
+<pre><code class="language-json">{
+  "kind": "korean_compound_word",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ],
+    "new_tag": "NR"
+  }
+}
+</code></pre>
+<p><code>만</code> right after a space is <code>NR</code> under the default left-space penalty, but at the start of the text or right after another numeral ko-dic tags it <code>JX</code> (<code>만 원</code>, <code>십만 원</code>), which stays outside <code>["SN", "NR"]</code>.</p>
 <h3 id="korean_keep_tags"><a class="header" href="#korean_keep_tags">korean_keep_tags</a></h3>
 <p>Keeps only Korean tokens whose first part-of-speech tag matches one of <code>tags</code>.</p>
 <p><strong>Parameters:</strong></p>
@@ -419,7 +447,13 @@
 <tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10 10000</code></td></tr>
 </tbody></table>
 </div>
-<p>Merging those tokens before the conversion, the way <code>japanese_compound_word</code> does for IPADIC, is tracked in <a href="https://github.com/lindera/lindera/issues/1026">#1026</a>. A single token that holds the whole numeral, such as the Hanja <code>二千二十六/SH</code>, is converted in full.</p>
+<p>Put <code>korean_compound_word</code> in front of this filter to merge those tokens first, the way <code>japanese_compound_word</code> does for IPADIC. Its <code>new_tag</code> must be one of this filter's <code>tags</code> for the merged token to be converted:</p>
+<pre><code class="language-json">[
+  {"kind": "korean_compound_word", "args": {"tags": ["SN", "NR"], "new_tag": "NR"}},
+  {"kind": "korean_number", "args": {"tags": ["SN", "NR"]}}
+]
+</code></pre>
+<p>With that chain <code>이천이십육년</code> becomes <code>2026 년</code>, <code>10만</code> becomes <code>100000</code> and <code>2천26</code> becomes <code>2026</code>. A single token that holds the whole numeral, such as the Hanja <code>二千二十六/SH</code>, is converted in full by this filter alone.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags to restrict the conversion to. Omitted, it defaults to <code>["SN", "NR"]</code>; <code>null</code> converts every token</td></tr>

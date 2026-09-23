@@ -393,6 +393,34 @@
   }
 }
 </code></pre>
+<h3 id="korean_compound_word"><a class="header" href="#korean_compound_word">korean_compound_word</a></h3>
+<p>最初の品詞タグが<code>tags</code>のいずれかに一致する連続した韓国語トークンを、1つの複合語トークンに結合します。結合後のトークンは先頭トークンの<code>byte_start</code>と<code>position</code>、末尾トークンの<code>byte_end</code>を持ち、<code>position_length</code>は結合したトークン数になります。隣接トークンが一致しない単独のトークンはそのままです。</p>
+<p>ko-dicは漢数詞を形態素単位に分割するため、<code>이/NR 천/NR 이/NR 십/NR 육/NR</code>を<code>korean_number</code>で変換する前に1トークンへ戻すのがこのフィルタの役割です。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力</th><th>ko-dicのトークン</th><th><code>korean_compound_word</code>適用後（<code>tags: ["SN", "NR"]</code>、<code>new_tag: "NR"</code>）</th><th><code>korean_number</code>適用後</th></tr></thead><tbody>
+<tr><td><code>이천이십육년</code></td><td><code>이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC</code></td><td><code>이천이십육/NR 년/NNBC</code></td><td><code>2026 년</code></td></tr>
+<tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10만/NR</code></td><td><code>100000</code></td></tr>
+<tr><td><code>2천26</code></td><td><code>2/SN 천/NR 26/SN</code></td><td><code>2천26/NR</code></td><td><code>2026</code></td></tr>
+</tbody></table>
+</div>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>tags</code></td><td>array&lt;string&gt;</td><td>はい</td><td>結合対象となるトークンを示す品詞タグ（<code>NR</code>や<code>SN</code>などko-dicの単一タグ）</td></tr>
+<tr><td><code>new_tag</code></td><td>string</td><td>いいえ</td><td>結合後のトークンに付与する品詞タグ。他のdetailは<code>*</code>になる。省略した場合は<code>복합어</code>が付与されるが、これはko-dicのタグではないため、後続の<code>korean_number</code>や<code>korean_keep_tags</code>に結合後のトークンを渡す場合は<code>NR</code>などのタグを指定する</td></tr>
+</tbody></table>
+</div>
+<p><strong>例:</strong></p>
+<pre><code class="language-json">{
+  "kind": "korean_compound_word",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ],
+    "new_tag": "NR"
+  }
+}
+</code></pre>
+<p>空白の直後の<code>만</code>は既定の左側空白ペナルティにより<code>NR</code>になりますが、文頭や他の数詞の直後ではko-dicが<code>JX</code>と判定するため（<code>만 원</code>、<code>십만 원</code>）、<code>["SN", "NR"]</code>では結合されません。</p>
 <h3 id="korean_keep_tags"><a class="header" href="#korean_keep_tags">korean_keep_tags</a></h3>
 <p>最初の品詞タグが<code>tags</code>のいずれかに一致する韓国語トークンのみを保持します。</p>
 <p><strong>パラメータ:</strong></p>
@@ -418,7 +446,13 @@
 <tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10 10000</code></td></tr>
 </tbody></table>
 </div>
-<p>IPADICに対する<code>japanese_compound_word</code>のように変換前にトークンを結合する処理は<a href="https://github.com/lindera/lindera/issues/1026">#1026</a>で対応予定です。漢字表記の<code>二千二十六/SH</code>のように数値全体が1トークンの場合はそのまま変換されます。</p>
+<p>IPADICに対する<code>japanese_compound_word</code>のように、変換前にトークンを結合するには<code>korean_compound_word</code>をこのフィルタの前に置きます。結合後のトークンを変換対象にするため、<code>new_tag</code>にはこのフィルタの<code>tags</code>に含まれるタグを指定します。</p>
+<pre><code class="language-json">[
+  {"kind": "korean_compound_word", "args": {"tags": ["SN", "NR"], "new_tag": "NR"}},
+  {"kind": "korean_number", "args": {"tags": ["SN", "NR"]}}
+]
+</code></pre>
+<p>このチェーンで<code>이천이십육년</code>は<code>2026 년</code>、<code>10만</code>は<code>100000</code>、<code>2천26</code>は<code>2026</code>になります。漢字表記の<code>二千二十六/SH</code>のように数値全体が1トークンの場合は、このフィルタ単体でそのまま変換されます。</p>
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt;または<code>null</code></td><td>いいえ</td><td>変換対象を限定する品詞タグ。省略した場合は<code>["SN", "NR"]</code>、<code>null</code>の場合はすべてのトークンが変換対象になる</td></tr>
