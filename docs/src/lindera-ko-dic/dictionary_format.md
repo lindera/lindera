@@ -37,7 +37,7 @@ mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost o
 left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 ```
 
-Lindera does not store `pos-id.def` ids, but every listed id corresponds to the entry's first part-of-speech tag (for `Inflect` rows, the `First part-of-speech` column), so the same rules are written by tag. ko-dic ships them in its `metadata.json` (`space_penalty`), so they can be enabled without spelling them out: `Segmenter::space_penalty_from_dictionary()`, `"space_penalty": true` in the segmenter config, or `lindera tokenize --space-penalty`. Explicit rules go through `Segmenter::space_penalty`, a `space_penalty` object, or `--space-penalty-rules`. The penalty is off by default. The shipped rules are present only in a ko-dic built by a Lindera release later than 6.0.0; a ko-dic from the v6.0.0 release has none, so `--space-penalty` fails until the dictionary is rebuilt, while `--space-penalty-rules` works regardless.
+Lindera does not store `pos-id.def` ids, but every listed id corresponds to the entry's first part-of-speech tag (for `Inflect` rows, the `First part-of-speech` column), so the same rules are written by tag. ko-dic ships them in its `metadata.json` (`space_penalty`), and `Segmenter::new` applies them by default. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the segmenter config, or `lindera tokenize --disable-space-penalty`; explicit rules go through `Segmenter::space_penalty`, a `space_penalty` object, or `--space-penalty-rules`. The shipped rules are present only in a ko-dic built by a Lindera release later than 6.0.0; with a ko-dic from the v6.0.0 release the penalty silently stays off until the dictionary is rebuilt, while `--space-penalty-rules` works regardless.
 
 | pos-id.def ids | First part-of-speech tags | Cost |
 | --- | --- | --- |
@@ -56,10 +56,10 @@ Lindera does not store `pos-id.def` ids, but every listed id corresponds to the 
 ```
 
 ```shell
-echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic --space-penalty
+echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
 ```
 
-With the penalty, `시` in `서울 시 에서` is read as the noun `NNG` (as mecab-ko does) instead of the ending `EP`. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.
+`시` in `서울 시 에서` is read as the noun `NNG` (as mecab-ko does) instead of the ending `EP`; with `--disable-space-penalty` it reads as `EP` again. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.
 
 ## User dictionary format (CSV)
 

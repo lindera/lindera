@@ -48,6 +48,9 @@ const KOREAN_TEXTS: &[&str] = &[
     "한국어의형태소해석을실시할수있습니다.",
     "아버지가방에들어가신다",
     "대한민국의 수도는 서울입니다.",
+    // A particle and an ending after a space: pins the left-space penalty
+    // that ko-dic applies by default (`시` reads as NNG, not EP).
+    "서울 시 에서 출발",
 ];
 
 #[allow(dead_code)]

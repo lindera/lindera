@@ -132,8 +132,11 @@ pub struct Segmenter {
     /// nori's `computeSpacePenalty`): a candidate that starts right after
     /// whitespace and whose first part-of-speech tag matches a rule gets the
     /// rule's cost added, so e.g. a particle or ending is not chosen across
-    /// a space. `None` (default) adds no penalty and keeps the previous
-    /// output. Set through [`Segmenter::space_penalty`] /
+    /// a space. [`Segmenter::new`] initializes it from the rules the
+    /// dictionary ships in its metadata (`Metadata::space_penalty`; ko-dic
+    /// does, the other bundled dictionaries do not), so for ko-dic the
+    /// penalty is on by default; `None` adds no penalty and reproduces the
+    /// v6.0 output. Set through [`Segmenter::space_penalty`] /
     /// [`Segmenter::set_space_penalty`], which also build the per-word-id
     /// lookup the lattice uses; the field is read-only for that reason.
     space_penalty: Option<SpacePenaltyConfig>,
@@ -173,6 +176,12 @@ impl Segmenter {
     /// - `mode`: This defines the behavior of the instance, such as whether to process text in normal or aggressive mode.
     /// - `dictionary`: The main dictionary containing tokenization or processing rules.
     /// - `user_dictionary`: This is optional. If provided, it allows the user to extend or override the rules of the main dictionary with custom tokens.
+    /// - Left-space penalty: when the dictionary ships rules in its metadata
+    ///   (`Metadata::space_penalty`, as ko-dic does), they are applied here, so
+    ///   the penalty is on by default for such dictionaries. Rules that cannot
+    ///   be applied (a schema without a part-of-speech field) log a warning
+    ///   and leave the penalty off. Opt out with [`Segmenter::space_penalty`]
+    ///   and `None`.
     pub fn new(
         mode: Mode,
         dictionary: Dictionary,
@@ -210,18 +219,36 @@ impl Segmenter {
             (user_dictionary, _) => user_dictionary,
         };
 
-        Self {
+        let mut segmenter = Self {
             mode,
             dictionary,
             user_dictionary,
             keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
             max_grouping_len: None, // Default: unbounded grouping
             unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
-            space_penalty: None,    // Default: no left-space penalty
+            space_penalty: None,    // Set below from the dictionary's shipped rules, if any
             space_penalty_table: None,
             space_category_id,
             space_ascii_table,
+        };
+
+        // Default (6.1+): apply the left-space penalty rules the dictionary
+        // ships in its metadata (ko-dic carries mecab-ko-dic's). `new` cannot
+        // return an error, so a dictionary whose rules cannot be applied (a
+        // schema without a part-of-speech field) logs a warning and runs
+        // unpenalized, the state `Segmenter::space_penalty(None)` selects
+        // explicitly.
+        let shipped_rules = segmenter.dictionary.metadata.space_penalty.clone();
+        if let Some(rules) = shipped_rules
+            && let Err(err) = segmenter.set_space_penalty(Some(rules))
+        {
+            warn!(
+                "space penalty rules shipped by dictionary '{}' were not applied: {err}",
+                segmenter.dictionary.metadata.name
+            );
         }
+
+        segmenter
     }
 
     /// Builder method to set whether to keep whitespace tokens in output.
@@ -286,8 +313,9 @@ impl Segmenter {
         self
     }
 
-    /// Builder method to enable the left-space penalty (see the
-    /// `space_penalty` field; `None`, the default, disables it).
+    /// Builder method to set the left-space penalty rules (see the
+    /// `space_penalty` field). `None` disables the penalty, including the
+    /// rules the dictionary ships and [`Segmenter::new`] applies by default.
     ///
     /// Building the per-word-id lookup reads every entry's part-of-speech
     /// tag once, so this costs a few tens of milliseconds on a large
@@ -543,16 +571,19 @@ impl Segmenter {
             .and_then(Value::as_bool)
             .unwrap_or(true);
 
-        // Load the space_penalty option from the config. Absent, `null` or
-        // `false` means off (the default); `true` uses the rules the
-        // dictionary ships in its metadata; an object holds explicit rules.
+        // Load the space_penalty option from the config. Absent or `null`
+        // keeps the default `Segmenter::new` chose (the rules the dictionary
+        // ships, if any); `false` turns the penalty off; `true` requires the
+        // dictionary's rules; an object holds explicit rules.
         enum SpacePenaltySetting {
+            Default,
             Off,
             FromDictionary,
             Rules(SpacePenaltyConfig),
         }
         let space_penalty = match config.get("space_penalty") {
-            None | Some(Value::Null) | Some(Value::Bool(false)) => SpacePenaltySetting::Off,
+            None | Some(Value::Null) => SpacePenaltySetting::Default,
+            Some(Value::Bool(false)) => SpacePenaltySetting::Off,
             Some(Value::Bool(true)) => SpacePenaltySetting::FromDictionary,
             Some(value) => SpacePenaltySetting::Rules(
                 serde_json::from_value::<SpacePenaltyConfig>(value.clone()).map_err(|e| {
@@ -567,7 +598,8 @@ impl Segmenter {
             .max_grouping_len(max_grouping_len)
             .unknown_word_ladder(unknown_word_ladder);
         match space_penalty {
-            SpacePenaltySetting::Off => Ok(segmenter),
+            SpacePenaltySetting::Default => Ok(segmenter),
+            SpacePenaltySetting::Off => segmenter.space_penalty(None),
             SpacePenaltySetting::FromDictionary => segmenter.space_penalty_from_dictionary(),
             SpacePenaltySetting::Rules(rules) => segmenter.space_penalty(Some(rules)),
         }
@@ -2450,6 +2482,7 @@ mod tests {
         use std::borrow::Cow;
         use std::io::Write;
 
+        use lindera_dictionary::dictionary::schema::Schema;
         use lindera_dictionary::viterbi::{LexType, WordId};
 
         use crate::dictionary::{load_dictionary, load_user_dictionary};
@@ -2691,8 +2724,9 @@ mod tests {
         }
 
         /// `from_config` accepts an object of explicit rules, `true` for the
-        /// rules the dictionary ships in its metadata, `false`/`null`/absent
-        /// for off, and rejects malformed objects.
+        /// rules the dictionary ships in its metadata, `false` for off,
+        /// leaves the `Segmenter::new` default (the shipped rules) for
+        /// `null`/absent, and rejects malformed objects.
         #[test]
         fn test_from_config_space_penalty() {
             let base = serde_json::json!({
@@ -2706,19 +2740,22 @@ mod tests {
             assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
             assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
 
-            for off in [serde_json::Value::Null, serde_json::json!(false)] {
-                let mut config = base.clone();
-                config["space_penalty"] = off;
-                let segmenter = Segmenter::from_config(&config).unwrap();
-                assert!(segmenter.space_penalty_config().is_none());
-                assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
+            // `false` turns the penalty off and reproduces the v6.0 output.
+            let mut config = base.clone();
+            config["space_penalty"] = serde_json::json!(false);
+            let segmenter = Segmenter::from_config(&config).unwrap();
+            assert!(segmenter.space_penalty_config().is_none());
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
+
+            // Absent or `null` keeps the default `Segmenter::new` chose: the
+            // rules ko-dic ships in its metadata.json.
+            let mut null_config = base.clone();
+            null_config["space_penalty"] = serde_json::Value::Null;
+            for config in [&base, &null_config] {
+                let segmenter = Segmenter::from_config(config).unwrap();
+                assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
+                assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
             }
-            assert!(
-                Segmenter::from_config(&base)
-                    .unwrap()
-                    .space_penalty_config()
-                    .is_none()
-            );
 
             // `true` takes the rules ko-dic ships in its metadata.json, which
             // are mecab-ko-dic's `left-space-penalty-factor`.
@@ -2776,6 +2813,59 @@ mod tests {
                 render(&on, "서울\u{3000}시"),
                 render(&off, "서울\u{3000}시")
             );
+        }
+
+        /// `Segmenter::new` applies the rules the dictionary ships (ko-dic),
+        /// leaves a dictionary without rules unpenalized, and
+        /// `space_penalty(None)` opts out and reproduces the v6.0 output.
+        #[test]
+        fn test_new_applies_shipped_rules_by_default() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
+
+            let off = segmenter.space_penalty(None).unwrap();
+            assert!(off.space_penalty_config().is_none());
+            assert_eq!(render(&off, "서울 시 에서 출발")[1], "시/EP");
+
+            // A dictionary that ships no rules stays unpenalized.
+            let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut metadata = (*dictionary.metadata).clone();
+            metadata.space_penalty = None;
+            dictionary.metadata = std::sync::Arc::new(metadata);
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            assert!(segmenter.space_penalty_config().is_none());
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
+        }
+
+        /// Shipped rules that cannot be applied (a schema without a
+        /// part-of-speech field) must not make `new` fail: it warns and runs
+        /// unpenalized.
+        #[test]
+        fn test_new_tolerates_shipped_rules_it_cannot_apply() {
+            let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut metadata = (*dictionary.metadata).clone();
+            // Rename the part-of-speech column so the lookup table cannot be
+            // built; the rules themselves stay in place.
+            let fields = metadata
+                .dictionary_schema
+                .fields
+                .iter()
+                .map(|field| {
+                    if field == "part_of_speech_tag" {
+                        "pos".to_string()
+                    } else {
+                        field.clone()
+                    }
+                })
+                .collect();
+            metadata.dictionary_schema = Schema::new(fields);
+            dictionary.metadata = std::sync::Arc::new(metadata);
+
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            assert!(segmenter.space_penalty_config().is_none());
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
         }
 
         /// The dictionary-shipped rules are also reachable from the builder,

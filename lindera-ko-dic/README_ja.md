@@ -39,7 +39,7 @@ mecab-ko（mecab-ko-dic が対象とする MeCab のフォーク）は、語の�
 left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 ```
 
-Lindera は `pos-id.def` の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（`Inflect` 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを `metadata.json`（`space_penalty`）に同梱しているので、ルールを書き出さずに有効化できます: `Segmenter::space_penalty_from_dictionary()`、セグメンター設定の `"space_penalty": true`、または `lindera tokenize --space-penalty`。明示的なルールは `Segmenter::space_penalty`、`space_penalty` オブジェクト、または `--space-penalty-rules` で指定します。デフォルトではオフです。同梱ルールは Lindera 6.0.0 より後のリリースでビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまで `--space-penalty` は失敗しますが、`--space-penalty-rules` はどの ko-dic でも動作します。
+Lindera は `pos-id.def` の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（`Inflect` 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを `metadata.json`（`space_penalty`）に同梱しているので、`Segmenter::new` がデフォルトで適用します。オフにするには `Segmenter::space_penalty(None)`、セグメンター設定の `"space_penalty": false`、または `lindera tokenize --disable-space-penalty` を使います。明示的なルールは `Segmenter::space_penalty`、`space_penalty` オブジェクト、または `--space-penalty-rules` で指定します。同梱ルールは Lindera 6.0.0 より後のリリースでビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまでペナルティは黙ってオフのままになりますが、`--space-penalty-rules` はどの ko-dic でも動作します。
 
 | pos-id.def の ID | 先頭品詞タグ | コスト |
 | --- | --- | --- |
@@ -58,10 +58,10 @@ Lindera は `pos-id.def` の ID を保持しませんが、列挙されている
 ```
 
 ```shell
-echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic --space-penalty
+echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
 ```
 
-ペナルティを有効にすると、`서울 시 에서` の `시` は語尾 `EP` ではなく（mecab-ko と同様に）名詞 `NNG` と解析されます。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。
+`서울 시 에서` の `시` は語尾 `EP` ではなく（mecab-ko と同様に）名詞 `NNG` と解析されます。`--disable-space-penalty` を付けると再び `EP` になります。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。
 
 ## ユーザー辞書フォーマット（CSV）
 
