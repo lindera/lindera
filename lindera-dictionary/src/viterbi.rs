@@ -461,7 +461,9 @@ pub struct Lattice {
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
 /// can use plain addition: one connection cost plus one penalty per step is
-/// at most 2 * 32,767, which cannot overflow from this clamp.
+/// at most 2 * 32,767, which cannot overflow from this clamp. Costs that are
+/// not bounded by `i16` (the left-space penalty and `extra_cost`, both
+/// arbitrary `i32`) are folded in with `saturating_add` instead.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
 
 /// Per-sentence options for [`Lattice::set_text_with_options`] and
