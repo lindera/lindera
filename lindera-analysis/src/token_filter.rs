@@ -11,6 +11,7 @@
 /// - `japanese_stop_tags`: Contains the Japanese stop tags token filter.
 /// - `keep_words`: Contains the keep words token filter.
 /// - `korean_keep_tags`: Contains the Korean keep tags token filter.
+/// - `korean_number`: Contains the Korean number token filter.
 /// - `korean_reading_form`: Contains the Korean reading form token filter.
 /// - `korean_stop_tags`: Contains the Korean stop tags token filter.
 /// - `length`: Contains the length token filter.
@@ -42,6 +43,7 @@ pub mod japanese_reading_form;
 pub mod japanese_stop_tags;
 pub mod keep_words;
 pub mod korean_keep_tags;
+pub mod korean_number;
 pub mod korean_reading_form;
 pub mod korean_stop_tags;
 pub mod length;
@@ -83,6 +85,9 @@ use crate::token_filter::japanese_stop_tags::{
 use crate::token_filter::keep_words::{KEEP_WORDS_TOKEN_FILTER_NAME, KeepWordsTokenFilter};
 use crate::token_filter::korean_keep_tags::{
     KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME, KoreanKeepTagsTokenFilter,
+};
+use crate::token_filter::korean_number::{
+    KOREAN_NUMBER_TOKEN_FILTER_NAME, KoreanNumberTokenFilter,
 };
 use crate::token_filter::korean_reading_form::{
     KOREAN_READING_FORM_TOKEN_FILTER_NAME, KoreanReadingFormTokenFilter,
@@ -204,6 +209,9 @@ impl TokenFilterLoader {
             }
             KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(KoreanKeepTagsTokenFilter::from_config(value)?)
+            }
+            KOREAN_NUMBER_TOKEN_FILTER_NAME => {
+                BoxTokenFilter::from(KoreanNumberTokenFilter::from_config(value)?)
             }
             KOREAN_READING_FORM_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(KoreanReadingFormTokenFilter::from_config(value)?)
