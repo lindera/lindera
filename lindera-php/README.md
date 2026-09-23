@@ -1,50 +1,61 @@
 # Lindera PHP
 
-PHP bindings for [Lindera](https://github.com/lindera/lindera), a morphological analysis library for CJK text.
+PHP extension for [Lindera](https://github.com/lindera/lindera), a morphological analysis library for CJK text.
 
 ## Requirements
 
-- PHP 8.1+
-- Rust toolchain (stable)
-
-## Build
-
-```bash
-cargo build -p lindera-php --features embed-ipadic
-```
-
-The shared library will be at `target/debug/liblindera_php.so` (or `.dylib` on macOS).
+- PHP 8.1+ on Linux or macOS (Windows is not supported)
+- To build from source: Rust toolchain (stable) and libclang
 
 ## Installation
 
-Copy the shared library to your PHP extensions directory:
+### With PIE (recommended)
+
+The extension is published on Packagist as `lindera/lindera` (from lindera v6.1.0) and installed with [PIE](https://github.com/php/pie), the PHP extension installer. Composer itself does not install `php-ext` packages, so `composer require lindera/lindera` is not the way in.
 
 ```bash
-cp target/release/liblindera_php.so $(php -r 'echo ini_get("extension_dir");')/lindera_php.so
+pie install lindera/lindera
 ```
 
-Enable in `php.ini`:
+PIE builds the extension from source for your PHP, which needs a Rust toolchain (<https://rustup.rs/>), libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and PIE's usual build tools (`autoconf`, `libtool`, `make`). It then installs `lindera.so` into the extension directory and enables it. Pass `--with-php-config=/path/to/php-config` to target another PHP.
+
+### Manual build
+
+```bash
+git clone https://github.com/lindera/lindera.git
+cd lindera
+cargo build --release -p lindera-php
+```
+
+The shared library will be at `target/release/liblindera_php.so` (or `.dylib` on macOS). Either add it to `php.ini`:
 
 ```ini
-extension=lindera_php.so
+extension=/path/to/lindera/target/release/liblindera_php.so
 ```
 
-Or load at runtime:
+or pass it per invocation:
 
 ```bash
-php -d extension=target/debug/liblindera_php.so your_script.php
+php -d extension=/path/to/liblindera_php.so your_script.php
 ```
+
+Either way the extension registers as `lindera`: `php -m` lists `lindera`, and `extension_loaded('lindera')` is the check to use.
+
+### Dictionaries
+
+The extension does not embed a dictionary. Download a pre-built one (for example `lindera-ipadic-<version>.zip`) from [GitHub Releases](https://github.com/lindera/lindera/releases), extract it, and pass its path to `Lindera\Dictionary::load()` or `TokenizerBuilder::setDictionary()`. A self-built extension can embed dictionaries with the `embed-*` features instead (for example `--features embed-ipadic`), which are then loaded as `embedded://ipadic`.
 
 ## Usage
 
 ### Basic Tokenization
 
 ```php
-$tokenizer = (new Lindera\TokenizerBuilder())->build();
-$tokens = $tokenizer->tokenize("関西国際空港");
+$dictionary = Lindera\Dictionary::load('/path/to/ipadic');
+$tokenizer = new Lindera\Tokenizer($dictionary, 'normal');
+$tokens = $tokenizer->tokenize('関西国際空港');
 
 foreach ($tokens as $token) {
-    echo $token->surface . " [" . implode(",", $token->details) . "]\n";
+    echo $token->surface . ' [' . implode(',', $token->details) . "]\n";
 }
 ```
 
@@ -67,19 +78,12 @@ object straight to `json_encode` does not produce these fields — call
 `#[php_class]` cannot declare implemented interfaces yet (upstream
 [ext-php-rs#326](https://github.com/davidcole1340/ext-php-rs/issues/326)).
 
-### With Dictionary
-
-```php
-$dict = Lindera\load_dictionary("ipadic");
-$tokenizer = new Lindera\Tokenizer($dict, "normal");
-$tokens = $tokenizer->tokenize("すもももももももものうち");
-```
-
-### Decompose Mode
+### TokenizerBuilder
 
 ```php
 $builder = new Lindera\TokenizerBuilder();
-$builder->set_mode("decompose");
+$builder->setDictionary('/path/to/ipadic');
+$builder->setMode('decompose');
 $tokenizer = $builder->build();
 ```
 
@@ -87,17 +91,17 @@ $tokenizer = $builder->build();
 
 ```php
 $builder = new Lindera\TokenizerBuilder();
-$builder->set_mode("normal");
-$builder->append_character_filter("unicode_normalize", ["kind" => "nfkc"]);
-$builder->append_token_filter("japanese_stop_tags", ["tags" => ["助詞,格助詞,一般", "助詞,係助詞", "助詞,連体化", "助動詞"]]);
+$builder->setDictionary('/path/to/ipadic');
+$builder->appendCharacterFilter('unicode_normalize', ['kind' => 'nfkc']);
+$builder->appendTokenFilter('japanese_stop_tags', ['tags' => ['助詞,格助詞,一般', '助詞,係助詞', '助詞,連体化', '助動詞']]);
 $tokenizer = $builder->build();
 ```
 
 ### N-Best Tokenization
 
 ```php
-$tokenizer = (new Lindera\TokenizerBuilder())->build();
-$results = $tokenizer->tokenize_nbest("東京都", 3);
+$tokenizer = new Lindera\Tokenizer(Lindera\Dictionary::load('/path/to/ipadic'));
+$results = $tokenizer->tokenizeNbest('東京都', 3);
 
 foreach ($results as $result) {
     echo "Cost: {$result->cost}\n";
@@ -109,15 +113,15 @@ foreach ($results as $result) {
 
 ## API Reference
 
-### Classes
+All classes live in the `Lindera` namespace; the extension registers no functions.
 
 | Class | Description |
-|-------|-------------|
+| --- | --- |
 | `Lindera\TokenizerBuilder` | Builder for creating tokenizers |
 | `Lindera\Tokenizer` | Morphological analyzer |
 | `Lindera\Token` | Analysis result token |
 | `Lindera\NbestResult` | N-best tokenization result |
-| `Lindera\Dictionary` | Morphological dictionary |
+| `Lindera\Dictionary` | Morphological dictionary: `load()`, `loadUser()`, `build()`, `buildUser()`, `version()` |
 | `Lindera\UserDictionary` | User-defined dictionary |
 | `Lindera\Mode` | Tokenization mode |
 | `Lindera\Penalty` | Decompose mode penalty |
@@ -125,19 +129,29 @@ foreach ($results as $result) {
 | `Lindera\Schema` | Dictionary schema |
 | `Lindera\FieldDefinition` | Schema field definition |
 | `Lindera\FieldType` | Schema field type |
-| `Lindera\CompressionAlgorithm` | Compression algorithm |
+| `Lindera\Trainer` | Model training: `train()`, `export()` (`train` feature, enabled by default) |
 
-### Functions
+### Stubs for static analysis
 
-| Function | Description |
-|----------|-------------|
-| `Lindera\version()` | Returns the package version |
-| `Lindera\load_dictionary(uri)` | Loads a dictionary |
-| `Lindera\load_user_dictionary(uri, metadata)` | Loads a user dictionary |
-| `Lindera\build_dictionary(input, output, metadata)` | Builds a dictionary |
-| `Lindera\build_user_dictionary(kind, input, output, metadata?)` | Builds a user dictionary |
-| `Lindera\train(...)` | Trains a model (train feature) |
-| `Lindera\export(model, output, metadata?)` | Exports dictionary files |
+[`stubs/lindera.stubs.php`](stubs/lindera.stubs.php) declares every class of the extension for IDEs, PHPStan and Psalm. It is generated from the compiled extension and the test suite fails when it is out of date, so it cannot drift from the Rust source. Point your analyser at a copy of the file, and never include it at runtime — the extension already declares the classes.
+
+```neon
+# phpstan.neon
+parameters:
+    stubFiles:
+        - path/to/lindera/lindera-php/stubs/lindera.stubs.php
+```
+
+## Development
+
+```bash
+make test-lindera-php      # cargo test + build the extension + PHPUnit
+make test-lindera-php-pie  # the phpize / configure / make path that PIE runs
+make stubs-lindera-php     # regenerate stubs/lindera.stubs.php after changing the API
+make build-lindera-php     # release build
+```
+
+`composer.json` lives at the repository root, not in this directory: Packagist reads it from there, and its `php-ext.build-path` points PIE back at `lindera-php/`, where `config.m4` and `Makefile.frag` run `cargo build`.
 
 ## License
 

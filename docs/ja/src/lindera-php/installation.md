@@ -1,13 +1,25 @@
 # インストール
 
-> [!NOTE]
-> lindera-php はまだ Packagist に公開されていません。ソースからビルドする必要があります。
+lindera-php は PHP 拡張です。[Packagist](https://packagist.org/packages/lindera/lindera) に `lindera/lindera` として公開されており、PHP 拡張インストーラーの [PIE](https://github.com/php/pie) でインストールします。拡張名は `lindera` です。
 
 ## 前提条件
 
-- **PHP 8.1 以降**
-- **Rust ツールチェーン** -- [rustup](https://rustup.rs/) 経由でインストール
-- **Composer** -- PHP の依存関係管理（テスト実行時に必要）
+- **PHP 8.1 以降**（Linux または macOS）。Windows は非対応です
+- **PIE** -- [PIE のインストール方法](https://github.com/php/pie/blob/main/docs/usage.md)を参照
+- ソースからのビルド（現在 PIE が行う方法）には、**Rust ツールチェーン**（[rustup](https://rustup.rs/)）、**libclang**（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PHP 拡張の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です
+
+## PIE でのインストール
+
+```bash
+pie install lindera/lindera
+```
+
+PIE がソースを取得し、検出した PHP 向けに拡張をビルドして（別の PHP を対象にする場合は `--with-php-config=/path/to/php-config` を指定）、`lindera.so` を拡張ディレクトリにインストールし有効化します。Composer 自体は `php-ext` パッケージをインストールしないため、`composer require lindera/lindera` ではインストールできません。
+
+> [!NOTE]
+> `lindera/lindera` は lindera v6.1.0 以降で Packagist から利用できます。それ以前のバージョンは、以下の手順でソースからビルドしてください。
+
+パッケージには辞書は埋め込まれていません。[辞書の入手](#辞書の入手)を参照してください。
 
 ## 辞書の入手
 
@@ -23,7 +35,7 @@ curl -LO https://github.com/lindera/lindera/releases/download/<version>/lindera-
 unzip lindera-ipadic-<version>.zip -d /path/to/ipadic
 ```
 
-## ビルド
+## ソースからのビルド
 
 lindera-php をビルドします：
 
@@ -60,6 +72,14 @@ cargo build -p lindera-php --release
 php -d extension=target/release/liblindera_php.so script.php
 ```
 
+`php.ini` に追加して常に読み込むこともできます：
+
+```ini
+extension=/absolute/path/to/liblindera_php.so
+```
+
+macOS では cargo は `liblindera_php.dylib` を生成します。どの方法で読み込んでも拡張名は `lindera` です。`php -m` には `lindera` と表示され、`extension_loaded('lindera')` で確認できます。
+
 ## Feature フラグ
 
 | Feature | 説明 | デフォルト |
@@ -79,6 +99,8 @@ php -d extension=target/release/liblindera_php.so script.php
 ```bash
 cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 ```
+
+PIE はデフォルトの feature（`train` のみ、辞書の埋め込みなし）でビルドします。
 
 > [!TIP]
 > 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する `embed-*` feature フラグを有効にしてビルドし、`embedded://` スキームでロードしてください：
@@ -103,5 +125,20 @@ echo "Lindera version: {$version}\n";
 実行方法：
 
 ```bash
+# PIE でインストールした場合
+php script.php
+
+# 自分でビルドした場合
 php -d extension=target/debug/liblindera_php.so script.php
+```
+
+## 静的解析用スタブ
+
+[`lindera-php/stubs/lindera.stubs.php`](https://github.com/lindera/lindera/blob/main/lindera-php/stubs/lindera.stubs.php) は、拡張の全クラスを IDE・PHPStan・Psalm 向けに宣言したスタブです。ビルドした拡張から生成され、内容が古くなるとテストが失敗します。ファイルのコピーを解析ツールに指定してください。拡張がクラスを宣言済みのため、実行時に include してはいけません。
+
+```neon
+# phpstan.neon
+parameters:
+    stubFiles:
+        - path/to/lindera.stubs.php
 ```

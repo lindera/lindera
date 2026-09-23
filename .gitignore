@@ -22,6 +22,11 @@ flamegraph.svg
 # Temporary files
 .tmp/
 
+# Composer dev dependencies of lindera-php (composer.json is at the repository
+# root, so these land at the root)
+/vendor/
+/composer.lock
+
 # mdBook build artifacts (built and deployed by deploy-docs.yml)
 docs/book/
 docs/ja/book/

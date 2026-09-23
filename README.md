@@ -53,7 +53,13 @@ Lindera also provides Ruby bindings. They are not yet published to RubyGems — 
 
 ## PHP Bindings
 
-Lindera also provides PHP bindings. They are not yet published to Packagist — build from source; see the [lindera-php](lindera-php/) directory for instructions.
+Lindera also provides PHP bindings as a PHP extension. From v6.1.0 it is published on Packagist as `lindera/lindera` and installed with [PIE](https://github.com/php/pie):
+
+```bash
+pie install lindera/lindera
+```
+
+See the [lindera-php](lindera-php/) directory for details.
 
 ## WebAssembly Bindings
 

@@ -47,7 +47,13 @@ Lindera は Ruby バインディングも提供していますが、RubyGems に
 
 ## PHP バインディング
 
-Lindera は PHP バインディングも提供していますが、Packagist にはまだ公開されていません。ソースからビルドしてください。詳細は [lindera-php](lindera-php/) ディレクトリを参照してください。
+Lindera は PHP 拡張として PHP バインディングも提供しています。v6.1.0 以降は Packagist に `lindera/lindera` として公開されており、[PIE](https://github.com/php/pie) でインストールできます:
+
+```bash
+pie install lindera/lindera
+```
+
+詳細は [lindera-php](lindera-php/) ディレクトリを参照してください。
 
 ## WebAssembly バインディング
 

@@ -100,7 +100,7 @@ Ruby bindings built with [Magnus](https://github.com/matsadler/magnus) and `rb-s
 
 #### `lindera-php`
 
-PHP bindings built with [ext-php-rs](https://github.com/davidcole1340/ext-php-rs). Exposes the Lindera tokenizer API as a PHP extension.
+PHP bindings built with [ext-php-rs](https://github.com/davidcole1340/ext-php-rs). Exposes the Lindera tokenizer API as a PHP extension. The extension registers as `lindera` and is published on Packagist as `lindera/lindera` for [PIE](https://github.com/php/pie): the package's `composer.json` lives at the repository root and points PIE at `lindera-php/`, where `config.m4` and `Makefile.frag` drive `cargo build` through the phpize build.
 
 #### `lindera-wasm`
 
