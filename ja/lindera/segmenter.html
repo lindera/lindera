@@ -314,7 +314,7 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="左側空白ペナルティ韓国語"><a class="header" href="#左側空白ペナルティ韓国語">左側空白ペナルティ（韓国語）</a></h2>
-<p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>서울 시 에서</code> の <code>시</code> は名詞 <code>NNG</code> ではなく語尾 <code>EP</code> と解析されます。Lindera でも同じペナルティを適用できます。デフォルトではオフです。</p>
+<p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>서울 시 에서</code> の <code>시</code> は名詞 <code>NNG</code> ではなく語尾 <code>EP</code> と解析されます。Lindera は、ルールを <code>metadata.json</code> に同梱する辞書（ko-dic）ではこのペナルティをデフォルトで適用します。他の辞書には影響しません。<code>Segmenter::space_penalty(None)</code>、設定の <code>"space_penalty": false</code>、CLI の <code>--disable-space-penalty</code> でオフにでき、v6.0 の出力に戻ります。</p>
 <p><code>SpacePenaltyConfig</code> は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の <code>+</code> より前の部分（ko-dic の <code>Inflect</code> 行では <code>first_part_of_speech</code> 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の <code>dicrc</code> のルールは次のように書けます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -327,13 +327,13 @@ let rules = SpacePenaltyConfig::new(vec![
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
 <span class="boring">}</span></code></pre></pre>
 <p>「空白」とは辞書の <code>SPACE</code> カテゴリ（<code>char.def</code>）に属する文字のことで、<code>keep_whitespace</code> が除外する文字集合と同じです。<code>SPACE</code> カテゴリを持たない辞書では Unicode の <code>White_Space</code> にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。<code>space_penalty</code> は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに <code>part_of_speech_tag</code> も <code>part_of_speech</code> もない場合はエラーを返します。</p>
-<p>辞書は <code>metadata.json</code> の <code>space_penalty</code> にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しています。<code>space_penalty_from_dictionary()</code> を使えばルールを書き出さずに有効化できます（ルールを同梱しない辞書ではエラーを返します）:</p>
+<p>辞書は <code>metadata.json</code> の <code>space_penalty</code> にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しており、<code>Segmenter::new</code> がそれを自動的に適用します。<code>space_penalty_from_dictionary()</code> はオフにした後に再び有効化するためのもので、ルールを同梱しない辞書ではエラーを返します。同梱ルールを適用できない辞書（スキーマに品詞列が無い辞書）では、<code>Segmenter::new</code> は警告を出してオフのままにします:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
 <span class="boring">}</span></code></pre></pre>
-<p>このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、辞書を再ビルドするまで <code>space_penalty_from_dictionary()</code>（および <code>"space_penalty": true</code>、<code>--space-penalty</code>）はエラーを返します。明示的なルール（<code>space_penalty</code>、<code>--space-penalty-rules</code>）はどの ko-dic でも使えます。</p>
-<p><code>SegmenterConfig</code> の <code>space_penalty</code> キーには、辞書のルールを使う <code>true</code>、明示的なルールのオブジェクト、オフ（デフォルト）の <code>false</code> または <code>null</code> を指定できます:</p>
+<p>このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、その辞書ではペナルティは黙ってオフのままになり、<code>space_penalty_from_dictionary()</code>（および <code>"space_penalty": true</code>）は辞書を再ビルドするまでエラーを返します。明示的なルール（<code>space_penalty</code>、<code>--space-penalty-rules</code>）はどの ko-dic でも使えます。</p>
+<p><code>SegmenterConfig</code> の <code>space_penalty</code> キーには、明示的なルールのオブジェクト、オフにする <code>false</code>、辞書のルールを要求する <code>true</code>（同梱しない辞書ではエラー）を指定できます。キーを省略するか <code>null</code> にするとデフォルト、つまり辞書がルールを同梱していればそのルールが使われます:</p>
 <pre><code class="language-json">{
   "dictionary": "embedded://ko-dic",
   "space_penalty": {

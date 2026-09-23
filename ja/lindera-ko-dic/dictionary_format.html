@@ -203,7 +203,7 @@
 <p>mecab-ko（mecab-ko-dic が対象とする MeCab のフォーク）は、語の左側に空白がある場合、その語の <code>pos-id.def</code> の ID が <code>dicrc</code> に列挙されていれば連接コストを加算します:</p>
 <pre><code class="language-text">left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
 </code></pre>
-<p>Lindera は <code>pos-id.def</code> の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（<code>Inflect</code> 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを <code>metadata.json</code>（<code>space_penalty</code>）に同梱しているので、ルールを書き出さずに有効化できます: <code>Segmenter::space_penalty_from_dictionary()</code>、セグメンター設定の <code>"space_penalty": true</code>、または <code>lindera tokenize --space-penalty</code>。明示的なルールは <code>Segmenter::space_penalty</code>、<code>space_penalty</code> オブジェクト、または <code>--space-penalty-rules</code> で指定します。デフォルトではオフです。同梱ルールは Lindera 6.0.0 より後のリリースでビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまで <code>--space-penalty</code> は失敗しますが、<code>--space-penalty-rules</code> はどの ko-dic でも動作します。</p>
+<p>Lindera は <code>pos-id.def</code> の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（<code>Inflect</code> 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを <code>metadata.json</code>（<code>space_penalty</code>）に同梱しているので、<code>Segmenter::new</code> がデフォルトで適用します。オフにするには <code>Segmenter::space_penalty(None)</code>、セグメンター設定の <code>"space_penalty": false</code>、または <code>lindera tokenize --disable-space-penalty</code> を使います。明示的なルールは <code>Segmenter::space_penalty</code>、<code>space_penalty</code> オブジェクト、または <code>--space-penalty-rules</code> で指定します。同梱ルールは Lindera 6.0.0 より後のリリースでビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまでペナルティは黙ってオフのままになりますが、<code>--space-penalty-rules</code> はどの ko-dic でも動作します。</p>
 <div class="table-wrapper"><table><thead><tr><th>pos-id.def の ID</th><th>先頭品詞タグ</th><th>コスト</th></tr></thead><tbody>
 <tr><td>100, 200 (<code>Inflect</code>)</td><td><code>EC</code>, <code>EF</code>, <code>EP</code>, <code>ETM</code>, <code>ETN</code></td><td>3000</td></tr>
 <tr><td>172, 230 (<code>Inflect</code>)</td><td><code>VCP</code></td><td>3000</td></tr>
@@ -218,9 +218,9 @@
   ]
 }
 </code></pre>
-<pre><code class="language-shell">echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic --space-penalty
+<pre><code class="language-shell">echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
 </code></pre>
-<p>ペナルティを有効にすると、<code>서울 시 에서</code> の <code>시</code> は語尾 <code>EP</code> ではなく（mecab-ko と同様に）名詞 <code>NNG</code> と解析されます。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。</p>
+<p><code>서울 시 에서</code> の <code>시</code> は語尾 <code>EP</code> ではなく（mecab-ko と同様に）名詞 <code>NNG</code> と解析されます。<code>--disable-space-penalty</code> を付けると再び <code>EP</code> になります。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。</p>
 <h2 id="ユーザー辞書フォーマット-csv"><a class="header" href="#ユーザー辞書フォーマット-csv">ユーザー辞書フォーマット (CSV)</a></h2>
 <h3 id="簡易版"><a class="header" href="#簡易版">簡易版</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Korean)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>
