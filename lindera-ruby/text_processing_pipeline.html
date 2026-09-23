@@ -253,10 +253,11 @@ tokenizer = builder.build
 <blockquote>
 <p>[!NOTE]
 Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>)
-and compared for exact equality against the first four part-of-speech details of each token.
-A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory
-such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no
-subcategory (<code>助動詞,*,*,*</code>).</p>
+and compared for exact equality against the four part-of-speech details of each token, starting
+at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the
+schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they
+always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because
+auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 </blockquote>
 <h3 id="japanese_keep_tags"><a class="header" href="#japanese_keep_tags">japanese_keep_tags</a></h3>
 <p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>

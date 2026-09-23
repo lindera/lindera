@@ -1604,6 +1604,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_compound_word"><a class="header" href="#japanese_compound_word">japanese_compound_word</a></h3>
 <p>Merges consecutive tokens whose part-of-speech tag matches one of <code>tags</code> into a single compound token.</p>
+<p>The merged token's details carry <code>new_tag</code> at the part-of-speech position resolved from the dictionary schema; any leading non-part-of-speech field (SudachiDict's <code>display_surface</code>) and every remaining field are set to <code>*</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt;</td><td>Yes</td><td>Part-of-speech tags (up to 4 comma-separated levels) that mark tokens eligible for merging</td></tr>
@@ -1675,7 +1676,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 <p>When this filter follows <code>japanese_compound_word</code>, merge only the <code>名詞,数</code> tokens. A counter (<code>名詞,接尾,助数詞</code>) merged into the number token is read as digits, so <code>一万円</code> comes out as <code>10円</code> instead of <code>10000</code> and <code>円</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to. When omitted or <code>null</code>, every token is converted</td></tr>
+<tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to, matched the same way as <code>japanese_keep_tags</code>. When omitted or <code>null</code>, every token is converted</td></tr>
 </tbody></table>
 </div>
 <p><strong>Example:</strong></p>
@@ -1716,7 +1717,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   }
 }
 </code></pre>
-<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the first four part-of-speech details of each token. A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>). The same matching rule applies to <code>japanese_keep_tags</code>.</p>
+<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the four part-of-speech details of each token, starting at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>). The same matching rule applies to <code>japanese_keep_tags</code>, <code>japanese_compound_word</code>, and the <code>tags</code> option of <code>japanese_number</code>. Because the position is resolved through the schema, the rule also holds for dictionaries whose schema has leading non-part-of-speech columns, such as SudachiDict's <code>display_surface</code>.</p>
 <h3 id="keep_words"><a class="header" href="#keep_words">keep_words</a></h3>
 <p>Keeps only tokens whose surface text exactly matches one of <code>words</code>.</p>
 <p><strong>Parameters:</strong></p>
@@ -3675,7 +3676,7 @@ tokenizer = (
     .build()
 )
 </code></pre>
-<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the first four part-of-speech details of each token. A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
+<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the four part-of-speech details of each token, starting at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 <h3 id="japanese_keep_tags-1"><a class="header" href="#japanese_keep_tags-1">japanese_keep_tags</a></h3>
 <p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
 <pre><code class="language-python">tokenizer = (
@@ -4403,10 +4404,11 @@ const tokenizer = builder.build();
 <blockquote>
 <p>[!NOTE]
 Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>)
-and compared for exact equality against the first four part-of-speech details of each token.
-A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory
-such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no
-subcategory (<code>助動詞,*,*,*</code>).</p>
+and compared for exact equality against the four part-of-speech details of each token, starting
+at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the
+schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they
+always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because
+auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 </blockquote>
 <h3 id="japanese_keep_tags-2"><a class="header" href="#japanese_keep_tags-2">japanese_keep_tags</a></h3>
 <p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
@@ -5189,10 +5191,11 @@ tokenizer = builder.build
 <blockquote>
 <p>[!NOTE]
 Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>)
-and compared for exact equality against the first four part-of-speech details of each token.
-A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory
-such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no
-subcategory (<code>助動詞,*,*,*</code>).</p>
+and compared for exact equality against the four part-of-speech details of each token, starting
+at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the
+schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they
+always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because
+auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 </blockquote>
 <h3 id="japanese_keep_tags-3"><a class="header" href="#japanese_keep_tags-3">japanese_keep_tags</a></h3>
 <p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
@@ -6011,10 +6014,11 @@ $tokenizer = $builder-&gt;build();
 <blockquote>
 <p>[!NOTE]
 Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>)
-and compared for exact equality against the first four part-of-speech details of each token.
-A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory
-such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no
-subcategory (<code>助動詞,*,*,*</code>).</p>
+and compared for exact equality against the four part-of-speech details of each token, starting
+at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the
+schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they
+always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because
+auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>).</p>
 </blockquote>
 <h3 id="japanese_keep_tags-4"><a class="header" href="#japanese_keep_tags-4">japanese_keep_tags</a></h3>
 <p>Keeps only tokens whose part-of-speech matches one of the specified tags. All other tokens are removed. The following keeps only general nouns:</p>
@@ -7892,12 +7896,14 @@ This dictionary reproduces SudachiDict's vocabulary and lattice behavior, but no
 <p>[!NOTE]
 Because the display surface sits at index 4 (before the part-of-speech
 columns), the first token detail is the display surface -- not the
-part-of-speech as in IPADIC or UniDic. Token filters that read the leading
-details positionally as part-of-speech tags (<code>japanese_stop_tags</code>,
-<code>japanese_keep_tags</code>, <code>japanese_compound_word</code>) do not match as expected
-with this dictionary; schema-aware access such as
-<code>token.get("part_of_speech")</code> works correctly. See
-<a href="https://github.com/lindera/lindera/issues/997">lindera/lindera#997</a>.</p>
+part-of-speech as in IPADIC or UniDic. Code that reads the details
+positionally must account for this; schema-aware access such as
+<code>token.get("part_of_speech")</code> returns the part-of-speech directly. The
+part-of-speech token filters (<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>,
+<code>japanese_compound_word</code>, and <code>japanese_number</code> with <code>tags</code>) resolve the
+part-of-speech columns through the dictionary schema, so they match this
+dictionary the same way they match IPADIC or UniDic (see
+<a href="https://github.com/lindera/lindera/issues/997">lindera/lindera#997</a>).</p>
 </blockquote>
 <h2 id="user-dictionary-format-csv-3"><a class="header" href="#user-dictionary-format-csv-3">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version-3"><a class="header" href="#simple-version-3">Simple version</a></h3>
@@ -8572,10 +8578,13 @@ references, synonym group IDs), so downstream code can use them.</p>
 <p>[!NOTE]
 Because <code>display_surface</code> sits before the part-of-speech columns,
 <code>details[0]</code> is the display surface — not the part-of-speech as in IPADIC
-or UniDic. Token filters that read the leading details positionally as
-part-of-speech tags (<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>,
-<code>japanese_compound_word</code>) will not match as expected with this dictionary.
-Schema-aware access such as <code>token.get("part_of_speech")</code> works correctly.</p>
+or UniDic. Code that reads the details positionally must account for
+this; schema-aware access such as <code>token.get("part_of_speech")</code> returns
+the part-of-speech directly. The part-of-speech token filters
+(<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>, <code>japanese_compound_word</code>,
+and <code>japanese_number</code> with <code>tags</code>) resolve the part-of-speech columns
+through the dictionary schema, so they match this dictionary the same way
+they match IPADIC or UniDic.</p>
 </blockquote>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
 <p>The lattice layer is verified equivalent: the matrix file is byte-identical

@@ -263,6 +263,7 @@
 </code></pre>
 <h3 id="japanese_compound_word"><a class="header" href="#japanese_compound_word">japanese_compound_word</a></h3>
 <p>Merges consecutive tokens whose part-of-speech tag matches one of <code>tags</code> into a single compound token.</p>
+<p>The merged token's details carry <code>new_tag</code> at the part-of-speech position resolved from the dictionary schema; any leading non-part-of-speech field (SudachiDict's <code>display_surface</code>) and every remaining field are set to <code>*</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt;</td><td>Yes</td><td>Part-of-speech tags (up to 4 comma-separated levels) that mark tokens eligible for merging</td></tr>
@@ -334,7 +335,7 @@
 <p>When this filter follows <code>japanese_compound_word</code>, merge only the <code>名詞,数</code> tokens. A counter (<code>名詞,接尾,助数詞</code>) merged into the number token is read as digits, so <code>一万円</code> comes out as <code>10円</code> instead of <code>10000</code> and <code>円</code>.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to. When omitted or <code>null</code>, every token is converted</td></tr>
+<tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to, matched the same way as <code>japanese_keep_tags</code>. When omitted or <code>null</code>, every token is converted</td></tr>
 </tbody></table>
 </div>
 <p><strong>Example:</strong></p>
@@ -375,7 +376,7 @@
   }
 }
 </code></pre>
-<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the first four part-of-speech details of each token. A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>). The same matching rule applies to <code>japanese_keep_tags</code>.</p>
+<p>Tags are normalized to exactly four comma-separated levels (missing levels are padded with <code>*</code>) and compared for exact equality against the four part-of-speech details of each token, starting at the field named <code>part_of_speech</code> in the dictionary schema (or at the first detail when the schema has no such field). A bare <code>助詞</code> therefore never matches IPADIC particle tokens — they always carry a subcategory such as <code>助詞,係助詞</code> — while a bare <code>助動詞</code> does match, because auxiliary verbs have no subcategory (<code>助動詞,*,*,*</code>). The same matching rule applies to <code>japanese_keep_tags</code>, <code>japanese_compound_word</code>, and the <code>tags</code> option of <code>japanese_number</code>. Because the position is resolved through the schema, the rule also holds for dictionaries whose schema has leading non-part-of-speech columns, such as SudachiDict's <code>display_surface</code>.</p>
 <h3 id="keep_words"><a class="header" href="#keep_words">keep_words</a></h3>
 <p>Keeps only tokens whose surface text exactly matches one of <code>words</code>.</p>
 <p><strong>Parameters:</strong></p>

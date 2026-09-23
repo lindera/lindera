@@ -304,10 +304,13 @@ references, synonym group IDs), so downstream code can use them.</p>
 <p>[!NOTE]
 Because <code>display_surface</code> sits before the part-of-speech columns,
 <code>details[0]</code> is the display surface — not the part-of-speech as in IPADIC
-or UniDic. Token filters that read the leading details positionally as
-part-of-speech tags (<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>,
-<code>japanese_compound_word</code>) will not match as expected with this dictionary.
-Schema-aware access such as <code>token.get("part_of_speech")</code> works correctly.</p>
+or UniDic. Code that reads the details positionally must account for
+this; schema-aware access such as <code>token.get("part_of_speech")</code> returns
+the part-of-speech directly. The part-of-speech token filters
+(<code>japanese_stop_tags</code>, <code>japanese_keep_tags</code>, <code>japanese_compound_word</code>,
+and <code>japanese_number</code> with <code>tags</code>) resolve the part-of-speech columns
+through the dictionary schema, so they match this dictionary the same way
+they match IPADIC or UniDic.</p>
 </blockquote>
 <h2 id="behavioral-differences-from-sudachi"><a class="header" href="#behavioral-differences-from-sudachi">Behavioral differences from Sudachi</a></h2>
 <p>The lattice layer is verified equivalent: the matrix file is byte-identical

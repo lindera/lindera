@@ -300,10 +300,12 @@ surface）です。そのため形態素の詳細情報はカラム 5 から始�
 <blockquote>
 <p>[!NOTE]
 <code>display_surface</code> が品詞カラムの前にあるため、<code>details[0]</code> は IPADIC や UniDic の
-ような品詞ではなく表示用表層形になります。details の先頭を品詞タグとして位置ベースで
-読むトークンフィルタ（<code>japanese_stop_tags</code>、<code>japanese_keep_tags</code>、
-<code>japanese_compound_word</code>）は、この辞書では期待どおりにマッチしません。
-<code>token.get("part_of_speech")</code> のようなスキーマ経由のアクセスは正しく動作します。</p>
+ような品詞ではなく表示用表層形になります。details を位置ベースで読むコードはこの点を
+考慮してください。<code>token.get("part_of_speech")</code> のようなスキーマ経由のアクセスは
+品詞を直接返します。品詞ベースのトークンフィルタ（<code>japanese_stop_tags</code>、
+<code>japanese_keep_tags</code>、<code>japanese_compound_word</code>、および <code>tags</code> を指定した
+<code>japanese_number</code>）は辞書スキーマ経由で品詞カラムを解決するため、IPADIC や UniDic
+と同様にこの辞書でも一致します。</p>
 </blockquote>
 <h2 id="sudachi-との挙動の違い"><a class="header" href="#sudachi-との挙動の違い">Sudachi との挙動の違い</a></h2>
 <p>ラティス層は等価であることを検証済みです: 行列ファイルは SudachiDict の公式ビルドが
