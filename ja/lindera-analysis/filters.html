@@ -409,6 +409,34 @@
   }
 }
 </code></pre>
+<h3 id="korean_number"><a class="header" href="#korean_number">korean_number</a></h3>
+<p>トークンの表層テキストに含まれる漢数詞由来の韓国語の数値表現（ハングル数字、漢数字、全角数字）をアラビア数字に変換します。固有語数詞（<code>하나</code>、<code>둘</code>、<code>열</code>、<code>스물</code>など）は位取りの構造を持たないため変換しません。</p>
+<p>変換はトークンごとに独立して行われます。ko-dicは漢数詞を形態素単位に分割するため、1つの数を構成するトークン群が1つのアラビア数字にまとまるわけではありません。</p>
+<div class="table-wrapper"><table><thead><tr><th>入力</th><th>ko-dicのトークン</th><th><code>korean_number</code>適用後</th></tr></thead><tbody>
+<tr><td><code>이천이십육년</code></td><td><code>이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC</code></td><td><code>2 1000 2 10 6 년</code></td></tr>
+<tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10 10000</code></td></tr>
+</tbody></table>
+</div>
+<p>IPADICに対する<code>japanese_compound_word</code>のように変換前にトークンを結合する処理は<a href="https://github.com/lindera/lindera/issues/1026">#1026</a>で対応予定です。漢字表記の<code>二千二十六/SH</code>のように数値全体が1トークンの場合はそのまま変換されます。</p>
+<p><strong>パラメータ:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
+<tr><td><code>tags</code></td><td>array&lt;string&gt;または<code>null</code></td><td>いいえ</td><td>変換対象を限定する品詞タグ。省略した場合は<code>["SN", "NR"]</code>、<code>null</code>の場合はすべてのトークンが変換対象になる</td></tr>
+</tbody></table>
+</div>
+<p>トークンは、その全ての文字が数詞である場合にのみ変換されます（Lucene の <code>KoreanNumberFilter</code> と同じ規則）。これにより固有語数詞が保護されます。<code>일곱</code>（7）は漢数詞の<code>일</code>で始まるため、1文字ずつ変換すると<code>1곱</code>になってしまいます。</p>
+<p>ハングルの数詞は他の形態素とも同形で（<code>이</code>は主格助詞、<code>만</code>は補助詞）、これらは1文字なので全文字一致の規則では区別できません。そのため既定では数詞の品詞タグに限定しています。</p>
+<p>漢数字も変換する場合は<code>SH</code>を追加してください。対応は2つの意味で部分的です。ko-dicは漢字語全体を<code>NNG</code>と判定するため<code>參加</code>や<code>萬歲</code>は変換されず、一方で単語に結び付かない単独の漢字は<code>SH</code>となるため、<code>十字架</code>は<code>10 字 架</code>、<code>百貨店</code>は<code>100 貨 店</code>になります。</p>
+<p><strong>例:</strong></p>
+<pre><code class="language-json">{
+  "kind": "korean_number",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ]
+  }
+}
+</code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
 <p>トークンの表層テキストを、辞書の<code>reading</code>フィールドに登録された読みに置き換えます。未知語処理によって生成されたトークン（<code>token.word_id.is_unknown()</code>）は変更されません。</p>
 <p>このフィルタに設定パラメータはありません。</p>

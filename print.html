@@ -843,10 +843,10 @@ tokenizer
 </li>
 </ul>
 <h2 id="available-filters"><a class="header" href="#available-filters">Available filters</a></h2>
-<p>Lindera ships 4 character filters and 18 token filters, covering Japanese, Korean, and general-purpose text normalization:</p>
+<p>Lindera ships 4 character filters and 19 token filters, covering Japanese, Korean, and general-purpose text normalization:</p>
 <div class="table-wrapper"><table><thead><tr><th>Category</th><th>Filters</th></tr></thead><tbody>
 <tr><td>Character filters</td><td><code>unicode_normalize</code>, <code>japanese_iteration_mark</code>, <code>mapping</code>, <code>regex</code></td></tr>
-<tr><td>Token filters -- normalization</td><td><code>japanese_base_form</code>, <code>japanese_reading_form</code>, <code>korean_reading_form</code>, <code>japanese_kana</code>, <code>japanese_katakana_stem</code>, <code>japanese_number</code>, <code>mapping</code>, <code>remove_diacritical_mark</code>, <code>lowercase</code>, <code>uppercase</code></td></tr>
+<tr><td>Token filters -- normalization</td><td><code>japanese_base_form</code>, <code>japanese_reading_form</code>, <code>korean_reading_form</code>, <code>japanese_kana</code>, <code>japanese_katakana_stem</code>, <code>japanese_number</code>, <code>korean_number</code>, <code>mapping</code>, <code>remove_diacritical_mark</code>, <code>lowercase</code>, <code>uppercase</code></td></tr>
 <tr><td>Token filters -- tag-based filtering</td><td><code>japanese_keep_tags</code>, <code>japanese_stop_tags</code>, <code>korean_keep_tags</code>, <code>korean_stop_tags</code></td></tr>
 <tr><td>Token filters -- word-based filtering</td><td><code>keep_words</code>, <code>stop_words</code></td></tr>
 <tr><td>Token filters -- structural transformation</td><td><code>japanese_compound_word</code>, <code>length</code></td></tr>
@@ -1751,6 +1751,34 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
   }
 }
 </code></pre>
+<h3 id="korean_number"><a class="header" href="#korean_number">korean_number</a></h3>
+<p>Converts Sino-Korean numeral representations (Hangul numerals, Hanja numerals, and fullwidth digits) in the token's surface text to Arabic numerals. Native Korean numerals (<code>하나</code>, <code>둘</code>, <code>열</code>, <code>스물</code>, ...) have no positional structure and are left unchanged.</p>
+<p>Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so the tokens of a single number do not add up to one Arabic numeral:</p>
+<div class="table-wrapper"><table><thead><tr><th>Input</th><th>Tokens from ko-dic</th><th>After <code>korean_number</code></th></tr></thead><tbody>
+<tr><td><code>이천이십육년</code></td><td><code>이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC</code></td><td><code>2 1000 2 10 6 년</code></td></tr>
+<tr><td><code>10만</code></td><td><code>10/SN 만/NR</code></td><td><code>10 10000</code></td></tr>
+</tbody></table>
+</div>
+<p>Merging those tokens before the conversion, the way <code>japanese_compound_word</code> does for IPADIC, is tracked in <a href="https://github.com/lindera/lindera/issues/1026">#1026</a>. A single token that holds the whole numeral, such as the Hanja <code>二千二十六/SH</code>, is converted in full.</p>
+<p><strong>Parameters:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags to restrict the conversion to. Omitted, it defaults to <code>["SN", "NR"]</code>; <code>null</code> converts every token</td></tr>
+</tbody></table>
+</div>
+<p>A token is converted only when every one of its characters is a numeral, the rule Lucene's <code>KoreanNumberFilter</code> applies. That is what keeps native Korean numerals intact: <code>일곱</code> ("seven") starts with the Sino-Korean <code>일</code>, and a character-by-character conversion would give <code>1곱</code>.</p>
+<p>Hangul numerals are also homographs of very common morphemes (<code>이</code> is a subject particle, <code>만</code> an auxiliary particle), and those are single characters that the all-numeral rule cannot separate from a numeral. That is why the default is restricted to the numeral tags.</p>
+<p>Add <code>SH</code> to convert Hanja numerals as well. The coverage is partial in two ways: ko-dic tags whole Hanja words as <code>NNG</code> (<code>參加</code>, <code>萬歲</code> are untouched), while a single Hanja character it cannot attach to a word is <code>SH</code> on its own, so <code>十字架</code> becomes <code>10 字 架</code> and <code>百貨店</code> becomes <code>100 貨 店</code>.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="language-json">{
+  "kind": "korean_number",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ]
+  }
+}
+</code></pre>
 <h3 id="korean_reading_form"><a class="header" href="#korean_reading_form">korean_reading_form</a></h3>
 <p>Replaces the token's surface text with its reading, as registered in the dictionary's <code>reading</code> field. Tokens produced by unknown-word processing (<code>token.word_id.is_unknown()</code>) are left unchanged.</p>
 <p>This filter takes no configuration parameters.</p>
@@ -1965,6 +1993,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 │   ├── japanese_stop_tags.rs
 │   ├── keep_words.rs
 │   ├── korean_keep_tags.rs
+│   ├── korean_number.rs
 │   ├── korean_reading_form.rs
 │   ├── korean_stop_tags.rs
 │   ├── length.rs
