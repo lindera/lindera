@@ -27,9 +27,10 @@ pub struct KoreanNumberTokenFilter {
 impl KoreanNumberTokenFilter {
     /// The tags the filter is restricted to when `tags` is not given: numbers and numerals.
     ///
-    /// Hangul numerals are homographs of very common morphemes, so converting every token
-    /// rewrites ordinary text: `이것은 사과입니다` becomes `2것 은 4과 입니다`. Restricting the
-    /// filter to the numeral tags is the useful default. `"tags": null` asks for every token.
+    /// A single-character morpheme spelled exactly like a numeral cannot be told apart from the
+    /// numeral by the all-numeral rule, only by its tag: without one, the auxiliary particle in
+    /// `나는 만 원만 있다` becomes `10000`. Restricting the filter to the numeral tags is the
+    /// useful default. `"tags": null` asks for every token.
     pub const DEFAULT_TAGS: [&'static str; 2] = ["SN", "NR"];
 
     pub fn new(tags: Option<HashSet<String>>) -> Self {
