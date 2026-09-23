@@ -307,11 +307,13 @@ lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 
 ### 新オプション: `max_grouping_len`（デフォルトは従来どおり）
 
-v6 では MeCab の `max-grouping-size` と同じ意味論を追加しました。辞書外
-文字のグルーピング可能なランが、先頭を除いて `max_grouping_len` 文字を
-超える場合、グループ候補を出さずに 1 文字ずつの未知語を使います。
-デフォルトは無制限で、これは v5 と同じ挙動です。つまり
-**明示的に設定しない限り何も変わりません**:
+v6 では MeCab の `max-grouping-size` と同じ意味論を追加しました。各位置で、
+そこから始まる辞書外文字のグルーピング可能なランが先頭を除いて
+`max_grouping_len` 文字を超える場合、その位置ではグループ候補を出さず、
+1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に
+収まった時点で再びグルーピングされるため、未知語トークンは最長で
+`max_grouping_len + 1` 文字になります。デフォルトは無制限で、これは v5 と
+同じ挙動です。つまり **明示的に設定しない限り何も変わりません**:
 
 ```rust,ignore
 let segmenter = Segmenter::new(mode, dictionary, None)

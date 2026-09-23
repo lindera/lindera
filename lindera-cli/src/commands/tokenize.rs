@@ -68,7 +68,7 @@ pub struct TokenizeArgs {
     keep_whitespace: bool,
     #[clap(
         long = "max-grouping-len",
-        help = "Maximum unknown-word grouping length in characters beyond the first (MeCab's max-grouping-size; MeCab defaults to 24). Longer runs fall back to single-character unknown words. Default: unbounded"
+        help = "Cap on unknown-word grouping, in characters beyond the first (MeCab's max-grouping-size; MeCab defaults to 24). Applied at each position: a same-category run longer than the cap is not grouped there; the single-character candidate (plus the length ladder and dictionary words) remains and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. 0 or omitted: unbounded"
     )]
     max_grouping_len: Option<usize>,
     #[clap(

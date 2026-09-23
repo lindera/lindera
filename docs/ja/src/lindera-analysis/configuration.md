@@ -83,7 +83,7 @@ token_filters:
 | `user_dictionary` | string | *(なし)* | ユーザー辞書のパス |
 | `keep_whitespace` | bool | `false` | 空白トークンを無視せずに出力する（MeCab は無視する） |
 | `use_mmap` | bool | `mmap` feature が有効なとき on（デフォルト） | 辞書をメモリマップする。ファイルシステム辞書（`embedded://` ではない辞書）にのみ意味がある |
-| `max_grouping_len` | integer | *(無制限)* | 未知語のグルーピングが**先頭の 1 文字を超えて**span できる最大文字数。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか `0` を指定すると無制限になる |
+| `max_grouping_len` | integer | *(無制限)* | 未知語グルーピングの上限（**先頭の 1 文字を超えた**文字数）。MeCab の `max-grouping-size` に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか `0` を指定すると無制限になる |
 | `unknown_word_ladder` | bool | `true` | MeCab や Vibrato と同様に、`char.def` の各カテゴリの `LENGTH` フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには `false` を指定する |
 | `space_penalty` | bool または object | *(辞書同梱のルール、あれば)* | 左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または `null` で辞書が `metadata.json` に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、`false` でオフ、`true` で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト `{"rules": [{"pos": [...], "cost": n}, ...]}` で明示的なルールを指定。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) を参照 |
 

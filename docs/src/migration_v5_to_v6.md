@@ -297,11 +297,14 @@ lindera tokenize -d ipadic --disable-unknown-word-ladder input.txt
 
 ### New option: `max_grouping_len` (default unchanged)
 
-v6 adds MeCab's `max-grouping-size` semantics: when a groupable run of
-out-of-vocabulary characters extends more than `max_grouping_len` characters
-beyond the first, the grouped candidate is not emitted and single-character
-unknown words are used instead. The default is unbounded, which is exactly
-what v5 did, so **this changes nothing unless you opt in**:
+v6 adds MeCab's `max-grouping-size` semantics: at each position, when the
+groupable run of out-of-vocabulary characters starting there extends more than
+`max_grouping_len` characters beyond the first, the grouped candidate is not
+emitted for that position; the single-character candidate (plus the length
+ladder and dictionary words) remains, and the remaining tail is grouped again
+once it fits, so no unknown token exceeds `max_grouping_len + 1` characters.
+The default is unbounded, which is exactly what v5 did, so **this changes
+nothing unless you opt in**:
 
 ```rust,ignore
 let segmenter = Segmenter::new(mode, dictionary, None)

@@ -61,7 +61,7 @@ jieba           no        no          -
 - `--char-filter` / `-c`: 文字フィルタ設定 (JSON)
 - `--token-filter` / `-t`: トークンフィルタ設定 (JSON)
 - `--keep-whitespace`: 空白文字のトークンを出力に含める（デフォルトでは MeCab 互換のため空白は除去されます）
-- `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限を超えるランは 1 文字ずつの未知語になります。デフォルト: 無制限
+- `--max-grouping-len`: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の `max-grouping-size` に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、同じ文字種のランが上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。`0` または省略: 無制限。例は [Segmenter](../lindera/segmenter.md) のドキュメントを参照
 - `--disable-unknown-word-ladder`: MeCab/Vibrato 由来の未知語候補ラダー（`char.def` の `LENGTH` フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する
 - `--disable-space-penalty`: 辞書の `metadata.json` に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の `left-space-penalty-factor`。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、無効にすると韓国語の出力が v6.0 と同じになる。[Segmenter](../lindera/segmenter.md#左側空白ペナルティ韓国語) のドキュメントを参照
 - `--space-penalty-rules`: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: `'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'`。`--disable-space-penalty` とは同時に指定できない
