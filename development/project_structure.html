@@ -247,7 +247,7 @@
 <h4 id="lindera-ruby"><a class="header" href="#lindera-ruby"><code>lindera-ruby</code></a></h4>
 <p>Ruby bindings built with <a href="https://github.com/matsadler/magnus">Magnus</a> and <code>rb-sys</code>. Exposes the Lindera tokenizer API as a Ruby gem.</p>
 <h4 id="lindera-php"><a class="header" href="#lindera-php"><code>lindera-php</code></a></h4>
-<p>PHP bindings built with <a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a>. Exposes the Lindera tokenizer API as a PHP extension.</p>
+<p>PHP bindings built with <a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a>. Exposes the Lindera tokenizer API as a PHP extension. The extension registers as <code>lindera</code> and is published on Packagist as <code>lindera/lindera</code> for <a href="https://github.com/php/pie">PIE</a>: the package's <code>composer.json</code> lives at the repository root and points PIE at <code>lindera-php/</code>, where <code>config.m4</code> and <code>Makefile.frag</code> drive <code>cargo build</code> through the phpize build.</p>
 <h4 id="lindera-wasm"><a class="header" href="#lindera-wasm"><code>lindera-wasm</code></a></h4>
 <p>WebAssembly bindings built with <a href="https://rustwasm.github.io/wasm-bindgen/">wasm-bindgen</a>. Enables tokenization in browsers and Node.js.</p>
 <h3 id="other-directories"><a class="header" href="#other-directories">Other Directories</a></h3>

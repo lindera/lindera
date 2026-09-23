@@ -247,7 +247,7 @@
 <h4 id="lindera-ruby"><a class="header" href="#lindera-ruby"><code>lindera-ruby</code></a></h4>
 <p><a href="https://github.com/matsadler/magnus">Magnus</a> と <code>rb-sys</code> で構築された Ruby バインディングです。Lindera のトークナイザー API を Ruby gem として公開します。</p>
 <h4 id="lindera-php"><a class="header" href="#lindera-php"><code>lindera-php</code></a></h4>
-<p><a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a> で構築された PHP バインディングです。Lindera のトークナイザー API を PHP 拡張として公開します。</p>
+<p><a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a> で構築された PHP バインディングです。Lindera のトークナイザー API を PHP 拡張として公開します。拡張名は <code>lindera</code> で、<a href="https://github.com/php/pie">PIE</a> 向けに Packagist へ <code>lindera/lindera</code> として公開します。パッケージの <code>composer.json</code> はリポジトリのルートにあり、PIE を <code>lindera-php/</code> に向けます。そこで <code>config.m4</code> と <code>Makefile.frag</code> が phpize ビルドの中で <code>cargo build</code> を実行します。</p>
 <h4 id="lindera-wasm"><a class="header" href="#lindera-wasm"><code>lindera-wasm</code></a></h4>
 <p><a href="https://rustwasm.github.io/wasm-bindgen/">wasm-bindgen</a> で構築された WebAssembly バインディングです。ブラウザと Node.js でのトークナイズを可能にします。</p>
 <h3 id="その他のディレクトリ"><a class="header" href="#その他のディレクトリ">その他のディレクトリ</a></h3>

@@ -177,16 +177,22 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="インストール"><a class="header" href="#インストール">インストール</a></h1>
-<blockquote>
-<p>[!NOTE]
-lindera-php はまだ Packagist に公開されていません。ソースからビルドする必要があります。</p>
-</blockquote>
+<p>lindera-php は PHP 拡張です。<a href="https://packagist.org/packages/lindera/lindera">Packagist</a> に <code>lindera/lindera</code> として公開されており、PHP 拡張インストーラーの <a href="https://github.com/php/pie">PIE</a> でインストールします。拡張名は <code>lindera</code> です。</p>
 <h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
 <ul>
-<li><strong>PHP 8.1 以降</strong></li>
-<li><strong>Rust ツールチェーン</strong> -- <a href="https://rustup.rs/">rustup</a> 経由でインストール</li>
-<li><strong>Composer</strong> -- PHP の依存関係管理（テスト実行時に必要）</li>
+<li><strong>PHP 8.1 以降</strong>（Linux または macOS）。Windows は非対応です</li>
+<li><strong>PIE</strong> -- <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE のインストール方法</a>を参照</li>
+<li>ソースからのビルド（現在 PIE が行う方法）には、<strong>Rust ツールチェーン</strong>（<a href="https://rustup.rs/">rustup</a>）、<strong>libclang</strong>（Debian/Ubuntu は <code>libclang-dev</code>、macOS は Xcode コマンドラインツールまたは <code>brew install llvm</code>）、および PHP 拡張の標準的なビルドツール（<code>autoconf</code>、<code>libtool</code>、<code>make</code>）が必要です</li>
 </ul>
+<h2 id="pie-でのインストール"><a class="header" href="#pie-でのインストール">PIE でのインストール</a></h2>
+<pre><code class="language-bash">pie install lindera/lindera
+</code></pre>
+<p>PIE がソースを取得し、検出した PHP 向けに拡張をビルドして（別の PHP を対象にする場合は <code>--with-php-config=/path/to/php-config</code> を指定）、<code>lindera.so</code> を拡張ディレクトリにインストールし有効化します。Composer 自体は <code>php-ext</code> パッケージをインストールしないため、<code>composer require lindera/lindera</code> ではインストールできません。</p>
+<blockquote>
+<p>[!NOTE]
+<code>lindera/lindera</code> は lindera v6.1.0 以降で Packagist から利用できます。それ以前のバージョンは、以下の手順でソースからビルドしてください。</p>
+</blockquote>
+<p>パッケージには辞書は埋め込まれていません。<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。</p>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
 <p>Lindera はパッケージに辞書を同梱していません。ビルド済み辞書を別途入手する必要があります。</p>
 <h3 id="github-releases-からのダウンロード"><a class="header" href="#github-releases-からのダウンロード">GitHub Releases からのダウンロード</a></h3>
@@ -195,7 +201,7 @@ lindera-php はまだ Packagist に公開されていません。ソースから
 curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<h2 id="ビルド"><a class="header" href="#ビルド">ビルド</a></h2>
+<h2 id="ソースからのビルド"><a class="header" href="#ソースからのビルド">ソースからのビルド</a></h2>
 <p>lindera-php をビルドします：</p>
 <pre><code class="language-bash">cargo build -p lindera-php
 </code></pre>
@@ -214,6 +220,10 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <pre><code class="language-bash">cargo build -p lindera-php --release
 php -d extension=target/release/liblindera_php.so script.php
 </code></pre>
+<p><code>php.ini</code> に追加して常に読み込むこともできます：</p>
+<pre><code class="language-ini">extension=/absolute/path/to/liblindera_php.so
+</code></pre>
+<p>macOS では cargo は <code>liblindera_php.dylib</code> を生成します。どの方法で読み込んでも拡張名は <code>lindera</code> です。<code>php -m</code> には <code>lindera</code> と表示され、<code>extension_loaded('lindera')</code> で確認できます。</p>
 <h2 id="feature-フラグ"><a class="header" href="#feature-フラグ">Feature フラグ</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Feature</th><th>説明</th><th>デフォルト</th></tr></thead><tbody>
 <tr><td><code>train</code></td><td>CRF 学習機能</td><td>有効</td></tr>
@@ -230,6 +240,7 @@ php -d extension=target/release/liblindera_php.so script.php
 <p>複数の feature を組み合わせることができます：</p>
 <pre><code class="language-bash">cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
+<p>PIE はデフォルトの feature（<code>train</code> のみ、辞書の埋め込みなし）でビルドします。</p>
 <blockquote>
 <p>[!TIP]
 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
@@ -245,7 +256,18 @@ $version = Lindera\Dictionary::version();
 echo "Lindera version: {$version}\n";
 </code></pre>
 <p>実行方法：</p>
-<pre><code class="language-bash">php -d extension=target/debug/liblindera_php.so script.php
+<pre><code class="language-bash"># PIE でインストールした場合
+php script.php
+
+# 自分でビルドした場合
+php -d extension=target/debug/liblindera_php.so script.php
+</code></pre>
+<h2 id="静的解析用スタブ"><a class="header" href="#静的解析用スタブ">静的解析用スタブ</a></h2>
+<p><a href="https://github.com/lindera/lindera/blob/main/lindera-php/stubs/lindera.stubs.php"><code>lindera-php/stubs/lindera.stubs.php</code></a> は、拡張の全クラスを IDE・PHPStan・Psalm 向けに宣言したスタブです。ビルドした拡張から生成され、内容が古くなるとテストが失敗します。ファイルのコピーを解析ツールに指定してください。拡張がクラスを宣言済みのため、実行時に include してはいけません。</p>
+<pre><code class="language-neon"># phpstan.neon
+parameters:
+    stubFiles:
+        - path/to/lindera.stubs.php
 </code></pre>
 
                     </main>

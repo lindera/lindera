@@ -5376,16 +5376,22 @@ end
 <li><a href="./lindera-php/training.html">Training</a> -- Training custom CRF models and exporting dictionaries</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installation-5"><a class="header" href="#installation-5">Installation</a></h1>
-<blockquote>
-<p>[!NOTE]
-lindera-php is not yet published to Packagist. You need to build from source.</p>
-</blockquote>
+<p>lindera-php is a PHP extension. It is published on <a href="https://packagist.org/packages/lindera/lindera">Packagist</a> as <code>lindera/lindera</code> and installed with <a href="https://github.com/php/pie">PIE</a>, the PHP extension installer. The extension registers as <code>lindera</code>.</p>
 <h2 id="prerequisites-5"><a class="header" href="#prerequisites-5">Prerequisites</a></h2>
 <ul>
-<li><strong>PHP 8.1 or later</strong></li>
-<li><strong>Rust toolchain</strong> -- Install via <a href="https://rustup.rs/">rustup</a></li>
-<li><strong>Composer</strong> -- PHP dependency manager (optional, for running tests)</li>
+<li><strong>PHP 8.1 or later</strong> on Linux or macOS. Windows is not supported.</li>
+<li><strong>PIE</strong> -- see the <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE installation guide</a></li>
+<li>For building from source (which is what PIE does today): a <strong>Rust toolchain</strong> (<a href="https://rustup.rs/">rustup</a>), <strong>libclang</strong> (<code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools or <code>brew install llvm</code> on macOS) and the usual PHP extension build tools (<code>autoconf</code>, <code>libtool</code>, <code>make</code>)</li>
 </ul>
+<h2 id="install-with-pie"><a class="header" href="#install-with-pie">Install with PIE</a></h2>
+<pre><code class="language-bash">pie install lindera/lindera
+</code></pre>
+<p>PIE downloads the source, builds the extension against the PHP it finds (pass <code>--with-php-config=/path/to/php-config</code> to target another one), installs <code>lindera.so</code> into the extension directory and enables it. Composer itself does not install <code>php-ext</code> packages, so <code>composer require lindera/lindera</code> is not an installation route.</p>
+<blockquote>
+<p>[!NOTE]
+<code>lindera/lindera</code> is available on Packagist from lindera v6.1.0. For earlier versions, build from source as described below.</p>
+</blockquote>
+<p>The package does not embed any dictionary; see <a href="lindera-php/installation.html#obtaining-dictionaries">Obtaining Dictionaries</a>.</p>
 <h2 id="obtaining-dictionaries-5"><a class="header" href="#obtaining-dictionaries-5">Obtaining Dictionaries</a></h2>
 <p>Lindera does not bundle dictionaries with the package. You need to obtain a pre-built dictionary separately.</p>
 <h3 id="download-from-github-releases-4"><a class="header" href="#download-from-github-releases-4">Download from GitHub Releases</a></h3>
@@ -5394,7 +5400,7 @@ lindera-php is not yet published to Packagist. You need to build from source.</p
 curl -LO https://github.com/lindera/lindera/releases/download/&lt;version&gt;/lindera-ipadic-&lt;version&gt;.zip
 unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 </code></pre>
-<h2 id="development-build-3"><a class="header" href="#development-build-3">Development Build</a></h2>
+<h2 id="building-from-source-2"><a class="header" href="#building-from-source-2">Building from Source</a></h2>
 <p>Build the lindera-php extension from the project root:</p>
 <pre><code class="language-bash">cargo build -p lindera-php
 </code></pre>
@@ -5421,6 +5427,7 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <p>Multiple features can be combined:</p>
 <pre><code class="language-bash">cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
+<p>PIE builds with the default features only (<code>train</code>, no embedded dictionary).</p>
 <blockquote>
 <p>[!TIP]
 If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding <code>embed-*</code> feature flag and load it using the <code>embedded://</code> scheme:</p>
@@ -5428,7 +5435,7 @@ If you want to embed a dictionary directly into the binary (advanced usage), ena
 </code></pre>
 <p>See <a href="lindera-php/../development/feature_flags.html">Feature Flags</a> for details.</p>
 </blockquote>
-<h2 id="loading-the-extension"><a class="header" href="#loading-the-extension">Loading the Extension</a></h2>
+<h2 id="loading-a-self-built-extension"><a class="header" href="#loading-a-self-built-extension">Loading a Self-Built Extension</a></h2>
 <p>Load the compiled shared library when running PHP:</p>
 <pre><code class="language-bash">php -d extension=target/debug/liblindera_php.so script.php
 </code></pre>
@@ -5439,9 +5446,21 @@ php -d extension=target/release/liblindera_php.so script.php
 <p>Alternatively, add the extension to your <code>php.ini</code>:</p>
 <pre><code class="language-ini">extension=/absolute/path/to/liblindera_php.so
 </code></pre>
+<p>On macOS, cargo produces <code>liblindera_php.dylib</code> instead. Whichever way it is loaded, the extension registers as <code>lindera</code>: <code>php -m</code> lists <code>lindera</code>, and <code>extension_loaded('lindera')</code> is the check to use.</p>
 <h2 id="verifying-the-installation-3"><a class="header" href="#verifying-the-installation-3">Verifying the Installation</a></h2>
-<p>After building, verify that lindera is available in PHP:</p>
-<pre><code class="language-bash">php -d extension=target/debug/liblindera_php.so -r "echo Lindera\Dictionary::version() . PHP_EOL;"
+<p>Verify that lindera is available in PHP:</p>
+<pre><code class="language-bash"># Installed with PIE
+php -r "echo Lindera\Dictionary::version() . PHP_EOL;"
+
+# Self-built
+php -d extension=target/debug/liblindera_php.so -r "echo Lindera\Dictionary::version() . PHP_EOL;"
+</code></pre>
+<h2 id="stubs-for-static-analysis"><a class="header" href="#stubs-for-static-analysis">Stubs for Static Analysis</a></h2>
+<p><a href="https://github.com/lindera/lindera/blob/main/lindera-php/stubs/lindera.stubs.php"><code>lindera-php/stubs/lindera.stubs.php</code></a> declares every class of the extension for IDEs, PHPStan and Psalm. It is generated from the compiled extension and the test suite fails when it is out of date. Point your analyser at a copy of the file, and never include it at runtime -- the extension already declares the classes.</p>
+<pre><code class="language-neon"># phpstan.neon
+parameters:
+    stubFiles:
+        - path/to/lindera.stubs.php
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start-4"><a class="header" href="#quick-start-4">Quick Start</a></h1>
 <p>This guide shows how to tokenize text using lindera-php.</p>
@@ -9462,7 +9481,7 @@ lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
 <h4 id="lindera-ruby-1"><a class="header" href="#lindera-ruby-1"><code>lindera-ruby</code></a></h4>
 <p>Ruby bindings built with <a href="https://github.com/matsadler/magnus">Magnus</a> and <code>rb-sys</code>. Exposes the Lindera tokenizer API as a Ruby gem.</p>
 <h4 id="lindera-php-1"><a class="header" href="#lindera-php-1"><code>lindera-php</code></a></h4>
-<p>PHP bindings built with <a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a>. Exposes the Lindera tokenizer API as a PHP extension.</p>
+<p>PHP bindings built with <a href="https://github.com/davidcole1340/ext-php-rs">ext-php-rs</a>. Exposes the Lindera tokenizer API as a PHP extension. The extension registers as <code>lindera</code> and is published on Packagist as <code>lindera/lindera</code> for <a href="https://github.com/php/pie">PIE</a>: the package's <code>composer.json</code> lives at the repository root and points PIE at <code>lindera-php/</code>, where <code>config.m4</code> and <code>Makefile.frag</code> drive <code>cargo build</code> through the phpize build.</p>
 <h4 id="lindera-wasm-1"><a class="header" href="#lindera-wasm-1"><code>lindera-wasm</code></a></h4>
 <p>WebAssembly bindings built with <a href="https://rustwasm.github.io/wasm-bindgen/">wasm-bindgen</a>. Enables tokenization in browsers and Node.js.</p>
 <h3 id="other-directories"><a class="header" href="#other-directories">Other Directories</a></h3>
