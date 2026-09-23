@@ -323,6 +323,32 @@ Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.
 }
 ```
 
+### korean_number
+
+Converts Sino-Korean numeral representations (Hangul numerals, Hanja numerals, and fullwidth digits) in the token's surface text to Arabic numerals. Native Korean numerals (`하나`, `둘`, `열`, `스물`, ...) have no positional structure and are left unchanged.
+
+**Parameters:**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tags` | array\<string\> or `null` | No | Part-of-speech tags to restrict the conversion to. When omitted or `null`, every token is converted |
+
+Hangul numerals are homographs of common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle), so restricting this filter to the numeral tags `SN` and `NR` is recommended.
+
+**Example:**
+
+```json
+{
+  "kind": "korean_number",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ]
+  }
+}
+```
+
 ### korean_reading_form
 
 Replaces the token's surface text with its reading, as registered in the dictionary's `reading` field. Tokens produced by unknown-word processing (`token.word_id.is_unknown()`) are left unchanged.

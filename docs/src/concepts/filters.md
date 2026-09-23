@@ -46,12 +46,12 @@ Every filter -- character or token -- is identified by a `kind` string and confi
 
 ## Available filters
 
-Lindera ships 4 character filters and 18 token filters, covering Japanese, Korean, and general-purpose text normalization:
+Lindera ships 4 character filters and 19 token filters, covering Japanese, Korean, and general-purpose text normalization:
 
 | Category | Filters |
 | --- | --- |
 | Character filters | `unicode_normalize`, `japanese_iteration_mark`, `mapping`, `regex` |
-| Token filters -- normalization | `japanese_base_form`, `japanese_reading_form`, `korean_reading_form`, `japanese_kana`, `japanese_katakana_stem`, `japanese_number`, `mapping`, `remove_diacritical_mark`, `lowercase`, `uppercase` |
+| Token filters -- normalization | `japanese_base_form`, `japanese_reading_form`, `korean_reading_form`, `japanese_kana`, `japanese_katakana_stem`, `japanese_number`, `korean_number`, `mapping`, `remove_diacritical_mark`, `lowercase`, `uppercase` |
 | Token filters -- tag-based filtering | `japanese_keep_tags`, `japanese_stop_tags`, `korean_keep_tags`, `korean_stop_tags` |
 | Token filters -- word-based filtering | `keep_words`, `stop_words` |
 | Token filters -- structural transformation | `japanese_compound_word`, `length` |
