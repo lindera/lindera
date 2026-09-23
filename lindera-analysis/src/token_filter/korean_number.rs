@@ -28,9 +28,9 @@ impl KoreanNumberTokenFilter {
     /// The tags the filter is restricted to when `tags` is not given: numbers and numerals.
     ///
     /// A single-character morpheme spelled exactly like a numeral cannot be told apart from the
-    /// numeral by the all-numeral rule, only by its tag: without one, the auxiliary particle in
-    /// `나는 만 원만 있다` becomes `10000`. Restricting the filter to the numeral tags is the
-    /// useful default. `"tags": null` asks for every token.
+    /// numeral by the all-numeral rule, only by its tag: without one, the noun `일` ("work") and
+    /// the subject particle `이` in `오늘 일이 많다` become `1` and `2`. Restricting the filter to
+    /// the numeral tags is the useful default. `"tags": null` asks for every token.
     pub const DEFAULT_TAGS: [&'static str; 2] = ["SN", "NR"];
 
     pub fn new(tags: Option<HashSet<String>>) -> Self {
@@ -560,13 +560,22 @@ mod tests {
             ["일고여덟", "명"]
         );
         assert_eq!(
+            tokenize("오늘 일이 많다", default_filter()),
+            ["오늘", "일", "이", "많", "다"]
+        );
+
+        // ko-dic ships left-space penalty rules, applied by default since #1027, so a particle
+        // reading is not chosen right after a space: `만` in `나는 만 원만 있다` is `만`/NR, a
+        // numeral, and is converted under the default tags.
+        assert_eq!(
             tokenize("나는 만 원만 있다", default_filter()),
-            ["나", "는", "만", "원만", "있", "다"]
+            ["나", "는", "10000", "원만", "있", "다"]
         );
 
         // With `tags` set to null every token is converted. The all-numeral rule still protects
-        // words that merely contain a numeral character, but a particle that is spelled exactly
-        // like a numeral is indistinguishable from one without its tag: `만`/JX becomes 10000.
+        // words that merely contain a numeral character, but a single-character morpheme that is
+        // spelled exactly like a numeral is indistinguishable from one without its tag: `일`/NNG
+        // and `이`/JKS become 1 and 2.
         let every_token =
             || KoreanNumberTokenFilter::from_config(&serde_json::json!({ "tags": null })).unwrap();
         assert_eq!(
@@ -574,8 +583,8 @@ mod tests {
             ["이것", "은", "사과", "입니다"]
         );
         assert_eq!(
-            tokenize("나는 만 원만 있다", every_token()),
-            ["나", "는", "10000", "원만", "있", "다"]
+            tokenize("오늘 일이 많다", every_token()),
+            ["오늘", "1", "2", "많", "다"]
         );
 
         // ko-dic tags Hanja as SH, so Hanja numerals need that tag to be converted.
