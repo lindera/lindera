@@ -1,0 +1,211 @@
+name: Publish Node.js Binding
+
+# Publishes the Node.js binding on its own, separately from a full release.
+#
+# `release.yml` runs from the workflow file at the tag that triggered it, so a
+# fix landed on `main` cannot be applied by re-running a tag's release, and
+# moving the tag would re-run the jobs that already published to crates.io,
+# PyPI, and RubyGems. A dispatched workflow avoids both: the definition comes
+# from the branch it is dispatched on, while `ref` selects the source to
+# publish. This is the recovery path when `publish-nodejs-npm` in `release.yml`
+# fails partway through, as it did for v6.0.0: npm rejected the first publish
+# of `lindera-win32-x64-msvc` (403 spam detection), so the main `lindera`
+# package was never published (#987).
+#
+# Republishing is safe: every package version that is already on the registry
+# is skipped, so a partially completed publish can simply be run again.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to publish from (a release tag, e.g. v6.0.0)"
+        required: true
+        type: string
+      dry_run:
+        description: "Build and rehearse the publish without releasing anything"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# One publish at a time. Two concurrent runs would race on the same package
+# versions and report confusing failures.
+concurrency:
+  group: publish-nodejs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Node.js Native (${{ matrix.platform.target }})
+    # Kept in step with the `build-lindera-nodejs` matrix in release.yml.
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - runner: windows-latest
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          target: ${{ matrix.platform.target }}
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "stable-${{ matrix.platform.target }}"
+
+      - name: Install dependencies and build
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          npm install
+          npx napi build --platform --release -p lindera-nodejs --target ${{ matrix.platform.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nodejs-binding-${{ matrix.platform.target }}
+          path: lindera-nodejs/*.node
+          if-no-files-found: error
+
+  publish:
+    name: Publish Node.js to npm
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Download all Node.js binding artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: lindera-nodejs/artifacts
+          pattern: "nodejs-binding-*"
+          merge-multiple: true
+
+      - name: Sync version from Cargo.toml
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version=1 \
+            | jq -r '.packages[] | select(.name=="lindera-nodejs") | .version')
+          echo "Syncing npm version to ${VERSION}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            if (pkg.optionalDependencies) {
+              for (const key of Object.keys(pkg.optionalDependencies)) {
+                pkg.optionalDependencies[key] = '${VERSION}';
+              }
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Install dependencies
+        working-directory: lindera-nodejs
+        run: npm install
+
+      - name: Prepare npm packages
+        working-directory: lindera-nodejs
+        run: |
+          npx napi create-npm-dirs
+          npx napi artifacts --output-dir artifacts
+
+      # Same guard as release.yml (#832): the main package once shipped with only
+      # package.json and README.md. Refuse to publish an entry-point-less tarball.
+      - name: Verify tarball contents
+        working-directory: lindera-nodejs
+        shell: bash
+        run: |
+          FILES=$(npm pack --dry-run --json | jq -r '.[0].files[].path')
+          echo "${FILES}"
+          for required in index.js index.d.ts; do
+            if ! echo "${FILES}" | grep -Fxq "${required}"; then
+              echo "::error::${required} is missing from the package tarball; refusing to publish."
+              exit 1
+            fi
+          done
+
+      - name: Publish to npm
+        working-directory: lindera-nodejs
+        shell: bash
+        # Inputs reach the script through the environment rather than template
+        # expansion, so their contents are never interpreted as shell.
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            for dir in npm/*/; do
+              if [ -f "${dir}package.json" ]; then
+                (cd "${dir}" && npm publish --access public --dry-run)
+              fi
+            done
+            npm publish --access public --dry-run
+            echo "dry run: would have published ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+            exit 0
+          fi
+
+          if npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version 2>/dev/null; then
+            echo "${PACKAGE_NAME}@${PACKAGE_VERSION} has already been published, skipping"
+            exit 0
+          fi
+
+          # Publish platform-specific packages first; skip the ones already on
+          # the registry so a partially completed publish can be run again.
+          for dir in npm/*/; do
+            if [ -f "${dir}package.json" ]; then
+              PKG=$(node -p "require('./${dir}package.json').name")
+              PKG_VER=$(node -p "require('./${dir}package.json').version")
+              if npm view "${PKG}@${PKG_VER}" version 2>/dev/null; then
+                echo "${PKG}@${PKG_VER} already published, skipping"
+              else
+                echo "Publishing ${PKG}@${PKG_VER}..."
+                pushd "${dir}"
+                npm publish --access public
+                popd
+              fi
+            fi
+          done
+
+          # Publish the main package
+          npm publish --access public
