@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
+use crate::token_filter::numeral::{self, Numeral};
 use lindera::LinderaResult;
 use lindera::error::LinderaErrorKind;
 use lindera::token::Token;
@@ -121,202 +122,46 @@ impl TokenFilter for KoreanNumberTokenFilter {
     }
 }
 
-fn adjust_digits(num: &str, base: &str, digit: &str) -> String {
-    let zero_str = format!("{base}{digit}");
+/// Maps a character to its meaning inside a Sino-Korean numeral.
+///
+/// Covers the ASCII and fullwidth digits, the Hangul numerals, their Hanja spellings with the
+/// financial (갖은자) variants, and the position characters from 십 to 해.
+fn classify(c: char) -> Option<Numeral> {
+    let numeral = match c {
+        '0' | '０' | '영' | '공' | '〇' | '零' => Numeral::Digit('0'),
+        '1' | '１' | '일' | '一' | '壹' => Numeral::Digit('1'),
+        '2' | '２' | '이' | '二' | '貳' | '貮' => Numeral::Digit('2'),
+        '3' | '３' | '삼' | '三' | '參' | '叁' => Numeral::Digit('3'),
+        '4' | '４' | '사' | '四' | '肆' => Numeral::Digit('4'),
+        '5' | '５' | '오' | '五' | '伍' => Numeral::Digit('5'),
+        '6' | '６' | '육' | '륙' | '六' | '陸' => Numeral::Digit('6'),
+        '7' | '７' | '칠' | '七' | '柒' => Numeral::Digit('7'),
+        '8' | '８' | '팔' | '八' | '捌' => Numeral::Digit('8'),
+        '9' | '９' | '구' | '九' | '玖' => Numeral::Digit('9'),
+        '십' | '十' | '拾' => Numeral::Position(1),
+        '백' | '百' | '佰' => Numeral::Position(2),
+        '천' | '千' | '仟' => Numeral::Position(3),
+        '만' | '萬' | '万' => Numeral::Position(4),
+        '억' | '億' => Numeral::Position(5),
+        '조' | '兆' => Numeral::Position(6),
+        '경' | '京' => Numeral::Position(7),
+        '해' | '垓' => Numeral::Position(8),
+        _ => return None,
+    };
 
-    // If the number is less than the base, return the number as is.
-    if zero_str.len() < num.len() {
-        return num.to_owned();
-    }
-
-    let zero_len = zero_str.len() - num.len();
-    let zeros = &zero_str[0..zero_len];
-
-    let mut num_str = num.to_owned();
-    num_str.insert_str(0, zeros);
-    num_str
-}
-
-/// Whether the character can take part in a Sino-Korean numeral: a digit, a numeral syllable or
-/// one of the position characters, in Hangul, in Hanja or in the financial Hanja forms.
-fn is_numeral(c: char) -> bool {
-    matches!(
-        c,
-        '0'..='9'
-            | '０'..='９'
-            | '영' | '공' | '〇' | '零'
-            | '일' | '一' | '壹'
-            | '이' | '二' | '貳' | '貮'
-            | '삼' | '三' | '參' | '叁'
-            | '사' | '四' | '肆'
-            | '오' | '五' | '伍'
-            | '육' | '륙' | '六' | '陸'
-            | '칠' | '七' | '柒'
-            | '팔' | '八' | '捌'
-            | '구' | '九' | '玖'
-            | '십' | '十' | '拾'
-            | '백' | '百' | '佰'
-            | '천' | '千' | '仟'
-            | '만' | '萬' | '万'
-            | '억' | '億'
-            | '조' | '兆'
-            | '경' | '京'
-            | '해' | '垓'
-    )
+    Some(numeral)
 }
 
 /// Converts a Sino-Korean numeral into Arabic numerals.
 ///
-/// Both the Hangul spelling (`이천이십육`) and the Hanja spelling (`二千二十六`) are accepted, as are
-/// mixed forms (`2천26`) and full width digits.  Characters that are not numerals are copied as they are,
-/// so a token that is not a number comes back unchanged.
+/// Both the Hangul spelling (`이천이십육`) and the Hanja spelling (`二千二十六`) are accepted, as
+/// are mixed forms (`2천26`) and fullwidth digits.
 ///
-/// A token is converted only when every one of its characters is a numeral, the rule Lucene's
-/// `KoreanNumberFilter` applies. Anything else is returned unchanged, which is what keeps native
-/// Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일` but is not a
-/// positional numeral, and converting it character by character would give `1곱`.
+/// A token is converted only when every one of its characters is a numeral, which is what keeps
+/// native Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일`, and a
+/// character-by-character conversion would give `1곱`. See [`super::numeral::to_arabic_numerals`].
 fn to_arabic_numerals(from_str: &str) -> String {
-    if !from_str.chars().all(is_numeral) {
-        return from_str.to_owned();
-    }
-
-    let mut num_buf = String::new();
-    let mut digit = String::new();
-
-    let from_chars = from_str.chars().rev().collect::<Vec<char>>();
-
-    let mut i = from_chars.iter().peekable();
-    while let Some(c) = i.next() {
-        match c {
-            '0' | '０' | '영' | '공' | '〇' | '零' => num_buf.insert(0, '0'),
-            '1' | '１' | '일' | '一' | '壹' => num_buf.insert(0, '1'),
-            '2' | '２' | '이' | '二' | '貳' | '貮' => num_buf.insert(0, '2'),
-            '3' | '３' | '삼' | '三' | '參' | '叁' => num_buf.insert(0, '3'),
-            '4' | '４' | '사' | '四' | '肆' => num_buf.insert(0, '4'),
-            '5' | '５' | '오' | '五' | '伍' => num_buf.insert(0, '5'),
-            '6' | '６' | '육' | '륙' | '六' | '陸' => num_buf.insert(0, '6'),
-            '7' | '７' | '칠' | '七' | '柒' => num_buf.insert(0, '7'),
-            '8' | '８' | '팔' | '八' | '捌' => num_buf.insert(0, '8'),
-            '9' | '９' | '구' | '九' | '玖' => num_buf.insert(0, '9'),
-            '십' | '十' | '拾' => {
-                num_buf = adjust_digits(&num_buf, "0", &digit);
-
-                match i.peek() {
-                    Some('백') | Some('百') | Some('佰') | Some('천') | Some('千') | Some('仟')
-                    | Some('만') | Some('萬') | Some('万') | Some('억') | Some('億')
-                    | Some('조') | Some('兆') | Some('경') | Some('京') | Some('해')
-                    | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '백' | '百' | '佰' => {
-                num_buf = adjust_digits(&num_buf, "00", &digit);
-
-                match i.peek() {
-                    Some('천') | Some('千') | Some('仟') | Some('만') | Some('萬') | Some('万')
-                    | Some('억') | Some('億') | Some('조') | Some('兆') | Some('경')
-                    | Some('京') | Some('해') | Some('垓') | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '천' | '千' | '仟' => {
-                num_buf = adjust_digits(&num_buf, "000", &digit);
-
-                match i.peek() {
-                    Some('만') | Some('萬') | Some('万') | Some('억') | Some('億') | Some('조')
-                    | Some('兆') | Some('경') | Some('京') | Some('해') | Some('垓') | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '만' | '萬' | '万' => {
-                digit = "0000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('억') | Some('億') | Some('조') | Some('兆') | Some('경') | Some('京')
-                    | Some('해') | Some('垓') | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '억' | '億' => {
-                digit = "00000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('조') | Some('兆') | Some('경') | Some('京') | Some('해') | Some('垓')
-                    | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '조' | '兆' => {
-                digit = "000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('경') | Some('京') | Some('해') | Some('垓') | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '경' | '京' => {
-                digit = "0000000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('해') | Some('垓') | None => {
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '해' | '垓' => {
-                digit = "00000000000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                if i.peek().is_none() {
-                    num_buf.insert(0, '1');
-                }
-            }
-            _ => {
-                num_buf.insert(0, *c);
-                digit.clear();
-            }
-        }
-    }
-
-    num_buf
+    numeral::to_arabic_numerals(from_str, classify)
 }
 
 #[cfg(test)]
@@ -413,14 +258,17 @@ mod tests {
     }
 
     #[test]
-    fn test_is_numeral_matches_the_conversion_table() {
-        use crate::token_filter::korean_number::is_numeral;
+    fn test_classify_matches_the_conversion_table() {
+        use crate::token_filter::korean_number::classify;
 
         for c in "0123456789０９영공〇零일一壹이二貳貮삼三參叁사四肆오五伍육륙六陸칠七柒팔八捌구九玖십十拾백百佰천千仟만萬万억億조兆경京해垓".chars() {
-            assert!(is_numeral(c), "{c} should be a numeral character");
+            assert!(classify(c).is_some(), "{c} should be a numeral character");
         }
         for c in "가나다곱흔여덟한국字架貨店 -.".chars() {
-            assert!(!is_numeral(c), "{c} should not be a numeral character");
+            assert!(
+                classify(c).is_none(),
+                "{c} should not be a numeral character"
+            );
         }
     }
 

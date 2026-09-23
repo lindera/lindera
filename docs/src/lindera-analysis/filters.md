@@ -217,7 +217,9 @@ Keeps only tokens whose part-of-speech tag matches one of `tags`, removing all o
 
 Converts Japanese numeral representations (kanji numerals, formal/legal kanji numerals, and fullwidth digits) in the token's surface text to Arabic numerals.
 
-When this filter follows `japanese_compound_word`, merge only the `名詞,数` tokens. A counter (`名詞,接尾,助数詞`) merged into the number token is read as digits, so `一万円` comes out as `10円` instead of `10000` and `円`.
+A token is converted only when every one of its characters takes part in a numeral, the rule Lucene's `JapaneseNumberFilter` applies. An ordinary word that merely begins with a numeral character is therefore returned unchanged: `一部` stays `一部` rather than becoming `1部`.
+
+When this filter follows `japanese_compound_word`, merge only the `名詞,数` tokens. A counter (`名詞,接尾,助数詞`) merged into the number token makes the merged token something other than a numeral, so `一万円` is left alone instead of being converted.
 
 **Parameters:**
 
