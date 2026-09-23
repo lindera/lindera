@@ -12,6 +12,7 @@ segmenter:
   # use_mmap: false # only meaningful for filesystem (non-embedded://) dictionaries
   # max_grouping_len: 24 # cap on unknown-word grouping; omit or 0 for unbounded
   # unknown_word_ladder: true # emit shorter unknown-word candidates (default: true)
+  # space_penalty: true # left-space penalty (Korean) with the dictionary's rules; off by default. An object gives explicit rules
 
 character_filters:
   - kind: "unicode_normalize"
@@ -84,6 +85,7 @@ token_filters:
 | `use_mmap` | bool | on when the `mmap` feature is compiled in (the default) | Memory-map the dictionary; only meaningful for filesystem (non-`embedded://`) dictionaries |
 | `max_grouping_len` | integer | *(unbounded)* | Maximum characters **beyond the first** that an unknown-word grouping may span, matching MeCab's `max-grouping-size` (MeCab defaults to 24). A grouped candidate longer than this is not emitted; the single-character unknown word is emitted instead. Omitting the key, or setting `0`, leaves grouping unbounded |
 | `unknown_word_ladder` | bool | `true` | Also emit the shorter unknown-word candidates up to each category's `LENGTH` field in `char.def`, as MeCab and Vibrato do. Set to `false` to reproduce pre-v6 output exactly |
+| `space_penalty` | bool or object | *(off)* | Left-space penalty (mecab-ko's `left-space-penalty-factor`): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. `true` uses the rules the dictionary ships in its `metadata.json` (ko-dic ships mecab-ko-dic's); an object `{"rules": [{"pos": [...], "cost": n}, ...]}` gives explicit rules; `false` or `null` leaves it off. See [Segmenter](../lindera/segmenter.md#left-space-penalty-korean) |
 
 ```shell
 % export LINDERA_CONFIG_PATH=./resources/config/lindera.yml

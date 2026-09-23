@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use lindera_dictionary::mode::Mode;
 use log::warn;
 
 use lindera_dictionary::dictionary::character_definition::CategoryId;
 use lindera_dictionary::dictionary::{Dictionary, UserDictionary};
-use lindera_dictionary::viterbi::{Lattice, WordId};
+use lindera_dictionary::space_penalty::{SpacePenaltyConfig, SpacePenaltyTable};
+use lindera_dictionary::viterbi::{Lattice, LatticeOptions, WordId};
 use serde_json::Value;
 
 use crate::LinderaResult;
@@ -85,11 +87,25 @@ pub struct Segmenter {
 
     /// The dictionary used for segmenting text. This dictionary contains the necessary
     /// data structures and algorithms to perform morphological analysis and tokenization.
+    ///
+    /// Assigning to this field after construction is not supported: [`Segmenter::new`]
+    /// derives per-dictionary state from it (the `SPACE` category lookup behind
+    /// `keep_whitespace`, and the [`Segmenter::space_penalty`] table when one is set),
+    /// and that state is *not* recomputed here. A replacement dictionary therefore
+    /// leaves those caches addressing the previous dictionary's ids, which yields
+    /// wrong results silently rather than failing. Build a new `Segmenter` instead.
     pub dictionary: Dictionary,
 
     /// An optional user-defined dictionary that can be used to customize the segmentation process.
     /// If provided, this dictionary will be used in addition to the default dictionary to improve
     /// the accuracy of segmentation for specific words or phrases.
+    ///
+    /// Assigning to this field after construction is not supported, for the same reason
+    /// as [`Segmenter::dictionary`] plus one of its own: [`Segmenter::new`] is where a
+    /// user dictionary's context IDs are remapped into the system dictionary's ID space
+    /// (see [`UserDictionary::remap_context_ids`]), so a dictionary put here directly
+    /// keeps its original IDs and addresses the wrong connection-matrix cells. Build a
+    /// new `Segmenter` instead.
     pub user_dictionary: Option<UserDictionary>,
 
     /// Keep whitespace tokens in output.
@@ -111,6 +127,20 @@ pub struct Segmenter {
     /// option existed. Defaults to `true` starting with this release --
     /// set to `false` to match pre-v6 output exactly.
     pub unknown_word_ladder: bool,
+
+    /// Left-space penalty rules (mecab-ko's `left-space-penalty-factor`,
+    /// nori's `computeSpacePenalty`): a candidate that starts right after
+    /// whitespace and whose first part-of-speech tag matches a rule gets the
+    /// rule's cost added, so e.g. a particle or ending is not chosen across
+    /// a space. `None` (default) adds no penalty and keeps the previous
+    /// output. Set through [`Segmenter::space_penalty`] /
+    /// [`Segmenter::set_space_penalty`], which also build the per-word-id
+    /// lookup the lattice uses; the field is read-only for that reason.
+    space_penalty: Option<SpacePenaltyConfig>,
+
+    /// Per-word-id lookup derived from `space_penalty` for the current
+    /// dictionary pair; `Arc` so `Clone` stays cheap.
+    space_penalty_table: Option<Arc<SpacePenaltyTable>>,
 
     /// The category ID for space characters, used when keep_whitespace is false.
     space_category_id: Option<CategoryId>,
@@ -187,6 +217,8 @@ impl Segmenter {
             keep_whitespace: false, // Default: ignore whitespace for MeCab compatibility
             max_grouping_len: None, // Default: unbounded grouping
             unknown_word_ladder: true, // Default (v6+): honor char.def's LENGTH field
+            space_penalty: None,    // Default: no left-space penalty
+            space_penalty_table: None,
             space_category_id,
             space_ascii_table,
         }
@@ -252,6 +284,155 @@ impl Segmenter {
     pub fn unknown_word_ladder(mut self, unknown_word_ladder: bool) -> Self {
         self.unknown_word_ladder = unknown_word_ladder;
         self
+    }
+
+    /// Builder method to enable the left-space penalty (see the
+    /// `space_penalty` field; `None`, the default, disables it).
+    ///
+    /// Building the per-word-id lookup reads every entry's part-of-speech
+    /// tag once, so this costs a few tens of milliseconds on a large
+    /// dictionary; call it once at construction, not per document.
+    ///
+    /// # 引数
+    ///
+    /// * `space_penalty` - The rules, or `None` to disable the penalty.
+    ///
+    /// # 戻り値
+    ///
+    /// `self`, for chaining, or an error when the dictionary schema has no
+    /// part-of-speech field (`part_of_speech_tag` or `part_of_speech`).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera::mode::Mode;
+    /// use lindera::dictionary::load_dictionary;
+    /// use lindera::segmenter::Segmenter;
+    /// use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # #[cfg(feature = "embed-ko-dic")]
+    /// # {
+    /// // mecab-ko-dic's `left-space-penalty-factor`, expressed by first POS tag.
+    /// let rules = SpacePenaltyConfig::new(vec![
+    ///     SpacePenaltyRule::new(["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], 3000),
+    ///     SpacePenaltyRule::new(["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], 6000),
+    /// ]);
+    /// let dictionary = load_dictionary("embedded://ko-dic")?;
+    /// let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
+    /// # }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn space_penalty(
+        mut self,
+        space_penalty: Option<SpacePenaltyConfig>,
+    ) -> LinderaResult<Self> {
+        self.set_space_penalty(space_penalty)?;
+        Ok(self)
+    }
+
+    /// In-place form of [`Segmenter::space_penalty`], for holders that own
+    /// a `Segmenter` by `&mut` (e.g. a reusable worker).
+    ///
+    /// # 引数
+    ///
+    /// * `space_penalty` - The rules, or `None` to disable the penalty.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or the schema error described on
+    /// [`Segmenter::space_penalty`]; on error the previous setting is kept.
+    pub fn set_space_penalty(
+        &mut self,
+        space_penalty: Option<SpacePenaltyConfig>,
+    ) -> LinderaResult<()> {
+        let table = match &space_penalty {
+            Some(config) => Some(Arc::new(SpacePenaltyTable::build(
+                config,
+                &self.dictionary,
+                self.user_dictionary.as_ref(),
+            )?)),
+            None => None,
+        };
+        self.space_penalty = space_penalty;
+        self.space_penalty_table = table;
+        Ok(())
+    }
+
+    /// Returns the configured left-space penalty rules, if any.
+    ///
+    /// # 戻り値
+    ///
+    /// The rules set through [`Segmenter::space_penalty`], or `None`.
+    pub fn space_penalty_config(&self) -> Option<&SpacePenaltyConfig> {
+        self.space_penalty.as_ref()
+    }
+
+    /// Builder method to enable the left-space penalty with the rules the
+    /// dictionary ships in its `metadata.json` (`space_penalty`); ko-dic
+    /// carries mecab-ko-dic's `left-space-penalty-factor` there.
+    ///
+    /// # 戻り値
+    ///
+    /// `self`, for chaining, or an error when the dictionary ships no rules
+    /// (or its schema has no part-of-speech field).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lindera::mode::Mode;
+    /// use lindera::dictionary::load_dictionary;
+    /// use lindera::segmenter::Segmenter;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # #[cfg(feature = "embed-ko-dic")]
+    /// # {
+    /// let dictionary = load_dictionary("embedded://ko-dic")?;
+    /// let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+    /// # }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn space_penalty_from_dictionary(mut self) -> LinderaResult<Self> {
+        self.set_space_penalty_from_dictionary()?;
+        Ok(self)
+    }
+
+    /// In-place form of [`Segmenter::space_penalty_from_dictionary`].
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary ships no rules; the
+    /// previous setting is kept on error.
+    pub fn set_space_penalty_from_dictionary(&mut self) -> LinderaResult<()> {
+        let rules = self
+            .dictionary
+            .metadata
+            .space_penalty
+            .clone()
+            .ok_or_else(|| {
+                LinderaErrorKind::Dictionary.with_error(anyhow::anyhow!(
+                    "dictionary '{}' ships no space_penalty rules in its metadata; pass explicit rules instead",
+                    self.dictionary.metadata.name
+                ))
+            })?;
+        self.set_space_penalty(Some(rules))
+    }
+
+    /// Bundles the per-sentence lattice options from this segmenter's
+    /// settings.
+    ///
+    /// # 戻り値
+    ///
+    /// The options for `set_text_with_options` /
+    /// `set_text_nbest_with_options`.
+    fn lattice_options(&self) -> LatticeOptions<'_> {
+        let mut options = LatticeOptions::new(&self.mode);
+        options.max_grouping_len = self.max_grouping_len;
+        options.unknown_word_ladder = self.unknown_word_ladder;
+        options.space_penalty = self.space_penalty_table.as_deref();
+        options
     }
 
     /// A struct representing a segmenter for tokenizing text.
@@ -362,10 +543,34 @@ impl Segmenter {
             .and_then(Value::as_bool)
             .unwrap_or(true);
 
-        Ok(Self::new(mode, dictionary, user_dictionary)
+        // Load the space_penalty option from the config. Absent, `null` or
+        // `false` means off (the default); `true` uses the rules the
+        // dictionary ships in its metadata; an object holds explicit rules.
+        enum SpacePenaltySetting {
+            Off,
+            FromDictionary,
+            Rules(SpacePenaltyConfig),
+        }
+        let space_penalty = match config.get("space_penalty") {
+            None | Some(Value::Null) | Some(Value::Bool(false)) => SpacePenaltySetting::Off,
+            Some(Value::Bool(true)) => SpacePenaltySetting::FromDictionary,
+            Some(value) => SpacePenaltySetting::Rules(
+                serde_json::from_value::<SpacePenaltyConfig>(value.clone()).map_err(|e| {
+                    LinderaErrorKind::Parse
+                        .with_error(anyhow::anyhow!("space_penalty field is invalid: {e}"))
+                })?,
+            ),
+        };
+
+        let segmenter = Self::new(mode, dictionary, user_dictionary)
             .keep_whitespace(keep_whitespace)
             .max_grouping_len(max_grouping_len)
-            .unknown_word_ladder(unknown_word_ladder))
+            .unknown_word_ladder(unknown_word_ladder);
+        match space_penalty {
+            SpacePenaltySetting::Off => Ok(segmenter),
+            SpacePenaltySetting::FromDictionary => segmenter.space_penalty_from_dictionary(),
+            SpacePenaltySetting::Rules(rules) => segmenter.space_penalty(Some(rules)),
+        }
     }
 
     /// Segments the input text into tokens based on the dictionary and user-defined rules.
@@ -518,16 +723,14 @@ impl Segmenter {
             }
 
             // Process the sentence through lattice
-            lattice.set_text(
+            lattice.set_text_with_options(
                 &self.dictionary.prefix_dictionary,
                 &self.user_dictionary.as_ref().map(|d| &d.dict),
                 &self.dictionary.character_definition,
                 &self.dictionary.unknown_dictionary,
                 &self.dictionary.connection_cost_matrix,
                 sentence,
-                &self.mode,
-                self.max_grouping_len,
-                self.unknown_word_ladder,
+                &self.lattice_options(),
             );
             // Forward Viterbi implementation handles cost calculation within `set_text`.
 
@@ -663,16 +866,14 @@ impl Segmenter {
             }
 
             // Process the sentence through N-Best lattice
-            lattice.set_text_nbest(
+            lattice.set_text_nbest_with_options(
                 &self.dictionary.prefix_dictionary,
                 &self.user_dictionary.as_ref().map(|d| &d.dict),
                 &self.dictionary.character_definition,
                 &self.dictionary.unknown_dictionary,
                 &self.dictionary.connection_cost_matrix,
                 sentence,
-                &self.mode,
-                self.max_grouping_len,
-                self.unknown_word_ladder,
+                &self.lattice_options(),
             );
 
             let nbest_offsets = lattice.nbest_tokens_offset(n, unique, cost_threshold);
@@ -2240,6 +2441,365 @@ mod tests {
             assert!(!tokens.is_empty());
             assert_eq!(tokens[0].byte_start, 0);
             assert_eq!(tokens.last().unwrap().byte_end, text.len());
+        }
+    }
+
+    /// Left-space penalty (mecab-ko `left-space-penalty-factor`) on ko-dic.
+    #[cfg(feature = "embed-ko-dic")]
+    mod space_penalty {
+        use std::borrow::Cow;
+        use std::io::Write;
+
+        use lindera_dictionary::viterbi::{LexType, WordId};
+
+        use crate::dictionary::{load_dictionary, load_user_dictionary};
+        use crate::mode::{Mode, Penalty};
+        use crate::segmenter::{Segmenter, SegmenterConfig};
+        use crate::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+        /// mecab-ko-dic's `left-space-penalty-factor`, expressed by first
+        /// POS tag (pos-id.def: 100/200 = E*, 172/230 = VCP, 183-185/220-222
+        /// = XS* -> 3000; 120/210 = J* -> 6000).
+        fn ko_dic_rules() -> SpacePenaltyConfig {
+            SpacePenaltyConfig::new(vec![
+                SpacePenaltyRule::new(
+                    ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"],
+                    3000,
+                ),
+                SpacePenaltyRule::new(
+                    ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"],
+                    6000,
+                ),
+            ])
+        }
+
+        fn segmenter(mode: Mode, penalty: bool) -> Segmenter {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            Segmenter::new(mode, dictionary, None)
+                .space_penalty(penalty.then(ko_dic_rules))
+                .unwrap()
+        }
+
+        /// Renders tokens as `surface/POS` (the first detail field).
+        fn render(segmenter: &Segmenter, text: &str) -> Vec<String> {
+            segmenter
+                .segment(Cow::Borrowed(text))
+                .unwrap()
+                .iter_mut()
+                .map(|t| {
+                    let pos = t.details()[0].to_string();
+                    format!("{}/{}", t.surface, pos)
+                })
+                .collect()
+        }
+
+        /// N-best results rendered like [`render`], paired with their costs.
+        fn render_nbest(segmenter: &Segmenter, text: &str, n: usize) -> Vec<(Vec<String>, i64)> {
+            segmenter
+                .segment_nbest(Cow::Borrowed(text), n, false, None)
+                .unwrap()
+                .into_iter()
+                .map(|(mut tokens, cost)| {
+                    let rendered = tokens
+                        .iter_mut()
+                        .map(|t| {
+                            let pos = t.details()[0].to_string();
+                            format!("{}/{}", t.surface, pos)
+                        })
+                        .collect();
+                    (rendered, cost)
+                })
+                .collect()
+        }
+
+        fn words(s: &str) -> Vec<String> {
+            s.split_whitespace().map(str::to_string).collect()
+        }
+
+        /// The penalty flips the particle/ending reading of a token that
+        /// follows a space (`시/EP` -> `시/NNG`, `이/VCP` -> a non-VCP tag),
+        /// which is what mecab-ko does for these inputs; with the option off
+        /// the v6.0.0 output is unchanged.
+        #[test]
+        fn test_space_penalty_flips_spaced_particles_and_endings() {
+            let off = segmenter(Mode::Normal, false);
+            let on = segmenter(Mode::Normal, true);
+
+            assert_eq!(
+                render(&off, "서울 시 에서 출발"),
+                words("서울/NNP 시/EP 에서/JKB 출발/NNG")
+            );
+            let penalized = render(&on, "서울 시 에서 출발");
+            assert_eq!(penalized[1], "시/NNG", "{penalized:?}");
+
+            assert_eq!(
+                render(&off, "검색 이 잘 된다"),
+                words("검색/NNG 이/VCP 잘/MAG 된다/VV+EC")
+            );
+            let penalized = render(&on, "검색 이 잘 된다");
+            assert_ne!(penalized[1], "이/VCP", "{penalized:?}");
+            assert_eq!(&penalized[2..], &words("잘/MAG 된다/VV+EC")[..]);
+        }
+
+        /// Sentences without a space before a particle/ending must not
+        /// change, whether or not they contain other spaces.
+        #[test]
+        fn test_space_penalty_leaves_unspaced_sentences_unchanged() {
+            let off = segmenter(Mode::Normal, false);
+            let on = segmenter(Mode::Normal, true);
+
+            let cases = [
+                (
+                    "무궁화꽃이 피었습니다.",
+                    "무궁화/NNG 꽃/NNG 이/JKS 피/VV 었/EP 습니다/EF ./SF",
+                ),
+                (
+                    "아버지가방에들어가신다",
+                    "아버지/NNG 가/JKS 방/NNG 에/JKB 들어가/VV 신다/EP+EC",
+                ),
+                (
+                    "기계학습을활용한이미지인식",
+                    "기계/NNG 학습/NNG 을/JKO 활용/NNG 한/XSV+ETM 이미지/NNG 인식/NNG",
+                ),
+                (
+                    "삼천2백2십삼원",
+                    "삼/NR 천/NR 2/SN 백/NR 2/SN 십/NR 삼/NR 원/NNBC",
+                ),
+                ("서울시에서 출발", "서울시/NNP 에서/JKB 출발/NNG"),
+                ("검색이 잘 된다", "검색/NNG 이/JKS 잘/MAG 된다/VV+EC"),
+                // A particle at the sentence start has no preceding space.
+                ("에서", "에서/JKB"),
+            ];
+            for (text, expected) in cases {
+                assert_eq!(render(&off, text), words(expected), "off: {text}");
+                assert_eq!(render(&on, text), words(expected), "on: {text}");
+            }
+        }
+
+        /// The penalty is applied in Decompose mode too.
+        #[test]
+        fn test_space_penalty_applies_in_decompose_mode() {
+            let mode = Mode::Decompose(Penalty::default());
+            let off = render(&segmenter(mode.clone(), false), "서울 시 에서 출발");
+            let on = render(&segmenter(mode, true), "서울 시 에서 출발");
+            assert_eq!(off[1], "시/EP");
+            assert_eq!(on[1], "시/NNG");
+        }
+
+        /// N-best costs account for the penalty exactly: a segmentation's
+        /// cost rises by the sum of the rule costs of its tokens that follow
+        /// a space, and the 1-best path agrees with `segment`.
+        #[test]
+        fn test_space_penalty_is_reflected_in_nbest_costs() {
+            let text = "서울 시 에서 출발";
+            let off = segmenter(Mode::Normal, false);
+            let on = segmenter(Mode::Normal, true);
+
+            let off_results = render_nbest(&off, text, 20);
+            let on_results = render_nbest(&on, text, 20);
+
+            // 1-best agrees with segment().
+            assert_eq!(on_results[0].0, render(&on, text));
+            assert_eq!(off_results[0].0, render(&off, text));
+
+            // 시/EP (3000, after a space) and 에서/JKB (6000, after a space):
+            // +9000 relative to the unpenalized lattice.
+            let ep_path = words("서울/NNP 시/EP 에서/JKB 출발/NNG");
+            let cost = |results: &[(Vec<String>, i64)], path: &[String]| {
+                results
+                    .iter()
+                    .find(|(p, _)| p == path)
+                    .map(|(_, c)| *c)
+                    .unwrap_or_else(|| panic!("path {path:?} not in {results:?}"))
+            };
+            assert_eq!(
+                cost(&on_results, &ep_path),
+                cost(&off_results, &ep_path) + 9000
+            );
+
+            // 시/NNG carries no penalty; 에서/JKB carries 6000.
+            let nng_path = words("서울/NNP 시/NNG 에서/JKB 출발/NNG");
+            assert_eq!(
+                cost(&on_results, &nng_path),
+                cost(&off_results, &nng_path) + 6000
+            );
+
+            // The N-best list stays sorted by cost.
+            assert!(on_results.windows(2).all(|w| w[0].1 <= w[1].1));
+        }
+
+        /// The precomputed table covers the system, user and unknown
+        /// lexicons and resolves rules by first POS tag.
+        #[test]
+        fn test_space_penalty_table_covers_all_lexicons() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+
+            let mut csv = tempfile::Builder::new().suffix(".csv").tempfile().unwrap();
+            writeln!(csv, "테스트조사,JKB,테스트조사").unwrap();
+            writeln!(csv, "테스트명사,NNG,테스트명사").unwrap();
+            writeln!(csv, "테스트어미,EP,테스트어미").unwrap();
+            csv.flush().unwrap();
+            let user_dictionary =
+                load_user_dictionary(csv.path().to_str().unwrap(), &dictionary.metadata).unwrap();
+
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, Some(user_dictionary))
+                .space_penalty(Some(ko_dic_rules()))
+                .unwrap();
+            let table = segmenter.space_penalty_table.as_deref().unwrap();
+
+            // Resolve word ids through segmentation (user rows are re-numbered
+            // in sorted order by the builder, so ids are not the CSV order).
+            let by_surface = |tokens: &mut Vec<crate::token::Token>, surface: &str| {
+                tokens
+                    .iter_mut()
+                    .find(|t| t.surface == surface)
+                    .map(|t| (t.word_id, t.details()[0].to_string()))
+                    .unwrap()
+            };
+
+            // User entries (the simple-format default cost makes them win).
+            for (surface, pos, expected) in [
+                ("테스트조사", "JKB", 6000),
+                ("테스트명사", "NNG", 0),
+                ("테스트어미", "EP", 3000),
+            ] {
+                let mut tokens = segmenter.segment(Cow::Borrowed(surface)).unwrap();
+                let (id, found_pos) = by_surface(&mut tokens, surface);
+                assert_eq!(id.lex_type(), LexType::User, "{surface}");
+                assert_eq!(found_pos, pos, "{surface}");
+                assert_eq!(table.cost(id), expected, "{surface}");
+            }
+
+            // System entries.
+            let mut tokens = segmenter.segment(Cow::Borrowed("서울시에서")).unwrap();
+            let (id, pos) = by_surface(&mut tokens, "에서");
+            assert_eq!(id.lex_type(), LexType::System);
+            assert_eq!(pos, "JKB");
+            assert_eq!(table.cost(id), 6000);
+            let (id, pos) = by_surface(&mut tokens, "서울시");
+            assert_eq!(pos, "NNP");
+            assert_eq!(table.cost(id), 0);
+
+            // Unknown words (ko-dic unk.def has no penalized tag).
+            let tokens = segmenter.segment(Cow::Borrowed("쀓쀓")).unwrap();
+            assert!(tokens[0].word_id.is_unknown());
+            assert_eq!(table.cost(tokens[0].word_id), 0);
+
+            // Out-of-range ids never panic.
+            assert_eq!(table.cost(WordId::new(LexType::User, 999)), 0);
+            assert_eq!(table.cost(WordId::default()), 0);
+        }
+
+        /// `from_config` accepts an object of explicit rules, `true` for the
+        /// rules the dictionary ships in its metadata, `false`/`null`/absent
+        /// for off, and rejects malformed objects.
+        #[test]
+        fn test_from_config_space_penalty() {
+            let base = serde_json::json!({
+                "dictionary": "embedded://ko-dic",
+                "mode": "normal",
+            });
+
+            let mut config: SegmenterConfig = base.clone();
+            config["space_penalty"] = serde_json::to_value(ko_dic_rules()).unwrap();
+            let segmenter = Segmenter::from_config(&config).unwrap();
+            assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
+
+            for off in [serde_json::Value::Null, serde_json::json!(false)] {
+                let mut config = base.clone();
+                config["space_penalty"] = off;
+                let segmenter = Segmenter::from_config(&config).unwrap();
+                assert!(segmenter.space_penalty_config().is_none());
+                assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/EP");
+            }
+            assert!(
+                Segmenter::from_config(&base)
+                    .unwrap()
+                    .space_penalty_config()
+                    .is_none()
+            );
+
+            // `true` takes the rules ko-dic ships in its metadata.json, which
+            // are mecab-ko-dic's `left-space-penalty-factor`.
+            let mut config = base.clone();
+            config["space_penalty"] = serde_json::json!(true);
+            let segmenter = Segmenter::from_config(&config).unwrap();
+            assert_eq!(segmenter.space_penalty_config(), Some(&ko_dic_rules()));
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
+
+            let mut config = base.clone();
+            config["space_penalty"] = serde_json::json!({"rules": [{"pos": "JKB", "cost": 1}]});
+            assert!(Segmenter::from_config(&config).is_err());
+        }
+
+        /// `SpacePenaltyTable::is_space` classifies by the dictionary's
+        /// `SPACE` category, not by Unicode `White_Space`. The two differ on
+        /// ko-dic: U+3000 IDEOGRAPHIC SPACE is `SYMBOL` in its `char.def`, so
+        /// it must not trigger the penalty even though `char::is_whitespace`
+        /// accepts it. The ASCII fast path must agree with the category
+        /// lookup it replaces.
+        #[test]
+        fn test_space_penalty_whitespace_is_the_space_category() {
+            let on = segmenter(Mode::Normal, true);
+            let table = on.space_penalty_table.as_deref().unwrap();
+            let char_definitions = &on.dictionary.character_definition;
+
+            // ko-dic char.def SPACE: 0x20, 0x09, 0x0A, 0x0B, 0x0D.
+            for c in [' ', '\t', '\n', '\u{0B}', '\r'] {
+                assert!(table.is_space(c, char_definitions), "{c:?}");
+            }
+            for c in ['가', 'a', '0', '.', '\u{3000}'] {
+                assert!(!table.is_space(c, char_definitions), "{c:?}");
+            }
+            // U+3000 is Unicode whitespace but not a ko-dic SPACE character.
+            assert!('\u{3000}'.is_whitespace());
+
+            // The ASCII fast path must return what the category lookup would.
+            let space_id = char_definitions.category_id_by_name("SPACE").unwrap();
+            for codepoint in 0..256u32 {
+                let c = char::from_u32(codepoint).unwrap();
+                assert_eq!(
+                    table.is_space(c, char_definitions),
+                    char_definitions.lookup_categories(c).contains(&space_id),
+                    "U+{codepoint:04X}"
+                );
+            }
+
+            // And the classification is what actually gates the penalty: an
+            // input whose only "whitespace" is U+3000 is analyzed identically
+            // with the penalty on and off. (U+3000 surfaces as its own `SY`
+            // token rather than being dropped, which is the other half of not
+            // being a `SPACE` character.)
+            let off = segmenter(Mode::Normal, false);
+            assert_eq!(
+                render(&on, "서울\u{3000}시"),
+                render(&off, "서울\u{3000}시")
+            );
+        }
+
+        /// The dictionary-shipped rules are also reachable from the builder,
+        /// and a dictionary without rules reports an error rather than
+        /// silently running unpenalized.
+        #[test]
+        fn test_space_penalty_from_dictionary() {
+            let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            assert_eq!(
+                dictionary.metadata.space_penalty.as_ref(),
+                Some(&ko_dic_rules())
+            );
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None)
+                .space_penalty_from_dictionary()
+                .unwrap();
+            assert_eq!(render(&segmenter, "서울 시 에서 출발")[1], "시/NNG");
+
+            let mut dictionary = load_dictionary("embedded://ko-dic").unwrap();
+            let mut metadata = (*dictionary.metadata).clone();
+            metadata.space_penalty = None;
+            dictionary.metadata = std::sync::Arc::new(metadata);
+            let mut segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            assert!(segmenter.set_space_penalty_from_dictionary().is_err());
+            assert!(segmenter.space_penalty_config().is_none());
         }
     }
 }

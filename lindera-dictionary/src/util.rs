@@ -61,6 +61,25 @@ pub(crate) fn words_idx_offset(words_idx_data: &[u8], word_id: usize) -> Option<
     Some(u32::from_le_bytes(offset) as usize)
 }
 
+/// Returns how many word ids a word-id index table addresses.
+///
+/// The counterpart of [`words_idx_offset`], kept beside it so the one
+/// `u32`-per-entry layout of `dict.wordsidx` is stated in a single place: ids
+/// `0..words_idx_count(table)` are exactly the ids for which
+/// `words_idx_offset` yields `Some`.
+///
+/// # 引数
+///
+/// * `words_idx_data` - The word-id index table.
+///
+/// # 戻り値
+///
+/// The number of entries the table holds.
+#[inline]
+pub(crate) fn words_idx_count(words_idx_data: &[u8]) -> usize {
+    words_idx_data.len() / 4
+}
+
 /// Locates and validates one entry's NUL-joined detail blob.
 ///
 /// Each entry is a 4-byte little-endian length followed by that many bytes of

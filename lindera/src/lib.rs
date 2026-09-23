@@ -2,6 +2,7 @@ pub mod dictionary;
 pub mod error;
 pub mod mode;
 pub mod segmenter;
+pub mod space_penalty;
 pub mod token;
 pub mod worker;
 

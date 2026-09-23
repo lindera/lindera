@@ -123,6 +123,45 @@ fn bench_tokenize_long_text_ko_dic(c: &mut Criterion) {
     });
 }
 
+/// Same corpus as `bench_tokenize_long_text_ko_dic` with the left-space
+/// penalty enabled (mecab-ko-dic's `left-space-penalty-factor` rules), to
+/// measure the cost of the per-position whitespace check and the per-edge
+/// table lookup.
+#[cfg(feature = "embed-ko-dic")]
+fn bench_tokenize_long_text_ko_dic_space_penalty(c: &mut Criterion) {
+    use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+    let mut long_text_file = BufReader::new(
+        File::open(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../resources")
+                .join("sangnoksu.txt"),
+        )
+        .unwrap(),
+    );
+    let mut long_text = String::new();
+    let _size = long_text_file.read_to_string(&mut long_text).unwrap();
+
+    let rules = SpacePenaltyConfig::new(vec![
+        SpacePenaltyRule::new(
+            ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"],
+            3000,
+        ),
+        SpacePenaltyRule::new(
+            ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"],
+            6000,
+        ),
+    ]);
+    let dictionary = load_dictionary("embedded://ko-dic").unwrap();
+    let segmenter = Segmenter::new(Mode::Normal, dictionary, None)
+        .space_penalty(Some(rules))
+        .unwrap();
+
+    c.bench_function("bench-tokenize-long-text-ko-dic-space-penalty", |b| {
+        b.iter(|| segmenter.segment(Cow::Borrowed(long_text.as_str())));
+    });
+}
+
 #[cfg(feature = "embed-ko-dic")]
 fn bench_tokenize_details_long_text_ko_dic(c: &mut Criterion) {
     let mut long_text_file = BufReader::new(
@@ -159,6 +198,7 @@ criterion_group!(
     bench_tokenize_ko_dic,
     bench_tokenize_with_simple_userdic_ko_dic,
     bench_tokenize_long_text_ko_dic,
+    bench_tokenize_long_text_ko_dic_space_penalty,
     bench_tokenize_details_long_text_ko_dic,
 );
 

@@ -6,6 +6,7 @@ use std::str::FromStr;
 use lindera::LinderaResult;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
+use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 use lindera_analysis::character_filter::CharacterFilterLoader;
 use lindera_analysis::token_filter::TokenFilterLoader;
@@ -75,6 +76,18 @@ pub struct TokenizeArgs {
         help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), matching pre-v6 output exactly. Enabled by default"
     )]
     disable_unknown_word_ladder: bool,
+    #[clap(
+        long = "space-penalty",
+        conflicts_with = "space_penalty_rules",
+        help = "Enable the left-space penalty with the rules shipped in the dictionary's metadata.json (ko-dic: mecab-ko-dic's left-space-penalty-factor). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Errors when the dictionary ships no rules. Default: off"
+    )]
+    space_penalty: bool,
+    #[clap(
+        long = "space-penalty-rules",
+        value_name = "JSON",
+        help = "Enable the left-space penalty with explicit rules instead of the dictionary's, e.g. '{\"rules\":[{\"pos\":[\"JKS\",\"JX\"],\"cost\":6000}]}'. Default: off"
+    )]
+    space_penalty_rules: Option<String>,
     #[clap(
         long = "mmap",
         help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
@@ -263,6 +276,19 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     // Unknown-word length ladder (default: enabled)
     if args.disable_unknown_word_ladder {
         builder.set_segmenter_unknown_word_ladder(false);
+    }
+
+    // Left-space penalty (default: off): the dictionary's own rules, or
+    // explicit ones (clap rejects both flags together).
+    if args.space_penalty {
+        builder.set_segmenter_space_penalty_from_dictionary(true);
+    }
+    if let Some(rules) = args.space_penalty_rules.as_deref() {
+        let config: SpacePenaltyConfig = serde_json::from_str(rules).map_err(|err| {
+            LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("invalid --space-penalty-rules JSON: {err}"))
+        })?;
+        builder.set_segmenter_space_penalty(Some(&config));
     }
 
     // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)

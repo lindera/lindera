@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dictionary::context_id_map::ContextIdMap;
 use crate::dictionary::schema::Schema;
+use crate::space_penalty::SpacePenaltyConfig;
 
 const DEFAULT_WORD_COST: i16 = -10000;
 const DEFAULT_LEFT_CONTEXT_ID: u16 = 1288;
@@ -125,6 +126,15 @@ pub struct Metadata {
     pub user_dictionary_schema: Schema, // Schema for user dictionary
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_info: Option<ModelInfo>, // Training model information (optional)
+    /// Left-space penalty rules this dictionary ships as its default (see
+    /// [`crate::space_penalty`]); ko-dic carries mecab-ko-dic's
+    /// `left-space-penalty-factor` here. Optional, and omitted from the file
+    /// when absent so existing `metadata.json` files stay byte-identical.
+    /// The rules are never applied implicitly: a consumer opts in (the
+    /// Segmenter's `space_penalty: true` config value or
+    /// `space_penalty_from_dictionary`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub space_penalty: Option<SpacePenaltyConfig>,
 }
 
 impl Default for Metadata {
@@ -181,6 +191,7 @@ impl Metadata {
             context_id_map: None,
             user_dictionary_schema: userdic_schema,
             model_info: None,
+            space_penalty: None,
         }
     }
 
@@ -259,6 +270,41 @@ mod tests {
         let metadata = Metadata::default();
         assert_eq!(metadata.name, "default");
         // Schema no longer has name field
+        assert!(metadata.space_penalty.is_none());
+    }
+
+    /// `space_penalty` is optional: absent from the file it reads as `None`
+    /// and is not written back, so dictionaries without rules stay
+    /// byte-identical; present, it round-trips.
+    #[test]
+    fn space_penalty_is_optional_and_round_trips() {
+        use crate::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+        let without = serde_json::to_string(&Metadata::default()).unwrap();
+        assert!(!without.contains("space_penalty"));
+        let parsed: Metadata = serde_json::from_str(&without).unwrap();
+        assert!(parsed.space_penalty.is_none());
+
+        let rules = SpacePenaltyConfig::new(vec![
+            SpacePenaltyRule::new(["EP", "EC"], 3000),
+            SpacePenaltyRule::new(["JKS"], 6000),
+        ]);
+        let metadata = Metadata {
+            space_penalty: Some(rules.clone()),
+            ..Metadata::default()
+        };
+        let json = serde_json::to_string(&metadata).unwrap();
+        assert!(json.contains("\"space_penalty\""));
+        let parsed: Metadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.space_penalty, Some(rules));
+
+        // The hand-written form used in a dictionary crate's metadata.json.
+        let mut value = serde_json::to_value(Metadata::default()).unwrap();
+        value["space_penalty"] = serde_json::json!({
+            "rules": [{ "pos": ["JKB", "JX"], "cost": 6000 }]
+        });
+        let parsed: Metadata = serde_json::from_value(value).unwrap();
+        assert_eq!(parsed.space_penalty.unwrap().cost_for_tag("JX"), 6000);
     }
 
     /// A source `metadata.json` -- the hand-written kind checked into each
