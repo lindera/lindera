@@ -1,3 +1,4 @@
+mod compound;
 /// This module defines various token filters and provides functionality to load them.
 ///
 /// # Modules
@@ -10,6 +11,7 @@
 /// - `japanese_reading_form`: Contains the Japanese reading form token filter.
 /// - `japanese_stop_tags`: Contains the Japanese stop tags token filter.
 /// - `keep_words`: Contains the keep words token filter.
+/// - `korean_compound_word`: Contains the Korean compound word token filter.
 /// - `korean_keep_tags`: Contains the Korean keep tags token filter.
 /// - `korean_number`: Contains the Korean number token filter.
 /// - `korean_reading_form`: Contains the Korean reading form token filter.
@@ -42,6 +44,7 @@ pub mod japanese_number;
 pub mod japanese_reading_form;
 pub mod japanese_stop_tags;
 pub mod keep_words;
+pub mod korean_compound_word;
 pub mod korean_keep_tags;
 pub mod korean_number;
 pub mod korean_reading_form;
@@ -83,6 +86,9 @@ use crate::token_filter::japanese_stop_tags::{
     JAPANESE_STOP_TAGS_TOKEN_FILTER_NAME, JapaneseStopTagsTokenFilter,
 };
 use crate::token_filter::keep_words::{KEEP_WORDS_TOKEN_FILTER_NAME, KeepWordsTokenFilter};
+use crate::token_filter::korean_compound_word::{
+    KOREAN_COMPOUND_WORD_TOKEN_FILTER_NAME, KoreanCompoundWordTokenFilter,
+};
 use crate::token_filter::korean_keep_tags::{
     KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME, KoreanKeepTagsTokenFilter,
 };
@@ -206,6 +212,9 @@ impl TokenFilterLoader {
             }
             KEEP_WORDS_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(KeepWordsTokenFilter::from_config(value)?)
+            }
+            KOREAN_COMPOUND_WORD_TOKEN_FILTER_NAME => {
+                BoxTokenFilter::from(KoreanCompoundWordTokenFilter::from_config(value)?)
             }
             KOREAN_KEEP_TAGS_TOKEN_FILTER_NAME => {
                 BoxTokenFilter::from(KoreanKeepTagsTokenFilter::from_config(value)?)

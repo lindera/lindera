@@ -1,115 +1,71 @@
 use std::borrow::Cow;
-use std::{collections::HashSet, mem};
+use std::collections::HashSet;
+use std::iter;
 
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
+use crate::token_filter::compound::{
+    merge_consecutive_tokens, parse_new_tag, write_compound_details,
+};
+use crate::token_filter::tags::{
+    normalize_japanese_tag, normalize_japanese_tags, parse_tags, write_japanese_pos_key,
+};
 use lindera::LinderaResult;
-use lindera::error::LinderaErrorKind;
 use lindera::token::Token;
 
 pub const JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME: &str = "japanese_compound_word";
 
 pub type JapaneseCompoundWordTokenFilterConfig = Value;
 
+/// The part-of-speech tag a merged token gets when `new_tag` is not configured.
+const DEFAULT_NEW_TAG: &str = "複合語";
+
 /// Compound consecutive tokens that have specified part-of-speech tags into a single token.
+///
+/// A token takes part in a merge when its first four detail fields, joined with `,`, equal one
+/// of `tags` (each padded to four parts with `*`), the same key the Japanese keep/stop tag
+/// filters use. The merge itself is shared with `korean_compound_word`.
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseCompoundWordTokenFilter {
+    /// The four-part part-of-speech tags whose tokens are merged with their neighbours.
     tags: HashSet<String>,
-    #[allow(dead_code)]
+    /// The four-part tag given to a merged token; `None` selects `複合語`.
     new_tag: Option<String>,
 }
 
 impl JapaneseCompoundWordTokenFilter {
+    /// Creates the filter, padding `tags` and `new_tag` to four comma-separated parts.
+    ///
+    /// # 引数
+    ///
+    /// * `tags` - Part-of-speech tags, one to four comma-separated levels each.
+    /// * `new_tag` - The tag assigned to a merged token, or `None` for `複合語`.
+    ///
+    /// # 戻り値
+    ///
+    /// The configured filter.
     pub fn new(tags: HashSet<String>, new_tag: Option<String>) -> Self {
-        let tags: HashSet<String> = tags
-            .into_iter()
-            .map(|v| {
-                let mut tag_parts: Vec<&str> = v.split(',').collect();
-                tag_parts.resize(4, "*");
-                tag_parts.join(",")
-            })
-            .collect();
-
-        let new_tag = new_tag.map(|v| {
-            let mut tag_parts: Vec<&str> = v.split(',').collect();
-            tag_parts.resize(4, "*");
-            tag_parts.join(",")
-        });
-
-        Self { tags, new_tag }
-    }
-
-    pub fn from_config(config: &JapaneseCompoundWordTokenFilterConfig) -> LinderaResult<Self> {
-        let tags: HashSet<String> = config["tags"]
-            .as_array()
-            .ok_or_else(|| {
-                LinderaErrorKind::Deserialize.with_error(anyhow::anyhow!("tags is required"))
-            })?
-            .iter()
-            .map(|v| {
-                v.as_str()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!("tag must be string"))
-                    })
-                    .map(|s| s.to_string())
-            })
-            .collect::<LinderaResult<HashSet<String>>>()?;
-
-        let new_tag = config
-            .get("new_tag")
-            .map(|v| {
-                v.as_str()
-                    .ok_or_else(|| {
-                        LinderaErrorKind::Deserialize
-                            .with_error(anyhow::anyhow!("new_tag must be a string"))
-                    })
-                    .map(|s| s.to_string())
-            })
-            .transpose()?;
-
-        Ok(Self::new(tags, new_tag))
-    }
-
-    // Concatenate two tokens into one.
-    fn concat_token<'a>(&self, token1: &mut Token<'a>, token2: &Token<'a>) {
-        token1.surface = Cow::Owned(format!("{}{}", token1.surface, token2.surface));
-        token1.byte_end = token2.byte_end;
-        token1.position_length += token2.position_length;
-
-        // Token details field length
-        // -4 to exclude surface, left_context_id, right_context_id and cost
-        let details_field_length = token1.dictionary.metadata.dictionary_schema.field_count() - 4;
-
-        // Make details for the new token based on the new_tag.
-        let details = match &self.new_tag {
-            Some(new_tag) => {
-                let mut details = new_tag.split(',').collect::<Vec<&str>>();
-                if details.len() < details_field_length {
-                    details.resize(details_field_length, "*");
-                } else {
-                    details.truncate(details_field_length);
-                }
-                let details: Vec<Cow<'_, str>> =
-                    details.iter().map(|s| Cow::Owned(s.to_string())).collect();
-                details
-            }
-            None => {
-                let mut details = Vec::with_capacity(details_field_length);
-                details.push(Cow::Borrowed("複合語"));
-                while details.len() < details_field_length {
-                    details.push(Cow::Borrowed("*"));
-                }
-                details
-            }
-        };
-
-        // token1.details = Some(details);
-        for (i, detail) in details.iter().enumerate() {
-            token1.set_detail(i, detail.clone());
+        Self {
+            tags: normalize_japanese_tags(tags),
+            new_tag: new_tag.map(|tag| normalize_japanese_tag(&tag)),
         }
+    }
+
+    /// Builds the filter from its JSON configuration: `tags` (required, array of strings) and
+    /// `new_tag` (optional, string).
+    ///
+    /// # 引数
+    ///
+    /// * `config` - The filter's JSON configuration.
+    ///
+    /// # 戻り値
+    ///
+    /// The configured filter, or a deserialization error when `tags` is missing or either
+    /// argument has the wrong type.
+    pub fn from_config(config: &JapaneseCompoundWordTokenFilterConfig) -> LinderaResult<Self> {
+        Ok(Self::new(parse_tags(config)?, parse_new_tag(config)?))
     }
 }
 
@@ -118,82 +74,32 @@ impl TokenFilter for JapaneseCompoundWordTokenFilter {
         JAPANESE_COMPOUND_WORD_TOKEN_FILTER_NAME
     }
 
-    /// Merges tokens based on matching part-of-speech tags and updates the token list.
+    /// Merges each run of consecutive tokens whose part-of-speech tag is in the configured
+    /// tags into one token.
     ///
-    /// # Arguments
+    /// The merged token has the concatenated surface, the first token's `byte_start` and
+    /// `position`, the last token's `byte_end`, the summed `position_length`, and details of
+    /// `new_tag` (or `複合語`) padded with `*` to the dictionary's field count. A matching
+    /// token with no matching neighbour is left as it is.
     ///
-    /// * `tokens` - A mutable reference to a vector of tokens. The tokens will be modified in place by merging consecutive tokens that share matching tags.
+    /// # 引数
     ///
-    /// # Returns
+    /// * `tokens` - The tokens to merge, modified in place.
     ///
-    /// Returns a `LinderaResult<()>` indicating whether the operation was successful.
+    /// # 戻り値
     ///
-    /// # Process
-    ///
-    /// 1. **Token Processing**:
-    ///    - The function iterates over the list of tokens, and for each token, it checks the part-of-speech tags up to 4 elements (`tags_len`).
-    ///    - If the token's tag matches one of the tags specified in the configuration (`self.config.tags`), it attempts to merge the token with the subsequent tokens.
-    ///
-    /// 2. **Token Merging**:
-    ///    - When two consecutive tokens have matching tags, they are merged by concatenating their details into a single token.
-    ///    - If no matching tag is found for the next token, the current token is finalized and added to the new token list.
-    ///
-    /// 3. **Replacing Tokens**:
-    ///    - After processing all tokens, the original token list is replaced by the new list (`new_tokens`) that contains merged tokens where applicable.
-    ///
-    /// # Special Cases:
-    ///
-    /// - If no tags match, the original tokens are retained without modification.
-    /// - If multiple tokens match, they are merged into a single token.
-    ///
-    /// # Errors
-    ///
-    /// If any issue arises during token processing, the function will return an error in the form of `LinderaResult`.
+    /// `Ok(())`; this filter cannot fail.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
-        // New tokens
-        let mut new_tokens = Vec::new();
-
-        // Index of the current token
-        let mut i = 0;
-
-        while i < tokens.len() {
-            // Get the current token by reference and clone it later only if needed.
-            let current = &mut tokens[i];
-            i += 1;
-
-            let current_details = current.details();
-            let current_tags_len = current_details.len().min(4);
-            let current_tag = current_details[0..current_tags_len].join(",");
-
-            // If the tag matches, merge the tokens
-            if self.tags.contains(&current_tag) {
-                // Clone the current token as it will be modified
-                let mut merged_token = current.clone();
-
-                while i < tokens.len() {
-                    let next = &mut tokens[i];
-                    let next_details = next.details();
-                    let next_tags_len = next_details.len().min(4);
-                    let next_tag = next_details[0..next_tags_len].join(",");
-
-                    // If the next tag matches, merge the tokens; otherwise, break the loop
-                    if self.tags.contains(&next_tag) {
-                        // Concatenate the current token and the next token.
-                        self.concat_token(&mut merged_token, next);
-                        i += 1; // Move to the next token
-                    } else {
-                        break; // No match, stop merging
-                    }
-                }
-                new_tokens.push(merged_token);
-            } else {
-                // No need to merge, just clone the current token
-                new_tokens.push(current.clone());
+        merge_consecutive_tokens(tokens, &self.tags, write_japanese_pos_key, |token| {
+            match &self.new_tag {
+                // The four-part tag becomes the leading detail fields, one per part.
+                Some(new_tag) => write_compound_details(
+                    token,
+                    new_tag.split(',').map(|part| Cow::Owned(part.to_owned())),
+                ),
+                None => write_compound_details(token, iter::once(Cow::Borrowed(DEFAULT_NEW_TAG))),
             }
-        }
-
-        // Replace the original tokens with the new tokens after processing.
-        mem::swap(tokens, &mut new_tokens);
+        });
 
         Ok(())
     }
@@ -449,5 +355,124 @@ mod tests {
             tokens[0].details(),
             vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*",]
         );
+    }
+
+    #[test]
+    fn test_japanese_compound_word_token_filter_from_config_errors() {
+        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+
+        // `tags` is required and must be an array of strings.
+        assert!(JapaneseCompoundWordTokenFilter::from_config(&serde_json::json!({})).is_err());
+        assert!(
+            JapaneseCompoundWordTokenFilter::from_config(&serde_json::json!({ "tags": "名詞,数" }))
+                .is_err()
+        );
+        assert!(
+            JapaneseCompoundWordTokenFilter::from_config(&serde_json::json!({ "tags": [1] }))
+                .is_err()
+        );
+
+        // `new_tag`, when present, must be a string.
+        assert!(
+            JapaneseCompoundWordTokenFilter::from_config(
+                &serde_json::json!({ "tags": ["名詞,数"], "new_tag": 1 })
+            )
+            .is_err()
+        );
+    }
+
+    /// The details a merged token gets for each `new_tag` variant, and that a
+    /// matching token with no matching neighbour keeps its own.
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_compound_word_token_filter_new_tag_variants_ipadic() {
+        use std::borrow::Cow;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+        use lindera::dictionary::{Dictionary, DictionaryKind, WordId, load_embedded_dictionary};
+        use lindera::token::Token;
+        use lindera_dictionary::viterbi::LexType;
+
+        /// `一万円` as IPADIC tokenizes it: two numerals, then a counter suffix.
+        fn tokens(dictionary: &Dictionary) -> Vec<Token<'_>> {
+            [
+                ("一", ["名詞", "数", "*", "*"]),
+                ("万", ["名詞", "数", "*", "*"]),
+                ("円", ["名詞", "接尾", "助数詞", "*"]),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(i, (surface, pos))| Token {
+                surface: Cow::Borrowed(surface),
+                byte_start: i * 3,
+                byte_end: i * 3 + 3,
+                position: i,
+                position_length: 1,
+                word_id: WordId::new(LexType::System, i as u32),
+                dictionary,
+                user_dictionary: None,
+                details: Some(pos.into_iter().chain(["*"; 5]).map(Cow::Borrowed).collect()),
+            })
+            .collect()
+        }
+
+        let dictionary = load_embedded_dictionary(DictionaryKind::IPADIC).unwrap();
+        let counter_details = vec!["名詞", "接尾", "助数詞", "*", "*", "*", "*", "*", "*"];
+
+        // Omitted: the merged token is tagged 複合語 and the counter is untouched.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["名詞,数"] }),
+        )
+        .unwrap();
+        let mut tokens_omitted = tokens(&dictionary);
+        filter.apply(&mut tokens_omitted).unwrap();
+        assert_eq!(tokens_omitted.len(), 2);
+        assert_eq!(tokens_omitted[0].surface, "一万");
+        assert_eq!(tokens_omitted[0].byte_end, 6);
+        assert_eq!(tokens_omitted[0].position_length, 2);
+        assert_eq!(
+            tokens_omitted[0].details(),
+            vec!["複合語", "*", "*", "*", "*", "*", "*", "*", "*"]
+        );
+        assert_eq!(tokens_omitted[1].surface, "円");
+        assert_eq!(tokens_omitted[1].position, 2);
+        assert_eq!(tokens_omitted[1].details(), counter_details);
+
+        // Given with two levels: padded to four parts, one detail field per part.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["名詞,数"], "new_tag": "名詞,数" }),
+        )
+        .unwrap();
+        let mut tokens_two_levels = tokens(&dictionary);
+        filter.apply(&mut tokens_two_levels).unwrap();
+        assert_eq!(
+            tokens_two_levels[0].details(),
+            vec!["名詞", "数", "*", "*", "*", "*", "*", "*", "*"]
+        );
+
+        // Given with more than four levels: only the first four are kept, as before.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["名詞,数"], "new_tag": "名詞,数,*,*,余分" }),
+        )
+        .unwrap();
+        let mut tokens_five_levels = tokens(&dictionary);
+        filter.apply(&mut tokens_five_levels).unwrap();
+        assert_eq!(
+            tokens_five_levels[0].details(),
+            vec!["名詞", "数", "*", "*", "*", "*", "*", "*", "*"]
+        );
+
+        // A matching token with no matching neighbour keeps its details.
+        let filter = JapaneseCompoundWordTokenFilter::from_config(
+            &serde_json::json!({ "tags": ["名詞,接尾,助数詞"] }),
+        )
+        .unwrap();
+        let mut tokens_lone = tokens(&dictionary);
+        filter.apply(&mut tokens_lone).unwrap();
+        assert_eq!(tokens_lone.len(), 3);
+        assert_eq!(tokens_lone[2].surface, "円");
+        assert_eq!(tokens_lone[2].position_length, 1);
+        assert_eq!(tokens_lone[2].details(), counter_details);
     }
 }

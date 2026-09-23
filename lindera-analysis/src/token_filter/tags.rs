@@ -24,20 +24,41 @@ pub(crate) fn parse_tags(config: &Value) -> LinderaResult<HashSet<String>> {
         .collect()
 }
 
+/// Normalizes one Japanese part-of-speech tag to exactly four comma-separated
+/// parts, padding missing trailing parts with `*` and dropping any part
+/// beyond the fourth.
+///
+/// # 引数
+///
+/// * `tag` - The tag as configured, with one or more comma-separated parts.
+///
+/// # 戻り値
+///
+/// The tag in the four-part form the Japanese filters compare against.
+pub(crate) fn normalize_japanese_tag(tag: &str) -> String {
+    let mut tag_parts: Vec<&str> = tag.split(',').collect();
+    tag_parts.resize(4, "*");
+    tag_parts.join(",")
+}
+
 /// Normalizes Japanese part-of-speech tags to exactly four comma-separated
-/// parts, padding missing trailing parts with `*`.
+/// parts each, with [`normalize_japanese_tag`].
+///
+/// # 引数
+///
+/// * `tags` - The tags as configured.
+///
+/// # 戻り値
+///
+/// The same tags, each in the four-part form.
 pub(crate) fn normalize_japanese_tags(tags: HashSet<String>) -> HashSet<String> {
     tags.into_iter()
-        .map(|v| {
-            let mut tag_parts: Vec<&str> = v.split(',').collect();
-            tag_parts.resize(4, "*");
-            tag_parts.join(",")
-        })
+        .map(|tag| normalize_japanese_tag(&tag))
         .collect()
 }
 
-/// Initial capacity of the comparison-key buffer [`apply_tag_filter`] reuses
-/// across tokens.
+/// Initial capacity of the comparison-key buffer [`apply_tag_filter`] and
+/// the compound-word merge helper reuse across tokens.
 ///
 /// Sized for the longest key the filters build in practice: four
 /// comma-separated Japanese part-of-speech fields. The longest distinct
@@ -45,7 +66,7 @@ pub(crate) fn normalize_japanese_tags(tags: HashSet<String>) -> HashSet<String> 
 /// (`助詞,副助詞／並立助詞／終助詞,*,*`), so this leaves headroom without being
 /// a meaningful allocation. A longer key is still handled correctly; it just
 /// grows the buffer once.
-const KEY_BUFFER_CAPACITY: usize = 64;
+pub(crate) const KEY_BUFFER_CAPACITY: usize = 64;
 
 /// Whether a tag filter keeps or removes the tokens whose tag matches the set.
 #[derive(Clone, Copy, Debug)]
