@@ -100,7 +100,7 @@ lindera/
 
 #### `lindera-php`
 
-[ext-php-rs](https://github.com/davidcole1340/ext-php-rs) で構築された PHP バインディングです。Lindera のトークナイザー API を PHP 拡張として公開します。
+[ext-php-rs](https://github.com/davidcole1340/ext-php-rs) で構築された PHP バインディングです。Lindera のトークナイザー API を PHP 拡張として公開します。拡張名は `lindera` で、[PIE](https://github.com/php/pie) 向けに Packagist へ `lindera/lindera` として公開します。パッケージの `composer.json` はリポジトリのルートにあり、PIE を `lindera-php/` に向けます。そこで `config.m4` と `Makefile.frag` が phpize ビルドの中で `cargo build` を実行します。
 
 #### `lindera-wasm`
 

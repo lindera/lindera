@@ -1,3 +1,27 @@
-/vendor/
-composer.lock
 .php-cs-fixer.cache
+.phpunit.cache/
+.phpunit.result.cache
+# phpize / configure / make output (the build path PIE uses). Listed by exact
+# name: a Makefile* glob would also hide Makefile.frag. Keep in sync with
+# PHPIZE_ARTIFACTS in the root Makefile.
+/build/
+/modules/
+/autom4te.cache/
+/.libs/
+/configure
+/configure.ac
+/config.h
+/config.h.in
+/config.h.in~
+/config.log
+/config.nice
+/config.status
+/config.cache
+/Makefile
+/Makefile.fragments
+/Makefile.objects
+/libtool
+/run-tests.php
+/tmp-php.ini
+*.lo
+*.la

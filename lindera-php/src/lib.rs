@@ -32,9 +32,25 @@ use ext_php_rs::prelude::*;
 /// PHP module entry point.
 ///
 /// Registers all classes with the PHP extension system.
+///
+/// The module is registered as `lindera`, not under the crate name
+/// `lindera-php` that ext-php-rs uses by default. PIE requires the
+/// `extension-name` in `composer.json` to match `^[A-Za-z][a-zA-Z0-9_]+$`,
+/// so the hyphenated crate name cannot be used there, and `php -m`,
+/// `extension_loaded()`, `extension=lindera` and the installed `lindera.so`
+/// all have to agree on one name.
+///
+/// # Arguments
+///
+/// * `module` - The module builder PHP supplies at load time.
+///
+/// # Returns
+///
+/// The builder with every class registered.
 #[php_module]
 pub fn get_module(module: ModuleBuilder) -> ModuleBuilder {
     let module = module
+        .name("lindera")
         // Token
         .class::<token::PhpToken>()
         // Mode and penalty

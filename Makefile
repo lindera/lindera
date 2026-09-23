@@ -102,9 +102,20 @@ clean-lindera-ruby: ## Clean lindera-ruby build artifacts
 	rm -f lindera-ruby/lib/lindera/lindera_ruby.so
 	rm -f lindera-ruby/Gemfile.lock
 
+# Files that phpize / configure / make leave inside lindera-php/ (the build
+# path PIE uses). Listed by name because `phpize --clean` also deletes
+# tests/*.php, which would remove the PHPUnit suite. Keep in sync with
+# lindera-php/.gitignore.
+PHPIZE_ARTIFACTS = build modules autom4te.cache .libs configure configure.ac \
+	config.h config.h.in config.h.in~ config.log config.nice config.status \
+	config.cache Makefile Makefile.fragments Makefile.objects libtool \
+	run-tests.php tmp-php.ini
+
+# composer.json lives at the repository root (Packagist reads it there), so
+# Composer's output lands at the root too.
 clean-lindera-php: ## Clean lindera-php build artifacts
-	rm -rf lindera-php/vendor
-	rm -f lindera-php/composer.lock
+	rm -rf vendor composer.lock .tmp/pie-stage
+	cd lindera-php && rm -rf $(PHPIZE_ARTIFACTS) *.lo *.la .phpunit.cache .phpunit.result.cache
 
 clean-lindera-wasm: ## Clean lindera-wasm build artifacts
 	rm -rf lindera-wasm/pkg
@@ -136,7 +147,7 @@ format-lindera-ruby: ## Format lindera-ruby
 
 format-lindera-php: ## Format lindera-php
 	cargo fmt -p lindera-php
-	cd lindera-php && vendor/bin/php-cs-fixer fix
+	vendor/bin/php-cs-fixer fix --config=lindera-php/.php-cs-fixer.dist.php
 
 format-lindera-wasm: ## Format lindera-wasm
 	cargo fmt -p lindera-wasm
@@ -198,12 +209,39 @@ test-lindera-ruby: ## Test lindera-ruby (Rust unit tests + minitest)
 	$(CARGO_TEST_WITH_RBCONFIG) cargo test -p lindera-ruby --lib
 	cd lindera-ruby && bundle install --quiet && LINDERA_FEATURES="embed-ipadic,train" bundle exec rake compile && bundle exec rake test
 
+# The PHPUnit suite loads embedded://ipadic, so the test build embeds IPADIC.
+# Embedded dictionaries do not change the PHP API, so the same build also
+# serves the stub check (StubsTest) and `make stubs-lindera-php`.
+PHP_TEST_FEATURES = embed-ipadic,train
+PHP_TEST_LIB = $$(find target/debug -maxdepth 1 \( -name 'liblindera_php.so' -o -name 'liblindera_php.dylib' \) | head -1)
+
 test-lindera-php: ## Test lindera-php (Rust unit tests + PHPUnit)
 	cargo test -p lindera-php --lib
-	cargo build -p lindera-php --features embed-ipadic,train
-	cd lindera-php && composer install --quiet && \
-		LIB=$$(find ../target/debug -maxdepth 1 -name 'liblindera_php.*' \( -name '*.so' -o -name '*.dylib' \) | head -1) && \
-		php -d extension=$$LIB vendor/bin/phpunit tests/LinderaTest.php
+	cargo build -p lindera-php --features $(PHP_TEST_FEATURES)
+	composer validate --strict --no-check-publish
+	composer install --quiet --no-interaction
+	php -d extension=$(PHP_TEST_LIB) vendor/bin/phpunit -c lindera-php/phpunit.xml.dist
+
+# Exercises the build path PIE uses (phpize / configure / make / make install)
+# without touching the system: the module is staged under .tmp/ and loaded
+# into a php that reads no ini files. The second `make -n` must not mention
+# cargo, which proves `sudo make install` after `make` would not rebuild.
+test-lindera-php-pie: ## Test lindera-php through the phpize build that PIE runs
+	cd lindera-php && rm -rf $(PHPIZE_ARTIFACTS) && \
+		phpize && \
+		./configure --with-php-config="$$(command -v php-config)" && \
+		make && \
+		php -n -d extension="$$PWD/modules/lindera.so" -m | grep -qx lindera && \
+		{ ! make -n 2>&1 | grep -q cargo; } && \
+		make install INSTALL_ROOT="$$PWD/../.tmp/pie-stage" && \
+		test -f "$$PWD/../.tmp/pie-stage$$(php-config --extension-dir)/lindera.so" && \
+		rm -rf "$$PWD/../.tmp/pie-stage" $(PHPIZE_ARTIFACTS)
+
+# The stub file is generated from the compiled extension so it cannot drift
+# from the Rust source; StubsTest fails when it is out of date.
+stubs-lindera-php: ## Regenerate lindera-php/stubs/lindera.stubs.php from the built extension
+	cargo build -p lindera-php --features $(PHP_TEST_FEATURES)
+	php -n -d extension=$(PHP_TEST_LIB) lindera-php/tools/generate-stubs.php > lindera-php/stubs/lindera.stubs.php
 
 test-lindera-wasm: ## Build-test lindera-wasm (wasm32 target)
 	cargo test -p lindera-wasm --lib

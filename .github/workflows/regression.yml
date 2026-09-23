@@ -172,6 +172,7 @@ jobs:
               - 'lindera-jieba/**'
             lindera-php:
               - 'lindera-php/**'
+              - 'composer.json'
               - 'lindera-binding-core/**'
               - 'lindera/**'
               - 'lindera-analysis/**'
@@ -541,6 +542,11 @@ jobs:
         shell: bash
         run: |
           make test-lindera-php
+
+      - name: Run PHP test through the phpize build that PIE uses
+        shell: bash
+        run: |
+          make test-lindera-php-pie
 
       # `make lint-lindera-php` also runs the language-side linter, which is not
       # installed here; this covers the cargo half. See #962.

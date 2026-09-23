@@ -60,9 +60,10 @@ updates:
       prefix: chore
       include: scope
 
-  # PHP binding (Composer).
+  # PHP binding (Composer). composer.json lives at the repository root, where
+  # Packagist reads it.
   - package-ecosystem: composer
-    directory: /lindera-php
+    directory: /
     schedule:
       interval: weekly
     commit-message:
