@@ -4,6 +4,9 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
+use crate::token_filter::tags::{
+    KEY_BUFFER_CAPACITY, normalize_japanese_tags, part_of_speech_offset_of, write_japanese_pos_key,
+};
 use lindera::LinderaResult;
 use lindera::error::LinderaErrorKind;
 use lindera::token::Token;
@@ -16,22 +19,26 @@ pub type JapaneseNumberTokenFilterConfig = Value;
 ///
 #[derive(Clone, Debug)]
 pub struct JapaneseNumberTokenFilter {
+    /// The four-part part-of-speech tags a token must carry to be converted,
+    /// or `None` to convert every token.
     tags: Option<HashSet<String>>,
 }
 
 impl JapaneseNumberTokenFilter {
+    /// Creates the filter, padding each tag to four comma-separated parts.
+    ///
+    /// # 引数
+    ///
+    /// * `tags` - Part-of-speech tags, one to four comma-separated levels
+    ///   each, or `None` to convert every token.
+    ///
+    /// # 戻り値
+    ///
+    /// The configured filter.
     pub fn new(tags: Option<HashSet<String>>) -> Self {
-        let tags = tags.map(|t| {
-            t.into_iter()
-                .map(|s| {
-                    let mut tag_parts: Vec<&str> = s.split(',').collect();
-                    tag_parts.resize(4, "*");
-                    tag_parts.join(",")
-                })
-                .collect()
-        });
-
-        Self { tags }
+        Self {
+            tags: tags.map(normalize_japanese_tags),
+        }
     }
 
     pub fn from_config(config: &JapaneseNumberTokenFilterConfig) -> LinderaResult<Self> {
@@ -76,11 +83,11 @@ impl TokenFilter for JapaneseNumberTokenFilter {
     ///
     /// 1. **Token Tag Evaluation**:
     ///    - The function iterates over the tokens and extracts the part-of-speech tags from each token's details.
-    ///    - If the token has at least 4 details, the first 4 elements are used as the tag. Otherwise, only the first element is used.
+    ///    - The four details starting at the schema's `part_of_speech` field form the tag, exactly as in `japanese_keep_tags`; a token with fewer details yields a shorter tag, which matches nothing.
     ///
     /// 2. **Tag Matching**:
-    ///    - If the configuration contains specific tags (`self.config.tags`), the function checks whether the token's tag matches any of them.
-    ///    - If no tags are specified (`None`), the function applies the conversion to all tokens.
+    ///    - If the configuration contains specific tags (`self.tags`), the function checks whether the token's tag matches any of them.
+    ///    - If no tags are specified (`None`), the function applies the conversion to all tokens without reading their details.
     ///
     /// 3. **Text Conversion**:
     ///    - For tokens that match the criteria, the text is converted to Arabic numerals using the `to_arabic_numerals` function and stored as `Cow::Owned`.
@@ -89,20 +96,25 @@ impl TokenFilter for JapaneseNumberTokenFilter {
     ///
     /// If any issue arises during token processing or text conversion, the function will return an error in the form of `LinderaResult`.
     fn apply(&self, tokens: &mut Vec<Token<'_>>) -> LinderaResult<()> {
+        let Some(tags) = &self.tags else {
+            // No tag restriction: every token is converted, so no key is built.
+            for token in tokens.iter_mut() {
+                token.surface = Cow::Owned(to_arabic_numerals(&token.surface));
+            }
+            return Ok(());
+        };
+
+        // The key is the same as the keep/stop tag filters': the up-to-4
+        // part-of-speech levels from where the dictionary schema puts them
+        // (resolved once per call), written into one buffer reused across
+        // tokens.
+        let offset = part_of_speech_offset_of(tokens);
+        let mut key = String::with_capacity(KEY_BUFFER_CAPACITY);
         for token in tokens.iter_mut() {
-            let details = token.details();
-            let tags_len = details.len().min(4);
-
-            // Create a part-of-speech tag string.
-            let tag = details[0..tags_len].join(",");
-
-            // Determine whether to convert the token based on the config tags.
-            let should_convert = self.tags.as_ref().is_none_or(|tags| tags.contains(&tag));
-
-            // If conversion is required, apply the Arabic numeral conversion.
-            if should_convert {
-                let text = token.surface.as_ref();
-                token.surface = Cow::Owned(to_arabic_numerals(text));
+            key.clear();
+            write_japanese_pos_key(token, offset, &mut key);
+            if tags.contains(key.as_str()) {
+                token.surface = Cow::Owned(to_arabic_numerals(&token.surface));
             }
         }
 
@@ -1258,5 +1270,69 @@ mod tests {
         assert_eq!(tokenize("三千五百円"), ["3500", "円"]);
         assert_eq!(tokenize("百五十人"), ["150", "人"]);
         assert_eq!(tokenize("2026年"), ["2026", "年"]);
+    }
+
+    /// With the SudachiDict schema the part-of-speech hierarchy is details
+    /// `1..5` (`display_surface` comes first), so `tags` must be matched
+    /// there: the numeral is converted and the counter, which is not a
+    /// `名詞,数詞`, is left alone (#997).
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_number_token_filter_apply_sudachidict_schema() {
+        use std::collections::HashSet;
+
+        use crate::token_filter::TokenFilter;
+        use crate::token_filter::tags::test_support::{sudachidict_schema_dictionary, tokens};
+
+        let dictionary = sudachidict_schema_dictionary();
+        let rows: [(&str, &[&str]); 2] = [
+            (
+                "五",
+                &[
+                    "五", "名詞", "数詞", "*", "*", "*", "*", "ゴ", "五", "*", "A", "*", "*", "*",
+                    "017040",
+                ],
+            ),
+            (
+                "年",
+                &[
+                    "年",
+                    "名詞",
+                    "普通名詞",
+                    "助数詞可能",
+                    "*",
+                    "*",
+                    "*",
+                    "ネン",
+                    "年",
+                    "*",
+                    "A",
+                    "*",
+                    "*",
+                    "*",
+                    "*",
+                ],
+            ),
+        ];
+
+        let filter = JapaneseNumberTokenFilter::new(Some(HashSet::from(["名詞,数詞".to_string()])));
+        let mut restricted = tokens(&dictionary, &rows);
+        filter.apply(&mut restricted).unwrap();
+        let surfaces: Vec<&str> = restricted.iter().map(|t| t.surface.as_ref()).collect();
+        assert_eq!(surfaces, ["5", "年"]);
+
+        // A tag spelled the way the old positional key came out (display
+        // surface first) must not match anymore.
+        let filter =
+            JapaneseNumberTokenFilter::new(Some(HashSet::from(["五,名詞,数詞".to_string()])));
+        let mut untouched = tokens(&dictionary, &rows);
+        filter.apply(&mut untouched).unwrap();
+        assert_eq!(untouched[0].surface, "五");
+
+        // Without `tags` every token is converted regardless of the schema.
+        let filter = JapaneseNumberTokenFilter::new(None);
+        let mut all = tokens(&dictionary, &rows);
+        filter.apply(&mut all).unwrap();
+        assert_eq!(all[0].surface, "5");
     }
 }

@@ -34,10 +34,12 @@ SudachiDict の辞書フォーマットと品詞タグの詳細については [
 
 > **注意:** 見出し（display surface）がインデックス 4（品詞カラムの前）に
 > あるため、トークン詳細の先頭は IPADIC や UniDic のような品詞ではなく
-> 見出しになります。詳細の先頭を品詞タグとして位置ベースで読むトークン
-> フィルターはこの辞書では期待通りにマッチしません。
-> `token.get("part_of_speech")` のようなスキーマベースのアクセスは正しく
-> 動作します。詳細は
+> 見出しになります。詳細を位置ベースで読むコードはこの点を考慮してください。
+> `token.get("part_of_speech")` のようなスキーマベースのアクセスは品詞を
+> 直接返します。品詞ベースのトークンフィルター（`japanese_stop_tags`、
+> `japanese_keep_tags`、`japanese_compound_word`、および `tags` を指定した
+> `japanese_number`）は辞書スキーマ経由で品詞カラムを解決するため、IPADIC や
+> UniDic と同様にこの辞書でも一致します。詳細は
 > [lindera/lindera#997](https://github.com/lindera/lindera/issues/997) を
 > 参照してください。
 

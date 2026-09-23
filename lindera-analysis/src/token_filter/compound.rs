@@ -300,7 +300,12 @@ mod tests {
                 .map(|(i, matching)| make(&dictionary, i, *matching))
                 .collect();
 
-            merge_consecutive_tokens(&mut tokens, &tags, write_japanese_pos_key, mark_merged);
+            merge_consecutive_tokens(
+                &mut tokens,
+                &tags,
+                |token, key| write_japanese_pos_key(token, 0, key),
+                mark_merged,
+            );
 
             let actual: Vec<Expected> = tokens
                 .iter_mut()
@@ -371,7 +376,12 @@ mod tests {
         );
         let tags = match_set();
 
-        merge_consecutive_tokens(&mut tokens, &tags, write_japanese_pos_key, mark_merged);
+        merge_consecutive_tokens(
+            &mut tokens,
+            &tags,
+            |token, key| write_japanese_pos_key(token, 0, key),
+            mark_merged,
+        );
 
         let surfaces: Vec<&str> = tokens.iter().map(|t| t.surface.as_ref()).collect();
         assert_eq!(surfaces, vec!["s0", "s1s2"]);

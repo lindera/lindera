@@ -128,10 +128,11 @@ $tokenizer = $builder->build();
 
 > [!NOTE]
 > Tags are normalized to exactly four comma-separated levels (missing levels are padded with `*`)
-> and compared for exact equality against the first four part-of-speech details of each token.
-> A bare `助詞` therefore never matches IPADIC particle tokens — they always carry a subcategory
-> such as `助詞,係助詞` — while a bare `助動詞` does match, because auxiliary verbs have no
-> subcategory (`助動詞,*,*,*`).
+> and compared for exact equality against the four part-of-speech details of each token, starting
+> at the field named `part_of_speech` in the dictionary schema (or at the first detail when the
+> schema has no such field). A bare `助詞` therefore never matches IPADIC particle tokens — they
+> always carry a subcategory such as `助詞,係助詞` — while a bare `助動詞` does match, because
+> auxiliary verbs have no subcategory (`助動詞,*,*,*`).
 
 ### japanese_keep_tags
 

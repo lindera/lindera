@@ -33,10 +33,12 @@
 > [!NOTE]
 > 見出し（解析結果表示用）が品詞カラムより前のインデックス 4 に位置するため、
 > トークン詳細（details）の先頭は、IPADIC や UniDic のような品詞ではなく見出しに
-> なります。先頭の詳細を品詞タグとして位置ベースで読み取るトークンフィルタ
-> （`japanese_stop_tags`、`japanese_keep_tags`、`japanese_compound_word`）は、
-> この辞書では期待どおりにマッチしません。`token.get("part_of_speech")` のような
-> スキーマを認識するアクセスは正しく動作します。詳細は
+> なります。details を位置ベースで読み取るコードはこの点を考慮してください。
+> `token.get("part_of_speech")` のようなスキーマを認識するアクセスは品詞を直接
+> 返します。品詞ベースのトークンフィルタ（`japanese_stop_tags`、
+> `japanese_keep_tags`、`japanese_compound_word`、および `tags` を指定した
+> `japanese_number`）は辞書スキーマ経由で品詞カラムを解決するため、IPADIC や
+> UniDic と同様にこの辞書でも一致します。詳細は
 > [lindera/lindera#997](https://github.com/lindera/lindera/issues/997) を参照してください。
 
 ## ユーザー辞書フォーマット (CSV)
