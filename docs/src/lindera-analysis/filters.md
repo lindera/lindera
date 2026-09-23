@@ -323,6 +323,45 @@ Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.
 }
 ```
 
+### korean_number
+
+Converts Sino-Korean numeral representations (Hangul numerals, Hanja numerals, and fullwidth digits) in the token's surface text to Arabic numerals. Native Korean numerals (`하나`, `둘`, `열`, `스물`, ...) have no positional structure and are left unchanged.
+
+Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so the tokens of a single number do not add up to one Arabic numeral:
+
+| Input | Tokens from ko-dic | After `korean_number` |
+| --- | --- | --- |
+| `이천이십육년` | `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` | `2 1000 2 10 6 년` |
+| `10만` | `10/SN 만/NR` | `10 10000` |
+
+Merging those tokens before the conversion, the way `japanese_compound_word` does for IPADIC, is tracked in [#1026](https://github.com/lindera/lindera/issues/1026). A single token that holds the whole numeral, such as the Hanja `二千二十六/SH`, is converted in full.
+
+**Parameters:**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `tags` | array\<string\> or `null` | No | Part-of-speech tags to restrict the conversion to. Omitted, it defaults to `["SN", "NR"]`; `null` converts every token |
+
+A token is converted only when every one of its characters is a numeral, the rule Lucene's `KoreanNumberFilter` applies. That is what keeps native Korean numerals intact: `일곱` ("seven") starts with the Sino-Korean `일`, and a character-by-character conversion would give `1곱`.
+
+Hangul numerals are also homographs of very common morphemes (`이` is a subject particle, `만` an auxiliary particle), and those are single characters that the all-numeral rule cannot separate from a numeral. That is why the default is restricted to the numeral tags.
+
+Add `SH` to convert Hanja numerals as well. The coverage is partial in two ways: ko-dic tags whole Hanja words as `NNG` (`參加`, `萬歲` are untouched), while a single Hanja character it cannot attach to a word is `SH` on its own, so `十字架` becomes `10 字 架` and `百貨店` becomes `100 貨 店`.
+
+**Example:**
+
+```json
+{
+  "kind": "korean_number",
+  "args": {
+    "tags": [
+      "SN",
+      "NR"
+    ]
+  }
+}
+```
+
 ### korean_reading_form
 
 Replaces the token's surface text with its reading, as registered in the dictionary's `reading` field. Tokens produced by unknown-word processing (`token.word_id.is_unknown()`) are left unchanged.

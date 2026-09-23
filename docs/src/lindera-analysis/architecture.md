@@ -23,6 +23,7 @@ lindera-analysis/src/
 │   ├── japanese_stop_tags.rs
 │   ├── keep_words.rs
 │   ├── korean_keep_tags.rs
+│   ├── korean_number.rs
 │   ├── korean_reading_form.rs
 │   ├── korean_stop_tags.rs
 │   ├── length.rs
