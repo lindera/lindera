@@ -1216,4 +1216,47 @@ mod tests {
             assert_eq!(&tokens[1].surface, "1郎");
         }
     }
+
+    #[test]
+    #[cfg(feature = "embed-ipadic")]
+    fn test_japanese_number_token_filter_with_tokenizer() {
+        use std::collections::HashSet;
+
+        use crate::token_filter::BoxTokenFilter;
+        use crate::token_filter::japanese_compound_word::JapaneseCompoundWordTokenFilter;
+        use crate::token_filter::japanese_number::JapaneseNumberTokenFilter;
+        use crate::tokenizer::Tokenizer;
+        use lindera::dictionary::load_dictionary;
+        use lindera::mode::Mode;
+        use lindera::segmenter::Segmenter;
+
+        // The documented recipe: merge the numeral tokens first, then convert. The counter has
+        // to stay a separate token; merged into the number it would be read as digits.
+        let tokenize = |text: &str| -> Vec<String> {
+            let dictionary = load_dictionary("embedded://ipadic").unwrap();
+            let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
+            let mut tokenizer = Tokenizer::new(segmenter);
+            tokenizer.append_token_filter(BoxTokenFilter::from(
+                JapaneseCompoundWordTokenFilter::new(
+                    HashSet::from(["名詞,数".to_string()]),
+                    Some("名詞,数".to_string()),
+                ),
+            ));
+            tokenizer.append_token_filter(BoxTokenFilter::from(JapaneseNumberTokenFilter::new(
+                Some(HashSet::from(["名詞,数".to_string()])),
+            )));
+            tokenizer
+                .tokenize(text)
+                .unwrap()
+                .iter()
+                .map(|token| token.surface.to_string())
+                .collect()
+        };
+
+        assert_eq!(tokenize("一万円"), ["10000", "円"]);
+        assert_eq!(tokenize("二千二十六年"), ["2026", "年"]);
+        assert_eq!(tokenize("三千五百円"), ["3500", "円"]);
+        assert_eq!(tokenize("百五十人"), ["150", "人"]);
+        assert_eq!(tokenize("2026年"), ["2026", "年"]);
+    }
 }
