@@ -327,13 +327,22 @@ Keeps only Korean tokens whose first part-of-speech tag matches one of `tags`.
 
 Converts Sino-Korean numeral representations (Hangul numerals, Hanja numerals, and fullwidth digits) in the token's surface text to Arabic numerals. Native Korean numerals (`하나`, `둘`, `열`, `스물`, ...) have no positional structure and are left unchanged.
 
+Each token is converted on its own. ko-dic tokenizes a Sino-Korean numeral into one token per morpheme, so the tokens of a single number do not add up to one Arabic numeral:
+
+| Input | Tokens from ko-dic | After `korean_number` |
+| --- | --- | --- |
+| `이천이십육년` | `이/NR 천/NR 이/NR 십/NR 육/NR 년/NNBC` | `2 1000 2 10 6 년` |
+| `10만` | `10/SN 만/NR` | `10 10000` |
+
+Merging those tokens before the conversion, the way `japanese_compound_word` does for IPADIC, is tracked in [#1026](https://github.com/lindera/lindera/issues/1026). A single token that holds the whole numeral, such as the Hanja `二千二十六/SH`, is converted in full.
+
 **Parameters:**
 
 | Argument | Type | Required | Description |
 | --- | --- | --- | --- |
-| `tags` | array\<string\> or `null` | No | Part-of-speech tags to restrict the conversion to. When omitted or `null`, every token is converted |
+| `tags` | array\<string\> or `null` | No | Part-of-speech tags to restrict the conversion to. Omitted, it defaults to `["SN", "NR"]`; `null` converts every token |
 
-Hangul numerals are homographs of common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle), so restricting this filter to the numeral tags `SN` and `NR` is recommended.
+Hangul numerals are homographs of very common morphemes (`이` is also a subject particle, `만` is also an auxiliary particle), so converting every token rewrites ordinary text: `이것은 사과입니다` becomes `2것 은 4과 입니다`. That is why the default is restricted to the numeral tags. Add `SH` to convert Hanja numerals as well; note that ko-dic tags some Hanja numerals as `NNG` instead, so that coverage is partial.
 
 **Example:**
 
