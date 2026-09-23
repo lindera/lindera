@@ -1213,11 +1213,13 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="unknown-word-grouping"><a class="header" href="#unknown-word-grouping">Unknown-Word Grouping</a></h2>
-<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:</p>
+<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics, counting characters beyond the first (MeCab defaults to 24):</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 <span class="boring">}</span></code></pre></pre>
+<p>The cap is applied at each lattice position rather than to a run as a whole. When the same-category run starting at a position is longer than the cap, the grouped candidate is not emitted there; the single-character candidate (plus the length-ladder candidates described below and any dictionary words) remains, and the remaining tail is grouped again once it fits. No unknown token is therefore longer than <code>n + 1</code> characters, but an over-long run does not turn into single characters throughout. With IPADIC, the out-of-vocabulary katakana run <code>ヷヸヹヺヷ</code> and <code>max_grouping_len(Some(2))</code> segment as <code>ヷ / ヸ / ヹヺヷ</code> when the length ladder is off: the first two positions see runs of 5 and 4 characters (over the cap) and keep only the single-character candidate, while the 3-character tail fits the cap and groups. With the ladder on (the default), the 2-character ladder candidate wins at the first position and the output is <code>ヷヸ / ヹヺヷ</code>.</p>
+<p><code>Some(0)</code> never groups a run of two or more characters. The <code>max_grouping_len</code> config key and the CLI flag <code>--max-grouping-len</code> treat <code>0</code> as unbounded instead.</p>
 <p>Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's <code>char.def</code> <code>LENGTH</code> field) by default, so the Viterbi search can pick whichever length scores lowest. Call <code>unknown_word_ladder(false)</code> to disable it and match pre-v6 output exactly:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1480,7 +1482,7 @@ token_filters:
 <tr><td><code>user_dictionary</code></td><td>string</td><td><em>(none)</em></td><td>Path to a user dictionary</td></tr>
 <tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>Emit whitespace tokens instead of ignoring them (MeCab ignores them)</td></tr>
 <tr><td><code>use_mmap</code></td><td>bool</td><td>on when the <code>mmap</code> feature is compiled in (the default)</td><td>Memory-map the dictionary; only meaningful for filesystem (non-<code>embedded://</code>) dictionaries</td></tr>
-<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Maximum characters <strong>beyond the first</strong> that an unknown-word grouping may span, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). A grouped candidate longer than this is not emitted; the single-character unknown word is emitted instead. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(unbounded)</em></td><td>Cap on unknown-word grouping, in characters <strong>beyond the first</strong>, matching MeCab's <code>max-grouping-size</code> (MeCab defaults to 24). Applied at each position: a run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. Omitting the key, or setting <code>0</code>, leaves grouping unbounded</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>Also emit the shorter unknown-word candidates up to each category's <code>LENGTH</code> field in <code>char.def</code>, as MeCab and Vibrato do. Set to <code>false</code> to reproduce pre-v6 output exactly</td></tr>
 <tr><td><code>space_penalty</code></td><td>bool or object</td><td><em>(the dictionary's rules, if any)</em></td><td>Left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>): a candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added. Omitted or <code>null</code> keeps the rules the dictionary ships in its <code>metadata.json</code> (ko-dic ships mecab-ko-dic's, so the penalty is on by default for ko-dic; the other bundled dictionaries ship none); <code>false</code> turns it off; <code>true</code> requires the dictionary's rules (an error when it ships none); an object <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> gives explicit rules. See <a href="lindera-analysis/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a></td></tr>
 </tbody></table>
@@ -2209,7 +2211,7 @@ jieba           no        no          -
 <li><code>--char-filter</code> / <code>-c</code>: Character filter configuration (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: Token filter configuration (JSON)</li>
 <li><code>--keep-whitespace</code>: Keep whitespace tokens in the output (by default, whitespace is dropped for MeCab compatibility)</li>
-<li><code>--max-grouping-len</code>: Maximum unknown-word grouping length in characters beyond the first (MeCab's <code>max-grouping-size</code>; MeCab defaults to 24). Runs longer than the cap fall back to single-character unknown words. Default: unbounded</li>
+<li><code>--max-grouping-len</code>: Cap on unknown-word grouping, in characters beyond the first (MeCab's <code>max-grouping-size</code>; MeCab defaults to 24). The cap is applied at each position: a same-category run longer than the cap is not grouped there, the single-character candidate (plus the length ladder and dictionary words) remains, and the remaining tail is grouped again once it fits, so no unknown token exceeds cap+1 characters. <code>0</code> or omitted: unbounded. See the <a href="lindera-cli/../lindera/segmenter.html#unknown-word-grouping">Segmenter</a> documentation for an example</li>
 <li><code>--disable-unknown-word-ladder</code>: Disable the MeCab/Vibrato-inspired unknown-word length ladder (<code>char.def</code>'s <code>LENGTH</code> field). Enabled by default; disable for output identical to pre-v6 Lindera</li>
 <li><code>--disable-space-penalty</code>: Disable the left-space penalty (mecab-ko's <code>left-space-penalty-factor</code>) that a dictionary shipping rules in its <code>metadata.json</code> applies by default (ko-dic ships mecab-ko-dic's). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling it restores the v6.0 output for Korean. See the <a href="lindera-cli/../lindera/segmenter.html#left-space-penalty-korean">Segmenter</a> documentation</li>
 <li><code>--space-penalty-rules</code>: Use explicit left-space penalty rules as JSON instead of the dictionary's, e.g. <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>. Mutually exclusive with <code>--disable-space-penalty</code></li>
@@ -9070,11 +9072,14 @@ kanji/kana runs, disable the ladder:</p>
 <code>set_unknown_word_ladder(bool)</code>, and <code>TokenizerBuilder</code> via
 <code>set_segmenter_unknown_word_ladder(bool)</code>.</p>
 <h3 id="new-option-max_grouping_len-default-unchanged"><a class="header" href="#new-option-max_grouping_len-default-unchanged">New option: <code>max_grouping_len</code> (default unchanged)</a></h3>
-<p>v6 adds MeCab's <code>max-grouping-size</code> semantics: when a groupable run of
-out-of-vocabulary characters extends more than <code>max_grouping_len</code> characters
-beyond the first, the grouped candidate is not emitted and single-character
-unknown words are used instead. The default is unbounded, which is exactly
-what v5 did, so <strong>this changes nothing unless you opt in</strong>:</p>
+<p>v6 adds MeCab's <code>max-grouping-size</code> semantics: at each position, when the
+groupable run of out-of-vocabulary characters starting there extends more than
+<code>max_grouping_len</code> characters beyond the first, the grouped candidate is not
+emitted for that position; the single-character candidate (plus the length
+ladder and dictionary words) remains, and the remaining tail is grouped again
+once it fits, so no unknown token exceeds <code>max_grouping_len + 1</code> characters.
+The default is unbounded, which is exactly what v5 did, so <strong>this changes
+nothing unless you opt in</strong>:</p>
 <pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
     .max_grouping_len(Some(24)); // MeCab's own default</code></pre>
 <pre><code class="language-sh">lindera tokenize -d ipadic --max-grouping-len 24 input.txt

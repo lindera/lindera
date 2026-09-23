@@ -413,11 +413,14 @@ kanji/kana runs, disable the ladder:</p>
 <code>set_unknown_word_ladder(bool)</code>, and <code>TokenizerBuilder</code> via
 <code>set_segmenter_unknown_word_ladder(bool)</code>.</p>
 <h3 id="new-option-max_grouping_len-default-unchanged"><a class="header" href="#new-option-max_grouping_len-default-unchanged">New option: <code>max_grouping_len</code> (default unchanged)</a></h3>
-<p>v6 adds MeCab's <code>max-grouping-size</code> semantics: when a groupable run of
-out-of-vocabulary characters extends more than <code>max_grouping_len</code> characters
-beyond the first, the grouped candidate is not emitted and single-character
-unknown words are used instead. The default is unbounded, which is exactly
-what v5 did, so <strong>this changes nothing unless you opt in</strong>:</p>
+<p>v6 adds MeCab's <code>max-grouping-size</code> semantics: at each position, when the
+groupable run of out-of-vocabulary characters starting there extends more than
+<code>max_grouping_len</code> characters beyond the first, the grouped candidate is not
+emitted for that position; the single-character candidate (plus the length
+ladder and dictionary words) remains, and the remaining tail is grouped again
+once it fits, so no unknown token exceeds <code>max_grouping_len + 1</code> characters.
+The default is unbounded, which is exactly what v5 did, so <strong>this changes
+nothing unless you opt in</strong>:</p>
 <pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
     .max_grouping_len(Some(24)); // MeCab's own default</code></pre>
 <pre><code class="language-sh">lindera tokenize -d ipadic --max-grouping-len 24 input.txt

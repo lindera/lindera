@@ -299,11 +299,13 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
-<p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます。上限を超えるランは 1 文字ずつの未知語になります:</p>
+<p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 <span class="boring">}</span></code></pre></pre>
+<p>上限はラン全体ではなく、ラティスの各位置で判定されます。ある位置から始まる同じ文字種のランが上限を超える場合、その位置ではグルーピング候補を出さず、1 文字候補（および後述の候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされます。そのため未知語トークンは最長で <code>n + 1</code> 文字になりますが、上限を超えるランが全体として 1 文字ずつになるわけではありません。IPADIC で辞書外のカタカナ列 <code>ヷヸヹヺヷ</code> を <code>max_grouping_len(Some(2))</code> で分割すると、候補ラダーを無効にした場合は <code>ヷ / ヸ / ヹヺヷ</code> になります。先頭 2 つの位置ではランの長さが 5 文字・4 文字で上限を超えるため 1 文字候補だけが残り、末尾 3 文字は上限に収まるのでグルーピングされます。候補ラダーが有効（デフォルト）の場合は先頭位置で 2 文字のラダー候補が選ばれ、<code>ヷヸ / ヹヺヷ</code> になります。</p>
+<p><code>Some(0)</code> は 2 文字以上のランを一切グルーピングしません。設定キー <code>max_grouping_len</code> と CLI の <code>--max-grouping-len</code> では <code>0</code> は無制限を意味します。</p>
 <p>グルーピングとは独立に、Lindera はデフォルトで MeCab/Vibrato 由来の
 「候補ラダー（length ladder）」も生成します。各カテゴリの <code>char.def</code> の
 <code>LENGTH</code> フィールドまでの短い未知語候補を段階的に生成し、Viterbi 探索が

@@ -1211,11 +1211,13 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="未知語のグルーピング"><a class="header" href="#未知語のグルーピング">未知語のグルーピング</a></h2>
-<p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます。上限を超えるランは 1 文字ずつの未知語になります:</p>
+<p>未知語のグルーピングはデフォルトでは無制限です。<code>max_grouping_len(Some(n))</code> で MeCab の <code>max-grouping-size</code> と同じ意味論（先頭を除いた文字数で数え、MeCab のデフォルトは 24）の上限を設定できます:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 <span class="boring">}</span></code></pre></pre>
+<p>上限はラン全体ではなく、ラティスの各位置で判定されます。ある位置から始まる同じ文字種のランが上限を超える場合、その位置ではグルーピング候補を出さず、1 文字候補（および後述の候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされます。そのため未知語トークンは最長で <code>n + 1</code> 文字になりますが、上限を超えるランが全体として 1 文字ずつになるわけではありません。IPADIC で辞書外のカタカナ列 <code>ヷヸヹヺヷ</code> を <code>max_grouping_len(Some(2))</code> で分割すると、候補ラダーを無効にした場合は <code>ヷ / ヸ / ヹヺヷ</code> になります。先頭 2 つの位置ではランの長さが 5 文字・4 文字で上限を超えるため 1 文字候補だけが残り、末尾 3 文字は上限に収まるのでグルーピングされます。候補ラダーが有効（デフォルト）の場合は先頭位置で 2 文字のラダー候補が選ばれ、<code>ヷヸ / ヹヺヷ</code> になります。</p>
+<p><code>Some(0)</code> は 2 文字以上のランを一切グルーピングしません。設定キー <code>max_grouping_len</code> と CLI の <code>--max-grouping-len</code> では <code>0</code> は無制限を意味します。</p>
 <p>グルーピングとは独立に、Lindera はデフォルトで MeCab/Vibrato 由来の
 「候補ラダー（length ladder）」も生成します。各カテゴリの <code>char.def</code> の
 <code>LENGTH</code> フィールドまでの短い未知語候補を段階的に生成し、Viterbi 探索が
@@ -1482,7 +1484,7 @@ token_filters:
 <tr><td><code>user_dictionary</code></td><td>string</td><td><em>(なし)</em></td><td>ユーザー辞書のパス</td></tr>
 <tr><td><code>keep_whitespace</code></td><td>bool</td><td><code>false</code></td><td>空白トークンを無視せずに出力する（MeCab は無視する）</td></tr>
 <tr><td><code>use_mmap</code></td><td>bool</td><td><code>mmap</code> feature が有効なとき on（デフォルト）</td><td>辞書をメモリマップする。ファイルシステム辞書（<code>embedded://</code> ではない辞書）にのみ意味がある</td></tr>
-<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語のグルーピングが<strong>先頭の 1 文字を超えて</strong>span できる最大文字数。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。これを超えるグルーピング候補は生成されず、代わりに 1 文字の未知語が出力される。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
+<tr><td><code>max_grouping_len</code></td><td>integer</td><td><em>(無制限)</em></td><td>未知語グルーピングの上限（<strong>先頭の 1 文字を超えた</strong>文字数）。MeCab の <code>max-grouping-size</code> に相当する（MeCab のデフォルトは 24）。上限は各位置で判定され、上限を超えるランはその位置ではグルーピングされず、1 文字候補（および候補ラダーと辞書語）が残る。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になる。キーを省略するか <code>0</code> を指定すると無制限になる</td></tr>
 <tr><td><code>unknown_word_ladder</code></td><td>bool</td><td><code>true</code></td><td>MeCab や Vibrato と同様に、<code>char.def</code> の各カテゴリの <code>LENGTH</code> フィールドまでの短い未知語候補も生成する。v6 より前の出力を正確に再現するには <code>false</code> を指定する</td></tr>
 <tr><td><code>space_penalty</code></td><td>bool または object</td><td><em>(辞書同梱のルール、あれば)</em></td><td>左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>）。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する。省略または <code>null</code> で辞書が <code>metadata.json</code> に同梱するルールを使用（ko-dic は mecab-ko-dic のルールを同梱するため ko-dic ではデフォルトでオン。他の同梱辞書はルールを持たない）、<code>false</code> でオフ、<code>true</code> で辞書のルールを要求（同梱しない辞書ではエラー）、オブジェクト <code>{"rules": [{"pos": [...], "cost": n}, ...]}</code> で明示的なルールを指定。<a href="lindera-analysis/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> を参照</td></tr>
 </tbody></table>
@@ -2210,7 +2212,7 @@ jieba           no        no          -
 <li><code>--char-filter</code> / <code>-c</code>: 文字フィルタ設定 (JSON)</li>
 <li><code>--token-filter</code> / <code>-t</code>: トークンフィルタ設定 (JSON)</li>
 <li><code>--keep-whitespace</code>: 空白文字のトークンを出力に含める（デフォルトでは MeCab 互換のため空白は除去されます）</li>
-<li><code>--max-grouping-len</code>: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の <code>max-grouping-size</code> に相当し、MeCab のデフォルトは 24）。上限を超えるランは 1 文字ずつの未知語になります。デフォルト: 無制限</li>
+<li><code>--max-grouping-len</code>: 未知語グルーピングの上限（先頭を除いた文字数。MeCab の <code>max-grouping-size</code> に相当し、MeCab のデフォルトは 24）。上限は各位置で判定され、同じ文字種のランが上限を超える位置ではグルーピング候補を出さず、1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に収まった時点で再びグルーピングされるため、未知語トークンは最長で上限 + 1 文字になります。<code>0</code> または省略: 無制限。例は <a href="lindera-cli/../lindera/segmenter.html">Segmenter</a> のドキュメントを参照</li>
 <li><code>--disable-unknown-word-ladder</code>: MeCab/Vibrato 由来の未知語候補ラダー（<code>char.def</code> の <code>LENGTH</code> フィールド）を無効化する。デフォルトで有効。v6 以前の Lindera と同一の出力にするには無効化する</li>
 <li><code>--disable-space-penalty</code>: 辞書の <code>metadata.json</code> に同梱されたルールでデフォルト有効になる左側空白ペナルティ（mecab-ko の <code>left-space-penalty-factor</code>。ko-dic は mecab-ko-dic のルールを同梱）を無効にする。直前に空白があり、先頭品詞タグが一覧にある候補にコストを加算する機能で、無効にすると韓国語の出力が v6.0 と同じになる。<a href="lindera-cli/../lindera/segmenter.html#%E5%B7%A6%E5%81%B4%E7%A9%BA%E7%99%BD%E3%83%9A%E3%83%8A%E3%83%AB%E3%83%86%E3%82%A3%E9%9F%93%E5%9B%BD%E8%AA%9E">Segmenter</a> のドキュメントを参照</li>
 <li><code>--space-penalty-rules</code>: 辞書のルールの代わりに、明示的な左側空白ペナルティのルールを JSON で指定する。例: <code>'{"rules":[{"pos":["JKS","JX"],"cost":6000}]}'</code>。<code>--disable-space-penalty</code> とは同時に指定できない</li>
@@ -8939,11 +8941,13 @@ bytes API を案内するエラーで即座に拒否するようになりまし�
 <code>TokenizerBuilder</code> は <code>set_segmenter_unknown_word_ladder(bool)</code> で同じ
 切り替えができます。</p>
 <h3 id="新オプション-max_grouping_lenデフォルトは従来どおり"><a class="header" href="#新オプション-max_grouping_lenデフォルトは従来どおり">新オプション: <code>max_grouping_len</code>（デフォルトは従来どおり）</a></h3>
-<p>v6 では MeCab の <code>max-grouping-size</code> と同じ意味論を追加しました。辞書外
-文字のグルーピング可能なランが、先頭を除いて <code>max_grouping_len</code> 文字を
-超える場合、グループ候補を出さずに 1 文字ずつの未知語を使います。
-デフォルトは無制限で、これは v5 と同じ挙動です。つまり
-<strong>明示的に設定しない限り何も変わりません</strong>:</p>
+<p>v6 では MeCab の <code>max-grouping-size</code> と同じ意味論を追加しました。各位置で、
+そこから始まる辞書外文字のグルーピング可能なランが先頭を除いて
+<code>max_grouping_len</code> 文字を超える場合、その位置ではグループ候補を出さず、
+1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に
+収まった時点で再びグルーピングされるため、未知語トークンは最長で
+<code>max_grouping_len + 1</code> 文字になります。デフォルトは無制限で、これは v5 と
+同じ挙動です。つまり <strong>明示的に設定しない限り何も変わりません</strong>:</p>
 <pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
     .max_grouping_len(Some(24)); // MeCab 自体のデフォルト値</code></pre>
 <pre><code class="language-sh">lindera tokenize -d ipadic --max-grouping-len 24 input.txt

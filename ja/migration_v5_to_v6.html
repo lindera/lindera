@@ -417,11 +417,13 @@ bytes API を案内するエラーで即座に拒否するようになりまし�
 <code>TokenizerBuilder</code> は <code>set_segmenter_unknown_word_ladder(bool)</code> で同じ
 切り替えができます。</p>
 <h3 id="新オプション-max_grouping_lenデフォルトは従来どおり"><a class="header" href="#新オプション-max_grouping_lenデフォルトは従来どおり">新オプション: <code>max_grouping_len</code>（デフォルトは従来どおり）</a></h3>
-<p>v6 では MeCab の <code>max-grouping-size</code> と同じ意味論を追加しました。辞書外
-文字のグルーピング可能なランが、先頭を除いて <code>max_grouping_len</code> 文字を
-超える場合、グループ候補を出さずに 1 文字ずつの未知語を使います。
-デフォルトは無制限で、これは v5 と同じ挙動です。つまり
-<strong>明示的に設定しない限り何も変わりません</strong>:</p>
+<p>v6 では MeCab の <code>max-grouping-size</code> と同じ意味論を追加しました。各位置で、
+そこから始まる辞書外文字のグルーピング可能なランが先頭を除いて
+<code>max_grouping_len</code> 文字を超える場合、その位置ではグループ候補を出さず、
+1 文字候補（および候補ラダーと辞書語）が残ります。残りの末尾は上限に
+収まった時点で再びグルーピングされるため、未知語トークンは最長で
+<code>max_grouping_len + 1</code> 文字になります。デフォルトは無制限で、これは v5 と
+同じ挙動です。つまり <strong>明示的に設定しない限り何も変わりません</strong>:</p>
 <pre><code class="language-rust ignore">let segmenter = Segmenter::new(mode, dictionary, None)
     .max_grouping_len(Some(24)); // MeCab 自体のデフォルト値</code></pre>
 <pre><code class="language-sh">lindera tokenize -d ipadic --max-grouping-len 24 input.txt

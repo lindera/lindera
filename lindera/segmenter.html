@@ -296,11 +296,13 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(true);
 <span class="boring">}</span></code></pre></pre>
 <h2 id="unknown-word-grouping"><a class="header" href="#unknown-word-grouping">Unknown-Word Grouping</a></h2>
-<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:</p>
+<p>Unknown-word grouping is unbounded by default. <code>max_grouping_len(Some(n))</code> caps it with MeCab's <code>max-grouping-size</code> semantics, counting characters beyond the first (MeCab defaults to 24):</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 <span class="boring">}</span></code></pre></pre>
+<p>The cap is applied at each lattice position rather than to a run as a whole. When the same-category run starting at a position is longer than the cap, the grouped candidate is not emitted there; the single-character candidate (plus the length-ladder candidates described below and any dictionary words) remains, and the remaining tail is grouped again once it fits. No unknown token is therefore longer than <code>n + 1</code> characters, but an over-long run does not turn into single characters throughout. With IPADIC, the out-of-vocabulary katakana run <code>ヷヸヹヺヷ</code> and <code>max_grouping_len(Some(2))</code> segment as <code>ヷ / ヸ / ヹヺヷ</code> when the length ladder is off: the first two positions see runs of 5 and 4 characters (over the cap) and keep only the single-character candidate, while the 3-character tail fits the cap and groups. With the ladder on (the default), the 2-character ladder candidate wins at the first position and the output is <code>ヷヸ / ヹヺヷ</code>.</p>
+<p><code>Some(0)</code> never groups a run of two or more characters. The <code>max_grouping_len</code> config key and the CLI flag <code>--max-grouping-len</code> treat <code>0</code> as unbounded instead.</p>
 <p>Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's <code>char.def</code> <code>LENGTH</code> field) by default, so the Viterbi search can pick whichever length scores lowest. Call <code>unknown_word_ladder(false)</code> to disable it and match pre-v6 output exactly:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
