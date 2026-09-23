@@ -114,11 +114,19 @@ pub struct Segmenter {
     /// When true, whitespace tokens are included in the output.
     pub keep_whitespace: bool,
 
-    /// Maximum number of characters beyond the first that an unknown-word
-    /// grouping may span (MeCab's `max-grouping-size`; MeCab defaults to
-    /// 24). A grouped candidate longer than this is not emitted -- the
-    /// single-char unknown word is emitted instead. `None` (default)
-    /// leaves grouping unbounded, matching previous behavior.
+    /// Cap on unknown-word grouping, counted in characters beyond the
+    /// first (MeCab's `max-grouping-size`; MeCab defaults to 24). The cap
+    /// is applied at each lattice position: when the same-category run
+    /// starting there is longer than the cap, the grouped candidate is not
+    /// emitted at that position -- the single-character candidate (plus
+    /// the `unknown_word_ladder` candidates and any dictionary words)
+    /// remains, and the remaining tail is grouped again once it fits. No
+    /// unknown token is therefore longer than cap + 1 characters, but an
+    /// over-long run does not degrade to single characters throughout.
+    /// `None` (default) leaves grouping unbounded, matching previous
+    /// behavior. `Some(0)` never groups a run of two or more characters;
+    /// note that the `max_grouping_len` config key and the CLI flag treat
+    /// `0` as unbounded instead.
     pub max_grouping_len: Option<usize>,
 
     /// Whether to additionally emit MeCab/Vibrato-inspired shorter
@@ -288,7 +296,9 @@ impl Segmenter {
     /// # 引数
     ///
     /// * `max_grouping_len` - Maximum grouped characters beyond the first,
-    ///   or `None` for unbounded grouping (the default).
+    ///   or `None` for unbounded grouping (the default). `Some(0)` never
+    ///   groups two or more characters, unlike the config key, where `0`
+    ///   means unbounded.
     ///
     /// # 戻り値
     ///

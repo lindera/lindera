@@ -147,11 +147,15 @@ let segmenter = Segmenter::new(Mode::Normal, dictionary, None).keep_whitespace(t
 
 ## Unknown-Word Grouping
 
-Unknown-word grouping is unbounded by default. `max_grouping_len(Some(n))` caps it with MeCab's `max-grouping-size` semantics (counting characters beyond the first; MeCab defaults to 24) — a run over the cap falls back to single-character unknown words:
+Unknown-word grouping is unbounded by default. `max_grouping_len(Some(n))` caps it with MeCab's `max-grouping-size` semantics, counting characters beyond the first (MeCab defaults to 24):
 
 ```rust
 let segmenter = Segmenter::new(Mode::Normal, dictionary, None).max_grouping_len(Some(24));
 ```
+
+The cap is applied at each lattice position rather than to a run as a whole. When the same-category run starting at a position is longer than the cap, the grouped candidate is not emitted there; the single-character candidate (plus the length-ladder candidates described below and any dictionary words) remains, and the remaining tail is grouped again once it fits. No unknown token is therefore longer than `n + 1` characters, but an over-long run does not turn into single characters throughout. With IPADIC, the out-of-vocabulary katakana run `ヷヸヹヺヷ` and `max_grouping_len(Some(2))` segment as `ヷ / ヸ / ヹヺヷ` when the length ladder is off: the first two positions see runs of 5 and 4 characters (over the cap) and keep only the single-character candidate, while the 3-character tail fits the cap and groups. With the ladder on (the default), the 2-character ladder candidate wins at the first position and the output is `ヷヸ / ヹヺヷ`.
+
+`Some(0)` never groups a run of two or more characters. The `max_grouping_len` config key and the CLI flag `--max-grouping-len` treat `0` as unbounded instead.
 
 Independently of grouping, Lindera also generates a MeCab/Vibrato-inspired "length ladder" of shorter unknown-word candidates (up to each category's `char.def` `LENGTH` field) by default, so the Viterbi search can pick whichever length scores lowest. Call `unknown_word_ladder(false)` to disable it and match pre-v6 output exactly:
 

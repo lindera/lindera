@@ -461,9 +461,6 @@ mod tests {
             worker.set_keep_whitespace(false);
         }
 
-        /// #944: max_grouping_len caps unknown-word grouping with MeCab
-        /// semantics -- a run with more characters beyond the first than
-        /// the cap falls back to single-char unknown words -- while None
         /// #945: the length ladder must be additive and switchable. Using
         /// two out-of-vocabulary KANJI characters (char.def: invoke=0,
         /// group=0, length=2 in IPADIC) isolates the ladder from grouping
@@ -553,7 +550,11 @@ mod tests {
             assert_eq!(without_ladder, vec!["龘".to_string(), "龍".to_string()]);
         }
 
-        /// (the default) keeps grouping unbounded.
+        /// #944: max_grouping_len caps unknown-word grouping with MeCab
+        /// semantics -- at each position, a run with more characters beyond
+        /// the first than the cap is not grouped, the single-char unknown
+        /// word stands in and the remaining tail groups again once it fits
+        /// -- while None (the default) keeps grouping unbounded.
         #[test]
         fn test_max_grouping_len_caps_unknown_grouping() {
             let segmenter = ipadic_segmenter();

@@ -1466,9 +1466,12 @@ impl Lattice {
                 unknown_word_num_chars = run_len;
                 // MeCab-style cap (#944): a grouped candidate with more
                 // than max_grouping_len characters beyond the first is not
-                // emitted; the single-char unknown word is emitted instead,
-                // so progress is always guaranteed. None (default) keeps
-                // the grouping unbounded, i.e. today's output.
+                // emitted at this position; the single-char unknown word
+                // (plus the ladder below and any dictionary words) stands
+                // in, so progress is always guaranteed. Later positions
+                // re-evaluate the remaining tail, which groups again once
+                // it fits the cap. None (default) keeps the grouping
+                // unbounded, i.e. today's output.
                 if let Some(cap) = max_grouping_len
                     && unknown_word_num_chars > 1
                     && unknown_word_num_chars - 1 > cap
@@ -1968,9 +1971,12 @@ impl Lattice {
                 unknown_word_num_chars = run_len;
                 // MeCab-style cap (#944): a grouped candidate with more
                 // than max_grouping_len characters beyond the first is not
-                // emitted; the single-char unknown word is emitted instead,
-                // so progress is always guaranteed. None (default) keeps
-                // the grouping unbounded, i.e. today's output.
+                // emitted at this position; the single-char unknown word
+                // (plus the ladder below and any dictionary words) stands
+                // in, so progress is always guaranteed. Later positions
+                // re-evaluate the remaining tail, which groups again once
+                // it fits the cap. None (default) keeps the grouping
+                // unbounded, i.e. today's output.
                 if let Some(cap) = max_grouping_len
                     && unknown_word_num_chars > 1
                     && unknown_word_num_chars - 1 > cap
