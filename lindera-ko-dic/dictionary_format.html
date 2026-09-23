@@ -199,6 +199,28 @@
 <tr><td>11</td><td>표현</td><td>Expression</td><td><code>활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드</code> -- Fields that tell how usage, compound nouns, and key analysis are organized</td></tr>
 </tbody></table>
 </div>
+<h2 id="left-space-penalty"><a class="header" href="#left-space-penalty">Left-space penalty</a></h2>
+<p>mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by whitespace when its <code>pos-id.def</code> id is listed in <code>dicrc</code>:</p>
+<pre><code class="language-text">left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
+</code></pre>
+<p>Lindera does not store <code>pos-id.def</code> ids, but every listed id corresponds to the entry's first part-of-speech tag (for <code>Inflect</code> rows, the <code>First part-of-speech</code> column), so the same rules are written by tag. ko-dic ships them in its <code>metadata.json</code> (<code>space_penalty</code>), so they can be enabled without spelling them out: <code>Segmenter::space_penalty_from_dictionary()</code>, <code>"space_penalty": true</code> in the segmenter config, or <code>lindera tokenize --space-penalty</code>. Explicit rules go through <code>Segmenter::space_penalty</code>, a <code>space_penalty</code> object, or <code>--space-penalty-rules</code>. The penalty is off by default. The shipped rules are present only in a ko-dic built by a Lindera release later than 6.0.0; a ko-dic from the v6.0.0 release has none, so <code>--space-penalty</code> fails until the dictionary is rebuilt, while <code>--space-penalty-rules</code> works regardless.</p>
+<div class="table-wrapper"><table><thead><tr><th>pos-id.def ids</th><th>First part-of-speech tags</th><th>Cost</th></tr></thead><tbody>
+<tr><td>100, 200 (<code>Inflect</code>)</td><td><code>EC</code>, <code>EF</code>, <code>EP</code>, <code>ETM</code>, <code>ETN</code></td><td>3000</td></tr>
+<tr><td>172, 230 (<code>Inflect</code>)</td><td><code>VCP</code></td><td>3000</td></tr>
+<tr><td>183, 184, 185, 220, 221, 222 (<code>Inflect</code>)</td><td><code>XSA</code>, <code>XSN</code>, <code>XSV</code></td><td>3000</td></tr>
+<tr><td>120, 210 (<code>Inflect</code>)</td><td><code>JC</code>, <code>JKB</code>, <code>JKC</code>, <code>JKG</code>, <code>JKO</code>, <code>JKQ</code>, <code>JKS</code>, <code>JKV</code>, <code>JX</code></td><td>6000</td></tr>
+</tbody></table>
+</div>
+<pre><code class="language-json">{
+  "rules": [
+    { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+    { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+  ]
+}
+</code></pre>
+<pre><code class="language-shell">echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic --space-penalty
+</code></pre>
+<p>With the penalty, <code>시</code> in <code>서울 시 에서</code> is read as the noun <code>NNG</code> (as mecab-ko does) instead of the ending <code>EP</code>. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.</p>
 <h2 id="user-dictionary-format-csv"><a class="header" href="#user-dictionary-format-csv">User dictionary format (CSV)</a></h2>
 <h3 id="simple-version"><a class="header" href="#simple-version">Simple version</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Index</th><th>Name (Korean)</th><th>Name (English)</th><th>Notes</th></tr></thead><tbody>

@@ -306,6 +306,38 @@ Requires the <code>mmap</code> cargo feature (enabled by default).</p>
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="left-space-penalty-korean"><a class="header" href="#left-space-penalty-korean">Left-Space Penalty (Korean)</a></h2>
+<p>MeCab-based Korean analyzers (mecab-ko with mecab-ko-dic, Lucene's nori) add a cost to a candidate that starts right after whitespace when its part-of-speech tag is one that attaches to the preceding word without a space: particles (<code>J*</code>), endings (<code>E*</code>), the copula (<code>VCP</code>) and derivational suffixes (<code>XS*</code>). Without it, <code>서울 시 에서</code> reads <code>시</code> as the ending <code>EP</code> rather than the noun <code>NNG</code>. Lindera can apply the same penalty; it is off by default.</p>
+<p><code>SpacePenaltyConfig</code> is a list of rules, each pairing first part-of-speech tags with a cost. A candidate is matched by the part of its tag before the first <code>+</code> (for ko-dic <code>Inflect</code> rows, the <code>first_part_of_speech</code> column); the first matching rule wins and unlisted tags cost nothing. mecab-ko-dic's <code>dicrc</code> rules translate to:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+let rules = SpacePenaltyConfig::new(vec![
+    SpacePenaltyRule::new(["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], 3000),
+    SpacePenaltyRule::new(["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], 6000),
+]);
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
+<span class="boring">}</span></code></pre></pre>
+<p>"Whitespace" means a character of the dictionary's <code>SPACE</code> category (<code>char.def</code>), the same set <code>keep_whitespace</code> filters on; a dictionary without that category falls back to Unicode <code>White_Space</code>. The penalty applies in both modes and in N-best search, to system, user and unknown-word entries alike. <code>space_penalty</code> builds a per-word-id lookup once (a few tens of milliseconds for ko-dic), and returns an error when the dictionary schema has neither a <code>part_of_speech_tag</code> nor a <code>part_of_speech</code> field.</p>
+<p>A dictionary can ship its default rules in <code>metadata.json</code> under <code>space_penalty</code>; ko-dic does, with exactly the rules above. <code>space_penalty_from_dictionary()</code> enables them without spelling them out (it returns an error for a dictionary that ships none):</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+<span class="boring">}</span></code></pre></pre>
+<p>Only a ko-dic built by a Lindera release later than 6.0.0 carries these rules. A ko-dic downloaded from the v6.0.0 release ships none, so <code>space_penalty_from_dictionary()</code> (and <code>"space_penalty": true</code>, <code>--space-penalty</code>) returns an error until the dictionary is rebuilt. Explicit rules (<code>space_penalty</code>, <code>--space-penalty-rules</code>) work with any ko-dic.</p>
+<p>In a <code>SegmenterConfig</code>, the <code>space_penalty</code> key takes <code>true</code> for the dictionary's rules, an object for explicit rules, and <code>false</code> or <code>null</code> for off (the default):</p>
+<pre><code class="language-json">{
+  "dictionary": "embedded://ko-dic",
+  "space_penalty": {
+    "rules": [
+      { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+      { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+    ]
+  }
+}
+</code></pre>
+<p>Note that Lindera keeps whitespace as a lattice node (the <code>SPACE</code> unknown word) and connects its neighbours through it, whereas MeCab drops whitespace and connects the surrounding words directly. The penalty therefore fixes the penalized readings, but a spaced sentence can still be segmented differently from mecab-ko.</p>
 <h2 id="n-best-segmentation"><a class="header" href="#n-best-segmentation">N-Best Segmentation</a></h2>
 <p><code>segment_nbest</code> returns the top-<code>n</code> segmentations ordered by total path cost, each paired with its cost. Set <code>unique</code> to deduplicate results that share the same word boundaries but differ only in POS tags, and <code>cost_threshold</code> to discard paths whose cost exceeds <code>best_cost + threshold</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

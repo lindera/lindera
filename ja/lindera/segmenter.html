@@ -313,6 +313,38 @@ feature がコンパイルに含まれている場合（デフォルトで含ま
 </span><span class="boring">fn main() {
 </span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).unknown_word_ladder(false);
 <span class="boring">}</span></code></pre></pre>
+<h2 id="左側空白ペナルティ韓国語"><a class="header" href="#左側空白ペナルティ韓国語">左側空白ペナルティ（韓国語）</a></h2>
+<p>MeCab ベースの韓国語解析器（mecab-ko + mecab-ko-dic、Lucene の nori）は、直前に空白がある候補の品詞が、本来は前の語に空白なしで付く品詞（助詞 <code>J*</code>、語尾 <code>E*</code>、指定詞 <code>VCP</code>、派生接尾辞 <code>XS*</code>）である場合にコストを加算します。これがないと <code>서울 시 에서</code> の <code>시</code> は名詞 <code>NNG</code> ではなく語尾 <code>EP</code> と解析されます。Lindera でも同じペナルティを適用できます。デフォルトではオフです。</p>
+<p><code>SpacePenaltyConfig</code> は「先頭品詞タグの一覧とコスト」の組（ルール）のリストです。候補は品詞タグの最初の <code>+</code> より前の部分（ko-dic の <code>Inflect</code> 行では <code>first_part_of_speech</code> 列）で照合され、最初に一致したルールが適用されます。一覧にないタグのコストは 0 です。mecab-ko-dic の <code>dicrc</code> のルールは次のように書けます:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
+let rules = SpacePenaltyConfig::new(vec![
+    SpacePenaltyRule::new(["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], 3000),
+    SpacePenaltyRule::new(["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], 6000),
+]);
+let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty(Some(rules))?;
+<span class="boring">}</span></code></pre></pre>
+<p>「空白」とは辞書の <code>SPACE</code> カテゴリ（<code>char.def</code>）に属する文字のことで、<code>keep_whitespace</code> が除外する文字集合と同じです。<code>SPACE</code> カテゴリを持たない辞書では Unicode の <code>White_Space</code> にフォールバックします。ペナルティは両モードと N-best 探索で適用され、システム辞書・ユーザー辞書・未知語のいずれのエントリにも効きます。<code>space_penalty</code> は単語 ID ごとの参照表を一度だけ構築し（ko-dic で数十ミリ秒）、辞書スキーマに <code>part_of_speech_tag</code> も <code>part_of_speech</code> もない場合はエラーを返します。</p>
+<p>辞書は <code>metadata.json</code> の <code>space_penalty</code> にデフォルトのルールを同梱できます。ko-dic は上記とまったく同じルールを同梱しています。<code>space_penalty_from_dictionary()</code> を使えばルールを書き出さずに有効化できます（ルールを同梱しない辞書ではエラーを返します）:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let segmenter = Segmenter::new(Mode::Normal, dictionary, None).space_penalty_from_dictionary()?;
+<span class="boring">}</span></code></pre></pre>
+<p>このルールを同梱しているのは、Lindera 6.0.0 より後のリリースでビルドした ko-dic だけです。v6.0.0 リリースからダウンロードした ko-dic にはルールがないため、辞書を再ビルドするまで <code>space_penalty_from_dictionary()</code>（および <code>"space_penalty": true</code>、<code>--space-penalty</code>）はエラーを返します。明示的なルール（<code>space_penalty</code>、<code>--space-penalty-rules</code>）はどの ko-dic でも使えます。</p>
+<p><code>SegmenterConfig</code> の <code>space_penalty</code> キーには、辞書のルールを使う <code>true</code>、明示的なルールのオブジェクト、オフ（デフォルト）の <code>false</code> または <code>null</code> を指定できます:</p>
+<pre><code class="language-json">{
+  "dictionary": "embedded://ko-dic",
+  "space_penalty": {
+    "rules": [
+      { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+      { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+    ]
+  }
+}
+</code></pre>
+<p>なお、Lindera は空白をラティスのノード（<code>SPACE</code> の未知語）として保持し、前後の語をそのノード経由で接続しますが、MeCab は空白を読み飛ばして前後の語を直接接続します。そのため、このペナルティでペナルティ対象の読みは修正されますが、空白を含む文が常に mecab-ko と同じ分割になるわけではありません。</p>
 <h2 id="n-best-セグメンテーション"><a class="header" href="#n-best-セグメンテーション">N-Best セグメンテーション</a></h2>
 <p><code>segment_nbest</code> は、コストの合計で並べた上位 <code>n</code> 件の分割結果を、それぞれのコストと共に返します。<code>unique</code> を指定すると、単語境界は同じで品詞タグのみ異なる結果を重複排除できます。<code>cost_threshold</code> を指定すると、<code>best_cost + threshold</code> を超えるコストのパスを除外できます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
