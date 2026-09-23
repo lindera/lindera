@@ -7,6 +7,7 @@ pub mod loader;
 mod macros;
 pub mod mode;
 pub mod nbest;
+pub mod space_penalty;
 pub mod util;
 pub mod viterbi;
 

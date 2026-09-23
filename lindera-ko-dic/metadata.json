@@ -31,5 +31,17 @@
       "reading"
     ]
   },
-  "connection_id_mapping": true
+  "connection_id_mapping": true,
+  "space_penalty": {
+    "rules": [
+      {
+        "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"],
+        "cost": 3000
+      },
+      {
+        "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"],
+        "cost": 6000
+      }
+    ]
+  }
 }

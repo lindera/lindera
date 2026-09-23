@@ -48,6 +48,9 @@ const KOREAN_TEXTS: &[&str] = &[
     "한국어의형태소해석을실시할수있습니다.",
     "아버지가방에들어가신다",
     "대한민국의 수도는 서울입니다.",
+    // A particle and an ending after a space: pins the left-space penalty
+    // that ko-dic applies by default (`시` reads as NNG, not EP).
+    "서울 시 에서 출발",
 ];
 
 #[allow(dead_code)]
@@ -187,4 +190,36 @@ fn ipadic_nbest() {
         out.push('\n');
     }
     insta::assert_snapshot!("ipadic_nbest", out);
+}
+
+/// Regression test #1016: Apply the Decompose penalty when connecting a compound to EOS.
+#[cfg(feature = "embed-ipadic")]
+#[test]
+fn ipadic_decompose_compound_at_eos() {
+    let segmenter = segmenter("embedded://ipadic", Mode::Decompose(Penalty::default()));
+
+    for (text, expected) in [
+        ("東京大学", vec!["東京", "大学"]),
+        ("関西国際空港", vec!["関西", "国際", "空港"]),
+    ] {
+        let surfaces = segmenter
+            .segment(Cow::Borrowed(text))
+            .expect("segmentation should succeed")
+            .into_iter()
+            .map(|token| token.surface.into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(surfaces, expected);
+
+        let nbest_surfaces = segmenter
+            .segment_nbest(Cow::Borrowed(text), 1, false, None)
+            .expect("N-best segmentation should succeed")
+            .into_iter()
+            .next()
+            .expect("at least one N-best path should exist")
+            .0
+            .into_iter()
+            .map(|token| token.surface.into_owned())
+            .collect::<Vec<_>>();
+        assert_eq!(nbest_surfaces, expected);
+    }
 }

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use lindera_dictionary::mode::Mode;
+use lindera_dictionary::space_penalty::SpacePenaltyConfig;
 use lindera_dictionary::viterbi::{Lattice, WordId};
 
 use crate::LinderaResult;
@@ -229,6 +230,39 @@ impl SegmentWorker {
     /// * `unknown_word_ladder` - Whether to emit the length ladder.
     pub fn set_unknown_word_ladder(&mut self, unknown_word_ladder: bool) {
         self.segmenter.unknown_word_ladder = unknown_word_ladder;
+    }
+
+    /// Sets the left-space penalty rules for subsequent calls (see
+    /// `Segmenter::space_penalty`; `None` disables it, overriding the rules
+    /// the dictionary ships and applies by default).
+    ///
+    /// Rebuilds the per-word-id lookup, so prefer setting this once.
+    ///
+    /// # 引数
+    ///
+    /// * `space_penalty` - The rules, or `None` to disable the penalty.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary schema has no
+    /// part-of-speech field; the previous setting is kept on error.
+    pub fn set_space_penalty(
+        &mut self,
+        space_penalty: Option<SpacePenaltyConfig>,
+    ) -> LinderaResult<()> {
+        self.segmenter.set_space_penalty(space_penalty)
+    }
+
+    /// Enables the left-space penalty with the rules the dictionary ships in
+    /// its metadata (see `Segmenter::space_penalty_from_dictionary`), e.g.
+    /// to restore the default after `set_space_penalty(None)`.
+    ///
+    /// # 戻り値
+    ///
+    /// `Ok(())`, or an error when the dictionary ships no rules; the
+    /// previous setting is kept on error.
+    pub fn set_space_penalty_from_dictionary(&mut self) -> LinderaResult<()> {
+        self.segmenter.set_space_penalty_from_dictionary()
     }
 
     /// Returns a shared reference to the underlying segmenter.

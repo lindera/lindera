@@ -13,6 +13,7 @@ use lindera::dictionary::Lattice;
 use lindera::error::LinderaErrorKind;
 use lindera::mode::Mode;
 use lindera::segmenter::Segmenter;
+use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 
 pub type TokenizerConfig = Value;
@@ -167,6 +168,47 @@ impl TokenizerBuilder {
     /// A mutable reference to `self`, for chaining.
     pub fn set_segmenter_unknown_word_ladder(&mut self, unknown_word_ladder: bool) -> &mut Self {
         self.config["segmenter"]["unknown_word_ladder"] = json!(unknown_word_ladder);
+        self
+    }
+
+    /// Sets the left-space penalty rules (see `Segmenter::space_penalty`).
+    /// Pass `None` to turn the penalty off (`space_penalty: false`), which
+    /// also overrides the rules the dictionary ships and applies by default;
+    /// leave the key unset to keep those.
+    ///
+    /// # Arguments
+    ///
+    /// * `space_penalty` - The rules, or `None` to disable the penalty.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_space_penalty(
+        &mut self,
+        space_penalty: Option<&SpacePenaltyConfig>,
+    ) -> &mut Self {
+        self.config["segmenter"]["space_penalty"] = match space_penalty {
+            Some(config) => json!(config),
+            None => json!(false),
+        };
+        self
+    }
+
+    /// Enables the left-space penalty with the rules the dictionary ships in
+    /// its `metadata.json` (see `Segmenter::space_penalty_from_dictionary`),
+    /// i.e. `space_penalty: true` in the config; `false` turns it off. The
+    /// shipped rules are already the default when the key is absent, so
+    /// `true` mainly makes a dictionary that ships none fail loudly.
+    ///
+    /// # Arguments
+    ///
+    /// * `enabled` - Whether to use the dictionary's rules.
+    ///
+    /// # Returns
+    ///
+    /// A mutable reference to `self`, for chaining.
+    pub fn set_segmenter_space_penalty_from_dictionary(&mut self, enabled: bool) -> &mut Self {
+        self.config["segmenter"]["space_penalty"] = json!(enabled);
         self
     }
 
@@ -585,6 +627,8 @@ impl Clone for Tokenizer {
 
 #[cfg(test)]
 mod tests {
+    use lindera::space_penalty::{SpacePenaltyConfig, SpacePenaltyRule};
+
     use super::TokenizerBuilder;
 
     #[test]
@@ -593,6 +637,27 @@ mod tests {
         builder.set_segmenter_use_mmap(true);
 
         assert_eq!(builder.config["segmenter"]["use_mmap"], true);
+    }
+
+    /// Opting out must write `false`: an absent or `null` key means "keep the
+    /// rules the dictionary ships", which is the default since 6.1.
+    #[test]
+    fn test_set_segmenter_space_penalty_writes_false_true_or_rules() {
+        let mut builder = TokenizerBuilder::new().unwrap();
+        assert!(builder.config["segmenter"].get("space_penalty").is_none());
+
+        builder.set_segmenter_space_penalty(None);
+        assert_eq!(builder.config["segmenter"]["space_penalty"], false);
+
+        builder.set_segmenter_space_penalty_from_dictionary(true);
+        assert_eq!(builder.config["segmenter"]["space_penalty"], true);
+
+        let rules = SpacePenaltyConfig::new(vec![SpacePenaltyRule::new(["JKS"], 6000)]);
+        builder.set_segmenter_space_penalty(Some(&rules));
+        assert_eq!(
+            builder.config["segmenter"]["space_penalty"]["rules"][0]["cost"],
+            6000
+        );
     }
 
     #[cfg(feature = "embed-ipadic")]

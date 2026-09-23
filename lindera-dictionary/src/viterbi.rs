@@ -9,6 +9,7 @@ use crate::dictionary::connection_cost_matrix::ConnectionCostMatrix;
 use crate::dictionary::prefix_dictionary::{PrefixDictionary, UserPrefixDictionary};
 use crate::dictionary::unknown_dictionary::UnknownDictionary;
 use crate::mode::{Mode, Penalty};
+use crate::space_penalty::SpacePenaltyTable;
 
 /// Type of lexicon containing the word
 #[derive(
@@ -460,8 +461,101 @@ pub struct Lattice {
 
 /// Upper bound applied to every stored `path_cost` so the relaxation loops
 /// can use plain addition: one connection cost plus one penalty per step is
-/// at most 2 * 32,767, which cannot overflow from this clamp.
+/// at most 2 * 32,767, which cannot overflow from this clamp. Costs that are
+/// not bounded by `i16` (the left-space penalty and `extra_cost`, both
+/// arbitrary `i32`) are folded in with `saturating_add` instead.
 const PATH_COST_CLAMP: i32 = i32::MAX - 131_072;
+
+/// Per-sentence options for [`Lattice::set_text_with_options`] and
+/// [`Lattice::set_text_nbest_with_options`].
+///
+/// Bundles the knobs that used to be passed positionally so new ones can be
+/// added without changing the `set_text*` signatures. Construct with
+/// [`LatticeOptions::new`] and assign the fields you want to change; the
+/// struct is `#[non_exhaustive]`, so a literal cannot be written outside
+/// this crate.
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct LatticeOptions<'a> {
+    /// The segmentation mode.
+    pub mode: &'a Mode,
+    /// Unknown-word grouping cap (MeCab's `max-grouping-size`; `None` =
+    /// unbounded).
+    pub max_grouping_len: Option<usize>,
+    /// Whether to emit the unknown-word length ladder (#945).
+    pub unknown_word_ladder: bool,
+    /// Left-space penalty table; `None` (the default) adds no penalty. When
+    /// set, a candidate whose start position is preceded by a whitespace
+    /// character within the sentence has [`SpacePenaltyTable::cost`] added to
+    /// its path cost, in every mode and in both the 1-best and the N-best
+    /// lattice. "Whitespace" is what [`SpacePenaltyTable::is_space`] accepts:
+    /// a character carrying the dictionary's `SPACE` category, or
+    /// `char::is_whitespace` for a dictionary that defines no such category.
+    pub space_penalty: Option<&'a SpacePenaltyTable>,
+}
+
+impl<'a> LatticeOptions<'a> {
+    /// Options for `mode` with the defaults `set_text` uses: unbounded
+    /// grouping, the length ladder on, no space penalty.
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - The segmentation mode.
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    pub fn new(mode: &'a Mode) -> Self {
+        Self {
+            mode,
+            max_grouping_len: None,
+            unknown_word_ladder: true,
+            space_penalty: None,
+        }
+    }
+
+    /// Returns the space-penalty table to consult for candidates starting
+    /// at `char_idx`: the configured table when the preceding character is
+    /// whitespace (`CharData::is_space`, prepared per sentence), `None`
+    /// otherwise. This is mecab-ko's `rlength > length` test: a candidate
+    /// at the very start of the sentence has no preceding character and is
+    /// not penalized.
+    ///
+    /// # Arguments
+    ///
+    /// * `char_info` - The sentence's prepared per-character data.
+    /// * `char_idx` - The candidate start position, in characters.
+    ///
+    /// # Returns
+    ///
+    /// The table to look candidates up in, or `None` for no penalty.
+    #[inline]
+    fn space_penalty_at(
+        &self,
+        char_info: &[CharData],
+        char_idx: usize,
+    ) -> Option<&'a SpacePenaltyTable> {
+        let table = self.space_penalty?;
+        (char_idx > 0 && char_info[char_idx - 1].is_space).then_some(table)
+    }
+}
+
+/// Returns the space penalty for `word_entry`, or `0` when no table applies
+/// at the current position.
+///
+/// # Arguments
+///
+/// * `space_penalty` - The table gated by position (see
+///   [`LatticeOptions::space_penalty_at`]).
+/// * `word_entry` - The candidate entry.
+///
+/// # Returns
+///
+/// The penalty cost.
+#[inline]
+fn space_penalty_cost(space_penalty: Option<&SpacePenaltyTable>, word_entry: &WordEntry) -> i32 {
+    space_penalty.map_or(0, |table| table.cost(word_entry.word_id()))
+}
 
 /// Flag bit on `CharData::categories_start` marking that the offset indexes
 /// the `CharacterDefinition` flat category pool instead of the lattice's
@@ -474,12 +568,24 @@ const CATEGORIES_IN_POOL: u32 = 1 << 31;
 struct CharData {
     byte_offset: u32,
     is_kanji: bool,
+    /// Whether this character counts as whitespace for the space penalty
+    /// (see `LatticeOptions::space_penalty`); computed only when the penalty
+    /// is enabled, its sole consumer. Fits in the struct's existing padding,
+    /// so `CharData` stays 16 bytes.
+    is_space: bool,
     categories_start: u32,
     categories_len: u16,
     /// Length (in characters) of the all-kanji run starting here; computed
     /// only in Decompose mode (its sole consumer is the penalty).
     kanji_run_char_len: u32,
 }
+
+/// `CharData` is allocated one per character of every sentence, so its size
+/// is a throughput concern rather than a detail: the `is_space` bit added for
+/// the space penalty fits in the padding `is_kanji` already left behind.
+/// Asserted rather than commented so a future field cannot silently push the
+/// per-character buffer to 20 bytes.
+const _: () = assert!(size_of::<CharData>() == 16);
 
 #[inline]
 pub fn is_kanji(c: char) -> bool {
@@ -795,20 +901,27 @@ impl Lattice {
     ///   character into `codes_buf`.
     /// * `char_definitions` - Character category definitions.
     /// * `text` - The sentence to prepare buffers for.
-    /// * `search_mode` - The segmentation mode; the kanji-run lengths are
-    ///   only computed in Decompose mode, their sole consumer
-    ///   (`Penalty::penalty` via `kanji_only`) — in Normal mode they stay
-    ///   zero and every edge gets `kanji_only = false`, which the Normal
-    ///   relaxation arms never read (#942).
+    /// * `options` - The lattice options. The kanji-run lengths are only
+    ///   computed in Decompose mode, their sole consumer (`Penalty::penalty`
+    ///   via `kanji_only`) — in Normal mode they stay zero and every edge
+    ///   gets `kanji_only = false`, which the Normal relaxation arms never
+    ///   read (#942). Likewise `CharData::is_space` stays `false` unless the
+    ///   space penalty is enabled, in which case each character is classified
+    ///   by [`SpacePenaltyTable::is_space`].
     fn prepare_char_buffers(
         &mut self,
         dict: &PrefixDictionary,
         char_definitions: &CharacterDefinition,
         text: &str,
-        search_mode: &Mode,
+        options: &LatticeOptions,
     ) {
         let len = text.len();
+        let search_mode = options.mode;
         let needs_kanji_runs = search_mode.is_search();
+        // Hoisted so the per-character classification is one indexed load
+        // through the table's ASCII fast path, not a category lookup (the
+        // table also resolves the `SPACE` category id once, at build time).
+        let space_table = options.space_penalty;
         self.char_info_buffer.clear();
         self.categories_buffer.clear();
         self.chars_buf.clear();
@@ -841,9 +954,12 @@ impl Lattice {
                 group_runs_total += categories_len as u32;
             }
 
+            let is_space = space_table.is_some_and(|table| table.is_space(c, char_definitions));
+
             self.char_info_buffer.push(CharData {
                 byte_offset: byte_offset as u32,
                 is_kanji: needs_kanji_runs && is_kanji(c),
+                is_space,
                 categories_start,
                 categories_len,
                 kanji_run_char_len: 0,
@@ -855,6 +971,7 @@ impl Lattice {
         self.char_info_buffer.push(CharData {
             byte_offset: len as u32,
             is_kanji: false,
+            is_space: false,
             categories_start: 0,
             categories_len: 0,
             kanji_run_char_len: 0,
@@ -903,10 +1020,16 @@ impl Lattice {
         }
     }
 
-    #[inline(never)]
-    // Forward Viterbi implementation:
-    // Constructs the lattice and calculates the path costs simultaneously.
-    // This improves performance by avoiding a separate lattice traversal pass.
+    /// Forward Viterbi: constructs the lattice and calculates the path costs
+    /// simultaneously (avoiding a separate traversal pass), with the
+    /// positional option set. Equivalent to
+    /// [`Lattice::set_text_with_options`] without a space penalty.
+    ///
+    /// # Arguments
+    ///
+    /// See [`Lattice::set_text_with_options`]; `search_mode`,
+    /// `max_grouping_len` and `unknown_word_ladder` map onto the
+    /// [`LatticeOptions`] fields of the same name.
     #[allow(clippy::too_many_arguments)]
     pub fn set_text(
         &mut self,
@@ -920,10 +1043,52 @@ impl Lattice {
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
     ) {
+        let mut options = LatticeOptions::new(search_mode);
+        options.max_grouping_len = max_grouping_len;
+        options.unknown_word_ladder = unknown_word_ladder;
+        self.set_text_with_options(
+            dict,
+            user_dict,
+            char_definitions,
+            unknown_dictionary,
+            cost_matrix,
+            text,
+            &options,
+        );
+    }
+
+    /// Forward Viterbi implementation: constructs the lattice and calculates
+    /// the path costs simultaneously. This improves performance by avoiding a
+    /// separate lattice traversal pass.
+    ///
+    /// # Arguments
+    ///
+    /// * `dict` - The system prefix dictionary.
+    /// * `user_dict` - The user prefix dictionary, if any.
+    /// * `char_definitions` - Character category definitions.
+    /// * `unknown_dictionary` - Unknown-word entries.
+    /// * `cost_matrix` - The connection cost matrix.
+    /// * `text` - One sentence (fewer than `u16::MAX` characters).
+    /// * `options` - Mode, unknown-word knobs and the optional space penalty.
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_text_with_options(
+        &mut self,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&UserPrefixDictionary>,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        text: &str,
+        options: &LatticeOptions,
+    ) {
+        let search_mode = options.mode;
+        let max_grouping_len = options.max_grouping_len;
+        let unknown_word_ladder = options.unknown_word_ladder;
         // Clear the previous sentence's slots (bounded by its char count),
         // then build the per-char buffers to learn this sentence's length.
         self.clear();
-        self.prepare_char_buffers(dict, char_definitions, text, search_mode);
+        self.prepare_char_buffers(dict, char_definitions, text, options);
         let n_chars = self.chars_buf.len();
         // Edge stores its start position as u16 (#943). Every
         // Segmenter-mediated path satisfies this via MAX_SENTENCE_BYTES
@@ -998,6 +1163,10 @@ impl Lattice {
 
             let mut found: bool = false;
 
+            // Space penalty gate for every candidate starting here: one
+            // O(1) check per reachable position, `None` when disabled.
+            let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
+
             // Drain user-dictionary matches (reverse discovery order, from
             // the head-inserted list).
             if char_idx < self.matches_head.len() {
@@ -1008,7 +1177,8 @@ impl Lattice {
                     let end_char = end_char as usize;
                     let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
                     let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                    self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode);
+                    let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                    self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
                     found = true;
 
                     match_idx = next;
@@ -1037,7 +1207,8 @@ impl Lattice {
                 let end_char = end_char as usize;
                 let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
                 let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode);
+                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
                 found = true;
             }
 
@@ -1058,6 +1229,7 @@ impl Lattice {
                         search_mode,
                         max_grouping_len,
                         unknown_word_ladder,
+                        space_penalty,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1082,6 +1254,12 @@ impl Lattice {
 
             for (i, left_edge) in left_edges.iter().enumerate() {
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost = match search_mode {
+                    Mode::Normal => path_cost,
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
+                    ),
+                };
                 if path_cost < best_cost {
                     best_cost = path_cost;
                     best_left = Some(i as u16);
@@ -1106,14 +1284,18 @@ impl Lattice {
     /// * `unknown_dictionary` - Source of unknown-word entries.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `search_mode` - The segmentation mode.
+    /// * `space_penalty` - The space-penalty table when the position is
+    ///   preceded by whitespace (see [`LatticeOptions::space_penalty_at`]).
     /// * `category` - The character category the edges belong to.
     /// * `char_idx` - Start position, in characters.
     /// * `num_chars` - Span length, in characters.
+    #[allow(clippy::too_many_arguments)]
     fn emit_unknown_word_edges(
         &mut self,
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
         char_idx: usize,
         num_chars: usize,
@@ -1123,7 +1305,8 @@ impl Lattice {
         for &word_id in unknown_dictionary.lookup_word_ids(category) {
             let word_entry = unknown_dictionary.word_entry(word_id);
             let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-            self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode);
+            let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+            self.add_edge_in_lattice(edge, end_char, cost_matrix, search_mode, extra_cost);
         }
     }
 
@@ -1132,11 +1315,13 @@ impl Lattice {
     /// # 引数
     ///
     /// See [`Self::emit_unknown_word_edges`].
+    #[allow(clippy::too_many_arguments)]
     fn emit_unknown_word_edges_nbest(
         &mut self,
         unknown_dictionary: &UnknownDictionary,
         cost_matrix: &ConnectionCostMatrix,
         search_mode: &Mode,
+        space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
         char_idx: usize,
         num_chars: usize,
@@ -1146,7 +1331,8 @@ impl Lattice {
         for &word_id in unknown_dictionary.lookup_word_ids(category) {
             let word_entry = unknown_dictionary.word_entry(word_id);
             let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-            self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode);
+            let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+            self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode, extra_cost);
         }
     }
 
@@ -1225,6 +1411,7 @@ impl Lattice {
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
+        space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1295,6 +1482,7 @@ impl Lattice {
                 unknown_dictionary,
                 cost_matrix,
                 search_mode,
+                space_penalty,
                 category,
                 char_idx,
                 unknown_word_num_chars,
@@ -1325,6 +1513,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        space_penalty,
                         category,
                         char_idx,
                         i,
@@ -1408,10 +1597,14 @@ impl Lattice {
     /// * `right_left_id` - The incoming edge's left context id.
     /// * `penalty` - The Decompose penalty configuration.
     /// * `cost_matrix` - The connection cost matrix.
+    /// * `extra_cost` - Position-dependent cost of the incoming edge (the
+    ///   space penalty), folded into every recorded transition so the nbest
+    ///   A* re-derives the same totals as the forward pass.
     ///
     /// # 戻り値
     ///
-    /// The best `(cost, left index)` over the position's left edges.
+    /// The best `(cost, left index)` over the position's left edges,
+    /// including `extra_cost`.
     #[inline(never)]
     #[allow(clippy::too_many_arguments)]
     fn relax_decompose_nbest(
@@ -1422,6 +1615,7 @@ impl Lattice {
         right_left_id: u32,
         penalty: &Penalty,
         cost_matrix: &ConnectionCostMatrix,
+        extra_cost: i32,
     ) -> (i32, Option<u16>) {
         // Same per-position penalty cache and hoisted row as
         // relax_decompose (#944).
@@ -1439,7 +1633,9 @@ impl Lattice {
         for (i, &penalty_cost) in cache.iter().enumerate() {
             let left_edge = &self.ends_at[start_char][i];
             let conn_cost = cost_row[left_edge.right_id as usize] as i32;
-            let total_cost = (left_edge.path_cost + conn_cost).saturating_add(penalty_cost);
+            let total_cost = (left_edge.path_cost + conn_cost)
+                .saturating_add(penalty_cost)
+                .saturating_add(extra_cost);
 
             // Record ALL transitions for N-Best
             self.all_paths[stop_char].push(PathEntry {
@@ -1468,12 +1664,16 @@ impl Lattice {
     ///   `ends_at` slot the edge is stored in.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
+    /// * `extra_cost` - Position-dependent cost of this edge (the space
+    ///   penalty; `0` when disabled). Independent of the left edge, so it
+    ///   is added once after the relaxation scan rather than per candidate.
     fn add_edge_in_lattice(
         &mut self,
         mut edge: Edge,
         stop_char: usize,
         cost_matrix: &ConnectionCostMatrix,
         mode: &Mode,
+        extra_cost: i32,
     ) {
         let start_char = edge.start_char as usize;
         let right_left_id = edge.left_id as u32;
@@ -1509,6 +1709,7 @@ impl Lattice {
 
         if let Some(best_left_idx) = best_left {
             edge.path_cost = best_cost
+                .saturating_add(extra_cost)
                 .saturating_add(edge.word_cost as i32)
                 .min(PATH_COST_CLAMP);
             edge.left_index = best_left_idx;
@@ -1634,12 +1835,16 @@ impl Lattice {
     /// * `stop_char` - The edge's end position, in characters.
     /// * `cost_matrix` - The connection cost matrix.
     /// * `mode` - The segmentation mode.
+    /// * `extra_cost` - Position-dependent cost of this edge (the space
+    ///   penalty; `0` when disabled). Recorded in every `PathEntry` so the
+    ///   backward A* (`nbest.rs`) sees it as part of the transition cost.
     fn add_edge_in_lattice_nbest(
         &mut self,
         mut edge: Edge,
         stop_char: usize,
         cost_matrix: &ConnectionCostMatrix,
         mode: &Mode,
+        extra_cost: i32,
     ) {
         let start_char = edge.start_char as usize;
         let right_left_id = edge.left_id as u32;
@@ -1660,8 +1865,9 @@ impl Lattice {
                 let cost_row = cost_matrix.row(right_left_id);
                 for i in 0..self.ends_at[start_char].len() {
                     let left_edge = &self.ends_at[start_char][i];
-                    let total_cost =
-                        left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                    let total_cost = (left_edge.path_cost
+                        + cost_row[left_edge.right_id as usize] as i32)
+                        .saturating_add(extra_cost);
 
                     // Record ALL transitions for N-Best
                     self.all_paths[stop_char].push(PathEntry {
@@ -1685,11 +1891,14 @@ impl Lattice {
                     right_left_id,
                     penalty,
                     cost_matrix,
+                    extra_cost,
                 );
             }
         }
 
         if let Some(best_left_idx) = best_left {
+            // `best_cost` already includes `extra_cost` (both arms fold it
+            // into the recorded transitions).
             edge.path_cost = best_cost
                 .saturating_add(edge.word_cost as i32)
                 .min(PATH_COST_CLAMP);
@@ -1699,7 +1908,6 @@ impl Lattice {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::too_many_arguments)]
     fn process_unknown_word_nbest(
         &mut self,
         char_definitions: &CharacterDefinition,
@@ -1708,6 +1916,7 @@ impl Lattice {
         search_mode: &Mode,
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
+        space_penalty: Option<&SpacePenaltyTable>,
         category: CategoryId,
         category_ord: usize,
         unknown_word_index: Option<usize>,
@@ -1775,6 +1984,7 @@ impl Lattice {
                 unknown_dictionary,
                 cost_matrix,
                 search_mode,
+                space_penalty,
                 category,
                 char_idx,
                 unknown_word_num_chars,
@@ -1800,6 +2010,7 @@ impl Lattice {
                         unknown_dictionary,
                         cost_matrix,
                         search_mode,
+                        space_penalty,
                         category,
                         char_idx,
                         i,
@@ -1812,9 +2023,14 @@ impl Lattice {
         unknown_word_index
     }
 
-    /// Forward Viterbi implementation for N-Best mode.
-    /// Same as set_text() but records ALL predecessor transitions in all_paths.
-    #[inline(never)]
+    /// Forward Viterbi for N-Best mode with the positional option set:
+    /// [`Lattice::set_text`] that additionally records every predecessor
+    /// transition in `all_paths`. Equivalent to
+    /// [`Lattice::set_text_nbest_with_options`] without a space penalty.
+    ///
+    /// # Arguments
+    ///
+    /// See [`Lattice::set_text`].
     #[allow(clippy::too_many_arguments)]
     pub fn set_text_nbest(
         &mut self,
@@ -1828,9 +2044,45 @@ impl Lattice {
         max_grouping_len: Option<usize>,
         unknown_word_ladder: bool,
     ) {
+        let mut options = LatticeOptions::new(search_mode);
+        options.max_grouping_len = max_grouping_len;
+        options.unknown_word_ladder = unknown_word_ladder;
+        self.set_text_nbest_with_options(
+            dict,
+            user_dict,
+            char_definitions,
+            unknown_dictionary,
+            cost_matrix,
+            text,
+            &options,
+        );
+    }
+
+    /// Forward Viterbi implementation for N-Best mode.
+    /// Same as [`Lattice::set_text_with_options`] but records ALL
+    /// predecessor transitions in `all_paths`.
+    ///
+    /// # Arguments
+    ///
+    /// See [`Lattice::set_text_with_options`].
+    #[inline(never)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_text_nbest_with_options(
+        &mut self,
+        dict: &PrefixDictionary,
+        user_dict: &Option<&UserPrefixDictionary>,
+        char_definitions: &CharacterDefinition,
+        unknown_dictionary: &UnknownDictionary,
+        cost_matrix: &ConnectionCostMatrix,
+        text: &str,
+        options: &LatticeOptions,
+    ) {
+        let search_mode = options.mode;
+        let max_grouping_len = options.max_grouping_len;
+        let unknown_word_ladder = options.unknown_word_ladder;
         // Same clear -> prepare -> grow sequence as set_text.
         self.clear();
-        self.prepare_char_buffers(dict, char_definitions, text, search_mode);
+        self.prepare_char_buffers(dict, char_definitions, text, options);
         let n_chars = self.chars_buf.len();
         // See set_text for the u16 start_char bound contract.
         assert!(
@@ -1891,6 +2143,9 @@ impl Lattice {
 
             let mut found: bool = false;
 
+            // Space penalty gate for this position; see set_text_with_options.
+            let space_penalty = options.space_penalty_at(&self.char_info_buffer, char_idx);
+
             // Drain user-dictionary matches first; see set_text for why the
             // order matters.
             if char_idx < self.matches_head.len() {
@@ -1901,7 +2156,14 @@ impl Lattice {
                     let end_char = end_char as usize;
                     let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
                     let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                    self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode);
+                    let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                    self.add_edge_in_lattice_nbest(
+                        edge,
+                        end_char,
+                        cost_matrix,
+                        search_mode,
+                        extra_cost,
+                    );
                     found = true;
 
                     match_idx = next;
@@ -1930,7 +2192,14 @@ impl Lattice {
                 let end_char = end_char as usize;
                 let kanji_only = self.is_kanji_all(char_idx, end_char - char_idx);
                 let edge = Self::create_edge(word_entry, char_idx, kanji_only);
-                self.add_edge_in_lattice_nbest(edge, end_char, cost_matrix, search_mode);
+                let extra_cost = space_penalty_cost(space_penalty, &word_entry);
+                self.add_edge_in_lattice_nbest(
+                    edge,
+                    end_char,
+                    cost_matrix,
+                    search_mode,
+                    extra_cost,
+                );
                 found = true;
             }
 
@@ -1950,6 +2219,7 @@ impl Lattice {
                         search_mode,
                         max_grouping_len,
                         unknown_word_ladder,
+                        space_penalty,
                         category,
                         category_ord,
                         unknown_word_end,
@@ -1974,6 +2244,12 @@ impl Lattice {
             for i in 0..self.ends_at[n_chars].len() {
                 let left_edge = &self.ends_at[n_chars][i];
                 let path_cost = left_edge.path_cost + cost_row[left_edge.right_id as usize] as i32;
+                let path_cost = match search_mode {
+                    Mode::Normal => path_cost,
+                    Mode::Decompose(penalty) => path_cost.saturating_add(
+                        penalty.penalty(left_edge, n_chars - left_edge.start_char as usize),
+                    ),
+                };
 
                 // Record all transitions to EOS
                 self.all_paths[n_chars].push(PathEntry {
@@ -2059,7 +2335,7 @@ impl Lattice {
 
 #[cfg(test)]
 mod tests {
-    use crate::viterbi::{CharData, Edge, Lattice, LexType, WordEntry, WordId};
+    use crate::viterbi::{CharData, Edge, Lattice, LatticeOptions, LexType, WordEntry, WordId};
 
     /// Builds an edge whose backtrace fields are set explicitly, for
     /// hand-assembled lattices in tests. The edge's stop position is the
@@ -2140,7 +2416,7 @@ mod tests {
         // Runs crossing category boundaries, a two-ordinal stretch (d-f),
         // and a trailing single char.
         let text = "aabdddefzza";
-        lattice.prepare_char_buffers(&dict, &chardef, text, &mode);
+        lattice.prepare_char_buffers(&dict, &chardef, text, &LatticeOptions::new(&mode));
 
         let n_chars = lattice.chars_buf.len();
         assert_eq!(n_chars, text.chars().count());

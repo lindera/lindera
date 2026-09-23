@@ -6,6 +6,7 @@ use std::str::FromStr;
 use lindera::LinderaResult;
 use lindera::error::{LinderaError, LinderaErrorKind};
 use lindera::mode::Mode;
+use lindera::space_penalty::SpacePenaltyConfig;
 use lindera::token::Token;
 use lindera_analysis::character_filter::CharacterFilterLoader;
 use lindera_analysis::token_filter::TokenFilterLoader;
@@ -75,6 +76,18 @@ pub struct TokenizeArgs {
         help = "Disable the MeCab/Vibrato-inspired unknown-word length ladder (char.def's LENGTH field), matching pre-v6 output exactly. Enabled by default"
     )]
     disable_unknown_word_ladder: bool,
+    #[clap(
+        long = "disable-space-penalty",
+        conflicts_with = "space_penalty_rules",
+        help = "Disable the left-space penalty (mecab-ko's left-space-penalty-factor) that a dictionary shipping rules in its metadata.json applies by default (ko-dic). A candidate that starts right after whitespace and whose first part-of-speech tag is listed gets the cost added; disabling restores the v6.0 output for Korean"
+    )]
+    disable_space_penalty: bool,
+    #[clap(
+        long = "space-penalty-rules",
+        value_name = "JSON",
+        help = "Use explicit left-space penalty rules instead of the dictionary's, e.g. '{\"rules\":[{\"pos\":[\"JKS\",\"JX\"],\"cost\":6000}]}'"
+    )]
+    space_penalty_rules: Option<String>,
     #[clap(
         long = "mmap",
         help = "Use memory-mapped file loading for the dictionary directory's word list. Ignored for embedded:// dictionaries and when the mmap feature is disabled. Rebuilding or truncating the dictionary directory while a process holds it mapped can cause a SIGBUS on the next lookup."
@@ -265,6 +278,20 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
         builder.set_segmenter_unknown_word_ladder(false);
     }
 
+    // Left-space penalty: on by default with the rules the dictionary ships
+    // (ko-dic). `--disable-space-penalty` turns it off and
+    // `--space-penalty-rules` replaces the rules (clap rejects both together).
+    if args.disable_space_penalty {
+        builder.set_segmenter_space_penalty_from_dictionary(false);
+    }
+    if let Some(rules) = args.space_penalty_rules.as_deref() {
+        let config: SpacePenaltyConfig = serde_json::from_str(rules).map_err(|err| {
+            LinderaErrorKind::Args
+                .with_error(anyhow::anyhow!("invalid --space-penalty-rules JSON: {err}"))
+        })?;
+        builder.set_segmenter_space_penalty(Some(&config));
+    }
+
     // Memory-mapped dictionary loading (ignored for embedded:// dictionaries)
     if args.use_mmap {
         builder.set_segmenter_use_mmap(true);
@@ -344,4 +371,42 @@ pub fn tokenize(args: TokenizeArgs) -> LinderaResult<()> {
     writer.flush().map_err(io_err)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::TokenizeArgs;
+
+    /// `TokenizeArgs` is a `clap::Args` group; parse it through a throwaway
+    /// command so the flag rules can be checked without the whole CLI.
+    #[derive(Debug, Parser)]
+    struct Cli {
+        #[clap(flatten)]
+        args: TokenizeArgs,
+    }
+
+    #[test]
+    fn disable_space_penalty_conflicts_with_explicit_rules() {
+        let rules = r#"{"rules":[{"pos":["JKS"],"cost":6000}]}"#;
+        let base = ["lindera", "--dict", "embedded://ko-dic"];
+
+        let cli =
+            Cli::try_parse_from(base.iter().chain(["--disable-space-penalty"].iter())).unwrap();
+        assert!(cli.args.disable_space_penalty);
+        assert!(cli.args.space_penalty_rules.is_none());
+
+        let cli = Cli::try_parse_from(base.iter().chain(["--space-penalty-rules", rules].iter()))
+            .unwrap();
+        assert!(!cli.args.disable_space_penalty);
+        assert_eq!(cli.args.space_penalty_rules.as_deref(), Some(rules));
+
+        let err = Cli::try_parse_from(
+            base.iter()
+                .chain(["--disable-space-penalty", "--space-penalty-rules", rules].iter()),
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
+    }
 }

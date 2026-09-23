@@ -31,6 +31,38 @@ ko-dic は NAIST JDIC よりも素性カラムが 1 つ少なく、まったく�
 | 10 | 마지막 품사 | Last part-of-speech | 例: 品詞タグが "VV+EM+VX+EP" の場合、`EP` を返します |
 | 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` -- 活用・複合名詞・基分析がどのように構成されるかを示すフィールド |
 
+## 左側空白ペナルティ
+
+mecab-ko（mecab-ko-dic が対象とする MeCab のフォーク）は、語の左側に空白がある場合、その語の `pos-id.def` の ID が `dicrc` に列挙されていれば連接コストを加算します:
+
+```text
+left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
+```
+
+Lindera は `pos-id.def` の ID を保持しませんが、列挙されている ID はすべてエントリの先頭品詞タグ（`Inflect` 行では「最初の品詞」列）に対応するため、同じルールをタグで記述できます。ko-dic はこのルールを `metadata.json`（`space_penalty`）に同梱しているので、`Segmenter::new` がデフォルトで適用します。オフにするには `Segmenter::space_penalty(None)`、セグメンター設定の `"space_penalty": false`、または `lindera tokenize --disable-space-penalty` を使います。明示的なルールは `Segmenter::space_penalty`、`space_penalty` オブジェクト、または `--space-penalty-rules` で指定します。同梱ルールは Lindera 6.0.0 より後のリリースでビルドした ko-dic にしか含まれません。v6.0.0 リリースの ko-dic にはルールがないため、辞書を再ビルドするまでペナルティは黙ってオフのままになりますが、`--space-penalty-rules` はどの ko-dic でも動作します。
+
+| pos-id.def の ID | 先頭品詞タグ | コスト |
+| --- | --- | --- |
+| 100, 200 (`Inflect`) | `EC`, `EF`, `EP`, `ETM`, `ETN` | 3000 |
+| 172, 230 (`Inflect`) | `VCP` | 3000 |
+| 183, 184, 185, 220, 221, 222 (`Inflect`) | `XSA`, `XSN`, `XSV` | 3000 |
+| 120, 210 (`Inflect`) | `JC`, `JKB`, `JKC`, `JKG`, `JKO`, `JKQ`, `JKS`, `JKV`, `JX` | 6000 |
+
+```json
+{
+  "rules": [
+    { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+    { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+  ]
+}
+```
+
+```shell
+echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+```
+
+`서울 시 에서` の `시` は語尾 `EP` ではなく（mecab-ko と同様に）名詞 `NNG` と解析されます。`--disable-space-penalty` を付けると再び `EP` になります。意味論と、mecab-ko の空白処理との残る差異については Segmenter のドキュメントを参照してください。
+
 ## ユーザー辞書フォーマット（CSV）
 
 ### 簡易版

@@ -31,6 +31,38 @@ The dictionary format is specified fully (in Korean) in tab `사전 형식 v2.0`
 | 10 | 마지막 품사 | Last part-of-speech | e.g. given a part-of-speech tag of "VV+EM+VX+EP", would return `EP` |
 | 11 | 표현 | Expression | `활용, 복합명사, 기분석이 어떻게 구성되는지 알려주는 필드` – Fields that tell how usage, compound nouns, and key analysis are organized |
 
+## Left-space penalty
+
+mecab-ko (the MeCab fork mecab-ko-dic is built for) raises the connection cost of a word whose left side is preceded by whitespace when its `pos-id.def` id is listed in `dicrc`:
+
+```text
+left-space-penalty-factor = 100,3000,120,6000,172,3000,183,3000,184,3000,185,3000,200,3000,210,6000,220,3000,221,3000,222,3000,230,3000
+```
+
+Lindera does not store `pos-id.def` ids, but every listed id corresponds to the entry's first part-of-speech tag (for `Inflect` rows, the `First part-of-speech` column), so the same rules are written by tag. ko-dic ships them in its `metadata.json` (`space_penalty`), and `Segmenter::new` applies them by default. Opt out with `Segmenter::space_penalty(None)`, `"space_penalty": false` in the segmenter config, or `lindera tokenize --disable-space-penalty`; explicit rules go through `Segmenter::space_penalty`, a `space_penalty` object, or `--space-penalty-rules`. The shipped rules are present only in a ko-dic built by a Lindera release later than 6.0.0; with a ko-dic from the v6.0.0 release the penalty silently stays off until the dictionary is rebuilt, while `--space-penalty-rules` works regardless.
+
+| pos-id.def ids | First part-of-speech tags | Cost |
+| --- | --- | --- |
+| 100, 200 (`Inflect`) | `EC`, `EF`, `EP`, `ETM`, `ETN` | 3000 |
+| 172, 230 (`Inflect`) | `VCP` | 3000 |
+| 183, 184, 185, 220, 221, 222 (`Inflect`) | `XSA`, `XSN`, `XSV` | 3000 |
+| 120, 210 (`Inflect`) | `JC`, `JKB`, `JKC`, `JKG`, `JKO`, `JKQ`, `JKS`, `JKV`, `JX` | 6000 |
+
+```json
+{
+  "rules": [
+    { "pos": ["EC", "EF", "EP", "ETM", "ETN", "VCP", "XSA", "XSN", "XSV"], "cost": 3000 },
+    { "pos": ["JC", "JKB", "JKC", "JKG", "JKO", "JKQ", "JKS", "JKV", "JX"], "cost": 6000 }
+  ]
+}
+```
+
+```shell
+echo "서울 시 에서 출발" | lindera tokenize --dict embedded://ko-dic
+```
+
+`시` in `서울 시 에서` is read as the noun `NNG` (as mecab-ko does) instead of the ending `EP`; with `--disable-space-penalty` it reads as `EP` again. See the Segmenter documentation for the semantics and the remaining differences from mecab-ko's whitespace handling.
+
 ## User dictionary format (CSV)
 
 ### Simple version
