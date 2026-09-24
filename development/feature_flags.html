@@ -213,7 +213,7 @@ around the <code>Segmenter</code> API.</li>
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 </code></pre>
 <p>When embedding is enabled, you can load the dictionary with:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -240,7 +240,7 @@ documentation or other materials provided with your distribution.</p>
 <h3 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h3>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

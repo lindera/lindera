@@ -392,7 +392,7 @@ Output Tokens
 <h2 id="依存関係の追加"><a class="header" href="#依存関係の追加">依存関係の追加</a></h2>
 <p>Cargo.tomlに以下を追加してください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = "5"
+lindera = "6"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -409,7 +409,7 @@ v4 からアップグレードする場合は<a href="getting_started/../migrati
 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
+</span>// Cargo.toml: lindera = { version = "6", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
 <p>詳細は <a href="getting_started/../development/feature_flags.html">Feature フラグ</a> を参照してください。</p>
@@ -500,7 +500,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <p>[!NOTE]
 character filter・token filter・<code>Tokenizer</code> API は独立クレート
 <code>lindera-analysis</code> が提供します（v5.0 以降）。分析チェーンが必要な場合は
-依存定義に <code>lindera-analysis = "5"</code> を追加してください。</p>
+依存定義に <code>lindera-analysis = "6"</code> を追加してください。</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="サンプル"><a class="header" href="#サンプル">サンプル</a></h1>
 <p>Linderaには、一般的なユースケースを示すいくつかのサンプルプログラムが含まれています。ソースコードはGitHubの <a href="https://github.com/lindera/lindera/tree/main/lindera/examples">examplesディレクトリ</a> で確認できます。</p>
@@ -9254,7 +9254,7 @@ feature ではありません。v5.0 以降は独立クレート <code>lindera-a
 </div>
 <p>いずれもデフォルトでは無効です。必要に応じて有効にしてください：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 </code></pre>
 <p>埋め込みを有効にした場合、以下のように辞書を読み込めます：</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -9280,7 +9280,7 @@ lindera = { version = "5", features = ["embed-ipadic"] }
 <h3 id="feature-フラグの組み合わせ"><a class="header" href="#feature-フラグの組み合わせ">Feature フラグの組み合わせ</a></h3>
 <p>複数の feature フラグを組み合わせることができます。例えば、日本語と韓国語の辞書を両方埋め込む場合：</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>またはコマンドラインから：</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic

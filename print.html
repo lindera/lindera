@@ -392,7 +392,7 @@ older toolchain reports it as a cargo error rather than failing to compile.</p>
 <h2 id="adding-the-dependency"><a class="header" href="#adding-the-dependency">Adding the Dependency</a></h2>
 <p>Put the following in Cargo.toml:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = "5"
+lindera = "6"
 </code></pre>
 <blockquote>
 <p>[!NOTE]
@@ -409,7 +409,7 @@ Upgrading from v4? See <a href="getting_started/../migration_v4_to_v5.html">Migr
 If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding <code>embed-*</code> feature flag and load it using the <code>embedded://</code> scheme:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>// Cargo.toml: lindera = { version = "5", features = ["embed-ipadic"] }
+</span>// Cargo.toml: lindera = { version = "6", features = ["embed-ipadic"] }
 let dictionary = load_dictionary("embedded://ipadic")?;
 <span class="boring">}</span></code></pre></pre>
 <p>See <a href="getting_started/../development/feature_flags.html">Feature Flags</a> for details.</p>
@@ -500,7 +500,7 @@ token:  トートバッグ    名詞,一般,*,*,*,*,*,*,*
 <p>[!NOTE]
 Character filters, token filters, and the <code>Tokenizer</code> API are provided by
 the companion <code>lindera-analysis</code> crate (as of v5.0). Add
-<code>lindera-analysis = "5"</code> to your dependencies if you need the analysis
+<code>lindera-analysis = "6"</code> to your dependencies if you need the analysis
 chain.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
@@ -9384,7 +9384,7 @@ around the <code>Segmenter</code> API.</li>
 </div>
 <p>None of these are enabled by default. Enable them as needed:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 </code></pre>
 <p>When embedding is enabled, you can load the dictionary with:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -9411,7 +9411,7 @@ documentation or other materials provided with your distribution.</p>
 <h3 id="combining-feature-flags"><a class="header" href="#combining-feature-flags">Combining Feature Flags</a></h3>
 <p>Multiple feature flags can be combined. For example, to embed both Japanese and Korean dictionaries:</p>
 <pre><code class="language-toml">[dependencies]
-lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 </code></pre>
 <p>Or from the command line:</p>
 <pre><code class="language-bash">cargo build --features embed-ipadic,embed-ko-dic
