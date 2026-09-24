@@ -1677,7 +1677,8 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_number"><a class="header" href="#japanese_number">japanese_number</a></h3>
 <p>トークンの表層テキストに含まれる日本語の数値表現（漢数字、大字、全角数字）をアラビア数字に変換します。</p>
-<p><code>japanese_compound_word</code>の後段で使う場合は、<code>名詞,数</code>のトークンだけを結合してください。助数詞（<code>名詞,接尾,助数詞</code>）を数値トークンに結合すると助数詞が桁として扱われ、<code>一万円</code>は<code>10000</code>と<code>円</code>ではなく<code>10円</code>になります。</p>
+<p>トークンは、その全ての文字が数詞である場合にのみ変換されます（Lucene の <code>JapaneseNumberFilter</code> と同じ規則）。そのため、数詞で始まるだけの通常の語は変換されません。<code>一部</code>は<code>1部</code>にならず<code>一部</code>のままです。</p>
+<p><code>japanese_compound_word</code>の後段で使う場合は、<code>名詞,数</code>のトークンだけを結合してください。助数詞（<code>名詞,接尾,助数詞</code>）を数値トークンに結合すると、そのトークンは数詞ではなくなるため、<code>一万円</code>は変換されずそのまま残ります。</p>
 <p><strong>パラメータ:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>パラメータ</th><th>型</th><th>必須</th><th>説明</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt;または<code>null</code></td><td>いいえ</td><td>変換対象を限定する品詞タグ（カンマ区切りで最大4階層）。<code>japanese_keep_tags</code> と同じ規則で一致判定される。省略または<code>null</code>の場合はすべてのトークンが変換対象になる</td></tr>
@@ -2040,6 +2041,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 │   ├── length.rs
 │   ├── lowercase.rs
 │   ├── mapping.rs
+│   ├── numeral.rs                   # 数値フィルタが共有する変換エンジン（非公開）
 │   ├── remove_diacritical_mark.rs
 │   ├── stop_words.rs
 │   ├── tags.rs                      # keep/stop系タグフィルタが共有するヘルパー（非公開）

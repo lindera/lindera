@@ -1675,7 +1675,8 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 </code></pre>
 <h3 id="japanese_number"><a class="header" href="#japanese_number">japanese_number</a></h3>
 <p>Converts Japanese numeral representations (kanji numerals, formal/legal kanji numerals, and fullwidth digits) in the token's surface text to Arabic numerals.</p>
-<p>When this filter follows <code>japanese_compound_word</code>, merge only the <code>名詞,数</code> tokens. A counter (<code>名詞,接尾,助数詞</code>) merged into the number token is read as digits, so <code>一万円</code> comes out as <code>10円</code> instead of <code>10000</code> and <code>円</code>.</p>
+<p>A token is converted only when every one of its characters takes part in a numeral, the rule Lucene's <code>JapaneseNumberFilter</code> applies. An ordinary word that merely begins with a numeral character is therefore returned unchanged: <code>一部</code> stays <code>一部</code> rather than becoming <code>1部</code>.</p>
+<p>When this filter follows <code>japanese_compound_word</code>, merge only the <code>名詞,数</code> tokens. A counter (<code>名詞,接尾,助数詞</code>) merged into the number token makes the merged token something other than a numeral, so <code>一万円</code> is left alone instead of being converted.</p>
 <p><strong>Parameters:</strong></p>
 <div class="table-wrapper"><table><thead><tr><th>Argument</th><th>Type</th><th>Required</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>tags</code></td><td>array&lt;string&gt; or <code>null</code></td><td>No</td><td>Part-of-speech tags (up to 4 comma-separated levels) to restrict the conversion to, matched the same way as <code>japanese_keep_tags</code>. When omitted or <code>null</code>, every token is converted</td></tr>
@@ -2039,6 +2040,7 @@ fn main() -&gt; LinderaResult&lt;()&gt; {
 │   ├── length.rs
 │   ├── lowercase.rs
 │   ├── mapping.rs
+│   ├── numeral.rs                  # Shared numeral conversion engine (private)
 │   ├── remove_diacritical_mark.rs
 │   ├── stop_words.rs
 │   ├── tags.rs                     # Shared keep/stop-tag filtering helpers (private)
