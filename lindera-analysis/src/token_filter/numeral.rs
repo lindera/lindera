@@ -13,10 +13,10 @@ pub(crate) enum Numeral {
     /// for the first myriad unit (万 / 만) and one more for each myriad after it, up to 8.
     ///
     /// Ranks 1 to 3 pad the buffer to their own width and leave the current myriad scale alone;
-    /// ranks 4 and above set that scale to four zeros per myriad. In both cases a leading `1` is
-    /// inserted when nothing follows the character or when what follows is a higher position,
-    /// which is how `십만` and `百億` come out as `100000` and `10000000000` rather than `00000`
-    /// and `0000000000`.
+    /// ranks 4 and above set that scale to four zeros per myriad. In both cases the multiplier
+    /// `1` may be left out of the text, and it is inserted when no digit stands right before the
+    /// character: at the start of the token (`十` is 10, `百億` is 10000000000) or right after a
+    /// higher position (`百十` is 110, `億万` is 100010000).
     Position(u8),
 }
 
@@ -24,6 +24,15 @@ pub(crate) enum Numeral {
 pub(crate) type Classifier = fn(char) -> Option<Numeral>;
 
 /// The number of zeros a position of this rank contributes.
+///
+/// # 引数
+///
+/// * `rank` - The rank carried by [`Numeral::Position`].
+///
+/// # 戻り値
+///
+/// The rank itself for ranks 1 to 3 (ten, hundred, thousand), and four zeros per myriad for the
+/// ranks above: 4 for 万 / 만, 8 for 億 / 억, and so on up to 20 for 垓 / 해.
 fn zeros_for(rank: u8) -> usize {
     if rank <= 3 {
         rank as usize
@@ -37,6 +46,17 @@ fn zeros_for(rank: u8) -> usize {
 /// Returns `num` unchanged when it is already at least that wide. The count is in characters
 /// rather than bytes: a byte count makes one non-ASCII character weigh three digits, which is how
 /// `万歳` used to become `10歳` before the all-numeral rule made that buffer impossible.
+///
+/// # 引数
+///
+/// * `num` - The digits built so far.
+/// * `base` - The width of the position being applied (1 to 3), or 0 for a myriad unit.
+/// * `digit` - The current myriad scale, as a number of zeros.
+///
+/// # 戻り値
+///
+/// `num` left-padded with zeros to `base + digit` characters, or `num` itself when it is already
+/// at least that wide.
 fn adjust_digits(num: &str, base: usize, digit: usize) -> String {
     let width = base + digit;
     let len = num.chars().count();
@@ -55,6 +75,15 @@ fn adjust_digits(num: &str, base: usize, digit: usize) -> String {
 ///
 /// This is the rule Lucene's `JapaneseNumberFilter` and `KoreanNumberFilter` apply through
 /// `isNumeral(String)`, and the reason a token is either converted whole or not at all.
+///
+/// # 引数
+///
+/// * `text` - The token surface to check.
+/// * `classify` - The per-language classifier.
+///
+/// # 戻り値
+///
+/// `true` when `classify` recognizes every character of `text`, including when `text` is empty.
 pub(crate) fn is_all_numeral(text: &str, classify: Classifier) -> bool {
     text.chars().all(|c| classify(c).is_some())
 }
@@ -69,6 +98,15 @@ pub(crate) fn is_all_numeral(text: &str, classify: Classifier) -> bool {
 /// The scan itself runs right to left, keeping the digits seen so far in `num_buf` and the current
 /// myriad scale in `digit`. Reaching a position character pads the buffer to that position's
 /// width, so `二千二十六` builds `6`, then `26`, then `026`, then `2026`.
+///
+/// # 引数
+///
+/// * `from_str` - The token surface to convert.
+/// * `classify` - The per-language classifier.
+///
+/// # 戻り値
+///
+/// The Arabic numeral for an all-numeral `from_str`, and `from_str` unchanged otherwise.
 pub(crate) fn to_arabic_numerals(from_str: &str, classify: Classifier) -> String {
     if !is_all_numeral(from_str, classify) {
         return from_str.to_owned();
@@ -92,13 +130,14 @@ pub(crate) fn to_arabic_numerals(from_str: &str, classify: Classifier) -> String
 
                 num_buf = adjust_digits(&num_buf, base, digit);
 
-                // A position with nothing after it, or with a higher position after it, has had
-                // its leading `1` left out: `십` is 10 and `십만` is 100000.
-                let followed_by_higher = match i.peek().and_then(|&&next| classify(next)) {
-                    Some(Numeral::Position(next_rank)) => next_rank > rank,
+                // The scan runs right to left, so `i.peek()` is the character before this one in
+                // the text. When no digit stands there (the start of the token, or a higher
+                // position), the multiplier `1` was left out: `십` is 10 and `백십` is 110.
+                let preceded_by_higher = match i.peek().and_then(|&&prev| classify(prev)) {
+                    Some(Numeral::Position(prev_rank)) => prev_rank > rank,
                     _ => false,
                 };
-                if i.peek().is_none() || followed_by_higher {
+                if i.peek().is_none() || preceded_by_higher {
                     num_buf.insert(0, '1');
                 }
             }
@@ -120,7 +159,7 @@ mod tests {
         Numeral, adjust_digits, is_all_numeral, to_arabic_numerals,
     };
 
-    /// A classifier with one digit and one position, enough to drive the engine.
+    /// A classifier with a few digits and positions, enough to drive the engine.
     fn classify(c: char) -> Option<Numeral> {
         let numeral = match c {
             '0'..='9' => Numeral::Digit(c),
@@ -167,8 +206,12 @@ mod tests {
         assert_eq!(to_arabic_numerals("二十一", classify), "21");
         assert_eq!(to_arabic_numerals("百", classify), "100");
         assert_eq!(to_arabic_numerals("万", classify), "10000");
-        // A position followed by a higher one has its leading 1 left out in the source.
+        // A position with no digit right before it has an implied multiplier of 1: at the start
+        // of the token (`十` in `十万`) and right after a higher position (`十` in `百十`). Right
+        // after a lower position, that position ends the multiplier instead (`二百` in `二百万`).
         assert_eq!(to_arabic_numerals("十万", classify), "100000");
         assert_eq!(to_arabic_numerals("二百万", classify), "2000000");
+        assert_eq!(to_arabic_numerals("百十", classify), "110");
+        assert_eq!(to_arabic_numerals("万十", classify), "10010");
     }
 }

@@ -30,11 +30,11 @@ fn main() -> LinderaResult<()> {
         let japanese_iterration_mark_char_filter =
             JapaneseIterationMarkCharacterFilter::new(true, true);
 
+        // Merge the numeral tokens only. A counter merged into the number token
+        // would keep the number filter below from converting it.
         let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
-            vec!["名詞,数".to_string(), "名詞,接尾,助数詞".to_string()]
-                .into_iter()
-                .collect(),
-            Some("複合語".to_string()),
+            vec!["名詞,数".to_string()].into_iter().collect(),
+            Some("名詞,数".to_string()),
         );
 
         let japanese_number_token_filter =

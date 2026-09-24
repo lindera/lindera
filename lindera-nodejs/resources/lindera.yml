@@ -1,10 +1,7 @@
 segmenter:
   mode: "normal"
-  dictionary:
-    kind: "ipadic"
-  # user_dictionary:
-  #   path: "./resources/ipadic_simple.csv"
-  #   kind: "ipadic"
+  dictionary: "embedded://ipadic"
+  # user_dictionary: "./resources/ipadic_simple_userdic.csv"
 
 character_filters:
   - kind: "unicode_normalize"
@@ -16,16 +13,15 @@ character_filters:
       normalize_kana: true
   - kind: mapping
     args:
-       mapping:
-         リンデラ: Lindera
+      mapping:
+        リンデラ: Lindera
 
 token_filters:
   - kind: "japanese_compound_word"
     args:
-      kind: "ipadic"
+      # Merge the numeral tokens only. A counter merged into the number token keeps japanese_number from converting it.
       tags:
         - "名詞,数"
-        - "名詞,接尾,助数詞"
       new_tag: "名詞,数"
   - kind: "japanese_number"
     args:
