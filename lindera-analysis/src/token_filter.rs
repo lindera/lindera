@@ -52,6 +52,7 @@ pub mod korean_stop_tags;
 pub mod length;
 pub mod lowercase;
 pub mod mapping;
+mod numeral;
 pub mod remove_diacritical_mark;
 pub mod stop_words;
 mod tags;

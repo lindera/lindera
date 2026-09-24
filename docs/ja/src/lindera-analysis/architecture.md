@@ -31,6 +31,7 @@ lindera-analysis/src/
 │   ├── length.rs
 │   ├── lowercase.rs
 │   ├── mapping.rs
+│   ├── numeral.rs                   # 数値フィルタが共有する変換エンジン（非公開）
 │   ├── remove_diacritical_mark.rs
 │   ├── stop_words.rs
 │   ├── tags.rs                      # keep/stop系タグフィルタが共有するヘルパー（非公開）

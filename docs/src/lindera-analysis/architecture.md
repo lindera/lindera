@@ -31,6 +31,7 @@ lindera-analysis/src/
 │   ├── length.rs
 │   ├── lowercase.rs
 │   ├── mapping.rs
+│   ├── numeral.rs                  # Shared numeral conversion engine (private)
 │   ├── remove_diacritical_mark.rs
 │   ├── stop_words.rs
 │   ├── tags.rs                     # Shared keep/stop-tag filtering helpers (private)

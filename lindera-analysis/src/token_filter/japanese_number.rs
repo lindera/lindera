@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use serde_json::Value;
 
 use crate::token_filter::TokenFilter;
+use crate::token_filter::numeral::{self, Numeral};
 use crate::token_filter::tags::{
     KEY_BUFFER_CAPACITY, normalize_japanese_tags, part_of_speech_offset_of, write_japanese_pos_key,
 };
@@ -122,168 +123,43 @@ impl TokenFilter for JapaneseNumberTokenFilter {
     }
 }
 
-fn adjust_digits(num: &str, base: &str, digit: &str) -> String {
-    let zero_str = format!("{base}{digit}");
+/// Maps a character to its meaning inside a Japanese numeral.
+///
+/// Covers the ASCII and fullwidth digits, the kanji digits with their formal (大字) variants, and
+/// the position characters from 十 to 垓.
+fn classify(c: char) -> Option<Numeral> {
+    let numeral = match c {
+        '0' | '０' | '〇' | '零' => Numeral::Digit('0'),
+        '1' | '１' | '一' | '壱' => Numeral::Digit('1'),
+        '2' | '２' | '二' | '弐' => Numeral::Digit('2'),
+        '3' | '３' | '三' | '参' => Numeral::Digit('3'),
+        '4' | '４' | '四' => Numeral::Digit('4'),
+        '5' | '５' | '五' => Numeral::Digit('5'),
+        '6' | '６' | '六' => Numeral::Digit('6'),
+        '7' | '７' | '七' => Numeral::Digit('7'),
+        '8' | '８' | '八' => Numeral::Digit('8'),
+        '9' | '９' | '九' => Numeral::Digit('9'),
+        '十' | '拾' => Numeral::Position(1),
+        '百' => Numeral::Position(2),
+        '千' => Numeral::Position(3),
+        '万' => Numeral::Position(4),
+        '億' => Numeral::Position(5),
+        '兆' => Numeral::Position(6),
+        '京' => Numeral::Position(7),
+        '垓' => Numeral::Position(8),
+        _ => return None,
+    };
 
-    // If the number is less than the base, return the number as is.
-    if zero_str.len() < num.len() {
-        return num.to_owned();
-    }
-
-    let zero_len = zero_str.len() - num.len();
-    let zeros = &zero_str[0..zero_len];
-
-    let mut num_str = num.to_owned();
-    num_str.insert_str(0, zeros);
-    num_str
+    Some(numeral)
 }
 
+/// Converts a Japanese numeral into Arabic numerals.
+///
+/// A token is converted only when every one of its characters takes part in a numeral, so an
+/// ordinary word that begins with one (`一部`, `万歳`) is returned unchanged. See
+/// [`super::numeral::to_arabic_numerals`].
 fn to_arabic_numerals(from_str: &str) -> String {
-    let mut num_buf = String::new();
-    let mut digit = String::new();
-
-    let from_chars = from_str.chars().rev().collect::<Vec<char>>();
-
-    let mut i = from_chars.iter().peekable();
-    while let Some(c) = i.next() {
-        match c {
-            '0' | '０' | '〇' | '零' => num_buf.insert(0, '0'),
-            '1' | '１' | '一' | '壱' => num_buf.insert(0, '1'),
-            '2' | '２' | '二' | '弐' => num_buf.insert(0, '2'),
-            '3' | '３' | '三' | '参' => num_buf.insert(0, '3'),
-            '4' | '４' | '四' => num_buf.insert(0, '4'),
-            '5' | '５' | '五' => num_buf.insert(0, '5'),
-            '6' | '６' | '六' => num_buf.insert(0, '6'),
-            '7' | '７' | '七' => num_buf.insert(0, '7'),
-            '8' | '８' | '八' => num_buf.insert(0, '8'),
-            '9' | '９' | '九' => num_buf.insert(0, '9'),
-            '十' | '拾' => {
-                num_buf = adjust_digits(&num_buf, "0", &digit);
-
-                match i.peek() {
-                    Some('百') | Some('千') | Some('万') | Some('億') | Some('兆') | Some('京')
-                    | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '百' => {
-                num_buf = adjust_digits(&num_buf, "00", &digit);
-
-                match i.peek() {
-                    Some('千') | Some('万') | Some('億') | Some('兆') | Some('京') | Some('垓')
-                    | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '千' => {
-                num_buf = adjust_digits(&num_buf, "000", &digit);
-
-                match i.peek() {
-                    Some('万') | Some('億') | Some('兆') | Some('京') | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '万' => {
-                digit = "0000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('億') | Some('兆') | Some('京') | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '億' => {
-                digit = "00000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('兆') | Some('京') | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '兆' => {
-                digit = "000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('京') | Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '京' => {
-                digit = "0000000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                match i.peek() {
-                    Some('垓') | None => {
-                        // If the first character is a '0', the '1' has been omitted.
-                        // Therefore, insert a leading '1'.
-                        num_buf.insert(0, '1');
-                    }
-                    _ => {
-                        // NOOP
-                    }
-                }
-            }
-            '垓' => {
-                digit = "00000000000000000000".to_string();
-
-                num_buf = adjust_digits(&num_buf, "", &digit);
-
-                if i.peek().is_none() {
-                    // If the first character is a '0', the '1' has been omitted.
-                    // Therefore, insert a leading '1'.
-                    num_buf.insert(0, '1');
-                }
-            }
-            _ => {
-                num_buf.insert(0, *c);
-                digit.clear();
-            }
-        }
-    }
-
-    num_buf
+    numeral::to_arabic_numerals(from_str, classify)
 }
 
 #[cfg(test)]
@@ -1224,9 +1100,33 @@ mod tests {
             filter.apply(&mut tokens).unwrap();
 
             assert_eq!(tokens.len(), 2);
+            // An empty configuration converts every token regardless of its part of speech, but
+            // only tokens that are numerals through and through: `一郎` is a name that begins
+            // with a numeral character, so it is returned unchanged rather than as `1郎`.
             assert_eq!(&tokens[0].surface, "鈴木");
-            assert_eq!(&tokens[1].surface, "1郎");
+            assert_eq!(&tokens[1].surface, "一郎");
         }
+    }
+
+    #[test]
+    fn test_to_number_str_leaves_mixed_tokens_alone() {
+        use crate::token_filter::japanese_number::to_arabic_numerals;
+
+        // A token is converted only when every one of its characters takes part in a numeral.
+        // Without that rule these are rewritten in place: `一部` becomes `1部`, `万歳` becomes
+        // `10歳` (the counter read as digits by the old byte-based padding) and `何億兆回`
+        // becomes `何000000000回`, which is the residue of the panic reported in #326.
+        assert_eq!(to_arabic_numerals("一部"), "一部");
+        assert_eq!(to_arabic_numerals("万歳"), "万歳");
+        assert_eq!(to_arabic_numerals("一万円"), "一万円");
+        assert_eq!(to_arabic_numerals("何億兆回"), "何億兆回");
+        assert_eq!(to_arabic_numerals("一郎"), "一郎");
+        assert_eq!(to_arabic_numerals("鈴木"), "鈴木");
+
+        // All-numeral tokens are unaffected by the rule.
+        assert_eq!(to_arabic_numerals("一"), "1");
+        assert_eq!(to_arabic_numerals("一二三"), "123");
+        assert_eq!(to_arabic_numerals("二千二十六"), "2026");
     }
 
     #[test]
