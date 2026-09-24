@@ -5,7 +5,7 @@ PHP extension for [Lindera](https://github.com/lindera/lindera), a morphological
 ## Requirements
 
 - PHP 8.1+ on Linux or macOS (Windows is not supported)
-- To build from source: Rust toolchain (stable) and libclang
+- Only to build from source: Rust toolchain (stable) and libclang
 
 ## Installation
 
@@ -17,7 +17,11 @@ The extension is published on Packagist as `lindera/lindera` (from lindera v6.1.
 pie install lindera/lindera
 ```
 
-PIE builds the extension from source for your PHP, which needs a Rust toolchain (<https://rustup.rs/>), libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and PIE's usual build tools (`autoconf`, `libtool`, `make`). It then installs `lindera.so` into the extension directory and enables it. Pass `--with-php-config=/path/to/php-config` to target another PHP.
+PIE 1.4 or later is required (older versions cannot read the package metadata; run `pie self-update`), and PIE itself needs `unzip`. PIE downloads a prebuilt `lindera.so` from the GitHub release when one exists for your PHP (8.1 to 8.5, NTS or ZTS) and platform (Linux x86_64 or arm64 with glibc 2.35 or newer, macOS on Apple silicon), installs it into the extension directory and enables it. Nothing is compiled and no Rust toolchain is needed. Pass `--with-php-config=/path/to/php-config` to target another PHP.
+
+On other platforms (Alpine and other musl systems, Intel Macs) the same command falls back to building from source, which needs a Rust toolchain (<https://rustup.rs/>), libclang (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and PIE's usual build tools (`autoconf`, `libtool`, `make`).
+
+PIE does not check the glibc version: on glibc older than 2.35 (e.g. Ubuntu 20.04, Debian 11, RHEL 8) it installs the prebuilt binary anyway, and the extension fails to load. Build from source there instead, with `pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera` (PIE 1.5 or later) or manually as below.
 
 ### Manual build
 

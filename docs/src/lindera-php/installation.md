@@ -5,8 +5,8 @@ lindera-php is a PHP extension. It is published on [Packagist](https://packagist
 ## Prerequisites
 
 - **PHP 8.1 or later** on Linux or macOS. Windows is not supported.
-- **PIE** -- see the [PIE installation guide](https://github.com/php/pie/blob/main/docs/usage.md)
-- For building from source (which is what PIE does today): a **Rust toolchain** ([rustup](https://rustup.rs/)), **libclang** (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and the usual PHP extension build tools (`autoconf`, `libtool`, `make`)
+- **PIE 1.4 or later** and `unzip` -- see the [PIE installation guide](https://github.com/php/pie/blob/main/docs/usage.md). Older PIE versions cannot read this package's metadata; run `pie self-update`.
+- Only when PIE falls back to building from source: a **Rust toolchain** ([rustup](https://rustup.rs/)), **libclang** (`libclang-dev` on Debian/Ubuntu; the Xcode command line tools or `brew install llvm` on macOS) and the usual PHP extension build tools (`autoconf`, `libtool`, `make`)
 
 ## Install with PIE
 
@@ -14,10 +14,19 @@ lindera-php is a PHP extension. It is published on [Packagist](https://packagist
 pie install lindera/lindera
 ```
 
-PIE downloads the source, builds the extension against the PHP it finds (pass `--with-php-config=/path/to/php-config` to target another one), installs `lindera.so` into the extension directory and enables it. Composer itself does not install `php-ext` packages, so `composer require lindera/lindera` is not an installation route.
-
 > [!NOTE]
 > `lindera/lindera` is available on Packagist from lindera v6.1.0. For earlier versions, build from source as described below.
+
+PIE downloads a prebuilt `lindera.so` from the GitHub release when one exists for your PHP and platform, installs it into the extension directory and enables it; nothing is compiled and no Rust toolchain is needed. Prebuilt binaries cover:
+
+- PHP 8.1 to 8.5, NTS and ZTS
+- Linux x86_64 and arm64 with glibc 2.35 or newer (e.g. Ubuntu 22.04, Debian 12)
+- macOS on Apple silicon
+
+For other platforms (Alpine and other musl systems, Intel Macs) the same command falls back to building from source against the PHP it finds. Pass `--with-php-config=/path/to/php-config` to target another PHP. Composer itself does not install `php-ext` packages, so `composer require lindera/lindera` is not an installation route.
+
+> [!WARNING]
+> PIE does not check the glibc version. On a glibc system older than 2.35 (e.g. Ubuntu 20.04, Debian 11, RHEL 8) it still installs the prebuilt binary, which then fails to load. Build from source there instead: with PIE 1.5 or later, run `pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera`, or build manually as described below.
 
 The package does not embed any dictionary; see [Obtaining Dictionaries](#obtaining-dictionaries).
 
@@ -77,7 +86,7 @@ Multiple features can be combined:
 cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 ```
 
-PIE builds with the default features only (`train`, no embedded dictionary).
+The prebuilt binaries and PIE's source build use the default features only (`train`, no embedded dictionary).
 
 > [!TIP]
 > If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding `embed-*` feature flag and load it using the `embedded://` scheme:
