@@ -11,7 +11,7 @@ breaking change and the one-line fixes for each.
 | --- | --- | --- |
 | Analysis chain moved to the new `lindera-analysis` crate | Rust users of `Tokenizer`, character filters, or token filters | Depend on `lindera-analysis` and update import paths |
 | `lindera-dictionary` no longer has a `train` feature | Direct `lindera-dictionary --features train` users | Depend on `lindera-trainer` (or the `lindera` facade's `train` feature) |
-| Build cache variable renamed | Users setting `LINDERA_DICTIONARIES_PATH` | Rename it to `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (the old name still works until v6.0.0) |
+| Build cache variable renamed | Users setting `LINDERA_DICTIONARIES_PATH` | Rename it to `LINDERA_BUILD_DICTIONARY_CACHE_DIR` (the old name still works until v7.0.0) |
 
 The language bindings (Python, Node.js, Ruby, PHP, WASM) and the CLI are
 unaffected: they enable the required features themselves, and their APIs and
@@ -112,8 +112,8 @@ it is read only at build time by the dictionary crates' build scripts, and it
 designates an auto-managed cache holding the downloaded dictionary archives
 and the built binary dictionaries.
 
-The old name keeps working through v5.x as a deprecated fallback (the new
-name wins when both are set) and will be removed in v6.0.0.
+The old name keeps working through v6.x as a deprecated fallback (the new
+name wins when both are set) and will be removed in v7.0.0.
 
 ```shell
 # v4

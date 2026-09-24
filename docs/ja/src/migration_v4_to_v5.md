@@ -11,7 +11,7 @@ Lindera v5.0.0 では、ワークスペースをリーンなコアを中心に�
 | --- | --- | --- |
 | 分析チェーンが新クレート `lindera-analysis` へ移動 | `Tokenizer`・character filter・token filter を使う Rust ユーザー | `lindera-analysis` に依存し import パスを更新 |
 | `lindera-dictionary` の `train` feature 廃止 | `lindera-dictionary --features train` を直接使うユーザー | `lindera-trainer`（または `lindera` facade の `train` feature）に依存 |
-| ビルドキャッシュ変数の改名 | `LINDERA_DICTIONARIES_PATH` を設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` に改名（旧名は v6.0.0 まで動作） |
+| ビルドキャッシュ変数の改名 | `LINDERA_DICTIONARIES_PATH` を設定しているユーザー | `LINDERA_BUILD_DICTIONARY_CACHE_DIR` に改名（旧名は v7.0.0 まで動作） |
 
 言語バインディング（Python・Node.js・Ruby・PHP・WASM）と CLI は影響を
 受けません。必要な feature はそれぞれが有効化しており、API と出力も
@@ -114,8 +114,8 @@ build script だけがビルド時に読み取るもので、ダウンロード�
 ビルド済みバイナリ辞書を保持する自動管理のキャッシュを指定します。新しい名前は
 その契約（ビルド時専用・辞書・キャッシュ）を明示します。
 
-旧名は v5.x の間は非推奨のフォールバックとして動作し（両方設定時は新名が優先）、
-v6.0.0 で削除されます。
+旧名は v6.x の間は非推奨のフォールバックとして動作し（両方設定時は新名が優先）、
+v7.0.0 で削除されます。
 
 ```shell
 # v4

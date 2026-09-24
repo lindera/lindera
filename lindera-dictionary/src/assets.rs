@@ -336,7 +336,7 @@ fn download_with_retry(
 const CACHE_DIR_ENV: &str = "LINDERA_BUILD_DICTIONARY_CACHE_DIR";
 
 /// Deprecated alias of [`CACHE_DIR_ENV`], kept as a fallback for backward
-/// compatibility. It will be removed in v6.0.0.
+/// compatibility. It will be removed in v7.0.0.
 const CACHE_DIR_ENV_DEPRECATED: &str = "LINDERA_DICTIONARIES_PATH";
 
 /// Selects the cache directory from the new and deprecated variable values.
@@ -490,7 +490,7 @@ pub fn fetch(params: FetchParams, builder: DictionaryBuilder) -> LinderaResult<(
         && std::env::var_os(CACHE_DIR_ENV_DEPRECATED).is_some()
     {
         println!(
-            "cargo:warning={CACHE_DIR_ENV_DEPRECATED} is deprecated and will be removed in v6.0.0; use {CACHE_DIR_ENV} instead"
+            "cargo:warning={CACHE_DIR_ENV_DEPRECATED} is deprecated and will be removed in v7.0.0; use {CACHE_DIR_ENV} instead"
         );
     }
 

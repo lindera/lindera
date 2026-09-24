@@ -557,7 +557,7 @@ Notes:
 - Version subdirectories accumulate across upgrades and are not garbage-collected; old ones can be removed freely
 - Setting this variable causes dictionary crates to download and build their dictionaries even when no `embed-*` feature is enabled (useful for pre-populating the cache)
 
-> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in a future major release.
+> **Deprecated:** the previous name `LINDERA_DICTIONARIES_PATH` still works as a fallback (the new name wins when both are set) and will be removed in v7.0.0.
 
 ### LINDERA_CONFIG_PATH
 
