@@ -181,16 +181,26 @@
 <h2 id="前提条件"><a class="header" href="#前提条件">前提条件</a></h2>
 <ul>
 <li><strong>PHP 8.1 以降</strong>（Linux または macOS）。Windows は非対応です</li>
-<li><strong>PIE</strong> -- <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE のインストール方法</a>を参照</li>
-<li>ソースからのビルド（現在 PIE が行う方法）には、<strong>Rust ツールチェーン</strong>（<a href="https://rustup.rs/">rustup</a>）、<strong>libclang</strong>（Debian/Ubuntu は <code>libclang-dev</code>、macOS は Xcode コマンドラインツールまたは <code>brew install llvm</code>）、および PHP 拡張の標準的なビルドツール（<code>autoconf</code>、<code>libtool</code>、<code>make</code>）が必要です</li>
+<li><strong>PIE 1.4 以降</strong>と <code>unzip</code> -- <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE のインストール方法</a>を参照。それより古い PIE はこのパッケージのメタデータを読めないため、<code>pie self-update</code> で更新してください</li>
+<li>PIE がソースからのビルドにフォールバックする場合のみ、<strong>Rust ツールチェーン</strong>（<a href="https://rustup.rs/">rustup</a>）、<strong>libclang</strong>（Debian/Ubuntu は <code>libclang-dev</code>、macOS は Xcode コマンドラインツールまたは <code>brew install llvm</code>）、および PHP 拡張の標準的なビルドツール（<code>autoconf</code>、<code>libtool</code>、<code>make</code>）が必要です</li>
 </ul>
 <h2 id="pie-でのインストール"><a class="header" href="#pie-でのインストール">PIE でのインストール</a></h2>
 <pre><code class="language-bash">pie install lindera/lindera
 </code></pre>
-<p>PIE がソースを取得し、検出した PHP 向けに拡張をビルドして（別の PHP を対象にする場合は <code>--with-php-config=/path/to/php-config</code> を指定）、<code>lindera.so</code> を拡張ディレクトリにインストールし有効化します。Composer 自体は <code>php-ext</code> パッケージをインストールしないため、<code>composer require lindera/lindera</code> ではインストールできません。</p>
 <blockquote>
 <p>[!NOTE]
 <code>lindera/lindera</code> は lindera v6.1.0 以降で Packagist から利用できます。それ以前のバージョンは、以下の手順でソースからビルドしてください。</p>
+</blockquote>
+<p>使用中の PHP とプラットフォームに対応するビルド済み <code>lindera.so</code> が GitHub Release にあれば、PIE はそれをダウンロードして拡張ディレクトリにインストールし、有効化します。コンパイルは行わず、Rust ツールチェーンも不要です。ビルド済みバイナリの対象は次のとおりです：</p>
+<ul>
+<li>PHP 8.1〜8.5、NTS と ZTS</li>
+<li>glibc 2.35 以降の Linux x86_64 / arm64（例: Ubuntu 22.04、Debian 12）</li>
+<li>macOS（Apple silicon）</li>
+</ul>
+<p>それ以外のプラットフォーム（Alpine などの musl 環境、Intel Mac）では、同じコマンドが検出した PHP 向けのソースビルドにフォールバックします。別の PHP を対象にする場合は <code>--with-php-config=/path/to/php-config</code> を指定してください。Composer 自体は <code>php-ext</code> パッケージをインストールしないため、<code>composer require lindera/lindera</code> ではインストールできません。</p>
+<blockquote>
+<p>[!WARNING]
+PIE は glibc のバージョンを確認しません。glibc 2.35 未満の環境（例: Ubuntu 20.04、Debian 11、RHEL 8）でもビルド済みバイナリをインストールし、その拡張は読み込みに失敗します。その場合はソースからビルドしてください。PIE 1.5 以降なら <code>pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera</code> を実行するか、後述の手順で手動ビルドします。</p>
 </blockquote>
 <p>パッケージには辞書は埋め込まれていません。<a href="#%E8%BE%9E%E6%9B%B8%E3%81%AE%E5%85%A5%E6%89%8B">辞書の入手</a>を参照してください。</p>
 <h2 id="辞書の入手"><a class="header" href="#辞書の入手">辞書の入手</a></h2>
@@ -240,7 +250,7 @@ php -d extension=target/release/liblindera_php.so script.php
 <p>複数の feature を組み合わせることができます：</p>
 <pre><code class="language-bash">cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
-<p>PIE はデフォルトの feature（<code>train</code> のみ、辞書の埋め込みなし）でビルドします。</p>
+<p>ビルド済みバイナリと PIE のソースビルドは、デフォルトの feature（<code>train</code> のみ、辞書の埋め込みなし）を使います。</p>
 <blockquote>
 <p>[!TIP]
 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する <code>embed-*</code> feature フラグを有効にしてビルドし、<code>embedded://</code> スキームでロードしてください：</p>

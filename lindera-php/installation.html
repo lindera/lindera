@@ -181,16 +181,26 @@
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <ul>
 <li><strong>PHP 8.1 or later</strong> on Linux or macOS. Windows is not supported.</li>
-<li><strong>PIE</strong> -- see the <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE installation guide</a></li>
-<li>For building from source (which is what PIE does today): a <strong>Rust toolchain</strong> (<a href="https://rustup.rs/">rustup</a>), <strong>libclang</strong> (<code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools or <code>brew install llvm</code> on macOS) and the usual PHP extension build tools (<code>autoconf</code>, <code>libtool</code>, <code>make</code>)</li>
+<li><strong>PIE 1.4 or later</strong> and <code>unzip</code> -- see the <a href="https://github.com/php/pie/blob/main/docs/usage.md">PIE installation guide</a>. Older PIE versions cannot read this package's metadata; run <code>pie self-update</code>.</li>
+<li>Only when PIE falls back to building from source: a <strong>Rust toolchain</strong> (<a href="https://rustup.rs/">rustup</a>), <strong>libclang</strong> (<code>libclang-dev</code> on Debian/Ubuntu; the Xcode command line tools or <code>brew install llvm</code> on macOS) and the usual PHP extension build tools (<code>autoconf</code>, <code>libtool</code>, <code>make</code>)</li>
 </ul>
 <h2 id="install-with-pie"><a class="header" href="#install-with-pie">Install with PIE</a></h2>
 <pre><code class="language-bash">pie install lindera/lindera
 </code></pre>
-<p>PIE downloads the source, builds the extension against the PHP it finds (pass <code>--with-php-config=/path/to/php-config</code> to target another one), installs <code>lindera.so</code> into the extension directory and enables it. Composer itself does not install <code>php-ext</code> packages, so <code>composer require lindera/lindera</code> is not an installation route.</p>
 <blockquote>
 <p>[!NOTE]
 <code>lindera/lindera</code> is available on Packagist from lindera v6.1.0. For earlier versions, build from source as described below.</p>
+</blockquote>
+<p>PIE downloads a prebuilt <code>lindera.so</code> from the GitHub release when one exists for your PHP and platform, installs it into the extension directory and enables it; nothing is compiled and no Rust toolchain is needed. Prebuilt binaries cover:</p>
+<ul>
+<li>PHP 8.1 to 8.5, NTS and ZTS</li>
+<li>Linux x86_64 and arm64 with glibc 2.35 or newer (e.g. Ubuntu 22.04, Debian 12)</li>
+<li>macOS on Apple silicon</li>
+</ul>
+<p>For other platforms (Alpine and other musl systems, Intel Macs) the same command falls back to building from source against the PHP it finds. Pass <code>--with-php-config=/path/to/php-config</code> to target another PHP. Composer itself does not install <code>php-ext</code> packages, so <code>composer require lindera/lindera</code> is not an installation route.</p>
+<blockquote>
+<p>[!WARNING]
+PIE does not check the glibc version. On a glibc system older than 2.35 (e.g. Ubuntu 20.04, Debian 11, RHEL 8) it still installs the prebuilt binary, which then fails to load. Build from source there instead: with PIE 1.5 or later, run <code>pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera</code>, or build manually as described below.</p>
 </blockquote>
 <p>The package does not embed any dictionary; see <a href="#obtaining-dictionaries">Obtaining Dictionaries</a>.</p>
 <h2 id="obtaining-dictionaries"><a class="header" href="#obtaining-dictionaries">Obtaining Dictionaries</a></h2>
@@ -228,7 +238,7 @@ unzip lindera-ipadic-&lt;version&gt;.zip -d /path/to/ipadic
 <p>Multiple features can be combined:</p>
 <pre><code class="language-bash">cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 </code></pre>
-<p>PIE builds with the default features only (<code>train</code>, no embedded dictionary).</p>
+<p>The prebuilt binaries and PIE's source build use the default features only (<code>train</code>, no embedded dictionary).</p>
 <blockquote>
 <p>[!TIP]
 If you want to embed a dictionary directly into the binary (advanced usage), enable the corresponding <code>embed-*</code> feature flag and load it using the <code>embedded://</code> scheme:</p>
