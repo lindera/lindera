@@ -553,6 +553,37 @@ jobs:
       - name: Run clippy
         run: cargo clippy -p lindera-php -- -D warnings
 
+  test-lindera-php-macos:
+    name: Test lindera-php (macOS, phpize path)
+    needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]
+    if: >-
+      !cancelled() && !failure() &&
+      (github.event_name != 'pull_request' || needs.detect-changes.outputs.lindera-php == 'true')
+    runs-on: macos-latest
+    steps:
+      - name: Run checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+
+      - name: Install build prerequisites
+        run: |
+          command -v autoconf >/dev/null || brew install autoconf
+          command -v glibtoolize >/dev/null || brew install libtool
+
+      # Nothing else in regression CI compiles lindera-php on macOS. This is
+      # where bindgen against the Xcode libclang and the .dylib -> .so copy in
+      # Makefile.frag get exercised, the same way the release job builds the
+      # PIE binaries.
+      - name: Run PHP test through the phpize build that PIE uses
+        run: make test-lindera-php-pie
+
   test-lindera-wasm:
     name: Test lindera-wasm
     needs: [test-lindera, test-lindera-analysis, test-lindera-binding-core, detect-changes]

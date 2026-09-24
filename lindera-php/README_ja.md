@@ -5,7 +5,7 @@
 ## 動作要件
 
 - PHP 8.1+（Linux または macOS。Windows は非対応）
-- ソースからビルドする場合: Rust ツールチェーン（stable）と libclang
+- ソースからビルドする場合のみ: Rust ツールチェーン（stable）と libclang
 
 ## インストール
 
@@ -17,7 +17,11 @@
 pie install lindera/lindera
 ```
 
-PIE は使用中の PHP 向けに拡張をソースからビルドします。ビルドには Rust ツールチェーン（<https://rustup.rs/>）、libclang（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PIE の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です。ビルド後、`lindera.so` を拡張ディレクトリにインストールして有効化します。別の PHP を対象にする場合は `--with-php-config=/path/to/php-config` を指定してください。
+PIE 1.4 以降が必要です（それより古い PIE はパッケージのメタデータを読めないため、`pie self-update` で更新してください）。PIE 自体には `unzip` が必要です。使用中の PHP（8.1〜8.5、NTS または ZTS）とプラットフォーム（glibc 2.35 以降の Linux x86_64 / arm64、Apple silicon の macOS）に対応するビルド済み `lindera.so` が GitHub Release にあれば、PIE はそれをダウンロードして拡張ディレクトリにインストールし、有効化します。コンパイルは行わず、Rust ツールチェーンも不要です。別の PHP を対象にする場合は `--with-php-config=/path/to/php-config` を指定してください。
+
+それ以外のプラットフォーム（Alpine などの musl 環境、Intel Mac）では、同じコマンドがソースからのビルドにフォールバックします。ビルドには Rust ツールチェーン（<https://rustup.rs/>）、libclang（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PIE の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です。
+
+PIE は glibc のバージョンを確認しません。glibc 2.35 未満の環境（例: Ubuntu 20.04、Debian 11、RHEL 8）でもビルド済みバイナリをインストールし、その拡張は読み込みに失敗します。その場合は `pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera`（PIE 1.5 以降）または後述の手動ビルドでソースからビルドしてください。
 
 ### 手動ビルド
 

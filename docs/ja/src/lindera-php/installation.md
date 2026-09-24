@@ -5,8 +5,8 @@ lindera-php は PHP 拡張です。[Packagist](https://packagist.org/packages/li
 ## 前提条件
 
 - **PHP 8.1 以降**（Linux または macOS）。Windows は非対応です
-- **PIE** -- [PIE のインストール方法](https://github.com/php/pie/blob/main/docs/usage.md)を参照
-- ソースからのビルド（現在 PIE が行う方法）には、**Rust ツールチェーン**（[rustup](https://rustup.rs/)）、**libclang**（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PHP 拡張の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です
+- **PIE 1.4 以降**と `unzip` -- [PIE のインストール方法](https://github.com/php/pie/blob/main/docs/usage.md)を参照。それより古い PIE はこのパッケージのメタデータを読めないため、`pie self-update` で更新してください
+- PIE がソースからのビルドにフォールバックする場合のみ、**Rust ツールチェーン**（[rustup](https://rustup.rs/)）、**libclang**（Debian/Ubuntu は `libclang-dev`、macOS は Xcode コマンドラインツールまたは `brew install llvm`）、および PHP 拡張の標準的なビルドツール（`autoconf`、`libtool`、`make`）が必要です
 
 ## PIE でのインストール
 
@@ -14,10 +14,19 @@ lindera-php は PHP 拡張です。[Packagist](https://packagist.org/packages/li
 pie install lindera/lindera
 ```
 
-PIE がソースを取得し、検出した PHP 向けに拡張をビルドして（別の PHP を対象にする場合は `--with-php-config=/path/to/php-config` を指定）、`lindera.so` を拡張ディレクトリにインストールし有効化します。Composer 自体は `php-ext` パッケージをインストールしないため、`composer require lindera/lindera` ではインストールできません。
-
 > [!NOTE]
 > `lindera/lindera` は lindera v6.1.0 以降で Packagist から利用できます。それ以前のバージョンは、以下の手順でソースからビルドしてください。
+
+使用中の PHP とプラットフォームに対応するビルド済み `lindera.so` が GitHub Release にあれば、PIE はそれをダウンロードして拡張ディレクトリにインストールし、有効化します。コンパイルは行わず、Rust ツールチェーンも不要です。ビルド済みバイナリの対象は次のとおりです：
+
+- PHP 8.1〜8.5、NTS と ZTS
+- glibc 2.35 以降の Linux x86_64 / arm64（例: Ubuntu 22.04、Debian 12）
+- macOS（Apple silicon）
+
+それ以外のプラットフォーム（Alpine などの musl 環境、Intel Mac）では、同じコマンドが検出した PHP 向けのソースビルドにフォールバックします。別の PHP を対象にする場合は `--with-php-config=/path/to/php-config` を指定してください。Composer 自体は `php-ext` パッケージをインストールしないため、`composer require lindera/lindera` ではインストールできません。
+
+> [!WARNING]
+> PIE は glibc のバージョンを確認しません。glibc 2.35 未満の環境（例: Ubuntu 20.04、Debian 11、RHEL 8）でもビルド済みバイナリをインストールし、その拡張は読み込みに失敗します。その場合はソースからビルドしてください。PIE 1.5 以降なら `pie install --suppress-download-url-method=pre-packaged-binary lindera/lindera` を実行するか、後述の手順で手動ビルドします。
 
 パッケージには辞書は埋め込まれていません。[辞書の入手](#辞書の入手)を参照してください。
 
@@ -100,7 +109,7 @@ macOS では cargo は `liblindera_php.dylib` を生成します。どの方法�
 cargo build -p lindera-php --features "train,embed-ipadic,embed-ko-dic"
 ```
 
-PIE はデフォルトの feature（`train` のみ、辞書の埋め込みなし）でビルドします。
+ビルド済みバイナリと PIE のソースビルドは、デフォルトの feature（`train` のみ、辞書の埋め込みなし）を使います。
 
 > [!TIP]
 > 辞書をバイナリに直接埋め込みたい場合（上級者向け）は、対応する `embed-*` feature フラグを有効にしてビルドし、`embedded://` スキームでロードしてください：
