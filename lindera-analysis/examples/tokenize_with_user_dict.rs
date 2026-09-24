@@ -33,7 +33,7 @@ fn main() -> LinderaResult<()> {
         let segmenter = Segmenter::new(
             Mode::Normal,
             dictionary,
-            Some(user_dictionary), // Assuming no user dictionary is provided
+            Some(user_dictionary), // Using the loaded user dictionary
         );
 
         // Create a tokenizer.

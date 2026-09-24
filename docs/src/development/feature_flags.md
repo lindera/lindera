@@ -44,7 +44,7 @@ None of these are enabled by default. Enable them as needed:
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic"] }
+lindera = { version = "6", features = ["embed-ipadic"] }
 ```
 
 When embedding is enabled, you can load the dictionary with:
@@ -77,7 +77,7 @@ Multiple feature flags can be combined. For example, to embed both Japanese and 
 
 ```toml
 [dependencies]
-lindera = { version = "5", features = ["embed-ipadic", "embed-ko-dic"] }
+lindera = { version = "6", features = ["embed-ipadic", "embed-ko-dic"] }
 ```
 
 Or from the command line:
