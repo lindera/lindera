@@ -77,6 +77,15 @@ if test "$PHP_LINDERA" != "no"; then
   PHP_SUBST([CARGO])
   PHP_SUBST([PHP_CONFIG])
 
+  dnl PHP_NEW_EXTENSION would also register the extension's build directory.
+  dnl Without it the list is empty, and up to PHP 8.3 phpize then runs
+  dnl `shtool mkdir -p` with no arguments, which prints
+  dnl "shtool:mkdir:Error: invalid number of arguments" in the middle of
+  dnl every configure (and so every `pie install`). Registering modules/,
+  dnl where Makefile.frag writes lindera.so, gives it one directory to
+  dnl create.
+  PHP_ADD_BUILD_DIR([$abs_builddir/modules])
+
   dnl Without PHP_NEW_EXTENSION, $ext_srcdir and $ext_builddir are unset, so
   dnl the fragment path and the $(srcdir) / $(builddir) replacements must be
   dnl given explicitly (the default would look for /Makefile.frag and
