@@ -278,7 +278,7 @@ fn main() -> LinderaResult<()> {
         JapaneseIterationMarkCharacterFilter::new(true, true);
 
     // Merge the numeral tokens only. A counter merged into the number token
-    // would be read as digits by the number filter below.
+    // would keep the number filter below from converting it.
     let japanese_compound_word_token_filter = JapaneseCompoundWordTokenFilter::new(
         vec!["名詞,数".to_string()].into_iter().collect(),
         Some("名詞,数".to_string()),
@@ -358,7 +358,7 @@ You can see the result as follows:
 
 ```text
 text: Ｌｉｎｄｅｒａは形態素解析ｴﾝｼﾞﾝです。ユーザー辞書も利用可能です。
-token: "Lindera", start: 0, end: 21, details: Some(["UNK"])
+token: "Lindera", start: 0, end: 21, details: Some(["名詞", "固有名詞", "組織", "*", "*", "*", "*", "*", "*"])
 token: "形態素", start: 24, end: 33, details: Some(["名詞", "一般", "*", "*", "*", "*", "形態素", "ケイタイソ", "ケイタイソ"])
 token: "解析", start: 33, end: 39, details: Some(["名詞", "サ変接続", "*", "*", "*", "*", "解析", "カイセキ", "カイセキ"])
 token: "エンジン", start: 39, end: 54, details: Some(["名詞", "一般", "*", "*", "*", "*", "エンジン", "エンジン", "エンジン"])
@@ -396,7 +396,7 @@ token_filters:
   - kind: "japanese_compound_word"
     args:
       kind: "ipadic"
-      # Merge the numeral tokens only. A counter merged into the number token is read as digits by japanese_number.
+      # Merge the numeral tokens only. A counter merged into the number token keeps japanese_number from converting it.
       tags:
         - "名詞,数"
       new_tag: "名詞,数"

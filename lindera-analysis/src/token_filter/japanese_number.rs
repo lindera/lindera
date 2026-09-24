@@ -127,6 +127,14 @@ impl TokenFilter for JapaneseNumberTokenFilter {
 ///
 /// Covers the ASCII and fullwidth digits, the kanji digits with their formal (大字) variants, and
 /// the position characters from 十 to 垓.
+///
+/// # 引数
+///
+/// * `c` - The character to classify.
+///
+/// # 戻り値
+///
+/// The digit or position `c` stands for, or `None` when it takes no part in a Japanese numeral.
 fn classify(c: char) -> Option<Numeral> {
     let numeral = match c {
         '0' | '０' | '〇' | '零' => Numeral::Digit('0'),
@@ -158,6 +166,14 @@ fn classify(c: char) -> Option<Numeral> {
 /// A token is converted only when every one of its characters takes part in a numeral, so an
 /// ordinary word that begins with one (`一部`, `万歳`) is returned unchanged. See
 /// [`super::numeral::to_arabic_numerals`].
+///
+/// # 引数
+///
+/// * `from_str` - The token surface to convert.
+///
+/// # 戻り値
+///
+/// The Arabic numeral for an all-numeral `from_str`, and `from_str` unchanged otherwise.
 fn to_arabic_numerals(from_str: &str) -> String {
     numeral::to_arabic_numerals(from_str, classify)
 }
@@ -1114,7 +1130,7 @@ mod tests {
 
         // A token is converted only when every one of its characters takes part in a numeral.
         // Without that rule these are rewritten in place: `一部` becomes `1部`, `万歳` becomes
-        // `10歳` (the counter read as digits by the old byte-based padding) and `何億兆回`
+        // `10歳` (the `歳` read as digits by the old byte-based padding) and `何億兆回`
         // becomes `何000000000回`, which is the residue of the panic reported in #326.
         assert_eq!(to_arabic_numerals("一部"), "一部");
         assert_eq!(to_arabic_numerals("万歳"), "万歳");
@@ -1143,7 +1159,8 @@ mod tests {
         use lindera::segmenter::Segmenter;
 
         // The documented recipe: merge the numeral tokens first, then convert. The counter has
-        // to stay a separate token; merged into the number it would be read as digits.
+        // to stay a separate token; merged into the number it would make the token something
+        // other than a numeral, and the token would be left unconverted.
         let tokenize = |text: &str| -> Vec<String> {
             let dictionary = load_dictionary("embedded://ipadic").unwrap();
             let segmenter = Segmenter::new(Mode::Normal, dictionary, None);

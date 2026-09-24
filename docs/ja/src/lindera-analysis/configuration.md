@@ -30,7 +30,7 @@ character_filters:
 token_filters:
   - kind: "japanese_compound_word"
     args:
-      # Merge the numeral tokens only. A counter merged into the number token is read as digits by japanese_number.
+      # Merge the numeral tokens only. A counter merged into the number token keeps japanese_number from converting it.
       tags:
         - "名詞,数"
       new_tag: "名詞,数"

@@ -696,6 +696,30 @@ mod tests {
         assert_eq!(tokenizer_config, cloned_tokenizer_config);
     }
 
+    /// The Python and Node.js docs link their `resources/lindera.yml` as a complete example, so
+    /// both have to stay equal to the shipped configuration, which `test_tokenize_ipadic` loads
+    /// and checks. Comments are not part of the parsed configuration and may differ.
+    #[test]
+    fn test_binding_sample_configs_match_shipped_config() {
+        use std::path::PathBuf;
+
+        use crate::tokenizer::yaml_to_config;
+
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+        let shipped = yaml_to_config(&root.join("resources/config/lindera.yml")).unwrap();
+
+        for sample in [
+            "lindera-python/resources/lindera.yml",
+            "lindera-nodejs/resources/lindera.yml",
+        ] {
+            let config = yaml_to_config(&root.join(sample)).unwrap();
+            assert_eq!(
+                config, shipped,
+                "{sample} differs from the shipped configuration"
+            );
+        }
+    }
+
     #[test]
     #[cfg(feature = "embed-ipadic")]
     fn test_tokenize_ipadic() {
@@ -962,7 +986,8 @@ mod tests {
         }
 
         {
-            // A counter merged into the number token would be read as digits (`一万円` -> `10円`).
+            // The counter stays a separate token. Merged into the number token it would make the
+            // token something other than a numeral, and `一万円` would be left unconverted.
             let text = "一万円";
             let tokens = tokenizer.tokenize(text).unwrap();
             let surfaces: Vec<&str> = tokens.iter().map(|token| token.surface.as_ref()).collect();
